@@ -971,7 +971,7 @@ class DoorFactory(DoorLikeFactory[Door], HasHandleFactory):
 
     scale: Scale = field(default_factory=lambda: Scale(0.03, 1.0, 2.0))
     """
-    The scale of the entryway. In this case, the x scale is used to define the thickness of the door, x is the access that shows for word of the object.
+    The scale of the entryway. The x scale of the door is the thickness of the door.
     """
 
     def __post_init__(self):
@@ -979,7 +979,6 @@ class DoorFactory(DoorLikeFactory[Door], HasHandleFactory):
         Validate that the door's scale is physically plausible.
         Ensures that the X dimension is smaller than both the Y and Z
         """
-        # Ensure scale.x is smaller than both y and z
         if not (self.scale.x < self.scale.y and self.scale.x < self.scale.z):
             raise IncorrectScaleError(
                 f"Invalid scale for DoorFactory: x must be smaller than y and z, got {self.scale}"
