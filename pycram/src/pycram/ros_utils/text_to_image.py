@@ -10,7 +10,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy
 logger = logging.getLogger(__name__)
 
 
-class TextImagePublisher:
+class TextToImagePublisher:
     def __init__(self, topic_name: str = "/head_display/text_to_image"):
         self.is_init = False
         self.topic_name = topic_name
@@ -87,7 +87,7 @@ class TextImagePublisher:
 
 def example_use():
     # create new Publisher like this
-    text_pub = TextImagePublisher()
+    text_pub = TextToImagePublisher()
 
     # display Text like this
     # if you spam text, it will only stay on the display for a second
