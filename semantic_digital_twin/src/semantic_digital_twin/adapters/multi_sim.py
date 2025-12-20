@@ -1346,27 +1346,31 @@ class MujocoBuilder(MultiSimBuilder):
         mesh_ext = os.path.splitext(mesh_file_path)[1].lower()
         if mesh_ext == ".dae":
             try:
-                logger.info(
-                    f"Converting Collada mesh to STL for MuJoCo: {mesh_file_path}"
-                )
-                tm = trimesh.load(mesh_file_path, force="mesh")
-                if tm.is_empty:
-                    logger.warning(
-                        f"Failed to load .dae mesh (empty): {mesh_file_path}. Skipping."
-                    )
-                    return False
-
-                # Build output .stl path next to original or in asset folder
+                # Build output .stl path
                 base_name = os.path.splitext(os.path.basename(mesh_file_path))[0]
                 stl_file_path = os.path.join(self.asset_folder_path, base_name + ".stl")
 
-                # Ensure asset folder exists
-                os.makedirs(self.asset_folder_path, exist_ok=True)
+                if os.path.exists(stl_file_path):
+                    logger.info(
+                        f"Using existing STL for MuJoCo: {stl_file_path} (from {mesh_file_path})"
+                    )
+                else:
+                    logger.info(
+                        f"Converting Collada mesh to STL for MuJoCo: {mesh_file_path}"
+                    )
+                    tm = trimesh.load(mesh_file_path, force="mesh")
+                    if tm.is_empty:
+                        logger.warning(
+                            f"Failed to load .dae mesh (empty): {mesh_file_path}. Skipping."
+                        )
+                        return False
 
-                # Export as STL
-                tm.export(stl_file_path)
+                    # Export as STL
+                    tm.export(stl_file_path)
+
                 mesh_file_path = stl_file_path
                 mesh_ext = ".stl"
+
             except Exception as e:
                 logger.warning(
                     f"Cannot convert .dae to STL for MuJoCo. Skipping mesh {mesh_file_path}. "
