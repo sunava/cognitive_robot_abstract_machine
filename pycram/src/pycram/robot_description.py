@@ -1120,6 +1120,8 @@ class ViewManager:
                 return man
             elif "right" in man.name.name and arm == Arms.RIGHT:
                 return man
+            elif arm == Arms.LEFT:
+                return man
         return None
 
     @staticmethod

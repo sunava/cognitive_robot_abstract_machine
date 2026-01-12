@@ -10,6 +10,7 @@ from semantic_digital_twin.spatial_types.spatial_types import (
     Vector3 as SpatialVector3,
     Quaternion as SpatialQuaternion,
     HomogeneousTransformationMatrix as SpatialTransformationMatrix,
+    Vector3,
 )
 from semantic_digital_twin.world_description.world_entity import Body
 from typing_extensions import Self, Tuple, Optional, List, TYPE_CHECKING
@@ -118,6 +119,10 @@ class PyCramVector3(HasParameters):
         :return: A numpy array containing the x, y and z coordinates.
         """
         return np.array(self.to_list())
+
+    def from_numpy_vector(arr) -> Vector3:
+        a = np.asarray(arr, dtype=float)
+        return Vector3.from_iterable(a)
 
     def __add__(self, other: Self) -> PyCramVector3:
         """
@@ -412,7 +417,9 @@ class PyCramPose(HasParameters):
         """
         return cls(
             PyCramVector3(position[0], position[1], position[2]),
-            PyCramQuaternion(orientation[0], orientation[1], orientation[2], orientation[3]),
+            PyCramQuaternion(
+                orientation[0], orientation[1], orientation[2], orientation[3]
+            ),
         )
 
 
@@ -535,13 +542,6 @@ class PoseStamped(HasParameters):
     def frame_id(self, value: Body):
         self.header.frame_id = value
 
-    def __repr__(self):
-        return (
-            f"Pose: {[round(v, 3) for v in [self.position.x, self.position.y, self.position.z]]}, "
-            f"{[round(v, 3) for v in [self.orientation.x, self.orientation.y, self.orientation.z, self.orientation.w]]} "
-            f"in frame_id {self.frame_id.name if self.frame_id is not None else None}"
-        )
-
     def ros_message(self):
         """
         Convert the pose to a ROS message of type PoseStamped.
@@ -574,7 +574,9 @@ class PoseStamped(HasParameters):
             z=message.pose.orientation.z,
             w=message.pose.orientation.w,
         )
-        return cls(pose=PyCramPose(position=position, orientation=orientation), header=header)
+        return cls(
+            pose=PyCramPose(position=position, orientation=orientation), header=header
+        )
 
     @classmethod
     def from_list(

@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Iterable, Optional, List, Protocol
+from typing import Iterable, List, Tuple, Union, Optional
 
 import numpy as np
-from geometry_msgs.msg import PoseStamped
+
+from pycram.src.pycram.datastructures.pose import PoseStamped
+from pycram.demos.thesis.primitives.contact_manifold import (
+    ContactAnchor,
+    compile_contact_manifold,
+)
+from semantic_digital_twin.world_description.world_entity import Body
 
 
 @dataclass(frozen=True)
@@ -28,13 +35,13 @@ class SliceSpec:
     margin_xy: float = 0.0
 
 
-def _new_pose(frame_id: str) -> PoseStamped:
+def new_pose(frame_id: str) -> PoseStamped:
     ps = PoseStamped()
     ps.header.frame_id = frame_id
     return ps
 
 
-def _set_xyz(ps: PoseStamped, x: float, y: float, z: float) -> None:
+def set_xyz(ps: PoseStamped, x: float, y: float, z: float) -> None:
     ps.pose.position.x = float(x)
     ps.pose.position.y = float(y)
     ps.pose.position.z = float(z)
@@ -61,7 +68,7 @@ def bind_slice_anchors_along_x(
         return []
 
     start = x_min + 0.5 * t
-    anchors = []
+    anchors: List[CutAnchor] = []
     for i in range(n):
         x = start + float(i) * t
         anchors.append(
@@ -71,172 +78,122 @@ def bind_slice_anchors_along_x(
     return anchors
 
 
-def compile_slice_down_through_up(
+class SepMode(Enum):
+    SLICE = auto()
+    SAW = auto()
+    PRESS = auto()
+    PULL_APART = auto()
+
+
+@dataclass(frozen=True)
+class SeparationSpec:
+    mode: SepMode
+    length: float
+    depth: float
+    n: int = 80
+    normal_force: float = 15.0
+    tangential_osc_amp: float = 0.01
+    tangential_osc_hz: float = 6.0
+    pull_gap: float = 0.12
+
+
+def compile_slice_kernel(
     anchor: CutAnchor,
     obj_half_extents: np.ndarray,
     spec: SliceSpec,
-) -> Iterable[PoseStamped]:
+    tilt_y_deg: float = 0.0,
+) -> PoseStamped:
     hz = float(obj_half_extents[2])
-
-    z_top = hz + float(spec.z_clearance)
     z_cut = float(spec.z_cut)
 
-    x = float(anchor.p[0])
-    y = float(anchor.p[1])
-
-    out = []
-
-    p0 = _new_pose(anchor.frame_id)
-    _set_xyz(p0, x, y, z_top)
-    out.append(p0)
-
-    p1 = _new_pose(anchor.frame_id)
-    _set_xyz(p1, x, y, z_cut)
-    out.append(p1)
-
-    p2 = _new_pose(anchor.frame_id)
-    _set_xyz(p2, x, y, z_top)
-    out.append(p2)
-
-    return out
-
-
-class QuaternionOps(Protocol):
-    def axis_angle(self, axis: np.ndarray, angle_deg: float) -> object: ...
-
-
-@dataclass(frozen=True)
-class CutAnchor:
-    frame_id: str
-    p: np.ndarray
-
-
-class CutSide(Enum):
-    POS_Y = auto()
-    NEG_Y = auto()
-
-
-@dataclass(frozen=True)
-class SawSliceSpec:
-    slice_thickness: float
-    tool_half_length: float
-
-    prelift_z: float
-    insert_z: float
-
-    y_standoff: float
-
-    tilt_y_deg: float
-    pitch_x_deg: float
-
-    stroke_x: float
-
-    rotate_y_shift: float
-    rotate_x_shift: float
-
-    return_y_shift: float
-    return_x_shift: float
-
-    final_lift_z: float
-
-
-def _rot(ps: PoseStamped, q: object) -> None:
-    ps.pose.orientation.x = float(q[0])
-    ps.pose.orientation.y = float(q[1])
-    ps.pose.orientation.z = float(q[2])
-    ps.pose.orientation.w = float(q[3])
-
-
-def _quat_mul(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    ax, ay, az, aw = float(a[0]), float(a[1]), float(a[2]), float(a[3])
-    bx, by, bz, bw = float(b[0]), float(b[1]), float(b[2]), float(b[3])
-    return np.array(
-        [
-            aw * bx + ax * bw + ay * bz - az * by,
-            aw * by - ax * bz + ay * bw + az * bx,
-            aw * bz + ax * by - ay * bx + az * bw,
-            aw * bw - ax * bx - ay * by - az * bz,
-        ],
-        dtype=float,
-    )
-
-
-def axis_angle_quat(axis: np.ndarray, angle_deg: float) -> np.ndarray:
-    a = np.asarray(axis, dtype=float)
-    a = a / max(np.linalg.norm(a), 1e-12)
-    th = np.deg2rad(float(angle_deg))
-    s = np.sin(0.5 * th)
-    return np.array([a[0] * s, a[1] * s, a[2] * s, np.cos(0.5 * th)], dtype=float)
-
-
-def bind_cut_side_from_robot_y(angle_y: float) -> CutSide:
-    return CutSide.NEG_Y if float(angle_y) >= 0.0 else CutSide.POS_Y
-
-
-def compile_saw_slice_sequence(
-    anchor: CutAnchor,
-    side: CutSide,
-    spec: SawSliceSpec,
-    base_orientation: Optional[np.ndarray] = None,
-) -> Iterable[PoseStamped]:
-    sgn = +1.0 if side is CutSide.POS_Y else -1.0
-
     x0 = float(anchor.p[0])
-    y0 = float(anchor.p[1]) + sgn * (
-        float(spec.tool_half_length) + float(spec.y_standoff)
-    )
-    z_lift = float(spec.prelift_z)
-    z_ins = float(spec.insert_z)
+    y0 = float(anchor.p[1])
 
-    q = (
-        np.array([0.0, 0.0, 0.0, 1.0], dtype=float)
-        if base_orientation is None
-        else np.asarray(base_orientation, dtype=float)
-    )
+    z_top = hz + float(spec.z_clearance)
+    dz = z_top - z_cut
+    dx = dz * math.tan(math.radians(float(tilt_y_deg)))
 
-    q_tilt = axis_angle_quat(
-        np.array([0.0, 1.0, 0.0], dtype=float), float(spec.tilt_y_deg)
-    )
-    q = _quat_mul(q, q_tilt)
+    p = new_pose(anchor.frame_id)
+    set_xyz(p, x0 + dx, y0, z_cut)
+    return p
 
-    ps0 = _new_pose(anchor.frame_id)
-    _set_xyz(ps0, x0, y0, z_lift)
-    _rot(ps0, q)
 
-    ps1 = _new_pose(anchor.frame_id)
-    _set_xyz(ps1, x0, y0, z_ins)
-    _rot(ps1, q)
+def compile_separation(
+    spec: SeparationSpec,
+) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+    t = np.linspace(0.0, 1.0, spec.n, dtype=float)
 
-    ps2 = _new_pose(anchor.frame_id)
-    _set_xyz(ps2, x0 + float(spec.stroke_x), y0, z_ins)
-    _rot(ps2, q)
+    z = -float(spec.depth) * t
 
-    q_pitch = axis_angle_quat(
-        np.array([1.0, 0.0, 0.0], dtype=float), float(spec.pitch_x_deg)
-    )
-    q2 = _quat_mul(q, q_pitch)
+    if spec.mode == SepMode.PRESS:
+        x = np.zeros_like(t)
+        y = np.zeros_like(t)
+        return np.column_stack([x, y, z])
 
-    ps3 = _new_pose(anchor.frame_id)
-    _set_xyz(
-        ps3, x0 + float(spec.stroke_x), y0 - sgn * float(spec.rotate_y_shift), z_ins
-    )
-    _rot(ps3, q2)
+    if spec.mode == SepMode.SLICE:
+        x = np.zeros_like(t)
+        y = np.zeros_like(t)
+        return np.column_stack([x, y, z])
 
-    ps4 = _new_pose(anchor.frame_id)
-    _set_xyz(ps4, x0, y0 - sgn * float(spec.return_y_shift), z_ins)
-    _rot(ps4, q2)
+    if spec.mode == SepMode.SAW:
+        x = np.zeros_like(t)
+        osc = float(spec.tangential_osc_amp) * np.sin(
+            2.0 * math.pi * float(spec.tangential_osc_hz) * t
+        )
+        y = osc
+        return np.column_stack([x, y, z])
 
-    ps5 = _new_pose(anchor.frame_id)
-    _set_xyz(
-        ps5,
-        x0 - float(spec.return_x_shift),
-        y0 - sgn * float(spec.return_y_shift),
-        float(spec.final_lift_z),
-    )
-    _rot(ps5, q2)
+    if spec.mode == SepMode.PULL_APART:
+        gap = 0.5 * float(spec.pull_gap) * t
+        left = np.column_stack([np.zeros_like(t), -gap, np.zeros_like(t)])
+        right = np.column_stack([np.zeros_like(t), +gap, np.zeros_like(t)])
+        return left, right
 
-    ps6 = _new_pose(anchor.frame_id)
-    _set_xyz(ps6, x0, y0, z_lift)
-    _rot(ps6, q)
+    raise ValueError(f"Unhandled mode: {spec.mode}")
 
-    return [ps0, ps1, ps2, ps3, ps4, ps5, ps6]
+
+def compile_penetration_kernel(
+    p0: np.ndarray,
+    n: np.ndarray,
+    depth: float,
+    n_steps: int,
+) -> np.ndarray:
+    nn = np.asarray(n, dtype=float)
+    nn = nn / max(np.linalg.norm(nn), 1e-12)
+    t = np.linspace(0.0, 1.0, int(n_steps), dtype=float)
+    return p0[None, :] - (depth * t)[:, None] * nn[None, :]
+
+
+def compile_separation_contact(
+    frame_id: Body,
+    p0: np.ndarray,
+    n: np.ndarray,
+    spec: SeparationSpec,
+    t1: Optional[np.ndarray] = None,
+    t2: Optional[np.ndarray] = None,
+) -> Union[Iterable[PoseStamped], Tuple[Iterable[PoseStamped], Iterable[PoseStamped]]]:
+    p0 = np.asarray(p0, dtype=float).reshape(3)
+    n = np.asarray(n, dtype=float).reshape(3)
+
+    t = np.linspace(0.0, 1.0, int(spec.n), dtype=float)
+    d = float(spec.depth) * t
+
+    if spec.mode == SepMode.PULL_APART:
+        gap = 0.5 * float(spec.pull_gap) * t
+        qL = np.column_stack([np.zeros_like(t), -gap])
+        qR = np.column_stack([np.zeros_like(t), +gap])
+        a = ContactAnchor(frame_id=frame_id, p0=p0, n=n, t1=t1, t2=t2)
+        z0 = np.zeros_like(t)
+        left = list(compile_contact_manifold(a, z0, qL))
+        right = list(compile_contact_manifold(a, z0, qR))
+        return left, right
+
+    q = np.zeros((t.shape[0], 2), dtype=float)
+
+    if spec.mode == SepMode.SAW:
+        q[:, 1] = float(spec.tangential_osc_amp) * np.sin(
+            2.0 * math.pi * float(spec.tangential_osc_hz) * t
+        )
+
+    a = ContactAnchor(frame_id=frame_id, p0=p0, n=n, t1=t1, t2=t2)
+    return list(compile_contact_manifold(a, d, q))

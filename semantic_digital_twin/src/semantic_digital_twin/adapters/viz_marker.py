@@ -2,6 +2,7 @@ import atexit
 import threading
 import time
 from dataclasses import dataclass
+from typing import Iterable, Optional
 
 import numpy as np
 import rclpy.node
@@ -10,7 +11,7 @@ from .. import logger
 from ..callbacks.callback import StateChangeCallback
 
 try:
-    from builtin_interfaces.msg import Duration
+    from builtin_interfaces.msg import Duration, Time
     from geometry_msgs.msg import Vector3, Point, Quaternion, Pose
     from std_msgs.msg import ColorRGBA
     from visualization_msgs.msg import Marker, MarkerArray
@@ -58,6 +59,11 @@ class VizMarkerPublisher(StateChangeCallback):
     Only published every n-th state update.
     """
 
+    opacity: float = 0.4
+    """
+    The opacity of the visualization marker.
+    """
+
     def __post_init__(self):
         """
         Initializes the publisher and registers the callback to the world.
@@ -98,11 +104,12 @@ class VizMarkerPublisher(StateChangeCallback):
                         @ collision.origin
                     ).to_np()
                 )
+
                 msg.color = ColorRGBA(
                     r=float(collision.color.R),
                     g=float(collision.color.G),
                     b=float(collision.color.B),
-                    a=float(collision.color.A),
+                    a=float(collision.color.A) * self.opacity,
                 )
                 msg.lifetime = Duration(sec=0)
 
@@ -169,3 +176,60 @@ class VizMarkerPublisher(StateChangeCallback):
             )
         )
         return pose
+
+
+class TrajLinePublisher:
+    def __init__(self, world, node):
+        self.world = world
+        self.pub = node.create_publisher(MarkerArray, "/semworld/primitive_traj", 10)
+
+    def _to_ros_pose(self, p):
+        # PyCRAM PoseStamped → world → numeric → ROS PoseStamped
+        T = self.world.transform(p.to_spatial_type(), self.world.root)
+
+        pos = T.to_position().to_np()
+        quat = T.to_quaternion().to_np()
+
+        msg = PoseStamped()
+        msg.header.frame_id = "map"
+
+        if hasattr(p.header, "stamp"):
+            msg.header.stamp = self._to_ros_time(p.header.stamp)
+
+        msg.pose.position = Point(x=float(pos[0]), y=float(pos[1]), z=float(pos[2]))
+        msg.pose.orientation = Quaternion(
+            x=float(quat[0]), y=float(quat[1]), z=float(quat[2]), w=float(quat[3])
+        )
+        return msg
+
+    def _to_ros_time(self, dt):
+        t = Time()
+        sec = int(dt.timestamp())
+        nsec = int((dt.timestamp() - sec) * 1_000_000_000)
+        t.sec = sec
+        t.nanosec = nsec
+        return t
+
+    def publish(self, poses, ns: str, marker_id: int = 0):
+        poses = [self._to_ros_pose(p) for p in poses]
+        if not poses:
+            return
+
+        m = Marker()
+        m.header.frame_id = poses[0].header.frame_id
+        m.ns = ns
+        m.id = marker_id
+        m.action = Marker.ADD
+        m.type = Marker.LINE_STRIP
+        m.lifetime = Duration(sec=0)
+        m.scale = Vector3(x=0.004, y=0.0, z=0.0)
+        m.color = ColorRGBA(r=1.0, g=0.2, b=0.2, a=1.0)
+
+        m.points = [
+            Point(x=p.pose.position.x, y=p.pose.position.y, z=p.pose.position.z)
+            for p in poses
+        ]
+
+        arr = MarkerArray()
+        arr.markers.append(m)
+        self.pub.publish(arr)
