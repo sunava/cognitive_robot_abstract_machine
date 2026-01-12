@@ -10,6 +10,7 @@ from semantic_digital_twin.spatial_types.spatial_types import (
     Vector3 as SpatialVector3,
     Quaternion as SpatialQuaternion,
     HomogeneousTransformationMatrix as SpatialTransformationMatrix,
+    Vector3,
 )
 from semantic_digital_twin.world_description.world_entity import Body
 from typing_extensions import Self, Tuple, Optional, List, TYPE_CHECKING
@@ -116,6 +117,10 @@ class PyCramVector3:
         :return: A numpy array containing the x, y and z coordinates.
         """
         return np.array(self.to_list())
+
+    def from_numpy_vector(arr) -> Vector3:
+        a = np.asarray(arr, dtype=float)
+        return Vector3.from_iterable(a)
 
     def __add__(self, other: Self) -> PyCramVector3:
         """
@@ -530,13 +535,6 @@ class PoseStamped:
     @frame_id.setter
     def frame_id(self, value: Body):
         self.header.frame_id = value
-
-    def __repr__(self):
-        return (
-            f"Pose: {[round(v, 3) for v in [self.position.x, self.position.y, self.position.z]]}, "
-            f"{[round(v, 3) for v in [self.orientation.x, self.orientation.y, self.orientation.z, self.orientation.w]]} "
-            f"in frame_id {self.frame_id.name if self.frame_id is not None else None}"
-        )
 
     def ros_message(self):
         """

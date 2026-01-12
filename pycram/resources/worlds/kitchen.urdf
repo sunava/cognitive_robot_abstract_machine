@@ -2115,32 +2115,6 @@
     <child link="iai_fridge_door_handle"/>
   </joint>
   <!-- LINKS -->
-  <link name="table_area_main">
-    <inertial>
-      <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
-      <mass value="1"/>
-      <inertia ixx="1" ixy="0.0" ixz="0.0" iyy="1" iyz="0.0" izz="1"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="package://iai_kitchen/meshes/misc/big_table_1.obj"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="package://iai_kitchen/meshes/misc/big_table_1.stl"/>
-      </geometry>
-    </collision>
-  </link>
-  <!-- JOINTS -->
-  <joint name="table_area_main_joint" type="fixed">
-    <origin rpy="0 0 3.14159265359" xyz="-1.4 -1.05 0"/>
-    <parent link="room_link"/>
-    <child link="table_area_main"/>
-  </joint>
-  <!-- LINKS -->
   <link name="kitchen_wall_1">
     <inertial>
       <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>

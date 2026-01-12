@@ -78,7 +78,6 @@ with world.modify_world():
             Spoon(body=world.get_body_by_name("spoon.stl")),
         ]
     )
-
 plan = SequentialPlan(
     context,
     ParkArmsActionDescription(Arms.BOTH),

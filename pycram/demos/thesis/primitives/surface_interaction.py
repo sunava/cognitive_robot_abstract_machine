@@ -7,12 +7,48 @@ from typing import Iterable, Optional
 import numpy as np
 from geometry_msgs.msg import PoseStamped
 
+from pycram.demos.thesis.primitives.contact_manifold import (
+    ContactAnchor,
+    compile_contact_manifold,
+)
+
+
+def _unit(v: np.ndarray) -> np.ndarray:
+    n = float(np.linalg.norm(v))
+    if n <= 0.0:
+        raise ValueError("zero-length vector")
+    return v / n
+
+
+def _orthonormal_tangent_basis(n: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    n = _unit(n)
+    a = np.array([1.0, 0.0, 0.0], dtype=float)
+    if abs(float(np.dot(a, n))) > 0.9:
+        a = np.array([0.0, 1.0, 0.0], dtype=float)
+    t1 = _unit(np.cross(n, a))
+    t2 = _unit(np.cross(n, t1))
+    return t1, t2
+
 
 @dataclass(frozen=True)
 class SurfacePlane:
     frame_id: str
-    half_extents_xy: np.ndarray
-    z_contact: float = 0.0
+    origin: np.ndarray
+    normal: np.ndarray
+    half_extents_uv: np.ndarray
+    t1: Optional[np.ndarray] = None
+    t2: Optional[np.ndarray] = None
+
+    def basis(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        n = _unit(np.array(self.normal, dtype=float))
+        if self.t1 is None or self.t2 is None:
+            t1, t2 = _orthonormal_tangent_basis(n)
+            return t1, t2, n
+        t1 = _unit(np.array(self.t1, dtype=float))
+        t2 = _unit(np.array(self.t2, dtype=float))
+        if abs(float(np.dot(t1, n))) > 1e-6 or abs(float(np.dot(t2, n))) > 1e-6:
+            raise ValueError("tangent basis is not orthogonal to normal")
+        return t1, t2, n
 
 
 @dataclass(frozen=True)
@@ -36,26 +72,22 @@ class SweepSpec:
     z_offset: float = 0.0
 
 
-def _new_pose(frame_id: str) -> PoseStamped:
-    ps = PoseStamped()
-    ps.header.frame_id = frame_id
-    return ps
-
-
-def _set_xyz(ps: PoseStamped, x: float, y: float, z: float) -> None:
-    ps.pose.position.x = float(x)
-    ps.pose.position.y = float(y)
-    ps.pose.position.z = float(z)
-
-
 def bind_surface_anchor(
     surface: SurfacePlane, margin: float
 ) -> Optional[SurfaceAnchor]:
-    hx, hy = float(surface.half_extents_xy[0]), float(surface.half_extents_xy[1])
-    if hx <= margin or hy <= margin:
+    hu, hv = float(surface.half_extents_uv[0]), float(surface.half_extents_uv[1])
+    if hu <= margin or hv <= margin:
         return None
-    p = np.array([0.0, 0.0, float(surface.z_contact)], dtype=float)
+    p = np.array(surface.origin, dtype=float)
     return SurfaceAnchor(frame_id=surface.frame_id, p=p)
+
+
+def _anchor_uv(surface: SurfacePlane, anchor_p: np.ndarray) -> tuple[float, float]:
+    t1, t2, n = surface.basis()
+    o = np.array(surface.origin, dtype=float)
+    p = np.array(anchor_p, dtype=float)
+    d = p - o
+    return float(np.dot(d, t1)), float(np.dot(d, t2))
 
 
 def compile_scrub_circle(
@@ -64,9 +96,8 @@ def compile_scrub_circle(
     spec: ScrubSpec,
     margin: float,
 ) -> Iterable[PoseStamped]:
-    hx, hy = float(surface.half_extents_xy[0]), float(surface.half_extents_xy[1])
-
-    r_max = max(0.0, min(hx, hy) - float(margin))
+    hu, hv = float(surface.half_extents_uv[0]), float(surface.half_extents_uv[1])
+    r_max = max(0.0, min(hu, hv) - float(margin))
     r = min(float(spec.radius), r_max)
 
     ppc = int(spec.points_per_cycle)
@@ -77,25 +108,36 @@ def compile_scrub_circle(
     if cycles <= 0:
         return []
 
-    n = ppc * cycles
-    out = []
+    n_pts = ppc * cycles
 
-    cx, cy = float(anchor.p[0]), float(anchor.p[1])
-    z = float(surface.z_contact) + float(spec.z_offset)
+    cu, cv = _anchor_uv(surface, anchor.p)
 
-    for i in range(n):
+    q = np.zeros((n_pts, 2), dtype=float)
+    for i in range(n_pts):
         a = (2.0 * math.pi) * (float(i) / float(ppc))
-        x = cx + r * math.cos(a)
-        y = cy + r * math.sin(a)
+        u = cu + r * math.cos(a)
+        v = cv + r * math.sin(a)
+        if abs(u) > hu - margin or abs(v) > hv - margin:
+            q[i, 0] = np.nan
+            q[i, 1] = np.nan
+        else:
+            q[i, 0] = u - cu
+            q[i, 1] = v - cv
 
-        if abs(x) > hx - margin or abs(y) > hy - margin:
-            continue
+    keep = np.isfinite(q[:, 0]) & np.isfinite(q[:, 1])
+    q = q[keep, :]
 
-        ps = _new_pose(anchor.frame_id)
-        _set_xyz(ps, x, y, z)
-        out.append(ps)
+    d = np.zeros((q.shape[0],), dtype=float)
 
-    return out
+    t1, t2, n = surface.basis()
+    a = ContactAnchor(
+        frame_id=anchor.frame_id,
+        p0=np.array(anchor.p, dtype=float) + float(spec.z_offset) * n,
+        n=n,
+        t1=t1,
+        t2=t2,
+    )
+    return list(compile_contact_manifold(a, d, q))
 
 
 def compile_sweep_raster(
@@ -104,7 +146,7 @@ def compile_sweep_raster(
     start_xy: Optional[np.ndarray] = None,
     end_xy: Optional[np.ndarray] = None,
 ) -> Iterable[SurfaceAnchor]:
-    hx, hy = float(surface.half_extents_xy[0]), float(surface.half_extents_xy[1])
+    hu, hv = float(surface.half_extents_uv[0]), float(surface.half_extents_uv[1])
     m = float(spec.margin)
     s = float(spec.spacing)
 
@@ -112,28 +154,32 @@ def compile_sweep_raster(
         return []
 
     if start_xy is None:
-        start_xy = np.array([-(hx - m), -(hy - m)], dtype=float)
+        start_xy = np.array([-(hu - m), -(hv - m)], dtype=float)
     if end_xy is None:
-        end_xy = np.array([(hx - m), (hy - m)], dtype=float)
+        end_xy = np.array([(hu - m), (hv - m)], dtype=float)
 
-    x0, y0 = float(start_xy[0]), float(start_xy[1])
-    x1, y1 = float(end_xy[0]), float(end_xy[1])
+    u0, v0 = float(start_xy[0]), float(start_xy[1])
+    u1, v1 = float(end_xy[0]), float(end_xy[1])
 
-    x0 = max(-(hx - m), min((hx - m), x0))
-    x1 = max(-(hx - m), min((hx - m), x1))
-    y0 = max(-(hy - m), min((hy - m), y0))
-    y1 = max(-(hy - m), min((hy - m), y1))
+    u0 = max(-(hu - m), min((hu - m), u0))
+    u1 = max(-(hu - m), min((hu - m), u1))
+    v0 = max(-(hv - m), min((hv - m), v0))
+    v1 = max(-(hv - m), min((hv - m), v1))
 
-    ys = np.arange(min(y0, y1), max(y0, y1) + 1e-9, s, dtype=float)
-    anchors = []
+    vs = np.arange(min(v0, v1), max(v0, v1) + 1e-9, s, dtype=float)
+    anchors: list[SurfaceAnchor] = []
 
-    left = min(x0, x1)
-    right = max(x0, x1)
+    t1, t2, n = surface.basis()
+    o = np.array(surface.origin, dtype=float)
+    w = float(spec.z_offset)
 
-    for k, y in enumerate(ys):
-        xs = [left, right] if (k % 2 == 0) else [right, left]
-        for x in xs:
-            p = np.array([float(x), float(y), float(surface.z_contact)], dtype=float)
+    left = min(u0, u1)
+    right = max(u0, u1)
+
+    for k, v in enumerate(vs):
+        us = [left, right] if (k % 2 == 0) else [right, left]
+        for u in us:
+            p = o + float(u) * t1 + float(v) * t2 + w * n
             anchors.append(SurfaceAnchor(frame_id=surface.frame_id, p=p))
 
     return anchors
@@ -145,14 +191,15 @@ def compile_wipe_raster_scrub(
     scrub: ScrubSpec,
 ) -> Iterable[PoseStamped]:
     anchors = list(compile_sweep_raster(surface, sweep))
-    out = []
+    out: list[PoseStamped] = []
 
-    z_sweep = float(surface.z_contact) + float(sweep.z_offset)
     for a in anchors:
-        ps = _new_pose(a.frame_id)
-        _set_xyz(ps, float(a.p[0]), float(a.p[1]), z_sweep)
+        ps = PoseStamped()
+        ps.header.frame_id = a.frame_id
+        ps.pose.position.x = float(a.p[0])
+        ps.pose.position.y = float(a.p[1])
+        ps.pose.position.z = float(a.p[2])
         out.append(ps)
-
         out.extend(compile_scrub_circle(a, surface, scrub, margin=float(sweep.margin)))
 
     return out
