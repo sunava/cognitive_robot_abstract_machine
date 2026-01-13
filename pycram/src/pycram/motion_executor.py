@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import List, Any
 
 from giskardpy.executor import Executor
+
 from giskardpy.motion_statechart.data_types import LifeCycleValues
 from giskardpy.motion_statechart.goals.templates import Sequence
 from giskardpy.motion_statechart.graph_node import EndMotion
@@ -13,8 +14,8 @@ from giskardpy.motion_statechart.graph_node import Task
 from giskardpy.qp.qp_controller_config import QPControllerConfig
 from semantic_digital_twin.world import World
 
-from pycram.datastructures.enums import ExecutionType
-from pycram.process_module import ProcessModuleManager
+from pycram.src.pycram.datastructures.enums import ExecutionType
+from pycram.src.pycram.process_module import ProcessModuleManager
 import logging
 
 logger = logging.getLogger(__name__)
