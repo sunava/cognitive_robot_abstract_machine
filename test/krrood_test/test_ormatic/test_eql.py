@@ -3,8 +3,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import MultipleResultsFound
 
 from krrood.entity_query_language.failures import MultipleSolutionFound
-from .._dataset.example_classes import Position, Pose
-from .._dataset.semantic_world_like_classes import (
+from ..dataset.example_classes import Position, Pose
+from ..dataset.semantic_world_like_classes import (
     World,
     Body,
     FixedConnection,
@@ -12,7 +12,7 @@ from .._dataset.semantic_world_like_classes import (
     Handle,
     Container,
 )
-from .._dataset.ormatic_interface import (
+from ..dataset.ormatic_interface import (
     PositionDAO,
     PoseDAO,
     OrientationDAO,

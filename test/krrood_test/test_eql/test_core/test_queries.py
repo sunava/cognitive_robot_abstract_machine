@@ -38,7 +38,7 @@ from krrood.entity_query_language.result_quantification_constraint import (
     AtMost,
     Range,
 )
-from ..._dataset.semantic_world_like_classes import (
+from ...dataset.semantic_world_like_classes import (
     Handle,
     Body,
     Container,

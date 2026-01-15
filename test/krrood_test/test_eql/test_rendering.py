@@ -7,7 +7,7 @@ try:
 except ImportError:
     GraphVisualizer = None
 
-from .._dataset.semantic_world_like_classes import (
+from ..dataset.semantic_world_like_classes import (
     Drawer,
     Handle,
     FixedConnection,
