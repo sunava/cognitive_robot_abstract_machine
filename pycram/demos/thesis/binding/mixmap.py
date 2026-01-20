@@ -1,3 +1,5 @@
+"""Compute mixmap anchors within container volume models."""
+
 from __future__ import annotations
 
 import math
@@ -16,11 +18,15 @@ from semantic_digital_twin.world_description.geometry import Cylinder, Box, Scal
 
 
 class MixScore(Enum):
+    """Scoring strategies for mixmap selection."""
+
     MAX_CLEARANCE = auto()
 
 
 @dataclass(frozen=True)
 class MixmapParams:
+    """Parameters controlling mixmap search."""
+
     z_ratio: float
     epsilon: float
     grid_step: float
@@ -29,18 +35,22 @@ class MixmapParams:
 
 @dataclass(frozen=True)
 class MixmapResult:
+    """Computed mixmap point and clearance information."""
+
     p_in_container: np.ndarray
     z_mix: float
     clearance: float
 
 
 def _clamp(x: float, lo: float, hi: float) -> float:
+    """Clamp x into [lo, hi]."""
     return lo if x < lo else hi if x > hi else x
 
 
 def solve_mixmap(
     volume: ContainerVolumeModel, params: MixmapParams
 ) -> Optional[MixmapResult]:
+    """Search for a feasible mixmap point with maximal clearance."""
     z_ratio = _clamp(float(params.z_ratio), 0.0, 1.0)
     h = float(volume.inner_height())
     z_mix = (-0.5 * h) + z_ratio * h

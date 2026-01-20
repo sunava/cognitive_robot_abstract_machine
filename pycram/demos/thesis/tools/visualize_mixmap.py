@@ -1,3 +1,5 @@
+"""Visualization helpers for mixmap clearance grids."""
+
 from __future__ import annotations
 
 import math
@@ -16,6 +18,7 @@ from semantic_digital_twin.world_description.geometry import Cylinder, Box, Scal
 
 
 def clearance_grid(volume: ContainerVolumeModel, z_mix: float, step: float):
+    """Sample clearance values on a grid at the given z height."""
     hx, hy = volume.inner_bounds_xy()
     xs = np.arange(-hx, hx + 1e-9, step, dtype=float)
     ys = np.arange(-hy, hy + 1e-9, step, dtype=float)

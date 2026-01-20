@@ -1,3 +1,5 @@
+"""Demo for thesis primitives: build a small world and visualize trajectories."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -5,6 +7,7 @@ from typing import Iterable
 
 import numpy as np
 import rclpy
+import matplotlib.pyplot as matplotlib_pyplot
 from builtin_interfaces.msg import Duration
 from scipy.spatial.transform import Rotation
 from std_msgs.msg import ColorRGBA
@@ -15,18 +18,18 @@ from visualization_msgs.msg import Marker, MarkerArray
 from suturo_resources.suturo_map import load_environment
 
 from giskardpy.motion_statechart.context import ExecutionContext
-from pycram.src.pycram.datastructures.pose import PoseStamped, Point
-from pycram.demos.thesis.simulation_setup import (
+from pycram.datastructures.pose import PoseStamped, Point
+from simulation_setup import (
     setup_hsrb_in_environment,
     add_box,
     BoxSpec,
 )
-from pycram.demos.thesis.primitives.seperation_devision import (
+from primitives.seperation_devision import (
     SeparationSpec,
     SepMode,
     compile_separation_contact,
 )
-from pycram.demos.thesis.primitives.surface_interaction import (
+from primitives.surface_interaction import (
     SurfacePlane,
     bind_surface_anchor,
     ScrubSpec,
@@ -34,17 +37,17 @@ from pycram.demos.thesis.primitives.surface_interaction import (
     compile_scrub_circle,
     compile_wipe_raster_scrub,
 )
-from pycram.demos.thesis.primitives.volume_agitation import (
+from primitives.volume_agitation import (
     VolumeAnchor,
     AgitationSpec,
     compile_volume_agitation,
 )
-from pycram.demos.thesis.geometry.volume_models import volume_from_body_collision
+from geometry.volume_models import volume_from_body_collision
 
-from pycram.src.pycram.datastructures.enums import Arms, TorsoState
-from pycram.src.pycram.language import SequentialPlan
-from pycram.src.pycram.process_module import simulated_robot
-from pycram.src.pycram.robot_plans import (
+from pycram.datastructures.enums import Arms, TorsoState
+from pycram.language import SequentialPlan
+from pycram.process_module import simulated_robot
+from pycram.robot_plans import (
     ParkArmsActionDescription,
     MoveTorsoActionDescription,
 )
@@ -62,6 +65,8 @@ from semantic_digital_twin.world_description.world_entity import Body
 
 @dataclass(frozen=True)
 class CutPlaneAnchor:
+    """Defines a cutting plane frame with tangents and depth."""
+
     frame_id: Body
     p0: np.ndarray
     n: np.ndarray
@@ -70,7 +75,60 @@ class CutPlaneAnchor:
     depth: float
 
 
+@dataclass(frozen=True)
+class TrajectoryPlotter:
+    """Plots pose trajectories in 2D/3D using matplotlib."""
+
+    show_plots: bool = True
+
+    def _collect_positions(self, poses: Iterable[PoseStamped]) -> np.ndarray:
+        """Convert PoseStamped sequence into an (N,3) array."""
+        positions = [
+            [pose.pose.position.x, pose.pose.position.y, pose.pose.position.z]
+            for pose in poses
+        ]
+        return np.array(positions, dtype=float)
+
+    def plot_xy(self, poses: Iterable[PoseStamped], title: str) -> None:
+        """
+        Plottet die Trajektorie im 3D-Raum (XY-Ansicht mit Z aus den Posen).
+        """
+        self.plot_xyz(poses, title)
+
+    def plot_xyz(self, poses: Iterable[PoseStamped], title: str) -> None:
+        """
+        Plottet die Trajektorie im 3D-Raum.
+        """
+        positions = self._collect_positions(poses)
+        if positions.size == 0:
+            return
+
+        figure = matplotlib_pyplot.figure()
+        axes = figure.add_subplot(projection="3d")
+        axes.plot(positions[:, 0], positions[:, 1], positions[:, 2])
+        axes.scatter(
+            [positions[0, 0]], [positions[0, 1]], [positions[0, 2]], marker="o"
+        )
+        axes.scatter(
+            [positions[-1, 0]], [positions[-1, 1]], [positions[-1, 2]], marker="x"
+        )
+        axes.set_title(title)
+        axes.set_xlabel("x")
+        axes.set_ylabel("y")
+        axes.set_zlabel("z")
+        axes.set_box_aspect((1, 1, 1))
+
+    def show(self) -> None:
+        """
+        Zeigt alle offenen Plots an.
+        """
+        if not self.show_plots:
+            return
+        matplotlib_pyplot.show()
+
+
 def top_plane_anchor_from_box(box_body) -> CutPlaneAnchor:
+    """Create a cut anchor aligned with the top face of a box."""
     shape = box_body.collision.shapes[0]
     hz = 0.5 * float(shape.scale.z)
     depth = float(shape.scale.z)
@@ -85,6 +143,7 @@ def top_plane_anchor_from_box(box_body) -> CutPlaneAnchor:
 
 
 def compile_cut(anchor: CutPlaneAnchor) -> list[PoseStamped]:
+    """Compile a saw-like cut trajectory for the given anchor."""
     spec = SeparationSpec(
         mode=SepMode.SAW,
         length=0.10,
@@ -112,6 +171,7 @@ def compile_cut(anchor: CutPlaneAnchor) -> list[PoseStamped]:
 def convert_ros_poses_to_pycram(
     poses: Iterable[PoseStamped], frame_id: Body
 ) -> list[PoseStamped]:
+    """Re-wrap ROS poses as pycram PoseStamped with a target frame."""
     converted: list[PoseStamped] = []
     for pose in poses:
         converted.append(
@@ -136,6 +196,7 @@ def convert_ros_poses_to_pycram(
 def transform_poses_to_world(
     world: World, poses: Iterable[PoseStamped]
 ) -> list[PoseStamped]:
+    """Transform pose list into the world/root frame."""
     world_poses: list[PoseStamped] = []
     for pose in poses:
         world_poses.append(
@@ -167,6 +228,7 @@ def transform_poses_to_world(
 
 
 def main():
+    """Run the demo and publish example trajectories."""
     result = setup_hsrb_in_environment(load_environment=load_environment, with_viz=True)
     world: World
     context: ExecutionContext
@@ -239,6 +301,13 @@ def main():
     )
     world_agitation_poses = transform_poses_to_world(world, agitation_poses)
 
+    trajectory_plotter = TrajectoryPlotter()
+    trajectory_plotter.plot_xy(world_cut_poses, "Cut-Trajektorie (XY)")
+    trajectory_plotter.plot_xy(world_scrub_poses, "Scrub-Trajektorie (XY)")
+    trajectory_plotter.plot_xy(world_wipe_poses, "Wipe-Trajektorie (XY)")
+    trajectory_plotter.plot_xyz(world_agitation_poses, "Agitation-Trajektorie (3D)")
+    trajectory_plotter.show()
+
     # print(world_poses)
     # print(poses[0].from_spatial_type(world.get_body_by_name("muh_box")))
     # plan = SequentialPlan()
@@ -250,8 +319,8 @@ def main():
 
     # traj_pub.publish(world_cut_poses, ns="muh_box_cut", marker_id=0)
     # traj_pub.publish(world_scrub_poses, ns="muh_box_scrub", marker_id=1)
-    traj_pub.publish(world_wipe_poses, ns="muh_box_wipe", marker_id=2)
-    # traj_pub.publish(world_agitation_poses, ns="muh_box_agitation", marker_id=3)
+    # traj_pub.publish(world_wipe_poses, ns="muh_box_wipe", marker_id=2)
+    traj_pub.publish(world_agitation_poses, ns="muh_box_agitation", marker_id=3)
 
     plan = SequentialPlan(
         context,

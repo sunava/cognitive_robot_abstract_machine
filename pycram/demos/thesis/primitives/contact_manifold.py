@@ -1,3 +1,5 @@
+"""Contact manifold mapping for surface interaction primitives."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -5,11 +7,12 @@ from typing import Iterable, Optional
 
 import numpy as np
 
-from pycram.src.pycram.datastructures.pose import PoseStamped
+from pycram.datastructures.pose import PoseStamped
 from semantic_digital_twin.world_description.world_entity import Body
 
 
 def _unit(v: np.ndarray) -> np.ndarray:
+    """Normalize a vector and raise on zero length."""
     n = float(np.linalg.norm(v))
     if n <= 0.0:
         raise ValueError("zero-length vector")
@@ -18,6 +21,8 @@ def _unit(v: np.ndarray) -> np.ndarray:
 
 @dataclass(frozen=True)
 class ContactAnchor:
+    """Anchor frame for contact manifold parameterization."""
+
     frame_id: Body
     p0: np.ndarray
     n: np.ndarray
@@ -25,6 +30,7 @@ class ContactAnchor:
     t2: Optional[np.ndarray] = None
 
     def basis(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return tangent basis vectors and normal."""
         n = _unit(np.asarray(self.n, dtype=float).reshape(3))
         if self.t1 is None or self.t2 is None:
             a = np.array([1.0, 0.0, 0.0], dtype=float)
@@ -41,12 +47,14 @@ class ContactAnchor:
 
 
 def _new_pose(frame_id: Body) -> PoseStamped:
+    """Create a PoseStamped with a given frame id."""
     ps = PoseStamped()
     ps.header.frame_id = frame_id
     return ps
 
 
 def _set_xyz(ps: PoseStamped, x: float, y: float, z: float) -> None:
+    """Set position fields on a PoseStamped."""
     ps.pose.position.x = float(x)
     ps.pose.position.y = float(y)
     ps.pose.position.z = float(z)
@@ -57,6 +65,7 @@ def compile_contact_manifold(
     d: np.ndarray,
     q_uv: np.ndarray,
 ) -> Iterable[PoseStamped]:
+    """Map manifold coordinates to PoseStamped waypoints."""
     p0 = np.asarray(anchor.p0, dtype=float).reshape(3)
     t1, t2, n = anchor.basis()
 

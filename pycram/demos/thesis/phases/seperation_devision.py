@@ -1,3 +1,5 @@
+"""Phase-level slicing sequences composed from primitives."""
+
 from __future__ import annotations
 
 import math
@@ -18,12 +20,16 @@ from pycram.demos.thesis.primitives.seperation_devision import (
 
 
 class CutSide(Enum):
+    """Selects the side for saw slicing relative to Y axis."""
+
     POS_Y = auto()
     NEG_Y = auto()
 
 
 @dataclass(frozen=True)
 class SawSliceSpec:
+    """Parameters for a saw-slice phase sequence."""
+
     slice_thickness: float
     tool_half_length: float
     prelift_z: float
@@ -40,6 +46,7 @@ class SawSliceSpec:
 
 
 def quat_mul(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Multiply two quaternions (x, y, z, w)."""
     ax, ay, az, aw = float(a[0]), float(a[1]), float(a[2]), float(a[3])
     bx, by, bz, bw = float(b[0]), float(b[1]), float(b[2]), float(b[3])
     return np.array(
@@ -54,6 +61,7 @@ def quat_mul(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 
 
 def axis_angle_quat(axis: np.ndarray, angle_deg: float) -> np.ndarray:
+    """Build a quaternion from an axis and angle in degrees."""
     a = np.asarray(axis, dtype=float)
     a = a / max(np.linalg.norm(a), 1e-12)
     th = math.radians(float(angle_deg))
@@ -62,6 +70,7 @@ def axis_angle_quat(axis: np.ndarray, angle_deg: float) -> np.ndarray:
 
 
 def rot(ps: PoseStamped, q: np.ndarray) -> None:
+    """Set orientation on a PoseStamped."""
     ps.pose.orientation.x = float(q[0])
     ps.pose.orientation.y = float(q[1])
     ps.pose.orientation.z = float(q[2])
@@ -69,6 +78,7 @@ def rot(ps: PoseStamped, q: np.ndarray) -> None:
 
 
 def bind_cut_side_from_robot_y(angle_y: float) -> CutSide:
+    """Choose cut side based on robot yaw sign."""
     return CutSide.NEG_Y if float(angle_y) >= 0.0 else CutSide.POS_Y
 
 
@@ -78,6 +88,7 @@ def compile_saw_slice_sequence(
     spec: SawSliceSpec,
     base_orientation: Optional[np.ndarray] = None,
 ) -> Iterable[PoseStamped]:
+    """Compile a multi-step saw slicing pose sequence."""
     sgn = +1.0 if side is CutSide.POS_Y else -1.0
 
     x0 = float(anchor.p[0])
@@ -153,6 +164,7 @@ def compile_slice_phases_basic(
     spec: SliceSpec,
     tilt_y_deg: float = 0.0,
 ) -> Iterable[PoseStamped]:
+    """Compile a simple down-cut-up slice phase trio."""
     hz = float(obj_half_extents[2])
     z_top = hz + float(spec.z_clearance)
 

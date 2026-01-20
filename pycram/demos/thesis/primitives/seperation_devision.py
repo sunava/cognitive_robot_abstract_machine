@@ -1,3 +1,5 @@
+"""Separation and slicing primitive generators."""
+
 from __future__ import annotations
 
 import math
@@ -7,8 +9,8 @@ from typing import Iterable, List, Tuple, Union, Optional
 
 import numpy as np
 
-from pycram.src.pycram.datastructures.pose import PoseStamped
-from pycram.demos.thesis.primitives.contact_manifold import (
+from pycram.datastructures.pose import PoseStamped
+from .contact_manifold import (
     ContactAnchor,
     compile_contact_manifold,
 )
@@ -17,18 +19,24 @@ from semantic_digital_twin.world_description.world_entity import Body
 
 @dataclass(frozen=True)
 class CutPlane:
+    """Planar cutting volume definition."""
+
     frame_id: str
     half_extents: np.ndarray
 
 
 @dataclass(frozen=True)
 class CutAnchor:
+    """Anchor position for cut trajectories."""
+
     frame_id: str
     p: np.ndarray
 
 
 @dataclass(frozen=True)
 class SliceSpec:
+    """Parameters for slicing along a box axis."""
+
     slice_thickness: float
     z_clearance: float
     z_cut: float
@@ -36,12 +44,14 @@ class SliceSpec:
 
 
 def new_pose(frame_id: str) -> PoseStamped:
+    """Create a PoseStamped with a given frame id."""
     ps = PoseStamped()
     ps.header.frame_id = frame_id
     return ps
 
 
 def set_xyz(ps: PoseStamped, x: float, y: float, z: float) -> None:
+    """Set position fields on a PoseStamped."""
     ps.pose.position.x = float(x)
     ps.pose.position.y = float(y)
     ps.pose.position.z = float(z)
@@ -52,6 +62,7 @@ def bind_slice_anchors_along_x(
     half_extents: np.ndarray,
     spec: SliceSpec,
 ) -> List[CutAnchor]:
+    """Compute evenly spaced slice anchors along the X axis."""
     hx, hy, hz = float(half_extents[0]), float(half_extents[1]), float(half_extents[2])
 
     t = float(spec.slice_thickness)
@@ -79,6 +90,8 @@ def bind_slice_anchors_along_x(
 
 
 class SepMode(Enum):
+    """Supported separation modes."""
+
     SLICE = auto()
     SAW = auto()
     PRESS = auto()
@@ -87,6 +100,8 @@ class SepMode(Enum):
 
 @dataclass(frozen=True)
 class SeparationSpec:
+    """Parameters for separation trajectories."""
+
     mode: SepMode
     length: float
     depth: float
@@ -103,6 +118,7 @@ def compile_slice_kernel(
     spec: SliceSpec,
     tilt_y_deg: float = 0.0,
 ) -> PoseStamped:
+    """Compute the target pose for a slice kernel."""
     hz = float(obj_half_extents[2])
     z_cut = float(spec.z_cut)
 
@@ -121,6 +137,7 @@ def compile_slice_kernel(
 def compile_separation(
     spec: SeparationSpec,
 ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+    """Generate XYZ offsets for a separation primitive."""
     t = np.linspace(0.0, 1.0, spec.n, dtype=float)
 
     z = -float(spec.depth) * t
@@ -158,6 +175,7 @@ def compile_penetration_kernel(
     depth: float,
     n_steps: int,
 ) -> np.ndarray:
+    """Generate a straight penetration trace along a normal."""
     nn = np.asarray(n, dtype=float)
     nn = nn / max(np.linalg.norm(nn), 1e-12)
     t = np.linspace(0.0, 1.0, int(n_steps), dtype=float)
@@ -172,6 +190,7 @@ def compile_separation_contact(
     t1: Optional[np.ndarray] = None,
     t2: Optional[np.ndarray] = None,
 ) -> Union[Iterable[PoseStamped], Tuple[Iterable[PoseStamped], Iterable[PoseStamped]]]:
+    """Compile separation trajectories on the contact manifold."""
     p0 = np.asarray(p0, dtype=float).reshape(3)
     n = np.asarray(n, dtype=float).reshape(3)
 

@@ -1,3 +1,5 @@
+"""Simple surface models and circular wipe generation."""
+
 from __future__ import annotations
 
 import math
@@ -10,6 +12,8 @@ from geometry_msgs.msg import PoseStamped
 
 @dataclass(frozen=True)
 class SurfacePlane:
+    """Axis-aligned surface patch defined by half extents."""
+
     frame_id: str
     half_extents_xy: np.ndarray
     z_contact: float = 0.0
@@ -17,12 +21,16 @@ class SurfacePlane:
 
 @dataclass(frozen=True)
 class SurfaceAnchor:
+    """Anchor point on a surface plane."""
+
     frame_id: str
     p: np.ndarray
 
 
 @dataclass(frozen=True)
 class WipeSpec:
+    """Parameters for a circular wipe pattern."""
+
     pattern_points: int
     radius: float
     cycles: int
@@ -33,6 +41,7 @@ def bind_surface_anchor(
     surface: SurfacePlane,
     margin: float,
 ) -> Optional[SurfaceAnchor]:
+    """Return a centered anchor if surface is large enough."""
     hx, hy = float(surface.half_extents_xy[0]), float(surface.half_extents_xy[1])
 
     if hx <= margin or hy <= margin:
@@ -43,12 +52,14 @@ def bind_surface_anchor(
 
 
 def _new_pose(frame_id: str) -> PoseStamped:
+    """Create a PoseStamped with a given frame id."""
     ps = PoseStamped()
     ps.header.frame_id = frame_id
     return ps
 
 
 def _set_xyz(ps: PoseStamped, x: float, y: float, z: float) -> None:
+    """Set position fields on a PoseStamped."""
     ps.pose.position.x = float(x)
     ps.pose.position.y = float(y)
     ps.pose.position.z = float(z)
@@ -60,6 +71,7 @@ def compile_circular_wipe(
     spec: WipeSpec,
     margin: float,
 ) -> Iterable[PoseStamped]:
+    """Generate a circular wipe trajectory within surface bounds."""
     hx, hy = float(surface.half_extents_xy[0]), float(surface.half_extents_xy[1])
 
     r_max = max(0.0, min(hx, hy) - float(margin))

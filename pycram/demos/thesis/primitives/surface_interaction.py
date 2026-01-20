@@ -1,3 +1,5 @@
+"""Surface interaction primitives: scrub and wipe trajectories."""
+
 from __future__ import annotations
 
 import math
@@ -7,13 +9,14 @@ from typing import Iterable, Optional
 import numpy as np
 from geometry_msgs.msg import PoseStamped
 
-from pycram.demos.thesis.primitives.contact_manifold import (
+from primitives.contact_manifold import (
     ContactAnchor,
     compile_contact_manifold,
 )
 
 
 def _unit(v: np.ndarray) -> np.ndarray:
+    """Normalize a vector and raise on zero length."""
     n = float(np.linalg.norm(v))
     if n <= 0.0:
         raise ValueError("zero-length vector")
@@ -21,6 +24,7 @@ def _unit(v: np.ndarray) -> np.ndarray:
 
 
 def _orthonormal_tangent_basis(n: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Compute an orthonormal tangent basis for a normal."""
     n = _unit(n)
     a = np.array([1.0, 0.0, 0.0], dtype=float)
     if abs(float(np.dot(a, n))) > 0.9:
@@ -32,6 +36,8 @@ def _orthonormal_tangent_basis(n: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
 @dataclass(frozen=True)
 class SurfacePlane:
+    """Surface plane with origin, normal, and tangent directions."""
+
     frame_id: str
     origin: np.ndarray
     normal: np.ndarray
@@ -40,6 +46,7 @@ class SurfacePlane:
     t2: Optional[np.ndarray] = None
 
     def basis(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return tangent basis vectors and normal."""
         n = _unit(np.array(self.normal, dtype=float))
         if self.t1 is None or self.t2 is None:
             t1, t2 = _orthonormal_tangent_basis(n)
@@ -53,12 +60,16 @@ class SurfacePlane:
 
 @dataclass(frozen=True)
 class SurfaceAnchor:
+    """Anchor point on a surface plane."""
+
     frame_id: str
     p: np.ndarray
 
 
 @dataclass(frozen=True)
 class ScrubSpec:
+    """Parameters for circular scrub trajectories."""
+
     radius: float
     points_per_cycle: int
     cycles: int
@@ -67,6 +78,8 @@ class ScrubSpec:
 
 @dataclass(frozen=True)
 class SweepSpec:
+    """Parameters for raster sweep paths."""
+
     spacing: float
     margin: float = 0.0
     z_offset: float = 0.0
@@ -75,6 +88,7 @@ class SweepSpec:
 def bind_surface_anchor(
     surface: SurfacePlane, margin: float
 ) -> Optional[SurfaceAnchor]:
+    """Return a centered anchor if surface is large enough."""
     hu, hv = float(surface.half_extents_uv[0]), float(surface.half_extents_uv[1])
     if hu <= margin or hv <= margin:
         return None
@@ -83,6 +97,7 @@ def bind_surface_anchor(
 
 
 def _anchor_uv(surface: SurfacePlane, anchor_p: np.ndarray) -> tuple[float, float]:
+    """Project an anchor point into the surface UV coordinates."""
     t1, t2, n = surface.basis()
     o = np.array(surface.origin, dtype=float)
     p = np.array(anchor_p, dtype=float)
@@ -96,6 +111,7 @@ def compile_scrub_circle(
     spec: ScrubSpec,
     margin: float,
 ) -> Iterable[PoseStamped]:
+    """Generate a circular scrub trajectory constrained to the surface."""
     hu, hv = float(surface.half_extents_uv[0]), float(surface.half_extents_uv[1])
     r_max = max(0.0, min(hu, hv) - float(margin))
     r = min(float(spec.radius), r_max)
@@ -146,6 +162,7 @@ def compile_sweep_raster(
     start_xy: Optional[np.ndarray] = None,
     end_xy: Optional[np.ndarray] = None,
 ) -> Iterable[SurfaceAnchor]:
+    """Generate a back-and-forth raster sweep of surface anchors."""
     hu, hv = float(surface.half_extents_uv[0]), float(surface.half_extents_uv[1])
     m = float(spec.margin)
     s = float(spec.spacing)
@@ -190,6 +207,7 @@ def compile_wipe_raster_scrub(
     sweep: SweepSpec,
     scrub: ScrubSpec,
 ) -> Iterable[PoseStamped]:
+    """Compose a raster sweep with scrub circles at each anchor."""
     anchors = list(compile_sweep_raster(surface, sweep))
     out: list[PoseStamped] = []
 

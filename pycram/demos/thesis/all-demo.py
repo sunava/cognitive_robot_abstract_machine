@@ -1,3 +1,5 @@
+"""Standalone demo of primitive trajectories for thesis figures."""
+
 from __future__ import annotations
 
 import math
@@ -9,6 +11,7 @@ import matplotlib.pyplot as plt
 
 
 def unit(v: np.ndarray) -> np.ndarray:
+    """Normalize a 3D vector and raise on zero length."""
     v = np.asarray(v, dtype=float).reshape(3)
     n = float(np.linalg.norm(v))
     if n <= 0.0:
@@ -17,6 +20,7 @@ def unit(v: np.ndarray) -> np.ndarray:
 
 
 def tangent_basis(n: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Create an orthonormal tangent basis for a given normal."""
     n = unit(n)
     a = np.array([1.0, 0.0, 0.0], dtype=float)
     if abs(float(np.dot(a, n))) > 0.9:
@@ -28,12 +32,15 @@ def tangent_basis(n: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
 @dataclass(frozen=True)
 class ContactAnchor:
+    """Anchor frame for contact primitives."""
+
     p0: np.ndarray
     n: np.ndarray
     t1: Optional[np.ndarray] = None
     t2: Optional[np.ndarray] = None
 
     def basis(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return tangent basis vectors and the normal."""
         n = unit(self.n)
         if self.t1 is None or self.t2 is None:
             return tangent_basis(n)
@@ -43,6 +50,7 @@ class ContactAnchor:
 
 
 def g_contact(anchor: ContactAnchor, d: np.ndarray, q_uv: np.ndarray) -> np.ndarray:
+    """Map manifold coordinates (d, q_uv) to 3D contact points."""
     p0 = np.asarray(anchor.p0, dtype=float).reshape(3)
     t1, t2, n = anchor.basis()
 
@@ -63,6 +71,7 @@ def g_contact(anchor: ContactAnchor, d: np.ndarray, q_uv: np.ndarray) -> np.ndar
 def g_volume(
     p_star: np.ndarray, r: np.ndarray, theta: np.ndarray, dz: np.ndarray
 ) -> np.ndarray:
+    """Parametrize a helical volume trajectory around p_star."""
     p_star = np.asarray(p_star, dtype=float).reshape(3)
     r = np.asarray(r, dtype=float).reshape(-1)
     theta = np.asarray(theta, dtype=float).reshape(-1)
@@ -78,6 +87,7 @@ def g_volume(
 
 
 def g_boundary_flow(p_star: np.ndarray, n: np.ndarray, f: np.ndarray) -> np.ndarray:
+    """Compute boundary flow points along a normal direction."""
     p_star = np.asarray(p_star, dtype=float).reshape(3)
     n = unit(n)
     f = np.asarray(f, dtype=float).reshape(-1)
@@ -85,12 +95,14 @@ def g_boundary_flow(p_star: np.ndarray, n: np.ndarray, f: np.ndarray) -> np.ndar
 
 
 def linspace01(n: int) -> np.ndarray:
+    """Return n points between 0 and 1 (inclusive)."""
     if n <= 1:
         return np.zeros((1,), dtype=float)
     return np.linspace(0.0, 1.0, n, dtype=float)
 
 
 def primitive_press(anchor: ContactAnchor, depth: float, n: int) -> np.ndarray:
+    """Linear penetration into the surface without tangential motion."""
     t = linspace01(n)
     d = float(depth) * t
     q = np.zeros((t.shape[0], 2), dtype=float)
@@ -100,6 +112,7 @@ def primitive_press(anchor: ContactAnchor, depth: float, n: int) -> np.ndarray:
 def primitive_saw(
     anchor: ContactAnchor, depth: float, amp: float, hz: float, n: int
 ) -> np.ndarray:
+    """Sawing primitive with tangential oscillation during penetration."""
     t = linspace01(n)
     d = float(depth) * t
     q = np.zeros((t.shape[0], 2), dtype=float)
@@ -110,6 +123,7 @@ def primitive_saw(
 def primitive_wipe(
     anchor: ContactAnchor, radius: float, cycles: int, ppc: int
 ) -> np.ndarray:
+    """Circular wipe/scrub trajectory on the contact manifold."""
     n_pts = int(cycles) * int(ppc)
     if n_pts <= 0:
         return np.zeros((0, 3), dtype=float)
@@ -127,6 +141,7 @@ def primitive_volume_agitation(
     dr: float,
     dz: float,
 ) -> np.ndarray:
+    """Create a spiral agitation trajectory inside a volume."""
     angle_step = math.radians(float(angle_step_deg))
     if angle_step <= 0.0:
         return np.zeros((0, 3), dtype=float)
@@ -145,12 +160,14 @@ def primitive_volume_agitation(
 def primitive_shake_as_saw_on_spot(
     p_star: np.ndarray, outflow_n: np.ndarray, amp: float, hz: float, n: int
 ) -> np.ndarray:
+    """Boundary shake modeled as a saw motion along the normal."""
     t = linspace01(n)
     f = float(amp) * np.sin(2.0 * math.pi * float(hz) * t)
     return g_boundary_flow(p_star, outflow_n, f)
 
 
 def plot_3d(xyz: np.ndarray, title: str) -> None:
+    """Plot a 3D trajectory with start/end markers."""
     if xyz.shape[0] == 0:
         return
     fig = plt.figure()
@@ -167,6 +184,7 @@ def plot_3d(xyz: np.ndarray, title: str) -> None:
 
 
 def plot_3d_phases(phases: list[tuple[str, np.ndarray]]) -> None:
+    """Plot multiple 3D phases with labels."""
     fig = plt.figure()
     ax = fig.add_subplot(projection="3d")
 
@@ -187,6 +205,7 @@ def plot_3d_phases(phases: list[tuple[str, np.ndarray]]) -> None:
 
 
 def connect_phases(phases: list[np.ndarray]) -> list[np.ndarray]:
+    """Translate phases to be contiguous in space."""
     out = []
     prev_end = None
     for xyz in phases:
@@ -205,6 +224,7 @@ def connect_phases(phases: list[np.ndarray]) -> list[np.ndarray]:
 
 
 def demo() -> None:
+    """Run the demo and show plots for multiple primitives."""
     cut_anchor = ContactAnchor(
         p0=np.array([0.0, 0.0, 0.10], dtype=float),
         n=np.array([0.0, 0.0, 1.0], dtype=float),
