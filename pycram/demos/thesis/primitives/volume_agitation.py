@@ -1,3 +1,5 @@
+"""Volume agitation primitive generator."""
+
 from __future__ import annotations
 
 import math
@@ -9,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from geometry_msgs.msg import PoseStamped
 
-from pycram.demos.thesis.geometry.volume_models import ContainerVolumeModel
+from geometry.volume_models import ContainerVolumeModel
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.world_description.world_entity import Body
 from semantic_digital_twin.world_description.shape_collection import ShapeCollection
@@ -18,6 +20,8 @@ from semantic_digital_twin.world_description.geometry import Cylinder, Box, Scal
 
 @dataclass(frozen=True)
 class AgitationSpec:
+    """Parameters for spiral agitation inside a volume."""
+
     turns: int
     angle_step_deg: float
     radius_step: float
@@ -28,17 +32,21 @@ class AgitationSpec:
 
 @dataclass(frozen=True)
 class VolumeAnchor:
+    """Anchor point for volume agitation trajectories."""
+
     frame_id: str
     p: np.ndarray
 
 
 def _new_pose(frame_id: str) -> PoseStamped:
+    """Create a PoseStamped with a given frame id."""
     ps = PoseStamped()
     ps.header.frame_id = frame_id
     return ps
 
 
 def _set_xyz(ps: PoseStamped, x: float, y: float, z: float) -> None:
+    """Set position fields on a PoseStamped."""
     ps.pose.position.x = float(x)
     ps.pose.position.y = float(y)
     ps.pose.position.z = float(z)
@@ -50,6 +58,7 @@ def compile_volume_agitation(
     volume: Optional[ContainerVolumeModel] = None,
     epsilon: float = 0.0,
 ) -> Iterable[PoseStamped]:
+    """Generate a spiral agitation trajectory inside a container."""
     angle_step = math.radians(float(spec.angle_step_deg))
     start_angle = math.radians(float(spec.start_angle_deg))
 

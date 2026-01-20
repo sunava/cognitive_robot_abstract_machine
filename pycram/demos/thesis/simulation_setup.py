@@ -1,11 +1,13 @@
+"""Helpers to set up the thesis simulation world and objects."""
+
 import os
 import logging
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Callable, Optional, Sequence, Tuple
 
-from pycram.src.pycram.datastructures.pose import PoseStamped
-from pycram.src.pycram.datastructures.dataclasses import Context
+from pycram.datastructures.pose import PoseStamped
+from pycram.datastructures.dataclasses import Context
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
@@ -21,11 +23,14 @@ logger = logging.getLogger(__name__)
 
 
 def _here(*parts: str) -> str:
+    """Build an absolute path relative to this module."""
     return os.path.abspath(os.path.join(os.path.dirname(__file__), *parts))
 
 
 @dataclass(frozen=True)
 class WorldSetupPaths:
+    """Filesystem paths needed to build the world."""
+
     hsrb_urdf: str
     milk_stl: str
     cereal_stl: str
@@ -33,12 +38,16 @@ class WorldSetupPaths:
 
 @dataclass(frozen=True)
 class SpawnSpec:
+    """Specification for spawning an object into the world."""
+
     world_path: str
     xyz_rpy: Tuple[float, float, float, float, float, float]
 
 
 @dataclass(frozen=True)
 class SetupResult:
+    """Bundle of world, robot view, context, and visualization."""
+
     world: object
     robot_view: HSRB
     context: Context
@@ -46,6 +55,7 @@ class SetupResult:
 
 
 def default_paths() -> WorldSetupPaths:
+    """Return default resource paths for robot and objects."""
     return WorldSetupPaths(
         hsrb_urdf=_here("..", "..", "resources", "robots", "hsrb.urdf"),
         milk_stl=_here("..", "..", "resources", "objects", "milk.stl"),
@@ -54,6 +64,7 @@ def default_paths() -> WorldSetupPaths:
 
 
 def build_hsrb_world(hsrb_urdf: str):
+    """Parse the HSRB URDF into a semantic digital twin world."""
     world = URDFParser.from_file(file_path=hsrb_urdf).parse()
     with world.modify_world():
         odom = Body(name=PrefixedName("odom_combined"))
@@ -68,6 +79,7 @@ def add_objects_and_semantics(
     world,
     objects: Sequence[SpawnSpec],
 ):
+    """Merge object meshes into the world and add semantic annotations."""
     for spec in objects:
         obj_world = STLParser(spec.world_path).parse()
         x, y, z, r, p, yaw = spec.xyz_rpy
@@ -103,6 +115,7 @@ def merge_robot_into_environment(
         0.0,
     ),
 ):
+    """Merge robot world into environment and return merged context."""
     merged = deepcopy(environment_world)
     x, y, z, r, p, yaw = robot_xyz_rpy
     merged.merge_world_at_pose(
@@ -114,6 +127,7 @@ def merge_robot_into_environment(
 
 
 def try_make_viz(world):
+    """Attempt to construct a VizMarkerPublisher; return None on failure."""
     try:
         import rclpy
         from semantic_digital_twin.adapters.viz_marker import VizMarkerPublisher
@@ -128,6 +142,7 @@ def try_make_viz(world):
 
 
 def kitchen_world():
+    """Load the kitchen URDF world and validate it."""
     path = os.path.join(
         os.path.dirname(__file__),
         "..",
@@ -171,6 +186,7 @@ def setup_hsrb_in_environment(
     ),
     with_viz: bool = True,
 ) -> SetupResult:
+    """Create a world with HSRB and kitchen objects, optionally with viz."""
     p = paths or default_paths()
 
     hsrb_world = build_hsrb_world(p.hsrb_urdf)
@@ -194,11 +210,14 @@ def setup_hsrb_in_environment(
 
 @dataclass(frozen=True)
 class BoxSpec:
+    """Box specification for ad-hoc scene objects."""
+
     name: str
     scale_xyz: tuple[float, float, float]
 
 
 def add_box(world, spec: BoxSpec, tf_frame: str):
+    """Create a box Body for the given spec."""
     body = Body(
         name=PrefixedName(spec.name),
         collision=ShapeCollection([Box(scale=Scale(*spec.scale_xyz))]),

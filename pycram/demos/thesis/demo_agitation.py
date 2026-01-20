@@ -1,3 +1,5 @@
+"""Demo utilities for volume agitation and mixmap visualization."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -35,6 +37,7 @@ from semantic_digital_twin.world_description.geometry import Box, Scale
 
 
 def demo_cylinder_mixmap() -> None:
+    """Solve and plot the mixmap clearance for a cylinder volume."""
     volume = CylinderVolumeModel(radius=0.12, half_height=0.08)
     params = MixmapParams(z_ratio=0.35, epsilon=0.01, grid_step=0.005)
     result = solve_mixmap(volume, params)
@@ -48,19 +51,20 @@ def demo_cylinder_mixmap() -> None:
     print("p_in_container:", result.p_in_container)
     print("clearance:", result.clearance)
 
-    plt.figure()
-    plt.imshow(
-        grid, origin="lower", extent=[xs[0], xs[-1], ys[0], ys[-1]], aspect="equal"
+    plot_mixmap_surface(
+        xs,
+        ys,
+        grid,
+        anchor=np.array(
+            [result.p_in_container[0], result.p_in_container[1], result.clearance],
+            dtype=float,
+        ),
+        title="Cylinder clearance at z_mix (3D)",
     )
-    plt.title("Cylinder clearance at z_mix")
-    plt.xlabel("x in container frame")
-    plt.ylabel("y in container frame")
-    plt.colorbar()
-    plt.scatter([result.p_in_container[0]], [result.p_in_container[1]], marker="x")
-    plt.show()
 
 
 def plot_3d_waypoints(wps, anchor=None, title="Volume agitation (3D)"):
+    """Plot waypoint poses as a 3D trajectory."""
     xyz = np.array(
         [[wp.pose.position.x, wp.pose.position.y, wp.pose.position.z] for wp in wps],
         dtype=float,
@@ -83,7 +87,47 @@ def plot_3d_waypoints(wps, anchor=None, title="Volume agitation (3D)"):
     plt.show()
 
 
+def plot_mixmap_surface(
+    xs: np.ndarray,
+    ys: np.ndarray,
+    grid: np.ndarray,
+    anchor: np.ndarray | None = None,
+    title: str = "Mixmap clearance surface (3D)",
+) -> None:
+    """Render the clearance grid as a 3D surface plot."""
+    xs_grid, ys_grid = np.meshgrid(xs, ys)
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+    ax.plot_surface(xs_grid, ys_grid, grid, cmap="viridis", alpha=0.9)
+    if anchor is not None:
+        ax.scatter([anchor[0]], [anchor[1]], [anchor[2]], marker="x")
+    ax.set_title(title)
+    ax.set_xlabel("x in container frame")
+    ax.set_ylabel("y in container frame")
+    ax.set_zlabel("clearance")
+    ax.set_box_aspect((1, 1, 1))
+    plt.show()
+
+
+def plot_depth_over_steps(depths: np.ndarray, title: str) -> None:
+    """Plot depth values over time/steps in a 3D style plot."""
+    steps = np.arange(len(depths), dtype=float)
+    zeros = np.zeros_like(steps)
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+    ax.plot(steps, zeros, depths)
+    ax.scatter([steps[0]], [0.0], [depths[0]], marker="o")
+    ax.scatter([steps[-1]], [0.0], [depths[-1]], marker="x")
+    ax.set_title(title)
+    ax.set_xlabel("step")
+    ax.set_ylabel("index")
+    ax.set_zlabel("z")
+    ax.set_box_aspect((1, 1, 1))
+    plt.show()
+
+
 def demo_body_box_to_agitation() -> None:
+    """Build a box volume, solve mixmap, and plot agitation waypoints."""
     box = Body(
         name=PrefixedName("muh"),
         collision=ShapeCollection([Box(scale=Scale(0.1, 0.1, 0.1))]),
@@ -118,27 +162,12 @@ def demo_body_box_to_agitation() -> None:
     print("anchor:", result.p_in_container, "clearance:", result.clearance)
     print("waypoints:", len(wps))
 
-    xy = np.array([[wp.pose.position.x, wp.pose.position.y] for wp in wps], dtype=float)
     zz = np.array([wp.pose.position.z for wp in wps], dtype=float)
-
-    plt.figure()
-    plt.plot(xy[:, 0], xy[:, 1])
-    plt.scatter([result.p_in_container[0]], [result.p_in_container[1]], marker="x")
-    plt.title("Volume agitation path in object frame (x,y)")
-    plt.xlabel("x")
-    plt.ylabel("y")
-    plt.axis("equal")
-    plt.show()
-
-    plt.figure()
-    plt.plot(zz)
-    plt.title("Volume agitation depth over steps (z)")
-    plt.xlabel("step")
-    plt.ylabel("z")
-    plt.show()
+    plot_depth_over_steps(zz, "Volume agitation depth over steps (3D)")
 
 
 def main() -> None:
+    """Run the mixmap and agitation demos."""
     demo_cylinder_mixmap()
     demo_body_box_to_agitation()
     import inspect

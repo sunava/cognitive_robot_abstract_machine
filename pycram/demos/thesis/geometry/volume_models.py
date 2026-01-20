@@ -1,3 +1,5 @@
+"""Volume models and helpers for container interior clearance."""
+
 from __future__ import annotations
 
 import math
@@ -16,6 +18,8 @@ from semantic_digital_twin.world_description.geometry import Cylinder, Box, Scal
 
 
 class ContainerVolumeModel(Protocol):
+    """Protocol for volume models providing clearance queries."""
+
     def distance_inside(self, p: np.ndarray) -> float: ...
     def inner_height(self) -> float: ...
     def inner_bounds_xy(self) -> Tuple[float, float]: ...
@@ -23,6 +27,8 @@ class ContainerVolumeModel(Protocol):
 
 @dataclass(frozen=True)
 class BoxVolumeModel(ContainerVolumeModel):
+    """Axis-aligned box volume model."""
+
     half_extents: np.ndarray
 
     def distance_inside(self, p: np.ndarray) -> float:
@@ -46,6 +52,8 @@ class BoxVolumeModel(ContainerVolumeModel):
 
 @dataclass(frozen=True)
 class CylinderVolumeModel(ContainerVolumeModel):
+    """Cylindrical volume model aligned to the Z axis."""
+
     radius: float
     half_height: float
 
@@ -64,6 +72,7 @@ class CylinderVolumeModel(ContainerVolumeModel):
 
 
 def _as_box_model(scale: Scale, padding: float) -> BoxVolumeModel:
+    """Convert a box scale to a padded box volume model."""
     hx = 0.5 * float(scale.x) - float(padding)
     hy = 0.5 * float(scale.y) - float(padding)
     hz = 0.5 * float(scale.z) - float(padding)
@@ -73,6 +82,7 @@ def _as_box_model(scale: Scale, padding: float) -> BoxVolumeModel:
 
 
 def _as_cyl_model(radius: float, height: float, padding: float) -> CylinderVolumeModel:
+    """Convert cylinder dimensions to a padded volume model."""
     r = float(radius) - float(padding)
     h2 = 0.5 * float(height) - float(padding)
     return CylinderVolumeModel(radius=max(r, 0.0), half_height=max(h2, 0.0))
@@ -81,6 +91,7 @@ def _as_cyl_model(radius: float, height: float, padding: float) -> CylinderVolum
 def volume_from_body_collision(
     body: Body, padding: float = 0.0
 ) -> Optional[ContainerVolumeModel]:
+    """Build a container volume model from a body's collision shape."""
     col = body.collision
     if not isinstance(col, ShapeCollection):
         return None

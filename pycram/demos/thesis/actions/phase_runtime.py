@@ -1,11 +1,27 @@
+"""Runtime types for compiling action phases into pose sequences."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Any, Dict, Mapping, Optional, Protocol, Tuple, TypeVar, Union
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    Mapping,
+    Optional,
+    Protocol,
+    Tuple,
+    TypeVar,
+    Union,
+)
+
+from geometry_msgs.msg import PoseStamped
 
 
 class PrimitiveFamily(Enum):
+    """Supported primitive families for phase compilation."""
+
     MATERIAL_TRANSFER_DISCHARGE = auto()
     MATERIAL_TRANSFER_SHAKE = auto()
     SEPARATION_CONTACT = auto()
@@ -15,6 +31,8 @@ class PrimitiveFamily(Enum):
 
 
 class AnchorKey(Enum):
+    """Keys used to resolve anchors for phases."""
+
     CUT_PLANE = auto()
     TOOL_CONTACT = auto()
     POUR_BOUNDARY = auto()
@@ -22,6 +40,8 @@ class AnchorKey(Enum):
 
 
 class ParamKey(Enum):
+    """Keys used to resolve parameter bundles for phases."""
+
     CUT_SPEC = auto()
     CUT_ALIGN_SPEC = auto()
     CUT_RETREAT_SPEC = auto()
@@ -32,11 +52,43 @@ class ParamKey(Enum):
 
 @dataclass(frozen=True)
 class PhaseInstance:
+    """Phase instance with bound anchors and parameters."""
+
     family: PrimitiveFamily
     anchor: Any
     params: Any
     time_span: Optional[Tuple[float, float]] = None
     meta: Optional[Dict[str, Any]] = None
+
+
+@dataclass(frozen=True)
+class MissingAnchorError(KeyError):
+    """Raised when an anchor cannot be resolved."""
+
+    key: AnchorKey
+
+    def __str__(self) -> str:
+        return f"Missing anchor for key={self.key}."
+
+
+@dataclass(frozen=True)
+class MissingParameterError(KeyError):
+    """Raised when parameters cannot be resolved."""
+
+    key: ParamKey
+
+    def __str__(self) -> str:
+        return f"Missing parameters for key={self.key}."
+
+
+@dataclass(frozen=True)
+class MissingCompilerError(KeyError):
+    """Raised when no compiler exists for a primitive family."""
+
+    family: PrimitiveFamily
+
+    def __str__(self) -> str:
+        return f"No compiler registered for family={self.family}."
 
 
 K = TypeVar("K", bound=Enum)
@@ -49,6 +101,7 @@ class Resolver(Protocol[K]):
 def _resolve_from(
     obj: Union[Mapping[K, Any], Resolver[K]], key: K, **kwargs: Any
 ) -> Any:
+    """Resolve a key from a mapping or resolver implementation."""
     if hasattr(obj, "resolve"):
         return obj.resolve(key, **kwargs)
     if key not in obj:
@@ -58,6 +111,8 @@ def _resolve_from(
 
 @dataclass(frozen=True)
 class PhaseSpec:
+    """Specification describing how to bind a phase at runtime."""
+
     family: PrimitiveFamily
     anchor_key: AnchorKey
     param_key: ParamKey
@@ -70,8 +125,14 @@ class PhaseSpec:
         params: Union[Mapping[ParamKey, Any], Resolver[ParamKey]],
         **kwargs: Any,
     ) -> PhaseInstance:
-        a = _resolve_from(anchors, self.anchor_key, **kwargs)
-        p = _resolve_from(params, self.param_key, **kwargs)
+        try:
+            a = _resolve_from(anchors, self.anchor_key, **kwargs)
+        except KeyError as exc:
+            raise MissingAnchorError(self.anchor_key) from exc
+        try:
+            p = _resolve_from(params, self.param_key, **kwargs)
+        except KeyError as exc:
+            raise MissingParameterError(self.param_key) from exc
         return PhaseInstance(
             family=self.family,
             anchor=a,
@@ -79,6 +140,49 @@ class PhaseSpec:
             time_span=self.time_span,
             meta=self.meta,
         )
+
+
+class PhaseCompiler(Protocol):
+    """Compiles a bound phase into a pose sequence."""
+
+    def __call__(self, anchor: Any, params: Any) -> Iterable[PoseStamped]: ...
+
+
+@dataclass(frozen=True)
+class CompilerRegistry:
+    """Registry for primitive family compilers."""
+
+    compilers: Dict[PrimitiveFamily, PhaseCompiler]
+
+    def compile(self, phase: PhaseInstance) -> Iterable[PoseStamped]:
+        if phase.family not in self.compilers:
+            raise MissingCompilerError(phase.family)
+        return self.compilers[phase.family](phase.anchor, phase.params)
+
+
+class AnchorResolver(Protocol):
+    """Resolves anchors by key."""
+
+    def resolve(self, key: AnchorKey, **kwargs: Any) -> Any: ...
+
+
+class ParamResolver(Protocol):
+    """Resolves parameters by key."""
+
+    def resolve(self, key: ParamKey, **kwargs: Any) -> Any: ...
+
+
+@dataclass(frozen=True)
+class ActionProgram:
+    """Ordered phase instances that can be compiled to poses."""
+
+    phases: Tuple[PhaseInstance, ...]
+
+    def compile(self, registry: CompilerRegistry) -> Tuple[PoseStamped, ...]:
+        out: list[PoseStamped] = []
+        for phase in self.phases:
+            out.extend(list(registry.compile(phase)))
+        return tuple(out)
 
 
 # from __future__ import annotations

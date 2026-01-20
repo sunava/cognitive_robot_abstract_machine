@@ -1,3 +1,5 @@
+"""Material transfer primitives for discharge and shake motions."""
+
 from __future__ import annotations
 
 import math
@@ -10,6 +12,8 @@ from geometry_msgs.msg import PoseStamped
 
 @dataclass(frozen=True)
 class BoundaryAnchor:
+    """Anchor on a boundary with a flow normal."""
+
     frame_id: str
     p: np.ndarray
     n: np.ndarray
@@ -17,6 +21,8 @@ class BoundaryAnchor:
 
 @dataclass(frozen=True)
 class DischargeSpec:
+    """Parameters for boundary discharge motion."""
+
     steps: int
     f_start: float
     f_step: float
@@ -25,6 +31,7 @@ class DischargeSpec:
 
 
 def _unit(v: np.ndarray) -> np.ndarray:
+    """Normalize a vector and raise on zero length."""
     n = float(np.linalg.norm(v))
     if n <= 0.0:
         raise ValueError("zero-length vector")
@@ -32,12 +39,14 @@ def _unit(v: np.ndarray) -> np.ndarray:
 
 
 def _new_pose(frame_id: str) -> PoseStamped:
+    """Create a PoseStamped with a given frame id."""
     ps = PoseStamped()
     ps.header.frame_id = frame_id
     return ps
 
 
 def _set_xyz(ps: PoseStamped, x: float, y: float, z: float) -> None:
+    """Set position fields on a PoseStamped."""
     ps.pose.position.x = float(x)
     ps.pose.position.y = float(y)
     ps.pose.position.z = float(z)
@@ -47,6 +56,7 @@ def compile_boundary_discharge(
     anchor: BoundaryAnchor,
     spec: DischargeSpec,
 ) -> Iterable[PoseStamped]:
+    """Generate a monotonic discharge along the boundary normal."""
     steps = int(spec.steps)
     if steps <= 0:
         return []
@@ -75,6 +85,8 @@ def compile_boundary_discharge(
 
 @dataclass(frozen=True)
 class ShakeSpec:
+    """Parameters for boundary shake motion."""
+
     steps: int
     f_bias: float
     f_amp: float
@@ -86,6 +98,7 @@ def compile_boundary_shake(
     anchor: BoundaryAnchor,
     spec: ShakeSpec,
 ) -> Iterable[PoseStamped]:
+    """Generate a sinusoidal shake along the boundary normal."""
     steps = int(spec.steps)
     if steps <= 0:
         return []
