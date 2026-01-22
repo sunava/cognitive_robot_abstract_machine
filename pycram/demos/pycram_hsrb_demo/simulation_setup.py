@@ -4,7 +4,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Callable, Optional, Sequence, Tuple
 
-from pycram.src.pycram.datastructures.dataclasses import Context
+from pycram.datastructures.dataclasses import Context
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
@@ -104,20 +104,14 @@ def merge_robot_into_environment(
 
 
 def try_make_viz(world):
-    try:
-        import rclpy
-        from semantic_digital_twin.adapters.viz_marker import VizMarkerPublisher
+    import rclpy
+    from semantic_digital_twin.adapters.viz_marker import VizMarkerPublisher
 
-        node = rclpy.create_node("viz_marker")
-        return VizMarkerPublisher(world, node)
-    except Exception:
-        logger.info(
-            "VizMarkerPublisher is unavailable (ROS not running or deps missing)."
-        )
-        return None
+    node = rclpy.create_node("viz_marker")
+    return VizMarkerPublisher(world, node)
 
 
-def setup_hsrb_in_environment(
+def setup_hsrb_suturo(
     load_environment: Callable[[], object],
     paths: Optional[WorldSetupPaths] = None,
     milk_xyz_rpy: Tuple[float, float, float, float, float, float] = (

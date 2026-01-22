@@ -6,14 +6,14 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from pycram.demos.thesis.primitives.material_transfer import (
+from primitives.material_transfer import (
     BoundaryAnchor,
     DischargeSpec,
     ShakeSpec,
     compile_boundary_discharge,
     compile_boundary_shake,
 )
-from pycram.demos.thesis.tools.trajectory_plotter import TrajectoryPlotter
+from demos.thesis_new.trajectory_plotter import TrajectoryPlotter
 
 
 @dataclass(frozen=True)
