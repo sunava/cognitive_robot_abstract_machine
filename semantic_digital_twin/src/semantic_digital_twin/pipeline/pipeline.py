@@ -1,12 +1,13 @@
 import logging
 import re
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import List, Callable
+from dataclasses import dataclass, field
+from typing import List, Callable, Dict, Type
 
 import numpy as np
 
-from ..semantic_annotations.mixins import HasRootKinematicStructureEntity
+from ..adapters.mesh import STLParser
+from ..semantic_annotations.mixins import HasRootKinematicStructureEntity, HasRootBody
 from ..spatial_types import Point3
 from ..spatial_types.spatial_types import HomogeneousTransformationMatrix
 from ..world import World
@@ -161,5 +162,49 @@ class BodyFactoryReplace(Step):
 
             parent_connection.child = new_world.root
             world.merge_world(new_world, parent_connection)
+
+        return world
+
+
+@dataclass
+class BodyGeometryAndAnnotation:
+    object_geometry_file: str
+
+    semantic_annotation: Type[HasRootBody]
+
+
+@dataclass
+class BodyGeometryAndAnnotationReplacement(Step):
+
+    object_mappings: Dict[str, BodyGeometryAndAnnotation]
+    """
+    A list of mappings specifying object names and their corresponding replacement geometry.
+    """
+
+    def _apply(self, world: World) -> World:
+        for body in world.bodies:
+            body_name = body.name
+            replacement_map = next(
+                (
+                    replacement_map
+                    for object_name, replacement_map in self.object_mappings.items()
+                    if object_name in body_name.name
+                ),
+                None,
+            )
+            parent_C_body = body.parent_connection
+            new_body_world = STLParser(
+                file_path=replacement_map.object_geometry_file
+            ).parse()
+            with new_body_world.modify_world():
+                new_semantic_annotation = replacement_map.semantic_annotation(
+                    root=new_body_world.bodies[0]
+                )
+                new_body_world.add_semantic_annotation(new_semantic_annotation)
+
+            with world.modify_world():
+                world.remove_connection(parent_C_body)
+                world.remove_kinematic_structure_entity(body)
+                world.merge_world(new_body_world, parent_C_body)
 
         return world
