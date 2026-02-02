@@ -11,8 +11,6 @@ from pycram.datastructures.enums import (
     ApproachDirection,
     VerticalAlignment,
     Arms,
-    TorsoState,
-    GripperState,
 )
 from pycram.datastructures.grasp import GraspDescription
 from pycram.datastructures.pose import PoseStamped
@@ -29,6 +27,7 @@ from pycram.robot_plans import (
 )
 from pycram.testing import ApartmentWorldTestCase, EmptyWorldTestCase
 from semantic_digital_twin.adapters.urdf import URDFParser
+from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.robots.hsrb import HSRB
 from semantic_digital_twin.robots.pr2 import PR2
 
@@ -47,7 +46,9 @@ class TestActionDesignatorGrounding(ApartmentWorldTestCase):
         test_world = deepcopy(self.world)
         test_robot = PR2.from_world(test_world)
         grasp_description = GraspDescription(
-            ApproachDirection.FRONT, VerticalAlignment.NoAlignment, False
+            ApproachDirection.FRONT,
+            VerticalAlignment.NoAlignment,
+            test_robot.left_arm.manipulator,
         )
         description = PickUpActionDescription(
             test_world.get_body_by_name("milk.stl"), [Arms.LEFT], [grasp_description]

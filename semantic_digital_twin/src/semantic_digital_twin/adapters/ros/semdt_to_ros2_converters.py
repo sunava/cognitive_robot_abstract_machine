@@ -6,6 +6,7 @@ import geometry_msgs.msg as geometry_msgs
 import std_msgs.msg as std_msgs
 import visualization_msgs.msg as visualization_msgs
 from std_msgs.msg import ColorRGBA
+from trimesh.visual import TextureVisuals
 from visualization_msgs.msg import Marker
 
 from .msg_converter import SemDTToRos2Converter, InputType
@@ -16,7 +17,14 @@ from ...spatial_types import (
     Quaternion,
 )
 from ...spatial_types.spatial_types import Pose
-from ...world_description.geometry import Box, Cylinder, Sphere, Color, FileMesh
+from ...world_description.geometry import (
+    Box,
+    Cylinder,
+    Sphere,
+    Color,
+    FileMesh,
+    TriangleMesh,
+)
 
 
 @dataclass
@@ -211,5 +219,23 @@ class FileMeshToRos2Converter(ShapeToRos2Converter[FileMesh]):
         marker.scale.y = data.scale.y
         marker.scale.z = data.scale.z
         marker.mesh_use_embedded_materials = True
-        marker.color = ColorRGBA(r=0.0, g=0.0, b=0.0, a=0.0)
+        if data.mesh.visual.kind == TextureVisuals().kind:
+            marker.color = ColorRGBA(r=0.0, g=0.0, b=0.0, a=0.0)
+        return marker
+
+
+@dataclass
+class TriangleMeshToRos2Converter(ShapeToRos2Converter[TriangleMesh]):
+
+    @classmethod
+    def convert(cls, data: TriangleMesh) -> Marker:
+        marker = super().convert(data)
+        marker.type = visualization_msgs.Marker.MESH_RESOURCE
+        marker.mesh_resource = "file://" + data.file.name
+        marker.scale.x = data.scale.x
+        marker.scale.y = data.scale.y
+        marker.scale.z = data.scale.z
+        marker.mesh_use_embedded_materials = True
+        if data.mesh.visual.kind == TextureVisuals().kind:
+            marker.color = ColorRGBA(r=0.0, g=0.0, b=0.0, a=0.0)
         return marker
