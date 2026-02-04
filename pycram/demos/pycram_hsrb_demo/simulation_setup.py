@@ -46,7 +46,7 @@ def default_paths() -> WorldSetupPaths:
     return WorldSetupPaths(
         hsrb_urdf=_here("..", "..", "resources", "robots", "hsrb.urdf"),
         milk_stl=_here("..", "..", "resources", "objects", "milk.stl"),
-        cereal_stl=_here("..", "..", "resources", "objects", "breakfast_cereal.stl"),
+        cereal_stl=_here("..", "..", "resources", "objects", "bowl.stl"),
     )
 
 
@@ -105,9 +105,12 @@ def merge_robot_into_environment(
 
 def try_make_viz(world):
     import rclpy
-    from semantic_digital_twin.adapters.viz_marker import VizMarkerPublisher
 
     node = rclpy.create_node("viz_marker")
+    from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
+        VizMarkerPublisher,
+    )
+
     return VizMarkerPublisher(world, node)
 
 

@@ -1,22 +1,6 @@
 import numpy as np
 
-
-class Pose:
-    def __init__(self, R=None, p=None):
-        self.R = (
-            np.eye(3, dtype=float)
-            if R is None
-            else np.asarray(R, dtype=float).reshape(3, 3)
-        )
-        self.p = (
-            np.zeros(3, dtype=float)
-            if p is None
-            else np.asarray(p, dtype=float).reshape(3)
-        )
-
-    def transform_point(self, q_local):
-        q_local = np.asarray(q_local, dtype=float).reshape(3)
-        return self.p + self.R @ q_local
+from demos.thesis_new.phase_models import Pose, _as_float_array
 
 
 class FrameProvider:
@@ -25,7 +9,7 @@ class FrameProvider:
 
 
 def pose_from_homogeneous(T):
-    T = np.asarray(T, dtype=float).reshape(4, 4)
+    T = _as_float_array(T).reshape(4, 4)
     return Pose(R=T[:3, :3], p=T[:3, 3])
 
 
@@ -67,7 +51,7 @@ class WorldTransformFrameProvider(FrameProvider):
         ):
             return Pose(R=ident_in_root.rotation_matrix, p=ident_in_root.translation)
 
-        T = np.asarray(ident_in_root, dtype=float)
+        T = _as_float_array(ident_in_root)
         if T.shape == (4, 4):
             return pose_from_homogeneous(T)
 
