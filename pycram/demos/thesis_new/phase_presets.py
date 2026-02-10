@@ -1,11 +1,5 @@
 import numpy as np
 
-from semantic_digital_twin.semantic_annotations.position_descriptions import (
-    SemanticPositionDescription,
-    HorizontalSemanticDirection,
-    VerticalSemanticDirection,
-)
-
 from demos.thesis_new.phase_models import Phase, PhaseSequence
 from demos.thesis_new.phase_profiles import (
     ShearProfile,
@@ -15,7 +9,7 @@ from demos.thesis_new.phase_profiles import (
     clamp_to_cylinder_xy,
     make_constrained_curve,
 )
-from demos.thesis_new.world_utils import body_local_aabb, sample_semantic_yz
+from demos.thesis_new.world_utils import body_local_aabb
 
 
 def build_default_sequence():
@@ -50,12 +44,9 @@ def build_bowl_sequence(bowl_body):
     radius_xy = 0.5 * min(maxs[0] - mins[0], maxs[1] - mins[1])
     z_min, z_max = mins[2], maxs[2]
 
-    sem_start = SemanticPositionDescription(
-        horizontal_direction_chain=[HorizontalSemanticDirection.LEFT],
-        vertical_direction_chain=[VerticalSemanticDirection.CENTER],
-    )
-    y0, z0 = sample_semantic_yz(bowl_body, sem_start)
-    start_offset = np.array([0.0, y0, z0], dtype=float)
+    center_y = 0.5 * (mins[1] + maxs[1])
+    surface_margin = 0.005
+    start_offset = np.array([0.0, center_y, maxs[2] - surface_margin], dtype=float)
 
     def _bowl_constraint(q_local):
         return clamp_to_cylinder_xy(
