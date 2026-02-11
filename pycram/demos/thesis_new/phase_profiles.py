@@ -4,6 +4,7 @@ import numpy as np
 
 
 def ramp(tau, tau_end, d_max):
+    """Linear ramp from 0 to d_max over tau_end."""
     if tau <= 0.0:
         return 0.0
     if tau >= tau_end:
@@ -12,12 +13,14 @@ def ramp(tau, tau_end, d_max):
 
 
 def planar_spiral_xy(tau, r0, r1, cycles):
+    """Planar spiral in XY with linearly growing radius."""
     r = r0 + (r1 - r0) * tau
     ang = 2.0 * np.pi * cycles * tau
     return np.array([r * np.cos(ang), r * np.sin(ang), 0.0], dtype=float)
 
 
 def planar_sweep_x(tau, length, cycles):
+    """Sinusoidal sweep along the X axis."""
     s = float(length) * np.sin(2.0 * np.pi * float(cycles) * tau)
     return np.array([s, 0.0, 0.0], dtype=float)
 
@@ -44,12 +47,14 @@ class SweepProfile:
 
 
 def oscillatory_shear_local_profiled(tau, prof: ShearProfile):
+    """Oscillatory shear with a monotone depth profile."""
     d = ramp(tau, tau_end=prof.depth_ramp_end, d_max=prof.depth_max)
     s = float(prof.shear_amp) * np.sin(2.0 * np.pi * float(prof.shear_cycles) * tau)
     return np.array([s, 0.0, -d], dtype=float)
 
 
 def sample_local_curve(local_curve, taus):
+    """Sample a local curve for a list of tau values."""
     pts = np.empty((len(taus), 3), dtype=float)
     for i, u in enumerate(taus):
         pts[i] = local_curve(float(u))
@@ -57,12 +62,14 @@ def sample_local_curve(local_curve, taus):
 
 
 def clamp_to_aabb(q_local, mins, maxs, margin=0.0):
+    """Clamp a local point into an axis-aligned bounding box."""
     mins = np.asarray(mins, dtype=float) + float(margin)
     maxs = np.asarray(maxs, dtype=float) - float(margin)
     return np.minimum(np.maximum(q_local, mins), maxs)
 
 
 def clamp_to_cylinder_xy(q_local, radius, z_min, z_max, margin=0.0):
+    """Clamp a point to a vertical cylinder in XY and Z bounds."""
     q = np.asarray(q_local, dtype=float).reshape(3)
     r = float(radius) - float(margin)
     xy = q[:2]
@@ -74,4 +81,5 @@ def clamp_to_cylinder_xy(q_local, radius, z_min, z_max, margin=0.0):
 
 
 def make_constrained_curve(local_curve, constraint_fn):
+    """Wrap a curve so it respects a constraint function."""
     return lambda tau: constraint_fn(local_curve(float(tau)))

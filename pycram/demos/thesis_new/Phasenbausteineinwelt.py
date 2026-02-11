@@ -7,7 +7,7 @@ from demos.thesis_new.frame_provider import WorldTransformFrameProvider
 from demos.thesis_new.phase_presets import build_default_sequence, build_bowl_sequence
 from demos.thesis_new.phase_models import Pose, FixedFrameProvider
 from demos.thesis_new.rviz import PhaseSequenceRviz
-from demos.thesis_new.world_utils import try_get_body, make_identity_pose_stamped
+from demos.thesis_new.world_utils import try_get_body, make_identity_pose_stamped, body_local_aabb
 from pycram.datastructures.dataclasses import Context
 from pycram.language import SequentialPlan
 from pycram.process_module import simulated_robot
@@ -27,9 +27,11 @@ from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
+from semantic_digital_twin.world_description.geometry import Scale
 
 
 def _setup_world():
+    """Create a demo world with a bowl and a box."""
     world = setup_world()
 
     bowl = STLParser(
@@ -37,6 +39,10 @@ def _setup_world():
             os.path.dirname(__file__), "..", "..", "resources", "objects", "bowl.stl"
         )
     ).parse()
+    for shape in bowl.root.visual.shapes:
+        shape.scale = Scale(x=3.5, y=3.5, z=3.5)
+    for shape in bowl.root.collision.shapes:
+        shape.scale = Scale(x=3.5, y=3.5, z=3.5)
 
     with world.modify_world():
         world.merge_world_at_pose(
@@ -64,6 +70,7 @@ def _setup_world():
 
 
 def main():
+    """Run the RViz demo for default and bowl-constrained sequences."""
     world = _setup_world()
 
     rclpy.init()
@@ -117,8 +124,13 @@ def main():
     if bowl_body is None:
         print("[info] body 'bowl.stl' not found, skipping object-dependent example.")
         return
+    mins, maxs = body_local_aabb(
+        bowl_body, use_visual=False, apply_shape_scale=False
+    )
+    print("AABB mins/maxs:", mins, maxs)
+    seq_bowl = build_bowl_sequence(bowl_body, debug=True)
 
-    seq_bowl = build_bowl_sequence(bowl_body)
+    seq_bowl = build_bowl_sequence(bowl_body, debug=True)
     prov_bowl = WorldTransformFrameProvider(
         world=world,
         source_frame=bowl_body,

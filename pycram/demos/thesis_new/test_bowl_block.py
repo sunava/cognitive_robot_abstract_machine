@@ -22,6 +22,7 @@ from demos.thesis_new.Phasenbausteineinwelt import (
 
 
 def main():
+    """Sample a bowl-constrained sequence and validate AABB containment."""
     world = setup_world()
 
     bowl_name = "bowl.stl"
@@ -43,11 +44,13 @@ def main():
     y0, z0 = sample_semantic_yz(bowl_body, sem_start)
     start_offset = np.array([0.0, y0, z0], dtype=float)
 
+    # Keep points inside a bowl-shaped vertical cylinder.
     def _bowl_constraint(q_local):
         return clamp_to_cylinder_xy(
             q_local, radius=radius_xy, z_min=z_min, z_max=z_max, margin=0.005
         )
 
+    # Offset the local curve and apply the bowl constraint.
     def _with_offset(curve):
         return make_constrained_curve(
             lambda tau: curve(tau) + start_offset, _bowl_constraint

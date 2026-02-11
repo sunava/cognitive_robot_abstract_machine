@@ -2,6 +2,7 @@ import numpy as np
 
 
 def unit(v, eps=1e-12):
+    """Return a unit-length 3D vector."""
     v = np.asarray(v, dtype=float).reshape(3)
     n = np.linalg.norm(v)
     if n < eps:
@@ -10,6 +11,7 @@ def unit(v, eps=1e-12):
 
 
 def aligned_plane_frame(origin, normal, tangent_hint):
+    """Build a right-handed frame aligned to a plane normal."""
     p = np.asarray(origin, dtype=float).reshape(3)
     z = unit(normal)
 

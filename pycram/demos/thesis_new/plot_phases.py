@@ -33,6 +33,7 @@ from semantic_digital_twin.world_description.connections import FixedConnection
 
 
 def _setup_world_with_bowl():
+    """Create a world with a bowl object for plotting."""
     world = setup_world()
     bowl = STLParser(
         os.path.join(
@@ -50,6 +51,7 @@ def _setup_world_with_bowl():
 
 
 def plot_profiles():
+    """Plot local phase profiles for parameter sweeps."""
     taus = np.linspace(0.0, 1.0, 900)
 
     shear_profiles = [
@@ -151,6 +153,7 @@ def plot_profiles():
 
 
 def plot_sequence_in_frames():
+    """Plot the same sequence under two different frames."""
     seq = build_default_sequence()
     R_A, p_A = aligned_plane_frame([0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0])
     R_B, p_B = aligned_plane_frame(
@@ -193,6 +196,7 @@ def plot_sequence_in_frames():
 
 
 def plot_sequence_in_world():
+    """Plot a sequence aligned to a world-frame pose."""
     world = _setup_world_with_bowl()
     with world.modify_world():
         box = add_box(
@@ -245,6 +249,7 @@ def plot_sequence_in_world():
 
 
 def plot_bowl_sequence():
+    """Plot the bowl-constrained sequence in the bowl frame."""
     world = _setup_world_with_bowl()
     bowl_body = try_get_body(world, "bowl.stl")
     if bowl_body is None:
@@ -272,6 +277,7 @@ def plot_bowl_sequence():
 
 
 def main():
+    """Run all plotting demos."""
     plot_profiles()
     plot_sequence_in_frames()
     plot_sequence_in_world()

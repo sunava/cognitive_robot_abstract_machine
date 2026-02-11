@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 
 def unit(v, eps=1e-12):
+    """Return a unit-length 3D vector."""
     v = np.asarray(v, dtype=float).reshape(3)
     n = np.linalg.norm(v)
     if n < eps:
@@ -12,6 +13,7 @@ def unit(v, eps=1e-12):
 
 
 def aligned_plane_frame(origin, normal, tangent_hint):
+    """Build a right-handed frame aligned to a plane normal."""
     p = np.asarray(origin, dtype=float).reshape(3)
     z = unit(normal)
 
@@ -26,34 +28,41 @@ def aligned_plane_frame(origin, normal, tangent_hint):
 
 class Pose:
     def __init__(self, R=None, p=None):
+        """Store a rotation matrix R and translation p."""
         self.R = np.eye(3) if R is None else np.asarray(R, dtype=float).reshape(3, 3)
         self.p = np.zeros(3) if p is None else np.asarray(p, dtype=float).reshape(3)
 
     def transform_point(self, q_local):
+        """Transform a local point into the pose frame."""
         q_local = np.asarray(q_local, dtype=float).reshape(3)
         return self.p + self.R @ q_local
 
 
 class FrameProvider:
     def get_pose(self) -> Pose:
+        """Return the current pose for this provider."""
         raise NotImplementedError
 
 
 class FixedFrameProvider(FrameProvider):
     def __init__(self, pose: Pose):
+        """Always return the same pose."""
         self._pose = pose
 
     def get_pose(self) -> Pose:
+        """Return the fixed pose."""
         return self._pose
 
 
 class Phase:
     def __init__(self, name, duration_s, local_curve):
+        """Define a local motion curve over a fixed duration."""
         self.name = str(name)
         self.duration_s = float(duration_s)
         self.local_curve = local_curve
 
     def sample(self, frame_provider: FrameProvider, dt: float, t0: float = 0.0):
+        """Sample the local curve in the given frame."""
         F = frame_provider.get_pose()
 
         n = max(2, int(np.ceil(self.duration_s / float(dt))) + 1)
@@ -69,13 +78,16 @@ class Phase:
 
 class PhaseSequence:
     def __init__(self, phases):
+        """Store an ordered list of phases."""
         self.phases = list(phases)
 
     @property
     def duration_s(self):
+        """Total duration across all phases."""
         return float(sum(p.duration_s for p in self.phases))
 
     def sample(self, frame_provider: FrameProvider, dt: float, t0: float = 0.0):
+        """Sample all phases into one concatenated sequence."""
         all_t, all_p, all_id = [], [], []
         t = float(t0)
 
@@ -94,6 +106,7 @@ class PhaseSequence:
 
 
 def ramp(tau, tau_end, d_max):
+    """Linear ramp from 0 to d_max over tau_end."""
     if tau <= 0.0:
         return 0.0
     if tau >= tau_end:
@@ -102,12 +115,14 @@ def ramp(tau, tau_end, d_max):
 
 
 def planar_spiral_xy(tau, r0, r1, cycles):
+    """Planar spiral in XY with linearly growing radius."""
     r = r0 + (r1 - r0) * tau
     ang = 2.0 * np.pi * cycles * tau
     return np.array([r * np.cos(ang), r * np.sin(ang), 0.0], dtype=float)
 
 
 def planar_sweep_x(tau, length, cycles):
+    """Sinusoidal sweep along the X axis."""
     s = float(length) * np.sin(2.0 * np.pi * float(cycles) * tau)
     return np.array([s, 0.0, 0.0], dtype=float)
 
@@ -134,12 +149,14 @@ class SweepProfile:
 
 
 def oscillatory_shear_local_profiled(tau, prof: ShearProfile):
+    """Oscillatory shear with a monotone depth profile."""
     d = ramp(tau, tau_end=prof.depth_ramp_end, d_max=prof.depth_max)
     s = float(prof.shear_amp) * np.sin(2.0 * np.pi * float(prof.shear_cycles) * tau)
     return np.array([s, 0.0, -d], dtype=float)
 
 
 def sample_local_curve(local_curve, taus):
+    """Sample a local curve for a list of tau values."""
     pts = np.empty((len(taus), 3), dtype=float)
     for i, u in enumerate(taus):
         pts[i] = local_curve(float(u))

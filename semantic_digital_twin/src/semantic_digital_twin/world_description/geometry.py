@@ -988,3 +988,13 @@ class BoundingBox:
             and np.isclose(self.max_z, other.max_z)
             and np.allclose(self.origin.to_np(), other.origin.to_np())
         )
+
+    def apply_scale(self, scale: Scale):
+        """Apply a scale transformation to the bounding box."""
+        self.min_x *= scale.x
+        self.min_y *= scale.y
+        self.min_z *= scale.z
+        self.max_x *= scale.x
+        self.max_y *= scale.y
+        self.max_z *= scale.z
+        return self

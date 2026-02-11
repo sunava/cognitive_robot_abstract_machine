@@ -6,11 +6,13 @@ from visualization_msgs.msg import Marker, MarkerArray
 
 
 def _norm_topic(topic: str) -> str:
+    """Ensure the topic name starts with a slash."""
     t = str(topic)
     return t if t.startswith("/") else "/" + t
 
 
 def _color(r, g, b, a=1.0):
+    """Create a ColorRGBA message."""
     c = ColorRGBA()
     c.r = float(r)
     c.g = float(g)
@@ -20,6 +22,7 @@ def _color(r, g, b, a=1.0):
 
 
 def _as_points(P):
+    """Convert an array of points into a list of ROS Point messages."""
     P = np.asarray(P, dtype=float).reshape(-1, 3)
     pts = []
     for i in range(P.shape[0]):
@@ -32,6 +35,7 @@ def _as_points(P):
 
 
 def _phase_color(k, a=1.0):
+    """Pick a color from a fixed palette for a phase index."""
     palette = [
         (1.0, 0.2, 0.2),
         (0.2, 1.0, 0.2),
@@ -56,6 +60,7 @@ class PhaseSequenceRviz:
         alpha=1.0,
         republish_hz=2.0,
     ):
+        """Publish a phase sequence as RViz line markers."""
         self.P = np.asarray(P, dtype=float).reshape(-1, 3)
         self.phase_id = (
             None if phase_id is None else np.asarray(phase_id, dtype=int).reshape(-1)
@@ -85,6 +90,7 @@ class PhaseSequenceRviz:
             self._timer = self.node.create_timer(period, self.publish_once)
 
     def publish_once(self):
+        """Publish the current sequence once."""
         now = self.node.get_clock().now().to_msg()
         arr = MarkerArray()
 

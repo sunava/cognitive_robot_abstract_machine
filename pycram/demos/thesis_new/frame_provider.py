@@ -5,10 +5,12 @@ from demos.thesis_new.phase_models import Pose, _as_float_array
 
 class FrameProvider:
     def get_pose(self) -> Pose:
+        """Return the current pose for this frame provider."""
         raise NotImplementedError
 
 
 def pose_from_homogeneous(T):
+    """Convert a 4x4 homogeneous matrix into a Pose."""
     T = _as_float_array(T).reshape(4, 4)
     return Pose(R=T[:3, :3], p=T[:3, 3])
 
@@ -33,6 +35,7 @@ class WorldTransformFrameProvider(FrameProvider):
         self.make_identity_spatial = make_identity_spatial
 
     def get_pose(self) -> Pose:
+        """Resolve the source frame pose into the root frame."""
         ident_in_source = self.make_identity_spatial(self.source_frame)
         ident_in_root = self.world.transform(ident_in_source, self.root_frame)
 
