@@ -9,9 +9,11 @@ from demos.thesis_new.phase_models import Pose, FixedFrameProvider
 from demos.thesis_new.rviz import PhaseSequenceRviz
 from demos.thesis_new.world_utils import try_get_body, make_identity_pose_stamped, body_local_aabb
 from pycram.datastructures.dataclasses import Context
+from pycram.datastructures.enums import Arms
+from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
 from pycram.process_module import simulated_robot
-from pycram.robot_plans import MoveTorsoActionDescription
+from pycram.robot_plans import MoveTorsoActionDescription, MoveTCPMotion, SimpleMoveTCPAction
 from pycram.testing import setup_world
 from rclpy.duration import Duration as RclpyDuration
 from rclpy.time import Time
@@ -23,6 +25,7 @@ from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
 )
 from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
+from semantic_digital_twin.robots.abstract_robot import Arm
 from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
@@ -69,6 +72,29 @@ def _setup_world():
     return world
 
 
+def _print_phase_points(label, points, phase_ids, phases=None):
+    """Print all sampled points with phase ids and optional phase names."""
+    print(f"[points] {label}")
+    name_map = None
+    if phases is not None:
+        name_map = {i: getattr(ph, "name", str(i)) for i, ph in enumerate(phases)}
+    for i, p in enumerate(points):
+        pid = int(phase_ids[i]) if phase_ids is not None else -1
+        pname = name_map.get(pid, str(pid)) if name_map is not None else str(pid)
+        # print(
+        #     f"  phase={pid} name={pname} idx={i} "
+        #     f"p=({p[0]:.6f}, {p[1]:.6f}, {p[2]:.6f})"
+        # )
+    poses = []
+    for p in points:
+        msg = PoseStamped()
+        msg.header.frame_id = "apartment/apartment_root"
+        msg.pose.position.x = p[0]
+        msg.pose.position.y = p[1]
+        msg.pose.position.z = p[2]
+        poses.append(msg)
+    return poses
+
 def main():
     """Run the RViz demo for default and bowl-constrained sequences."""
     world = _setup_world()
@@ -99,17 +125,14 @@ def main():
             ]
         )
 
-    plan = SequentialPlan(
-        context,
-        MoveTorsoActionDescription(TorsoState.HIGH),
-    )
-    with simulated_robot:
-        plan.perform()
 
     seq = build_default_sequence()
 
     prov_world = FixedFrameProvider(Pose())
     _, P_world, id_world = seq.sample(prov_world, dt=0.01)
+   # poses = _print_phase_points("world", P_world, id_world, phases=seq.phases)
+
+
 
     rv = PhaseSequenceRviz(
         P_world,
@@ -136,6 +159,17 @@ def main():
         make_identity_spatial=make_identity_pose_stamped,
     )
     _, P_bowl, id_bowl = seq_bowl.sample(prov_bowl, dt=0.01)
+    poses = _print_phase_points("bowl", P_bowl, id_bowl, phases=seq_bowl.phases)
+
+    print("one pose only" + str(poses[0]))
+    plan = SequentialPlan(
+        context,
+        SimpleMoveTCPAction(target_location=poses[0], arm=Arms.LEFT),
+        # MoveTorsoActionDescription(TorsoState.HIGH)
+    )
+    with simulated_robot:
+        plan.perform()
+
 
     rv_bowl = PhaseSequenceRviz(
         P_bowl,
@@ -145,6 +179,7 @@ def main():
         node=node,
     )
     rv_bowl.publish_once()
+
 
 
 if __name__ == "__main__":
