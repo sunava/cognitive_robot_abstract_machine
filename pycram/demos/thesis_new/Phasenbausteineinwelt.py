@@ -12,7 +12,7 @@ from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
 from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
-from pycram.process_module import simulated_robot
+from pycram.motion_executor import simulated_robot
 from pycram.robot_plans import MoveTorsoActionDescription, MoveTCPMotion, SimpleMoveTCPAction
 from pycram.testing import setup_world
 from rclpy.duration import Duration as RclpyDuration
@@ -72,7 +72,7 @@ def _setup_world():
     return world
 
 
-def _print_phase_points(label, points, phase_ids, phases=None):
+def _print_phase_points(label, points, phase_ids, phases=None, world=None):
     """Print all sampled points with phase ids and optional phase names."""
     print(f"[points] {label}")
     name_map = None
@@ -88,7 +88,7 @@ def _print_phase_points(label, points, phase_ids, phases=None):
     poses = []
     for p in points:
         msg = PoseStamped()
-        msg.header.frame_id = "apartment/apartment_root"
+        msg.header.frame_id = world.root
         msg.pose.position.x = p[0]
         msg.pose.position.y = p[1]
         msg.pose.position.z = p[2]
@@ -159,12 +159,12 @@ def main():
         make_identity_spatial=make_identity_pose_stamped,
     )
     _, P_bowl, id_bowl = seq_bowl.sample(prov_bowl, dt=0.01)
-    poses = _print_phase_points("bowl", P_bowl, id_bowl, phases=seq_bowl.phases)
+    poses = _print_phase_points("bowl", P_bowl, id_bowl, phases=seq_bowl.phases, world=world)
 
     print("one pose only" + str(poses[0]))
     plan = SequentialPlan(
         context,
-        SimpleMoveTCPAction(target_location=poses[0], arm=Arms.LEFT),
+        SimpleMoveTCPAction(target_location=poses[0], arm=Arms.RIGHT),
         # MoveTorsoActionDescription(TorsoState.HIGH)
     )
     with simulated_robot:

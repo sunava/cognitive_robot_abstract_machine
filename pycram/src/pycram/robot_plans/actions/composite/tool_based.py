@@ -19,7 +19,6 @@ from ....datastructures.enums import (
 from ....datastructures.grasp import GraspDescription
 from ....datastructures.partial_designator import PartialDesignator
 from ....datastructures.pose import PoseStamped
-from ....has_parameters import has_parameters
 from ....language import SequentialPlan
 from ....robot_plans.actions.base import ActionDescription
 
@@ -27,7 +26,6 @@ from ....robot_plans.actions.base import ActionDescription
 logger = logging.getLogger(__name__)
 
 
-@has_parameters
 @dataclass
 class SimplePouringAction(ActionDescription):
     """
@@ -111,8 +109,6 @@ class SimplePouringAction(ActionDescription):
         return PartialDesignator(cls, object_designator=object_designator, arm=arm)
 
 
-
-@has_parameters
 @dataclass
 class SimpleMoveTCPAction(ActionDescription):
     """
