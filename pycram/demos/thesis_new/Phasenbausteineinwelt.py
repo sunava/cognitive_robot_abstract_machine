@@ -39,10 +39,10 @@ def _setup_world():
             os.path.dirname(__file__), "..", "..", "resources", "objects", "bowl.stl"
         )
     ).parse()
-    for shape in bowl.root.visual.shapes:
-        shape.scale = Scale(x=3.5, y=3.5, z=3.5)
-    for shape in bowl.root.collision.shapes:
-        shape.scale = Scale(x=3.5, y=3.5, z=3.5)
+    # for shape in bowl.root.visual.shapes:
+    #     shape.scale = Scale(x=1.5, y=1.5, z=1.5)
+    # for shape in bowl.root.collision.shapes:
+    #     shape.scale = Scale(x=1.5, y=1.5, z=1.5)
 
     with world.modify_world():
         world.merge_world_at_pose(
@@ -128,8 +128,6 @@ def main():
         bowl_body, use_visual=False, apply_shape_scale=False
     )
     print("AABB mins/maxs:", mins, maxs)
-    seq_bowl = build_bowl_sequence(bowl_body, debug=True)
-
     seq_bowl = build_bowl_sequence(bowl_body, debug=True)
     prov_bowl = WorldTransformFrameProvider(
         world=world,

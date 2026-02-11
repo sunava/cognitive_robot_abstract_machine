@@ -3,6 +3,7 @@ import os
 import time
 import unittest
 from copy import deepcopy
+from typing import Optional
 
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.adapters.urdf import URDFParser
@@ -20,6 +21,31 @@ from .plan import Plan
 
 logger = logging.getLogger(__name__)
 
+
+def _build_package_resolver():
+    resolver = {}
+    env_paths = os.environ.get("PYCRAM_PACKAGE_PATH", "")
+    for path in env_paths.split(":"):
+        if path:
+            resolver[os.path.basename(path)] = path
+    kitchen_path = os.environ.get("IAI_KITCHEN_PATH")
+    if kitchen_path:
+        resolver["iai_kitchen"] = kitchen_path
+    default_kitchen_path = os.path.expanduser("~/workspace/ros/src/iai_maps/iai_kitchen")
+    if os.path.exists(default_kitchen_path):
+        resolver.setdefault("iai_kitchen", default_kitchen_path)
+    apartment_path = os.environ.get("IAI_APARTMENT_PATH")
+    if apartment_path:
+        resolver["iai_apartment"] = apartment_path
+    default_apartment_path = os.path.expanduser("~/workspace/ros/src/iai_maps/iai_apartment")
+    if os.path.exists(default_apartment_path):
+        resolver.setdefault("iai_apartment", default_apartment_path)
+    default_pr2_path = os.path.expanduser("~/workspace/ros/src/iai_pr2/iai_pr2_description")
+    if os.path.exists(default_pr2_path):
+        resolver.setdefault("iai_pr2_description", default_pr2_path)
+    return resolver or None
+
+
 try:
     from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
         VizMarkerPublisher,
@@ -30,9 +56,12 @@ except ImportError:
     )
 
 
-def setup_world() -> World:
+def setup_world(urdf_path: Optional[str] = None) -> World:
     logger.setLevel(logging.DEBUG)
 
+    resolver = _build_package_resolver()
+    if urdf_path:
+        URDFParser.from_file(file_path=urdf_path, package_resolver=resolver).parse()
     pr2_sem_world = URDFParser.from_file(
         os.path.join(
             os.path.dirname(__file__),
@@ -41,7 +70,8 @@ def setup_world() -> World:
             "resources",
             "robots",
             "pr2_calibrated_with_ft.urdf",
-        )
+        ),
+        package_resolver=resolver,
     ).parse()
     apartment_world = URDFParser.from_file(
         os.path.join(
@@ -51,7 +81,8 @@ def setup_world() -> World:
             "resources",
             "worlds",
             "apartment.urdf",
-        )
+        ),
+        package_resolver=resolver,
     ).parse()
     milk_world = STLParser(
         os.path.join(
@@ -103,6 +134,7 @@ class SemanticWorldTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        resolver = _build_package_resolver()
         cls.pr2_sem_world = URDFParser(
             os.path.join(
                 os.path.dirname(__file__),
@@ -111,7 +143,8 @@ class SemanticWorldTestCase(unittest.TestCase):
                 "resources",
                 "robots",
                 "pr2_calibrated_with_ft.urdf",
-            )
+            ),
+            package_resolver=resolver,
         ).parse()
         cls.apartment_world = URDFParser(
             os.path.join(
@@ -121,6 +154,7 @@ class SemanticWorldTestCase(unittest.TestCase):
                 "resources",
                 "worlds",
                 "apartment.urdf",
-            )
+            ),
+            package_resolver=resolver,
         ).parse()
         cls.apartment_world.merge_world(cls.pr2_sem_world)
