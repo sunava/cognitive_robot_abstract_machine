@@ -1,7 +1,7 @@
 import numpy as np
 
-from demos.thesis_new.phase_models import Phase, PhaseSequence
-from demos.thesis_new.phase_profiles import (
+from demos.thesis_new.motion_models import MotionSegment, MotionSequence
+from demos.thesis_new.motion_profiles import (
     ShearProfile,
     oscillatory_shear_local_profiled,
     planar_spiral_xy,
@@ -14,13 +14,13 @@ from demos.thesis_new.world_utils import body_local_aabb
 
 def build_default_sequence():
     """Return a fixed 3-phase demo sequence in local coordinates."""
-    phase_spiral = Phase(
+    phase_spiral = MotionSegment(
         name="planar_spiral",
         duration_s=2.0,
         local_curve=lambda tau: planar_spiral_xy(tau, r0=0.00, r1=0.12, cycles=2.5),
     )
 
-    phase_shear = Phase(
+    phase_shear = MotionSegment(
         name="oscillatory_shear",
         duration_s=1.5,
         local_curve=lambda tau: oscillatory_shear_local_profiled(
@@ -31,13 +31,13 @@ def build_default_sequence():
         ),
     )
 
-    phase_sweep = Phase(
+    phase_sweep = MotionSegment(
         name="planar_sweep",
         duration_s=1.5,
         local_curve=lambda tau: planar_sweep_x(tau, length=0.10, cycles=2.0),
     )
 
-    return PhaseSequence([phase_spiral, phase_shear, phase_sweep])
+    return MotionSequence([phase_spiral, phase_shear, phase_sweep])
 
 
 def _duration_scale_from_body(
@@ -55,12 +55,12 @@ def _duration_scale_from_body(
     scale = max(diag, 1e-6) / ref
     if debug:
         print(
-            f"[phase_presets] aabb_diag={diag:.4f} ref={ref:.4f} scale={scale:.3f}"
+            f"[motion_presets] aabb_diag={diag:.4f} ref={ref:.4f} scale={scale:.3f}"
         )
     return scale
 
 
-def build_bowl_sequence(
+def build_container_sequence(
     bowl_body,
     reference_size=0.10,
     debug=False,
@@ -93,7 +93,7 @@ def build_bowl_sequence(
     depth_max = 0.8 * size_z
     if debug:
         print(
-            "[phase_presets] params "
+            "[motion_presets] params "
             f"radius_xy={radius_xy:.4f} size_z={size_z:.4f} "
             f"spiral_r1={spiral_r1:.4f} sweep_len={sweep_length:.4f} "
             f"shear_amp={shear_amp:.4f} depth_max={depth_max:.4f}"
@@ -111,7 +111,7 @@ def build_bowl_sequence(
             lambda tau: curve(tau) + start_offset, _bowl_constraint
         )
 
-    phase_spiral_bowl = Phase(
+    phase_spiral_container = MotionSegment(
         name="planar_spiral_bowl",
         duration_s=2.0 * duration_scale,
         local_curve=_with_offset(
@@ -120,7 +120,7 @@ def build_bowl_sequence(
             )
         ),
     )
-    phase_shear_bowl = Phase(
+    phase_shear_container = MotionSegment(
         name="oscillatory_shear_bowl",
         duration_s=1.5 * duration_scale,
         local_curve=_with_offset(
@@ -135,7 +135,7 @@ def build_bowl_sequence(
             )
         ),
     )
-    phase_sweep_bowl = Phase(
+    phase_sweep_container = MotionSegment(
         name="planar_sweep_bowl",
         duration_s=1.5 * duration_scale,
         local_curve=_with_offset(
@@ -145,4 +145,4 @@ def build_bowl_sequence(
         ),
     )
 
-    return PhaseSequence([phase_spiral_bowl, phase_shear_bowl, phase_sweep_bowl])
+    return MotionSequence([phase_spiral_container, phase_shear_container, phase_sweep_container])

@@ -1,6 +1,6 @@
 import numpy as np
 
-from demos.thesis_new.phase_models import Pose, _as_float_array
+from demos.thesis_new.motion_models import Pose, _as_float_array
 
 
 class FrameProvider:

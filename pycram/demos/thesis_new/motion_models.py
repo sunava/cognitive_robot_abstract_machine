@@ -45,7 +45,7 @@ class FixedFrameProvider(FrameProvider):
         return self._pose
 
 
-class Phase:
+class MotionSegment:
     def __init__(self, name, duration_s, local_curve):
         """Define a local motion curve over a fixed duration."""
         self.name = str(name)
@@ -67,7 +67,7 @@ class Phase:
         return times, pts
 
 
-class PhaseSequence:
+class MotionSequence:
     def __init__(self, phases):
         """Store an ordered list of phases."""
         self.phases = list(phases)

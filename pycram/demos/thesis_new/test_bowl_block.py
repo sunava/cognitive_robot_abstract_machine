@@ -12,8 +12,8 @@ from demos.thesis_new.Phasenbausteineinwelt import (
     oscillatory_shear_local_profiled,
     planar_sweep_x,
     ShearProfile,
-    Phase,
-    PhaseSequence,
+    MotionSegment,
+    MotionSequence,
     make_identity_pose_stamped,
     SemanticPositionDescription,
     HorizontalSemanticDirection,
@@ -56,14 +56,14 @@ def main():
             lambda tau: curve(tau) + start_offset, _bowl_constraint
         )
 
-    phase_spiral_bowl = Phase(
+    phase_spiral_container = MotionSegment(
         name="planar_spiral_bowl",
         duration_s=2.0,
         local_curve=_with_offset(
             lambda tau: planar_spiral_xy(tau, r0=0.00, r1=0.8 * radius_xy, cycles=2.0)
         ),
     )
-    phase_shear_bowl = Phase(
+    phase_shear_container = MotionSegment(
         name="oscillatory_shear_bowl",
         duration_s=1.5,
         local_curve=_with_offset(
@@ -78,7 +78,7 @@ def main():
             )
         ),
     )
-    phase_sweep_bowl = Phase(
+    phase_sweep_container = MotionSegment(
         name="planar_sweep_bowl",
         duration_s=1.5,
         local_curve=_with_offset(
@@ -86,19 +86,19 @@ def main():
         ),
     )
 
-    seq_bowl = PhaseSequence([phase_spiral_bowl, phase_shear_bowl, phase_sweep_bowl])
-    prov_bowl = WorldTransformFrameProvider(
+    seq_container = MotionSequence([phase_spiral_container, phase_shear_container, phase_sweep_container])
+    prov_container = WorldTransformFrameProvider(
         world=world,
         source_frame=bowl_body,
         root_frame=world.root,
         make_identity_spatial=make_identity_pose_stamped,
     )
-    t_bowl, P_bowl, id_bowl = seq_bowl.sample(prov_bowl, dt=0.01)
+    t_bowl, P_container, id_container = seq_container.sample(prov_container, dt=0.01)
 
     # Basic validation: all points are inside the AABB in bowl local coords
     mins, maxs = body_local_aabb(bowl_body)
-    local_ok = np.all((P_bowl >= mins - 1e-6) & (P_bowl <= maxs + 1e-6))
-    print("Sampled points count:", len(P_bowl))
+    local_ok = np.all((P_container >= mins - 1e-6) & (P_container <= maxs + 1e-6))
+    print("Sampled points count:", len(P_container))
     print("Inside local AABB:", local_ok)
 
 

@@ -54,7 +54,7 @@ class FixedFrameProvider(FrameProvider):
         return self._pose
 
 
-class Phase:
+class MotionSegment:
     def __init__(self, name, duration_s, local_curve):
         """Define a local motion curve over a fixed duration."""
         self.name = str(name)
@@ -76,7 +76,7 @@ class Phase:
         return times, pts
 
 
-class PhaseSequence:
+class MotionSequence:
     def __init__(self, phases):
         """Store an ordered list of phases."""
         self.phases = list(phases)
@@ -198,13 +198,13 @@ sweep_profiles = [
     ("set C: long sweep, low freq", SweepProfile(length=0.14, cycles=1.2)),
 ]
 
-phase_spiral = Phase(
+phase_spiral = MotionSegment(
     name="planar_spiral",
     duration_s=2.0,
     local_curve=lambda tau: planar_spiral_xy(tau, r0=0.00, r1=0.12, cycles=2.5),
 )
 
-phase_shear = Phase(
+phase_shear = MotionSegment(
     name="oscillatory_shear",
     duration_s=1.5,
     local_curve=lambda tau: oscillatory_shear_local_profiled(
@@ -215,13 +215,13 @@ phase_shear = Phase(
     ),
 )
 
-phase_sweep = Phase(
+phase_sweep = MotionSegment(
     name="planar_sweep",
     duration_s=1.5,
     local_curve=lambda tau: planar_sweep_x(tau, length=0.10, cycles=2.0),
 )
 
-seq = PhaseSequence([phase_spiral, phase_shear, phase_sweep])
+seq = MotionSequence([phase_spiral, phase_shear, phase_sweep])
 
 R_A, p_A = aligned_plane_frame([0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0])
 R_B, p_B = aligned_plane_frame([0.35, 0.10, 0.20], [0.3, 0.4, 0.85], [0.0, 1.0, 0.0])
@@ -240,7 +240,7 @@ ax.plot(PB[:, 0], PB[:, 1], PB[:, 2], label="sequence + frame B")
 ax.set_xlabel("x")
 ax.set_ylabel("y")
 ax.set_zlabel("z")
-ax.set_title("PhaseSequence reused under two different frame alignments")
+ax.set_title("MotionSequence reused under two different frame alignments")
 ax.legend()
 plt.show()
 
@@ -257,7 +257,7 @@ ax = fig.add_subplot(111)
 ax.step(tA, idA, where="post")
 ax.set_xlabel("t [s]")
 ax.set_ylabel("phase index")
-ax.set_title("Phase index over time (frame A)")
+ax.set_title("MotionSegment index over time (frame A)")
 plt.show()
 
 fig = plt.figure(figsize=(10, 8))

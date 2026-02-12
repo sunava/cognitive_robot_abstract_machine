@@ -15,7 +15,7 @@ from semantic_digital_twin.robots.hsrb import HSRB
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Milk
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import OmniDrive
-from semantic_digital_twin.world_description.geometry import Box, Scale
+from semantic_digital_twin.world_description.geometry import Box, Scale, Color
 from semantic_digital_twin.world_description.shape_collection import ShapeCollection
 from semantic_digital_twin.world_description.world_entity import Body
 
@@ -216,10 +216,11 @@ class BoxSpec:
     scale_xyz: tuple[float, float, float]
 
 
-def add_box(world, spec: BoxSpec, tf_frame: str):
+def add_box(world, spec: BoxSpec, tf_frame: str, color: Color):
     """Create a box Body for the given spec."""
     body = Body(
         name=PrefixedName(spec.name),
-        collision=ShapeCollection([Box(scale=Scale(*spec.scale_xyz))]),
+        collision=ShapeCollection([Box(scale=Scale(*spec.scale_xyz), color=color)]),
     )
+
     return body

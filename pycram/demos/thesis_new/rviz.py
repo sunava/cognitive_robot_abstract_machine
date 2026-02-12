@@ -48,7 +48,7 @@ def _phase_color(k, a=1.0):
     return _color(r, g, b, a)
 
 
-class PhaseSequenceRviz:
+class MotionSequenceRviz:
     def __init__(
         self,
         P,
@@ -72,7 +72,7 @@ class PhaseSequenceRviz:
 
         if node is None:
             raise ValueError(
-                "node must be provided when using PhaseSequenceRviz directly in your system"
+                "node must be provided when using MotionSequenceRviz directly in your system"
             )
 
         self.node = node

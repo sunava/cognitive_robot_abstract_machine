@@ -14,12 +14,12 @@ profiles (spiral, shear, sweep) and their visualization in RViz or matplotlib.
 
 ## Key modules
 
-- `phase_models.py`
-  - Core data types: `Pose`, `Phase`, `PhaseSequence`, and sampling logic.
-- `phase_profiles.py`
+- `motion_models.py`
+  - Core data types: `Pose`, `MotionSegment`, `MotionSequence`, and sampling logic.
+- `motion_profiles.py`
   - Local curve functions (spiral, sweep, shear) and constraint helpers.
-- `phase_presets.py`
-  - Preset sequences. `build_bowl_sequence(...)` sizes curves from the
+- `motion_presets.py`
+  - Preset sequences. `build_container_sequence(...)` sizes curves from the
     object's AABB. The default `reference_size=0.10` scales durations.
   - It uses the **visual AABB** by default (`use_visual_aabb=True`) and
     can apply `shape.scale` via `apply_shape_scale=True`.

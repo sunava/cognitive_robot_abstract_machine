@@ -82,3 +82,4 @@ mlartifacts
 **/.jupyter_cache/
 **/test_tmp/
 semantic_digital_twin/resources/output
+pycram/resources*

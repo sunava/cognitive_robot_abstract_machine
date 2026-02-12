@@ -10,9 +10,9 @@ import matplotlib.pyplot as plt
 from demos.thesis.simulation_setup import add_box, BoxSpec
 from demos.thesis_new.frame_provider import WorldTransformFrameProvider
 from demos.thesis_new.geometry_utils import aligned_plane_frame
-from demos.thesis_new.phase_models import Pose, FixedFrameProvider
-from demos.thesis_new.phase_presets import build_default_sequence, build_bowl_sequence
-from demos.thesis_new.phase_profiles import (
+from demos.thesis_new.motion_models import Pose, FixedFrameProvider
+from demos.thesis_new.motion_presets import build_default_sequence, build_container_sequence
+from demos.thesis_new.motion_profiles import (
     ShearProfile,
     SpiralProfile,
     SweepProfile,
@@ -174,7 +174,7 @@ def plot_sequence_in_frames():
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("z")
-    ax.set_title("PhaseSequence reused under two different frame alignments")
+    ax.set_title("MotionSequence reused under two different frame alignments")
     ax.legend()
     plt.show()
 
@@ -191,7 +191,7 @@ def plot_sequence_in_frames():
     ax.step(tA, idA, where="post")
     ax.set_xlabel("t [s]")
     ax.set_ylabel("phase index")
-    ax.set_title("Phase index over time (frame A)")
+    ax.set_title("MotionSegment index over time (frame A)")
     plt.show()
 
 
@@ -227,7 +227,7 @@ def plot_sequence_in_world():
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("z")
-    ax.set_title("PhaseSequence under world frame F")
+    ax.set_title("MotionSequence under world frame F")
     ax.legend()
     plt.show()
 
@@ -256,22 +256,22 @@ def plot_bowl_sequence():
         print("[info] body 'bowl.stl' not found, skipping bowl plot.")
         return
 
-    seq_bowl = build_bowl_sequence(bowl_body)
-    prov_bowl = WorldTransformFrameProvider(
+    seq_container = build_container_sequence(bowl_body)
+    prov_container = WorldTransformFrameProvider(
         world=world,
         source_frame=bowl_body,
         root_frame=world.root,
         make_identity_spatial=make_identity_pose_stamped,
     )
-    t_bowl, P_bowl, _ = seq_bowl.sample(prov_bowl, dt=0.01)
+    t_bowl, P_container, _ = seq_container.sample(prov_container, dt=0.01)
 
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection="3d")
-    ax.plot(P_bowl[:, 0], P_bowl[:, 1], P_bowl[:, 2], label="sequence in bowl")
+    ax.plot(P_container[:, 0], P_container[:, 1], P_container[:, 2], label="sequence in bowl")
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("z")
-    ax.set_title("PhaseSequence constrained to bowl (object frame)")
+    ax.set_title("MotionSequence constrained to bowl (object frame)")
     ax.legend()
     plt.show()
 

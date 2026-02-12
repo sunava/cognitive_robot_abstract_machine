@@ -1,4 +1,5 @@
 import os
+import numpy as np
 
 import rclpy
 
@@ -7,6 +8,11 @@ from demos.thesis_new.frame_provider import WorldTransformFrameProvider
 from demos.thesis_new.motion_presets import build_default_sequence, build_container_sequence
 from demos.thesis_new.motion_models import Pose, FixedFrameProvider
 from demos.thesis_new.rviz import MotionSequenceRviz
+from demos.thesis_new.tool_motion import (
+    get_tool_config,
+    make_tool_wrist_poses,
+    tip_offset_from_body,
+)
 from demos.thesis_new.world_utils import try_get_body, make_identity_pose_stamped, body_local_aabb
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
@@ -31,6 +37,8 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.world_description.geometry import Scale
+
+TOOL_NAME = "knife"
 
 
 def _setup_world():
@@ -94,6 +102,8 @@ def _print_phase_points(label, points, phase_ids, phases=None, world=None):
         msg.pose.position.z = p[2]
         poses.append(msg)
     return poses
+
+
 
 def main():
     """Run the RViz demo for default and bowl-constrained sequences."""
@@ -159,9 +169,54 @@ def main():
         make_identity_spatial=make_identity_pose_stamped,
     )
     _, P_container, id_container = seq_container.sample(prov_container, dt=0.01)
-    poses = _print_phase_points("bowl", P_container, id_container, phases=seq_container.phases, world=world)
+    #poses = _print_phase_points("bowl", P_container, id_container, phases=seq_container.phases, world=world)
 
-    print("one pose only" + str(poses[0]))
+
+
+
+    #print("one pose only" + str(poses[0]))
+
+    plan = SequentialPlan(
+        context,
+        MoveTorsoActionDescription(TorsoState.HIGH)
+    )
+    with simulated_robot:
+        plan.perform()
+
+    with world.modify_world():
+        knife = STLParser(
+            os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "..",
+                "resources",
+                "pycram_object_gap_demo",
+                "butter_knife.stl",
+            )
+        ).parse()
+        robot_tip = world.get_body_by_name("r_gripper_tool_frame")
+        connection = FixedConnection(
+            parent=robot_tip, child=knife.root,
+            parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_quaternion(
+                0.1, 0, 0, reference_frame=robot_tip
+            ),
+            # parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_axis_angle(z=-0.03, axis=(0,1,0), angle=np.pi / 2,
+            #                                                                                    reference_frame=robot_tip
+            #                                                                                    )
+            #                                                                                    )
+        )
+        world.merge_world(knife, connection)
+
+    knife_body = try_get_body(world, "butter_knife.stl")
+    tip_offset = tip_offset_from_body(knife_body)
+
+    print("tip_offset" + str(tip_offset))
+    tool_cfg = get_tool_config(TOOL_NAME)
+    print(
+        f"[tool] name={tool_cfg.name} use_rotation={tool_cfg.use_rotation} "
+        f"apply_tip_in_world_z={tool_cfg.apply_tip_in_world_z} tip_offset={tip_offset}"
+    )
+    poses = make_tool_wrist_poses(P_container, world, tip_offset, tool_cfg)
     plan = SequentialPlan(
         context,
         SimpleMoveTCPAction(target_location=poses[0], arm=Arms.RIGHT),
