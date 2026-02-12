@@ -1,13 +1,15 @@
 from dataclasses import dataclass
 from typing import Optional, List
 
-from giskardpy.motion_statechart.goals.templates import Sequence
+from giskardpy.motion_statechart.goals.templates import Sequence, Parallel
+from giskardpy.motion_statechart.tasks.align_planes import AlignPlanes
 from giskardpy.motion_statechart.tasks.cartesian_tasks import (
     CartesianPose,
     CartesianPosition,
 )
 from giskardpy.motion_statechart.tasks.joint_tasks import JointPositionList, JointState
 from semantic_digital_twin.datastructures.definitions import GripperState
+from semantic_digital_twin.spatial_types import Vector3
 from semantic_digital_twin.world_description.world_entity import Body
 from .base import BaseMotion
 from ...datastructures.enums import (
@@ -15,8 +17,14 @@ from ...datastructures.enums import (
     MovementType,
     WaypointsMovementType,
 )
+from semantic_digital_twin.spatial_types.spatial_types import (
+    Vector3 as SpatialVector3,
+    Quaternion as SpatialQuaternion,
+    HomogeneousTransformationMatrix as SpatialTransformationMatrix,
+    Vector3,
+)
 from ...datastructures.grasp import GraspDescription
-from ...datastructures.pose import PoseStamped
+from ...datastructures.pose import PoseStamped, Point
 from ...view_manager import ViewManager
 from ...utils import translate_pose_along_local_axis
 
@@ -215,5 +223,59 @@ class MoveTCPWaypointsMotion(BaseMotion):
                 # threshold=0.005,
             )
             for pose in self.waypoints
+        ]
+        return Sequence(nodes=nodes)
+
+@dataclass
+class MoveTCPWaypointsAlignedMotion(BaseMotion):
+    """
+    Moves the Tool center point (TCP) of the robot
+    """
+
+    waypoints: List[SpatialVector3]
+    """
+    Waypoints the TCP should move along 
+    """
+    arm: Arms
+    """
+    Arm with the TCP that should be moved to the target
+    """
+    tip_normal: Vector3
+    """
+    Normal vector of the tip link
+    """
+    goal_normal: Vector3
+    """
+    Normal vector of the goal link
+    """
+    allow_gripper_collision: Optional[bool] = None
+    """
+    If the gripper can collide with something
+    """
+    movement_type: WaypointsMovementType = (
+        WaypointsMovementType.ENFORCE_ORIENTATION_FINAL_POINT
+    )
+    """
+    The type of movement that should be performed.
+    """
+
+    def perform(self):
+        return
+
+    @property
+    def _motion_chart(self):
+        tip = ViewManager().get_end_effector_view(self.arm, self.robot_view).tool_frame
+        nodes = [
+            Parallel(
+                [
+                    CartesianPosition(root_link=self.robot_view.root,
+                                      tip_link=tip,
+                                      goal_point=point.to_point3()),
+                    AlignPlanes(tip_link=tip, root_link=self.robot_view.root, tip_normal=self.tip_normal,
+                                goal_normal=self.goal_normal)
+                ]
+
+            )
+            for point in self.waypoints
         ]
         return Sequence(nodes=nodes)
