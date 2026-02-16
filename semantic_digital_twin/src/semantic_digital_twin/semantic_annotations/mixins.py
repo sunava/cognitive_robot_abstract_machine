@@ -53,7 +53,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(eq=False)
-class IsPerceivable:
+class IsPerceivable(SemanticAnnotation):
     """
     A mixin class for semantic annotations that can be perceived.
     """

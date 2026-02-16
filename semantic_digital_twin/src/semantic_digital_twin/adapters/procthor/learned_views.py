@@ -7,7 +7,7 @@ import tqdm
 from sqlalchemy.orm import Session
 
 from krrood.ormatic.dao import DataAccessObject, AlternativeMapping
-from krrood.ormatic.utils import get_classes_of_ormatic_interface
+from krrood.ormatic.helper import get_classes_of_ormatic_interface
 import semantic_digital_twin.orm.ormatic_interface
 from semantic_digital_twin.orm.ormatic_interface import (
     InsideOfDAO,
