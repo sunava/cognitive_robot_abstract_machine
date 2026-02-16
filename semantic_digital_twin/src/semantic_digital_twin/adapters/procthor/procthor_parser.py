@@ -180,7 +180,7 @@ class ProcthorDoor:
                 vertical_direction_chain=[VerticalSemanticDirection.FULLY_CENTER],
             )
 
-            wall_T_door = HomogeneousTransformationMatrix.from_xyz_rpy(
+            door_T_single_door = HomogeneousTransformationMatrix.from_xyz_rpy(
                 x=x_direction,
                 y=(
                     (-y_direction)
@@ -188,14 +188,16 @@ class ProcthorDoor:
                     else y_direction
                 ),
             )
-            world_T_door = self.world_T_parent_wall @ wall_T_door
+            world_T_single_door = (
+                self.world_T_parent_wall @ self.wall_T_door @ door_T_single_door
+            )
 
             door = self._add_single_door_to_world(
                 semantic_handle_position=semantic_position,
                 world=world,
                 name=single_door_name,
                 scale=one_door_scale,
-                world_T_door=world_T_door,
+                world_T_door=world_T_single_door,
             )
 
             doors.append(door)
@@ -254,7 +256,7 @@ class ProcthorDoor:
             lower_limits.position = 0
             lower_limits.velocity = -1
             upper_limits = DerivativeMap()
-            upper_limits.position = np.pi*1.5
+            upper_limits.position = np.pi * 1.5
             upper_limits.velocity = 1
 
             world_T_hinge = door.calculate_world_T_hinge_based_on_handle(Vector3.Z())
@@ -268,7 +270,6 @@ class ProcthorDoor:
                     upper=upper_limits,
                 ),
             )
-
             door.add_hinge(hinge)
         return door
 
@@ -857,6 +858,7 @@ def get_world_by_asset_id(session: Session, asset_id: str) -> Optional[World]:
             )
 
     return world_mapping.from_dao() if world_mapping else None
+
 
 @lru_cache
 def procthor_sessionmaker():
