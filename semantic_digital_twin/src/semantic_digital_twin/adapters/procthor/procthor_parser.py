@@ -1,20 +1,22 @@
 import json
 import logging
 import math
-import uuid
+import os
 from dataclasses import dataclass, field
-from functools import cached_property
+from functools import cached_property, lru_cache
 from pathlib import Path
 from typing import Dict, Tuple, Union, Set, Optional, List, Any, Self
 
 import numpy as np
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import assert_never
 
+from krrood.ormatic.utils import create_engine
 from ...datastructures.prefixed_name import PrefixedName
 from ...datastructures.variables import SpatialVariables
+from ...orm.exceptions import DatabaseNotAvailableError
 from ...orm.ormatic_interface import *
 from ...semantic_annotations.position_descriptions import (
     SemanticPositionDescription,
@@ -34,6 +36,7 @@ from ...semantic_annotations.semantic_annotations import (
     Bathroom,
     LivingRoom,
 )
+from ...spatial_types.derivatives import DerivativeMap
 from ...spatial_types.spatial_types import (
     HomogeneousTransformationMatrix,
     Point3,
@@ -41,6 +44,7 @@ from ...spatial_types.spatial_types import (
 )
 from ...world import World
 from ...world_description.connections import FixedConnection
+from ...world_description.degree_of_freedom import DegreeOfFreedomLimits
 from ...world_description.geometry import Scale
 from ...world_description.world_entity import Body
 
@@ -176,7 +180,7 @@ class ProcthorDoor:
                 vertical_direction_chain=[VerticalSemanticDirection.FULLY_CENTER],
             )
 
-            wall_T_door = HomogeneousTransformationMatrix.from_xyz_rpy(
+            door_T_single_door = HomogeneousTransformationMatrix.from_xyz_rpy(
                 x=x_direction,
                 y=(
                     (-y_direction)
@@ -184,14 +188,16 @@ class ProcthorDoor:
                     else y_direction
                 ),
             )
-            world_T_door = self.world_T_parent_wall @ wall_T_door
+            world_T_single_door = (
+                self.world_T_parent_wall @ self.wall_T_door @ door_T_single_door
+            )
 
             door = self._add_single_door_to_world(
                 semantic_handle_position=semantic_position,
                 world=world,
                 name=single_door_name,
                 scale=one_door_scale,
-                world_T_door=world_T_door,
+                world_T_door=world_T_single_door,
             )
 
             doors.append(door)
@@ -223,7 +229,7 @@ class ProcthorDoor:
             scale.to_simple_event().as_composite_set().marginal(SpatialVariables.yz)
         )
         door_T_handle = HomogeneousTransformationMatrix.from_xyz_rpy(
-            x=scale.x / 2, y=sampled_2d_point[0], z=sampled_2d_point[1]
+            x=-(scale.x / 2), y=sampled_2d_point[0], z=sampled_2d_point[1], yaw=np.pi
         )
 
         world_T_door = world_T_door or self.world_T_parent_wall @ self.wall_T_door
@@ -246,14 +252,24 @@ class ProcthorDoor:
             door.add_handle(handle)
 
         with world.modify_world():
+            lower_limits = DerivativeMap()
+            lower_limits.position = 0
+            lower_limits.velocity = -1
+            upper_limits = DerivativeMap()
+            upper_limits.position = np.pi * 1.5
+            upper_limits.velocity = 1
+
             world_T_hinge = door.calculate_world_T_hinge_based_on_handle(Vector3.Z())
             hinge = Hinge.create_with_new_body_in_world(
                 name=PrefixedName(f"{name.name}_hinge", name.prefix),
                 world=world,
                 world_root_T_self=world_T_hinge,
                 active_axis=Vector3.Z(),
+                connection_limits=DegreeOfFreedomLimits(
+                    lower=lower_limits,
+                    upper=upper_limits,
+                ),
             )
-
             door.add_hinge(hinge)
         return door
 
@@ -843,3 +859,16 @@ def get_world_by_asset_id(session: Session, asset_id: str) -> Optional[World]:
             )
 
     return world_mapping.from_dao() if world_mapping else None
+
+
+@lru_cache
+def procthor_sessionmaker():
+    """
+    Creates a session maker for the procthor experiments database.
+    This requires the environment variable `PROCTHOR_EXPERIMENTS_DATABASE_URI` to be set to a reachable database.
+    """
+    uri = os.environ.get("PROCTHOR_EXPERIMENTS_DATABASE_URI")
+    if uri is None:
+        raise DatabaseNotAvailableError()
+    engine = create_engine(uri)
+    return sessionmaker(bind=engine)
