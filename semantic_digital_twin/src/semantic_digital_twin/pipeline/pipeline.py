@@ -10,25 +10,7 @@ import numpy as np
 
 from ..adapters.mesh import STLParser
 from ..semantic_annotations.mixins import HasRootKinematicStructureEntity, HasRootBody
-from ..semantic_annotations.semantic_annotations import (
-    Bottle,
-    Apple,
-    Potato,
-    Orange,
-    Tomato,
-    Plate,
-    Bowl,
-    Fork,
-    Knife,
-    Mug,
-    Cup,
-    Pan,
-    PanLid,
-    Pencil,
-    Ball,
-    Baseball,
-    SprayBottle,
-)
+
 from ..spatial_types import Point3
 from ..spatial_types.spatial_types import HomogeneousTransformationMatrix
 from ..world import World
@@ -225,6 +207,10 @@ class MergeParentWithChildIfCorrectChildSubname(Step):
 
 @dataclass
 class SemanticAnnotationGeometryReplacement(Step):
+    """
+    Replaces collision geometries of semantic annotation root bodies with collision geometries from STL files based on
+    the mapping.
+    """
 
     object_mappings: Dict[Type[SemanticAnnotation], List[str]]
     """
@@ -249,28 +235,4 @@ class SemanticAnnotationGeometryReplacement(Step):
                     new_geometry = deepcopy(new_body_world.bodies[0].collision)
                     semantic_annotation.root.collision = new_geometry
                     semantic_annotation.root.visual = new_geometry
-
-
-mapping = {
-    Bottle: ["mustard_bottle.stl"],
-    Apple: ["apple.stl"],
-    Plate: ["plate.stl"],
-    Bowl: ["bowl.stl"],
-    Fork: ["fork.stl"],
-    Knife: ["knife.stl"],
-    Mug: ["mug.stl"],
-    Cup: ["cup_a.stl"],
-    Pan: ["skillet.stl"],
-    PanLid: ["skillet_lid.stl"],
-    Pencil: ["small_marker.stl", "large_marker.stl"],
-    Ball: [
-        "softball.stl",
-        "baseball.stl",
-        "tennisball.stl",
-        "racequetball.stl",
-        "golfball.stl",
-        "mini_soccerball.stl",
-    ],
-    Baseball: ["baseball.stl"],
-    SprayBottle: ["spraybottle.stl"],
-}
+        return world

@@ -18,12 +18,12 @@ from semantic_digital_twin.adapters.procthor.procthor_parser import (
 )
 from semantic_digital_twin.adapters.procthor.procthor_resolver import (
     ProcthorResolver,
+    semantic_annotation_to_ycb_mesh_mapping,
 )
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.pipeline.pipeline import (
     Pipeline,
     SemanticAnnotationGeometryReplacement,
-    mapping,
     MergeParentWithChildIfCorrectChildSubname,
 )
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
@@ -33,8 +33,6 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Mug,
     Cup,
     Bowl,
-    SoapBottle,
-    Kettle,
 )
 from semantic_digital_twin.spatial_types.spatial_types import (
     HomogeneousTransformationMatrix,
@@ -403,7 +401,9 @@ class ProcTHORTestCase(unittest.TestCase):
         pipeline = Pipeline(
             [
                 MergeParentWithChildIfCorrectChildSubname(matching_subname="volume"),
-                SemanticAnnotationGeometryReplacement(object_mappings=mapping),
+                SemanticAnnotationGeometryReplacement(
+                    object_mappings=semantic_annotation_to_ycb_mesh_mapping
+                ),
             ]
         )
         pipeline.apply(world)
