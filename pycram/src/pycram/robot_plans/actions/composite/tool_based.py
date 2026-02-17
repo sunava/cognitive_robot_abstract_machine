@@ -170,10 +170,14 @@ class SimplePouringAction(ActionDescription):
 @dataclass
 class SimpleMoveTCPAction(ActionDescription):
     """
-    Park the arms of the robot.
+    Represents an action to move a robotic arm's TCP (Tool Center Point) to a target
+    location or through a series of waypoints.
     """
 
-    target_location: PoseStamped
+    target_location: Union[Iterable[PoseStamped], PoseStamped]
+    """
+    Target location(s) for the TCP motion. Can be a single PoseStamped object or an iterable of PoseStamped objects.
+    """
 
     arm: Arms
     """
@@ -181,16 +185,21 @@ class SimpleMoveTCPAction(ActionDescription):
     """
 
     def execute(self) -> None:
-
-        SequentialPlan(
-            self.context,
-            MoveTCPMotion(
+        if isinstance(self.target_location, PoseStamped):
+            motion = MoveTCPMotion(
                 self.target_location,
                 self.arm,
                 allow_gripper_collision=True,
                 movement_type=MovementType.CARTESIAN,
             )
-        ).perform()
+        else:
+            motion = MoveTCPWaypointsMotion(
+                list(self.target_location),
+                self.arm,
+                allow_gripper_collision=True,
+            )
+
+        SequentialPlan(self.context, motion).perform()
 
     def validate(
         self,
@@ -202,10 +211,32 @@ class SimpleMoveTCPAction(ActionDescription):
     @classmethod
     def description(
         cls,
-        target_location: Union[Iterable[PoseStamped], PoseStamped],
-        arm: Union[Iterable[Arms], Arms],
+        target_location: Union[Iterable[PoseStamped], PoseStamped] = None,
+        arm: Union[Iterable[Arms], Arms] = None,
+        target_locations: Union[Iterable[PoseStamped], PoseStamped] = None,
     ) -> PartialDesignator[Type[SimpleMoveTCPAction]]:
-        return PartialDesignator(cls, target_location=target_location, arm=arm)
+        resolved_target = (
+            target_location if target_location is not None else target_locations
+        )
+        if resolved_target is None:
+            raise ValueError(
+                "Provide either target_location or target_locations."
+            )
+        if arm is None:
+            raise ValueError("Provide arm.")
+
+        if isinstance(resolved_target, PoseStamped):
+            target_for_designator = resolved_target
+        else:
+            resolved_target_list = list(resolved_target)
+            if all(isinstance(pose, PoseStamped) for pose in resolved_target_list):
+                target_for_designator = [resolved_target_list]
+            else:
+                target_for_designator = resolved_target
+
+        return PartialDesignator(
+            cls, target_location=target_for_designator, arm=arm
+        )
 
 
 @dataclass
@@ -514,9 +545,58 @@ class WipingAction(GeneralizedActionPlan):
         )
 
 
+@dataclass
+class SimpleMoveTCPsAction(ActionDescription):
+    """
+    Park the arms of the robot.
+    """
+
+    target_locations: list[PoseStamped]
+
+    arm: Arms
+    """
+    Entry from the enum for which arm should be parked.
+    """
+
+    def execute(self) -> None:
+        SequentialPlan(
+                self.context,
+                MoveTCPWaypointsMotion(
+                    self.target_locations,
+                    self.arm,
+                    allow_gripper_collision=True,
+                )
+            ).perform()
+
+
+    def validate(
+        self,
+        result: Optional[Any] = None,
+        max_wait_time: timedelta = timedelta(seconds=2),
+    ):
+        pass
+
+    @classmethod
+    def description(
+        cls,
+        target_locations: Union[Iterable[list[PoseStamped]], list[PoseStamped]],
+        arm: Union[Iterable[Arms], Arms],
+    ) -> PartialDesignator[Type[SimpleMoveTCPsAction]]:
+        if isinstance(target_locations, list) and (
+            len(target_locations) == 0
+            or all(isinstance(pose, PoseStamped) for pose in target_locations)
+        ):
+            normalized_target_locations = [target_locations]
+        else:
+            normalized_target_locations = target_locations
+        return PartialDesignator(
+            cls, target_locations=normalized_target_locations, arm=arm
+        )
 
 
 SimplePouringActionDescription = SimplePouringAction.description
 SimpleMoveTCPActionDescription = SimpleMoveTCPAction.description
+SimpleMoveTCPsActionDescription = SimpleMoveTCPsAction.description
+
 MixingActionDescription = MixingAction.description
 WipingActionDescription = WipingAction.description
