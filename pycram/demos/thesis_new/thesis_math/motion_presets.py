@@ -1,7 +1,7 @@
 import numpy as np
 
-from demos.thesis_new.motion_models import MotionSegment, MotionSequence
-from demos.thesis_new.motion_profiles import (
+from demos.thesis_new.thesis_math.motion_models import MotionSegment, MotionSequence
+from demos.thesis_new.thesis_math.motion_profiles import (
     ShearProfile,
     oscillatory_shear_local_profiled,
     planar_spiral_xy,
@@ -9,7 +9,7 @@ from demos.thesis_new.motion_profiles import (
     clamp_to_cylinder_xy,
     make_constrained_curve,
 )
-from demos.thesis_new.world_utils import body_local_aabb
+from demos.thesis_new.thesis_math.world_utils import body_local_aabb
 
 
 def build_default_sequence():

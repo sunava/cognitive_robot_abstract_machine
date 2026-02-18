@@ -32,7 +32,7 @@ world = setup_world()
 
 bowl = STLParser(
     os.path.join(
-        os.path.dirname(__file__), "..", "..", "resources", "objects", "bowl.stl"
+        os.path.dirname(__file__), "../..", "..", "resources", "objects", "bowl.stl"
     )
 ).parse()
 

@@ -8,11 +8,14 @@ from typing_extensions import Union, Optional, Type, Any, Iterable
 
 import numpy as np
 
-from demos.thesis_new.frame_provider import WorldTransformFrameProvider
-from demos.thesis_new.motion_models import MotionSegment, MotionSequence, Pose, FixedFrameProvider
-from demos.thesis_new.motion_profiles import planar_sweep_x
-from demos.thesis_new.motion_presets import build_container_sequence
-from demos.thesis_new.world_utils import body_local_aabb, make_identity_pose_stamped
+from demos.thesis_new.thesis_math.motion_models import MotionSegment, MotionSequence
+from demos.thesis_new.thesis_math.motion_profiles import planar_sweep_x
+from demos.thesis_new.thesis_math.motion_presets import build_container_sequence
+from demos.thesis_new.thesis_math.world_utils import (
+    body_local_aabb,
+    make_identity_pose_stamped,
+    Rp_from_spatial,
+)
 from semantic_digital_twin.world_description.world_entity import Body
 from ...motions.gripper import MoveTCPMotion, MoveTCPWaypointsMotion
 from .... import utils
@@ -32,7 +35,6 @@ from ....robot_plans.actions.base import ActionDescription
 
 logger = logging.getLogger(__name__)
 
-WHISK_TIP_Z_OFFSET = 0.0
 
 
 @dataclass
@@ -72,8 +74,10 @@ TOOLS = {
 }
 
 
-def get_tool_config(name: str) -> ToolConfig:
-    return TOOLS.get(str(name), TOOLS["whisk"])
+def get_tool_config(name: Optional[str]) -> Optional[ToolConfig]:
+    if not name:
+        return None
+    return TOOLS.get(str(name))
 
 
 def tip_offset_from_body(body):
@@ -82,161 +86,6 @@ def tip_offset_from_body(body):
     center_y = 0.5 * (mins[1] + maxs[1])
     center_z = 0.5 * (mins[2] + maxs[2])
     return np.array([maxs[0], center_y, center_z], dtype=float)
-
-
-@dataclass
-class SimplePouringAction(ActionDescription):
-    """
-    Park the arms of the robot.
-    """
-
-    object_designator: Body
-    """
-    The object to pick up
-    """
-
-    arm: Arms
-    """
-    Entry from the enum for which arm should be parked.
-    """
-
-    def execute(self) -> None:
-        for arm_chain in self.robot_view.manipulator_chains:
-            grasp = GraspDescription(
-                ApproachDirection.FRONT, VerticalAlignment.NoAlignment, False
-            ).calculate_grasp_orientation(
-                arm_chain.manipulator.front_facing_orientation.to_np()
-            )
-
-        object_pose = self.object_designator.global_pose
-        object_pose.x += 0.009
-        object_pose.y -= 0.125
-        object_pose.z += 0.17
-
-        def approach_or_rotate(rotate: bool) -> PoseStamped:
-            ros_pose = PoseStamped.from_spatial_type(object_pose)
-
-            if rotate:
-                q = utils.axis_angle_to_quaternion([1, 0, 0], -110)
-                ros_pose.rotate_by_quaternion(utils.quat_np_list(q))
-
-            man = next(iter(self.robot_view.manipulators))
-            tool_frame = man.tool_frame
-
-            poseTg = PoseStamped.from_spatial_type(
-                self.world.transform(ros_pose.to_spatial_type(), tool_frame)
-            )
-            poseTg.rotate_by_quaternion(grasp)
-
-            return PoseStamped.from_spatial_type(
-                self.world.transform(poseTg.to_spatial_type(), self.world.root)
-            )
-
-        pose = approach_or_rotate(False)
-        pose_rot = approach_or_rotate(True)
-
-        SequentialPlan(
-            self.context,
-            MoveTCPMotion(
-                pose,
-                self.arm,
-                allow_gripper_collision=True,
-                movement_type=MovementType.CARTESIAN,
-            ),
-            MoveTCPMotion(
-                pose_rot,
-                self.arm,
-                allow_gripper_collision=True,
-                movement_type=MovementType.CARTESIAN,
-            ),
-        ).perform()
-
-    def validate(
-        self,
-        result: Optional[Any] = None,
-        max_wait_time: timedelta = timedelta(seconds=2),
-    ):
-        pass
-
-    @classmethod
-    def description(
-        cls,
-        object_designator: Union[Iterable[PoseStamped], PoseStamped],
-        arm: Union[Iterable[Arms], Arms],
-    ) -> PartialDesignator[Type[SimplePouringAction]]:
-        return PartialDesignator(cls, object_designator=object_designator, arm=arm)
-
-
-@dataclass
-class SimpleMoveTCPAction(ActionDescription):
-    """
-    Represents an action to move a robotic arm's TCP (Tool Center Point) to a target
-    location or through a series of waypoints.
-    """
-
-    target_location: Union[Iterable[PoseStamped], PoseStamped]
-    """
-    Target location(s) for the TCP motion. Can be a single PoseStamped object or an iterable of PoseStamped objects.
-    """
-
-    arm: Arms
-    """
-    Entry from the enum for which arm should be parked.
-    """
-
-    def execute(self) -> None:
-        if isinstance(self.target_location, PoseStamped):
-            motion = MoveTCPMotion(
-                self.target_location,
-                self.arm,
-                allow_gripper_collision=True,
-                movement_type=MovementType.CARTESIAN,
-            )
-        else:
-            motion = MoveTCPWaypointsMotion(
-                list(self.target_location),
-                self.arm,
-                allow_gripper_collision=True,
-            )
-
-        SequentialPlan(self.context, motion).perform()
-
-    def validate(
-        self,
-        result: Optional[Any] = None,
-        max_wait_time: timedelta = timedelta(seconds=2),
-    ):
-        pass
-
-    @classmethod
-    def description(
-        cls,
-        target_location: Union[Iterable[PoseStamped], PoseStamped] = None,
-        arm: Union[Iterable[Arms], Arms] = None,
-        target_locations: Union[Iterable[PoseStamped], PoseStamped] = None,
-    ) -> PartialDesignator[Type[SimpleMoveTCPAction]]:
-        resolved_target = (
-            target_location if target_location is not None else target_locations
-        )
-        if resolved_target is None:
-            raise ValueError(
-                "Provide either target_location or target_locations."
-            )
-        if arm is None:
-            raise ValueError("Provide arm.")
-
-        if isinstance(resolved_target, PoseStamped):
-            target_for_designator = resolved_target
-        else:
-            resolved_target_list = list(resolved_target)
-            if all(isinstance(pose, PoseStamped) for pose in resolved_target_list):
-                target_for_designator = [resolved_target_list]
-            else:
-                target_for_designator = resolved_target
-
-        return PartialDesignator(
-            cls, target_location=target_for_designator, arm=arm
-        )
 
 
 @dataclass
@@ -255,7 +104,7 @@ class GeneralizedActionPlan(ActionDescription):
     The container (e.g., bowl) to operate in.
     """
 
-    tool_name: str = "whisk"
+    tool_name: Optional[str] = None
     """
     Tool configuration name (e.g., 'whisk').
     """
@@ -288,15 +137,6 @@ class GeneralizedActionPlan(ActionDescription):
     def _build_sequence(self):
         raise NotImplementedError
 
-    def _sample_points(self, seq):
-        prov = WorldTransformFrameProvider(
-            world=self.world,
-            source_frame=self.container,
-            root_frame=self.world.root,
-            make_identity_spatial=make_identity_pose_stamped,
-        )
-        _, points, _ = seq.sample(prov, dt=self.dt)
-        return points
 
     def _resolve_tip_offset(self):
         if self.tool_tip_offset is not None:
@@ -306,8 +146,7 @@ class GeneralizedActionPlan(ActionDescription):
         return np.zeros(3, dtype=float)
 
     @staticmethod
-    def _rotation_tool_x_to_world_z():
-        """Return identity rotation (keep current tool orientation)."""
+    def _identity_rotation():
         return np.eye(3, dtype=float)
 
     @staticmethod
@@ -357,59 +196,68 @@ class GeneralizedActionPlan(ActionDescription):
         )
 
     @classmethod
-    def make_tool_wrist_poses_for_world(cls, points, world, tip_offset, tool_cfg):
-        """Convert path points into wrist poses using the selected tool config."""
-        T_wrist_tip = np.eye(4, dtype=float)
-        wrist_to_tip = np.asarray(tip_offset, dtype=float).reshape(3)
-        T_wrist_tip[:3, 3] = 0.0
-        T_tip_wrist = np.linalg.inv(T_wrist_tip)
+    def make_tool_wrist_poses_for_world(
+        cls, points, world, tip_offset, tool_cfg: Optional[ToolConfig] = None
+    ):
+        """Convert tip path points into wrist poses.
 
-        tangents = cls._tangents_from_points(points)
+        Default behavior is neutral and tool-agnostic: identity orientation and
+        wrist placement from the provided tip offset. Tool config is optional.
+        """
+        wrist_to_tip = np.asarray(tip_offset, dtype=float).reshape(3)
+        tangents = cls._tangents_from_points(points) if tool_cfg is not None else None
 
         poses = []
         for i, p in enumerate(points):
-            T_world_tip = np.eye(4, dtype=float)
-            if tool_cfg.use_rotation:
-                T_world_tip[:3, :3] = cls._rotation_from_tangent(tangents[i])
-            else:
-                T_world_tip[:3, :3] = cls._rotation_tool_x_to_world_z()
-            if tool_cfg.rotation_axis is not None and tool_cfg.rotation_deg:
-                T_world_tip[:3, :3] = T_world_tip[:3, :3] @ cls._rotation_from_axis_angle(
+            R_world = cls._identity_rotation()
+            if tool_cfg is not None and tool_cfg.use_rotation:
+                R_world = cls._rotation_from_tangent(tangents[i])
+            if (
+                tool_cfg is not None
+                and tool_cfg.rotation_axis is not None
+                and tool_cfg.rotation_deg
+            ):
+                R_world = R_world @ cls._rotation_from_axis_angle(
                     tool_cfg.rotation_axis, tool_cfg.rotation_deg
                 )
-            T_world_tip[:3, 3] = np.asarray(p, dtype=float).reshape(3)
-            if tool_cfg.apply_tip_in_world_z:
-                T_world_tip[2, 3] += tool_cfg.tip_z_offset + wrist_to_tip[0]
-            T_world_wrist = T_world_tip @ T_tip_wrist
-            if (
+
+            p_world = np.asarray(p, dtype=float).reshape(3).copy()
+            p_world -= R_world @ wrist_to_tip
+            if tool_cfg is not None and tool_cfg.apply_tip_in_world_z:
+                p_world[2] += tool_cfg.tip_z_offset
+            if tool_cfg is not None and (
                 tool_cfg.gripper_x_offset_scale
                 or tool_cfg.gripper_y_offset_scale
                 or tool_cfg.gripper_z_offset_scale
             ):
-                T_world_wrist[:3, 3] += T_world_wrist[:3, :3] @ np.array(
+                tip_x = wrist_to_tip[0]
+                p_world += R_world @ np.array(
                     [
-                        tool_cfg.gripper_x_offset_scale * wrist_to_tip[0],
-                        tool_cfg.gripper_y_offset_scale * wrist_to_tip[0],
-                        tool_cfg.gripper_z_offset_scale * wrist_to_tip[0],
+                        tool_cfg.gripper_x_offset_scale * tip_x,
+                        tool_cfg.gripper_y_offset_scale * tip_x,
+                        tool_cfg.gripper_z_offset_scale * tip_x,
                     ],
                     dtype=float,
                 )
+            T_world_wrist = np.eye(4, dtype=float)
+            T_world_wrist[:3, :3] = R_world
+            T_world_wrist[:3, 3] = p_world
             poses.append(PoseStamped.from_matrix(T_world_wrist, frame=world.root))
         return poses
 
-    def _make_tool_wrist_poses(self, points, tip_offset, tool_cfg):
-        print(f"tool_cfg={tool_cfg}, tip_offset={tip_offset}")
-        return self.make_tool_wrist_poses_for_world(
-            points, self.world, tip_offset, tool_cfg
-        )
 
     def execute(self) -> None:
         seq = self._build_sequence()
-        points = self._sample_points(seq)
+        _, points, _ = seq.sample(frame=self.container.global_pose.to_np(), dt=self.dt)
+
         tool_cfg = get_tool_config(self.tool_name)
         tip_offset = self._resolve_tip_offset()
 
-        poses = self._make_tool_wrist_poses(points, tip_offset, tool_cfg)
+        poses = self.make_tool_wrist_poses_for_world(
+            points, self.world, tip_offset, tool_cfg
+        )
+
+
         SequentialPlan(
             self.context,
             MoveTCPWaypointsMotion(
@@ -460,7 +308,7 @@ class MixingAction(GeneralizedActionPlan):
         cls,
         container: Union[Iterable[Body], Body],
         arm: Union[Iterable[Arms], Arms],
-        tool_name: Union[Iterable[str], str] = "whisk",
+        tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
         tool_body: Union[Iterable[Body], Body] = None,
         tool_tip_offset: Union[Iterable[Iterable[float]], Iterable[float]] = None,
         dt: Union[Iterable[float], float] = 0.01,
@@ -512,19 +360,12 @@ class WipingAction(GeneralizedActionPlan):
         )
         return MotionSequence([segment])
 
-    def _sample_points(self, seq):
-        pos = self.target_pose.pose.position
-        base_pose = Pose(R=np.eye(3, dtype=float), p=[pos.x, pos.y, pos.z])
-        prov = FixedFrameProvider(base_pose)
-        _, points, _ = seq.sample(prov, dt=self.dt)
-        return points
-
     @classmethod
     def description(
         cls,
         target_pose: Union[Iterable[PoseStamped], PoseStamped],
         arm: Union[Iterable[Arms], Arms],
-        tool_name: Union[Iterable[str], str] = "whisk",
+        tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
         tool_body: Union[Iterable[Body], Body] = None,
         tool_tip_offset: Union[Iterable[Iterable[float]], Iterable[float]] = None,
         dt: Union[Iterable[float], float] = 0.01,
@@ -545,58 +386,6 @@ class WipingAction(GeneralizedActionPlan):
         )
 
 
-@dataclass
-class SimpleMoveTCPsAction(ActionDescription):
-    """
-    Park the arms of the robot.
-    """
-
-    target_locations: list[PoseStamped]
-
-    arm: Arms
-    """
-    Entry from the enum for which arm should be parked.
-    """
-
-    def execute(self) -> None:
-        SequentialPlan(
-                self.context,
-                MoveTCPWaypointsMotion(
-                    self.target_locations,
-                    self.arm,
-                    allow_gripper_collision=True,
-                )
-            ).perform()
-
-
-    def validate(
-        self,
-        result: Optional[Any] = None,
-        max_wait_time: timedelta = timedelta(seconds=2),
-    ):
-        pass
-
-    @classmethod
-    def description(
-        cls,
-        target_locations: Union[Iterable[list[PoseStamped]], list[PoseStamped]],
-        arm: Union[Iterable[Arms], Arms],
-    ) -> PartialDesignator[Type[SimpleMoveTCPsAction]]:
-        if isinstance(target_locations, list) and (
-            len(target_locations) == 0
-            or all(isinstance(pose, PoseStamped) for pose in target_locations)
-        ):
-            normalized_target_locations = [target_locations]
-        else:
-            normalized_target_locations = target_locations
-        return PartialDesignator(
-            cls, target_locations=normalized_target_locations, arm=arm
-        )
-
-
-SimplePouringActionDescription = SimplePouringAction.description
-SimpleMoveTCPActionDescription = SimpleMoveTCPAction.description
-SimpleMoveTCPsActionDescription = SimpleMoveTCPsAction.description
 
 MixingActionDescription = MixingAction.description
 WipingActionDescription = WipingAction.description

@@ -8,11 +8,11 @@ if os.environ.get("DISPLAY"):
 import matplotlib.pyplot as plt
 
 from demos.thesis.simulation_setup import add_box, BoxSpec
-from demos.thesis_new.frame_provider import WorldTransformFrameProvider
-from demos.thesis_new.geometry_utils import aligned_plane_frame
-from demos.thesis_new.motion_models import Pose, FixedFrameProvider
-from demos.thesis_new.motion_presets import build_default_sequence, build_container_sequence
-from demos.thesis_new.motion_profiles import (
+from demos.thesis_new.thesis_math.frame_provider import WorldTransformFrameProvider
+from demos.thesis_new.old.geometry_utils import aligned_plane_frame
+from demos.thesis_new.thesis_math.motion_models import Pose, FixedFrameProvider
+from demos.thesis_new.thesis_math.motion_presets import build_default_sequence, build_container_sequence
+from demos.thesis_new.thesis_math.motion_profiles import (
     ShearProfile,
     SpiralProfile,
     SweepProfile,
@@ -21,7 +21,7 @@ from demos.thesis_new.motion_profiles import (
     planar_sweep_x,
     sample_local_curve,
 )
-from demos.thesis_new.world_utils import (
+from demos.thesis_new.thesis_math.world_utils import (
     try_get_body,
     make_identity_pose_stamped,
     Rp_from_spatial,
@@ -37,7 +37,7 @@ def _setup_world_with_bowl():
     world = setup_world()
     bowl = STLParser(
         os.path.join(
-            os.path.dirname(__file__), "..", "..", "resources", "objects", "bowl.stl"
+            os.path.dirname(__file__), "../..", "..", "resources", "objects", "bowl.stl"
         )
     ).parse()
     with world.modify_world():

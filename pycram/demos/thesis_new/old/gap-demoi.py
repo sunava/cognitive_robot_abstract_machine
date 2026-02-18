@@ -1,20 +1,12 @@
 import os
 
 import rclpy
-from black.nodes import parent_type
 
 from demos.thesis.simulation_setup import add_box, BoxSpec
-from demos.thesis_new.frame_provider import WorldTransformFrameProvider
-from demos.thesis_new.motion_presets import build_default_sequence, build_container_sequence
-from demos.thesis_new.motion_models import Pose, FixedFrameProvider
-from demos.thesis_new.rviz import MotionSequenceRviz
-from demos.thesis_new.world_utils import try_get_body, make_identity_pose_stamped, body_local_aabb
 from pycram.datastructures.dataclasses import Context
-from pycram.datastructures.enums import Arms
-from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
 from pycram.motion_executor import simulated_robot
-from pycram.robot_plans import MoveTorsoActionDescription, MoveTCPMotion, SimpleMoveTCPAction
+from pycram.robot_plans import MoveTorsoActionDescription
 from pycram.testing import setup_world
 from rclpy.duration import Duration as RclpyDuration
 from rclpy.time import Time
@@ -26,12 +18,10 @@ from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
 )
 from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
-from semantic_digital_twin.robots.abstract_robot import Arm
 from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
-from semantic_digital_twin.world_description.geometry import Scale
 
 
 def _setup_world():
@@ -40,7 +30,7 @@ def _setup_world():
 
     bowl = STLParser(
         os.path.join(
-            os.path.dirname(__file__), "..", "..", "resources", "objects", "bowl.stl"
+            os.path.dirname(__file__), "../..", "..", "resources", "objects", "bowl.stl"
         )
     ).parse()
 
@@ -113,7 +103,7 @@ def main():
     with world.modify_world():
         whisk = STLParser(
             os.path.join(
-                os.path.dirname(__file__), "..", "..", "resources", "pycram_object_gap_demo", "whisk.stl"
+                os.path.dirname(__file__), "../..", "..", "resources", "pycram_object_gap_demo", "whisk.stl"
             )
         ).parse()
         robot_tip=world.get_body_by_name("r_gripper_tool_frame")

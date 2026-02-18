@@ -13,7 +13,7 @@ from primitives.material_transfer import (
     compile_boundary_discharge,
     compile_boundary_shake,
 )
-from demos.thesis_new.trajectory_plotter import TrajectoryPlotter
+from demos.thesis_new.visual.trajectory_plotter import TrajectoryPlotter
 
 
 @dataclass(frozen=True)

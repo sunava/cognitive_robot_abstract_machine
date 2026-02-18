@@ -60,7 +60,49 @@ class MotionSequenceRviz:
         alpha=1.0,
         republish_hz=2.0,
     ):
-        """Publish a phase sequence as RViz line markers."""
+        """
+        Initialization method of the MotionSequenceRviz class.
+
+        This method initializes a MotionSequenceRviz object with attributes related
+        to markers' visualization in RViz. It subscribes to a specific ROS topic,
+        sets up a publisher for MarkerArray messages, and optionally starts a timer
+        to regularly republish the markers. The input data for markers, including
+        their positions, ids, and visualization properties (such as line width
+        and transparency), are configured through the parameters.
+
+        Raises
+        ------
+        ValueError
+            If the `node` parameter is not provided because the MotionSequenceRviz
+            class requires a ROS node to operate.
+
+        Parameters
+        ----------
+        P : numpy.ndarray
+            A NumPy array representing the set of 3D points for visualization.
+            It must have a shape (-1, 3) indicating that it's a list of XYZ
+            coordinates.
+        phase_id : numpy.ndarray, optional
+            An optional NumPy array of integers representing IDs associated with
+            the phases of the points. Default is None.
+        frame_id : str, optional
+            The coordinate frame in which the markers are defined. Defaults to "map".
+        topic : str, optional
+            The ROS topic on which MarkerArray messages will be published. Defaults
+            to "phase_sequence_markers".
+        node : Any
+            The ROS node used to create the MarkerArray publisher and other required
+            functionality. This must be provided explicitly.
+        line_width : float, optional
+            The width of the lines between points, used for visualization. Defaults
+            to 0.01.
+        alpha : float, optional
+            The transparency of the markers, defined between 0 (completely
+            transparent) and 1 (fully opaque). Defaults to 1.0.
+        republish_hz : float, optional
+            Frequency in Hz for republishing markers to the topic. If None or set to
+            a non-positive value, the markers are not republished. Defaults to 2.0.
+        """
         self.P = np.asarray(P, dtype=float).reshape(-1, 3)
         self.phase_id = (
             None if phase_id is None else np.asarray(phase_id, dtype=int).reshape(-1)

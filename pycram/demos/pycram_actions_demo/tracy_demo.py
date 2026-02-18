@@ -1,49 +1,25 @@
-import logging
 import os
-from typing import Optional
 
 import numpy as np
 
 import rclpy
 
-from demos.thesis.simulation_setup import add_box, BoxSpec
-from demos.thesis_new.frame_provider import WorldTransformFrameProvider
-from demos.thesis_new.motion_presets import build_default_sequence, build_container_sequence
-from demos.thesis_new.motion_models import Pose, FixedFrameProvider
-from demos.thesis_new.rviz import MotionSequenceRviz
-from demos.thesis_new.tool_motion import (
-    get_tool_config,
-    make_tool_wrist_poses,
-    tip_offset_from_body,
-)
-from demos.thesis_new.world_utils import try_get_body, make_identity_pose_stamped, body_local_aabb
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
 from pycram.datastructures.pose import PoseStamped
-from pycram.language import SequentialPlan, logger
+from pycram.language import SequentialPlan
 from pycram.motion_executor import simulated_robot
-from pycram.robot_plans import MoveTorsoActionDescription, MoveTCPMotion, SimpleMoveTCPAction, MixingActionDescription, \
-    WipingActionDescription, SimpleMoveTCPActionDescription, SimpleMoveTCPsActionDescription
-from pycram.testing import setup_world, _build_package_resolver
+from pycram.robot_plans import SimpleMoveTCPActionDescription
 from rclpy.duration import Duration as RclpyDuration
 from rclpy.time import Time
-from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.adapters.ros.tf_publisher import TFPublisher
 from semantic_digital_twin.adapters.ros.tfwrapper import TFWrapper
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
 )
 from semantic_digital_twin.adapters.urdf import URDFParser
-from semantic_digital_twin.datastructures.definitions import TorsoState
-from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
-from semantic_digital_twin.robots.abstract_robot import Arm
-from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.robots.tracy import Tracy
-from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Milk
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
-from semantic_digital_twin.world import World
-from semantic_digital_twin.world_description.connections import FixedConnection, OmniDrive
-from semantic_digital_twin.world_description.geometry import Scale, Color
 
 
 def tracy_world():
