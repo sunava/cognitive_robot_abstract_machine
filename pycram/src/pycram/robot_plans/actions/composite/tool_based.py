@@ -256,12 +256,19 @@ class GeneralizedActionPlan(ActionDescription):
         poses = self.make_tool_wrist_poses_for_world(
             points, self.world, tip_offset, tool_cfg
         )
-
+        temporary_poses = []
+        for p in np.asarray(points):
+            pose_t = PoseStamped.from_list(
+                position=[float(p[0]), float(p[1]), float(p[2])],
+                orientation=[0.0, 0.0, 0.0, 1.0],  # Identity
+                frame=self.world.root,  # wichtig: points sind hier Weltkoordinaten
+            )
+            temporary_poses.append(pose_t)
 
         SequentialPlan(
             self.context,
             MoveTCPWaypointsMotion(
-                poses,
+                temporary_poses,
                 self.arm,
                 allow_gripper_collision=True,
             ),
