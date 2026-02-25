@@ -63,7 +63,7 @@ class PickUp(Goal):
     # root_link: KinematicStructureEntity = field(kw_only=True)
     # NOTE: Pickup should be split, meaning grabbing first and then separately retracting
     # because after grasping the object it should get attached to the tool frame in semdt
-    manipulator: ParallelGripper = field(kw_only=True)  # TODO ParallelGripper instead
+    manipulator: ParallelGripper = field(kw_only=True)
     object_geometry: Body = field(kw_only=True)
     ft: bool = field(kw_only=True, default=False)
     gripper_vertical: Optional[bool] = field(default=True, kw_only=True)
@@ -76,9 +76,10 @@ class PickUp(Goal):
             gripper_vertical=self.gripper_vertical,
             gripper_width=HSR_GRIPPER_WIDTH,
         )
+        # TODO: cleanup script of open and closing, since it doesnt happen here
         self.sequence = Sequence(
             [
-                OpenHand(manipulator=self.manipulator),
+                # OpenHand(manipulator=self.manipulator),
                 PreGraspPose(
                     manipulator=self.manipulator,
                     object_geometry=self.object_geometry,
@@ -91,7 +92,7 @@ class PickUp(Goal):
                     gripper_width=HSR_GRIPPER_WIDTH,
                     grasp_magic=grasp_magic,
                 ),
-                CloseHand(manipulator=self.manipulator, ft=self.ft),
+                # CloseHand(manipulator=self.manipulator, ft=self.ft),
                 PullUp(manipulator=self.manipulator, ft=self.ft),
                 # Retracting(manipulator=self.manipulator)
             ]

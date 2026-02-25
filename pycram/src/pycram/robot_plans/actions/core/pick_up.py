@@ -11,6 +11,7 @@ from semantic_digital_twin.datastructures.definitions import GripperState
 from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.world_description.world_entity import Body
 from ...motions.gripper import MoveGripperMotion, MoveTCPMotion
+from ...motions.pick_up import PickupMotion
 from ....config.action_conf import ActionConfig
 from ....datastructures.enums import (
     Arms,
@@ -67,14 +68,19 @@ class ReachAction(ActionDescription):
             self.target_pose, self.object_designator, reverse=self.reverse_reach_order
         )
 
+        # TODO implement pickup
         SequentialPlan(
             self.context,
-            MoveTCPMotion(target_pre_pose, self.arm, allow_gripper_collision=False),
-            MoveTCPMotion(
-                target_pose,
-                self.arm,
-                allow_gripper_collision=False,
-                movement_type=MovementType.CARTESIAN,
+            # MoveTCPMotion(target_pre_pose, self.arm, allow_gripper_collision=False),
+            # MoveTCPMotion(
+            #     target_pose,
+            #     self.arm,
+            #     allow_gripper_collision=False,
+            #     movement_type=MovementType.CARTESIAN,
+            # ),
+            PickupMotion(
+                manipulator=self.grasp_description.manipulator,
+                object_geometry=self.object_designator,
             ),
         ).perform()
 
