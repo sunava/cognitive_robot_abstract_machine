@@ -1,7 +1,11 @@
+from typing import Any
+
 import rclpy
 from rclpy.logging import get_logger
 
 import semantic_digital_twin.exceptions
+
+from demos.pycram_suturo_demos.old.hsrb_simple_pouring_real import perceived_objects
 from giskardpy.executor import Executor, SimulationPacer
 from giskardpy.motion_statechart.goals.pick_up import PickUp
 from giskardpy.motion_statechart.graph_node import EndMotion
@@ -18,6 +22,7 @@ from pycram.robot_plans import (
     PickUpAction,
     PickUpActionDescription,
     PickupMotion,
+    NavigateActionDescription,
 )
 from demos.pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
     robot_setup,
@@ -37,9 +42,6 @@ SIMULATED: bool = True
 with_perception: bool = False
 object_name: str = ""
 
-robot_with_perception: bool = not SIMULATED and with_perception
-robot_with_object_search: bool = not object_name == ""
-
 robot_type: ExecutionEnvironment = simulated_robot if SIMULATED else real_robot
 
 result = robot_setup(SIMULATED)
@@ -51,6 +53,7 @@ hsrb_world, robot_view, context, manipulator = (
     result.context,
     result.manipulator,
 )
+
 
 grasp: GraspDescription = GraspDescription(
     approach_direction=ApproachDirection.FRONT,
@@ -75,10 +78,16 @@ if SIMULATED:
     object_name: str = "milk.stl"
     object_to_pickup = try_get_object_to_pickup(hsrb_world, object_name)
 else:
-    # navigate to location
-    # spawn percieved objects
-    # search and pickup
+    if with_perception:
+        from demos.pycram_suturo_demos.helper_methods_and_useful_classes.object_creation import (
+            perceive_and_spawn_all_objects,
+        )
+
+        perceived_objects: dict[Any, Any] = perceive_and_spawn_all_objects(hsrb_world)
+        logger.info(f"perceived following objects: '{perceived_objects}'")
     object_to_pickup = try_get_object_to_pickup(hsrb_world, object_name)
+logger.info(f"object_to_Pickup: '{object_to_pickup}'")
+
 
 # -------------------------------- PLANNING
 if object_to_pickup is not None:
