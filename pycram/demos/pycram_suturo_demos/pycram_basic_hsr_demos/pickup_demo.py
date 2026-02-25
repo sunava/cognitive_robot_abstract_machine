@@ -30,6 +30,7 @@ from semantic_digital_twin.robots.hsrb import HSRB
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.world_entity import Body
 
+# ------------------------ BASE-DEFINITIONS
 logger = get_logger(__name__)
 
 SIMULATED: bool = True
@@ -69,12 +70,17 @@ def try_get_object_to_pickup(world, object_name_method) -> Body | None:
     return object_to_pickup_method
 
 
+# -------------------------------- DETERMIN OBJECT_TO_PICKUP
 if SIMULATED:
     object_name: str = "milk.stl"
     object_to_pickup = try_get_object_to_pickup(hsrb_world, object_name)
 else:
+    # navigate to location
+    # spawn percieved objects
+    # search and pickup
     object_to_pickup = try_get_object_to_pickup(hsrb_world, object_name)
 
+# -------------------------------- PLANNING
 if object_to_pickup is not None:
     plan = SequentialPlan(
         context,
@@ -89,43 +95,8 @@ else:
         ParkArmsActionDescription(Arms.BOTH),
     )
 
-
-# def trymebby():
-#     msc = MotionStatechart()
-#
-#     pickup = PickUp(manipulator=manipulator, object_geometry=object_to_pickup)
-#     msc.add_node(pickup)
-#     msc.add_node(EndMotion.when_true(pickup))
-#     kin_sim = Executor(
-#         world=World(),
-#         pacer=SimulationPacer(real_time_factor=2.0),
-#         controller_config=QPControllerConfig.create_with_simulation_defaults(),
-#     )
-#     kin_sim.compile(msc)
-#     kin_sim.tick_until_end(timeout=1000)
-#     rclpy.shutdown()
-
-# plan = SequentialPlan(
-#     context,
-#     # MoveTCPMotion(target_pre_pose, self.arm, allow_gripper_collision=False),
-#     # MoveTCPMotion(
-#     #     target_pose,
-#     #     self.arm,
-#     #     allow_gripper_collision=False,
-#     #     movement_type=MovementType.CARTESIAN,
-#     # ),
-#     PickUpActionDescription(
-#         manipulator=manipulator,
-#         object_geometry=object_to_pickup,
-#     ),
+# ------------------------ EXECUTION
 with simulated_robot:
     plan.perform()
 
 rclpy.shutdown()
-
-# ------------------------------------------------
-print(robot_view.base)
-print(
-    HomogeneousTransformationMatrixToRos2Converter.convert(robot_view.root.global_pose)
-)
-print(PoseStamped.from_spatial_type(robot_view.root.global_pose))
