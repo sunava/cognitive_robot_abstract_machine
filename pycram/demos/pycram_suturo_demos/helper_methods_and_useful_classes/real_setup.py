@@ -1,7 +1,6 @@
 import threading
 from typing import Optional, Any
 
-import time
 from dataclasses import dataclass, field
 
 import rclpy
@@ -12,13 +11,8 @@ from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
 )
 from semantic_digital_twin.robots.abstract_robot import Manipulator
-from ..helper_methods_and_useful_classes.object_creation import (
-    perceive_and_spawn_all_objects,
-)
 from suturo_resources.suturo_map import load_environment
 
-import semantic_digital_twin.exceptions
-from pycram.datastructures import dataclasses
 from pycram.datastructures.dataclasses import Context
 from semantic_digital_twin.adapters.ros.messages import LoadModel
 from semantic_digital_twin.adapters.ros.world_fetcher import fetch_world_from_service
@@ -37,7 +31,6 @@ import numpy as np
 from semantic_digital_twin.world_description.geometry import Box, Scale
 from semantic_digital_twin.world_description.shape_collection import ShapeCollection
 from semantic_digital_twin.world_description.world_entity import Body
-from ..pycram_basic_hsr_demos.pickup_demo import manipulator
 
 logger = get_logger(__name__)
 
@@ -48,8 +41,8 @@ class SetupResult:
     robot_view: HSRB
     context: Context
     manipulator: Manipulator
-    viz: Optional[object]
     node: Any
+    viz: Optional[object] = None
 
 
 def setup_ros_node(node_name: str = "pycram_node"):
@@ -64,20 +57,26 @@ def setup_ros_node(node_name: str = "pycram_node"):
     thread.start()
 
     # This loads toya from the database - it is needed if u do not want to restart giskard constantly
-    mrs = ModelReloadSynchronizer(node=node, world=None, session=None)
-    message = LoadModel(primary_key=1, meta_data=mrs.meta_data)
-    mrs.publish(message)
+    # mrs = ModelReloadSynchronizer(node=node, world=None, session=None)
+    # message = LoadModel(primary_key=1, meta_data=mrs.meta_data)
+    # mrs.publish(message)
 
     hsrb_world = fetch_world_from_service(node)
     model_sync = ModelSynchronizer(world=hsrb_world, node=node)
     state_sync = StateSynchronizer(world=hsrb_world, node=node)
 
+    env_world = load_environment()
+    with hsrb_world.modify_world():
+        hsrb_world.merge_world(env_world)
     robot_view = hsrb_world.get_semantic_annotations_by_type(HSRB)[0]
 
     manipulator: Manipulator = next(iter(robot_view.manipulators))
 
+    # Context
     context = Context(
-        hsrb_world, hsrb_world.get_semantic_annotations_by_type(HSRB)[0], ros_node=node
+        hsrb_world,
+        robot_view,
+        ros_node=node,
     )
 
     return node, hsrb_world, robot_view, context, manipulator
@@ -144,7 +143,6 @@ def world_setup_with_test_objects(
             hsrb_world.get_body_by_name("milk")
         except Exception:
             test_spawning(hsrb_world)
-
     try:
         viz = try_make_viz(hsrb_world, node)
         viz.with_tf_publisher()

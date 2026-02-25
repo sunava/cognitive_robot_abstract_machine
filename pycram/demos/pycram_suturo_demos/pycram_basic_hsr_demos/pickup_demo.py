@@ -5,40 +5,24 @@ from rclpy.logging import get_logger
 
 import semantic_digital_twin.exceptions
 
-from demos.pycram_suturo_demos.old.hsrb_simple_pouring_real import perceived_objects
-from giskardpy.executor import Executor, SimulationPacer
-from giskardpy.motion_statechart.goals.pick_up import PickUp
-from giskardpy.motion_statechart.graph_node import EndMotion
-from giskardpy.motion_statechart.monitors.payload_monitors import CountSeconds
-from giskardpy.motion_statechart.motion_statechart import MotionStatechart
-from giskardpy.qp.qp_controller_config import QPControllerConfig
 from pycram.datastructures.enums import Arms, VerticalAlignment, ApproachDirection
 from pycram.datastructures.grasp import GraspDescription
-from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
 from pycram.motion_executor import real_robot, simulated_robot, ExecutionEnvironment
 from pycram.robot_plans import (
     ParkArmsActionDescription,
-    PickUpAction,
     PickUpActionDescription,
-    PickupMotion,
-    NavigateActionDescription,
 )
-from demos.pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
+from pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
     robot_setup,
 )
-from semantic_digital_twin.adapters.ros import (
-    HomogeneousTransformationMatrixToRos2Converter,
-)
 from semantic_digital_twin.robots.abstract_robot import Manipulator, ParallelGripper
-from semantic_digital_twin.robots.hsrb import HSRB
-from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.world_entity import Body
 
 # ------------------------ BASE-DEFINITIONS
 logger = get_logger(__name__)
 
-SIMULATED: bool = True
+SIMULATED: bool = False
 with_perception: bool = False
 object_name: str = ""
 
