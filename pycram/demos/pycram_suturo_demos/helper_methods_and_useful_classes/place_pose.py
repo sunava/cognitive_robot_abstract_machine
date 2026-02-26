@@ -24,7 +24,6 @@ def get_poses_for_object_on_body(
             .height
             / 2
         )
-        - 0.03
         if link_is_center_link
         else 0
     )
