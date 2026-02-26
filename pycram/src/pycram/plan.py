@@ -103,6 +103,7 @@ class Plan:
         self.context = context
         self.world = context.world
         self.robot = context.robot
+        self.ros_node = context.ros_node
         self.super_plan: Plan = context.super_plan
 
         self.add_node(self.root)

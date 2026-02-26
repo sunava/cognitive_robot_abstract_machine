@@ -11,7 +11,7 @@ from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
 from pycram.motion_executor import simulated_robot
 from pycram.robot_plans import MoveTorsoActionDescription, MixingActionDescription, \
-    ParkArmsActionDescription
+    ParkArmsActionDescription, NavigateActionDescription
 
 from pycram.testing import setup_world
 from rclpy.duration import Duration as RclpyDuration
@@ -26,7 +26,8 @@ from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
-from semantic_digital_twin.world_description.geometry import Color
+from semantic_digital_twin.world_description.geometry import Color, Scale
+
 
 def _setup_world():
     world = setup_world()
@@ -36,6 +37,29 @@ def _setup_world():
             os.path.dirname(__file__), "..", "..", "resources", "objects", "bowl.stl"
         )
     ).parse()
+    bowl.root.name.name = "bowl_small"
+
+    bowl_middle = STLParser(
+        os.path.join(
+            os.path.dirname(__file__), "..", "..", "resources", "objects", "bowl.stl"
+        )
+    ).parse()
+    bowl_middle.root.name.name = "bowl_middle"
+    for shape in bowl_middle.root.visual.shapes:
+        shape.scale = Scale(x=1.3, y=1.3, z=1.3)
+    for shape in bowl_middle.root.collision.shapes:
+        shape.scale = Scale(x=1.3, y=1.3, z=1.3)
+
+    bowl_big =STLParser(
+        os.path.join(
+            os.path.dirname(__file__), "..", "..", "resources", "objects", "bowl.stl"
+        )
+    ).parse()
+    bowl_big.root.name.name = "bowl_big"
+    for shape in bowl_big.root.visual.shapes:
+        shape.scale = Scale(x=1.5, y=1.5, z=1.5)
+    for shape in bowl_big.root.collision.shapes:
+        shape.scale = Scale(x=1.5, y=1.5, z=1.5)
 
     whisk = STLParser(
         os.path.join(
@@ -72,6 +96,18 @@ def _setup_world():
                 2.4, 2.2, 1, reference_frame=world.root
             ),
         )
+        world.merge_world_at_pose(
+            bowl_middle,
+            HomogeneousTransformationMatrix.from_xyz_quaternion(
+                2.4, 2.6, 1, reference_frame=world.root
+            ),
+        )
+        world.merge_world_at_pose(
+            bowl_big,
+            HomogeneousTransformationMatrix.from_xyz_quaternion(
+                2.4, 3, 1, reference_frame=world.root
+            ),
+        )
     return world
 
 
@@ -99,20 +135,19 @@ def main():
 
     whisk_body = try_get_body(world, "whisk.stl")
     sponge_body = try_get_body(world, "sponge")
-    bowl_body = try_get_body(world, "bowl.stl")
+    bowl_body = try_get_body(world, "bowl_big")
 
 
     clean_up_pose=PoseStamped()
     clean_up_pose.pose.position.x=2.26
     clean_up_pose.pose.position.y=2.59
     clean_up_pose.pose.position.z=0.95
-
-
-
+    context.ros_node = node
     plan = SequentialPlan(
         context,
         ParkArmsActionDescription(Arms.BOTH),
         MoveTorsoActionDescription(TorsoState.HIGH),
+
         MixingActionDescription(container=bowl_body, arm=Arms.RIGHT, tool_body=whisk_body),
         # WipingActionDescription(
         #     target_pose=clean_up_pose,
@@ -125,6 +160,7 @@ def main():
 
     with simulated_robot:
         plan.perform()
+
 
 if __name__ == "__main__":
     main()

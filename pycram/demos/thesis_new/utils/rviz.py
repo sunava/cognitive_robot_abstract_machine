@@ -175,3 +175,115 @@ class MotionSequenceRviz:
                 start = end
 
         self.pub.publish(arr)
+
+
+def publish_points_sequence(
+    node,
+    points,
+    frame_id="map",
+    topic="points_sequence",
+    line_width=0.01,
+    color=(1.0, 1.0, 1.0),
+    alpha=1.0,
+    phase_id=None,
+    republish_hz=None,
+):
+    """
+    Publish a single LINE_STRIP marker for a sequence of points.
+
+    Parameters
+    ----------
+    node : Any
+        ROS node used to create the publisher.
+    points : array-like
+        Nx3 points in the given frame.
+    frame_id : str
+        Coordinate frame for the marker.
+    topic : str
+        Topic name for the MarkerArray.
+    line_width : float
+        Line width for the strip.
+    color : tuple
+        RGB tuple with values in [0, 1].
+    alpha : float
+        Transparency in [0, 1].
+    phase_id : array-like, optional
+        Per-point phase ids; consecutive equal ids are colored as segments.
+    """
+    if node is None:
+        return None
+
+    pts = _as_points(points)
+    phase_id_arr = (
+        None if phase_id is None else np.asarray(phase_id, dtype=int).reshape(-1)
+    )
+    topic = _norm_topic(topic)
+
+    pub = node.create_publisher(MarkerArray, topic, 10)
+
+    # Keep publisher (and optional timer) alive by storing on the node.
+    if not hasattr(node, "_rviz_publishers"):
+        node._rviz_publishers = []
+
+    arr = MarkerArray()
+    markers = []
+
+    if phase_id_arr is None:
+        m = Marker()
+        m.header.frame_id = str(frame_id)
+        m.ns = "points_sequence"
+        m.id = 0
+        m.type = Marker.LINE_STRIP
+        m.action = Marker.ADD
+        m.pose.orientation.w = 1.0
+        m.scale.x = float(line_width)
+        m.color = _color(
+            float(color[0]), float(color[1]), float(color[2]), float(alpha)
+        )
+        m.points = pts
+        markers.append(m)
+    else:
+        start = 0
+        mid = 0
+        while start < len(pts):
+            pid = int(phase_id_arr[start])
+            end = start + 1
+            while end < len(pts) and int(phase_id_arr[end]) == pid:
+                end += 1
+
+            m = Marker()
+            m.header.frame_id = str(frame_id)
+            m.ns = "points_sequence_phase"
+            m.id = mid
+            m.type = Marker.LINE_STRIP
+            m.action = Marker.ADD
+            m.pose.orientation.w = 1.0
+            m.scale.x = float(line_width)
+            m.color = _phase_color(pid, a=float(alpha))
+            m.points = pts[start:end]
+            markers.append(m)
+
+            mid += 1
+            start = end
+
+    # Clear previously published markers in this namespace before adding new ones.
+    clear = Marker()
+    clear.action = Marker.DELETEALL
+    arr.markers.append(clear)
+    arr.markers.extend(markers)
+
+    def _publish_once():
+        now = node.get_clock().now().to_msg()
+        for marker in markers:
+            marker.header.stamp = now
+        pub.publish(arr)
+
+    _publish_once()
+
+    timer = None
+    if republish_hz is not None and float(republish_hz) > 0.0:
+        period = 1.0 / float(republish_hz)
+        timer = node.create_timer(period, _publish_once)
+
+    node._rviz_publishers.append((pub, timer))
+    return pub

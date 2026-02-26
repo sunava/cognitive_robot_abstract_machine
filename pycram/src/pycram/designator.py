@@ -6,6 +6,8 @@ from abc import ABC
 from dataclasses import dataclass, field
 from typing import get_type_hints
 
+import rclpy
+
 from krrood.entity_query_language.entity import entity, contains, variable
 from krrood.entity_query_language.entity_result_processors import an, the
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
@@ -116,7 +118,7 @@ class DesignatorDescription:
 
     @property
     def context(self) -> Context:
-        return Context(self.world, self.robot_view, self.plan)
+        return Context(world=self.world, robot=self.robot_view, super_plan=self.plan, ros_node=self.plan_node.plan.context.ros_node)
 
     def __init__(self):
         """

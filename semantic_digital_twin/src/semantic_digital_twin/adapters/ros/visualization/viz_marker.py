@@ -38,7 +38,7 @@ class VizMarkerPublisher(ModelChangeCallback):
     Whether to use the visual shapes of the bodies or the collision shapes.
     """
 
-    alpha: float = field(kw_only=True, default=0.7)
+    alpha: float = field(kw_only=True, default=1.0)
     """
     Marker transparency in [0.0, 1.0]. 0.0 is fully transparent.
     """

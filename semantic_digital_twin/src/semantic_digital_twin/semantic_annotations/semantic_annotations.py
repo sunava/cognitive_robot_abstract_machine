@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, Self, Tuple
 
@@ -10,6 +10,7 @@ from typing_extensions import List, Type
 
 from krrood.ormatic.utils import classproperty
 from krrood.symbolic_math import symbolic_math
+from pycram.datastructures.enums import AxisIdentifier
 from .mixins import (
     HasSupportingSurface,
     HasRootRegion,
@@ -984,3 +985,42 @@ class LiquidCap(HasRootBody):
     """
     A liquid cap.
     """
+
+
+@dataclass(eq=False)
+class Tool(HasRootBody, ABC):
+    @abstractmethod
+    def tool_alignment(self) -> AxisIdentifier:
+        pass
+
+@dataclass(eq=False)
+class ToolWithHandle(Tool, HasHandle, ABC):
+
+    @property
+    def tip(self)  -> Body:
+        return self.root
+
+
+@dataclass(eq=False)
+class Whisk(ToolWithHandle):
+
+    def tool_alignment(self) -> AxisIdentifier:
+        return AxisIdentifier.X
+
+@dataclass(eq=False)
+class Knife(ToolWithHandle):
+    def tool_alignment(self) -> AxisIdentifier:
+        return AxisIdentifier.Z
+
+    @classmethod
+    def from_world(cls, world: World) -> Self:
+        obj = cls(root=world.get_body_by_name())
+        handle = world.get_body_by_name()
+        obj.add_handle(Handle(root=handle))
+        return obj
+
+
+@dataclass(eq=False)
+class Sponge(Tool):
+    def tool_alignment(self) -> AxisIdentifier:
+        return AxisIdentifier.Y

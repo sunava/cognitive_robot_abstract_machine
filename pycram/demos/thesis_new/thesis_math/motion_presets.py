@@ -41,11 +41,11 @@ def build_default_sequence():
 
 
 def _duration_scale_from_body(
-    body, reference_size=0.10, debug=False, use_visual=False, apply_shape_scale=False
+    body, reference_size=0.10, debug=False, apply_shape_scale=False
 ):
     """Compute a scaling factor from the body's AABB size."""
     mins, maxs = body_local_aabb(
-        body, use_visual=use_visual, apply_shape_scale=apply_shape_scale
+        body, apply_shape_scale=apply_shape_scale
     )
     extents = maxs - mins
     diag = float(np.linalg.norm(extents))
@@ -69,7 +69,7 @@ def build_container_sequence(
 ):
     """Build a 3-phase sequence sized to a bowl-like object."""
     mins, maxs = body_local_aabb(
-        bowl_body, use_visual=use_visual_aabb, apply_shape_scale=apply_shape_scale
+        bowl_body, apply_shape_scale=apply_shape_scale
     )
     size_x = maxs[0] - mins[0]
     size_y = maxs[1] - mins[1]
@@ -84,7 +84,6 @@ def build_container_sequence(
         bowl_body,
         reference_size=reference_size,
         debug=debug,
-        use_visual=use_visual_aabb,
         apply_shape_scale=apply_shape_scale,
     )
     spiral_r1 = 0.9 * radius_xy
@@ -145,4 +144,4 @@ def build_container_sequence(
         ),
     )
 
-    return MotionSequence([phase_spiral_container, phase_shear_container, phase_sweep_container])
+    return MotionSequence([phase_spiral_container])
