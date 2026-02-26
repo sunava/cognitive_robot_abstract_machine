@@ -59,7 +59,7 @@ def perceive_and_spawn_all_objects():
         object_size = perceived_object.shape_size[0].dimensions
         object_pose = perceived_object.pose[0].pose
         object_time = perceived_object.pose[0].header.stamp
-        object_name = f"{perceived_object.type}15"
+        object_name = f"{perceived_object.type}18"
         object_to_spawn = add_box(
             object_name,
             (object_size.x, object_size.y, object_size.z),
@@ -87,7 +87,7 @@ def perceive_and_spawn_all_objects():
 
 perceive_and_spawn_all_objects()
 print(world.bodies)
-object_to_pickup = world.get_body_by_name("muesli_vitalis_box_nutmix15")
+object_to_pickup = world.get_body_by_name("muesli_vitalis_box_nutmix18")
 # object_to_pickup = None
 manipulator: Manipulator = next(iter(robot_view.manipulators))
 manipulator: ParallelGripper

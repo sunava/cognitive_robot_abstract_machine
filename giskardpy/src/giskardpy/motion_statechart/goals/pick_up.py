@@ -30,6 +30,7 @@ from giskardpy.motion_statechart.tasks.cartesian_tasks import (
 from giskardpy.motion_statechart.tasks.joint_tasks import JointPositionList, JointState
 from giskardpy.motion_statechart.tasks.pointing import Pointing
 from giskardpy.motion_statechart.test_nodes.test_nodes import ConstTrueNode
+from giskardpy_ros.ros2 import rospy
 from krrood.symbolic_math.symbolic_math import (
     trinary_logic_not,
     trinary_logic_and,
@@ -411,6 +412,10 @@ class BoxGraspMagic(GraspMagic):
         print(f"Pre grasp point: {pre_grasp_point.to_np()}")
         print(f"-------------------")
 
+        num = 4
+        rospy.node.get_logger().error(
+            f"My log message {pre_grasp_point.to_np()}", once=True
+        )
         cart_pos = CartesianPosition(
             root_link=context.world.root,
             tip_link=tool_frame,
