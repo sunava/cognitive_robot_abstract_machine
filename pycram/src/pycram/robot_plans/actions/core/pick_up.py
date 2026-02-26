@@ -170,6 +170,7 @@ class PickUpAction(ActionDescription):
             ),
             # MoveGripperMotion(motion=GripperState.CLOSE, gripper=self.arm),
         ).perform()
+
         end_effector = ViewManager.get_end_effector_view(self.arm, self.robot_view)
 
         # Attach the object to the end effector
@@ -178,18 +179,18 @@ class PickUpAction(ActionDescription):
                 self.object_designator, end_effector.tool_frame
             )
 
-        _, _, lift_to_pose = self.grasp_description.grasp_pose_sequence(
-            self.object_designator
-        )
-        SequentialPlan(
-            self.context,
-            MoveTCPMotion(
-                lift_to_pose,
-                self.arm,
-                allow_gripper_collision=True,
-                movement_type=MovementType.TRANSLATION,
-            ),
-        ).perform()
+        # _, _, lift_to_pose = self.grasp_description.grasp_pose_sequence(
+        #     self.object_designator
+        # )
+        # SequentialPlan(
+        #     self.context,
+        #     MoveTCPMotion(
+        #         lift_to_pose,
+        #         self.arm,
+        #         allow_gripper_collision=True,
+        #         movement_type=MovementType.TRANSLATION,
+        #     ),
+        # ).perform()
 
     def validate(
         self, result: Optional[Any] = None, max_wait_time: Optional[timedelta] = None
