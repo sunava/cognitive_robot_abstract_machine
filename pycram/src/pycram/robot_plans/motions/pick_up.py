@@ -17,22 +17,16 @@ class PickupMotion(BaseMotion):
     """
 
     # The gripper that will execute the pickup (must be a ParallelGripper)
-    manipulator: ParallelGripper
+    manipulator: ParallelGripper = field(default=None, kw_only=True)
 
     # The world object that should be picked up
-    object_geometry: Body
+    object_geometry: Body = field(default=None, kw_only=True)
 
     # If True, the gripper is kept vertically aligned during the grasp
     # kw_only=True forces this to be passed as a keyword argument
     gripper_vertical: Optional[bool] = field(default=True, kw_only=True)
 
     def perform(self):
-        """
-        Optional hook for additional logic before or after the motion.
-
-        Currently unused because the actual behavior is fully handled
-        by the Giskard motion statechart.
-        """
         return
 
     @property
