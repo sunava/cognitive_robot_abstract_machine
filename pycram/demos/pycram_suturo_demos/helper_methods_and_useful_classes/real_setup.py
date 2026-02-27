@@ -8,7 +8,7 @@ import rclpy
 from rclpy.executors import SingleThreadedExecutor
 import logging
 
-from demos.helper_methods_and_useful_classes.object_creation import (
+from pycram_suturo_demos.helper_methods_and_useful_classes.object_creation import (
     perceive_and_spawn_all_objects,
 )
 from suturo_resources.suturo_map import load_environment
@@ -57,11 +57,6 @@ def setup_ros_node():
     # Start executor in a separate thread
     thread = threading.Thread(target=executor.spin, daemon=True, name="rclpy-executor")
     thread.start()
-
-    # This loads toya from the database - it is needed if u do not want to restart giskard constantly
-    mrs = ModelReloadSynchronizer(node=node, world=None, session=None)
-    message = LoadModel(primary_key=1, meta_data=mrs.meta_data)
-    mrs.publish(message)
 
     hsrb_world = fetch_world_from_service(node)
     model_sync = ModelSynchronizer(world=hsrb_world, node=node)
@@ -126,29 +121,11 @@ def try_make_viz(world):
 
 def world_setup_with_test_objects(
     with_object: bool = field(kw_only=True, default=True),
-    with_perception: bool = field(kw_only=True, default=False),
+    with_perception: bool = field(kw_only=False, default=False),
 ) -> WorldSetup:
     node, hsrb_world, robot_view, context = setup_ros_node()
 
     perceived_objects = {}
-
-    if with_object:
-        try:
-            hsrb_world.get_body_by_name("milk")
-        except Exception:
-            test_spawning(hsrb_world)
-    else:
-        # TODO fix the remove, i think the world merge isnt working yet
-        try:
-            hsrb_world.get_body_by_name("environment").remove_from_world()
-        except Exception:
-            pass
-
-    if with_perception:
-        # Perceive objects and spawn them
-        # TODO: On use change from static milk object, to recognized object, if needed (in method)
-        perceived_objects = perceive_and_spawn_all_objects(hsrb_world)
-        print(perceived_objects)
 
     return WorldSetup(
         world=hsrb_world,
