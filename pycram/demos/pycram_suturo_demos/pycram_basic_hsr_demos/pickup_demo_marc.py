@@ -51,6 +51,7 @@ def perceive_and_spawn_all_objects(hsrb_world: World):
         from pycram.external_interfaces import robokudo
     except ImportError:
         raise ImportError()
+        return {}
     perceived_objects = {}
     perceived_objects_result = robokudo.query_all_objects().res
     for perceived_object in perceived_objects_result:
@@ -141,8 +142,9 @@ else:
 # -------------------------------- PLANNING
 plan = SequentialPlan(
     context,
-    ParkArmsActionDescription(Arms.BOTH),
-    GiskardPickUpActionDescription(object_designator=object_to_pickup, arm=Arms.LEFT),
+    GiskardPickUpActionDescription(
+        object_designator=object_to_pickup, arm=Arms.LEFT, gripper_vertical=True
+    ),
 )
 
 plan2 = SequentialPlan(context, ParkArmsActionDescription(Arms.BOTH))
