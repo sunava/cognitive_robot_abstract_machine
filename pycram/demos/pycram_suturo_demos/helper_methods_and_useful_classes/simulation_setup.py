@@ -159,7 +159,6 @@ def setup_hsrb_in_environment(
     with_viz: bool = True,
     with_objects: bool = field(kw_only=True, default=True),
 ) -> SetupResult:
-    rclpy.init()
     p = paths or default_paths()
 
     node: Any = rclpy.create_node("simulation_setup")

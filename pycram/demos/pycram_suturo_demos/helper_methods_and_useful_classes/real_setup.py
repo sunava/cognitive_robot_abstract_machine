@@ -37,7 +37,6 @@ from semantic_digital_twin.world_description.shape_collection import ShapeCollec
 from semantic_digital_twin.world_description.world_entity import Body
 from test.krrood_test.dataset.example_classes import Node
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -145,8 +144,6 @@ def world_setup_with_test_objects(
     with_perception: bool = field(kw_only=True, default=False),
     with_viz: bool = field(kw_only=True, default=True),
 ) -> SetupResult:
-    rclpy.init()
-
     hsrb_world, robot_view, context, manipulator, node = setup_ros_node()
 
     if with_object:
