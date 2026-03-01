@@ -1,5 +1,3 @@
-from sqlalchemy.testing.plugin.plugin_base import logging
-
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.robots.abstract_robot import ParallelGripper
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
@@ -78,9 +76,10 @@ def perceive_and_spawn_all_objects(hsrb_world: World):
     return perceived_objects
 
 
-def attach_object(manipulator: ParallelGripper, world: World, object_designator: Body):
+def attach_object_to_hsrb(hsrb_world: World, object_designator: Body):
     # Attach the object to the end effector
-    with world.modify_world():
-        world.move_branch_with_fixed_connection(
+    manipulator = hsrb_world.get_semantic_annotations_by_type(ParallelGripper)[0]
+    with hsrb_world.modify_world():
+        hsrb_world.move_branch_with_fixed_connection(
             object_designator, manipulator.tool_frame
         )
