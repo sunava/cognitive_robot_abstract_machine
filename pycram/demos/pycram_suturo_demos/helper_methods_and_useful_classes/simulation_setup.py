@@ -133,8 +133,8 @@ def setup_hsrb_in_environment(
     load_environment: Callable[[], World],
     paths: Optional[WorldSetupPaths] = None,
     milk_xyz_rpy: Tuple[float, float, float, float, float, float] = (
-        0,
-        0,
+        1.2,
+        6.3,
         0.8,
         0.0,
         0.0,
