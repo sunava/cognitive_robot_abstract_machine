@@ -244,7 +244,7 @@ class PlaceMotion(BaseMotion):
     """
     Name of the gripper that should be moved
     """
-    simulated: bool = field(default=False, kw_only=True)
+    simulated: bool = field(default=True, kw_only=True)
     """
     Name of the gripper that should be moved
     """

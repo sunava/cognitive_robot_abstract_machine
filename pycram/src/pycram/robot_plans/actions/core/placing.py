@@ -56,16 +56,16 @@ class PlaceAction(ActionDescription):
         arm = ViewManager.get_arm_view(self.arm, self.robot_view)
         manipulator = arm.manipulator
 
-        previous_pick = self.plan.get_previous_node_by_designator_type(
-            self.plan_node, PickUpAction
-        )
-        previous_grasp = (
-            previous_pick.designator_ref.grasp_description
-            if previous_pick
-            else GraspDescription(
-                ApproachDirection.FRONT, VerticalAlignment.NoAlignment, manipulator
-            )
-        )
+        # previous_pick = self.plan.get_previous_node_by_designator_type(
+        #     self.plan_node, PickUpAction
+        # )
+        # previous_grasp = (
+        #     previous_pick.designator_ref.grasp_description
+        #     if previous_pick
+        #     else GraspDescription(
+        #         ApproachDirection.FRONT, VerticalAlignment.NoAlignment, manipulator
+        #     )
+        # )
 
         SequentialPlan(
             self.context,
@@ -98,11 +98,11 @@ class PlaceAction(ActionDescription):
             self.world.add_connection(connection)
             connection.origin = obj_transform
 
-        _, _, retract_pose = previous_grasp._pose_sequence(
-            self.target_location, self.object_designator, reverse=True
-        )
-
-        SequentialPlan(self.context, MoveTCPMotion(retract_pose, self.arm)).perform()
+        # _, _, retract_pose = previous_grasp._pose_sequence(
+        #     self.target_location, self.object_designator, reverse=True
+        # )
+        #
+        # SequentialPlan(self.context, MoveTCPMotion(retract_pose, self.arm)).perform()
 
     def validate(
         self, result: Optional[Any] = None, max_wait_time: Optional[timedelta] = None
@@ -158,4 +158,100 @@ class PlaceAction(ActionDescription):
         )
 
 
+@dataclass
+class GiskardPlaceAction(ActionDescription):
+    """
+    Places an Object at a position using an arm.
+    """
+
+    object_designator: Body
+    """
+    Object designator_description describing the object that should be place
+    """
+    target_location: PoseStamped
+    """
+    Pose in the world at which the object should be placed
+    """
+    arm: Arms
+    """
+    Arm that is currently holding the object
+    """
+    simulated: bool = field(default=True, kw_only=True)
+    _pre_perform_callbacks = []
+    """
+    List to save the callbacks which should be called before performing the action.
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+
+    def execute(self) -> None:
+        arm = ViewManager.get_arm_view(self.arm, self.robot_view)
+        manipulator = arm.manipulator
+        SequentialPlan(
+            self.context,
+            PlaceMotion(
+                object_designator=self.object_designator,
+                simulated=self.simulated,
+                goal_pose=self.target_location,
+                gripper=manipulator,
+                allow_gripper_collision=False,
+            ),
+        ).perform()
+
+    def validate(
+        self, result: Optional[Any] = None, max_wait_time: Optional[timedelta] = None
+    ):
+        """
+        Check if the object is placed at the target location.
+        """
+        self.validate_loss_of_contact()
+        self.validate_placement_location()
+
+    def validate_loss_of_contact(self):
+        """
+        Check if the object is still in contact with the robot after placing it.
+        """
+        contact_links = self.object_designator.get_contact_points_with_body(
+            World.robot
+        ).get_all_bodies()
+        if contact_links:
+            raise ObjectStillInContact(
+                self.object_designator,
+                contact_links,
+                self.target_location,
+                World.robot,
+                self.arm,
+            )
+
+    def validate_placement_location(self):
+        """
+        Check if the object is placed at the target location.
+        """
+        pose_error_checker = PoseErrorChecker(World.conf.get_pose_tolerance())
+        if not pose_error_checker.is_error_acceptable(
+            self.object_designator.pose, self.target_location
+        ):
+            raise ObjectNotPlacedAtTargetLocation(
+                self.object_designator, self.target_location, World.robot, self.arm
+            )
+
+    @classmethod
+    def description(
+        cls,
+        object_designator: Union[Iterable[Body], Body],
+        target_location: Union[Iterable[PoseStamped], PoseStamped],
+        arm: Union[Iterable[Arms], Arms],
+        simulated: bool,
+    ) -> PartialDesignator[GiskardPlaceAction]:
+        return PartialDesignator[GiskardPlaceAction](
+            GiskardPlaceAction,
+            object_designator=object_designator,
+            target_location=target_location,
+            arm=arm,
+            simulated=simulated,
+        )
+
+
 PlaceActionDescription = PlaceAction.description
+GiskardPlaceActionDescription = GiskardPlaceAction.description
