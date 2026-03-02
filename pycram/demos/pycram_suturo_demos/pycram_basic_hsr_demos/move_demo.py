@@ -39,7 +39,6 @@ def robot_move(target_pose: PoseStamped, frame_id: str = "map"):
     os.environ["ROS_PYTHON_CHECK_FIELDS"] = "1"
     goal = target_pose.ros_message()
     print(f"Moving to {goal}'")
-
     nav2_move.start_nav_to_pose(goal)
 
 
