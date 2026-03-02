@@ -8,7 +8,7 @@ import rclpy
 from rclpy.executors import SingleThreadedExecutor
 import logging
 
-from pycram_suturo_demos.helper_methods_and_useful_classes.object_creation import (
+from demos.pycram_suturo_demos.helper_methods_and_useful_classes.object_creation import (
     perceive_and_spawn_all_objects,
 )
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
