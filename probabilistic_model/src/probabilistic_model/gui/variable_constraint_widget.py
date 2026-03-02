@@ -7,13 +7,14 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QVBoxLayout,
     QLabel,
+    QPushButton,
 )
 from PySide6.QtCore import Signal, Qt
 from superqt import QRangeSlider
 
 from random_events.variable import Variable, Continuous, Symbolic, Integer
 from random_events.product_algebra import SimpleEvent, Event, VariableMap
-from random_events.interval import closed, Interval
+from random_events.interval import closed, Interval, SimpleInterval, Bound
 from random_events.set import Set, SetElement
 
 
@@ -132,11 +133,16 @@ class VariableConstraintWidget(QWidget):
             slider.setValue((slider.minimum(), slider.maximum()))
 
             def update_label(val):
-                low, high = val
                 if not isinstance(variable, Integer):
-                    low /= 1000.0
-                    high /= 1000.0
-                self.value_label.setText(f"Range: [{low:.2f}, {high:.2f}]")
+                    scaled_val = [v / 1000.0 for v in val]
+                else:
+                    scaled_val = val
+
+                ranges = []
+                for i in range(0, len(scaled_val), 2):
+                    if i + 1 < len(scaled_val):
+                        ranges.append(f"[{scaled_val[i]:.2f}, {scaled_val[i+1]:.2f}]")
+                self.value_label.setText("Range: " + ", ".join(ranges))
 
             slider.valueChanged.connect(update_label)
             update_label(slider.value())
@@ -146,7 +152,7 @@ class VariableConstraintWidget(QWidget):
             self.constraint_layout.addWidget(self.constraint_widget)
 
             # Marks
-            marks_layout = QHBoxLayout()
+            self.marks_layout = QHBoxLayout()
             size = maxi - mini
             if size > 0:
                 import numpy as np
@@ -161,8 +167,22 @@ class VariableConstraintWidget(QWidget):
                     mark_label = QLabel(text)
                     mark_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                     mark_label.setStyleSheet("font-size: 8pt; color: gray;")
-                    marks_layout.addWidget(mark_label)
-            self.constraint_layout.addLayout(marks_layout)
+                    self.marks_layout.addWidget(mark_label)
+            self.constraint_layout.addLayout(self.marks_layout)
+
+            # Add/Remove buttons
+            self.buttons_layout = QHBoxLayout()
+            self.add_button = QPushButton("+")
+            self.add_button.setFixedWidth(30)
+            self.add_button.clicked.connect(lambda: self.on_add_range(variable))
+            self.buttons_layout.addWidget(self.add_button)
+
+            self.remove_button = QPushButton("-")
+            self.remove_button.setFixedWidth(30)
+            self.remove_button.clicked.connect(lambda: self.on_remove_range(variable))
+            self.buttons_layout.addWidget(self.remove_button)
+            self.buttons_layout.addStretch()
+            self.constraint_layout.addLayout(self.buttons_layout)
 
         else:
             # List Widget for Symbolic (multi-selection)
@@ -182,6 +202,41 @@ class VariableConstraintWidget(QWidget):
 
         self.constraint_layout.addWidget(self.constraint_widget)
 
+    def on_add_range(self, variable: Variable):
+        if not self.constraint_widget:
+            return
+        slider: QRangeSlider = self.constraint_widget
+        values = list(slider.value())
+        mini = slider.minimum()
+        maxi = slider.maximum()
+
+        if values:
+            last_val = values[-1]
+            remaining = maxi - last_val
+            if remaining > (maxi - mini) * 0.1:
+                new_min = last_val + remaining * 0.05
+                new_max = last_val + remaining * 0.15
+            else:
+                # Add at the end if not enough space
+                new_max = maxi
+                new_min = maxi - (maxi - mini) * 0.05
+        else:
+            new_min, new_max = mini, maxi
+
+        values.extend([int(new_min), int(new_max)])
+        slider.setValue(tuple(sorted(values)))
+        self.changed.emit()
+
+    def on_remove_range(self, variable: Variable):
+        if not self.constraint_widget:
+            return
+        slider: QRangeSlider = self.constraint_widget
+        values = list(slider.value())
+        if len(values) > 2:
+            values = values[:-2]
+            slider.setValue(tuple(values))
+            self.changed.emit()
+
     def get_constraint(self) -> Optional[tuple[Variable, Union[Interval, Set]]]:
         variable = self.variable_combo.currentData()
         if not variable or not self.constraint_widget:
@@ -189,11 +244,21 @@ class VariableConstraintWidget(QWidget):
 
         if isinstance(variable, (Continuous, Integer)):
             slider: QRangeSlider = self.constraint_widget
-            low, high = slider.value()
+            vals = list(slider.value())
             if not isinstance(variable, Integer):
-                low /= 1000.0
-                high /= 1000.0
-            return variable, closed(low, high)
+                vals = [v / 1000.0 for v in vals]
+
+            intervals = []
+            for i in range(0, len(vals), 2):
+                if i + 1 < len(vals):
+                    intervals.append(
+                        SimpleInterval(vals[i], vals[i + 1], Bound.CLOSED, Bound.CLOSED)
+                    )
+
+            if not intervals:
+                return variable, variable.domain
+
+            return variable, Interval(*intervals)
         elif isinstance(variable, Symbolic):
             list_widget: QListWidget = self.constraint_widget
             selected_items = list_widget.selectedItems()
@@ -231,16 +296,20 @@ class VariableConstraintWidget(QWidget):
 
         if isinstance(variable, (Continuous, Integer)):
             slider: QRangeSlider = self.constraint_widget
-            # constraint is an Interval
-            if not constraint.simple_sets:
-                return
-            first_interval = constraint.simple_sets[0]
-            low = first_interval.lower
-            high = first_interval.upper
-            if not isinstance(variable, Integer):
-                low *= 1000.0
-                high *= 1000.0
-            slider.setValue((int(low), int(high)))
+            # constraint is an Interval (composite set)
+            vals = []
+            # Sort simple sets by lower bound to ensure they match handles correctly
+            sorted_simple_sets = sorted(constraint.simple_sets, key=lambda s: s.lower)
+            for simple_set in sorted_simple_sets:
+                low = simple_set.lower
+                high = simple_set.upper
+                if not isinstance(variable, Integer):
+                    low *= 1000.0
+                    high *= 1000.0
+                vals.extend([int(low), int(high)])
+
+            if vals:
+                slider.setValue(tuple(vals))
         elif isinstance(variable, Symbolic):
             list_widget: QListWidget = self.constraint_widget
             # constraint is a Set
