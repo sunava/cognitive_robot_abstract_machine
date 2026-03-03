@@ -1,11 +1,20 @@
+import logging
+
+import semantic_digital_twin
 from demos.pycram_suturo_demos.helper_methods_and_useful_classes.object_creation import (
     spawn_semantic_with_body,
+)
+from demos.pycram_suturo_demos.helper_methods_and_useful_classes.place_pose import (
+    get_pose_on_semantic_annotation_for_object_by_semantic_annotation,
 )
 from demos.pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
     robot_setup,
 )
 from pycram.motion_executor import simulated_robot, real_robot
-from semantic_digital_twin.semantic_annotations.semantic_annotations import Table
+from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
+from semantic_digital_twin.semantic_annotations.semantic_annotations import (
+    Milk,
+)
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.geometry import Scale
 
@@ -15,10 +24,13 @@ Set this flag to True to run the demo in a simulated environment,
 or False to run it on the real robot.
 """
 
+logging.getLogger(semantic_digital_twin.world.__name__).setLevel(logging.WARN)
+logger = logging.getLogger(__name__)
+
 
 def simulation_demo():
     setup_result = robot_setup(
-        simulation=True, with_objects=True, with_perception=False
+        simulation=True, with_objects=False, with_perception=False
     )
     world, robot_view, context = (
         setup_result.world,
@@ -26,24 +38,26 @@ def simulation_demo():
         setup_result.context,
     )
 
-    # Get semantic annotation of object you want to sample points from
-    table: Table = world.get_semantic_annotations_by_name("desk_annotation")[0]
+    # Spawn example object
+    with world.modify_world():
+        milk = Milk.create_with_new_body_in_world(
+            name=PrefixedName("milk_carton"), world=world, scale=Scale(0.1, 0.1, 0.2)
+        )
 
-    # Example object to sample for
-    milk = spawn_semantic_with_body(
-        "Milk", "milk_carton", Scale(0.1, 0.1, 0.2), Pose(), world
+    # Get pose
+    pose = get_pose_on_semantic_annotation_for_object_by_semantic_annotation(
+        "desk_annotation", milk, world
     )
 
-    # Sample points from surface and get the first one
-    points = table.sample_points_from_surface(milk)
-    point = points[0]
+    # "Error handling"
+    pose = pose if pose is not None else Pose()
 
     # Spawn object at newfound location
     milk = spawn_semantic_with_body(
         "Milk",
         "milk_carton",
         Scale(0.1, 0.1, 0.2),
-        Pose(position=point, reference_frame=point.reference_frame),
+        pose,
         world,
     )
 
