@@ -7,6 +7,7 @@ from typing import Union
 import numpy as np
 import scipy.sparse as sp
 from scipy.sparse import issparse
+from typing_extensions import Self
 
 
 @dataclass
@@ -16,9 +17,9 @@ class Conditioning:
     Inherit from this to implement different strategies
     """
 
-    C: np.ndarray | None = field(default=None)
-    R_eq: np.ndarray | None = field(default=None)
-    R_neq: np.ndarray | None = field(default=None)
+    C: sp.csc_matrix | None = field(default=None)
+    R_eq: sp.csc_matrix | None = field(default=None)
+    R_neq: sp.csc_matrix | None = field(default=None)
 
     def apply(self, qp_data: QPData) -> QPData:
         """
@@ -51,6 +52,8 @@ class Conditioning:
         """
         Retrieve the xdot of the original QP Problem
         """
+        if self.C is None:
+            return xdot
         return self.C @ xdot
 
 
@@ -122,54 +125,99 @@ class Relaxo:
 
 
 @dataclass
-class ZeroWeightQPDataFilter:
+class QPDataFilter:
+    zero_quadratic_weight_filter: np.ndarray
+    bE_filter: np.ndarray
+    bA_filter: np.ndarray
 
-    def apply_filters(
-        self,
-        zero_quadratic_weight_filter: np.ndarray,
-        bE_filter: np.ndarray,
-        bA_filter: np.ndarray,
-    ):
-        self.zero_quadratic_weight_filter = zero_quadratic_weight_filter
-        self.bE_filter = bE_filter
-        self.bA_filter = bA_filter
-        qp_data_filtered = QPData()
-        qp_data_filtered.quadratic_weights = self.quadratic_weights[
-            zero_quadratic_weight_filter
+    def apply_filters(self, qp_data: QPData) -> QPData:
+        return QPData(
+            quadratic_weights=self._filter_quadratic_weights(qp_data.quadratic_weights),
+            linear_weights=self._filter_linear_weights(qp_data.linear_weights),
+            box_lower_constraints=self._filter_box_lower_constraints(
+                qp_data.box_lower_constraints
+            ),
+            box_upper_constraints=self._filter_box_upper_constraints(
+                qp_data.box_upper_constraints
+            ),
+            eq_matrix=self._filter_eq_matrix(qp_data.eq_matrix),
+            eq_bounds=self._filter_eq_bounds(qp_data.eq_bounds),
+            neq_matrix=self._filter_neq_matrix(qp_data.neq_matrix),
+            neq_lower_bounds=self._filter_neq_lower_bounds(qp_data.neq_lower_bounds),
+            neq_upper_bounds=self._filter_neq_upper_bounds(qp_data.neq_upper_bounds),
+        )
+
+    def _filter_quadratic_weights(self, quadratic_weights: np.ndarray) -> np.ndarray:
+        return quadratic_weights[self.zero_quadratic_weight_filter]
+
+    def _filter_linear_weights(self, linear_weights: np.ndarray) -> np.ndarray:
+        return linear_weights[self.zero_quadratic_weight_filter]
+
+    def _filter_box_lower_constraints(
+        self, box_lower_constraints: np.ndarray
+    ) -> np.ndarray:
+        return box_lower_constraints[self.zero_quadratic_weight_filter]
+
+    def _filter_box_upper_constraints(
+        self, box_upper_constraints: np.ndarray
+    ) -> np.ndarray:
+        return box_upper_constraints[self.zero_quadratic_weight_filter]
+
+    def _filter_eq_matrix(self, eq_matrix: sp.csc_matrix) -> sp.csc_matrix:
+        if len(eq_matrix.shape) > 1 and eq_matrix.shape[0] * eq_matrix.shape[1] > 0:
+            return eq_matrix[self.bE_filter, :][:, self.zero_quadratic_weight_filter]
+        return eq_matrix
+
+    def _filter_eq_bounds(self, eq_bounds: np.ndarray) -> np.ndarray:
+        return eq_bounds[self.bE_filter]
+
+    def _filter_neq_matrix(self, neq_matrix: sp.csc_matrix) -> sp.csc_matrix:
+        if len(neq_matrix.shape) > 1 and neq_matrix.shape[0] * neq_matrix.shape[1] > 0:
+            return neq_matrix[:, self.zero_quadratic_weight_filter][self.bA_filter, :]
+        return neq_matrix
+
+    def _filter_neq_lower_bounds(self, neq_lower_bounds: np.ndarray) -> np.ndarray:
+        return neq_lower_bounds[self.bA_filter]
+
+    def _filter_neq_upper_bounds(self, neq_upper_bounds: np.ndarray) -> np.ndarray:
+        return neq_upper_bounds[self.bA_filter]
+
+
+@dataclass
+class ZeroWeightQPDataFilter(QPDataFilter):
+    @classmethod
+    def from_qp_data(
+        cls,
+        unfiltered_qp_data: QPData,
+        num_slack_variables: int,
+        num_eq_slack_variables: int,
+        num_neq_slack_variables: int,
+    ) -> Self:
+        zero_quadratic_weight_filter: np.ndarray = (
+            unfiltered_qp_data.quadratic_weights != 0
+        )
+        # don't filter dofs with 0 weight
+        zero_quadratic_weight_filter[:-num_slack_variables] = True
+        slack_part = zero_quadratic_weight_filter[
+            -(num_eq_slack_variables + num_neq_slack_variables) :
         ]
-        qp_data_filtered.linear_weights = self.linear_weights[
-            zero_quadratic_weight_filter
-        ]
-        qp_data_filtered.box_lower_constraints = self.box_lower_constraints[
-            zero_quadratic_weight_filter
-        ]
-        qp_data_filtered.box_upper_constraints = self.box_upper_constraints[
-            zero_quadratic_weight_filter
-        ]
-        if (
-            len(self.eq_matrix.shape) > 1
-            and self.eq_matrix.shape[0] * self.eq_matrix.shape[1] > 0
-        ):
-            qp_data_filtered.eq_matrix = self.eq_matrix[bE_filter, :][
-                :, zero_quadratic_weight_filter
-            ]
-        else:
-            qp_data_filtered.eq_matrix = self.eq_matrix
-        # when no eq constraints were filtered, we can just cut off at the end, because that section is always all 0
-        # qp_data_filtered.eq_matrix = self.eq_matrix_np_raw[:, :self.zero_quadratic_weight_filter.sum()]
-        qp_data_filtered.eq_bounds = self.eq_bounds[bE_filter]
-        if (
-            len(self.neq_matrix.shape) > 1
-            and self.neq_matrix.shape[0] * self.neq_matrix.shape[1] > 0
-        ):
-            qp_data_filtered.neq_matrix = self.neq_matrix[
-                :, zero_quadratic_weight_filter
-            ][bA_filter, :]
-        else:
-            qp_data_filtered.neq_matrix = self.neq_matrix
-        qp_data_filtered.neq_lower_bounds = self.neq_lower_bounds[bA_filter]
-        qp_data_filtered.neq_upper_bounds = self.neq_upper_bounds[bA_filter]
-        self.filtered = qp_data_filtered
+        bE_part = slack_part[:num_eq_slack_variables]
+        bA_part = slack_part[num_eq_slack_variables:]
+
+        bE_filter = np.ones(unfiltered_qp_data.eq_matrix.shape[0], dtype=bool)
+        bE_filter.fill(True)
+        if len(bE_part) > 0:
+            bE_filter[-len(bE_part) :] = bE_part
+
+        bA_filter = np.ones(unfiltered_qp_data.neq_matrix.shape[0], dtype=bool)
+        bA_filter.fill(True)
+        if len(bA_part) > 0:
+            bA_filter[-len(bA_part) :] = bA_part
+        return cls(
+            zero_quadratic_weight_filter=zero_quadratic_weight_filter,
+            bE_filter=bE_filter,
+            bA_filter=bA_filter,
+        )
 
 
 @dataclass

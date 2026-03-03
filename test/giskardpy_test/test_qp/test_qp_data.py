@@ -100,7 +100,16 @@ def test_qp_data_equality(simple_equality_qp):
 
 def test_C_conditioning(simple_inequality_qp):
     qp_data, expected = simple_inequality_qp
-    conditioning = Conditioning(C=np.diag([69.0, 23.0]))
+    conditioning = Conditioning(C=sp.diags([69.0, 23.0]))
+    conditioned_qp_data = conditioning.apply(qp_data)
+    conditioned_result = QPSolverQPSwift().solver_call(conditioned_qp_data)
+    result = conditioning.unapply(conditioned_result)
+    assert np.allclose(result, expected)
+
+
+def test_R_conditioning(simple_equality_qp):
+    qp_data, expected = simple_equality_qp
+    conditioning = Conditioning(R_eq=sp.diags([23.0]))
     conditioned_qp_data = conditioning.apply(qp_data)
     conditioned_result = QPSolverQPSwift().solver_call(conditioned_qp_data)
     result = conditioning.unapply(conditioned_result)
