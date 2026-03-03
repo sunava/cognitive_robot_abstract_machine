@@ -75,31 +75,31 @@ class Color:
 
     @classmethod
     def RED(self):
-        return Color(255, 0, 0)
+        return Color(1, 0, 0)
 
     @classmethod
     def YELLOW(self):
-        return Color(255, 255, 0)
+        return Color(1, 1, 0)
 
     @classmethod
     def GREEN(self):
-        return Color(0, 255, 0)
+        return Color(0, 1, 0)
 
     @classmethod
     def CYAN(self):
-        return Color(0, 255, 255)
+        return Color(0, 1, 1)
 
     @classmethod
     def BLUE(self):
-        return Color(0, 0, 255)
+        return Color(0, 0, 1)
 
     @classmethod
     def MAGENTA(self):
-        return Color(255, 0, 255)
+        return Color(1, 0, 1)
 
     @classmethod
     def WHITE(self):
-        return Color(255, 255, 255)
+        return Color(1, 1, 1)
 
     @classmethod
     def BLACK(self):
@@ -107,11 +107,7 @@ class Color:
 
     @classmethod
     def GRAY(self):
-        return Color(127, 127, 127)
-
-    @classmethod
-    def TRANSPARENT(self):
-        return Color(0, 0, 0, 0)
+        return Color(0.498, 0.498, 0.498)
 
     @classmethod
     def BEIGE(self):
