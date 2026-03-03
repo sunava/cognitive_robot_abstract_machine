@@ -10,7 +10,7 @@ from pycram.robot_plans import NavigateActionDescription
 from semantic_digital_twin.world import World
 
 
-def move_demo(target_pose: str, world: World, context: Context):
+def move_demo(simulated: bool, target_pose: str, world: World, context: Context):
 
     CABINET = PoseStamped.from_list(
         position=[3.8683114051818848, 5.459158897399902, 0.0],
@@ -32,17 +32,19 @@ def move_demo(target_pose: str, world: World, context: Context):
         """
         Sends a navigation goal to Nav2.
         """
-        os.environ["ROS_PYTHON_CHECK_FIELDS"] = "1"
-        goal = target_pose.ros_message()
-        print(f"Moving to {goal}'")
-        # nav2_move.start_nav_to_pose(goal)
-        with simulated_robot:
-            SequentialPlan(
-                context,
-                NavigateActionDescription(
-                    target_location=target_pose, keep_joint_states=True
-                ),
-            ).perform()
+        if simulated:
+            with simulated_robot:
+                SequentialPlan(
+                    context,
+                    NavigateActionDescription(
+                        target_location=target_pose, keep_joint_states=True
+                    ),
+                ).perform()
+        else:
+            os.environ["ROS_PYTHON_CHECK_FIELDS"] = "1"
+            goal = target_pose.ros_message()
+            print(f"Moving to {goal}'")
+            nav2_move.start_nav_to_pose(goal)
 
     match target_pose:
         case "ROBOT_START_POSE":

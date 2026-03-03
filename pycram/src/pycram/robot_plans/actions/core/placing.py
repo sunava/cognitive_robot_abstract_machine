@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import timedelta
 
+from semantic_digital_twin.datastructures.definitions import GripperState
 from semantic_digital_twin.world_description.connections import Connection6DoF
 from semantic_digital_twin.world_description.world_entity import Body
 from typing_extensions import Union, Optional, Type, Any, Iterable
@@ -43,7 +44,6 @@ class PlaceAction(ActionDescription):
     """
     Arm that is currently holding the object
     """
-    simulated: bool = field(default=True, kw_only=True)
     _pre_perform_callbacks = []
     """
     List to save the callbacks which should be called before performing the action.
@@ -56,33 +56,27 @@ class PlaceAction(ActionDescription):
         arm = ViewManager.get_arm_view(self.arm, self.robot_view)
         manipulator = arm.manipulator
 
-        # previous_pick = self.plan.get_previous_node_by_designator_type(
-        #     self.plan_node, PickUpAction
-        # )
-        # previous_grasp = (
-        #     previous_pick.designator_ref.grasp_description
-        #     if previous_pick
-        #     else GraspDescription(
-        #         ApproachDirection.FRONT, VerticalAlignment.NoAlignment, manipulator
-        #     )
-        # )
+        previous_pick = self.plan.get_previous_node_by_designator_type(
+            self.plan_node, PickUpAction
+        )
+        previous_grasp = (
+            previous_pick.designator_ref.grasp_description
+            if previous_pick
+            else GraspDescription(
+                ApproachDirection.FRONT, VerticalAlignment.NoAlignment, manipulator
+            )
+        )
 
         SequentialPlan(
             self.context,
-            # ReachActionDescription(
-            #     self.target_location,
-            #     self.arm,
-            #     previous_grasp,
-            #     self.object_designator,
-            #     reverse_reach_order=True,
-            # ),
-            # MoveGripperMotion(GripperState.OPEN, self.arm),
-            PlaceMotion(
-                object_designator=self.object_designator,
-                simulated=self.simulated,
-                goal_pose=self.target_location,
-                gripper=manipulator,
+            ReachActionDescription(
+                self.target_location,
+                self.arm,
+                previous_grasp,
+                self.object_designator,
+                reverse_reach_order=True,
             ),
+            MoveGripperMotion(GripperState.OPEN, self.arm),
         ).perform()
 
         # Detaches the object from the robot
@@ -98,11 +92,11 @@ class PlaceAction(ActionDescription):
             self.world.add_connection(connection)
             connection.origin = obj_transform
 
-        # _, _, retract_pose = previous_grasp._pose_sequence(
-        #     self.target_location, self.object_designator, reverse=True
-        # )
-        #
-        # SequentialPlan(self.context, MoveTCPMotion(retract_pose, self.arm)).perform()
+        _, _, retract_pose = previous_grasp._pose_sequence(
+            self.target_location, self.object_designator, reverse=True
+        )
+
+        SequentialPlan(self.context, MoveTCPMotion(retract_pose, self.arm)).perform()
 
     def validate(
         self, result: Optional[Any] = None, max_wait_time: Optional[timedelta] = None
@@ -147,36 +141,41 @@ class PlaceAction(ActionDescription):
         object_designator: Union[Iterable[Body], Body],
         target_location: Union[Iterable[PoseStamped], PoseStamped],
         arm: Union[Iterable[Arms], Arms],
-        simulated: bool,
     ) -> PartialDesignator[PlaceAction]:
         return PartialDesignator[PlaceAction](
             PlaceAction,
             object_designator=object_designator,
             target_location=target_location,
             arm=arm,
-            simulated=simulated,
         )
 
 
 @dataclass
 class GiskardPlaceAction(ActionDescription):
     """
-    Places an Object at a position using an arm.
+    Places an Object at a position using an arm. By directly called GiskardMotion
     """
 
     object_designator: Body
     """
     Object designator_description describing the object that should be place
     """
+
     target_location: PoseStamped
     """
     Pose in the world at which the object should be placed
     """
+
     arm: Arms
     """
     Arm that is currently holding the object
     """
+
     simulated: bool = field(default=True, kw_only=True)
+    """
+    Parsing simulation argument
+    """
+
     _pre_perform_callbacks = []
     """
     List to save the callbacks which should be called before performing the action.
@@ -212,8 +211,11 @@ class GiskardPlaceAction(ActionDescription):
         """
         Check if the object is still in contact with the robot after placing it.
         """
+        manipulator = ViewManager.get_arm_view(
+            self.arm, self.robot_view
+        ).manipulator.tool_frame
         contact_links = self.object_designator.get_contact_points_with_body(
-            World.robot
+            self.robot_view
         ).get_all_bodies()
         if contact_links:
             raise ObjectStillInContact(

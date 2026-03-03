@@ -119,7 +119,6 @@ def test_spawning(hsrb_world: World):
 
 def try_make_viz(world, node) -> Optional[VizMarkerPublisher]:
     try:
-        import rclpy
         from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
             VizMarkerPublisher,
         )
@@ -128,16 +127,15 @@ def try_make_viz(world, node) -> Optional[VizMarkerPublisher]:
         viz.with_tf_publisher()
 
         return viz
-    except Exception:
-        logger.info(
-            "VizMarkerPublisher is unavailable (ROS not running or deps missing)."
-        )
+    except Exception as e:
+        logger.info(f"VizMarkerPublisher unavailable: {e}")
         return None
 
 
 def world_setup_with_test_objects(
-    with_object: bool = field(kw_only=True, default=True),
-    with_viz: bool = field(kw_only=True, default=True),
+    *,
+    with_object: bool = True,
+    with_viz: bool = True,
 ) -> SetupResult:
     hsrb_world, robot_view, context, manipulator, node = setup_ros_node()
 

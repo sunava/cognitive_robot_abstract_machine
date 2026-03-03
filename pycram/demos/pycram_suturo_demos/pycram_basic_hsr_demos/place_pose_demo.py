@@ -12,7 +12,7 @@ def simulation_demo():
     rclpy.init()
 
     setup_result = robot_setup(
-        simulation=True, with_objects=True, with_perception=False
+        simulation=True, with_simulated_objects=True, with_perception=False
     )
     world, robot_view, context = (
         setup_result.world,
@@ -35,7 +35,7 @@ def real_demo():
     # rclpy.init()
 
     setup_result = robot_setup(
-        simulation=False, with_objects=True, with_perception=False
+        simulation=False, with_simulated_objects=True, with_perception=False
     )
     world, robot_view, context = (
         setup_result.world,

@@ -16,25 +16,35 @@ from semantic_digital_twin.world import World
 
 
 def place_demo(
-    hsrb_world: World, context: Context, object_name: str, place_pose: PoseStamped
+    simulation: bool,
+    hsrb_world: World,
+    context: Context,
+    object_name: str,
+    place_pose: PoseStamped,
 ):
+    robot_type = simulated_robot if simulation else real_robot
+    # TODO retrieve the object from tool_frame of robot, nobody actually cares about naming the object lul
+    # retrieving body of parsed object_name
     object_to_place = hsrb_world.get_body_by_name(object_name)
+
+    # -----------------------------------------Plans
     plan = SequentialPlan(
         context,
         GiskardPlaceActionDescription(
             object_designator=object_to_place,
             arm=Arms.LEFT,
             target_location=place_pose,
-            simulated=True,
+            simulated=simulation,
         ),
     )
 
     park_plan = SequentialPlan(context, ParkArmsActionDescription(Arms.BOTH))
 
-    with simulated_robot:
+    # -----------------------------------------Execution
+    with robot_type:
         plan.perform()
         detach_object_from_hsrb(
-            hsrb_world=hsrb_world,
+            world=hsrb_world,
             object_designator=object_to_place,
         )
         park_plan.perform()

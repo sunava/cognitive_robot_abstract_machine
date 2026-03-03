@@ -1,3 +1,5 @@
+from typing import Any
+
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.robots.abstract_robot import ParallelGripper
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
@@ -35,7 +37,7 @@ def add_box(name: str, scale_xyz: tuple[float, float, float]):
     return new_world
 
 
-def perceive_and_spawn_all_objects(hsrb_world: World):
+def perceive_and_spawn_all_objects(world: World):
     try:
         from pycram.external_interfaces import robokudo
     except ImportError:
@@ -49,9 +51,9 @@ def perceive_and_spawn_all_objects(hsrb_world: World):
         object_time = perceived_object.pose[0].header.stamp
         object_name = f"{perceived_object.type}"
         try:
-            object_to_spawn = hsrb_world.get_body_by_name(object_name)
-            with hsrb_world.modify_world():
-                hsrb_world.move_branch_to_new_world(object_to_spawn)
+            object_to_spawn = world.get_body_by_name(object_name)
+            with world.modify_world():
+                world.move_branch_to_new_world(object_to_spawn)
         except semantic_digital_twin.exceptions.WorldEntityNotFoundError:
             pass
         object_to_spawn = add_box(
@@ -60,9 +62,9 @@ def perceive_and_spawn_all_objects(hsrb_world: World):
         )
         env_world = load_environment()
         perceived_objects[object_name] = object_to_spawn
-        with hsrb_world.modify_world():
-            hsrb_world.merge_world(env_world)
-            hsrb_world.merge_world_at_pose(
+        with world.modify_world():
+            world.merge_world(env_world)
+            world.merge_world_at_pose(
                 object_to_spawn,
                 pose=HomogeneousTransformationMatrix.from_xyz_quaternion(
                     pos_x=object_pose.position.x,
@@ -77,16 +79,57 @@ def perceive_and_spawn_all_objects(hsrb_world: World):
     return perceived_objects
 
 
-def attach_object_to_hsrb(hsrb_world: World, object_designator: Body):
+"""
+It is a helper method that attaches the object to the robot, since the attaching withing Actions doesnt work with motions
+
+:param world: The world in which to attach the object
+:param object_designator: The object to attach
+"""
+
+
+def attach_object_to_hsrb(world: World, object_designator: Body):
     # Attach the object to the end effector
-    manipulator = hsrb_world.get_semantic_annotations_by_type(ParallelGripper)[0]
-    with hsrb_world.modify_world():
-        hsrb_world.move_branch_with_fixed_connection(
+    manipulator = world.get_semantic_annotations_by_type(ParallelGripper)[0]
+    with world.modify_world():
+        world.move_branch_with_fixed_connection(
             object_designator, manipulator.tool_frame
         )
 
 
-def detach_object_from_hsrb(hsrb_world: World, object_designator: Body):
-    manipulator = hsrb_world.get_semantic_annotations_by_type(ParallelGripper)[0]
-    with hsrb_world.modify_world():
-        hsrb_world.move_branch_with_fixed_connection(object_designator, hsrb_world.root)
+"""
+It is a helper method that detaches the object from the robot, since the attaching withing Actions doesnt work with motions
+
+:param world: The world in which to detach the object
+:param object_designator: The object to detach
+"""
+
+
+def detach_object_from_hsrb(world: World, object_designator: Body):
+    manipulator = world.get_semantic_annotations_by_type(ParallelGripper)[0]
+    with world.modify_world():
+        world.move_branch_with_fixed_connection(object_designator, world.root)
+
+
+"""
+Method to perceive and spawn all objects and find the object to pickup
+It is a helper method that contains import error handling, since I do not want to bother about import errors
+
+:param world: The world in which to spawn the perceived objects
+:param object_name: The name of the object to pickup
+"""
+
+
+def try_perceiving_and_spawning_and_find_object(world: World, object_name: str):
+    try:
+        from demos.pycram_suturo_demos.helper_methods_and_useful_classes.object_creation import (
+            perceive_and_spawn_all_objects,
+        )
+
+        perceived_objects: dict[Any, Any] = perceive_and_spawn_all_objects(world)
+        logger.info(f"perceived following objects: '{perceived_objects}'")
+    except ImportError:
+        logger.info("Could not import robokudo")
+        perceived_objects = {}
+    object_to_pickup = try_get_object_to_pickup(world, object_name)
+    logger.info(f"object_to_Pickup: '{object_to_pickup}'")
+    return object_to_pickup
