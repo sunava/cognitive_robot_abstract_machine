@@ -514,12 +514,12 @@ class AbstractRobot(Agent, ABC):
         return set(self._world.controlled_connections) & set(self.connections)
 
     @property
-    @abstractmethod
     def special_constraints(self) -> list[MotionStatechartNode]:
         """
         A list of spacial constraits that may apply to a robot when moving, that are not an explicit part of the kinematic
-        structure. Most robots so far don't need this
+        structure. Override if needed.
         """
+        return []
 
     @property
     def degrees_of_freedom_with_hardware_interface(self) -> List[DegreeOfFreedom]:
