@@ -24,6 +24,7 @@ from demos.thesis_new.utils.rviz import MotionSequenceRviz, publish_points_seque
 from pycram.datastructures.partial_designator import PartialDesignator
 from semantic_digital_twin.adapters.ros.pose_publisher import PosePublisher
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Tool
+from semantic_digital_twin.spatial_types import Vector3, Point3
 from semantic_digital_twin.world_description.world_entity import Body
 from ...motions.gripper import MoveTCPMotion, MoveTCPWaypointsMotion
 from .... import utils
@@ -97,6 +98,12 @@ class GeneralizedActionPlan(ActionDescription):
     """
     If viz should be cleared
     """
+
+    alignment_pairs: Optional[Iterable[tuple[Vector3, Vector3]]] = None
+    """
+    Optional list of (tip_normal, goal_normal) pairs for AlignPlanes.
+    """
+
     def _sample_points(selfs):
         raise NotImplementedError
 
@@ -109,8 +116,16 @@ class GeneralizedActionPlan(ActionDescription):
             return None
         return self.world.transform(tip_pose, self.world.root)
 
-    def _poses_from_points(self, points: np.ndarray) -> list[PoseStamped]:
-        """Create world-frame poses from sampled points, applying the raw tool tip position offset if available."""
+    def _pose_orientation(self) -> list[float]:
+        """Return default waypoint orientation in world frame."""
+        if hasattr(self, "container") and self.container is not None:
+            return self.container.global_pose.to_quaternion().to_list()
+        if hasattr(self, "target_pose") and self.target_pose is not None:
+            return self.target_pose.orientation.to_list()
+        return [0.0, 0.0, 0.0, 1.0]
+
+    def _points_with_tip(self, points: np.ndarray) -> np.ndarray:
+        """Transform sampled points to world-frame points (with tool tip offset)."""
         tip_translation = np.zeros(3, dtype=float)
         if self.tool is not None and hasattr(self.tool, "tip"):
             tip_pose = self.tool.tip()
@@ -119,21 +134,24 @@ class GeneralizedActionPlan(ActionDescription):
                     tip_pose.to_position().to_np()[:3], dtype=float
                 )
 
-        poses = []
+        points_world = []
         for p in points:
             p_world = p + tip_translation
-            pose_t = PoseStamped.from_list(
-                position=[float(p_world[0]), float(p_world[1]), float(p_world[2])],
-                orientation=[0.0, 0.0, 0.0, 1.0],
-                frame=self.world.root,
+            points_world.append(
+                [float(p_world[0]), float(p_world[1]), float(p_world[2])]
             )
-            poses.append(pose_t)
-        return poses
+        return np.asarray(points_world, dtype=float)
+
+    def _resolved_alignment_pairs(self) -> list[tuple[Vector3, Vector3]]:
+        if self.alignment_pairs is None:
+            return []
+        return list(self.alignment_pairs)
 
 
     def execute(self) -> None:
         _, points, ids = self._sample_points()
-        P = np.array([[p[0], p[1], p[2]] for p in points], dtype=float)
+        points_world = self._points_with_tip(points)
+        P = np.asarray(points_world, dtype=float)
        
         publish_points_sequence(
             node=self.context.ros_node,
@@ -145,8 +163,22 @@ class GeneralizedActionPlan(ActionDescription):
             clear_existing=self.clear_viz,
         )
 
+        self.robot_view.full_body_controlled = True
+        pointery = []
+        for p in points_world:
+            pointery.append(Point3(x=p[0], y=p[1], z=p[2], reference_frame=self.world.root))
+        alignment_pairs = self._resolved_alignment_pairs()
+        SequentialPlan(
+            self.context,
+            MoveTCPWaypointsMotion(
+                pointery,
+                self.arm,
+                allow_gripper_collision=True,
+                alignment_pairs=alignment_pairs,
+            ),
+        ).perform()
 
-        poses = self._poses_from_points(points)
+        # poses = self._poses_from_points(points)
 
         # node = self.context.ros_node
         # if not hasattr(node, "_temporary_pose_publishers"):
@@ -163,16 +195,16 @@ class GeneralizedActionPlan(ActionDescription):
         #     node._temporary_pose_publishers.append(pub)
         #
 
-        self.robot_view.full_body_controlled = True
-        SequentialPlan(
-            self.context,
-            MoveTCPWaypointsMotion(
-                poses,
-                self.arm,
-                allow_gripper_collision=True,
-            ),
-        ).perform()
-        print("Pose was published from Designator")
+        # self.robot_view.full_body_controlled = True
+        # SequentialPlan(
+        #     self.context,
+        #     MoveTCPWaypointsMotion(
+        #         poses,
+        #         self.arm,
+        #         allow_gripper_collision=True,
+        #     ),
+        # ).perform()
+        # print("Pose was published from Designator")
         # poses = self._poses_from_points(points)
         # P = self._points_with_tool_tip_offset(points)
 
@@ -226,6 +258,7 @@ class MixingAction(GeneralizedActionPlan):
         tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
         tool: Union[Iterable[Tool], Tool] = None,
         tool_tip_offset: Union[Iterable[Iterable[float]], Iterable[float]] = None,
+        alignment_pairs: Optional[Iterable[tuple[Vector3, Vector3]]] = None,
         dt: Union[Iterable[float], float] = 0.01,
         use_visual_aabb: Union[Iterable[bool], bool] = True,
         apply_shape_scale: Union[Iterable[bool], bool] = True,
@@ -239,6 +272,7 @@ class MixingAction(GeneralizedActionPlan):
             tool_name=tool_name,
             tool=tool,
             tool_tip_offset=normalized_tip_offset,
+            alignment_pairs=alignment_pairs,
             dt=dt,
             use_visual_aabb=use_visual_aabb,
             apply_shape_scale=apply_shape_scale,
@@ -299,6 +333,7 @@ class WipingAction(GeneralizedActionPlan):
         tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
         tool: Union[Iterable[Tool], Tool] = None,
         tool_tip_offset: Union[Iterable[Iterable[float]], Iterable[float]] = None,
+        alignment_pairs: Optional[Iterable[tuple[Vector3, Vector3]]] = None,
         dt: Union[Iterable[float], float] = 0.01,
         length: Union[Iterable[float], float] = 0.20,
         cycles: Union[Iterable[float], float] = 2.0,
@@ -316,6 +351,7 @@ class WipingAction(GeneralizedActionPlan):
             tool_name=tool_name,
             tool=tool,
             tool_tip_offset=normalized_tip_offset,
+            alignment_pairs=alignment_pairs,
             dt=dt,
             length=length,
             cycles=cycles,
@@ -342,6 +378,35 @@ class CuttingAction(GeneralizedActionPlan):
     Target slice thickness used to place the cut anchor.
     """
 
+    def _resolved_alignment_pairs(self) -> list[tuple[Vector3, Vector3]]:
+        """
+        Cutting-specific default alignment constraints.
+        Can be overridden by explicitly passing alignment_pairs.
+        """
+        if self.alignment_pairs is not None:
+            return list(self.alignment_pairs)
+        if self.tool is None or self.container is None:
+            return []
+        return [
+            (
+                Vector3(1, 0, 0, reference_frame=self.tool.root),
+                Vector3(0, 1, 0, reference_frame=self.container),
+            ),
+            (
+                Vector3(0, 0, 1, reference_frame=self.tool.root),
+                Vector3(0, 0, 1, reference_frame=self.container),
+            ),
+        ]
+
+    # def _pose_orientation(self) -> list[float]:
+    #     """
+    #     Rotate knife heading by +90 deg around local Z relative to the
+    #     container/food orientation so it is perpendicular to the long side.
+    #     """
+    #     base_orientation = np.asarray(super()._pose_orientation(), dtype=float)
+    #     yaw_90 = quaternion_from_euler(0.0, 0.0, np.pi / 2.0, axes="sxyz")
+    #     return list(quaternion_multiply(yaw_90, base_orientation))
+
     def _sample_points(self):
         seq = build_cutting_sequence(
             self.container,
@@ -367,6 +432,7 @@ class CuttingAction(GeneralizedActionPlan):
         tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
         tool: Union[Iterable[Tool], Tool] = None,
         tool_tip_offset: Union[Iterable[Iterable[float]], Iterable[float]] = None,
+        alignment_pairs: Optional[Iterable[tuple[Vector3, Vector3]]] = None,
         dt: Union[Iterable[float], float] = 0.01,
         use_visual_aabb: Union[Iterable[bool], bool] = True,
         apply_shape_scale: Union[Iterable[bool], bool] = True,
@@ -383,6 +449,7 @@ class CuttingAction(GeneralizedActionPlan):
             tool_name=tool_name,
             tool=tool,
             tool_tip_offset=normalized_tip_offset,
+            alignment_pairs=alignment_pairs,
             dt=dt,
             use_visual_aabb=use_visual_aabb,
             apply_shape_scale=apply_shape_scale,

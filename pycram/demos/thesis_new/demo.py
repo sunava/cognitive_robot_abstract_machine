@@ -28,6 +28,7 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import Knif
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.world_description.geometry import Color, Scale
+from semantic_digital_twin.world_description.world_entity import Body
 
 RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")
@@ -186,10 +187,8 @@ def main():
     bowl_small_body = try_get_body(world, "bowl_small")
     bowl_middle_body = try_get_body(world, "bowl_middle")
     bowl_big_body = try_get_body(world, "bowl_big")
-
     clean_up_pose = PoseStamped.from_list([2.5,4,0.95])
     context.ros_node = node
-
     print(PoseStamped.from_spatial_type(context.robot.root.global_pose))
     plan = SequentialPlan(
         context,
