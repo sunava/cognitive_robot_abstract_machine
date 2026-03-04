@@ -1584,14 +1584,9 @@ class TestCartesianTasks:
 
         fk = pr2_world_state_reset.compute_forward_kinematics_np(root, tip)
 
-        # goal2 captured at build (initial orientation), so ends at -pi/6 from original
-        # Compute expected: initial rotation * rotation(-pi/6 around Z)
-        rot_z_minus_pi6 = RotationMatrix.from_axis_angle(
-            Vector3.Z(), -np.pi / 6, reference_frame=root
-        ).to_np()
-        expected = initial_fk @ rot_z_minus_pi6
-
-        assert np.allclose(fk[:3, :3], expected[:3, :3], atol=cart_goal2.threshold)
+        # goal2 captured at build, so ends at -pi/6 from original
+        expected = tip_rot2.to_np()
+        assert np.allclose(fk, expected, atol=cart_goal2.threshold)
 
     def test_cartesian_orientation_sequence_on_start(
         self, pr2_world_state_reset: World
