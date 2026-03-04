@@ -209,3 +209,116 @@ def build_surface_sequence(
         return MotionSequence([phase_raster_surface])
 
     raise ValueError(f"Unknown pattern '{pattern}'")
+
+
+def build_cutting_sequence(
+    food_body,
+    reference_size=0.10,
+    debug=False,
+    use_visual_aabb=True,
+    apply_shape_scale=True,
+    technique="saw",
+    slice_thickness=0.03,
+):
+    """Build a slicing sequence sized to a food object."""
+    mins, maxs = body_local_aabb(
+        food_body,
+        use_visual=use_visual_aabb,
+        apply_shape_scale=apply_shape_scale,
+    )
+    size_x = maxs[0] - mins[0]
+    size_y = maxs[1] - mins[1]
+    size_z = maxs[2] - mins[2]
+
+    duration_scale = _duration_scale_from_body(
+        food_body,
+        reference_size=reference_size,
+        debug=debug,
+        apply_shape_scale=apply_shape_scale,
+    )
+
+    margin_x = min(0.01, 0.15 * size_x)
+    margin_y = min(0.01, 0.10 * size_y)
+    z_clearance = max(0.01, 0.25 * size_z)
+    z_top = maxs[2] + z_clearance
+    z_cut = mins[2] + max(0.003, 0.05 * size_z)
+    center_y = 0.5 * (mins[1] + maxs[1])
+
+    usable_x = max(0.0, size_x - 2.0 * margin_x)
+    requested_thickness = max(float(slice_thickness), 1e-4)
+    x_anchor = mins[0] + margin_x + min(0.5 * requested_thickness, 0.5 * usable_x)
+
+    y_min = mins[1] + margin_y
+    y_max = maxs[1] - margin_y
+    saw_amp = 0.5 * max(y_max - y_min, 0.0)
+    saw_cycles = max(2.0, round(size_y / max(reference_size, 1e-6)))
+
+    if debug:
+        print(
+            "[motion_presets] cutting params "
+            f"x_anchor={x_anchor:.4f} y_span={y_max - y_min:.4f} "
+            f"z_top={z_top:.4f} z_cut={z_cut:.4f} technique={technique}"
+        )
+
+    phase_approach = MotionSegment(
+        name="cut_approach",
+        duration_s=0.8 * duration_scale,
+        local_curve=lambda tau: np.array(
+            [x_anchor, center_y, z_top + (maxs[2] - z_top) * float(tau)], dtype=float
+        ),
+    )
+
+    phase_descend = MotionSegment(
+        name="cut_descend",
+        duration_s=1.0 * duration_scale,
+        local_curve=lambda tau: np.array(
+            [x_anchor, center_y, maxs[2] + (z_cut - maxs[2]) * float(tau)], dtype=float
+        ),
+    )
+
+
+    shear_depth_max = maxs[2] - z_cut
+    shear_amp = 0.5 * max(y_max - y_min, 0.0)
+
+    phase_shear = MotionSegment(
+        name="oscillatory_shear",
+        duration_s=5.0 * duration_scale,
+        local_curve=lambda tau: (
+            lambda q_local: np.array(
+                [
+                    x_anchor,
+                    center_y + q_local[0],
+                    maxs[2] + q_local[2],
+                ],
+                dtype=float,
+            )
+        )(
+            oscillatory_shear_local_profiled(
+                tau,
+                ShearProfile(
+                    depth_max=shear_depth_max,
+                    depth_ramp_end=0.7,
+                    shear_amp=shear_amp,
+                    shear_cycles=saw_cycles,
+                ),
+            )
+        ),
+    )
+
+    phase_retract = MotionSegment(
+        name="cut_retract",
+        duration_s=0.8 * duration_scale,
+        local_curve=lambda tau: np.array(
+            [x_anchor, center_y, z_cut + (z_top - z_cut) * float(tau)], dtype=float
+        ),
+    )
+
+    technique = str(technique).lower()
+    if technique in "slice":
+        phases = [ phase_approach, phase_descend, phase_retract]
+    elif technique in ("saw", "sawing"):
+        phases = [phase_approach, phase_shear, phase_retract]
+    else:
+        raise ValueError(f"Unknown cutting technique '{technique}'")
+
+    return MotionSequence(phases)

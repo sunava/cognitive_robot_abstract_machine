@@ -16,6 +16,7 @@ from semantic_digital_twin.spatial_types.spatial_types import (
 )
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import OmniDrive
+from semantic_digital_twin.world_description.geometry import Scale, Color
 from .datastructures.dataclasses import Context
 from .plan import Plan
 
@@ -99,9 +100,10 @@ def setup_world(urdf_path: Optional[str] = None) -> World:
             "breakfast_cereal.stl",
         )
     ).parse()
+
     # apartment_world.merge_world(pr2_sem_world)
-    apartment_world.merge_world(milk_world)
-    apartment_world.merge_world(cereal_world)
+    # apartment_world.merge_world(milk_world)
+    # apartment_world.merge_world(cereal_world)
 
     with apartment_world.modify_world():
         pr2_root = pr2_sem_world.get_body_by_name("base_footprint")
@@ -112,19 +114,19 @@ def setup_world(urdf_path: Optional[str] = None) -> World:
         apartment_world.merge_world(pr2_sem_world, c_root_bf)
         c_root_bf.origin = HomogeneousTransformationMatrix.from_xyz_rpy(1.5, 2.5, 0)
 
-    apartment_world.get_body_by_name("milk.stl").parent_connection.origin = (
-        HomogeneousTransformationMatrix.from_xyz_rpy(
-            2.37, 2, 1.05, reference_frame=apartment_world.root
-        )
-    )
-    apartment_world.get_body_by_name(
-        "breakfast_cereal.stl"
-    ).parent_connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(
-        2.37, 1.8, 1.05, reference_frame=apartment_world.root
-    )
-    milk_view = Milk(root=apartment_world.get_body_by_name("milk.stl"))
-    with apartment_world.modify_world():
-        apartment_world.add_semantic_annotation(milk_view)
+    # apartment_world.get_body_by_name("milk.stl").parent_connection.origin = (
+    #     HomogeneousTransformationMatrix.from_xyz_rpy(
+    #         2.37, 2, 1.05, reference_frame=apartment_world.root
+    #     )
+    # )
+    # apartment_world.get_body_by_name(
+    #     "breakfast_cereal.stl"
+    # ).parent_connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(
+    #     2.37, 1.8, 1.05, reference_frame=apartment_world.root
+    # )
+    # milk_view = Milk(root=apartment_world.get_body_by_name("milk.stl"))
+    # with apartment_world.modify_world():
+    #     apartment_world.add_semantic_annotation(milk_view)
 
     return apartment_world
 

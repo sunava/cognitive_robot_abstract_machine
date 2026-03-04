@@ -11,7 +11,7 @@ from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
 from pycram.motion_executor import simulated_robot
 from pycram.robot_plans import MoveTorsoActionDescription, MixingActionDescription, \
-    ParkArmsActionDescription, NavigateActionDescription
+    ParkArmsActionDescription, NavigateActionDescription, CuttingActionDescription
 
 from pycram.testing import setup_world
 from rclpy.duration import Duration as RclpyDuration
@@ -34,28 +34,30 @@ def _setup_world():
 
     bread = STLParser(
         os.path.join(
-            os.path.dirname(__file__), "..", "..", "resources", "objects", "bread.stl"
+            os.path.dirname(__file__), "..", "..", "resources", "pycram_object_gap_demo", "bread.stl"
         )
     ).parse()
     bread.root.name.name = "bread_small"
 
     bread_middle = STLParser(
         os.path.join(
-            os.path.dirname(__file__), "..", "..", "resources", "objects", "bread.stl"
+            os.path.dirname(__file__), "..", "..", "resources", "pycram_object_gap_demo", "bread.stl"
         )
     ).parse()
     bread_middle.root.name.name = "bread_middle"
     for shape in bread_middle.root.visual.shapes:
         shape.scale = Scale(x=1.3, y=1.3, z=1.3)
+        shape.color = Color(R=0, G=1, B=0)
     for shape in bread_middle.root.collision.shapes:
         shape.scale = Scale(x=1.3, y=1.3, z=1.3)
 
     bread_big =STLParser(
         os.path.join(
-            os.path.dirname(__file__), "..", "..", "resources", "objects", "bread.stl"
+            os.path.dirname(__file__), "..", "..", "resources", "pycram_object_gap_demo", "bread.stl"
         )
     ).parse()
     bread_big.root.name.name = "bread_big"
+
     for shape in bread_big.root.visual.shapes:
         shape.scale = Scale(x=1.5, y=1.5, z=1.5)
     for shape in bread_big.root.collision.shapes:
@@ -63,7 +65,7 @@ def _setup_world():
 
     knife = STLParser(
         os.path.join(
-            os.path.dirname(__file__), "..", "..", "resources", "pycram_object_gap_demo", "knife.stl"
+            os.path.dirname(__file__), "..", "..", "resources", "pycram_object_gap_demo", "big-knife.stl"
         )
     ).parse()
 
@@ -148,7 +150,7 @@ def main():
         ParkArmsActionDescription(Arms.BOTH),
         MoveTorsoActionDescription(TorsoState.HIGH),
 
-        CuttingActionDescription(container=bread_body, arm=Arms.RIGHT, tool_body=knife_body),
+        CuttingActionDescription(container=bread_body, arm=Arms.RIGHT, tool_body=knife_body, technique="saw"),
         # WipingActionDescription(
         #     target_pose=clean_up_pose,
         #     arm=Arms.LEFT,

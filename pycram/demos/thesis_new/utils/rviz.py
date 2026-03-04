@@ -5,6 +5,9 @@ from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
 
 
+_MARKER_GROUP_COUNTER = 0
+
+
 def _norm_topic(topic: str) -> str:
     """Ensure the topic name starts with a slash."""
     t = str(topic)
@@ -48,6 +51,12 @@ def _phase_color(k, a=1.0):
     return _color(r, g, b, a)
 
 
+def _next_marker_group(prefix="rviz"):
+    global _MARKER_GROUP_COUNTER
+    _MARKER_GROUP_COUNTER += 1
+    return f"{prefix}_{_MARKER_GROUP_COUNTER}"
+
+
 class MotionSequenceRviz:
     def __init__(
         self,
@@ -59,6 +68,7 @@ class MotionSequenceRviz:
         line_width=0.01,
         alpha=1.0,
         republish_hz=2.0,
+        marker_ns=None,
     ):
         """
         Initialization method of the MotionSequenceRviz class.
@@ -111,6 +121,9 @@ class MotionSequenceRviz:
         self.topic = _norm_topic(topic)
         self.line_width = float(line_width)
         self.alpha = float(alpha)
+        self.marker_ns = (
+            str(marker_ns) if marker_ns is not None else _next_marker_group("phase_seq")
+        )
 
         if node is None:
             raise ValueError(
@@ -140,7 +153,7 @@ class MotionSequenceRviz:
             m = Marker()
             m.header.frame_id = self.frame_id
             m.header.stamp = now
-            m.ns = "phase_seq"
+            m.ns = self.marker_ns
             m.id = 0
             m.type = Marker.LINE_STRIP
             m.action = Marker.ADD
@@ -161,7 +174,7 @@ class MotionSequenceRviz:
                 m = Marker()
                 m.header.frame_id = self.frame_id
                 m.header.stamp = now
-                m.ns = "phase_seq_phase"
+                m.ns = self.marker_ns
                 m.id = mid
                 m.type = Marker.LINE_STRIP
                 m.action = Marker.ADD
@@ -187,6 +200,8 @@ def publish_points_sequence(
     alpha=1.0,
     phase_id=None,
     republish_hz=None,
+    clear_existing=False,
+    marker_ns=None,
 ):
     """
     Publish a single LINE_STRIP marker for a sequence of points.
@@ -218,6 +233,11 @@ def publish_points_sequence(
         None if phase_id is None else np.asarray(phase_id, dtype=int).reshape(-1)
     )
     topic = _norm_topic(topic)
+    marker_ns = (
+        str(marker_ns)
+        if marker_ns is not None
+        else _next_marker_group("points_sequence")
+    )
 
     pub = node.create_publisher(MarkerArray, topic, 10)
 
@@ -231,7 +251,7 @@ def publish_points_sequence(
     if phase_id_arr is None:
         m = Marker()
         m.header.frame_id = str(frame_id)
-        m.ns = "points_sequence"
+        m.ns = marker_ns
         m.id = 0
         m.type = Marker.LINE_STRIP
         m.action = Marker.ADD
@@ -253,7 +273,7 @@ def publish_points_sequence(
 
             m = Marker()
             m.header.frame_id = str(frame_id)
-            m.ns = "points_sequence_phase"
+            m.ns = marker_ns
             m.id = mid
             m.type = Marker.LINE_STRIP
             m.action = Marker.ADD
@@ -266,10 +286,10 @@ def publish_points_sequence(
             mid += 1
             start = end
 
-    # Clear previously published markers in this namespace before adding new ones.
-    clear = Marker()
-    clear.action = Marker.DELETEALL
-    arr.markers.append(clear)
+    if clear_existing:
+        clear = Marker()
+        clear.action = Marker.DELETEALL
+        arr.markers.append(clear)
     arr.markers.extend(markers)
 
     def _publish_once():

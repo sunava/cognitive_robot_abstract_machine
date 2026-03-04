@@ -10,7 +10,11 @@ import numpy as np
 
 from demos.thesis_new.thesis_math.motion_models import MotionSegment, MotionSequence
 from demos.thesis_new.thesis_math.motion_profiles import planar_sweep_x, planar_spiral_xy
-from demos.thesis_new.thesis_math.motion_presets import build_container_sequence, build_surface_sequence
+from demos.thesis_new.thesis_math.motion_presets import (
+    build_container_sequence,
+    build_cutting_sequence,
+    build_surface_sequence,
+)
 from demos.thesis_new.thesis_math.world_utils import (
     body_local_aabb,
     make_identity_pose_stamped,
@@ -281,8 +285,74 @@ class WipingAction(GeneralizedActionPlan):
             length=length,
             cycles=cycles,
         )
+@dataclass
+class CuttingAction(GeneralizedActionPlan):
+    """
+    Execute a cutting motion sequence on a food object.
+    """
 
+    container: Body = None
+    """
+    The object to cut.
+    """
+
+    technique: str = "saw"
+    """
+    Cutting trajectory variant.
+    """
+
+    slice_thickness: float = 0.03
+    """
+    Target slice thickness used to place the cut anchor.
+    """
+
+    def _sample_points(self):
+        seq = build_cutting_sequence(
+            self.container,
+            use_visual_aabb=self.use_visual_aabb,
+            apply_shape_scale=self.apply_shape_scale,
+            technique=self.technique,
+            slice_thickness=self.slice_thickness,
+        )
+        return seq.sample(frame=self.container.global_pose, dt=self.dt)
+
+    def validate(
+        self,
+        result: Optional[Any] = None,
+        max_wait_time: timedelta = timedelta(seconds=2),
+    ):
+        pass
+
+    @classmethod
+    def description(
+        cls,
+        container: Union[Iterable[Body], Body],
+        arm: Union[Iterable[Arms], Arms],
+        tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
+        tool_body: Union[Iterable[Body], Body] = None,
+        tool_tip_offset: Union[Iterable[Iterable[float]], Iterable[float]] = None,
+        dt: Union[Iterable[float], float] = 0.01,
+        use_visual_aabb: Union[Iterable[bool], bool] = True,
+        apply_shape_scale: Union[Iterable[bool], bool] = True,
+        technique: Union[Iterable[str], str] = "saw",
+        slice_thickness: Union[Iterable[float], float] = 0.03,
+    ) -> PartialDesignator[CuttingAction]:
+        normalized_tip_offset = cls._normalize_tip_offset(tool_tip_offset)
+        return PartialDesignator(
+            cls,
+            container=container,
+            arm=arm,
+            tool_name=tool_name,
+            tool_body=tool_body,
+            tool_tip_offset=normalized_tip_offset,
+            dt=dt,
+            use_visual_aabb=use_visual_aabb,
+            apply_shape_scale=apply_shape_scale,
+            technique=technique,
+            slice_thickness=slice_thickness,
+        )
 
 
 MixingActionDescription = MixingAction.description
 WipingActionDescription = WipingAction.description
+CuttingActionDescription = CuttingAction.description
