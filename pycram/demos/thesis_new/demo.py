@@ -24,6 +24,7 @@ from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
 )
 from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.robots.pr2 import PR2
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Knife, Whisk
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.world_description.geometry import Color, Scale
@@ -173,8 +174,10 @@ def main():
     context = Context.from_world(world)
 
 
-    knife_body = try_get_body(world, "knife.stl")
-    whisk_body = try_get_body(world, "whisk.stl"),
+    knife_body = try_get_body(world, "big-knife.stl")
+    knife = Knife(root=knife_body)
+    whisk_body = try_get_body(world, "whisk.stl")
+    whisk = Whisk(root=whisk_body)
     # sponge_body = try_get_body(world, "sponge")
     bread_body = try_get_body(world, "bread_small")
     bread_middle_body = try_get_body(world, "bread_middle")
@@ -184,31 +187,33 @@ def main():
     bowl_middle_body = try_get_body(world, "bowl_middle")
     bowl_big_body = try_get_body(world, "bowl_big")
 
-    clean_up_pose=PoseStamped()
-    clean_up_pose.pose.position.x=2.5
-    clean_up_pose.pose.position.y=4
-    clean_up_pose.pose.position.z=0.95
+    clean_up_pose = PoseStamped.from_list([2.5,4,0.95])
     context.ros_node = node
+
+    print(PoseStamped.from_spatial_type(context.robot.root.global_pose))
     plan = SequentialPlan(
         context,
         ParkArmsActionDescription(Arms.BOTH),
         MoveTorsoActionDescription(TorsoState.HIGH),
-
-        CuttingActionDescription(container=bread_body, arm=Arms.RIGHT, tool_body=knife_body, technique="saw"),
-        CuttingActionDescription(container=bread_middle_body, arm=Arms.RIGHT, tool_body=knife_body, technique="saw"),
-        CuttingActionDescription(container=bread_big_body, arm=Arms.RIGHT, tool_body=knife_body, technique="saw"),
-        MixingActionDescription(container=bowl_small_body, arm=Arms.RIGHT, tool_body=whisk_body),
-        MixingActionDescription(container=bowl_middle_body, arm=Arms.RIGHT, tool_body=whisk_body),
-        MixingActionDescription(container=bowl_big_body, arm=Arms.RIGHT, tool_body=whisk_body),
-
-        WipingActionDescription(
-            target_pose=clean_up_pose,
-            arm=Arms.LEFT,
-            tool_body=None,
-        )
+        NavigateActionDescription(
+            PoseStamped.from_list([2.0 ,2.5,0.0], [0, 0, 0, 1], world.root),
+            True,
+        ),
+        # NavigateActionDescription(target_location=PoseStamped.from_list([1.5,2.5,0.0])),
+        CuttingActionDescription(container=bread_body, arm=Arms.RIGHT, tool=knife, technique="saw", clear_viz=True),
+        CuttingActionDescription(container=bread_middle_body, arm=Arms.RIGHT, tool=knife, technique="saw"),
+        CuttingActionDescription(container=bread_big_body, arm=Arms.RIGHT, tool=knife, technique="saw"),
+        MixingActionDescription(container=bowl_small_body, arm=Arms.LEFT, tool=whisk),
+        MixingActionDescription(container=bowl_middle_body, arm=Arms.LEFT, tool=whisk),
+        MixingActionDescription(container=bowl_big_body, arm=Arms.LEFT, tool=whisk),
+        #
+        # WipingActionDescription(
+        #     target_pose=clean_up_pose,
+        #     arm=Arms.LEFT,
+        #     tool=None,
+        # )
         # SimpleMoveTCPAction(target_location=poses[0], arm=Arms.RIGHT),
     )
-
     with simulated_robot:
         plan.perform()
 

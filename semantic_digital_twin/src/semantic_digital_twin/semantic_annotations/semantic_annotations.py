@@ -34,6 +34,7 @@ from ..exceptions import (
 )
 from ..reasoning.predicates import InsideOf
 from ..spatial_types import Point3, HomogeneousTransformationMatrix, Vector3
+from ..spatial_types.spatial_types import Pose
 from ..world import World
 from ..world_description.connections import (
     RevoluteConnection,
@@ -990,37 +991,35 @@ class LiquidCap(HasRootBody):
 @dataclass(eq=False)
 class Tool(HasRootBody, ABC):
     @abstractmethod
-    def tool_alignment(self) -> AxisIdentifier:
-        pass
+    def tool_alignment(self) -> Vector3:
+        ...
+
+    @abstractmethod
+    def tip(self) -> Pose:
+        ...
 
 @dataclass(eq=False)
 class ToolWithHandle(Tool, HasHandle, ABC):
+    def tool_alignment(self) -> Vector3:
+        ...
 
-    @property
-    def tip(self)  -> Body:
-        return self.root
+    def tip(self) -> Pose:
+        ...
 
 
 @dataclass(eq=False)
 class Whisk(ToolWithHandle):
 
-    def tool_alignment(self) -> AxisIdentifier:
-        return AxisIdentifier.X
+    def tool_alignment(self) -> Vector3:
+        return Vector3.NEGATIVE_X()
+
+    def tip(self) -> HomogeneousTransformationMatrix:
+        return HomogeneousTransformationMatrix.from_xyz_rpy(z=0.05, reference_frame=self.root)
 
 @dataclass(eq=False)
 class Knife(ToolWithHandle):
-    def tool_alignment(self) -> AxisIdentifier:
-        return AxisIdentifier.Z
+    def tool_alignment(self) -> Vector3:
+        return Vector3.Z()
 
-    @classmethod
-    def from_world(cls, world: World) -> Self:
-        obj = cls(root=world.get_body_by_name())
-        handle = world.get_body_by_name()
-        obj.add_handle(Handle(root=handle))
-        return obj
-
-
-@dataclass(eq=False)
-class Sponge(Tool):
-    def tool_alignment(self) -> AxisIdentifier:
-        return AxisIdentifier.Y
+    def tip(self) -> HomogeneousTransformationMatrix:
+        return HomogeneousTransformationMatrix.from_xyz_rpy(x=0, reference_frame=self.root)

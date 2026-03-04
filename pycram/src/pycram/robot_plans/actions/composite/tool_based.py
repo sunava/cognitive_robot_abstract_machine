@@ -22,6 +22,8 @@ from demos.thesis_new.thesis_math.world_utils import (
 )
 from demos.thesis_new.utils.rviz import MotionSequenceRviz, publish_points_sequence
 from pycram.datastructures.partial_designator import PartialDesignator
+from semantic_digital_twin.adapters.ros.pose_publisher import PosePublisher
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Tool
 from semantic_digital_twin.world_description.world_entity import Body
 from ...motions.gripper import MoveTCPMotion, MoveTCPWaypointsMotion
 from .... import utils
@@ -61,13 +63,12 @@ class GeneralizedActionPlan(ActionDescription):
     Arm used for the motion.
     """
 
-
     tool_name: Optional[str] = None
     """
     Tool configuration name (e.g., 'whisk').
     """
 
-    tool_body: Optional[Body] = None
+    tool: Optional[Tool] = None
     """
     Tool body used to estimate the tip offset.
     """
@@ -92,57 +93,88 @@ class GeneralizedActionPlan(ActionDescription):
     Apply shape scales when computing the AABB.
     """
 
-
+    clear_viz: bool = False
+    """
+    If viz should be cleared
+    """
     def _sample_points(selfs):
         raise NotImplementedError
+
+    def _tool_tip_in_world(self):
+        """Return the tool tip pose in the world frame if available."""
+        if self.tool is None or not hasattr(self.tool, "tip"):
+            return None
+        tip_pose = self.tool.tip()
+        if tip_pose is None:
+            return None
+        return self.world.transform(tip_pose, self.world.root)
+
+    def _poses_from_points(self, points: np.ndarray) -> list[PoseStamped]:
+        """Create world-frame poses from sampled points, applying the raw tool tip position offset if available."""
+        tip_translation = np.zeros(3, dtype=float)
+        if self.tool is not None and hasattr(self.tool, "tip"):
+            tip_pose = self.tool.tip()
+            if tip_pose is not None:
+                tip_translation = np.asarray(
+                    tip_pose.to_position().to_np()[:3], dtype=float
+                )
+
+        poses = []
+        for p in points:
+            p_world = p + tip_translation
+            pose_t = PoseStamped.from_list(
+                position=[float(p_world[0]), float(p_world[1]), float(p_world[2])],
+                orientation=[0.0, 0.0, 0.0, 1.0],
+                frame=self.world.root,
+            )
+            poses.append(pose_t)
+        return poses
 
 
     def execute(self) -> None:
         _, points, ids = self._sample_points()
-        temporary_poses = []
-        P= np.asarray(points)
-        for p in P:
-            pose_t = PoseStamped.from_list(
-                position=[float(p[0]), float(p[1]), float(p[2])],
-                orientation=[0.0, 0.0, 0.0, 1.0],  # Identity
-                frame=self.world.root,  # wichtig: points sind hier Weltkoordinaten
-            )
-            temporary_poses.append(pose_t)
-
-
         P = np.array([[p[0], p[1], p[2]] for p in points], dtype=float)
-        # publish_points_sequence(
-        #     node=self.context.ros_node,
-        #     points=P,
-        #     frame_id="apartment/apartment_root",
-        #     topic="temporary_pose_seq",
-        #     line_width=0.01,
-        #     color=(0.2, 0.8, 1.0),
-        #     alpha=0.9,
-        # )
-
-        # color by phase segments (same id => same color)
-        # Example: 6 colors repeated across the sequence
-        print(P)
+       
         publish_points_sequence(
             node=self.context.ros_node,
             points=P,
             frame_id="apartment/apartment_root",
-            topic="temporary_pose_seq",
+            topic="/point_sequence",
             phase_id=ids,  # same length as points
             republish_hz=2.0,
+            clear_existing=self.clear_viz,
         )
-        print("rviz node:", self.context.ros_node)
-        print("published pose?")
+
+
+        poses = self._poses_from_points(points)
+
+        # node = self.context.ros_node
+        # if not hasattr(node, "_temporary_pose_publishers"):
+        #     node._temporary_pose_publishers = []
+        # for i, pose in enumerate(poses):
+        #     pub = PosePublisher(
+        #         pose=pose.to_spatial_type(),
+        #         node=node,
+        #         lifetime=0,
+        #         text=str(i),
+        #         topic_name="/pose_sequence",
+        #         world=self.world,
+        #     )
+        #     node._temporary_pose_publishers.append(pub)
         #
-        # SequentialPlan(
-        #     self.context,
-        #     MoveTCPWaypointsMotion(
-        #         temporary_poses,
-        #         self.arm,
-        #         allow_gripper_collision=True,
-        #     ),
-        # ).perform()
+
+        self.robot_view.full_body_controlled = True
+        SequentialPlan(
+            self.context,
+            MoveTCPWaypointsMotion(
+                poses,
+                self.arm,
+                allow_gripper_collision=True,
+            ),
+        ).perform()
+        print("Pose was published from Designator")
+        # poses = self._poses_from_points(points)
+        # P = self._points_with_tool_tip_offset(points)
 
     @classmethod
     def _normalize_tip_offset(cls, tool_tip_offset):
@@ -192,11 +224,12 @@ class MixingAction(GeneralizedActionPlan):
         container: Union[Iterable[Body], Body],
         arm: Union[Iterable[Arms], Arms],
         tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
-        tool_body: Union[Iterable[Body], Body] = None,
+        tool: Union[Iterable[Tool], Tool] = None,
         tool_tip_offset: Union[Iterable[Iterable[float]], Iterable[float]] = None,
         dt: Union[Iterable[float], float] = 0.01,
         use_visual_aabb: Union[Iterable[bool], bool] = True,
         apply_shape_scale: Union[Iterable[bool], bool] = True,
+        clear_viz: Union[Iterable[bool], bool] = False,
     ) -> PartialDesignator[MixingAction]:
         normalized_tip_offset = cls._normalize_tip_offset(tool_tip_offset)
         return PartialDesignator(
@@ -204,11 +237,12 @@ class MixingAction(GeneralizedActionPlan):
             container=container,
             arm=arm,
             tool_name=tool_name,
-            tool_body=tool_body,
+            tool=tool,
             tool_tip_offset=normalized_tip_offset,
             dt=dt,
             use_visual_aabb=use_visual_aabb,
             apply_shape_scale=apply_shape_scale,
+            clear_viz=clear_viz,
         )
 
 
@@ -263,13 +297,14 @@ class WipingAction(GeneralizedActionPlan):
         cls,
         arm: Union[Iterable[Arms], Arms],
         tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
-        tool_body: Union[Iterable[Body], Body] = None,
+        tool: Union[Iterable[Tool], Tool] = None,
         tool_tip_offset: Union[Iterable[Iterable[float]], Iterable[float]] = None,
         dt: Union[Iterable[float], float] = 0.01,
         length: Union[Iterable[float], float] = 0.20,
         cycles: Union[Iterable[float], float] = 2.0,
         container: Union[Iterable[Body], Body] = None,
         target_pose: Union[Iterable[PoseStamped], PoseStamped] = None,
+            clear_viz: Union[Iterable[bool], bool] = False,
     ) -> PartialDesignator[WipingAction]:
         normalized_tip_offset = cls._normalize_tip_offset(tool_tip_offset)
         return PartialDesignator(
@@ -279,11 +314,12 @@ class WipingAction(GeneralizedActionPlan):
             container=container,
             target_pose=target_pose,
             tool_name=tool_name,
-            tool_body=tool_body,
+            tool=tool,
             tool_tip_offset=normalized_tip_offset,
             dt=dt,
             length=length,
             cycles=cycles,
+            clear_viz=clear_viz,
         )
 @dataclass
 class CuttingAction(GeneralizedActionPlan):
@@ -329,13 +365,15 @@ class CuttingAction(GeneralizedActionPlan):
         container: Union[Iterable[Body], Body],
         arm: Union[Iterable[Arms], Arms],
         tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
-        tool_body: Union[Iterable[Body], Body] = None,
+        tool: Union[Iterable[Tool], Tool] = None,
         tool_tip_offset: Union[Iterable[Iterable[float]], Iterable[float]] = None,
         dt: Union[Iterable[float], float] = 0.01,
         use_visual_aabb: Union[Iterable[bool], bool] = True,
         apply_shape_scale: Union[Iterable[bool], bool] = True,
         technique: Union[Iterable[str], str] = "saw",
         slice_thickness: Union[Iterable[float], float] = 0.03,
+            clear_viz : Union[Iterable[bool], bool] = False,
+
     ) -> PartialDesignator[CuttingAction]:
         normalized_tip_offset = cls._normalize_tip_offset(tool_tip_offset)
         return PartialDesignator(
@@ -343,13 +381,14 @@ class CuttingAction(GeneralizedActionPlan):
             container=container,
             arm=arm,
             tool_name=tool_name,
-            tool_body=tool_body,
+            tool=tool,
             tool_tip_offset=normalized_tip_offset,
             dt=dt,
             use_visual_aabb=use_visual_aabb,
             apply_shape_scale=apply_shape_scale,
             technique=technique,
             slice_thickness=slice_thickness,
+            clear_viz=clear_viz,
         )
 
 
