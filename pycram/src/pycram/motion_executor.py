@@ -6,6 +6,10 @@ from typing_extensions import Callable
 
 from giskardpy.motion_statechart.context import MotionStatechartContext
 from giskardpy.motion_statechart.data_types import LifeCycleValues
+from giskardpy.motion_statechart.goals.collision_avoidance import (
+    ExternalCollisionAvoidance,
+    UpdateTemporaryCollisionRules,
+)
 from giskardpy.motion_statechart.goals.templates import Sequence
 from giskardpy.motion_statechart.graph_node import EndMotion
 from giskardpy.motion_statechart.graph_node import Task
@@ -15,6 +19,9 @@ from giskardpy.motion_statechart.motion_statechart import (
 from giskardpy.qp.qp_controller_config import QPControllerConfig
 from giskardpy.ros_executor import Ros2Executor
 from pycram.datastructures.enums import ExecutionType
+from semantic_digital_twin.collision_checking.collision_rules import (
+    AllowCollisionBetweenGroups,
+)
 from semantic_digital_twin.world import World
 
 logger = logging.getLogger(__name__)
@@ -48,6 +55,17 @@ class MotionExecutor:
         self.motion_state_chart = MotionStatechart()
         sequence_node = Sequence(nodes=self.motions)
         self.motion_state_chart.add_node(sequence_node)
+        self.motion_state_chart.add_node(ExternalCollisionAvoidance())
+        self.motion_state_chart.add_node(
+            UpdateTemporaryCollisionRules(
+                temporary_rules=[
+                    AllowCollisionBetweenGroups(
+                        self.world.bodies_with_collision,
+                        [self.world.get_body_by_name("milk.stl")],
+                    )
+                ]
+            )
+        )
 
         self.motion_state_chart.add_node(EndMotion.when_true(sequence_node))
 
