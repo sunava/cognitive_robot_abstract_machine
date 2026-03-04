@@ -14,7 +14,7 @@ from pycram.external_interfaces import nav2_move
 from pycram.datastructures.enums import Arms
 from pycram.datastructures.pose import PoseStamped
 from pycram_suturo_demos.pycram_basic_hsr_demos.start_up import setup_hsrb_context
-from pycram.external_interfaces.nav2_move import buffer_in_front_of, change_orientation
+from pycram.external_interfaces.nav2_move import buffer_in_front_of
 from pycram.external_interfaces.robokudo import shutdown_robokudo_interface
 from pycram.language import SequentialPlan
 from pycram.motion_executor import real_robot
@@ -36,7 +36,6 @@ def get_robot_pose() -> PoseStamped:
 
 
 def transform_perception_to_map(perception_pose: PoseStamped) -> PoseStamped:
-    """Camera frame → map frame (z=0, orientation from head_pan_link)."""
     frame_id = perception_pose.header.frame_id
     if isinstance(frame_id, str):
         reference_body = world.get_body_by_name(frame_id)
@@ -74,20 +73,18 @@ def park_arms():
 
 
 def drive_to_pose(target_pose: PoseStamped):
-    """Drive to a buffered standoff in front of the target, then turn 180° to face it."""
+
+    robot_pose = get_robot_pose()
+
     nav_target = buffer_in_front_of(
         target_pose.ros_message(),
         min_distance=MIN_DISTANCE_M,
+        robot_pose=robot_pose.ros_message(),
     )
 
     logger.info(f"Driving to standoff: {nav_target}")
     park_arms()
     nav2_move.start_nav_to_pose(nav_target)
-
-    logger.info("Arrived at standoff, turning 180° to face the human...")
-    arrived_pose = get_robot_pose()
-    turned_pose = change_orientation(arrived_pose.ros_message())
-    nav2_move.start_nav_to_pose(turned_pose)
 
     logger.info("Done — robot is now facing the human.")
 

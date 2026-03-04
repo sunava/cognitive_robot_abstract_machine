@@ -227,46 +227,67 @@ def change_orientation(start_pose: PoseStamped) -> PoseStamped:
     return new_pose
 
 
-def buffer_in_front_of(target_pose: PoseStamped, min_distance: float) -> PoseStamped:
-    """
-    Place a standoff point in front of the human (in the direction they are facing),
-    at min_distance meters away. The robot will face back toward the human.
-
-    :param target_pose: The human's pose — orientation indicates the direction they face.
-    :param min_distance: How far in front of the human to stand (meters).
-    :return: A new pose in front of the human, oriented to face them.
-    """
-    from pycram.tf_transformations import euler_from_quaternion
+def buffer_in_front_of(
+    target_pose: PoseStamped,
+    min_distance: float,
+    robot_pose: PoseStamped | None = None,
+) -> PoseStamped:
+    from pycram.tf_transformations import euler_from_quaternion, quaternion_from_euler
 
     tx = target_pose.pose.position.x
     ty = target_pose.pose.position.y
 
-    # Extract yaw from the object's orientation
-    quat = (
-        target_pose.pose.orientation.x,
-        target_pose.pose.orientation.y,
-        target_pose.pose.orientation.z,
-        target_pose.pose.orientation.w,
-    )
-    _, _, yaw = euler_from_quaternion(quat)
+    if robot_pose is not None:
+        # ── approach direction from robot → target ──────────────────────
+        rx = robot_pose.pose.position.x
+        ry = robot_pose.pose.position.y
+        dx = tx - rx
+        dy = ty - ry
+        dist = np.hypot(dx, dy)
 
-    # Step `min_distance` in the direction the object faces
-    stand_x = tx + min_distance * np.cos(yaw)
-    stand_y = ty + min_distance * np.sin(yaw)
+        if dist < 1e-6:
+            # robot is already on top of the target – fall back to yaw=0
+            approach_yaw = 0.0
+        else:
+            approach_yaw = np.arctan2(dy, dx)
 
-    # Build standoff pose — coordinates are in map frame
+        # Stand *min_distance* back along the approach vector
+        # (i.e. between robot and human)
+        stand_x = tx - min_distance * np.cos(approach_yaw)
+        stand_y = ty - min_distance * np.sin(approach_yaw)
+
+        # Orientation: face the target (= approach_yaw)
+        quat = quaternion_from_euler(0.0, 0.0, approach_yaw)
+
+    else:
+        # ── legacy: use the target's own orientation ────────────────────
+        quat_in = (
+            target_pose.pose.orientation.x,
+            target_pose.pose.orientation.y,
+            target_pose.pose.orientation.z,
+            target_pose.pose.orientation.w,
+        )
+        _, _, yaw = euler_from_quaternion(quat_in)
+
+        stand_x = tx + min_distance * np.cos(yaw)
+        stand_y = ty + min_distance * np.sin(yaw)
+
+        # Face back toward the target (180° flip)
+        quat = quaternion_from_euler(0.0, 0.0, yaw + np.pi)
+
+    # Build standoff pose in map frame
     standoff = PoseStamped()
     standoff.header.frame_id = "map"
     standoff.pose.position.x = stand_x
     standoff.pose.position.y = stand_y
     standoff.pose.position.z = 0.0
-    standoff.pose.orientation = target_pose.pose.orientation
-
-    # Rotate 180° so the robot faces back toward the human
-    standoff = change_orientation(standoff)
+    standoff.pose.orientation.x = quat[0]
+    standoff.pose.orientation.y = quat[1]
+    standoff.pose.orientation.z = quat[2]
+    standoff.pose.orientation.w = quat[3]
 
     logger.info(
-        f"buffer_in_front_of: human at ({tx:.2f}, {ty:.2f}) yaw={np.degrees(yaw):.1f}°, "
+        f"buffer_in_front_of: target at ({tx:.2f}, {ty:.2f}), "
         f"standoff at ({stand_x:.2f}, {stand_y:.2f}), distance={min_distance:.2f}m"
     )
 
