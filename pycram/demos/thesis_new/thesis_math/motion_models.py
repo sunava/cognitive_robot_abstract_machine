@@ -41,7 +41,7 @@ class MotionSequence:
         t = float(t0)
 
         for k, ph in enumerate(self.phases):
-            tt, pp = ph.sample(frame, dt=dt, t0=t)
+            tt, pp = ph.sample(frame.to_np(), dt=dt, t0=t)
             if all_t:
                 tt = tt[1:]
                 pp = pp[1:]

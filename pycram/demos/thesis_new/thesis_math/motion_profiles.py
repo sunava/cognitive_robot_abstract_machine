@@ -25,10 +25,38 @@ def planar_sweep_x(tau, length, cycles):
     return np.array([s, 0.0, 0.0], dtype=float)
 
 
+def planar_raster_xy(tau, width, height, lanes):
+    """Raster scan covering a rectangle in XY."""
+    w = float(width)
+    h = float(height)
+    n = max(2, int(lanes))
+    u = float(np.clip(tau, 0.0, 1.0)) * n
+    lane = int(np.floor(u))
+    if lane >= n:
+        lane = n - 1
+    local_t = u - lane
+
+    x0 = -0.5 * w
+    x1 = 0.5 * w
+    if (lane % 2) == 0:
+        x = x0 + (x1 - x0) * local_t
+    else:
+        x = x1 - (x1 - x0) * local_t
+
+    y = -0.5 * h + (h * lane / float(n - 1))
+    return np.array([x, y, 0.0], dtype=float)
+
+
 @dataclass(frozen=True)
 class ShearProfile:
     depth_max: float
     depth_ramp_end: float
+    shear_amp: float
+    shear_cycles: float
+
+
+@dataclass(frozen=True)
+class ShearXYProfile:
     shear_amp: float
     shear_cycles: float
 
@@ -51,6 +79,13 @@ def oscillatory_shear_local_profiled(tau, prof: ShearProfile):
     d = ramp(tau, tau_end=prof.depth_ramp_end, d_max=prof.depth_max)
     s = float(prof.shear_amp) * np.sin(2.0 * np.pi * float(prof.shear_cycles) * tau)
     return np.array([s, 0.0, -d], dtype=float)
+
+
+def oscillatory_shear_xy_profiled(tau, prof: ShearXYProfile):
+    """Oscillatory shear in XY plane with no depth change."""
+    ang = 2.0 * np.pi * float(prof.shear_cycles) * tau
+    s = float(prof.shear_amp)
+    return np.array([s * np.sin(ang), s * np.cos(ang), 0.0], dtype=float)
 
 
 def sample_local_curve(local_curve, taus):

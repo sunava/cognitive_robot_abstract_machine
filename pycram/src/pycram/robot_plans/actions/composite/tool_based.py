@@ -9,8 +9,8 @@ from typing_extensions import Union, Optional, Type, Any, Iterable
 import numpy as np
 
 from demos.thesis_new.thesis_math.motion_models import MotionSegment, MotionSequence
-from demos.thesis_new.thesis_math.motion_profiles import planar_sweep_x
-from demos.thesis_new.thesis_math.motion_presets import build_container_sequence
+from demos.thesis_new.thesis_math.motion_profiles import planar_sweep_x, planar_spiral_xy
+from demos.thesis_new.thesis_math.motion_presets import build_container_sequence, build_surface_sequence
 from demos.thesis_new.thesis_math.world_utils import (
     body_local_aabb,
     make_identity_pose_stamped,
@@ -57,10 +57,6 @@ class GeneralizedActionPlan(ActionDescription):
     Arm used for the motion.
     """
 
-    container: Optional[Body] = None
-    """
-    The container (e.g., bowl) to operate in.
-    """
 
     tool_name: Optional[str] = None
     """
@@ -92,15 +88,13 @@ class GeneralizedActionPlan(ActionDescription):
     Apply shape scales when computing the AABB.
     """
 
-    def _build_sequence(self):
+
+    def _sample_points(selfs):
         raise NotImplementedError
 
 
-
-
     def execute(self) -> None:
-        seq = self._build_sequence()
-        _, points, ids = seq.sample(frame=self.container.global_pose.to_np(), dt=self.dt)
+        _, points, ids = self._sample_points()
         temporary_poses = []
         P= np.asarray(points)
         for p in P:
@@ -125,7 +119,7 @@ class GeneralizedActionPlan(ActionDescription):
 
         # color by phase segments (same id => same color)
         # Example: 6 colors repeated across the sequence
-
+        print(P)
         publish_points_sequence(
             node=self.context.ros_node,
             points=P,
@@ -167,12 +161,19 @@ class MixingAction(GeneralizedActionPlan):
     """
     Execute a mixing motion sequence around a container.
     """
-    def _build_sequence(self):
-        return build_container_sequence(
+
+    container: Body = None
+    """
+    The container (e.g., bowl) to operate in.
+    """
+
+    def _sample_points(self):
+        seq = build_container_sequence(
             self.container,
             use_visual_aabb=self.use_visual_aabb,
             apply_shape_scale=self.apply_shape_scale,
         )
+        return seq.sample(frame=self.container.global_pose, dt=self.dt)
 
     def validate(
         self,
@@ -212,8 +213,11 @@ class WipingAction(GeneralizedActionPlan):
     """
     Execute a planar wiping motion around a target pose.
     """
-
-    target_pose: PoseStamped
+    container: Optional[Body] = None
+    """
+    The container (e.g., bowl) to operate in.
+    """
+    target_pose: Optional[PoseStamped]
     """
     Center pose for the wiping patch.
     """
@@ -228,20 +232,31 @@ class WipingAction(GeneralizedActionPlan):
     Number of sweep cycles.
     """
 
-    def _build_sequence(self):
-        segment = MotionSegment(
-            name="planar_sweep",
-            duration_s=1.5,
-            local_curve=lambda tau: planar_sweep_x(
-                tau, length=self.length, cycles=self.cycles
-            ),
-        )
-        return MotionSequence([segment])
+    def _sample_points(self):
+
+        if self.container is not None:
+            print("use container in wiping")
+            seq = build_surface_sequence(
+                self.container,
+                use_visual_aabb=self.use_visual_aabb,
+                apply_shape_scale=self.apply_shape_scale,
+                pattern="raster",
+            )
+            return seq.sample(frame=self.container.global_pose, dt=self.dt)
+        else :
+            tPose = self.target_pose.to_spatial_type()
+            segment = MotionSegment(
+                name="planar_spiral",
+                duration_s=2.0,
+                local_curve=lambda tau: planar_spiral_xy(tau, r0=0.00, r1=0.12, cycles=2.5),
+            )
+
+            seq = MotionSequence([segment])
+            return seq.sample(frame=tPose, dt=self.dt)
 
     @classmethod
     def description(
         cls,
-        target_pose: Union[Iterable[PoseStamped], PoseStamped],
         arm: Union[Iterable[Arms], Arms],
         tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
         tool_body: Union[Iterable[Body], Body] = None,
@@ -249,12 +264,16 @@ class WipingAction(GeneralizedActionPlan):
         dt: Union[Iterable[float], float] = 0.01,
         length: Union[Iterable[float], float] = 0.20,
         cycles: Union[Iterable[float], float] = 2.0,
+        container: Union[Iterable[Body], Body] = None,
+        target_pose: Union[Iterable[PoseStamped], PoseStamped] = None,
     ) -> PartialDesignator[WipingAction]:
         normalized_tip_offset = cls._normalize_tip_offset(tool_tip_offset)
         return PartialDesignator(
             cls,
-            target_pose=target_pose,
+
             arm=arm,
+            container=container,
+            target_pose=target_pose,
             tool_name=tool_name,
             tool_body=tool_body,
             tool_tip_offset=normalized_tip_offset,

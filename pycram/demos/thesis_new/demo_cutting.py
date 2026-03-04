@@ -11,7 +11,7 @@ from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
 from pycram.motion_executor import simulated_robot
 from pycram.robot_plans import MoveTorsoActionDescription, MixingActionDescription, \
-    ParkArmsActionDescription, NavigateActionDescription, WipingActionDescription
+    ParkArmsActionDescription, NavigateActionDescription
 
 from pycram.testing import setup_world
 from rclpy.duration import Duration as RclpyDuration
@@ -32,38 +32,38 @@ from semantic_digital_twin.world_description.geometry import Color, Scale
 def _setup_world():
     world = setup_world()
 
-    bowl = STLParser(
+    bread = STLParser(
         os.path.join(
-            os.path.dirname(__file__), "..", "..", "resources", "objects", "bowl.stl"
+            os.path.dirname(__file__), "..", "..", "resources", "objects", "bread.stl"
         )
     ).parse()
-    bowl.root.name.name = "bowl_small"
+    bread.root.name.name = "bread_small"
 
-    bowl_middle = STLParser(
+    bread_middle = STLParser(
         os.path.join(
-            os.path.dirname(__file__), "..", "..", "resources", "objects", "bowl.stl"
+            os.path.dirname(__file__), "..", "..", "resources", "objects", "bread.stl"
         )
     ).parse()
-    bowl_middle.root.name.name = "bowl_middle"
-    for shape in bowl_middle.root.visual.shapes:
+    bread_middle.root.name.name = "bread_middle"
+    for shape in bread_middle.root.visual.shapes:
         shape.scale = Scale(x=1.3, y=1.3, z=1.3)
-    for shape in bowl_middle.root.collision.shapes:
+    for shape in bread_middle.root.collision.shapes:
         shape.scale = Scale(x=1.3, y=1.3, z=1.3)
 
-    bowl_big =STLParser(
+    bread_big =STLParser(
         os.path.join(
-            os.path.dirname(__file__), "..", "..", "resources", "objects", "bowl.stl"
+            os.path.dirname(__file__), "..", "..", "resources", "objects", "bread.stl"
         )
     ).parse()
-    bowl_big.root.name.name = "bowl_big"
-    for shape in bowl_big.root.visual.shapes:
+    bread_big.root.name.name = "bread_big"
+    for shape in bread_big.root.visual.shapes:
         shape.scale = Scale(x=1.5, y=1.5, z=1.5)
-    for shape in bowl_big.root.collision.shapes:
+    for shape in bread_big.root.collision.shapes:
         shape.scale = Scale(x=1.5, y=1.5, z=1.5)
 
-    whisk = STLParser(
+    knife = STLParser(
         os.path.join(
-            os.path.dirname(__file__), "..", "..", "resources", "pycram_object_gap_demo", "whisk.stl"
+            os.path.dirname(__file__), "..", "..", "resources", "pycram_object_gap_demo", "knife.stl"
         )
     ).parse()
 
@@ -81,29 +81,29 @@ def _setup_world():
                                                                                                angle=np.pi / 2,
                                                                                                reference_frame=l_robot_tip
                                                                                                ))
-        connection_whisk = FixedConnection(
-            parent=r_robot_tip, child=whisk.root,
+        connection_knife = FixedConnection(
+            parent=r_robot_tip, child=knife.root,
             parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_axis_angle(z=-0.03, axis=(0, 1, 0),
                                                                                                angle=np.pi / 2,
                                                                                                reference_frame=r_robot_tip
                                                                                                )
         )
         world.add_connection( connection_sponge)
-        world.merge_world(whisk, connection_whisk)
+        world.merge_world(knife, connection_knife)
         world.merge_world_at_pose(
-            bowl,
+            bread,
             HomogeneousTransformationMatrix.from_xyz_quaternion(
                 2.4, 2.2, 1, reference_frame=world.root
             ),
         )
         world.merge_world_at_pose(
-            bowl_middle,
+            bread_middle,
             HomogeneousTransformationMatrix.from_xyz_quaternion(
                 2.4, 2.6, 1, reference_frame=world.root
             ),
         )
         world.merge_world_at_pose(
-            bowl_big,
+            bread_big,
             HomogeneousTransformationMatrix.from_xyz_quaternion(
                 2.4, 3, 1, reference_frame=world.root
             ),
@@ -133,30 +133,27 @@ def main():
     context = Context.from_world(world)
 
 
-    whisk_body = try_get_body(world, "whisk.stl")
+    knife_body = try_get_body(world, "knife.stl")
     sponge_body = try_get_body(world, "sponge")
-    bowl_body = try_get_body(world, "bowl_big")
+    bread_body = try_get_body(world, "bread_big")
 
 
     clean_up_pose=PoseStamped()
-    clean_up_pose.pose.position.x=4.26
+    clean_up_pose.pose.position.x=2.26
     clean_up_pose.pose.position.y=2.59
     clean_up_pose.pose.position.z=0.95
     context.ros_node = node
-    # island = world.get_body_by_name("cabinet3")
-    island = world.get_body_by_name("island_countertop")
-    print(world.bodies)
     plan = SequentialPlan(
         context,
         ParkArmsActionDescription(Arms.BOTH),
         MoveTorsoActionDescription(TorsoState.HIGH),
 
-        # MixingActionDescription(container=bowl_body, arm=Arms.RIGHT, tool_body=whisk_body),
-        WipingActionDescription(
-            container=island,
-            arm=Arms.LEFT
-        )
-
+        CuttingActionDescription(container=bread_body, arm=Arms.RIGHT, tool_body=knife_body),
+        # WipingActionDescription(
+        #     target_pose=clean_up_pose,
+        #     arm=Arms.LEFT,
+        #     tool_name=SPONGE_TOOL_NAME,
+        #     tool_body=sponge_body,
         # )
         # SimpleMoveTCPAction(target_location=poses[0], arm=Arms.RIGHT),
     )
@@ -167,5 +164,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # while True:
-    #     pass
+    while True:
+        pass

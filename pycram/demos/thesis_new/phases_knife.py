@@ -173,29 +173,29 @@ def main():
     #print("one pose only" + str(poses[0]))
 
     #
-    # with world.modify_world():
-    #     knife = STLParser(
-    #         os.path.join(
-    #             os.path.dirname(__file__),
-    #             "..",
-    #             "..",
-    #             "resources",
-    #             "pycram_object_gap_demo",
-    #             "butter_knife.stl",
-    #         )
-    #     ).parse()
-    #     robot_tip = world.get_body_by_name("r_gripper_tool_frame")
-    #     connection = FixedConnection(
-    #         parent=robot_tip, child=knife.root,
-    #         parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_quaternion(
-    #             0.1, 0, 0, reference_frame=robot_tip
-    #         ),
-    #         # parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_axis_angle(z=-0.03, axis=(0,1,0), angle=np.pi / 2,
-    #         #                                                                                    reference_frame=robot_tip
-    #         #                                                                                    )
-    #         #                                                                                    )
-    #     )
-    #     world.merge_world(knife, connection)
+    with world.modify_world():
+        knife = STLParser(
+            os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "..",
+                "resources",
+                "pycram_object_gap_demo",
+                "butter_knife.stl",
+            )
+        ).parse()
+        robot_tip = world.get_body_by_name("r_gripper_tool_frame")
+        connection = FixedConnection(
+            parent=robot_tip, child=knife.root,
+            parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_quaternion(
+                0.1, 0, 0, reference_frame=robot_tip
+            ),
+            # parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_axis_angle(z=-0.03, axis=(0,1,0), angle=np.pi / 2,
+            #                                                                                    reference_frame=robot_tip
+            #                                                                                    )
+            #                                                                                    )
+        )
+        world.merge_world(knife, connection)
     #
     # knife_body = try_get_body(world, "butter_knife.stl")
     # tip_offset = tip_offset_from_body(knife_body)

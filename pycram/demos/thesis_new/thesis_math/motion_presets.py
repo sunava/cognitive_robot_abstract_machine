@@ -3,11 +3,14 @@ import numpy as np
 from demos.thesis_new.thesis_math.motion_models import MotionSegment, MotionSequence
 from demos.thesis_new.thesis_math.motion_profiles import (
     ShearProfile,
-    oscillatory_shear_local_profiled,
-    planar_spiral_xy,
-    planar_sweep_x,
+    ShearXYProfile,
     clamp_to_cylinder_xy,
     make_constrained_curve,
+    oscillatory_shear_local_profiled,
+    oscillatory_shear_xy_profiled,
+    planar_raster_xy,
+    planar_spiral_xy,
+    planar_sweep_x,
 )
 from demos.thesis_new.thesis_math.world_utils import body_local_aabb
 
@@ -66,8 +69,9 @@ def build_container_sequence(
     debug=False,
     use_visual_aabb=True,
     apply_shape_scale=True,
+    pattern="spiral",
 ):
-    """Build a 3-phase sequence sized to a bowl-like object."""
+    """Build a spiral sequence sized to a bowl-like object."""
     mins, maxs = body_local_aabb(
         bowl_body, apply_shape_scale=apply_shape_scale
     )
@@ -87,15 +91,11 @@ def build_container_sequence(
         apply_shape_scale=apply_shape_scale,
     )
     spiral_r1 = 0.9 * radius_xy
-    sweep_length = 0.9 * radius_xy
-    shear_amp = 0.35 * radius_xy
-    depth_max = 0.8 * size_z
     if debug:
         print(
             "[motion_presets] params "
             f"radius_xy={radius_xy:.4f} size_z={size_z:.4f} "
-            f"spiral_r1={spiral_r1:.4f} sweep_len={sweep_length:.4f} "
-            f"shear_amp={shear_amp:.4f} depth_max={depth_max:.4f}"
+            f"spiral_r1={spiral_r1:.4f}"
         )
 
     # Keep points inside a bowl-shaped vertical cylinder.
@@ -119,29 +119,93 @@ def build_container_sequence(
             )
         ),
     )
-    phase_shear_container = MotionSegment(
-        name="oscillatory_shear_bowl",
-        duration_s=1.5 * duration_scale,
-        local_curve=_with_offset(
-            lambda tau: oscillatory_shear_local_profiled(
-                tau,
-                ShearProfile(
-                    depth_max=depth_max,
-                    depth_ramp_end=0.7,
-                    shear_amp=shear_amp,
-                    shear_cycles=5.0,
-                ),
-            )
-        ),
+    return MotionSequence([phase_spiral_container])
+
+
+def build_surface_sequence(
+    surface_body,
+    reference_size=0.10,
+    debug=False,
+    use_visual_aabb=True,
+    apply_shape_scale=True,
+    pattern="spiral",
+):
+    """Build a planar sequence on a surface or object (e.g., countertop, cutting)."""
+    mins, maxs = body_local_aabb(
+        surface_body, apply_shape_scale=apply_shape_scale
     )
-    phase_sweep_container = MotionSegment(
-        name="planar_sweep_bowl",
-        duration_s=1.5 * duration_scale,
-        local_curve=_with_offset(
-            lambda tau: planar_sweep_x(
-                tau, length=sweep_length, cycles=2.0
-            )
-        ),
+    size_x = maxs[0] - mins[0]
+    size_y = maxs[1] - mins[1]
+    size_z = maxs[2] - mins[2]
+    radius_xy = 0.45 * min(size_x, size_y)
+
+    center_x = 0.5 * (mins[0] + maxs[0])
+    center_y = 0.5 * (mins[1] + maxs[1])
+    surface_margin = 0.005
+    start_offset = np.array(
+        [center_x, center_y, maxs[2] - surface_margin], dtype=float
+    )
+    duration_scale = _duration_scale_from_body(
+        surface_body,
+        reference_size=reference_size,
+        debug=debug,
+        apply_shape_scale=apply_shape_scale,
+    )
+    spiral_r1 = 0.9 * radius_xy
+    shear_amp = 0.35 * radius_xy
+    depth_max = 0.8 * size_z
+    raster_width = 0.9 * size_x
+    raster_height = 0.9 * size_y
+    raster_lanes = max(2, int(np.ceil(raster_height / max(reference_size, 1e-6))))
+    if debug:
+        print(
+            "[motion_presets] surface params "
+            f"radius_xy={radius_xy:.4f} spiral_r1={spiral_r1:.4f} "
+            f"shear_amp={shear_amp:.4f} depth_max={depth_max:.4f} "
+            f"raster_w={raster_width:.4f} raster_h={raster_height:.4f} "
+            f"raster_lanes={raster_lanes}"
+        )
+
+    phase_spiral_surface = MotionSegment(
+        name="planar_spiral_surface",
+        duration_s=2.0 * duration_scale,
+        local_curve=lambda tau: planar_spiral_xy(
+            tau, r0=0.00, r1=spiral_r1, cycles=2.0
+        )
+        + start_offset,
     )
 
-    return MotionSequence([phase_spiral_container])
+    phase_shear_surface = MotionSegment(
+        name="oscillatory_shear_surface",
+        duration_s=1.5 * duration_scale,
+        local_curve=lambda tau: oscillatory_shear_xy_profiled(
+            tau,
+            ShearXYProfile(
+                shear_amp=shear_amp,
+                shear_cycles=5.0,
+            ),
+        )
+        + start_offset,
+    )
+
+    phase_raster_surface = MotionSegment(
+        name="planar_raster_surface",
+        duration_s=2.0 * duration_scale,
+        local_curve=lambda tau: planar_raster_xy(
+            tau,
+            width=raster_width,
+            height=raster_height,
+            lanes=raster_lanes,
+        )
+        + start_offset,
+    )
+
+    pattern = str(pattern).lower()
+    if pattern in ("spiral", "planar_spiral"):
+        return MotionSequence([phase_spiral_surface])
+    if pattern in ("shear", "oscillatory_shear", "shear_amp"):
+        return MotionSequence([phase_shear_surface])
+    if pattern in ("raster", "planar_raster", "surface_cover"):
+        return MotionSequence([phase_raster_surface])
+
+    raise ValueError(f"Unknown pattern '{pattern}'")
