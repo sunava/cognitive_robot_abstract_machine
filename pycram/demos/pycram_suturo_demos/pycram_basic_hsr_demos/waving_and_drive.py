@@ -36,12 +36,6 @@ def get_robot_pose() -> PoseStamped:
 
 
 def transform_perception_to_map(perception_pose: PoseStamped) -> PoseStamped:
-    frame_id = perception_pose.header.frame_id
-    if isinstance(frame_id, str):
-        reference_body = world.get_body_by_name(frame_id)
-    else:
-        reference_body = frame_id
-
     pose_in_camera = HomogeneousTransformationMatrix.from_xyz_quaternion(
         pos_x=float(perception_pose.position.x),
         pos_y=float(perception_pose.position.y),
@@ -50,7 +44,7 @@ def transform_perception_to_map(perception_pose: PoseStamped) -> PoseStamped:
         quat_y=float(perception_pose.orientation.y),
         quat_z=float(perception_pose.orientation.z),
         quat_w=float(perception_pose.orientation.w),
-        reference_frame=reference_body,
+        reference_frame=robot_view.root,
     )
 
     pose_in_map = world.transform(pose_in_camera, world.root)
@@ -61,6 +55,11 @@ def transform_perception_to_map(perception_pose: PoseStamped) -> PoseStamped:
     head_pan = world.get_body_by_name("head_pan_link")
     head_pan_pose = PoseStamped.from_spatial_type(head_pan.global_pose)
     result.orientation = head_pan_pose.orientation
+
+    logger.info(
+        f"Transformierte Pose in map: Position=({result.position.x:.3f}, {result.position.y:.3f}, {result.position.z:.3f}), "
+        f"Orientation=({result.orientation.x:.3f}, {result.orientation.y:.3f}, {result.orientation.z:.3f}, {result.orientation.w:.3f})"
+    )
 
     return result
 
@@ -75,7 +74,7 @@ def park_arms():
 def drive_to_pose(target_pose: PoseStamped):
 
     nav_target = buffer_in_front_of(
-        target_pose.ros_message(),
+        target_pose,
         min_distance=MIN_DISTANCE_M,
     )
 
@@ -99,13 +98,12 @@ with real_robot:
         shutdown_robokudo_interface()
         exit(1)
 
-    logger.info(f"Waving human detected (camera frame): {human}")
-
     # 2. Transform to map coordinates
     human_pose = transform_perception_to_map(human)
     logger.info(f"Human pose in map frame: {human_pose}")
 
     # 3. Drive to the human
-    drive_to_pose(human_pose)
+    goal = human_pose.ros_message()
+    drive_to_pose(goal)
 
     shutdown_robokudo_interface()
