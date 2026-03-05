@@ -29,6 +29,7 @@ rclpy_node, world, robot_view, context = setup_hsrb_context()
 
 MIN_DISTANCE_M: float = 0.8
 WAVING_TIMEOUT: float = 5.0
+ORIENTATION_SWITCH: bool = True
 
 
 def get_robot_pose() -> PoseStamped:
@@ -52,9 +53,10 @@ def transform_perception_to_map(perception_pose: PoseStamped) -> PoseStamped:
 
     result.position.z = 0.0
 
-    head_pan = world.get_body_by_name("head_pan_link")
-    head_pan_pose = PoseStamped.from_spatial_type(head_pan.global_pose)
-    result.orientation = head_pan_pose.orientation
+    if ORIENTATION_SWITCH:
+        head_pan = world.get_body_by_name("head_pan_link")
+        head_pan_pose = PoseStamped.from_spatial_type(head_pan.global_pose)
+        result.orientation = head_pan_pose.orientation
 
     logger.info(
         f"Transformierte Pose in map: Position=({result.position.x:.3f}, {result.position.y:.3f}, {result.position.z:.3f}), "

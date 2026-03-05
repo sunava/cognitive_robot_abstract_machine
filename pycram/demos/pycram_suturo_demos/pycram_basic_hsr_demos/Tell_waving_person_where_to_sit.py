@@ -30,6 +30,7 @@ base_frame = world.get_body_by_name("base_link")
 
 MIN_DISTANCE_M: float = 0.5
 WAVING_TIMEOUT_PER_DIRECTION: float = 4.0
+ORIENTATION_SWITCH: bool = True
 
 
 class Direction(Enum):
@@ -59,10 +60,10 @@ def transform_perception_to_map(perception_pose: PoseStamped) -> PoseStamped:
     result = PoseStamped.from_spatial_type(pose_in_map)
 
     result.position.z = 0.0
-
-    head_pan = world.get_body_by_name("head_pan_link")
-    head_pan_pose = PoseStamped.from_spatial_type(head_pan.global_pose)
-    result.orientation = head_pan_pose.orientation
+    if ORIENTATION_SWITCH:
+        head_pan = world.get_body_by_name("head_pan_link")
+        head_pan_pose = PoseStamped.from_spatial_type(head_pan.global_pose)
+        result.orientation = head_pan_pose.orientation
     logger.info(
         f"Transformierte Pose in map: Position=({result.position.x:.3f}, {result.position.y:.3f}, {result.position.z:.3f}), "
         f"Orientation=({result.orientation.x:.3f}, {result.orientation.y:.3f}, {result.orientation.z:.3f}, {result.orientation.w:.3f})"
