@@ -16,23 +16,13 @@ from demos.pycram_suturo_demos.helper_methods_and_useful_classes.pickup_helper_m
     attach_object_to_hsrb,
     detach_object_from_hsrb,
 )
-from demos.pycram_suturo_demos.helper_methods_and_useful_classes.place_pose import (
-    get_pose_on_semantic_annotation_for_object_by_semantic_annotation,
-)
 from demos.pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
     robot_setup,
 )
-from demos.pycram_suturo_demos.pycram_basic_hsr_demos.move_demo import move_demo
-from demos.pycram_suturo_demos.pycram_basic_hsr_demos.pickup_demo_marc import (
-    pickup_demo,
-)
-from demos.pycram_suturo_demos.pycram_basic_hsr_demos.place_demo import place_demo
 from pycram.datastructures.enums import Arms
-from pycram.datastructures.pose import PoseStamped, GraspPose
-from pycram.designators.location_designator import CostmapLocation
+from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
 from pycram.motion_executor import simulated_robot
-from pycram.plan import Plan
 from pycram.robot_plans import (
     ParkArmsActionDescription,
     GiskardPickUpActionDescription,
@@ -49,7 +39,6 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Banana,
     Cola,
     Table,
-    Apple,
     Orange,
 )
 from semantic_digital_twin.spatial_types import Point3
