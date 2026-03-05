@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Dict, Any, Self
@@ -342,3 +343,10 @@ class CollisionManager(ModelChangeCallback):
         for max_avoided_bodies_rule in other.max_avoided_bodies_rules:
             if max_avoided_bodies_rule not in self.max_avoided_bodies_rules:
                 self.extend_max_avoided_bodies_rules([max_avoided_bodies_rule])
+
+    def copy_for_world(self, world: World):
+        new_collision_manager = CollisionManager(
+            _world=world,
+            collision_detector=type(self.collision_detector)(_world=world),
+        )
+        return new_collision_manager

@@ -2,13 +2,21 @@ import os
 import threading
 import time
 from copy import deepcopy
+from dataclasses import dataclass, field
+from typing import Optional, Any, Dict
 
 import numpy as np
 import pytest
 
 from semantic_digital_twin.adapters.package_resolver import PathResolver
+from semantic_digital_twin.collision_checking.collision_detector import (
+    CollisionDetector,
+    CollisionCheckingResult,
+)
+from semantic_digital_twin.collision_checking.collision_manager import CollisionManager
 from semantic_digital_twin.collision_checking.collision_matrix import (
     MaxAvoidedCollisionsOverride,
+    CollisionMatrix,
 )
 from typing_extensions import Type
 
@@ -88,6 +96,33 @@ The structure of fixtures in this conftest:
         after the test since there is no good method to reset the model after a test has changed it. 
 
 """
+
+
+@dataclass
+class CollisionlessCollisionDetector(CollisionDetector):
+    """
+    A collision detector that does not detect any collisions, used for testing purposes to disable collision checking.
+    """
+
+    collision_manager: CollisionManager = field(init=False)
+    _last_synced_state: Optional[int] = field(default=None, init=False)
+    _last_synced_model: Optional[int] = field(default=None, init=False)
+    _collision_objects: Dict[Body, Any] = field(default_factory=dict, init=False)
+    buffer: float = field(default=0.05, init=False)
+
+    def sync_world_model(self) -> None:
+        return
+
+    def sync_world_state(self) -> None:
+        return
+
+    def check_collisions(
+        self, collision_matrix: CollisionMatrix
+    ) -> CollisionCheckingResult:
+        return CollisionCheckingResult()
+
+    def reset_cache(self):
+        pass
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -402,6 +437,10 @@ def apartment_world_setup():
             "apartment.urdf",
         )
     ).parse()
+    apartment_world.collision_manager = CollisionManager(
+        _world=apartment_world,
+        collision_detector=CollisionlessCollisionDetector(_world=apartment_world),
+    )
     milk_world = STLParser(
         os.path.join(
             os.path.dirname(__file__),
