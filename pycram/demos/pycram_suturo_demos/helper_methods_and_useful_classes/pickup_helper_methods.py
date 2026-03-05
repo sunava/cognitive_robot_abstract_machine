@@ -2,12 +2,15 @@ from typing import Any
 
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.robots.abstract_robot import ParallelGripper
+from semantic_digital_twin.robots.hsrb import HSRB
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import Connection6DoF
-from semantic_digital_twin.world_description.geometry import Box, Scale
+from semantic_digital_twin.world_description.geometry import Box, Scale, Color
 from semantic_digital_twin.world_description.shape_collection import ShapeCollection
 from semantic_digital_twin.world_description.world_entity import Body
+from suturo_resources.queries import query_semantic_annotations_on_surfaces, query_annotations_by_color, \
+    query_get_next_object_euclidean_x_y
 from suturo_resources.suturo_map import load_environment
 
 import semantic_digital_twin
@@ -90,6 +93,7 @@ It is a helper method that attaches the object to the robot, since the attaching
 def attach_object_to_hsrb(world: World, object_designator: Body):
     # Attach the object to the end effector
     manipulator = world.get_semantic_annotations_by_type(ParallelGripper)[0]
+
     with world.modify_world():
         world.move_branch_with_fixed_connection(
             object_designator, manipulator.tool_frame
@@ -133,3 +137,43 @@ def try_perceiving_and_spawning_and_find_object(world: World, object_name: str):
     object_to_pickup = try_get_object_to_pickup(world, object_name)
     logger.info(f"object_to_Pickup: '{object_to_pickup}'")
     return object_to_pickup
+
+def get_nearest_object(world: World) -> Body| None:
+    robot_view = world.get_semantic_annotations_by_type(HSRB)[0]
+    cooking_table_annotation = world.get_semantic_annotation_by_name(
+        "cooking_table"
+    )
+    nearest_objects_list = query_get_next_object_euclidean_x_y(
+        robot_view.root, cooking_table_annotation
+    ).tolist()
+    object_to_pickup = nearest_objects_list[0].bodies[0]  # The nearest object
+    return object_to_pickup
+
+def get_object_with_color(world: World, color: Color) -> Body| None:
+    robot_view = world.get_semantic_annotations_by_type(HSRB)[0]
+    cooking_table_annotation = world.get_semantic_annotation_by_name(
+        "cooking_table"
+    )
+    objects_on_table = query_semantic_annotations_on_surfaces([cooking_table_annotation], world).tolist()
+    print()
+    colored_objects = query_annotations_by_color(color, objects_on_table)
+    object_to_pickup = colored_objects[0].bodies[0]  # The first colored object with that color
+    return object_to_pickup
+
+def parse_color(color_str: str) -> Color:
+    """Convert a color string input to a Color object."""
+    color_map = {
+        "red": Color.RED(),
+        "yellow": Color.YELLOW(),
+        "green": Color.GREEN(),
+        "cyan": Color.CYAN(),
+        "blue": Color.BLUE(),
+        "magenta": Color.MAGENTA(),
+        "white": Color.WHITE(),
+        "black": Color.BLACK(),
+        "gray": Color.GRAY(),
+        "grey": Color.GRAY(),
+        "beige": Color.BEIGE(),
+        "orange": Color.ORANGE(),
+    }
+    return color_map.get(color_str.strip().lower(), Color.WHITE())

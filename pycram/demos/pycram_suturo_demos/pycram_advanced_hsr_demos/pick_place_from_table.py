@@ -77,7 +77,7 @@ def main():
     )
     pickup_demo(
         simulation=SIMULATED,
-        hsrb_world=world,
+        world=world,
         context=context,
         object_name=object_name,
     )

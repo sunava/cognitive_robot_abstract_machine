@@ -5,15 +5,21 @@ from typing import Any
 
 import rclpy
 
+from demos.pycram_suturo_demos.helper_methods_and_useful_classes.pickup_helper_methods import parse_color
 from demos.pycram_suturo_demos.pycram_basic_hsr_demos.move_demo import move_demo
 from demos.pycram_suturo_demos.pycram_basic_hsr_demos.pickup_demo_marc import (
-    pickup_demo,
+    pickup_demo, get_nearest_object,
 )
 from pycram.datastructures.dataclasses import Context
+from pycram.datastructures.enums import PickUpType
 from semantic_digital_twin.robots.abstract_robot import Manipulator
 from semantic_digital_twin.robots.hsrb import HSRB
 from semantic_digital_twin.world import World
+from semantic_digital_twin.world_description.geometry import Color
+from suturo_resources.queries import query_get_next_object_euclidean_x_y, query_semantic_annotations_on_surfaces, \
+    query_annotations_by_color
 
+from pycram.datastructures.enums import PickUpType
 """
 was brauche ich:
 [X] - Home position
@@ -33,7 +39,7 @@ from demos.pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup imp
 )
 
 
-def initialization(simulation: bool, with_simulated_objects: bool = False):
+def initialization(simulation: bool, with_simulated_objects: bool = False ):
     result = robot_setup(
         simulation=simulation, with_simulated_objects=with_simulated_objects
     )
@@ -61,57 +67,52 @@ def try_perceive_and_spawn(world):
 
 
 def main():
-    try:
-        simulated = True
-        with_simulated_objects = True
+    simulated = True
+    with_simulated_objects = True
+    object_name = ""
+    object_color : Color= Color.WHITE()
 
-        rclpy_node, world, robot_view, context, manipulator = initialization(
-            simulation=simulated, with_simulated_objects=with_simulated_objects
-        )
-        # objects = {1: "milk.stl", 2: "breakfast_cereal.stl"} if WITH_OBJECTS else {}
-        #
-        # perceived_objects = try_perceive_and_spawn(world)
-        # objects.update(perceived_objects)
+    rclpy_node, world, robot_view, context, manipulator = initialization(
+        simulation=simulated, with_simulated_objects=with_simulated_objects
+    )
 
-        # object_name: str = input(f"Which object do you want to pick up?")
+    # objects = {1: "milk.stl", 2: "breakfast_cereal.stl"}
 
-        #
-        # move_demo(
-        #     simulated=simulated,
-        #     world=world,
-        #     context=context,
-        #     target_pose="POPCORN_TABLE",
-        # )
-        cooking_table_annotation = world.get_semantic_annotation_by_name(
-            "cooking_table"
-        )
-        print(cooking_table_annotation)
-        print(robot_view.root)
-        nearest = query_get_next_object_euclidean_x_y(
-            robot_view.root, cooking_table_annotation
-        ).tolist()
-        on_table = query_semantic_annotations_on_surfaces(
-            [cooking_table_annotation], world
-        ).tolist()
-        red_objects_on_table = query_annotations_by_color(Color.RED(), on_table)
-        print(nearest[0])
-        milkme_harder = world.get_body_by_name("milk.stl").visual.shapes[0].color
-        print("color:", red_objects_on_table)
-        # pickup_demo(
-        #     simulation=simulated,
-        #     hsrb_world=world,
-        #     context=context,
-        #     object_name=object_name,
-        # )
-        # move_demo(
-        #     simulated=simulated,
-        #     world=world,
-        #     context=context,
-        #     target_pose="ROBOT_START_POSE",
-        # )
-        world.clear()
-    finally:
-        rclpy.shutdown()
+    # perceived_objects = try_perceive_and_spawn(world)
+    # objects.update(perceived_objects)
+    #
+    move_demo(
+        simulated=simulated,
+        world=world,
+        context=context,
+        target_pose="POPCORN_TABLE",
+    )
+
+    mode: str = input(f"What mode?")
+    if mode == "object search":
+        pickup_mode = PickUpType.PICK_UP_OBJECT_SEARCH
+        object_name: str = input(f"Which object do you want to pick up?")
+    elif mode == "object by color":
+        pickup_mode = PickUpType.PICK_UP_OBJECT_BY_COLOR
+        object_color = parse_color(input(f"Which color should the object be? In lowercase please (e.g: red, blue, green)"))
+    else:
+        pickup_mode = PickUpType.PICK_UP_OBJECT_BY_NEAREST
+
+    pickup_demo(
+        simulation=simulated,
+        world=world,
+        context=context,
+        mode=pickup_mode,
+        object_name=object_name,
+        color=object_color
+    )
+    move_demo(
+        simulated=simulated,
+        world=world,
+        context=context,
+        target_pose="ROBOT_START_POSE",
+    )
+
 
 
 if __name__ == "__main__":
