@@ -1073,9 +1073,6 @@ class Whisk(ToolWithHandle):
         ]
         return pairs
 
-    def tool_frame(self) -> HomogeneousTransformationMatrix:
-        return HomogeneousTransformationMatrix.from_xyz_rpy(x=0.1, y=0.0, z=0.0, reference_frame=self.root)
-
     def debug_distance_threshold(self) -> float:
         return 0.01
 
@@ -1090,6 +1087,33 @@ class Knife(ToolWithHandle):
             AlignmentPair(
                 tip_normal=Vector3(0, 0, 1, reference_frame=self.root),
                 goal_normal=Vector3(0, 0, 1, reference_frame=body_to_act_on),
+            ),
+        ]
+        return pairs
+
+
+    def debug_distance_threshold(self) -> float:
+        return 0.6
+
+@dataclass(eq=False)
+class Sponge(Tool):
+    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]:
+        goal_reference_frame = body_to_act_on
+        if hasattr(body_to_act_on, "to_spatial_type"):
+            try:
+                pose = body_to_act_on.to_spatial_type()
+                if hasattr(pose, "reference_frame") and pose.reference_frame is not None:
+                    goal_reference_frame = pose.reference_frame
+            except Exception:
+                pass
+
+        if goal_reference_frame is None:
+            goal_reference_frame = self.root
+
+        pairs = [
+            AlignmentPair(
+                tip_normal=Vector3(0, 0, 1, reference_frame=self.root),
+                goal_normal=Vector3(0, 0, 1, reference_frame=goal_reference_frame),
             ),
         ]
         return pairs

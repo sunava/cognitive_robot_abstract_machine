@@ -27,7 +27,7 @@ from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
 )
 from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.robots.pr2 import PR2
-from semantic_digital_twin.semantic_annotations.semantic_annotations import Knife, Whisk
+from semantic_digital_twin.semantic_annotations.semantic_annotations import  Sponge
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.world_description.geometry import Color, Scale
@@ -36,6 +36,7 @@ from semantic_digital_twin.world_description.world_entity import Body
 RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")
 )
+
 
 
 def _parse_stl(*relative_path_parts):
@@ -83,18 +84,19 @@ def setup_complex_world():
     bread_big.root.name.name = "bread_big"
     _set_uniform_scale(bread_big, (1.5, 1.5, 1.5), color=Color(R=0.76, G=0.60, B=0.42))
 
-    knife = STLParser(
-        os.path.join(
-            os.path.dirname(__file__), "..", "..", "resources", "pycram_object_gap_demo", "big-knife.stl"
-        )
-    ).parse()
 
 
-    whisk = STLParser(
-        os.path.join(
-            os.path.dirname(__file__), "..", "..", "resources", "pycram_object_gap_demo", "whisk.stl"
-        )
-    ).parse()
+    sponge = add_box(
+        world, BoxSpec(name="sponge", scale_xyz=(0.05, 0.05, 0.05)), tf_frame="/map", color=Color(R=1, G=1, B=0)
+    )
+
+
+    #
+    # whisk = STLParser(
+    #     os.path.join(
+    #         os.path.dirname(__file__), "../..", "..", "resources", "pycram_object_gap_demo", "whisk.stl"
+    #     )
+    # ).parse()
 
 
     l_robot_tip = world.get_body_by_name("l_gripper_tool_frame")
@@ -104,19 +106,27 @@ def setup_complex_world():
     )
 
     with world.modify_world():
-        connection_knife = FixedConnection(
-            parent=r_robot_tip, child=knife.root,
-            parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(x=0.08, y=0, z=0, roll=0, pitch=0, yaw=0,
-                                                         reference_frame=r_robot_tip)
-        )
-        connection_whisk = FixedConnection(
-            parent=l_robot_tip, child=whisk.root,
-            parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(x=0, y=0, z=0.08, roll=0, pitch=-np.pi/2, yaw=0,
-                                                         reference_frame=l_robot_tip)
-        )
+        # connection_knife = FixedConnection(
+        #     parent=r_robot_tip, child=knife.root,
+        #     parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(x=0.08, y=0, z=0, roll=0, pitch=0, yaw=0,
+        #                                                  reference_frame=r_robot_tip)
+        # )
+        # connection_whisk = FixedConnection(
+        #     parent=l_robot_tip, child=whisk.root,
+        #     parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(x=0, y=0, z=0.08, roll=0, pitch=-np.pi/2, yaw=0,
+        #                                                  reference_frame=l_robot_tip)
+        # )
         # world.merge_world(sponge)
-        world.merge_world(knife, connection_knife)
-        world.merge_world(whisk, connection_whisk)
+        world.add_kinematic_structure_entity(sponge)
+        connection_sponge = FixedConnection(
+            parent=l_robot_tip, child=sponge,
+            parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_axis_angle(axis=(0, 1, 0),
+                                                                                               angle=np.pi / 2,
+                                                                                               reference_frame=l_robot_tip
+                                                                                               ))
+        world.add_connection(connection_sponge)
+        # world.merge_world(knife, connection_knife)
+        # world.merge_world(whisk, connection_whisk)
         world.merge_world_at_pose(
             bowl,
             HomogeneousTransformationMatrix.from_xyz_quaternion(
@@ -271,13 +281,14 @@ def main():
 
     PR2.from_world(world)
     context = Context.from_world(world)
-
-
-    knife_body = try_get_body(world, "big-knife.stl")
-    knife = Knife(root=knife_body)
-    whisk_body = try_get_body(world, "whisk.stl")
-    whisk = Whisk(root=whisk_body)
-    # sponge_body = try_get_body(world, "sponge")
+    #
+    #
+    # knife_body = try_get_body(world, "big-knife.stl")
+    # knife = Knife(root=knife_body)
+    # whisk_body = try_get_body(world, "whisk.stl")
+    # whisk = Whisk(root=whisk_body)
+    sponge_body = try_get_body(world, "sponge")
+    sponge = Sponge(root=sponge_body)
     bread_body = try_get_body(world, "bread_small")
     bread_middle_body = try_get_body(world, "bread_middle")
     bread_big_body = try_get_body(world, "bread_big")
@@ -296,66 +307,67 @@ def main():
             PoseStamped.from_list([2.0 ,2.5,0.0], [0, 0, 0, 1], world.root),
             True,
         ),
-        CuttingActionDescription(
-            container=bread_body,
-            arm=Arms.RIGHT,
-            tool=knife,
-            technique="saw",
-            clear_viz=True,
-            pointer_stride=10,
-            num_cuts_x=5,
-        ),
-        CuttingActionDescription(
-            container=bread_middle_body,
-            arm=Arms.RIGHT,
-            tool=knife,
-            technique="saw",
-            pointer_stride=10,
-            num_cuts_x=5,
-        ),
-        CuttingActionDescription(
-            container=bread_big_body,
-            arm=Arms.RIGHT,
-            tool=knife,
-            technique="saw",
-            pointer_stride=10,
-            num_cuts_x=5,
-        ),
-        NavigateActionDescription(
-            PoseStamped.from_spatial_type(
-                HomogeneousTransformationMatrix.from_xyz_rpy(
-                    4.0, 2.5, 0.0, roll=0, pitch=0, yaw=180, reference_frame=world.root
-                )
-            ),
-            True,
-        ),
-        MixingActionDescription(
-            container=bowl_small_body,
-            arm=Arms.LEFT,
-            tool=whisk,
-            pointer_stride=3,
-            mix_duration_s=12.0,
-        ),
-        MixingActionDescription(
-            container=bowl_middle_body,
-            arm=Arms.LEFT,
-            tool=whisk,
-            pointer_stride=3,
-            mix_duration_s=12.0,
-        ),
-        MixingActionDescription(
-            container=bowl_big_body,
-            arm=Arms.LEFT,
-            tool=whisk,
-            pointer_stride=3,
-            mix_duration_s=12.0,
-        ),
-
-        # WipingActionDescription(
-        #     target_pose=clean_up_pose,
+        # NavigateActionDescription(target_location=PoseStamped.from_list([1.5,2.5,0.0])),
+        # CuttingActionDescription(
+        #     container=bread_body,
+        #     arm=Arms.RIGHT,
+        #     tool=knife,
+        #     technique="saw",
+        #     clear_viz=True,
+        #     pointer_stride=10,
+        #     num_cuts_x=5,
+        # ),
+        # CuttingActionDescription(
+        #     container=bread_middle_body,
+        #     arm=Arms.RIGHT,
+        #     tool=knife,
+        #     technique="saw",
+        #     pointer_stride=10,
+        #     num_cuts_x=5,
+        # ),
+        # CuttingActionDescription(
+        #     container=bread_big_body,
+        #     arm=Arms.RIGHT,
+        #     tool=knife,
+        #     technique="saw",
+        #     pointer_stride=10,
+        #     num_cuts_x=5,
+        # ),
+        # NavigateActionDescription(
+        #     PoseStamped.from_spatial_type(
+        #         HomogeneousTransformationMatrix.from_xyz_rpy(
+        #             4.0, 2.5, 0.0, roll=0, pitch=0, yaw=180, reference_frame=world.root
+        #         )
+        #     ),
+        #     True,
+        # ),
+        # MixingActionDescription(
+        #     container=bowl_small_body,
         #     arm=Arms.LEFT,
-        #     tool=None,
-        # )
+        #     tool=whisk,
+        #     pointer_stride=3,
+        #     mix_duration_s=12.0,
+        # ),
+        # MixingActionDescription(
+        #     container=bowl_middle_body,
+        #     arm=Arms.LEFT,
+        #     tool=whisk,
+        #     pointer_stride=3,
+        #     mix_duration_s=12.0,
+        # ),
+        # MixingActionDescription(
+        #     container=bowl_big_body,
+        #     arm=Arms.LEFT,
+        #     tool=whisk,
+        #     pointer_stride=3,
+        #     mix_duration_s=12.0,
+        # ),
+        #
+        WipingActionDescription(
+            target_pose=clean_up_pose,
+            arm=Arms.LEFT,
+            tool=None,
+        )
         # SimpleMoveTCPAction(target_location=poses[0], arm=Arms.RIGHT),
     ]
 

@@ -305,5 +305,9 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
                 )
                 for pair in plane_pairs
             )
-            nodes.append(Parallel(tasks))
+            # Parallel with a single task can break downstream symbolic composition.
+            if len(tasks) == 1:
+                nodes.append(tasks[0])
+            else:
+                nodes.append(Parallel(tasks))
         return Sequence(nodes=nodes)

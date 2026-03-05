@@ -48,7 +48,7 @@ from ....datastructures.partial_designator import PartialDesignator
 from ....datastructures.pose import PoseStamped
 from ....language import SequentialPlan
 from ....robot_plans.actions.base import ActionDescription
-
+from ....view_manager import ViewManager
 
 logger = logging.getLogger(__name__)
 
@@ -316,16 +316,21 @@ class GeneralizedActionPlan(ActionDescription):
                     )
                 )
 
+        alignment_target = None
+        if hasattr(self, "container") and self.container is not None:
+            alignment_target = self.container
+        elif hasattr(self, "target_pose") and self.target_pose is not None:
+            alignment_target = self.target_pose
+
         alignment_pairs = (
-            self.tool.tool_alignment(self.container)
-            if (
-                self.tool is not None
-                and hasattr(self, "container")
-                and self.container is not None
-            )
+            self.tool.tool_alignment(alignment_target)
+            if (self.tool is not None and alignment_target is not None)
             else []
         )
-
+        try:
+            tip = self.tool.get_tool_frame()
+        except Exception:
+            tip = ViewManager().get_end_effector_view(self.arm, self.robot_view).tool_frame
         try:
             SequentialPlan(
                 self.context,
@@ -334,7 +339,7 @@ class GeneralizedActionPlan(ActionDescription):
                     self.arm,
                     allow_gripper_collision=True,
                     alignment_pairs=alignment_pairs,
-                    tip=self.tool.get_tool_frame()
+                    tip=tip
                 ),
             ).perform()
             record.mark_action_success(True)
