@@ -383,6 +383,17 @@ def pr2_world_copy(pr2_world_setup):
     return result
 
 
+@pytest.fixture(scope="function")
+def pr2_world_copy_with_collision(pr2_world_setup):
+    result = deepcopy(pr2_world_setup)
+    result.collision_manager = CollisionManager(
+        _world=result,
+        collision_detector=BulletCollisionDetector(_world=result),
+    )
+    PR2.from_world(result)
+    return result
+
+
 @pytest.fixture(scope="session")
 def hsr_world_setup():
     urdf_dir = os.path.join(
