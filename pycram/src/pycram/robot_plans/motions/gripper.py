@@ -6,7 +6,7 @@ from giskardpy.motion_statechart.goals.collision_avoidance import (
     ExternalCollisionAvoidance,
     UpdateTemporaryCollisionRules,
 )
-from giskardpy.motion_statechart.goals.templates import Sequence
+from giskardpy.motion_statechart.goals.templates import Sequence, Parallel
 from giskardpy.motion_statechart.graph_node import MotionStatechartNode
 from giskardpy.motion_statechart.tasks.cartesian_tasks import (
     CartesianPose,
@@ -96,27 +96,9 @@ class ReachMotion(BaseMotion):
             )
             for pose in self._calculate_pose_sequence()
         ]
-        return Sequence(nodes=nodes)
-
-    @property
-    def collision_rules(self) -> list[MotionStatechartNode]:
-        manipulator_bodies = (
-            ViewManager()
-            .get_end_effector_view(self.arm, self.robot_view)
-            .bodies_with_collision
-        )
-        rules = [
-            ExternalCollisionAvoidance(),
-            UpdateTemporaryCollisionRules(
-                temporary_rules=[
-                    AllowCollisionBetweenGroups(
-                        [self.object_designator], manipulator_bodies
-                    )
-                ]
-            ),
-        ]
-        rules.extend(self.robot_view.special_constraints)
-        return rules
+        motion_state_chart_nodes = self._only_allow_gripper_collision_rules(self.arm)
+        motion_state_chart_nodes.append(Sequence(nodes=nodes))
+        return Parallel(motion_state_chart_nodes)
 
 
 @dataclass
@@ -129,7 +111,7 @@ class MoveGripperMotion(BaseMotion):
     """
     Motion that should be performed, either 'open' or 'close'
     """
-    gripper: Arms
+    arm_of_gripper: Arms
     """
     Name of the gripper that should be moved
     """
@@ -143,18 +125,17 @@ class MoveGripperMotion(BaseMotion):
 
     @property
     def _motion_chart(self):
-        arm = ViewManager().get_end_effector_view(self.gripper, self.robot_view)
+        arm = ViewManager().get_end_effector_view(self.arm_of_gripper, self.robot_view)
 
-        return JointPositionList(
+        motion_state_chart_nodes = self._only_allow_gripper_collision_rules(self.arm_of_gripper) if self.allow_gripper_collision else [ExternalCollisionAvoidance(robot=self.robot_view)]
+
+        motion_state_chart_nodes.append(JointPositionList(
             goal_state=arm.get_joint_state_by_type(self.motion),
             name=(
                 "OpenGripper" if self.motion == GripperState.OPEN else "CloseGripper"
             ),
-        )
-
-    @property
-    def collision_rules(self) -> list[MotionStatechartNode]:
-        return []
+        ))
+        return Parallel(motion_state_chart_nodes)
 
 
 @dataclass
@@ -206,27 +187,10 @@ class MoveTCPMotion(BaseMotion):
                 name="MoveTCP",
                 weight=DefaultWeights.WEIGHT_ABOVE_CA,
             )
-        return task
 
-    @property
-    def collision_rules(self) -> list[MotionStatechartNode]:
-        manipulator_bodies = (
-            ViewManager()
-            .get_end_effector_view(self.arm, self.robot_view)
-            .bodies_with_collision
-        )
-        rules = [
-            ExternalCollisionAvoidance(),
-            UpdateTemporaryCollisionRules(
-                temporary_rules=[
-                    AllowCollisionBetweenGroups(
-                        self.world.bodies_with_collision, manipulator_bodies
-                    )
-                ]
-            ),
-        ]
-        rules.extend(self.robot_view.special_constraints)
-        return rules
+        motion_state_chart_nodes = self._only_allow_gripper_collision_rules(self.arm) if self.allow_gripper_collision else [ExternalCollisionAvoidance(robot=self.robot_view)]
+        motion_state_chart_nodes.append(task)
+        return Parallel(motion_state_chart_nodes)
 
 
 @dataclass
@@ -273,24 +237,6 @@ class MoveTCPWaypointsMotion(BaseMotion):
             )
             for pose in self.waypoints
         ]
-        return Sequence(nodes=nodes)
-
-    @property
-    def collision_rules(self) -> list[MotionStatechartNode]:
-        manipulator_bodies = (
-            ViewManager()
-            .get_end_effector_view(self.arm, self.robot_view)
-            .bodies_with_collision
-        )
-        rules = [
-            ExternalCollisionAvoidance(),
-            UpdateTemporaryCollisionRules(
-                temporary_rules=[
-                    AllowCollisionBetweenGroups(
-                        self.world.bodies_with_collision, manipulator_bodies
-                    )
-                ]
-            ),
-        ]
-        rules.extend(self.robot_view.special_constraints)
-        return rules
+        motion_state_chart_nodes = self._only_allow_gripper_collision_rules(self.arm) if self.allow_gripper_collision else [ExternalCollisionAvoidance(robot=self.robot_view)]
+        motion_state_chart_nodes.append(Sequence(nodes=nodes))
+        return Parallel(motion_state_chart_nodes)

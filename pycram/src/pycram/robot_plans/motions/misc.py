@@ -23,8 +23,4 @@ class DetectingMotion(BaseMotion):
 
     @property
     def _motion_chart(self):
-        pass
-
-    @property
-    def collision_rules(self) -> list[MotionStatechartNode]:
-        return []
+        return

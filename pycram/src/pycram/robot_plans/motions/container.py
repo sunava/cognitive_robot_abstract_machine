@@ -1,19 +1,11 @@
 from dataclasses import dataclass
 
-from giskardpy.motion_statechart.goals.collision_avoidance import (
-    ExternalCollisionAvoidance,
-    UpdateTemporaryCollisionRules,
-)
 from giskardpy.motion_statechart.goals.open_close import Open, Close
-from giskardpy.motion_statechart.graph_node import MotionStatechartNode
-from semantic_digital_twin.collision_checking.collision_rules import (
-    AllowCollisionBetweenGroups,
-)
-from semantic_digital_twin.world_description.world_entity import Body
-
-from pycram.robot_plans.motions.base import BaseMotion
+from giskardpy.motion_statechart.goals.templates import Parallel
 from pycram.datastructures.enums import Arms
+from pycram.robot_plans.motions.base import BaseMotion
 from pycram.view_manager import ViewManager
+from semantic_digital_twin.world_description.world_entity import Body
 
 
 @dataclass
@@ -37,27 +29,11 @@ class OpeningMotion(BaseMotion):
     @property
     def _motion_chart(self):
         tip = ViewManager().get_end_effector_view(self.arm, self.robot_view).tool_frame
-        return Open(tip_link=tip, environment_link=self.object_part)
-
-    @property
-    def collision_rules(self) -> list[MotionStatechartNode]:
-        manipulator_bodies = (
-            ViewManager()
-            .get_end_effector_view(self.arm, self.robot_view)
-            .bodies_with_collision
+        motion_state_chart_nodes = self._only_allow_gripper_collision_rules(self.arm)
+        motion_state_chart_nodes.append(
+            Open(tip_link=tip, environment_link=self.object_part)
         )
-        rules = [
-            ExternalCollisionAvoidance(),
-            UpdateTemporaryCollisionRules(
-                temporary_rules=[
-                    AllowCollisionBetweenGroups(
-                        self.world.bodies_with_collision, manipulator_bodies
-                    )
-                ]
-            ),
-        ]
-        rules.extend(self.robot_view.special_constraints)
-        return rules
+        return Parallel(motion_state_chart_nodes)
 
 
 @dataclass
@@ -81,26 +57,10 @@ class ClosingMotion(BaseMotion):
     @property
     def _motion_chart(self):
         tip = ViewManager().get_end_effector_view(self.arm, self.robot_view).tool_frame
-        return Close(
-            tip_link=tip, environment_link=self.object_part, goal_joint_state=0.01
+        motion_state_chart_nodes = self._only_allow_gripper_collision_rules(self.arm)
+        motion_state_chart_nodes.append(
+            Close(
+                tip_link=tip, environment_link=self.object_part, goal_joint_state=0.01
+            )
         )
-
-    @property
-    def collision_rules(self) -> list[MotionStatechartNode]:
-        manipulator_bodies = (
-            ViewManager()
-            .get_end_effector_view(self.arm, self.robot_view)
-            .bodies_with_collision
-        )
-        rules = [
-            ExternalCollisionAvoidance(),
-            UpdateTemporaryCollisionRules(
-                temporary_rules=[
-                    AllowCollisionBetweenGroups(
-                        self.world.bodies_with_collision, manipulator_bodies
-                    )
-                ]
-            ),
-        ]
-        rules.extend(self.robot_view.special_constraints)
-        return rules
+        return Parallel(motion_state_chart_nodes)

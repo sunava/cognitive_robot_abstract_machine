@@ -35,11 +35,6 @@ class MotionExecutor:
     The motions to execute
     """
 
-    collision_rules: List[MotionStatechartNode]
-    """
-    The collision rules to use for the motions. This may include MotionStatechartNodes which modify existing rules
-    """
-
     world: World
     """
     The world in which the motions should be executed.
@@ -61,7 +56,6 @@ class MotionExecutor:
         self.motion_state_chart = MotionStatechart()
         sequence_node = Sequence(nodes=self.motions)
         self.motion_state_chart.add_node(sequence_node)
-        self.motion_state_chart.add_nodes(nodes=self.collision_rules)
 
         self.motion_state_chart.add_node(EndMotion.when_true(sequence_node))
 

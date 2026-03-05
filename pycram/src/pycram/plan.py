@@ -1024,18 +1024,6 @@ class ActionNode(BaseActionNode, Generic[ActionType]):
             for motion_designator in self._collect_motion_designators()
         ]
 
-    def collect_collision_rules(self) -> List[MotionStatechartNode]:
-        """
-        Collects all collision rules of this action.
-        """
-        motion_designators = self._collect_motion_designators()
-        collision_rules = set()
-        for motion_designator in motion_designators:
-            collision_rules.update(
-                set(motion_designator.designator_ref.collision_rules)
-            )
-        return list(collision_rules)
-
     def _collect_motion_designators(self) -> List[MotionNode]:
         """
         Collects all motion designators that are direct children of this action node.
@@ -1053,7 +1041,6 @@ class ActionNode(BaseActionNode, Generic[ActionType]):
         """
         self.motion_executor = MotionExecutor(
             self.collect_motions(),
-            self.collect_collision_rules(),
             self.plan.world,
             ros_node=self.plan.context.ros_node,
         )

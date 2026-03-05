@@ -26,7 +26,3 @@ class MoveMotion(BaseMotion):
     @property
     def _motion_chart(self):
         return SetOdometry(base_pose=self.target.to_spatial_type())
-
-    @property
-    def collision_rules(self) -> list[MotionStatechartNode]:
-        return []
