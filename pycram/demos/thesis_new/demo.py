@@ -1,7 +1,10 @@
 import os
 import numpy as np
+import csv
+import json
 
 import rclpy
+from trimesh.proximity import nearby_faces, closest_point
 
 from demos.thesis.simulation_setup import add_box, BoxSpec
 from demos.thesis_new.thesis_math.world_utils import try_get_body
@@ -147,11 +150,58 @@ def setup_complex_world():
         )
         world.merge_world_at_pose(
             bread_big,
-            HomogeneousTransformationMatrix.from_xyz_rpy(x=2.5, y=2.8, z=1, roll=0, pitch=0, yaw=np.pi/2,
+            HomogeneousTransformationMatrix.from_xyz_rpy(x=2.5, y=2.8, z=1, roll=0, pitch=0, yaw=-np.pi/2,
                                                          reference_frame=world.root),
 
         )
     return world
+
+
+def _dump_experiment_metrics_csv(node, out_path: str) -> None:
+    def _json_safe(value):
+        if isinstance(value, np.ndarray):
+            return value.tolist()
+        if isinstance(value, np.generic):
+            return value.item()
+        if isinstance(value, dict):
+            return {str(k): _json_safe(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [_json_safe(v) for v in value]
+        return value
+
+    records = getattr(node, "_experiment_metrics", [])
+    if not records:
+        return
+
+    rows = []
+    all_keys = set()
+    for record in records:
+        flat = {}
+        for k, v in record.items():
+            if isinstance(v, (dict, list, tuple)):
+                flat[k] = json.dumps(_json_safe(v))
+            else:
+                flat[k] = _json_safe(v)
+        rows.append(flat)
+        all_keys.update(flat.keys())
+
+    preferred_order = [
+        "action",
+        "action_success",
+        "container",
+        "container_pose",
+        "tool",
+        "robot_pose",
+    ]
+    fieldnames = [k for k in preferred_order if k in all_keys] + sorted(
+        k for k in all_keys if k not in preferred_order
+    )
+    write_header = (not os.path.exists(out_path)) or os.path.getsize(out_path) == 0
+    with open(out_path, "a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if write_header:
+            writer.writeheader()
+        writer.writerows(rows)
 
 
 def main():
@@ -190,6 +240,7 @@ def main():
     clean_up_pose = PoseStamped.from_list([2.5,4,0.95])
     context.ros_node = node
     print(PoseStamped.from_spatial_type(context.robot.root.global_pose))
+
     plan = SequentialPlan(
         context,
         ParkArmsActionDescription(Arms.BOTH),
@@ -199,12 +250,18 @@ def main():
             True,
         ),
         # NavigateActionDescription(target_location=PoseStamped.from_list([1.5,2.5,0.0])),
-        CuttingActionDescription(container=bread_body, arm=Arms.RIGHT, tool=knife, technique="saw", clear_viz=True),
-        CuttingActionDescription(container=bread_middle_body, arm=Arms.RIGHT, tool=knife, technique="saw"),
-        CuttingActionDescription(container=bread_big_body, arm=Arms.RIGHT, tool=knife, technique="saw"),
-        MixingActionDescription(container=bowl_small_body, arm=Arms.LEFT, tool=whisk),
-        MixingActionDescription(container=bowl_middle_body, arm=Arms.LEFT, tool=whisk),
-        MixingActionDescription(container=bowl_big_body, arm=Arms.LEFT, tool=whisk),
+        CuttingActionDescription(container=bread_body, arm=Arms.RIGHT, tool=knife, technique="saw", clear_viz=True,
+                                 pointer_stride=10),
+        CuttingActionDescription(container=bread_middle_body, arm=Arms.RIGHT, tool=knife, technique="saw",pointer_stride=10),
+        CuttingActionDescription(container=bread_big_body, arm=Arms.RIGHT, tool=knife, technique="saw",pointer_stride=10),
+        NavigateActionDescription(PoseStamped.from_spatial_type(HomogeneousTransformationMatrix.from_xyz_rpy
+                                                                (4.0, 2.5, 0.0, roll=0, pitch=0,
+                                                                 yaw=180, reference_frame=world.root)),
+            True,
+        ),
+        MixingActionDescription(container=bowl_small_body, arm=Arms.LEFT, tool=whisk,pointer_stride=10),
+        MixingActionDescription(container=bowl_middle_body, arm=Arms.LEFT, tool=whisk,pointer_stride=10),
+        MixingActionDescription(container=bowl_big_body, arm=Arms.LEFT, tool=whisk,pointer_stride=10),
         #
         # WipingActionDescription(
         #     target_pose=clean_up_pose,
@@ -215,8 +272,10 @@ def main():
     )
     with simulated_robot:
         plan.perform()
+    _dump_experiment_metrics_csv(
+        node,
+        os.path.join(os.path.dirname(__file__), "experiment_metrics.csv"),
+    )
 
 if __name__ == "__main__":
     main()
-    while True:
-        pass

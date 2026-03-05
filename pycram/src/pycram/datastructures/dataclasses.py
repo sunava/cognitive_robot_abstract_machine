@@ -12,6 +12,7 @@ from typing_extensions import (
 )
 
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
+from semantic_digital_twin.spatial_types import Vector3
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.world_entity import Body
 from semantic_digital_twin.world_description.world_modification import (
@@ -162,3 +163,9 @@ class Rotations(Dict[Optional[Union[Grasp, bool]], List[float]]):
         False: [0, 0, 0, 1],
         True: [math.sqrt(2) / 2, 0, 0, math.sqrt(2) / 2],
     }
+
+
+@dataclass
+class AlignmentPair:
+    tip_normal: Vector3
+    goal_normal: Vector3

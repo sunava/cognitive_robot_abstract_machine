@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 from datetime import timedelta
 
+from trimesh.proximity import closest_point
 from typing_extensions import Union, Optional, Type, Any, Iterable
 
 import numpy as np
@@ -14,6 +15,12 @@ from demos.thesis_new.thesis_math.motion_presets import (
     build_container_sequence,
     build_cutting_sequence,
     build_surface_sequence,
+)
+from demos.thesis_new.thesis_math.metrics import (
+    points_world_to_body,
+    distance_to_mesh_metrics,
+    cutting_depth_metrics,
+    mixing_bowl_metrics,
 )
 from demos.thesis_new.thesis_math.world_utils import (
     body_local_aabb,
@@ -26,7 +33,8 @@ from semantic_digital_twin.adapters.ros.pose_publisher import PosePublisher
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Tool
 from semantic_digital_twin.spatial_types import Vector3, Point3
 from semantic_digital_twin.world_description.world_entity import Body
-from ...motions.gripper import MoveTCPMotion, MoveTCPWaypointsMotion
+from .experiment_record import ExperimentRecord
+from ...motions.gripper import MoveTCPMotion, MoveTCPWaypointsMotion, AlignmentPair, MoveTCPWaypointsAlignedMotion
 from .... import utils
 
 from ....datastructures.enums import (
@@ -99,9 +107,9 @@ class GeneralizedActionPlan(ActionDescription):
     If viz should be cleared
     """
 
-    alignment_pairs: Optional[Iterable[tuple[Vector3, Vector3]]] = None
+    pointer_stride: int = 1
     """
-    Optional list of (tip_normal, goal_normal) pairs for AlignPlanes.
+    Keep every Nth waypoint for execution (testing downsampling).
     """
 
     def _sample_points(selfs):
@@ -124,34 +132,103 @@ class GeneralizedActionPlan(ActionDescription):
             return self.target_pose.orientation.to_list()
         return [0.0, 0.0, 0.0, 1.0]
 
-    def _points_with_tip(self, points: np.ndarray) -> np.ndarray:
-        """Transform sampled points to world-frame points (with tool tip offset)."""
-        tip_translation = np.zeros(3, dtype=float)
-        if self.tool is not None and hasattr(self.tool, "tip"):
-            tip_pose = self.tool.tip()
-            if tip_pose is not None:
-                tip_translation = np.asarray(
-                    tip_pose.to_position().to_np()[:3], dtype=float
-                )
+    # def _points_with_tip(self, points: np.ndarray) -> np.ndarray:
+    #     """
+    #     Apply tool tip offset in tool frame:
+    #     world.root point -> tool.root -> add tip offset -> world.root.
+    #     """
+    #     P = np.asarray(points, dtype=float).reshape(-1, 3)
+    #
+    #     if self.tool is None or not hasattr(self.tool, "tip"):
+    #         return P
+    #     tip_pose = self.tool.tip()
+    #     if tip_pose is None:
+    #         return P
+    #
+    #     tip_offset_tool = np.asarray(tip_pose.to_position().to_np()[:3], dtype=float)
+    #     points_world = []
+    #     for p in P:
+    #         p_world = Point3(
+    #             x=float(p[0]),
+    #             y=float(p[1]),
+    #             z=float(p[2]),
+    #             reference_frame=self.world.root,
+    #         )
+    #         p_tool = self.world.transform(p_world, self.tool.root)
+    #         p_tool_offset = Point3(
+    #             x=float(p_tool.x) + float(tip_offset_tool[0]),
+    #             y=float(p_tool.y) + float(tip_offset_tool[1]),
+    #             z=float(p_tool.z) + float(tip_offset_tool[2]),
+    #             reference_frame=self.tool.root,
+    #         )
+    #         p_world_offset = self.world.transform(p_tool_offset, self.world.root)
+    #         points_world.append(
+    #             [
+    #                 float(p_world_offset.x),
+    #                 float(p_world_offset.y),
+    #                 float(p_world_offset.z),
+    #             ]
+    #         )
+    #     return np.asarray(points_world, dtype=float)
 
-        points_world = []
-        for p in points:
-            p_world = p + tip_translation
-            points_world.append(
-                [float(p_world[0]), float(p_world[1]), float(p_world[2])]
-            )
-        return np.asarray(points_world, dtype=float)
 
-    def _resolved_alignment_pairs(self) -> list[tuple[Vector3, Vector3]]:
-        if self.alignment_pairs is None:
-            return []
-        return list(self.alignment_pairs)
 
+    def closest_face_with_normal(self, mesh, query_point):
+        if isinstance(query_point, Point3):
+            q_local = self.world.transform(query_point, self.container)
+            q= np.array([float(q_local.x), float(q_local.y), float(q_local.z)], dtype=float)
+        else:
+            q = np.asarray(query_point, dtype=float).reshape(3)
+
+
+        cp, dist, tri_id = closest_point(mesh, q.reshape(1, 3))
+        face_id = int(tri_id[0])
+
+        normal = mesh.face_normals[face_id]  # Normal in mesh/body frame
+        normal = normal / (np.linalg.norm(normal) + 1e-12)
+
+        return {
+            "face_id": face_id,
+            "closest_point": cp[0],
+            "distance": float(dist[0]),
+            "normal_body": normal,
+        }
+
+    def _log_experiment_record(self, record: dict) -> None:
+        """Store experiment records on the ROS node for later evaluation."""
+        node = getattr(self.context, "ros_node", None)
+        if node is None:
+            return
+        if not hasattr(node, "_experiment_metrics"):
+            node._experiment_metrics = []
+        node._experiment_metrics.append(record)
+
+    def _target_intersection_metrics(self, points_world: np.ndarray) -> dict:
+        if not hasattr(self, "container") or self.container is None:
+            return {}
+        points_body = points_world_to_body(points_world, self.world, self.container)
+        mins, maxs = body_local_aabb(
+            self.container, use_visual=False, apply_shape_scale=self.apply_shape_scale
+        )
+        inside = (
+            (points_body[:, 0] >= mins[0])
+            & (points_body[:, 0] <= maxs[0])
+            & (points_body[:, 1] >= mins[1])
+            & (points_body[:, 1] <= maxs[1])
+            & (points_body[:, 2] >= mins[2])
+            & (points_body[:, 2] <= maxs[2])
+        )
+        inside_ratio = float(np.mean(inside)) if len(inside) > 0 else 0.0
+        return {
+            "intersects_target_volume": bool(np.any(inside)),
+            "inside_target_volume_ratio": inside_ratio,
+            "target_intersection_success": inside_ratio >= 0.5,
+        }
 
     def execute(self) -> None:
         _, points, ids = self._sample_points()
-        points_world = self._points_with_tip(points)
-        P = np.asarray(points_world, dtype=float)
+        # points_world = self._points_with_tip(points)
+        P = np.asarray(points, dtype=float)
        
         publish_points_sequence(
             node=self.context.ros_node,
@@ -163,21 +240,111 @@ class GeneralizedActionPlan(ActionDescription):
             clear_existing=self.clear_viz,
         )
 
+
         self.robot_view.full_body_controlled = True
         pointery = []
-        for p in points_world:
+        for p in points:
             pointery.append(Point3(x=p[0], y=p[1], z=p[2], reference_frame=self.world.root))
-        alignment_pairs = self._resolved_alignment_pairs()
-        SequentialPlan(
-            self.context,
-            MoveTCPWaypointsMotion(
-                pointery,
-                self.arm,
-                allow_gripper_collision=True,
-                alignment_pairs=alignment_pairs,
-            ),
-        ).perform()
+        stride = max(1, int(self.pointer_stride))
+        pointery = pointery[::stride]
+        if len(pointery) == 0:
+            raise ValueError("No waypoints left after applying pointer_stride.")
 
+        record = ExperimentRecord.from_action(
+            action=self,
+            num_points_sampled=len(points),
+            num_points_executed=len(pointery),
+            pointer_stride=stride,
+        )
+
+        if hasattr(self, "container") and self.container is not None:
+            closest = self.closest_face_with_normal(
+                self.container.collision.shapes[0].mesh, pointery[0]
+            )
+            record.set("closest_face", closest)
+            dist_threshold = (
+                float(self.tool.debug_distance_threshold())
+                if self.tool is not None and hasattr(self.tool, "debug_distance_threshold")
+                else 0.005
+            )
+            record.update(self._target_intersection_metrics(P))
+            distance_metrics = distance_to_mesh_metrics(
+                points_world=P,
+                world=self.world,
+                body=self.container,
+                threshold_m=dist_threshold,
+            )
+            record.update(
+                {
+                    "tool_distance_threshold_m_for_success": dist_threshold,
+                    "distance_within_threshold_ratio": distance_metrics.get(
+                        "below_threshold_ratio"
+                    ),
+                    "distance_within_threshold_percent": (
+                        100.0
+                        * float(distance_metrics.get("below_threshold_ratio", 0.0))
+                    ),
+                }
+            )
+            record.update(distance_metrics)
+            if "mean_distance" in distance_metrics:
+                record.set(
+                    "distance_mean_minus_threshold_m",
+                    float(distance_metrics["mean_distance"]) - dist_threshold,
+                )
+            if "min_distance" in distance_metrics:
+                record.set(
+                    "distance_min_minus_threshold_m",
+                    float(distance_metrics["min_distance"]) - dist_threshold,
+                )
+            if self.__class__.__name__ == "CuttingAction":
+                record.update(
+                    cutting_depth_metrics(
+                        points_world=P,
+                        world=self.world,
+                        bread_body=self.container,
+                        apply_shape_scale=self.apply_shape_scale,
+                    )
+                )
+            if self.__class__.__name__ == "MixingAction":
+                record.update(
+                    mixing_bowl_metrics(
+                        points_world=P,
+                        world=self.world,
+                        bowl_body=self.container,
+                        apply_shape_scale=self.apply_shape_scale,
+                    )
+                )
+
+        alignment_pairs = (
+            self.tool.tool_alignment(self.container)
+            if (
+                self.tool is not None
+                and hasattr(self, "container")
+                and self.container is not None
+            )
+            else []
+        )
+
+        try:
+            SequentialPlan(
+                self.context,
+                MoveTCPWaypointsAlignedMotion(
+                    pointery,
+                    self.arm,
+                    allow_gripper_collision=True,
+                    alignment_pairs=alignment_pairs,
+                    tip=self.tool.get_tool_frame()
+                ),
+            ).perform()
+            record.mark_action_success(True)
+        except Exception as exc:
+            record.mark_action_success(False).mark_exception(exc)
+            self._log_experiment_record(record.to_dict())
+            raise
+
+        record.finalize_geometric()
+        self._log_experiment_record(record.to_dict())
         # poses = self._poses_from_points(points)
 
         # node = self.context.ros_node
@@ -258,11 +425,11 @@ class MixingAction(GeneralizedActionPlan):
         tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
         tool: Union[Iterable[Tool], Tool] = None,
         tool_tip_offset: Union[Iterable[Iterable[float]], Iterable[float]] = None,
-        alignment_pairs: Optional[Iterable[tuple[Vector3, Vector3]]] = None,
         dt: Union[Iterable[float], float] = 0.01,
         use_visual_aabb: Union[Iterable[bool], bool] = True,
         apply_shape_scale: Union[Iterable[bool], bool] = True,
         clear_viz: Union[Iterable[bool], bool] = False,
+        pointer_stride: Union[Iterable[int], int] = 1,
     ) -> PartialDesignator[MixingAction]:
         normalized_tip_offset = cls._normalize_tip_offset(tool_tip_offset)
         return PartialDesignator(
@@ -272,11 +439,11 @@ class MixingAction(GeneralizedActionPlan):
             tool_name=tool_name,
             tool=tool,
             tool_tip_offset=normalized_tip_offset,
-            alignment_pairs=alignment_pairs,
             dt=dt,
             use_visual_aabb=use_visual_aabb,
             apply_shape_scale=apply_shape_scale,
             clear_viz=clear_viz,
+            pointer_stride=pointer_stride,
         )
 
 
@@ -333,13 +500,13 @@ class WipingAction(GeneralizedActionPlan):
         tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
         tool: Union[Iterable[Tool], Tool] = None,
         tool_tip_offset: Union[Iterable[Iterable[float]], Iterable[float]] = None,
-        alignment_pairs: Optional[Iterable[tuple[Vector3, Vector3]]] = None,
         dt: Union[Iterable[float], float] = 0.01,
         length: Union[Iterable[float], float] = 0.20,
         cycles: Union[Iterable[float], float] = 2.0,
         container: Union[Iterable[Body], Body] = None,
         target_pose: Union[Iterable[PoseStamped], PoseStamped] = None,
-            clear_viz: Union[Iterable[bool], bool] = False,
+        clear_viz: Union[Iterable[bool], bool] = False,
+        pointer_stride: Union[Iterable[int], int] = 1,
     ) -> PartialDesignator[WipingAction]:
         normalized_tip_offset = cls._normalize_tip_offset(tool_tip_offset)
         return PartialDesignator(
@@ -351,11 +518,11 @@ class WipingAction(GeneralizedActionPlan):
             tool_name=tool_name,
             tool=tool,
             tool_tip_offset=normalized_tip_offset,
-            alignment_pairs=alignment_pairs,
             dt=dt,
             length=length,
             cycles=cycles,
             clear_viz=clear_viz,
+            pointer_stride=pointer_stride,
         )
 @dataclass
 class CuttingAction(GeneralizedActionPlan):
@@ -378,25 +545,6 @@ class CuttingAction(GeneralizedActionPlan):
     Target slice thickness used to place the cut anchor.
     """
 
-    def _resolved_alignment_pairs(self) -> list[tuple[Vector3, Vector3]]:
-        """
-        Cutting-specific default alignment constraints.
-        Can be overridden by explicitly passing alignment_pairs.
-        """
-        if self.alignment_pairs is not None:
-            return list(self.alignment_pairs)
-        if self.tool is None or self.container is None:
-            return []
-        return [
-            (
-                Vector3(1, 0, 0, reference_frame=self.tool.root),
-                Vector3(0, 1, 0, reference_frame=self.container),
-            ),
-            (
-                Vector3(0, 0, 1, reference_frame=self.tool.root),
-                Vector3(0, 0, 1, reference_frame=self.container),
-            ),
-        ]
 
     # def _pose_orientation(self) -> list[float]:
     #     """
@@ -432,13 +580,13 @@ class CuttingAction(GeneralizedActionPlan):
         tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
         tool: Union[Iterable[Tool], Tool] = None,
         tool_tip_offset: Union[Iterable[Iterable[float]], Iterable[float]] = None,
-        alignment_pairs: Optional[Iterable[tuple[Vector3, Vector3]]] = None,
         dt: Union[Iterable[float], float] = 0.01,
         use_visual_aabb: Union[Iterable[bool], bool] = True,
         apply_shape_scale: Union[Iterable[bool], bool] = True,
         technique: Union[Iterable[str], str] = "saw",
         slice_thickness: Union[Iterable[float], float] = 0.03,
-            clear_viz : Union[Iterable[bool], bool] = False,
+        clear_viz : Union[Iterable[bool], bool] = False,
+        pointer_stride: Union[Iterable[int], int] = 1,
 
     ) -> PartialDesignator[CuttingAction]:
         normalized_tip_offset = cls._normalize_tip_offset(tool_tip_offset)
@@ -449,13 +597,13 @@ class CuttingAction(GeneralizedActionPlan):
             tool_name=tool_name,
             tool=tool,
             tool_tip_offset=normalized_tip_offset,
-            alignment_pairs=alignment_pairs,
             dt=dt,
             use_visual_aabb=use_visual_aabb,
             apply_shape_scale=apply_shape_scale,
             technique=technique,
             slice_thickness=slice_thickness,
             clear_viz=clear_viz,
+            pointer_stride=pointer_stride,
         )
 
 

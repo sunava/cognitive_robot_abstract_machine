@@ -1,0 +1,17 @@
+run_id,action,container,tool,action_success,geometric_success,overall_success,failure_summary,distance_within_threshold_percent,inside_target_volume_ratio,mean_distance,min_distance,cutting_success,mixing_success,num_points_executed,pointer_stride
+1,CuttingAction,bread_small,big-knife.stl,True,True,True,ok,100.0,0.853,0.0119,0.0,True,,190,10
+2,MixingAction,bowl_small,whisk.stl,True,,False,target_intersection_success,0.0,,,0.0,,,42,10
+3,MixingAction,bowl_middle,whisk.stl,True,,False,target_intersection_success,0.0,,,0.0,,,55,10
+4,MixingAction,bowl_big,whisk.stl,True,,False,target_intersection_success,0.0,,,0.0,,,63,10
+5,MixingAction,bowl_small,whisk.stl,True,,False,target_intersection_success,0.0,,,0.0,,,42,10
+6,MixingAction,bowl_middle,whisk.stl,True,,False,target_intersection_success,0.0,,,0.0,,,55,10
+7,MixingAction,bowl_big,whisk.stl,True,,False,target_intersection_success,0.0,,,0.0,,,63,10
+8,MixingAction,bowl_small,whisk.stl,True,,False,unknown,0.09,,,0.0,,,42,10
+9,MixingAction,bowl_middle,whisk.stl,True,,False,unknown,0.22,,,0.3702,,,55,10
+10,MixingAction,bowl_big,whisk.stl,True,,False,unknown,0.0,,,0.0,,,63,10
+11,CuttingAction,bread_small,big-knife.stl,True,True,,unknown,100.0,,,0.0119,True,,,190
+12,CuttingAction,bread_middle,big-knife.stl,True,False,,cutting_success,100.0,,,0.0344,False,,,247
+13,CuttingAction,bread_big,big-knife.stl,True,False,,cutting_success,100.0,,,0.0583,False,,,285
+14,MixingAction,bowl_small,whisk.stl,True,False,,distance_success+mixing_success,8.85,0.0,,0.0344,,,False,42
+15,MixingAction,bowl_middle,whisk.stl,True,False,,distance_success,22.1,1.0,,0.031,,,True,55
+16,MixingAction,bowl_big,whisk.stl,True,False,,distance_success+mixing_success,0.0,0.0,,0.0323,,,False,63

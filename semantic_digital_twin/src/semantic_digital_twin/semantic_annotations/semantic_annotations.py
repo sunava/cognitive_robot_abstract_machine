@@ -10,7 +10,7 @@ from typing_extensions import List, Type
 
 from krrood.ormatic.utils import classproperty
 from krrood.symbolic_math import symbolic_math
-from pycram.datastructures.enums import AxisIdentifier
+from pycram.datastructures.dataclasses import AlignmentPair
 from .mixins import (
     HasSupportingSurface,
     HasRootRegion,
@@ -991,35 +991,153 @@ class LiquidCap(HasRootBody):
 @dataclass(eq=False)
 class Tool(HasRootBody, ABC):
     @abstractmethod
-    def tool_alignment(self) -> Vector3:
+    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]:
         ...
 
     @abstractmethod
     def tip(self) -> Pose:
         ...
 
+    def get_tool_frame(self) -> Body:
+        """Return the body used as tool frame for control/alignment."""
+        return self.root
+
+    def tool_frame(self) -> HomogeneousTransformationMatrix:
+        ...
+
+    def debug_distance_threshold(self) -> float:
+        """Debug logger threshold for tool-to-target distance metrics."""
+        return 0.005
+
+    def distance_threshold_m(self) -> float:
+        """Backward-compatible alias."""
+        return self.debug_distance_threshold()
+
 @dataclass(eq=False)
 class ToolWithHandle(Tool, HasHandle, ABC):
-    def tool_alignment(self) -> Vector3:
+    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]:
         ...
 
     def tip(self) -> Pose:
         ...
 
-
+    def tool_frame(self) -> HomogeneousTransformationMatrix:
+        ...
 @dataclass(eq=False)
 class Whisk(ToolWithHandle):
+    def __post_init__(self):
+        world = getattr(self.root, "_world", None)
+        if world is None:
+            return
 
-    def tool_alignment(self) -> Vector3:
-        return Vector3.NEGATIVE_X()
+        tip_name = PrefixedName(f"{self.root.name}_end_effector")
+        try:
+            world.get_body_by_name(tip_name)
+            return
+        except Exception:
+            pass
+
+        tip_body = Body(name=tip_name)
+        with world.modify_world():
+            world.add_kinematic_structure_entity(tip_body)
+            world.add_connection(
+                FixedConnection(
+                    parent=self.root,
+                    child=tip_body,
+                    parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(
+                        x=0.1,
+                        y=0.0,
+                        z=0.0,
+                        reference_frame=self.root,
+                    ),
+                )
+            )
+
+    def get_tool_frame(self) -> Body:
+        world = getattr(self.root, "_world", None)
+        if world is None:
+            return self.root
+        tip_name = PrefixedName(f"{self.root.name}_end_effector")
+        try:
+            return world.get_body_by_name(tip_name)
+        except Exception:
+            return self.root
+
+    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]:
+        pairs = [
+            AlignmentPair(
+                tip_normal=Vector3(-1, 0, 0, reference_frame=self.root),
+                goal_normal=Vector3(0, 0, 1, reference_frame=body_to_act_on),
+            )
+        ]
+        return pairs
 
     def tip(self) -> HomogeneousTransformationMatrix:
-        return HomogeneousTransformationMatrix.from_xyz_rpy(z=0.05, reference_frame=self.root)
+        return HomogeneousTransformationMatrix.from_xyz_rpy(x=-0.05, reference_frame=self.root)
+
+    def tool_frame(self) -> HomogeneousTransformationMatrix:
+        return HomogeneousTransformationMatrix.from_xyz_rpy(x=0.1, y=0.0, z=0.0, reference_frame=self.root)
+
+    def debug_distance_threshold(self) -> float:
+        return 0.01
 
 @dataclass(eq=False)
 class Knife(ToolWithHandle):
-    def tool_alignment(self) -> Vector3:
-        return Vector3.Z()
+
+    def __post_init__(self):
+        world = getattr(self.root, "_world", None)
+        if world is None:
+            return
+
+        tip_name = PrefixedName(f"{self.root.name}_end_effector")
+        try:
+            world.get_body_by_name(tip_name)
+            return
+        except Exception:
+            pass
+
+        tip_body = Body(name=tip_name)
+        with world.modify_world():
+            world.add_kinematic_structure_entity(tip_body)
+            world.add_connection(
+                FixedConnection(
+                    parent=self.root,
+                    child=tip_body,
+                    parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(
+                        x=0.1,
+                        y=0.0,
+                        z=0.0,
+                        reference_frame=self.root,
+                    ),
+                )
+            )
+
+    def get_tool_frame(self) -> Body:
+        world = getattr(self.root, "_world", None)
+        if world is None:
+            return self.root
+        tip_name = PrefixedName(f"{self.root.name}_end_effector")
+        try:
+            return world.get_body_by_name(tip_name)
+        except Exception:
+            return self.root
+
+    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]:
+        pairs = [
+            AlignmentPair(
+                tip_normal=Vector3(1, 0, 0, reference_frame=self.root),
+                goal_normal=Vector3(0, 1, 0, reference_frame=body_to_act_on),
+            ),
+            AlignmentPair(
+                tip_normal=Vector3(0, 0, 1, reference_frame=self.root),
+                goal_normal=Vector3(0, 0, 1, reference_frame=body_to_act_on),
+            ),
+        ]
+        return pairs
 
     def tip(self) -> HomogeneousTransformationMatrix:
-        return HomogeneousTransformationMatrix.from_xyz_rpy(x=0, reference_frame=self.root)
+        return HomogeneousTransformationMatrix.from_xyz_rpy(x=-0.0, reference_frame=self.root)
+
+
+    def debug_distance_threshold(self) -> float:
+        return 0.4

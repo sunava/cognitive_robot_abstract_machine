@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
-from typing import Optional, List, Tuple
+from typing import Optional, List
+
+from docutils.parsers.rst.directives.admonitions import Tip
 
 from giskardpy.motion_statechart.goals.templates import Sequence, Parallel
 from giskardpy.motion_statechart.tasks.align_planes import AlignPlanes
@@ -12,6 +14,7 @@ from semantic_digital_twin.datastructures.definitions import GripperState
 from semantic_digital_twin.spatial_types import Vector3
 from semantic_digital_twin.world_description.world_entity import Body
 from .base import BaseMotion
+from ...datastructures.dataclasses import AlignmentPair
 from ...datastructures.enums import (
     Arms,
     MovementType,
@@ -190,83 +193,13 @@ class MoveTCPWaypointsMotion(BaseMotion):
     Moves the Tool center point (TCP) of the robot
     """
 
-    waypoints: List[Point3]
+    waypoints: List[PoseStamped]
     """
     Waypoints the TCP should move along 
     """
     arm: Arms
     """
     Arm with the TCP that should be moved to the target
-    """
-    alignment_pairs: List[Tuple[Vector3, Vector3]] = field(default_factory=list)
-    """
-    List of (tip_normal, goal_normal) pairs for AlignPlanes constraints.
-    """
-    allow_gripper_collision: Optional[bool] = None
-    """
-    If the gripper can collide with something
-    """
-    movement_type: WaypointsMovementType = (
-        WaypointsMovementType.ENFORCE_ORIENTATION_FINAL_POINT
-    )
-    """
-    The type of movement that should be performed.
-    """
-
-    def perform(self):
-        return
-
-    @property
-    def _motion_chart(self):
-        tip = ViewManager().get_end_effector_view(self.arm, self.robot_view).tool_frame
-        tip_children = tip.child_kinematic_structure_entities
-        tip_link = tip_children[0] if tip_children else tip
-        root_link = self.robot_view.root
-
-        plane_pairs = list(self.alignment_pairs)
-
-        nodes = []
-        for point in self.waypoints:
-            tasks = [
-                CartesianPosition(
-                    root_link=root_link,
-                    tip_link=tip_link,
-                    goal_point=point,
-                )
-            ]
-            tasks.extend(
-                AlignPlanes(
-                    tip_link=tip_link,
-                    root_link=root_link,
-                    tip_normal=tip_normal,
-                    goal_normal=goal_normal,
-                )
-                for tip_normal, goal_normal in plane_pairs
-            )
-            nodes.append(Parallel(tasks))
-        return Sequence(nodes=nodes)
-
-@dataclass
-class MoveTCPWaypointsAlignedMotion(BaseMotion):
-    """
-    Moves the Tool center point (TCP) of the robot
-    """
-
-    waypoints: List[SpatialVector3]
-    """
-    Waypoints the TCP should move along 
-    """
-    arm: Arms
-    """
-    Arm with the TCP that should be moved to the target
-    """
-    tip_normal: Vector3
-    """
-    Normal vector of the tip link
-    """
-    goal_normal: Vector3
-    """
-    Normal vector of the goal link
     """
     allow_gripper_collision: Optional[bool] = None
     """
@@ -286,16 +219,91 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
     def _motion_chart(self):
         tip = ViewManager().get_end_effector_view(self.arm, self.robot_view).tool_frame
         nodes = [
-            Parallel(
-                [
-                    CartesianPosition(root_link=self.robot_view.root,
-                                      tip_link=tip,
-                                      goal_point=point.to_point3()),
-                    AlignPlanes(tip_link=tip, root_link=self.robot_view.root, tip_normal=self.tip_normal,
-                                goal_normal=self.goal_normal)
-                ]
-
+            CartesianPose(
+                root_link=self.robot_view.root,
+                tip_link=tip,
+                goal_pose=pose.to_spatial_type(),
+                # threshold=0.005,
             )
-            for point in self.waypoints
+            for pose in self.waypoints
         ]
+        return Sequence(nodes=nodes)
+
+@dataclass
+class MoveTCPWaypointsAlignedMotion(BaseMotion):
+    """
+    Moves the Tool center point (TCP) of the robot
+    """
+
+    waypoints: List[Point3]
+    """
+    Waypoints the TCP should move along 
+    """
+    arm: Arms
+    """
+    Arm with the TCP that should be moved to the target
+    """
+    alignment_pairs: List[AlignmentPair] = field(default_factory=list)
+    """
+    List of alignment pairs for AlignPlanes constraints.
+    """
+    allow_gripper_collision: Optional[bool] = None
+    """
+    If the gripper can collide with something
+    """
+    movement_type: WaypointsMovementType = (
+        WaypointsMovementType.ENFORCE_ORIENTATION_FINAL_POINT
+    )
+    """
+    The type of movement that should be performed.
+    """
+    tip: Optional[Body] = None
+    """
+    The end effector that should be used to perform the movement.
+    """
+
+    def perform(self):
+        return
+
+    @property
+    def _motion_chart(self):
+        if self.tip is None:
+            tip = ViewManager().get_end_effector_view(self.arm, self.robot_view).tool_frame
+            if tip is None:
+                raise ValueError(f"No tool frame available for arm {self.arm}.")
+
+            tip_children = getattr(tip, "child_kinematic_structure_entities", []) or []
+            tip_link = next((child for child in tip_children if child is not None), tip)
+        else:
+            tip_link = self.tip
+
+        root_link = (
+            self.world.root
+            if self.robot_view.full_body_controlled
+            else self.robot_view.root
+        )
+        if root_link is None:
+            root_link = self.world.root
+
+        plane_pairs = list(self.alignment_pairs)
+
+        nodes = []
+        for point in self.waypoints:
+            tasks = [
+                CartesianPosition(
+                    root_link=root_link,
+                    tip_link=tip_link,
+                    goal_point=point,
+                )
+            ]
+            tasks.extend(
+                AlignPlanes(
+                    tip_link=tip_link,
+                    root_link=root_link,
+                    tip_normal=pair.tip_normal,
+                    goal_normal=pair.goal_normal,
+                )
+                for pair in plane_pairs
+            )
+            nodes.append(Parallel(tasks))
         return Sequence(nodes=nodes)

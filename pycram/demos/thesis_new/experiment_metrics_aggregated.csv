@@ -1,0 +1,7 @@
+action,tool,container,n_trials,action_success_rate,geometric_success_rate,overall_success_rate,distance_within_threshold_percent_mean,distance_within_threshold_percent_std,inside_target_volume_ratio_mean,inside_target_volume_ratio_std,mean_distance_mean,mean_distance_std
+CuttingAction,big-knife.stl,bread_small,2,1.0,1.0,1.0,100.0,0.0,0.853,0.0,0.0119,0.0
+MixingAction,whisk.stl,bowl_small,4,1.0,0.0,0.0,2.24,3.82,0.0,0.0,,
+MixingAction,whisk.stl,bowl_middle,4,1.0,0.0,0.0,5.58,9.54,1.0,0.0,,
+MixingAction,whisk.stl,bowl_big,4,1.0,0.0,0.0,0.0,0.0,0.0,0.0,,
+CuttingAction,big-knife.stl,bread_middle,1,1.0,0.0,,100.0,0.0,,,,
+CuttingAction,big-knife.stl,bread_big,1,1.0,0.0,,100.0,0.0,,,,
