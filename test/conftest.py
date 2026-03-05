@@ -29,6 +29,9 @@ from krrood.utils import recursive_subclasses
 from pycram.datastructures.dataclasses import Context  # type: ignore
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.adapters.urdf import URDFParser
+from semantic_digital_twin.collision_checking.pybullet_collision_detector import (
+    BulletCollisionDetector,
+)
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from semantic_digital_twin.robots.hsrb import HSRB
@@ -682,6 +685,19 @@ def tiago_apartment_world(tiago_world, apartment_world_setup):
 @pytest.fixture
 def pr2_world_state_reset(pr2_world_setup):
     world = deepcopy(pr2_world_setup)
+    PR2.from_world(world)
+    state = world.state.data.copy()
+    yield world
+    world.state.data[:] = state
+
+
+@pytest.fixture
+def pr2_world_state_reset_with_collision(pr2_world_setup):
+    world = deepcopy(pr2_world_setup)
+    world.collision_manager = CollisionManager(
+        _world=world,
+        collision_detector=BulletCollisionDetector(_world=world),
+    )
     PR2.from_world(world)
     state = world.state.data.copy()
     yield world
