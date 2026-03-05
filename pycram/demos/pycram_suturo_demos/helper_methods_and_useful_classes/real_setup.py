@@ -8,9 +8,7 @@ import rclpy
 from rclpy.executors import SingleThreadedExecutor
 import logging
 
-from demos.pycram_suturo_demos.helper_methods_and_useful_classes.object_creation import (
-    perceive_and_spawn_all_objects,
-)
+
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
 )
@@ -36,7 +34,6 @@ from semantic_digital_twin.world_description.geometry import Box, Scale
 from semantic_digital_twin.world_description.shape_collection import ShapeCollection
 from semantic_digital_twin.world_description.world_entity import Body
 from test.krrood_test.dataset.example_classes import Node
-
 
 logger = logging.getLogger(__name__)
 
@@ -101,17 +98,15 @@ def add_box(name: str, scale_xyz: tuple[float, float, float]):
 def test_spawning(hsrb_world: World):
     object_name = f"milk"
     object_to_spawn = add_box(object_name, (0.1, 0.1, 0.3))
-    env_world = load_environment()
 
     with hsrb_world.modify_world():
-        hsrb_world.merge_world(env_world)
         hsrb_world.add_connection(
             FixedConnection(
                 parent=hsrb_world.root,
                 child=object_to_spawn,
                 parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(
                     x=1.51,
-                    y=1.9,
+                    y=2.5,
                     z=0.5,
                     # quat_x=1.0,
                     # quat_y=6.22,
@@ -124,7 +119,6 @@ def test_spawning(hsrb_world: World):
 
 def try_make_viz(world, node) -> Optional[VizMarkerPublisher]:
     try:
-        import rclpy
         from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
             VizMarkerPublisher,
         )
@@ -133,20 +127,16 @@ def try_make_viz(world, node) -> Optional[VizMarkerPublisher]:
         viz.with_tf_publisher()
 
         return viz
-    except Exception:
-        logger.info(
-            "VizMarkerPublisher is unavailable (ROS not running or deps missing)."
-        )
+    except Exception as e:
+        logger.info(f"VizMarkerPublisher unavailable: {e}")
         return None
 
 
 def world_setup_with_test_objects(
-    with_object: bool = field(kw_only=True, default=True),
-    with_perception: bool = field(kw_only=True, default=False),
-    with_viz: bool = field(kw_only=True, default=True),
+    *,
+    with_object: bool = True,
+    with_viz: bool = True,
 ) -> SetupResult:
-    rclpy.init()
-
     hsrb_world, robot_view, context, manipulator, node = setup_ros_node()
 
     if with_object:
@@ -154,9 +144,6 @@ def world_setup_with_test_objects(
             hsrb_world.get_body_by_name("milk")
         except Exception:
             test_spawning(hsrb_world)
-
-    if with_perception:
-        perceive_and_spawn_all_objects(hsrb_world)
 
     if with_viz:
         viz = try_make_viz(hsrb_world, node)

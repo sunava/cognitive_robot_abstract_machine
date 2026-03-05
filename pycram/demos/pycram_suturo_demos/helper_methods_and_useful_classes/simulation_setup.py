@@ -102,68 +102,63 @@ def merge_robot_into_environment(
         0.0,
     ),
 ) -> Tuple[World, HSRB, Context, Manipulator]:
+    env_world = environment_world
     x, y, z, r, p, yaw = robot_xyz_rpy
-    environment_world.merge_world_at_pose(
-        deepcopy(hsrb_world),
+    env_world.merge_world_at_pose(
+        hsrb_world,
         HomogeneousTransformationMatrix.from_xyz_rpy(x, y, z, r, p, yaw),
     )
-    robot_view = HSRB.from_world(environment_world)
-    manipulator = environment_world.get_semantic_annotations_by_type(ParallelGripper)[0]
-    return (
-        environment_world,
-        robot_view,
-        Context(environment_world, robot_view),
-        manipulator,
-    )
+    robot_view = HSRB.from_world(env_world)
+    manipulator = env_world.get_semantic_annotations_by_type(ParallelGripper)[0]
+    return env_world, robot_view, Context(env_world, robot_view), manipulator
 
 
 def try_make_viz(world):
     try:
-        import rclpy
         from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
             VizMarkerPublisher,
         )
 
         node = rclpy.create_node("viz_marker")
-        return VizMarkerPublisher(world, node)
-    except Exception:
-        logger.info(
-            "VizMarkerPublisher is unavailable (ROS not running or deps missing)."
-        )
+        viz = VizMarkerPublisher(world, node)
+        viz.with_tf_publisher()
+        return viz
+    except Exception as e:
+        logger.info(f"VizMarkerPublisher unavailable: {e}")
         return None
 
 
 def setup_hsrb_in_environment(
+    *,
     load_environment: Callable[[], World],
     paths: Optional[WorldSetupPaths] = None,
     milk_xyz_rpy: Tuple[float, float, float, float, float, float] = (
-        1.16,
+        1.2,
         6.3,
-        0.713,
+        0.8,
         0.0,
         0.0,
         0.0,
     ),
     cereal_xyz_rpy: Tuple[float, float, float, float, float, float] = (
-        2.37,
-        1.8,
-        1.05,
+        1.5,
+        6.3,
+        0.8,
         0.0,
         0.0,
         0.0,
     ),
     robot_xyz_rpy: Tuple[float, float, float, float, float, float] = (
         1.5,
-        2.0,
+        5.5,
         0.0,
         0.0,
         0.0,
         0.0,
     ),
     with_viz: bool = True,
-    with_objects: bool = field(kw_only=True, default=True),
+    with_simulated_objects: bool = True,
 ) -> SetupResult:
-    rclpy.init()
     p = paths or default_paths()
 
     node: Any = rclpy.create_node("simulation_setup")
@@ -171,7 +166,7 @@ def setup_hsrb_in_environment(
     hsrb_world = build_hsrb_world(p.hsrb_urdf)
     env_world: World = load_environment()
 
-    if with_objects:
+    if with_simulated_objects:
         env_world = add_objects_and_semantics(
             env_world,
             objects=(
@@ -187,9 +182,8 @@ def setup_hsrb_in_environment(
     if with_viz:
         try:
             viz = try_make_viz(world)
-            viz.with_tf_publisher()
         except Exception as e:
-            logger.warn("Failed to setup viz" + str(e))
+            logger.warning(f"Failed to setup viz: {e}")
 
     return SetupResult(
         world=world,

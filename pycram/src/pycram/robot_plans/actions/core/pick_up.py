@@ -7,10 +7,13 @@ from datetime import timedelta
 
 from typing_extensions import Union, Optional, Type, Any, Iterable
 
+from demos.pycram_suturo_demos.helper_methods_and_useful_classes.pickup_helper_methods import (
+    attach_object_to_hsrb,
+)
 from semantic_digital_twin.datastructures.definitions import GripperState
 from semantic_digital_twin.world_description.world_entity import Body
 from ...motions.gripper import MoveGripperMotion, MoveTCPMotion
-from ...motions.pick_up import PickupMotion
+from ...motions.pick_up import PickupMotion, PullUpMotion
 from ....config.action_conf import ActionConfig
 from ....datastructures.enums import (
     Arms,
@@ -22,7 +25,7 @@ from ....datastructures.partial_designator import PartialDesignator
 from ....datastructures.pose import PoseStamped
 from ....failures import ObjectNotGraspedError
 from ....failures import ObjectNotInGraspingArea
-from ....language import SequentialPlan
+from ....language import SequentialPlan, CodePlan
 from ....view_manager import ViewManager
 from ....robot_plans.actions.base import ActionDescription
 
@@ -224,12 +227,19 @@ class GiskardPickUpAction(ActionDescription):
 
     arm: Arms = field(default=Arms.LEFT, kw_only=True)
     """
-    manipulator that should be used for pick up
+    arms that should be used for pick up
     """
 
-    # If True, the gripper is kept vertically aligned during the grasp
-    # kw_only=True forces this to be passed as a keyword argument
     gripper_vertical: Optional[bool] = field(default=True, kw_only=True)
+    """
+    If True, the gripper is kept vertically aligned during the grasp
+    kw_only=True forces this to be passed as a keyword argument
+    """
+
+    simulated: bool = field(default=True, kw_only=True)
+    """
+    Parsing simulation argument
+    """
 
     _pre_perform_callbacks = []
     """
@@ -250,24 +260,12 @@ class GiskardPickUpAction(ActionDescription):
         SequentialPlan(
             self.context,
             PickupMotion(
+                simulated=self.simulated,
                 manipulator=manipulator,
                 object_geometry=self.object_designator,
                 gripper_vertical=self.gripper_vertical,
             ),
         ).perform()
-
-        # Attach the object to the end effector
-        # with self.world.modify_world():
-        #     self.world.move_branch_with_fixed_connection(
-        #         self.object_designator, manipulator.tool_frame
-        #     )
-
-        # SequentialPlan(
-        #     self.context,
-        #     PullUpMotion(
-        #         manipulator=manipulator,
-        #     ),
-        # ).perform()
 
     def validate(
         self,
@@ -292,11 +290,13 @@ class GiskardPickUpAction(ActionDescription):
         object_designator: Union[Iterable[Body], Body],
         arm: Union[Iterable[Arms], Arms] = None,
         gripper_vertical: Union[Iterable[bool], bool] = True,
+        simulated: bool = True,
     ) -> PartialDesignator[GiskardPickUpAction]:
         return PartialDesignator[GiskardPickUpAction](
             GiskardPickUpAction,
             object_designator=object_designator,
             arm=arm,
+            simulated=simulated,
             gripper_vertical=gripper_vertical,
         )
 

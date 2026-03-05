@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Optional, List
 
+from giskardpy.motion_statechart.goals.pick_up import OpenHand
 from giskardpy.motion_statechart.goals.place import Place
 from giskardpy.motion_statechart.goals.templates import Sequence
 from giskardpy.motion_statechart.tasks.cartesian_tasks import (
@@ -229,25 +230,30 @@ class MoveTCPWaypointsMotion(BaseMotion):
 @dataclass
 class PlaceMotion(BaseMotion):
     """
-    Opens or closes the gripper
+    Motion for placing an object, i.e., moving the gripper to a certain pose
+    It creates a _motion_chart that is used by the motion framework
+    It directly calls the implemented PickUp of Giskard.
     """
 
     gripper: Manipulator = field(kw_only=True)
     """
     Name of the gripper that should be moved
     """
+
     object_designator: Body = field(kw_only=True)
     """
-    Name of the gripper that should be moved
+    Object designator_description describing the object that should be placed
     """
     goal_pose: PoseStamped = field(kw_only=True)
     """
-    Name of the gripper that should be moved
+    The goal_pose at which the object should be placed
     """
-    simulated: bool = field(default=False, kw_only=True)
+
+    simulated: bool = field(default=True, kw_only=True)
     """
-    Name of the gripper that should be moved
+    Parsing simulation argument
     """
+
     allow_gripper_collision: Optional[bool] = None
     """
     If the gripper is allowed to collide with something
@@ -265,4 +271,44 @@ class PlaceMotion(BaseMotion):
             object_geometry=self.object_designator,
             goal_pose=goal_pose,
             simulated=self.simulated,
+        )
+
+
+# TODO currently still missing the class that just sits within the Pickup of Giskard
+@dataclass
+class GiskardMoveGripperMotion(BaseMotion):
+    """
+    Opens or closes the gripper
+    """
+
+    motion: GripperState
+    """
+    Motion that should be performed, either 'open' or 'close'
+    """
+    gripper: Arms
+    """
+    Name of the gripper that should be moved
+    """
+    simulated: bool = True
+    """
+    Parsing simulation argument
+    """
+    allow_gripper_collision: Optional[bool] = None
+    """
+    If the gripper is allowed to collide with something
+    """
+
+    def perform(self):
+        return
+
+    @property
+    def _motion_chart(self):
+        arm = ViewManager().get_end_effector_view(self.gripper, self.robot_view)
+        if self.motion == GripperState.OPEN:
+            OpenHand()
+        return JointPositionList(
+            goal_state=arm.get_joint_state_by_type(self.motion),
+            name=(
+                "OpenGripper" if self.motion == GripperState.OPEN else "CloseGripper"
+            ),
         )
