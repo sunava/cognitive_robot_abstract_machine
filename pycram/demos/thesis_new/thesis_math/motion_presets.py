@@ -70,6 +70,7 @@ def build_container_sequence(
     use_visual_aabb=True,
     apply_shape_scale=True,
     pattern="spiral",
+    mix_duration_s=None,
 ):
     """Build a spiral sequence sized to a bowl-like object."""
     mins, maxs = body_local_aabb(
@@ -119,7 +120,36 @@ def build_container_sequence(
             )
         ),
     )
-    return MotionSequence([phase_spiral_container])
+
+    stir_amp = max(0.005, 0.7 * radius_xy)
+    stir_base_duration = max(1.0, 2.0 * duration_scale)
+    if mix_duration_s is not None and float(mix_duration_s) > 0.0:
+        total_duration = float(mix_duration_s)
+    else:
+        total_duration = stir_base_duration
+    stir_loops = max(1, int(np.ceil(total_duration / stir_base_duration)))
+
+    phase_stir_container = MotionSegment(
+        name="continuous_stir_bowl",
+        duration_s=total_duration,
+        local_curve=_with_offset(
+            lambda tau: oscillatory_shear_xy_profiled(
+                tau,
+                ShearXYProfile(
+                    shear_amp=stir_amp,
+                    shear_cycles=stir_loops,
+                ),
+            )
+        ),
+    )
+
+    pattern = str(pattern).lower()
+    if pattern in ("spiral", "planar_spiral"):
+        return MotionSequence([phase_spiral_container])
+    if pattern in ("stir", "continuous", "continuous_stir", "loop"):
+        return MotionSequence([phase_stir_container])
+
+    raise ValueError(f"Unknown pattern '{pattern}'")
 
 
 def build_surface_sequence(
@@ -219,6 +249,7 @@ def build_cutting_sequence(
     apply_shape_scale=True,
     technique="saw",
     slice_thickness=0.03,
+    num_cuts_x=1,
 ):
     """Build a slicing sequence sized to a food object."""
     mins, maxs = body_local_aabb(
@@ -247,6 +278,15 @@ def build_cutting_sequence(
     usable_x = max(0.0, size_x - 2.0 * margin_x)
     requested_thickness = max(float(slice_thickness), 1e-4)
     x_anchor = mins[0] + margin_x + min(0.5 * requested_thickness, 0.5 * usable_x)
+    x_max_anchor = maxs[0] - margin_x - min(0.5 * requested_thickness, 0.5 * usable_x)
+    n_cuts = max(1, int(num_cuts_x))
+    if n_cuts == 1:
+        x_anchors = [x_anchor]
+    else:
+        if x_max_anchor <= x_anchor:
+            x_anchors = [x_anchor] * n_cuts
+        else:
+            x_anchors = np.linspace(x_anchor, x_max_anchor, n_cuts).tolist()
 
     y_min = mins[1] + margin_y
     y_max = maxs[1] - margin_y
@@ -260,64 +300,107 @@ def build_cutting_sequence(
             f"z_top={z_top:.4f} z_cut={z_cut:.4f} technique={technique}"
         )
 
-    phase_approach = MotionSegment(
-        name="cut_approach",
-        duration_s=0.8 * duration_scale,
-        local_curve=lambda tau: np.array(
-            [x_anchor, center_y, z_top + (maxs[2] - z_top) * float(tau)], dtype=float
-        ),
-    )
-
-    phase_descend = MotionSegment(
-        name="cut_descend",
-        duration_s=1.0 * duration_scale,
-        local_curve=lambda tau: np.array(
-            [x_anchor, center_y, maxs[2] + (z_cut - maxs[2]) * float(tau)], dtype=float
-        ),
-    )
-
-
     shear_depth_max = maxs[2] - z_cut
     shear_amp = 0.5 * max(y_max - y_min, 0.0)
 
-    phase_shear = MotionSegment(
-        name="oscillatory_shear",
-        duration_s=5.0 * duration_scale,
-        local_curve=lambda tau: (
-            lambda q_local: np.array(
-                [
-                    x_anchor,
-                    center_y + q_local[0],
-                    maxs[2] + q_local[2],
-                ],
-                dtype=float,
-            )
-        )(
-            oscillatory_shear_local_profiled(
-                tau,
-                ShearProfile(
-                    depth_max=shear_depth_max,
-                    depth_ramp_end=0.7,
-                    shear_amp=shear_amp,
-                    shear_cycles=saw_cycles,
-                ),
-            )
-        ),
-    )
-
-    phase_retract = MotionSegment(
-        name="cut_retract",
-        duration_s=0.8 * duration_scale,
-        local_curve=lambda tau: np.array(
-            [x_anchor, center_y, z_cut + (z_top - z_cut) * float(tau)], dtype=float
-        ),
-    )
-
     technique = str(technique).lower()
+    phases = []
     if technique in "slice":
-        phases = [ phase_approach, phase_descend, phase_retract]
+        for cut_idx, x_curr in enumerate(x_anchors):
+            phases.extend(
+                [
+                    MotionSegment(
+                        name=f"cut_approach_x{cut_idx}",
+                        duration_s=0.8 * duration_scale,
+                        local_curve=lambda tau, x_val=x_curr: np.array(
+                            [
+                                x_val,
+                                center_y,
+                                z_top + (maxs[2] - z_top) * float(tau),
+                            ],
+                            dtype=float,
+                        ),
+                    ),
+                    MotionSegment(
+                        name=f"cut_descend_x{cut_idx}",
+                        duration_s=1.0 * duration_scale,
+                        local_curve=lambda tau, x_val=x_curr: np.array(
+                            [
+                                x_val,
+                                center_y,
+                                maxs[2] + (z_cut - maxs[2]) * float(tau),
+                            ],
+                            dtype=float,
+                        ),
+                    ),
+                    MotionSegment(
+                        name=f"cut_retract_x{cut_idx}",
+                        duration_s=0.8 * duration_scale,
+                        local_curve=lambda tau, x_val=x_curr: np.array(
+                            [
+                                x_val,
+                                center_y,
+                                z_cut + (z_top - z_cut) * float(tau),
+                            ],
+                            dtype=float,
+                        ),
+                    ),
+                ]
+            )
     elif technique in ("saw", "sawing"):
-        phases = [phase_approach, phase_shear, phase_retract]
+        for cut_idx, x_curr in enumerate(x_anchors):
+            phases.extend(
+                [
+                    MotionSegment(
+                        name=f"cut_approach_x{cut_idx}",
+                        duration_s=0.8 * duration_scale,
+                        local_curve=lambda tau, x_val=x_curr: np.array(
+                            [
+                                x_val,
+                                center_y,
+                                z_top + (maxs[2] - z_top) * float(tau),
+                            ],
+                            dtype=float,
+                        ),
+                    ),
+                    MotionSegment(
+                        name=f"oscillatory_shear_x{cut_idx}",
+                        duration_s=5.0 * duration_scale,
+                        local_curve=lambda tau, x_val=x_curr: (
+                            lambda q_local: np.array(
+                                [
+                                    x_val,
+                                    center_y + q_local[0],
+                                    maxs[2] + q_local[2],
+                                ],
+                                dtype=float,
+                            )
+                        )(
+                            oscillatory_shear_local_profiled(
+                                tau,
+                                ShearProfile(
+                                    depth_max=shear_depth_max,
+                                    depth_ramp_end=0.7,
+                                    shear_amp=shear_amp,
+                                    shear_cycles=saw_cycles,
+                                ),
+                            )
+                        ),
+                    ),
+                    MotionSegment(
+                        name=f"cut_retract_x{cut_idx}",
+                        duration_s=0.8 * duration_scale,
+                        local_curve=lambda tau, x_val=x_curr: np.array(
+                            [
+                                x_val,
+                                center_y,
+                                z_cut + (z_top - z_cut) * float(tau),
+                            ],
+                            dtype=float,
+                        ),
+                    ),
+                ]
+            )
     else:
         raise ValueError(f"Unknown cutting technique '{technique}'")
 

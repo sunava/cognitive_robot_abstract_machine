@@ -402,11 +402,20 @@ class MixingAction(GeneralizedActionPlan):
     The container (e.g., bowl) to operate in.
     """
 
+    mix_duration_s: float = 0.0
+    """
+    Total mixing time in seconds for a continuous connected stir loop.
+    If <= 0, the default short pattern is used.
+    """
+
     def _sample_points(self):
+        pattern = "stir" if float(self.mix_duration_s) > 0.0 else "spiral"
         seq = build_container_sequence(
             self.container,
             use_visual_aabb=self.use_visual_aabb,
             apply_shape_scale=self.apply_shape_scale,
+            pattern=pattern,
+            mix_duration_s=self.mix_duration_s if float(self.mix_duration_s) > 0.0 else None,
         )
         return seq.sample(frame=self.container.global_pose, dt=self.dt)
 
@@ -428,6 +437,7 @@ class MixingAction(GeneralizedActionPlan):
         dt: Union[Iterable[float], float] = 0.01,
         use_visual_aabb: Union[Iterable[bool], bool] = True,
         apply_shape_scale: Union[Iterable[bool], bool] = True,
+        mix_duration_s: Union[Iterable[float], float] = 0.0,
         clear_viz: Union[Iterable[bool], bool] = False,
         pointer_stride: Union[Iterable[int], int] = 1,
     ) -> PartialDesignator[MixingAction]:
@@ -442,6 +452,7 @@ class MixingAction(GeneralizedActionPlan):
             dt=dt,
             use_visual_aabb=use_visual_aabb,
             apply_shape_scale=apply_shape_scale,
+            mix_duration_s=mix_duration_s,
             clear_viz=clear_viz,
             pointer_stride=pointer_stride,
         )
@@ -545,6 +556,11 @@ class CuttingAction(GeneralizedActionPlan):
     Target slice thickness used to place the cut anchor.
     """
 
+    num_cuts_x: int = 1
+    """
+    Number of repeated cut passes distributed across local X.
+    """
+
 
     # def _pose_orientation(self) -> list[float]:
     #     """
@@ -562,6 +578,7 @@ class CuttingAction(GeneralizedActionPlan):
             apply_shape_scale=self.apply_shape_scale,
             technique=self.technique,
             slice_thickness=self.slice_thickness,
+            num_cuts_x=self.num_cuts_x,
         )
         return seq.sample(frame=self.container.global_pose, dt=self.dt)
 
@@ -585,6 +602,7 @@ class CuttingAction(GeneralizedActionPlan):
         apply_shape_scale: Union[Iterable[bool], bool] = True,
         technique: Union[Iterable[str], str] = "saw",
         slice_thickness: Union[Iterable[float], float] = 0.03,
+        num_cuts_x: Union[Iterable[int], int] = 1,
         clear_viz : Union[Iterable[bool], bool] = False,
         pointer_stride: Union[Iterable[int], int] = 1,
 
@@ -602,6 +620,7 @@ class CuttingAction(GeneralizedActionPlan):
             apply_shape_scale=apply_shape_scale,
             technique=technique,
             slice_thickness=slice_thickness,
+            num_cuts_x=num_cuts_x,
             clear_viz=clear_viz,
             pointer_stride=pointer_stride,
         )

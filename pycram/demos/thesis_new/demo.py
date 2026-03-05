@@ -204,6 +204,54 @@ def _dump_experiment_metrics_csv(node, out_path: str) -> None:
         writer.writerows(rows)
 
 
+def _record_failed_action(node, action, exc: Exception, step_index: int = None) -> None:
+    records = getattr(node, "_experiment_metrics", None)
+    if records is None:
+        node._experiment_metrics = []
+        records = node._experiment_metrics
+
+    action_name = action.__class__.__name__
+    if hasattr(action, "performable") and action.performable is not None:
+        action_name = action.performable.__name__
+
+    container_obj = getattr(action, "container", None)
+    if container_obj is None and hasattr(action, "kwargs"):
+        container_obj = action.kwargs.get("container")
+
+    container_name = None
+    if container_obj is not None:
+        try:
+            container_name = str(container_obj.name)
+        except Exception:
+            container_name = str(container_obj)
+
+    tool_obj = getattr(action, "tool", None)
+    if tool_obj is None and hasattr(action, "kwargs"):
+        tool_obj = action.kwargs.get("tool")
+
+    tool_name = None
+    if tool_obj is not None:
+        try:
+            tool_name = str(tool_obj.root.name)
+        except Exception:
+            tool_name = str(tool_obj)
+
+    records.append(
+        {
+            "action": action_name,
+            "action_success": False,
+            "overall_success": False,
+            "geometric_success": False,
+            "geometric_failed_checks": ["execution_exception"],
+            "exception_type": type(exc).__name__,
+            "exception_message": str(exc),
+            "container": container_name,
+            "tool": tool_name,
+            "failed_step_index": step_index,
+        }
+    )
+
+
 def main():
     world = setup_complex_world()
 
@@ -241,8 +289,7 @@ def main():
     context.ros_node = node
     print(PoseStamped.from_spatial_type(context.robot.root.global_pose))
 
-    plan = SequentialPlan(
-        context,
+    actions = [
         ParkArmsActionDescription(Arms.BOTH),
         MoveTorsoActionDescription(TorsoState.HIGH),
         NavigateActionDescription(
@@ -250,18 +297,60 @@ def main():
             True,
         ),
         # NavigateActionDescription(target_location=PoseStamped.from_list([1.5,2.5,0.0])),
-        CuttingActionDescription(container=bread_body, arm=Arms.RIGHT, tool=knife, technique="saw", clear_viz=True,
-                                 pointer_stride=10),
-        CuttingActionDescription(container=bread_middle_body, arm=Arms.RIGHT, tool=knife, technique="saw",pointer_stride=10),
-        CuttingActionDescription(container=bread_big_body, arm=Arms.RIGHT, tool=knife, technique="saw",pointer_stride=10),
-        NavigateActionDescription(PoseStamped.from_spatial_type(HomogeneousTransformationMatrix.from_xyz_rpy
-                                                                (4.0, 2.5, 0.0, roll=0, pitch=0,
-                                                                 yaw=180, reference_frame=world.root)),
-            True,
-        ),
-        MixingActionDescription(container=bowl_small_body, arm=Arms.LEFT, tool=whisk,pointer_stride=10),
-        MixingActionDescription(container=bowl_middle_body, arm=Arms.LEFT, tool=whisk,pointer_stride=10),
-        MixingActionDescription(container=bowl_big_body, arm=Arms.LEFT, tool=whisk,pointer_stride=10),
+        # CuttingActionDescription(
+        #     container=bread_body,
+        #     arm=Arms.RIGHT,
+        #     tool=knife,
+        #     technique="saw",
+        #     clear_viz=True,
+        #     pointer_stride=10,
+        #     num_cuts_x=5,
+        # ),
+        # CuttingActionDescription(
+        #     container=bread_middle_body,
+        #     arm=Arms.RIGHT,
+        #     tool=knife,
+        #     technique="saw",
+        #     pointer_stride=10,
+        #     num_cuts_x=5,
+        # ),
+        # CuttingActionDescription(
+        #     container=bread_big_body,
+        #     arm=Arms.RIGHT,
+        #     tool=knife,
+        #     technique="saw",
+        #     pointer_stride=10,
+        #     num_cuts_x=5,
+        # ),
+        # NavigateActionDescription(
+        #     PoseStamped.from_spatial_type(
+        #         HomogeneousTransformationMatrix.from_xyz_rpy(
+        #             4.0, 2.5, 0.0, roll=0, pitch=0, yaw=180, reference_frame=world.root
+        #         )
+        #     ),
+        #     True,
+        # ),
+        # MixingActionDescription(
+        #     container=bowl_small_body,
+        #     arm=Arms.LEFT,
+        #     tool=whisk,
+        #     pointer_stride=3,
+        #     mix_duration_s=12.0,
+        # ),
+        # MixingActionDescription(
+        #     container=bowl_middle_body,
+        #     arm=Arms.LEFT,
+        #     tool=whisk,
+        #     pointer_stride=3,
+        #     mix_duration_s=12.0,
+        # ),
+        # MixingActionDescription(
+        #     container=bowl_big_body,
+        #     arm=Arms.LEFT,
+        #     tool=whisk,
+        #     pointer_stride=3,
+        #     mix_duration_s=12.0,
+        # ),
         #
         # WipingActionDescription(
         #     target_pose=clean_up_pose,
@@ -269,9 +358,40 @@ def main():
         #     tool=None,
         # )
         # SimpleMoveTCPAction(target_location=poses[0], arm=Arms.RIGHT),
-    )
+    ]
+
+    failed_actions = []
     with simulated_robot:
-        plan.perform()
+        for idx, action in enumerate(actions, start=1):
+            action_name = action.__class__.__name__
+            if hasattr(action, "performable") and action.performable is not None:
+                action_name = action.performable.__name__
+            try:
+                SequentialPlan(context, action).perform()
+            except Exception as exc:
+                _record_failed_action(node, action, exc, step_index=idx)
+                failed_actions.append(
+                    {
+                        "index": idx,
+                        "action": action_name,
+                        "exception_type": type(exc).__name__,
+                        "exception_message": str(exc),
+                    }
+                )
+                print(
+                    f"[FAIL] Step {idx} ({action_name}) failed with "
+                    f"{type(exc).__name__}: {exc}"
+                )
+                continue
+
+    if failed_actions:
+        print("\nFailed actions summary:")
+        for fail in failed_actions:
+            print(
+                f"  - #{fail['index']} {fail['action']}: "
+                f"{fail['exception_type']} - {fail['exception_message']}"
+            )
+
     _dump_experiment_metrics_csv(
         node,
         os.path.join(os.path.dirname(__file__), "experiment_metrics.csv"),

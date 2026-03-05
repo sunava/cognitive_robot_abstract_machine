@@ -1096,4 +1096,4 @@ class Knife(ToolWithHandle):
 
 
     def debug_distance_threshold(self) -> float:
-        return 0.4
+        return 0.6
