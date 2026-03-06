@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 
 from trimesh.proximity import closest_point
@@ -30,6 +30,7 @@ from demos.thesis_new.thesis_math.world_utils import (
 from demos.thesis_new.utils.rviz import MotionSequenceRviz, publish_points_sequence
 from pycram.datastructures.partial_designator import PartialDesignator
 from semantic_digital_twin.adapters.ros.pose_publisher import PosePublisher
+from semantic_digital_twin.semantic_annotations.mixins import HasHandle
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Tool
 from semantic_digital_twin.spatial_types import Vector3, Point3
 from semantic_digital_twin.world_description.world_entity import Body
@@ -77,14 +78,9 @@ class GeneralizedActionPlan(ActionDescription):
     Tool configuration name (e.g., 'whisk').
     """
 
-    tool: Optional[Tool] = None
+    tool: Optional[HasHandle] = None
     """
     Tool body used to estimate the tip offset.
-    """
-
-    tool_tip_offset: Optional[Iterable[float]] = None
-    """
-    Explicit tool tip offset in the tool frame.
     """
 
     dt: float = 0.01
@@ -131,47 +127,6 @@ class GeneralizedActionPlan(ActionDescription):
         if hasattr(self, "target_pose") and self.target_pose is not None:
             return self.target_pose.orientation.to_list()
         return [0.0, 0.0, 0.0, 1.0]
-
-    # def _points_with_tip(self, points: np.ndarray) -> np.ndarray:
-    #     """
-    #     Apply tool tip offset in tool frame:
-    #     world.root point -> tool.root -> add tip offset -> world.root.
-    #     """
-    #     P = np.asarray(points, dtype=float).reshape(-1, 3)
-    #
-    #     if self.tool is None or not hasattr(self.tool, "tip"):
-    #         return P
-    #     tip_pose = self.tool.tip()
-    #     if tip_pose is None:
-    #         return P
-    #
-    #     tip_offset_tool = np.asarray(tip_pose.to_position().to_np()[:3], dtype=float)
-    #     points_world = []
-    #     for p in P:
-    #         p_world = Point3(
-    #             x=float(p[0]),
-    #             y=float(p[1]),
-    #             z=float(p[2]),
-    #             reference_frame=self.world.root,
-    #         )
-    #         p_tool = self.world.transform(p_world, self.tool.root)
-    #         p_tool_offset = Point3(
-    #             x=float(p_tool.x) + float(tip_offset_tool[0]),
-    #             y=float(p_tool.y) + float(tip_offset_tool[1]),
-    #             z=float(p_tool.z) + float(tip_offset_tool[2]),
-    #             reference_frame=self.tool.root,
-    #         )
-    #         p_world_offset = self.world.transform(p_tool_offset, self.world.root)
-    #         points_world.append(
-    #             [
-    #                 float(p_world_offset.x),
-    #                 float(p_world_offset.y),
-    #                 float(p_world_offset.z),
-    #             ]
-    #         )
-    #     return np.asarray(points_world, dtype=float)
-
-
 
     def closest_face_with_normal(self, mesh, query_point):
         if isinstance(query_point, Point3):
@@ -225,6 +180,77 @@ class GeneralizedActionPlan(ActionDescription):
             "target_intersection_success": inside_ratio >= 0.5,
         }
 
+    def _tool_distance_threshold_m(self) -> float:
+        if self.tool is not None and hasattr(self.tool, "debug_distance_threshold"):
+            return float(self.tool.debug_distance_threshold())
+        return 0.005
+
+    def _update_record_with_container_metrics(
+        self,
+        record: ExperimentRecord,
+        points_world: np.ndarray,
+        executed_points: list[Point3],
+    ) -> None:
+        if not hasattr(self, "container") or self.container is None:
+            return
+
+        closest = self.closest_face_with_normal(
+            self.container.collision.shapes[0].mesh, executed_points[0]
+        )
+        record.set("closest_face", closest)
+
+        dist_threshold = self._tool_distance_threshold_m()
+        record.update(self._target_intersection_metrics(points_world))
+
+        distance_metrics = distance_to_mesh_metrics(
+            points_world=points_world,
+            world=self.world,
+            body=self.container,
+            threshold_m=dist_threshold,
+        )
+        record.update(
+            {
+                "tool_distance_threshold_m_for_success": dist_threshold,
+                "distance_within_threshold_ratio": distance_metrics.get(
+                    "below_threshold_ratio"
+                ),
+                "distance_within_threshold_percent": (
+                    100.0 * float(distance_metrics.get("below_threshold_ratio", 0.0))
+                ),
+            }
+        )
+        record.update(distance_metrics)
+
+        if "mean_distance" in distance_metrics:
+            record.set(
+                "distance_mean_minus_threshold_m",
+                float(distance_metrics["mean_distance"]) - dist_threshold,
+            )
+        if "min_distance" in distance_metrics:
+            record.set(
+                "distance_min_minus_threshold_m",
+                float(distance_metrics["min_distance"]) - dist_threshold,
+            )
+
+        if self.__class__.__name__ == "CuttingAction":
+            record.update(
+                cutting_depth_metrics(
+                    points_world=points_world,
+                    world=self.world,
+                    bread_body=self.container,
+                    apply_shape_scale=self.apply_shape_scale,
+                )
+            )
+        if self.__class__.__name__ == "MixingAction":
+            record.update(
+                mixing_bowl_metrics(
+                    points_world=points_world,
+                    world=self.world,
+                    bowl_body=self.container,
+                    apply_shape_scale=self.apply_shape_scale,
+                )
+            )
+
     def execute(self) -> None:
         _, points, ids = self._sample_points()
         # points_world = self._points_with_tip(points)
@@ -235,11 +261,10 @@ class GeneralizedActionPlan(ActionDescription):
             points=P,
             frame_id="apartment/apartment_root",
             topic="/point_sequence",
-            phase_id=ids,  # same length as points
+            phase_id=ids,
             republish_hz=2.0,
             clear_existing=self.clear_viz,
         )
-
 
         self.robot_view.full_body_controlled = True
         pointery = []
@@ -257,70 +282,9 @@ class GeneralizedActionPlan(ActionDescription):
             pointer_stride=stride,
         )
 
-        if hasattr(self, "container") and self.container is not None:
-            closest = self.closest_face_with_normal(
-                self.container.collision.shapes[0].mesh, pointery[0]
-            )
-            record.set("closest_face", closest)
-            dist_threshold = (
-                float(self.tool.debug_distance_threshold())
-                if self.tool is not None and hasattr(self.tool, "debug_distance_threshold")
-                else 0.005
-            )
-            record.update(self._target_intersection_metrics(P))
-            distance_metrics = distance_to_mesh_metrics(
-                points_world=P,
-                world=self.world,
-                body=self.container,
-                threshold_m=dist_threshold,
-            )
-            record.update(
-                {
-                    "tool_distance_threshold_m_for_success": dist_threshold,
-                    "distance_within_threshold_ratio": distance_metrics.get(
-                        "below_threshold_ratio"
-                    ),
-                    "distance_within_threshold_percent": (
-                        100.0
-                        * float(distance_metrics.get("below_threshold_ratio", 0.0))
-                    ),
-                }
-            )
-            record.update(distance_metrics)
-            if "mean_distance" in distance_metrics:
-                record.set(
-                    "distance_mean_minus_threshold_m",
-                    float(distance_metrics["mean_distance"]) - dist_threshold,
-                )
-            if "min_distance" in distance_metrics:
-                record.set(
-                    "distance_min_minus_threshold_m",
-                    float(distance_metrics["min_distance"]) - dist_threshold,
-                )
-            if self.__class__.__name__ == "CuttingAction":
-                record.update(
-                    cutting_depth_metrics(
-                        points_world=P,
-                        world=self.world,
-                        bread_body=self.container,
-                        apply_shape_scale=self.apply_shape_scale,
-                    )
-                )
-            if self.__class__.__name__ == "MixingAction":
-                record.update(
-                    mixing_bowl_metrics(
-                        points_world=P,
-                        world=self.world,
-                        bowl_body=self.container,
-                        apply_shape_scale=self.apply_shape_scale,
-                    )
-                )
+        self._update_record_with_container_metrics(record, P, pointery)
 
-        alignment_target = None
-        if hasattr(self, "container") and self.container is not None:
-            alignment_target = self.container
-        elif hasattr(self, "target_pose") and self.target_pose is not None:
-            alignment_target = self.target_pose
+        alignment_target = self._resolve_alignment_target()
 
         alignment_pairs = (
             self.tool.tool_alignment(alignment_target)
@@ -350,35 +314,15 @@ class GeneralizedActionPlan(ActionDescription):
 
         record.finalize_geometric()
         self._log_experiment_record(record.to_dict())
-        # poses = self._poses_from_points(points)
 
-        # node = self.context.ros_node
-        # if not hasattr(node, "_temporary_pose_publishers"):
-        #     node._temporary_pose_publishers = []
-        # for i, pose in enumerate(poses):
-        #     pub = PosePublisher(
-        #         pose=pose.to_spatial_type(),
-        #         node=node,
-        #         lifetime=0,
-        #         text=str(i),
-        #         topic_name="/pose_sequence",
-        #         world=self.world,
-        #     )
-        #     node._temporary_pose_publishers.append(pub)
-        #
-
-        # self.robot_view.full_body_controlled = True
-        # SequentialPlan(
-        #     self.context,
-        #     MoveTCPWaypointsMotion(
-        #         poses,
-        #         self.arm,
-        #         allow_gripper_collision=True,
-        #     ),
-        # ).perform()
-        # print("Pose was published from Designator")
-        # poses = self._poses_from_points(points)
-        # P = self._points_with_tool_tip_offset(points)
+    def _resolve_alignment_target(self):
+        if hasattr(self, "surface_body") and self.surface_body is not None:
+            return self.surface_body
+        if hasattr(self, "container") and self.container is not None:
+            return self.container
+        if hasattr(self, "target_pose") and self.target_pose is not None:
+            return self.target_pose
+        return None
 
     @classmethod
     def _normalize_tip_offset(cls, tool_tip_offset):
@@ -438,7 +382,6 @@ class MixingAction(GeneralizedActionPlan):
         arm: Union[Iterable[Arms], Arms],
         tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
         tool: Union[Iterable[Tool], Tool] = None,
-        tool_tip_offset: Union[Iterable[Iterable[float]], Iterable[float]] = None,
         dt: Union[Iterable[float], float] = 0.01,
         use_visual_aabb: Union[Iterable[bool], bool] = True,
         apply_shape_scale: Union[Iterable[bool], bool] = True,
@@ -446,14 +389,12 @@ class MixingAction(GeneralizedActionPlan):
         clear_viz: Union[Iterable[bool], bool] = False,
         pointer_stride: Union[Iterable[int], int] = 1,
     ) -> PartialDesignator[MixingAction]:
-        normalized_tip_offset = cls._normalize_tip_offset(tool_tip_offset)
         return PartialDesignator(
             cls,
             container=container,
             arm=arm,
             tool_name=tool_name,
             tool=tool,
-            tool_tip_offset=normalized_tip_offset,
             dt=dt,
             use_visual_aabb=use_visual_aabb,
             apply_shape_scale=apply_shape_scale,
@@ -470,13 +411,12 @@ class WipingAction(GeneralizedActionPlan):
     """
     container: Optional[Body] = None
     """
-    The container (e.g., bowl) to operate in.
+    Optional alias for surface_body (backward compatibility).
     """
-    target_pose: Optional[PoseStamped]
+    target_pose: Optional[PoseStamped] = None
     """
     Center pose for the wiping patch.
     """
-
     length: float = 0.20
     """
     Sweep length for the wiping motion.
@@ -486,28 +426,96 @@ class WipingAction(GeneralizedActionPlan):
     """
     Number of sweep cycles.
     """
+    _resolved_surface_body: Optional[Body] = field(
+        default=None, init=False, repr=False
+    )
+
+    def _infer_surface_body_from_target_pose(self) -> Body:
+        if self.target_pose is None:
+            raise ValueError(
+                "WipingAction needs target_pose for nearest-body inference."
+            )
+
+        target_world = self.world.transform(
+            self.target_pose.to_spatial_type(), self.world.root
+        )
+        target_world_pos = np.asarray(
+            target_world.to_position().to_np()[:3], dtype=float
+        )
+
+        excluded_bodies = []
+        robot = getattr(self.context, "robot", None)
+        if robot is not None and hasattr(robot, "bodies"):
+            excluded_bodies.extend(robot.bodies)
+        if self.tool is not None:
+            excluded_bodies.append(getattr(self.tool, "root", None))
+            try:
+                excluded_bodies.append(self.tool.get_tool_frame())
+            except Exception:
+                pass
+        excluded_bodies = [body for body in excluded_bodies if body is not None]
+
+        nearest_body = None
+        nearest_distance = float("inf")
+        for body in self.world.bodies:
+            if any(body is excluded for excluded in excluded_bodies) or body is self.world.root:
+                continue
+            if body.collision is None:
+                continue
+            body_mesh_local = body.collision.combined_mesh
+            if body_mesh_local is None or body_mesh_local.is_empty:
+                continue
+            body_mesh_world = body_mesh_local.copy()
+            body_mesh_world.apply_transform(body.global_pose.to_np())
+            _, distances, _ = closest_point(body_mesh_world, target_world_pos.reshape(1, 3))
+            if len(distances) == 0:
+                continue
+            distance = float(distances[0])
+            if distance < nearest_distance:
+                nearest_distance = distance
+                nearest_body = body
+
+        if nearest_body is None:
+            raise ValueError(
+                "Could not infer a surface body near target_pose (all candidates excluded)."
+            )
+        logger.info(
+            "WipingAction inferred surface body '%s' (distance %.3f m).",
+            nearest_body.name,
+            nearest_distance,
+        )
+        return nearest_body
+
+    def _resolve_surface_body(self) -> Body:
+        if self._resolved_surface_body is not None:
+            return self._resolved_surface_body
+
+
+        if self.container is None:
+            resolved = self._infer_surface_body_from_target_pose()
+        else:
+            resolved = self.container
+        self._resolved_surface_body = resolved
+        return resolved
+
+    def _resolve_alignment_target(self):
+        return self._resolve_surface_body()
 
     def _sample_points(self):
+        surface_body = self._resolve_surface_body()
 
-        if self.container is not None:
-            print("use container in wiping")
-            seq = build_surface_sequence(
-                self.container,
-                use_visual_aabb=self.use_visual_aabb,
-                apply_shape_scale=self.apply_shape_scale,
-                pattern="raster",
-            )
-            return seq.sample(frame=self.container.global_pose, dt=self.dt)
-        else :
-            tPose = self.target_pose.to_spatial_type()
-            segment = MotionSegment(
-                name="planar_spiral",
-                duration_s=2.0,
-                local_curve=lambda tau: planar_spiral_xy(tau, r0=0.00, r1=0.12, cycles=2.5),
-            )
-
-            seq = MotionSequence([segment])
-            return seq.sample(frame=tPose, dt=self.dt)
+        seq = build_surface_sequence(
+            surface_body,
+            use_visual_aabb=self.use_visual_aabb,
+            apply_shape_scale=self.apply_shape_scale,
+            pattern="raster",
+        )
+        frame = (
+            self.target_pose.to_spatial_type()
+            if self.target_pose is not None
+            else surface_body.global_pose
+        )
+        return seq.sample(frame=frame, dt=self.dt)
 
     @classmethod
     def description(
@@ -515,7 +523,6 @@ class WipingAction(GeneralizedActionPlan):
         arm: Union[Iterable[Arms], Arms],
         tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
         tool: Union[Iterable[Tool], Tool] = None,
-        tool_tip_offset: Union[Iterable[Iterable[float]], Iterable[float]] = None,
         dt: Union[Iterable[float], float] = 0.01,
         length: Union[Iterable[float], float] = 0.20,
         cycles: Union[Iterable[float], float] = 2.0,
@@ -524,7 +531,6 @@ class WipingAction(GeneralizedActionPlan):
         clear_viz: Union[Iterable[bool], bool] = False,
         pointer_stride: Union[Iterable[int], int] = 1,
     ) -> PartialDesignator[WipingAction]:
-        normalized_tip_offset = cls._normalize_tip_offset(tool_tip_offset)
         return PartialDesignator(
             cls,
 
@@ -533,7 +539,6 @@ class WipingAction(GeneralizedActionPlan):
             target_pose=target_pose,
             tool_name=tool_name,
             tool=tool,
-            tool_tip_offset=normalized_tip_offset,
             dt=dt,
             length=length,
             cycles=cycles,
@@ -601,7 +606,6 @@ class CuttingAction(GeneralizedActionPlan):
         arm: Union[Iterable[Arms], Arms],
         tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
         tool: Union[Iterable[Tool], Tool] = None,
-        tool_tip_offset: Union[Iterable[Iterable[float]], Iterable[float]] = None,
         dt: Union[Iterable[float], float] = 0.01,
         use_visual_aabb: Union[Iterable[bool], bool] = True,
         apply_shape_scale: Union[Iterable[bool], bool] = True,
@@ -612,14 +616,12 @@ class CuttingAction(GeneralizedActionPlan):
         pointer_stride: Union[Iterable[int], int] = 1,
 
     ) -> PartialDesignator[CuttingAction]:
-        normalized_tip_offset = cls._normalize_tip_offset(tool_tip_offset)
         return PartialDesignator(
             cls,
             container=container,
             arm=arm,
             tool_name=tool_name,
             tool=tool,
-            tool_tip_offset=normalized_tip_offset,
             dt=dt,
             use_visual_aabb=use_visual_aabb,
             apply_shape_scale=apply_shape_scale,

@@ -307,62 +307,7 @@ def main():
             PoseStamped.from_list([2.0 ,2.5,0.0], [0, 0, 0, 1], world.root),
             True,
         ),
-        # NavigateActionDescription(target_location=PoseStamped.from_list([1.5,2.5,0.0])),
-        # CuttingActionDescription(
-        #     container=bread_body,
-        #     arm=Arms.RIGHT,
-        #     tool=knife,
-        #     technique="saw",
-        #     clear_viz=True,
-        #     pointer_stride=10,
-        #     num_cuts_x=5,
-        # ),
-        # CuttingActionDescription(
-        #     container=bread_middle_body,
-        #     arm=Arms.RIGHT,
-        #     tool=knife,
-        #     technique="saw",
-        #     pointer_stride=10,
-        #     num_cuts_x=5,
-        # ),
-        # CuttingActionDescription(
-        #     container=bread_big_body,
-        #     arm=Arms.RIGHT,
-        #     tool=knife,
-        #     technique="saw",
-        #     pointer_stride=10,
-        #     num_cuts_x=5,
-        # ),
-        # NavigateActionDescription(
-        #     PoseStamped.from_spatial_type(
-        #         HomogeneousTransformationMatrix.from_xyz_rpy(
-        #             4.0, 2.5, 0.0, roll=0, pitch=0, yaw=180, reference_frame=world.root
-        #         )
-        #     ),
-        #     True,
-        # ),
-        # MixingActionDescription(
-        #     container=bowl_small_body,
-        #     arm=Arms.LEFT,
-        #     tool=whisk,
-        #     pointer_stride=3,
-        #     mix_duration_s=12.0,
-        # ),
-        # MixingActionDescription(
-        #     container=bowl_middle_body,
-        #     arm=Arms.LEFT,
-        #     tool=whisk,
-        #     pointer_stride=3,
-        #     mix_duration_s=12.0,
-        # ),
-        # MixingActionDescription(
-        #     container=bowl_big_body,
-        #     arm=Arms.LEFT,
-        #     tool=whisk,
-        #     pointer_stride=3,
-        #     mix_duration_s=12.0,
-        # ),
-        #
+
         WipingActionDescription(
             target_pose=clean_up_pose,
             arm=Arms.LEFT,

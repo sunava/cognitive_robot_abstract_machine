@@ -6,13 +6,18 @@ import json
 import rclpy
 from trimesh.proximity import nearby_faces, closest_point
 
+import pycram
 from demos.thesis.simulation_setup import add_box, BoxSpec
 from demos.thesis_new.thesis_math.world_utils import try_get_body
+from krrood.ormatic.dao import to_dao
+from krrood.ormatic.utils import drop_database
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
 from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
 from pycram.motion_executor import simulated_robot
+from pycram.orm.ormatic_interface import Base
+from pycram.orm.utils import pycram_sessionmaker
 from pycram.robot_plans import MoveTorsoActionDescription, MixingActionDescription, \
     ParkArmsActionDescription, NavigateActionDescription, CuttingActionDescription, WipingActionDescription
 
@@ -303,7 +308,7 @@ def main():
             technique="saw",
             clear_viz=True,
             pointer_stride=10,
-            num_cuts_x=5,
+            num_cuts_x=1,
         ),
         CuttingActionDescription(
             container=bread_middle_body,
@@ -311,7 +316,7 @@ def main():
             tool=knife,
             technique="saw",
             pointer_stride=10,
-            num_cuts_x=5,
+            num_cuts_x=1,
         ),
         CuttingActionDescription(
             container=bread_big_body,
@@ -319,7 +324,7 @@ def main():
             tool=knife,
             technique="saw",
             pointer_stride=10,
-            num_cuts_x=5,
+            num_cuts_x=1,
         ),
         NavigateActionDescription(
             PoseStamped.from_spatial_type(
@@ -366,7 +371,8 @@ def main():
             if hasattr(action, "performable") and action.performable is not None:
                 action_name = action.performable.__name__
             try:
-                SequentialPlan(context, action).perform()
+                current_plan = SequentialPlan(context, action)
+                current_plan.perform()
             except Exception as exc:
                 _record_failed_action(node, action, exc, step_index=idx)
                 failed_actions.append(
@@ -381,7 +387,9 @@ def main():
                     f"[FAIL] Step {idx} ({action_name}) failed with "
                     f"{type(exc).__name__}: {exc}"
                 )
-                continue
+            finally:
+                session.add(to_dao(current_plan))
+                session.commit()
 
     if failed_actions:
         print("\nFailed actions summary:")
@@ -397,4 +405,7 @@ def main():
     )
 
 if __name__ == "__main__":
+    session = pycram_sessionmaker()()
+    drop_database(session.bind)
+    Base.metadata.create_all(session.bind)
     main()

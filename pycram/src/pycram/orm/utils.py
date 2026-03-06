@@ -1,6 +1,14 @@
+import os
 import traceback
+from functools import lru_cache
+
 import sqlalchemy
 import logging
+
+from sqlalchemy.orm import sessionmaker
+
+from krrood.ormatic.utils import create_engine
+from semantic_digital_twin.orm.exceptions import DatabaseNotAvailableError
 
 try:
     from .ormatic_interface import mapper_registry
@@ -217,3 +225,16 @@ def migrate_neems(
     update_primary_key_constrains(destination_session_maker)
     update_primary_key(source_session_maker, destination_session_maker)
     copy_database(source_session_maker, destination_session_maker)
+
+
+@lru_cache
+def pycram_sessionmaker():
+    """
+    Creates a session maker for the semantic digital twin database.
+    This requires the environment variable `SEMANTIC_DIGITAL_TWIN_DATABASE_URI` to be set to a reachable database.
+    """
+    uri = os.environ.get("SEMANTIC_DIGITAL_TWIN_DATABASE_URI")
+    if uri is None:
+        raise DatabaseNotAvailableError()
+    engine = create_engine(uri)
+    return sessionmaker(bind=engine)

@@ -153,7 +153,7 @@ def main():
 
         # MixingActionDescription(container=bowl_body, arm=Arms.RIGHT, tool_body=whisk_body),
         WipingActionDescription(
-            container=island,
+            surface_body=island,
             arm=Arms.LEFT
         )
 

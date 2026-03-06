@@ -40,6 +40,11 @@ class PyCramVector3:
     y: float = 0
     z: float = 0
 
+    def __post_init__(self):
+        self.x = float(self.x)
+        self.y = float(self.y)
+        self.z = float(self.z)
+
     def euclidean_distance(self, other: Self) -> float:
         """
         The euclidian distance between this vector and another vector.
@@ -182,6 +187,10 @@ class PyCramQuaternion:
 
     def __post_init__(self):
         self.normalize()
+        self.x = float(self.x)
+        self.y = float(self.y)
+        self.z = float(self.z)
+        self.w = float(self.w)
 
     def normalize(self):
         """

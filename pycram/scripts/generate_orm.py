@@ -76,7 +76,6 @@ classes |= {DesignatorDescription}
 classes |= {BaseMotion}
 classes |= set(classes_of_module(grasp))
 classes |= {WorldModelModificationBlock, WorldModelModification}
-
 # Semantic World Classes
 classes |= {Body}
 

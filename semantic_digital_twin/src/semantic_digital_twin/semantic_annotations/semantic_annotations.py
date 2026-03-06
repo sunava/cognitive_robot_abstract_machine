@@ -1031,7 +1031,7 @@ class Tool(HasRootBody, ABC):
         return self.debug_distance_threshold()
 
 @dataclass(eq=False)
-class ToolWithHandle(Tool, HasHandle, ABC):
+class ToolWithHandle(HasHandle, Tool, ABC):
     def __post_init__(self):
         world = getattr(self.root, "_world", None)
         if world is None:
