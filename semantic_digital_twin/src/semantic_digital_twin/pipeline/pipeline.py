@@ -8,12 +8,21 @@ from typing import List, Callable, Dict, Type
 
 import numpy as np
 
-from semantic_digital_twin.semantic_annotations.mixins import HasRootKinematicStructureEntity
+from semantic_digital_twin.adapters.mesh import STLParser
+from semantic_digital_twin.semantic_annotations.mixins import (
+    HasRootKinematicStructureEntity,
+    HasRootBody,
+)
 from semantic_digital_twin.spatial_types import Point3
-from semantic_digital_twin.spatial_types.spatial_types import HomogeneousTransformationMatrix
+from semantic_digital_twin.spatial_types.spatial_types import (
+    HomogeneousTransformationMatrix,
+)
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.geometry import TriangleMesh, FileMesh
-from semantic_digital_twin.world_description.world_entity import Body
+from semantic_digital_twin.world_description.world_entity import (
+    Body,
+    SemanticAnnotation,
+)
 
 
 @dataclass
