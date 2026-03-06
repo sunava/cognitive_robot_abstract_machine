@@ -11,7 +11,6 @@ from typing_extensions import List, Type
 from krrood.ormatic.utils import classproperty
 from krrood.symbolic_math import symbolic_math
 from pycram.datastructures.dataclasses import AlignmentPair
-from .mixins import (
 from semantic_digital_twin.semantic_annotations.mixins import (
     HasSupportingSurface,
     HasRootRegion,

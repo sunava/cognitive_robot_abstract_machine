@@ -111,6 +111,9 @@ class AssociationObject:
     The name of the primary key column, if any.
     """
 
+    @property
+    def table_name(self):
+        return str(hash(self.name))
 
 @dataclass
 class WrappedTable:

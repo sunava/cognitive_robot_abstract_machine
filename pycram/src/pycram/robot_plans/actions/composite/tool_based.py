@@ -78,7 +78,7 @@ class GeneralizedActionPlan(ActionDescription):
     Tool configuration name (e.g., 'whisk').
     """
 
-    tool: Optional[HasHandle] = None
+    tool: Optional[Tool] = None
     """
     Tool body used to estimate the tip offset.
     """

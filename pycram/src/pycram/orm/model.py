@@ -12,7 +12,7 @@ from pycram.datastructures.enums import TaskStatus
 from pycram.datastructures.pose import PyCramQuaternion
 from pycram.designator import DesignatorDescription
 from pycram.failures import PlanFailure
-from pycram.language import TryInOrderNode, ParallelNode, TryAllNode, CodeNode, MonitorNode
+from pycram.language import TryInOrderNode, ParallelNode, TryAllNode, CodeNode, MonitorNode, SequentialPlan
 from pycram.plan import (
     ActionDescriptionNode,
     MotionNode,
@@ -113,7 +113,12 @@ class ActionDescriptionNodeMapping(
         )
 
     def to_domain_object(self) -> T:
-        raise NotImplementedError()
+        return ActionDescriptionNode(
+            status=self.status,
+            start_time=self.start_time,
+            end_time=self.end_time,
+            reason=self.reason,
+        )
 
 
 @dataclass
@@ -179,7 +184,8 @@ class PlanMapping(AlternativeMapping[Plan]):
         )
 
     def to_domain_object(self) -> T:
-        raise NotImplementedError()
+        ...
+
 
 
 #

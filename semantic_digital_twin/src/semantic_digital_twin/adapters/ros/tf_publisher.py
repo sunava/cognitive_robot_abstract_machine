@@ -116,7 +116,7 @@ class TfPublisherModelCallback(ModelChangeCallback):
 
 
 @dataclass(eq=False)
-class TFPublisher(StateChangeCallback):
+class  TFPublisher(StateChangeCallback):
     """
     On state change, publishes the TF tree of the world.
     Puts a frame in every kinematic structure entity that is not in the ignored_bodies set.
