@@ -235,7 +235,13 @@ def convert_to_decomposed_obj_and_save_in_tmp(
             f.write(obj_str)
         if not mesh.is_convex:
             with suppress_stdout_stderr():
-                bullet.vhacd(obj_file_name, obj_file_name, str(log_path / "vhacd.log"))
+                bullet.vhacd(
+                    obj_file_name,
+                    obj_file_name,
+                    str(log_path / "vhacd.log"),
+                    depth=2,
+                    resolution=10000,
+                )
             logging.info(f'Saved convex decomposition to "{obj_file_name}".')
         else:
             logging.info(f'Saved obj to "{obj_file_name}".')
