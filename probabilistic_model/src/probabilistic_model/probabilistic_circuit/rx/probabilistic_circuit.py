@@ -33,18 +33,18 @@ from typing_extensions import (
     Union,
 )
 
-from ...distributions import (
+from probabilistic_model.distributions import (
     UnivariateDistribution,
     IntegerDistribution,
     SymbolicDistribution,
     DiscreteDistribution,
     ContinuousDistribution,
 )
-from ...distributions.helper import make_dirac
-from ...error import IntractableError
-from ...interfaces.drawio.drawio import DrawIOInterface, circled_product, circled_sum
-from ...probabilistic_model import ProbabilisticModel, OrderType, CenterType, MomentType
-from ...utils import MissingDict
+from probabilistic_model.distributions.helper import make_dirac
+from probabilistic_model.error import IntractableError
+from probabilistic_model.interfaces.drawio.drawio import DrawIOInterface, circled_product, circled_sum
+from probabilistic_model.probabilistic_model import ProbabilisticModel, OrderType, CenterType, MomentType
+from probabilistic_model.utils import MissingDict
 
 
 class PlotAlignment(IntEnum):
@@ -664,7 +664,7 @@ class SumUnit(InnerUnit):
                     new_weight = sub_weight + weight
 
                     # add an edge to that subcircuit
-                    self.add_subcircuit(sub_subcircuit, new_weight)
+                    self.add_subcircuit(sub_subcircuit, new_weight, mount=False)
 
                 # remove the old node
                 self.probabilistic_circuit.remove_node(subcircuit)
@@ -1097,7 +1097,7 @@ class ProbabilisticCircuit(ProbabilisticModel, SubclassJSONSerializer):
             if node.result_of_current_query == -np.inf
         ]
 
-        if root not in self.graph.nodes():
+        if root not in set(self.graph.nodes()):
             return None, -np.inf
 
         # clean the circuit up
