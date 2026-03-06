@@ -1,8 +1,10 @@
 import logging
+import random
 import re
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from dataclasses import dataclass
-from typing import List, Callable
+from typing import List, Callable, Dict, Type
 
 import numpy as np
 
@@ -162,4 +164,73 @@ class BodyFactoryReplace(Step):
             parent_connection.child = new_world.root
             world.merge_world(new_world, parent_connection)
 
+        return world
+
+
+@dataclass
+class MergeParentWithChildIfCorrectChildSubname(Step):
+    """
+    Merges the parent body with the child body if the child body has the substring in its name.
+    The resulting body will have the geometry of both the parent and child, and the name of the parent.
+    """
+
+    matching_subname: str
+    """
+    The substring the child body must have in its name to be merged with the parent.
+    """
+
+    def _apply(self, world: World) -> World:
+        bodies_topologically_sorted = reversed(world.bodies_topologically_sorted)
+        for child_body in bodies_topologically_sorted:
+
+            parent_connection = child_body.parent_connection
+            if parent_connection is None:
+                continue
+            parent_body = parent_connection.parent
+            if not isinstance(child_body, Body) or not isinstance(parent_body, Body):
+                continue
+
+            child_name = child_body.name.name
+            if not self.matching_subname in child_name:
+                continue
+
+            parent_shape = parent_body.collision
+            child_shape = child_body.collision
+            parent_shape.merge(child_shape)
+            parent_C_child = child_body.parent_connection
+            world.remove_connection(parent_C_child)
+            world.remove_kinematic_structure_entity(child_body)
+        return world
+
+
+@dataclass
+class SemanticAnnotationGeometryReplacement(Step):
+    """
+    Replaces collision geometries of semantic annotation root bodies with collision geometries from STL files based on
+    the mapping.
+    """
+
+    object_mappings: Dict[Type[SemanticAnnotation], List[str]]
+    """
+    A dictionary mapping semantic annotations to a list of file paths to STL files that should be used as collision geometries for the semantic annotation.
+    """
+
+    def _apply(self, world: World) -> World:
+
+        for mapped_semantic_annotation in self.object_mappings.keys():
+
+            semantic_annotations = world.get_semantic_annotations_by_type(
+                mapped_semantic_annotation
+            )
+
+            for semantic_annotation in semantic_annotations:
+                if isinstance(semantic_annotation, HasRootBody):
+                    file_path = random.choice(
+                        self.object_mappings[mapped_semantic_annotation]
+                    )
+
+                    new_body_world = STLParser(file_path=file_path).parse()
+                    new_geometry = deepcopy(new_body_world.bodies[0].collision)
+                    semantic_annotation.root.collision = new_geometry
+                    semantic_annotation.root.visual = new_geometry
         return world

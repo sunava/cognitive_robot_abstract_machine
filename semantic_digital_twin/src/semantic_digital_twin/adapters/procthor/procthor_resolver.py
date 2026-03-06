@@ -10,6 +10,46 @@ from typing_extensions import List
 from semantic_digital_twin.semantic_annotations.mixins import (
     HasRootBody,
 )
+from ...semantic_annotations.semantic_annotations import (
+    Bottle,
+    Apple,
+    Plate,
+    Bowl,
+    Fork,
+    Knife,
+    Mug,
+    Cup,
+    Pan,
+    PanLid,
+    Pencil,
+    Ball,
+    Baseball,
+    SprayBottle,
+)
+
+semantic_annotation_to_ycb_mesh_mapping = {
+    Bottle: ["mustard_bottle.stl"],
+    Apple: ["apple.stl"],
+    Plate: ["plate.stl"],
+    Bowl: ["bowl.stl"],
+    Fork: ["fork.stl"],
+    Knife: ["knife.stl"],
+    Mug: ["mug.stl"],
+    Cup: ["cup_a.stl"],
+    Pan: ["skillet.stl"],
+    PanLid: ["skillet_lid.stl"],
+    Pencil: ["small_marker.stl", "large_marker.stl"],
+    Ball: [
+        "softball.stl",
+        "baseball.stl",
+        "tennisball.stl",
+        "racequetball.stl",
+        "golfball.stl",
+        "mini_soccerball.stl",
+    ],
+    Baseball: ["baseball.stl"],
+    SprayBottle: ["spraybottle.stl"],
+}
 from semantic_digital_twin.world_description.world_entity import SemanticAnnotation
 
 
@@ -19,7 +59,7 @@ class ProcthorResolver:
 
     classes: List[Type[HasRootBody]] = field(default_factory=list)
 
-    def resolve(self, name: str) -> Optional[Type[SemanticAnnotation]]:
+    def resolve(self, name: str) -> Optional[Type[HasRootBody]]:
         """
         Resolve a given name to a class based on the number of matching tokens
         with the class name tokens or synonyms. The method preprocesses the

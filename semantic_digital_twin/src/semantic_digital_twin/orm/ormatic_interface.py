@@ -3481,14 +3481,14 @@ class HasRootBodyDAO(
     }
 
 
-class BaseballDAO(
+class BallDAO(
     HasRootBodyDAO,
     DataAccessObject[
-        semantic_digital_twin.semantic_annotations.semantic_annotations.Baseball
+        semantic_digital_twin.semantic_annotations.semantic_annotations.Ball
     ],
 ):
 
-    __tablename__ = "BaseballDAO"
+    __tablename__ = "BallDAO"
 
     database_id: Mapped[builtins.int] = mapped_column(
         ForeignKey(HasRootBodyDAO.database_id),
@@ -3497,8 +3497,27 @@ class BaseballDAO(
     )
 
     __mapper_args__ = {
-        "polymorphic_identity": "BaseballDAO",
+        "polymorphic_identity": "BallDAO",
         "inherit_condition": database_id == HasRootBodyDAO.database_id,
+    }
+
+
+class BaseballDAO(
+    BallDAO,
+    DataAccessObject[
+        semantic_digital_twin.semantic_annotations.semantic_annotations.Baseball
+    ],
+):
+
+    __tablename__ = "BaseballDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        ForeignKey(BallDAO.database_id), primary_key=True, use_existing_column=True
+    )
+
+    __mapper_args__ = {
+        "polymorphic_identity": "BaseballDAO",
+        "inherit_condition": database_id == BallDAO.database_id,
     }
 
 

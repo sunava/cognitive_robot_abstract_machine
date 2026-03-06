@@ -209,6 +209,11 @@ class ShapeCollection(SubclassJSONSerializer):
     def max_point(self) -> Point3:
         return Point3.from_iterable(self.combined_mesh.bounds[1])
 
+    def merge(self, other: ShapeCollection) -> ShapeCollection:
+        self.shapes.extend(other.shapes)
+        self.transform_all_shapes_to_own_frame()
+        return self
+
 
 @dataclass
 class BoundingBoxCollection(ShapeCollection):
