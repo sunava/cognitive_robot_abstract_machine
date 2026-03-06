@@ -125,7 +125,7 @@ class MoveGripperMotion(BaseMotion):
         motion_state_chart_nodes = (
             self._only_allow_gripper_collision_rules(self.arm_of_gripper)
             if self.allow_gripper_collision
-            else [ExternalCollisionAvoidance(robot=self.robot_view)]
+            else []
         )
 
         motion_state_chart_nodes.append(
@@ -194,7 +194,7 @@ class MoveTCPMotion(BaseMotion):
         motion_state_chart_nodes = (
             self._only_allow_gripper_collision_rules(self.arm)
             if self.allow_gripper_collision
-            else [ExternalCollisionAvoidance(robot=self.robot_view)]
+            else []
         )
         motion_state_chart_nodes.append(task)
         return Parallel(motion_state_chart_nodes)
@@ -247,7 +247,7 @@ class MoveTCPWaypointsMotion(BaseMotion):
         motion_state_chart_nodes = (
             self._only_allow_gripper_collision_rules(self.arm)
             if self.allow_gripper_collision
-            else [ExternalCollisionAvoidance(robot=self.robot_view)]
+            else []
         )
         motion_state_chart_nodes.append(Sequence(nodes=nodes))
         return Parallel(motion_state_chart_nodes)

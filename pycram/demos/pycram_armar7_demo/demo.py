@@ -6,24 +6,20 @@ from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
 from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
-from pycram.motion_executor import simulated_robot
-from pycram.robot_plans import ParkArmsActionDescription, MoveTorsoActionDescription
+from pycram.motion_executor import simulated_robot, simulated_robot_without_collision
+from pycram.robot_plans import ParkArmsActionDescription
 from pycram.robot_plans import TransportActionDescription
 from semantic_digital_twin.adapters.mesh import STLParser
-from semantic_digital_twin.adapters.ros.tfwrapper import TFWrapper
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
 )
 from semantic_digital_twin.adapters.urdf import URDFParser
-from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
 from semantic_digital_twin.robots.armar7 import Armar7
-from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Spoon
 from semantic_digital_twin.spatial_types import (
     HomogeneousTransformationMatrix,
 )
 from semantic_digital_twin.world_description.connections import (
-    FixedConnection,
     OmniDrive,
 )
 from semantic_digital_twin.world_description.utils import world_with_urdf_factory

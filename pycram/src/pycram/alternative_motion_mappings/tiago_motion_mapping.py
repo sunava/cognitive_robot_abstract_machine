@@ -21,11 +21,6 @@ class StretchMoveSim(MoveMotion, AlternativeMotion[Tiago]):
 
     @property
     def _motion_chart(self):
-        return Parallel(
-            [
-                DiffDriveBaseGoal(
-                    goal_pose=self.target.to_spatial_type(),
-                ),
-                ExternalCollisionAvoidance(robot=self.robot_view),
-            ]
+        return DiffDriveBaseGoal(
+            goal_pose=self.target.to_spatial_type(),
         )

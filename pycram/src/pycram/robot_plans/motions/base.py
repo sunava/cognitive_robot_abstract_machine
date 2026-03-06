@@ -108,14 +108,13 @@ class BaseMotion(DesignatorDescription):
             .bodies_with_collision
         )
         rules = [
-            ExternalCollisionAvoidance(),
             UpdateTemporaryCollisionRules(
                 temporary_rules=[
                     AllowCollisionBetweenGroups(
                         self.world.bodies_with_collision, manipulator_bodies
                     )
                 ]
-            ),
+            )
         ]
         rules.extend(self.robot_view.special_constraints)
         return rules

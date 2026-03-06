@@ -69,11 +69,11 @@ class ReachAction(ActionDescription):
 
         SequentialPlan(
             self.context,
-            MoveTCPMotion(target_pre_pose, self.arm, allow_gripper_collision=False),
+            MoveTCPMotion(target_pre_pose, self.arm, allow_gripper_collision=True),
             MoveTCPMotion(
                 target_pose,
                 self.arm,
-                allow_gripper_collision=False,
+                allow_gripper_collision=True,
                 movement_type=MovementType.CARTESIAN,
             ),
         ).perform()

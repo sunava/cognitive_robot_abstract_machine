@@ -53,13 +53,8 @@ class MoveJointsMotion(BaseMotion):
     @property
     def _motion_chart(self):
         dofs = [self.world.get_connection_by_name(name) for name in self.names]
-        return Parallel(
-            [
-                JointPositionList(
-                    goal_state=JointState.from_mapping(dict(zip(dofs, self.positions)))
-                ),
-                ExternalCollisionAvoidance(robot=self.robot_view),
-            ]
+        return JointPositionList(
+            goal_state=JointState.from_mapping(dict(zip(dofs, self.positions)))
         )
 
 
@@ -85,14 +80,9 @@ class LookingMotion(BaseMotion):
     @property
     def _motion_chart(self):
         self.camera.forward_facing_axis.reference_frame = self.camera.root
-        return Parallel(
-            [
-                Pointing(
-                    root_link=self.robot_view.torso.root,
-                    tip_link=self.camera.root,
-                    goal_point=self.target.to_spatial_type().to_position(),
-                    pointing_axis=self.camera.forward_facing_axis,
-                ),
-                ExternalCollisionAvoidance(robot=self.robot_view),
-            ]
+        return Pointing(
+            root_link=self.robot_view.torso.root,
+            tip_link=self.camera.root,
+            goal_point=self.target.to_spatial_type().to_position(),
+            pointing_axis=self.camera.forward_facing_axis,
         )

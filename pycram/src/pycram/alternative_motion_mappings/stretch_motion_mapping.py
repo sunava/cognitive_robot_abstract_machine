@@ -71,13 +71,8 @@ class StretchMoveSim(MoveMotion, AlternativeMotion[Stretch]):
     @property
     def _motion_chart(self):
 
-        return Parallel(
-            [
-                DiffDriveBaseGoal(
-                    goal_pose=self.target.to_spatial_type(),
-                ),
-                ExternalCollisionAvoidance(robot=self.robot_view),
-            ]
+        return DiffDriveBaseGoal(
+            goal_pose=self.target.to_spatial_type(),
         )
 
 
@@ -110,6 +105,4 @@ class StretchClose(ClosingMotion, AlternativeMotion[Stretch]):
             tip_normal=Vector3(0, -1, 0, self.robot_view.root),
         )
         close = Close(tip_link=tip, environment_link=self.object_part)
-        return Parallel(
-            [cart, align, close, ExternalCollisionAvoidance(robot=self.robot_view)]
-        )
+        return Parallel([cart, align, close])
