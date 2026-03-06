@@ -16,6 +16,7 @@ from typing_extensions import assert_never
 from krrood.ormatic.utils import create_engine
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.datastructures.variables import SpatialVariables
+from semantic_digital_twin.orm.exceptions import DatabaseNotAvailableError
 from semantic_digital_twin.orm.ormatic_interface import *
 from semantic_digital_twin.semantic_annotations.position_descriptions import (
     SemanticPositionDescription,
@@ -34,6 +35,7 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Bathroom,
     LivingRoom,
 )
+from semantic_digital_twin.spatial_types.derivatives import DerivativeMap
 from semantic_digital_twin.spatial_types.spatial_types import (
     HomogeneousTransformationMatrix,
     Point3,
@@ -41,6 +43,9 @@ from semantic_digital_twin.spatial_types.spatial_types import (
 )
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import FixedConnection
+from semantic_digital_twin.world_description.degree_of_freedom import (
+    DegreeOfFreedomLimits,
+)
 from semantic_digital_twin.world_description.geometry import Scale
 from semantic_digital_twin.world_description.world_entity import Body
 

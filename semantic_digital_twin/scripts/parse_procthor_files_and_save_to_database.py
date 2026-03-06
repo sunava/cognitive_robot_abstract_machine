@@ -7,7 +7,6 @@ from typing import List
 
 import tqdm
 
-from krrood.symbol_graph.symbol_graph import SymbolGraph
 from krrood.ormatic.dao import to_dao
 from krrood.ormatic.utils import drop_database
 from krrood.utils import recursive_subclasses
