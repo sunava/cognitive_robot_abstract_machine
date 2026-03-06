@@ -13,7 +13,7 @@ from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.robots.abstract_robot import Manipulator, ParallelGripper
 from semantic_digital_twin.robots.hsrb import HSRB
-from semantic_digital_twin.semantic_annotations.semantic_annotations import Milk, Cereal
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Milk, Cereal, Bowl
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import OmniDrive
@@ -32,6 +32,8 @@ class WorldSetupPaths:
     hsrb_urdf: str
     milk_stl: str
     cereal_stl: str
+    bowl_stl: str
+    cup_stl: str
 
 
 @dataclass(frozen=True)
@@ -57,6 +59,8 @@ def default_paths() -> WorldSetupPaths:
         cereal_stl=_here(
             "..", "..", "..", "resources", "objects", "breakfast_cereal.stl"
         ),
+        bowl_stl=_here("..", "..", "..", "resources", "objects", "bowl.stl"),
+        cup_stl=_here("..", "..", "..", "resources", "objects", "jeroen_cup.stl")
     )
 
 
@@ -92,7 +96,18 @@ def add_objects_and_semantics(
         world.add_semantic_annotation(
             Cereal(root=world.get_body_by_name("breakfast_cereal.stl"))
         )
-
+        for c in world.get_body_by_name("breakfast_cereal.stl").visual.shapes:
+            c.color = Color.BLUE()
+        world.add_semantic_annotation(
+            Bowl(root=world.get_body_by_name("bowl.stl"))
+        )
+        for c in world.get_body_by_name("bowl.stl").visual.shapes:
+            c.color = Color.GREEN()
+        world.add_semantic_annotation(
+            Bowl(root=world.get_body_by_name("jeroen_cup.stl"))
+        )
+        for c in world.get_body_by_name("jeroen_cup.stl").visual.shapes:
+            c.color = Color.ORANGE()
     return world
 
 
@@ -144,23 +159,40 @@ def setup_hsrb_in_environment(
     paths: Optional[WorldSetupPaths] = None,
     milk_xyz_rpy: Tuple[float, float, float, float, float, float] = (
         1.2,
-        6.3,
+        6.6,
         0.78,
         0.0,
         0.0,
         0.0,
     ),
     cereal_xyz_rpy: Tuple[float, float, float, float, float, float] = (
-        1.5,
+        0.6,
         6.3,
         0.805,
         0.0,
         0.0,
         0.0,
     ),
+    bowl_xyz_rpy: Tuple[float, float, float, float, float, float] = (
+        1.5,
+        6.3,
+        0.725,
+        0.0,
+        0.0,
+        0.0,
+    ),
+    cup_xyz_rpy: Tuple[float, float, float, float, float, float] = (
+            1.5,
+            6.7,
+
+        0.72,
+        0.0,
+        0.0,
+        0.0,
+    ),
     robot_xyz_rpy: Tuple[float, float, float, float, float, float] = (
-        2,
-        5.5,
+        0,
+        0,
         0.0,
         0.0,
         0.0,
@@ -183,6 +215,8 @@ def setup_hsrb_in_environment(
             objects=(
                 SpawnSpec(world_path=p.milk_stl, xyz_rpy=milk_xyz_rpy),
                 SpawnSpec(world_path=p.cereal_stl, xyz_rpy=cereal_xyz_rpy),
+                SpawnSpec(world_path=p.bowl_stl, xyz_rpy=bowl_xyz_rpy),
+                SpawnSpec(world_path=p.cup_stl, xyz_rpy=cup_xyz_rpy),
             ),
         )
 

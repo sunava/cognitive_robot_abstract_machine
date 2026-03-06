@@ -177,3 +177,17 @@ def parse_color(color_str: str) -> Color:
         "orange": Color.ORANGE(),
     }
     return color_map.get(color_str.strip().lower(), Color.WHITE())
+
+def try_perceive_and_spawn(world):
+    try:
+        from demos.pycram_suturo_demos.helper_methods_and_useful_classes.object_creation import (
+            perceive_and_spawn_all_objects,
+        )
+
+        perceived_objects = perceive_and_spawn_all_objects(world=world)
+    except ImportError:
+        print("Could not import robokudo")
+        perceived_objects = {}
+    return perceived_objects
+
+
