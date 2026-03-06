@@ -10,7 +10,7 @@ from typing_extensions import List
 from semantic_digital_twin.semantic_annotations.mixins import (
     HasRootBody,
 )
-from ...semantic_annotations.semantic_annotations import (
+from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Bottle,
     Apple,
     Plate,

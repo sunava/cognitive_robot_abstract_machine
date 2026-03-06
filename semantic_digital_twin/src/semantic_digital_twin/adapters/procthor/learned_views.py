@@ -4,26 +4,18 @@ from functools import lru_cache
 from typing import List, Self, Type, Dict, Tuple, Set
 
 import tqdm
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+import semantic_digital_twin.orm.ormatic_interface
+from krrood.class_diagrams import ClassDiagram
 from krrood.ormatic.dao import DataAccessObject, AlternativeMapping
 from krrood.ormatic.helper import get_classes_of_ormatic_interface
-import semantic_digital_twin.orm.ormatic_interface
+from random_events.variable import Symbolic, Set
 from semantic_digital_twin.orm.ormatic_interface import (
     InsideOfDAO,
-    RootedSemanticAnnotationDAO,
     HasRootBodyDAO,
 )
-from sqlalchemy import or_
-import numpy as np
-from krrood.class_diagrams import ClassDiagram
-from krrood.class_diagrams.utils import classes_of_module
-from krrood.entity_query_language.symbol_graph import SymbolGraph
-from krrood.utils import recursive_subclasses
-from random_events.interval import closed, SimpleInterval, Bound
-from random_events.product_algebra import SimpleEvent
-
-from random_events.variable import Symbolic, Set, Integer
 
 classes, _, _ = get_classes_of_ormatic_interface(
     semantic_digital_twin.orm.ormatic_interface
