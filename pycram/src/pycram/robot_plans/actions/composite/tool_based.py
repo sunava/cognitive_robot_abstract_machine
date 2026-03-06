@@ -4,47 +4,32 @@ import logging
 from dataclasses import dataclass, field
 from datetime import timedelta
 
-from trimesh.proximity import closest_point
-from typing_extensions import Union, Optional, Type, Any, Iterable
-
 import numpy as np
+from typing_extensions import Union, Optional, Any, Iterable
 
+from demos.thesis_new.thesis_math.metrics import (
+    points_world_to_body,
+    cutting_depth_metrics,
+    mixing_bowl_metrics,
+)
 from demos.thesis_new.thesis_math.motion_models import MotionSegment, MotionSequence
-from demos.thesis_new.thesis_math.motion_profiles import planar_sweep_x, planar_spiral_xy
 from demos.thesis_new.thesis_math.motion_presets import (
     build_container_sequence,
     build_cutting_sequence,
     build_surface_sequence,
 )
-from demos.thesis_new.thesis_math.metrics import (
-    points_world_to_body,
-    distance_to_mesh_metrics,
-    cutting_depth_metrics,
-    mixing_bowl_metrics,
-)
+from demos.thesis_new.thesis_math.motion_profiles import planar_spiral_xy
 from demos.thesis_new.thesis_math.world_utils import (
     body_local_aabb,
-    make_identity_pose_stamped,
-    Rp_from_spatial,
 )
-from demos.thesis_new.utils.rviz import MotionSequenceRviz, publish_points_sequence
-from pycram.datastructures.partial_designator import PartialDesignator
-from semantic_digital_twin.adapters.ros.pose_publisher import PosePublisher
-from semantic_digital_twin.semantic_annotations.mixins import HasHandle
+from demos.thesis_new.utils.rviz import publish_points_sequence
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Tool
-from semantic_digital_twin.spatial_types import Vector3, Point3
+from semantic_digital_twin.spatial_types import Point3
 from semantic_digital_twin.world_description.world_entity import Body
-from .experiment_record import ExperimentRecord
-from ...motions.gripper import MoveTCPMotion, MoveTCPWaypointsMotion, AlignmentPair, MoveTCPWaypointsAlignedMotion
-from .... import utils
-
+from ...motions.gripper import MoveTCPWaypointsAlignedMotion
 from ....datastructures.enums import (
     Arms,
-    VerticalAlignment,
-    ApproachDirection,
-    MovementType,
 )
-from ....datastructures.grasp import GraspDescription
 from ....datastructures.partial_designator import PartialDesignator
 from ....datastructures.pose import PoseStamped
 from ....language import SequentialPlan
@@ -52,14 +37,89 @@ from ....robot_plans.actions.base import ActionDescription
 from ....view_manager import ViewManager
 
 logger = logging.getLogger(__name__)
+DEFAULT_SAMPLE_DT = 0.01
 
 
-def tip_offset_from_body(body):
-    """Estimate the tool tip along +X using the local AABB."""
-    mins, maxs = body_local_aabb(body, use_visual=True, apply_shape_scale=True)
-    center_y = 0.5 * (mins[1] + maxs[1])
-    center_z = 0.5 * (mins[2] + maxs[2])
-    return np.array([maxs[0], center_y, center_z], dtype=float)
+def _logging_helper_apply_fields(action: Any, fields: dict) -> None:
+    for key, value in fields.items():
+        setattr(action, key, value)
+
+
+def _logging_helper_collect_identity_fields(action: Any) -> dict:
+    tool_root_name = None
+    if action.tool is not None and getattr(action.tool, "root", None) is not None:
+        tool_root_name = str(getattr(action.tool.root, "name", action.tool.root))
+
+    container_obj = getattr(action, "container", None)
+    container_name = (
+        "no container given"
+        if container_obj is None
+        else str(getattr(container_obj, "name", container_obj))
+    )
+
+    return {
+        "logged_tool_root_name": tool_root_name,
+        "logged_container_name": container_name,
+    }
+
+
+def _logging_helper_collect_target_intersection_fields(
+        action: Any, points_world: np.ndarray
+) -> dict:
+    container = getattr(action, "container", None)
+    if container is None:
+        return {}
+
+    points_body = points_world_to_body(points_world, action.world, container)
+    mins, maxs = body_local_aabb(container, use_visual=False, apply_shape_scale=True)
+    inside = (
+            (points_body[:, 0] >= mins[0])
+            & (points_body[:, 0] <= maxs[0])
+            & (points_body[:, 1] >= mins[1])
+            & (points_body[:, 1] <= maxs[1])
+            & (points_body[:, 2] >= mins[2])
+            & (points_body[:, 2] <= maxs[2])
+    )
+    inside_ratio = float(np.mean(inside)) if len(inside) > 0 else 0.0
+    return {"logged_target_intersection_success": bool(inside_ratio >= 0.5)}
+
+
+def _logging_helper_collect_cutting_fields(action: Any, points_world: np.ndarray) -> dict:
+    if action.__class__.__name__ != "CuttingAction" or getattr(action, "container", None) is None:
+        return {}
+
+    metrics = cutting_depth_metrics(
+        points_world=points_world,
+        world=action.world,
+        bread_body=action.container,
+        apply_shape_scale=True,
+    )
+    return {
+        "has_entry_from_above": metrics.get("has_entry_from_above"),
+        "reaches_cut_depth": metrics.get("reaches_cut_depth"),
+        "cutting_success": metrics.get("cutting_success"),
+    }
+
+
+def _logging_helper_collect_mixing_fields(action: Any, points_world: np.ndarray) -> dict:
+    if action.__class__.__name__ != "MixingAction" or getattr(action, "container", None) is None:
+        return {}
+
+    metrics = mixing_bowl_metrics(
+        points_world=points_world,
+        world=action.world,
+        bowl_body=action.container,
+        apply_shape_scale=True,
+    )
+    return {"mixing_bowl_metrics": metrics}
+
+
+def _logging_helper_collect_container_fields(action: Any, points_world: np.ndarray) -> dict:
+    fields = {}
+    fields.update(_logging_helper_collect_target_intersection_fields(action, points_world))
+    fields.update(_logging_helper_collect_cutting_fields(action, points_world))
+    fields.update(_logging_helper_collect_mixing_fields(action, points_world))
+    return fields
 
 
 @dataclass
@@ -73,29 +133,9 @@ class GeneralizedActionPlan(ActionDescription):
     Arm used for the motion.
     """
 
-    tool_name: Optional[str] = None
-    """
-    Tool configuration name (e.g., 'whisk').
-    """
-
-    tool: Optional[Tool] = None
+    tool: Tool
     """
     Tool body used to estimate the tip offset.
-    """
-
-    dt: float = 0.01
-    """
-    Sampling time step for the motion sequence.
-    """
-
-    use_visual_aabb: bool = True
-    """
-    Use the visual AABB for sizing the motion sequence.
-    """
-
-    apply_shape_scale: bool = True
-    """
-    Apply shape scales when computing the AABB.
     """
 
     clear_viz: bool = False
@@ -108,154 +148,40 @@ class GeneralizedActionPlan(ActionDescription):
     Keep every Nth waypoint for execution (testing downsampling).
     """
 
-    def _sample_points(selfs):
-        raise NotImplementedError
+    logged_target_intersection_success: Optional[bool] = None
+    """
+    Optional DB-logged boolean derived from target_intersection_success.
+    """
 
-    def _tool_tip_in_world(self):
-        """Return the tool tip pose in the world frame if available."""
-        if self.tool is None or not hasattr(self.tool, "tip"):
-            return None
-        tip_pose = self.tool.tip()
-        if tip_pose is None:
-            return None
-        return self.world.transform(tip_pose, self.world.root)
+    logged_tool_root_name: Optional[str] = None
+    """
+    Optional DB-logged tool root name captured during execute().
+    """
 
-    def _pose_orientation(self) -> list[float]:
-        """Return default waypoint orientation in world frame."""
-        if hasattr(self, "container") and self.container is not None:
-            return self.container.global_pose.to_quaternion().to_list()
-        if hasattr(self, "target_pose") and self.target_pose is not None:
-            return self.target_pose.orientation.to_list()
-        return [0.0, 0.0, 0.0, 1.0]
+    logged_container_name: Optional[str] = None
+    """
+    Optional DB-logged container name captured during execute().
+    Uses "no container given" if no container is present.
+    """
 
-    def closest_face_with_normal(self, mesh, query_point):
-        if isinstance(query_point, Point3):
-            q_local = self.world.transform(query_point, self.container)
-            q= np.array([float(q_local.x), float(q_local.y), float(q_local.z)], dtype=float)
-        else:
-            q = np.asarray(query_point, dtype=float).reshape(3)
+    logged_action_name: Optional[str] = None
+    """
+    Optional DB-logged concrete action class name captured during execute().
+    """
 
-
-        cp, dist, tri_id = closest_point(mesh, q.reshape(1, 3))
-        face_id = int(tri_id[0])
-
-        normal = mesh.face_normals[face_id]  # Normal in mesh/body frame
-        normal = normal / (np.linalg.norm(normal) + 1e-12)
-
-        return {
-            "face_id": face_id,
-            "closest_point": cp[0],
-            "distance": float(dist[0]),
-            "normal_body": normal,
-        }
-
-    def _log_experiment_record(self, record: dict) -> None:
-        """Store experiment records on the ROS node for later evaluation."""
-        node = getattr(self.context, "ros_node", None)
-        if node is None:
-            return
-        if not hasattr(node, "_experiment_metrics"):
-            node._experiment_metrics = []
-        node._experiment_metrics.append(record)
-
-    def _target_intersection_metrics(self, points_world: np.ndarray) -> dict:
-        if not hasattr(self, "container") or self.container is None:
-            return {}
-        points_body = points_world_to_body(points_world, self.world, self.container)
-        mins, maxs = body_local_aabb(
-            self.container, use_visual=False, apply_shape_scale=self.apply_shape_scale
-        )
-        inside = (
-            (points_body[:, 0] >= mins[0])
-            & (points_body[:, 0] <= maxs[0])
-            & (points_body[:, 1] >= mins[1])
-            & (points_body[:, 1] <= maxs[1])
-            & (points_body[:, 2] >= mins[2])
-            & (points_body[:, 2] <= maxs[2])
-        )
-        inside_ratio = float(np.mean(inside)) if len(inside) > 0 else 0.0
-        return {
-            "intersects_target_volume": bool(np.any(inside)),
-            "inside_target_volume_ratio": inside_ratio,
-            "target_intersection_success": inside_ratio >= 0.5,
-        }
-
-    def _tool_distance_threshold_m(self) -> float:
-        if self.tool is not None and hasattr(self.tool, "debug_distance_threshold"):
-            return float(self.tool.debug_distance_threshold())
-        return 0.005
-
-    def _update_record_with_container_metrics(
-        self,
-        record: ExperimentRecord,
-        points_world: np.ndarray,
-        executed_points: list[Point3],
-    ) -> None:
-        if not hasattr(self, "container") or self.container is None:
-            return
-
-        closest = self.closest_face_with_normal(
-            self.container.collision.shapes[0].mesh, executed_points[0]
-        )
-        record.set("closest_face", closest)
-
-        dist_threshold = self._tool_distance_threshold_m()
-        record.update(self._target_intersection_metrics(points_world))
-
-        distance_metrics = distance_to_mesh_metrics(
-            points_world=points_world,
-            world=self.world,
-            body=self.container,
-            threshold_m=dist_threshold,
-        )
-        record.update(
-            {
-                "tool_distance_threshold_m_for_success": dist_threshold,
-                "distance_within_threshold_ratio": distance_metrics.get(
-                    "below_threshold_ratio"
-                ),
-                "distance_within_threshold_percent": (
-                    100.0 * float(distance_metrics.get("below_threshold_ratio", 0.0))
-                ),
-            }
-        )
-        record.update(distance_metrics)
-
-        if "mean_distance" in distance_metrics:
-            record.set(
-                "distance_mean_minus_threshold_m",
-                float(distance_metrics["mean_distance"]) - dist_threshold,
-            )
-        if "min_distance" in distance_metrics:
-            record.set(
-                "distance_min_minus_threshold_m",
-                float(distance_metrics["min_distance"]) - dist_threshold,
-            )
-
-        if self.__class__.__name__ == "CuttingAction":
-            record.update(
-                cutting_depth_metrics(
-                    points_world=points_world,
-                    world=self.world,
-                    bread_body=self.container,
-                    apply_shape_scale=self.apply_shape_scale,
-                )
-            )
-        if self.__class__.__name__ == "MixingAction":
-            record.update(
-                mixing_bowl_metrics(
-                    points_world=points_world,
-                    world=self.world,
-                    bowl_body=self.container,
-                    apply_shape_scale=self.apply_shape_scale,
-                )
-            )
+    logged_technique: Optional[str] = None
+    """
+    Optional DB-logged technique value captured during execute() when available.
+    """
 
     def execute(self) -> None:
         _, points, ids = self._sample_points()
         # points_world = self._points_with_tip(points)
         P = np.asarray(points, dtype=float)
-       
+        self.logged_action_name = self.__class__.__name__
+        self.logged_technique = getattr(self, "technique", None)
+        _logging_helper_apply_fields(self, _logging_helper_collect_identity_fields(self))
+
         publish_points_sequence(
             node=self.context.ros_node,
             points=P,
@@ -267,22 +193,12 @@ class GeneralizedActionPlan(ActionDescription):
         )
 
         self.robot_view.full_body_controlled = True
-        pointery = []
-        for p in points:
-            pointery.append(Point3(x=p[0], y=p[1], z=p[2], reference_frame=self.world.root))
         stride = max(1, int(self.pointer_stride))
-        pointery = pointery[::stride]
-        if len(pointery) == 0:
-            raise ValueError("No waypoints left after applying pointer_stride.")
+        pointery = self._to_waypoints(points, stride)
+        if self.__class__.__name__ == "CuttingAction":
+            self.db_debug_waypoint_count = float(len(pointery))
 
-        record = ExperimentRecord.from_action(
-            action=self,
-            num_points_sampled=len(points),
-            num_points_executed=len(pointery),
-            pointer_stride=stride,
-        )
-
-        self._update_record_with_container_metrics(record, P, pointery)
+        _logging_helper_apply_fields(self, _logging_helper_collect_container_fields(self, P))
 
         alignment_target = self._resolve_alignment_target()
 
@@ -306,15 +222,19 @@ class GeneralizedActionPlan(ActionDescription):
                     tip=tip
                 ),
             ).perform()
-            record.mark_action_success(True)
-        except Exception as exc:
-            record.mark_action_success(False).mark_exception(exc)
-            self._log_experiment_record(record.to_dict())
+        except Exception:
             raise
 
-        record.finalize_geometric()
-        self._log_experiment_record(record.to_dict())
+    def _sample_points(selfs):
+        raise NotImplementedError
 
+    def _to_waypoints(self, points: np.ndarray, stride: int) -> list[Point3]:
+        waypoints = [
+            Point3(x=p[0], y=p[1], z=p[2], reference_frame=self.world.root) for p in points
+        ][::stride]
+        if not waypoints:
+            raise ValueError("No waypoints left after applying pointer_stride.")
+        return waypoints
     def _resolve_alignment_target(self):
         if hasattr(self, "surface_body") and self.surface_body is not None:
             return self.surface_body
@@ -323,21 +243,6 @@ class GeneralizedActionPlan(ActionDescription):
         if hasattr(self, "target_pose") and self.target_pose is not None:
             return self.target_pose
         return None
-
-    @classmethod
-    def _normalize_tip_offset(cls, tool_tip_offset):
-        normalized_tip_offset = tool_tip_offset
-        if tool_tip_offset is not None and isinstance(
-            tool_tip_offset, (list, tuple, np.ndarray)
-        ):
-            try:
-                if len(tool_tip_offset) == 3 and all(
-                    isinstance(v, (int, float, np.floating)) for v in tool_tip_offset
-                ):
-                    normalized_tip_offset = [list(tool_tip_offset)]
-            except TypeError:
-                pass
-        return normalized_tip_offset
 
 
 @dataclass
@@ -357,47 +262,44 @@ class MixingAction(GeneralizedActionPlan):
     If <= 0, the default short pattern is used.
     """
 
+    mixing_bowl_metrics: Optional[dict] = None
+    """
+    Optional DB-logged metrics dict populated during execute().
+    """
+
     def _sample_points(self):
         pattern = "stir" if float(self.mix_duration_s) > 0.0 else "spiral"
         seq = build_container_sequence(
             self.container,
-            use_visual_aabb=self.use_visual_aabb,
-            apply_shape_scale=self.apply_shape_scale,
+            use_visual_aabb=True,
+            apply_shape_scale=True,
             pattern=pattern,
             mix_duration_s=self.mix_duration_s if float(self.mix_duration_s) > 0.0 else None,
         )
-        return seq.sample(frame=self.container.global_pose, dt=self.dt)
+        return seq.sample(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
 
     def validate(
-        self,
-        result: Optional[Any] = None,
-        max_wait_time: timedelta = timedelta(seconds=2),
+            self,
+            result: Optional[Any] = None,
+            max_wait_time: timedelta = timedelta(seconds=2),
     ):
         pass
 
     @classmethod
     def description(
-        cls,
-        container: Union[Iterable[Body], Body],
-        arm: Union[Iterable[Arms], Arms],
-        tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
-        tool: Union[Iterable[Tool], Tool] = None,
-        dt: Union[Iterable[float], float] = 0.01,
-        use_visual_aabb: Union[Iterable[bool], bool] = True,
-        apply_shape_scale: Union[Iterable[bool], bool] = True,
-        mix_duration_s: Union[Iterable[float], float] = 0.0,
-        clear_viz: Union[Iterable[bool], bool] = False,
-        pointer_stride: Union[Iterable[int], int] = 1,
+            cls,
+            container: Union[Iterable[Body], Body],
+            arm: Union[Iterable[Arms], Arms],
+            tool: Union[Iterable[Tool], Tool],
+            mix_duration_s: Union[Iterable[float], float] = 0.0,
+            clear_viz: Union[Iterable[bool], bool] = False,
+            pointer_stride: Union[Iterable[int], int] = 1,
     ) -> PartialDesignator[MixingAction]:
         return PartialDesignator(
             cls,
             container=container,
             arm=arm,
-            tool_name=tool_name,
             tool=tool,
-            dt=dt,
-            use_visual_aabb=use_visual_aabb,
-            apply_shape_scale=apply_shape_scale,
             mix_duration_s=mix_duration_s,
             clear_viz=clear_viz,
             pointer_stride=pointer_stride,
@@ -440,69 +342,14 @@ class WipingAction(GeneralizedActionPlan):
             self.target_pose.frame_id = self.world.root
         return self.target_pose.to_spatial_type()
 
-    def _infer_surface_body_from_target_pose(self) -> Body:
-        if self.target_pose is None:
-            raise ValueError(
-                "WipingAction needs target_pose for nearest-body inference."
-            )
-
-        target_world = self.world.transform(
-            self._target_pose_to_spatial(), self.world.root
-        )
-        target_world_pos = np.asarray(
-            target_world.to_position().to_np()[:3], dtype=float
-        )
-
-        excluded_bodies = []
-        robot = getattr(self.context, "robot", None)
-        if robot is not None and hasattr(robot, "bodies"):
-            excluded_bodies.extend(robot.bodies)
-        if self.tool is not None:
-            excluded_bodies.append(getattr(self.tool, "root", None))
-            try:
-                excluded_bodies.append(self.tool.get_tool_frame())
-            except Exception:
-                pass
-        excluded_bodies = [body for body in excluded_bodies if body is not None]
-
-        nearest_body = None
-        nearest_distance = float("inf")
-        for body in self.world.bodies:
-            if any(body is excluded for excluded in excluded_bodies) or body is self.world.root:
-                continue
-            if body.collision is None:
-                continue
-            body_mesh_local = body.collision.combined_mesh
-            if body_mesh_local is None or body_mesh_local.is_empty:
-                continue
-            body_mesh_world = body_mesh_local.copy()
-            body_mesh_world.apply_transform(body.global_pose.to_np())
-            _, distances, _ = closest_point(body_mesh_world, target_world_pos.reshape(1, 3))
-            if len(distances) == 0:
-                continue
-            distance = float(distances[0])
-            if distance < nearest_distance:
-                nearest_distance = distance
-                nearest_body = body
-
-        if nearest_body is None:
-            raise ValueError(
-                "Could not infer a surface body near target_pose (all candidates excluded)."
-            )
-        logger.info(
-            "WipingAction inferred surface body '%s' (distance %.3f m).",
-            nearest_body.name,
-            nearest_distance,
-        )
-        return nearest_body
-
     def _resolve_surface_body(self) -> Body:
         if self._resolved_surface_body is not None:
             return self._resolved_surface_body
 
-
         if self.container is None:
-            resolved = self._infer_surface_body_from_target_pose()
+            # todo make logic for if i get a pose i need to calculate the normal OR the body next to it.. rotation is just off for the gripper currently
+            # todo idea: maybe i just rotate how sponge is rotated and then look at the one function from cram back then
+            resolved = ...
         else:
             resolved = self.container
         self._resolved_surface_body = resolved
@@ -513,14 +360,13 @@ class WipingAction(GeneralizedActionPlan):
 
     def _sample_points(self):
         if self.container is not None:
-            logger.info("WipingAction: using container-based raster sequence.")
             seq = build_surface_sequence(
                 self.container,
-                use_visual_aabb=self.use_visual_aabb,
-                apply_shape_scale=self.apply_shape_scale,
+                use_visual_aabb=True,
+                apply_shape_scale=True,
                 pattern="raster",
             )
-            return seq.sample(frame=self.container.global_pose, dt=self.dt)
+            return seq.sample(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
 
         if self.target_pose is None:
             raise ValueError(
@@ -536,21 +382,19 @@ class WipingAction(GeneralizedActionPlan):
             ),
         )
         seq = MotionSequence([segment])
-        return seq.sample(frame=t_pose, dt=self.dt)
+        return seq.sample(frame=t_pose, dt=DEFAULT_SAMPLE_DT)
 
     @classmethod
     def description(
-        cls,
-        arm: Union[Iterable[Arms], Arms],
-        tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
-        tool: Union[Iterable[Tool], Tool] = None,
-        dt: Union[Iterable[float], float] = 0.01,
-        length: Union[Iterable[float], float] = 0.20,
-        cycles: Union[Iterable[float], float] = 2.0,
-        container: Union[Iterable[Body], Body] = None,
-        target_pose: Union[Iterable[PoseStamped], PoseStamped] = None,
-        clear_viz: Union[Iterable[bool], bool] = False,
-        pointer_stride: Union[Iterable[int], int] = 1,
+            cls,
+            arm: Union[Iterable[Arms], Arms],
+            tool: Union[Iterable[Tool], Tool],
+            length: Union[Iterable[float], float] = 0.20,
+            cycles: Union[Iterable[float], float] = 2.0,
+            container: Union[Iterable[Body], Body] = None,
+            target_pose: Union[Iterable[PoseStamped], PoseStamped] = None,
+            clear_viz: Union[Iterable[bool], bool] = False,
+            pointer_stride: Union[Iterable[int], int] = 1,
     ) -> PartialDesignator[WipingAction]:
         return PartialDesignator(
             cls,
@@ -558,14 +402,14 @@ class WipingAction(GeneralizedActionPlan):
             arm=arm,
             container=container,
             target_pose=target_pose,
-            tool_name=tool_name,
             tool=tool,
-            dt=dt,
             length=length,
             cycles=cycles,
             clear_viz=clear_viz,
             pointer_stride=pointer_stride,
         )
+
+
 @dataclass
 class CuttingAction(GeneralizedActionPlan):
     """
@@ -576,7 +420,7 @@ class CuttingAction(GeneralizedActionPlan):
     """
     The object to cut.
     """
-
+    # todo : all my annoations should be within semantic annotation and then add technique there
     technique: str = "saw"
     """
     Cutting trajectory variant.
@@ -592,63 +436,73 @@ class CuttingAction(GeneralizedActionPlan):
     Number of repeated cut passes distributed across local X.
     """
 
+    db_debug_waypoint_count: Optional[float] = None
+    """
+    Optional DB-logged test metric set during execute().
+    """
 
-    # def _pose_orientation(self) -> list[float]:
-    #     """
-    #     Rotate knife heading by +90 deg around local Z relative to the
-    #     container/food orientation so it is perpendicular to the long side.
-    #     """
-    #     base_orientation = np.asarray(super()._pose_orientation(), dtype=float)
-    #     yaw_90 = quaternion_from_euler(0.0, 0.0, np.pi / 2.0, axes="sxyz")
-    #     return list(quaternion_multiply(yaw_90, base_orientation))
+    has_entry_from_above: Optional[bool] = None
+    """
+    Optional DB-logged cutting flag populated during execute().
+    """
+
+    reaches_cut_depth: Optional[bool] = None
+    """
+    Optional DB-logged cutting flag populated during execute().
+    """
+
+    cutting_success: Optional[bool] = None
+    """
+    Optional DB-logged cutting flag populated during execute().
+    """
 
     def _sample_points(self):
         seq = build_cutting_sequence(
             self.container,
-            use_visual_aabb=self.use_visual_aabb,
-            apply_shape_scale=self.apply_shape_scale,
+            use_visual_aabb=True,
+            apply_shape_scale=True,
             technique=self.technique,
             slice_thickness=self.slice_thickness,
             num_cuts_x=self.num_cuts_x,
         )
-        return seq.sample(frame=self.container.global_pose, dt=self.dt)
+        return seq.sample(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
 
     def validate(
-        self,
-        result: Optional[Any] = None,
-        max_wait_time: timedelta = timedelta(seconds=2),
+            self,
+            result: Optional[Any] = None,
+            max_wait_time: timedelta = timedelta(seconds=2),
     ):
         pass
 
     @classmethod
     def description(
-        cls,
-        container: Union[Iterable[Body], Body],
-        arm: Union[Iterable[Arms], Arms],
-        tool_name: Union[Iterable[Optional[str]], Optional[str]] = None,
-        tool: Union[Iterable[Tool], Tool] = None,
-        dt: Union[Iterable[float], float] = 0.01,
-        use_visual_aabb: Union[Iterable[bool], bool] = True,
-        apply_shape_scale: Union[Iterable[bool], bool] = True,
-        technique: Union[Iterable[str], str] = "saw",
-        slice_thickness: Union[Iterable[float], float] = 0.03,
-        num_cuts_x: Union[Iterable[int], int] = 1,
-        clear_viz : Union[Iterable[bool], bool] = False,
-        pointer_stride: Union[Iterable[int], int] = 1,
+            cls,
+            container: Union[Iterable[Body], Body],
+            arm: Union[Iterable[Arms], Arms],
+            tool: Union[Iterable[Tool], Tool],
+            technique: Union[Iterable[str], str] = "saw",
+            slice_thickness: Union[Iterable[float], float] = 0.03,
+            num_cuts_x: Union[Iterable[int], int] = 1,
+            db_debug_waypoint_count: Union[Iterable[Optional[float]], Optional[float]] = None,
+            has_entry_from_above: Union[Iterable[Optional[bool]], Optional[bool]] = None,
+            reaches_cut_depth: Union[Iterable[Optional[bool]], Optional[bool]] = None,
+            cutting_success: Union[Iterable[Optional[bool]], Optional[bool]] = None,
+            clear_viz: Union[Iterable[bool], bool] = False,
+            pointer_stride: Union[Iterable[int], int] = 1,
 
     ) -> PartialDesignator[CuttingAction]:
         return PartialDesignator(
             cls,
             container=container,
             arm=arm,
-            tool_name=tool_name,
             tool=tool,
-            dt=dt,
-            use_visual_aabb=use_visual_aabb,
-            apply_shape_scale=apply_shape_scale,
             technique=technique,
             slice_thickness=slice_thickness,
             num_cuts_x=num_cuts_x,
+            db_debug_waypoint_count=db_debug_waypoint_count,
+            has_entry_from_above=has_entry_from_above,
+            reaches_cut_depth=reaches_cut_depth,
+            cutting_success=cutting_success,
             clear_viz=clear_viz,
             pointer_stride=pointer_stride,
         )

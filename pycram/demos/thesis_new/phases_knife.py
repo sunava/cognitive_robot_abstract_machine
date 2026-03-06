@@ -7,11 +7,7 @@ from demos.thesis_new.old.Phasenbausteine import FixedFrameProvider, Pose
 from demos.thesis_new.thesis_math.frame_provider import WorldTransformFrameProvider
 from demos.thesis_new.thesis_math.motion_presets import build_default_sequence, build_container_sequence
 from demos.thesis_new.utils.rviz import MotionSequenceRviz
-from demos.thesis_new.old.tool_motion import (
-    get_tool_config,
-    make_tool_wrist_poses,
-    tip_offset_from_body,
-)
+
 from demos.thesis_new.thesis_math.world_utils import try_get_body, make_identity_pose_stamped, body_local_aabb
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms

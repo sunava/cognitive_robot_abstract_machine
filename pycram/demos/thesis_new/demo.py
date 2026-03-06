@@ -1,7 +1,6 @@
 import os
 import numpy as np
-import csv
-import json
+from sqlalchemy import text
 
 import rclpy
 from trimesh.proximity import nearby_faces, closest_point
@@ -162,101 +161,6 @@ def setup_complex_world():
     return world
 
 
-def _dump_experiment_metrics_csv(node, out_path: str) -> None:
-    def _json_safe(value):
-        if isinstance(value, np.ndarray):
-            return value.tolist()
-        if isinstance(value, np.generic):
-            return value.item()
-        if isinstance(value, dict):
-            return {str(k): _json_safe(v) for k, v in value.items()}
-        if isinstance(value, (list, tuple)):
-            return [_json_safe(v) for v in value]
-        return value
-
-    records = getattr(node, "_experiment_metrics", [])
-    if not records:
-        return
-
-    rows = []
-    all_keys = set()
-    for record in records:
-        flat = {}
-        for k, v in record.items():
-            if isinstance(v, (dict, list, tuple)):
-                flat[k] = json.dumps(_json_safe(v))
-            else:
-                flat[k] = _json_safe(v)
-        rows.append(flat)
-        all_keys.update(flat.keys())
-
-    preferred_order = [
-        "action",
-        "action_success",
-        "container",
-        "container_pose",
-        "tool",
-        "robot_pose",
-    ]
-    fieldnames = [k for k in preferred_order if k in all_keys] + sorted(
-        k for k in all_keys if k not in preferred_order
-    )
-    write_header = (not os.path.exists(out_path)) or os.path.getsize(out_path) == 0
-    with open(out_path, "a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        if write_header:
-            writer.writeheader()
-        writer.writerows(rows)
-
-
-def _record_failed_action(node, action, exc: Exception, step_index: int = None) -> None:
-    records = getattr(node, "_experiment_metrics", None)
-    if records is None:
-        node._experiment_metrics = []
-        records = node._experiment_metrics
-
-    action_name = action.__class__.__name__
-    if hasattr(action, "performable") and action.performable is not None:
-        action_name = action.performable.__name__
-
-    container_obj = getattr(action, "container", None)
-    if container_obj is None and hasattr(action, "kwargs"):
-        container_obj = action.kwargs.get("container")
-
-    container_name = None
-    if container_obj is not None:
-        try:
-            container_name = str(container_obj.name)
-        except Exception:
-            container_name = str(container_obj)
-
-    tool_obj = getattr(action, "tool", None)
-    if tool_obj is None and hasattr(action, "kwargs"):
-        tool_obj = action.kwargs.get("tool")
-
-    tool_name = None
-    if tool_obj is not None:
-        try:
-            tool_name = str(tool_obj.root.name)
-        except Exception:
-            tool_name = str(tool_obj)
-
-    records.append(
-        {
-            "action": action_name,
-            "action_success": False,
-            "overall_success": False,
-            "geometric_success": False,
-            "geometric_failed_checks": ["execution_exception"],
-            "exception_type": type(exc).__name__,
-            "exception_message": str(exc),
-            "container": container_name,
-            "tool": tool_name,
-            "failed_step_index": step_index,
-        }
-    )
-
-
 def main():
     world = setup_complex_world()
 
@@ -308,7 +212,7 @@ def main():
             technique="saw",
             clear_viz=True,
             pointer_stride=10,
-            num_cuts_x=1,
+            num_cuts_x=4,
         ),
         CuttingActionDescription(
             container=bread_middle_body,
@@ -316,7 +220,7 @@ def main():
             tool=knife,
             technique="saw",
             pointer_stride=10,
-            num_cuts_x=1,
+            num_cuts_x=4,
         ),
         CuttingActionDescription(
             container=bread_big_body,
@@ -324,7 +228,7 @@ def main():
             tool=knife,
             technique="saw",
             pointer_stride=10,
-            num_cuts_x=1,
+            num_cuts_x=4,
         ),
         NavigateActionDescription(
             PoseStamped.from_spatial_type(
@@ -364,48 +268,35 @@ def main():
         # SimpleMoveTCPAction(target_location=poses[0], arm=Arms.RIGHT),
     ]
 
-    failed_actions = []
     with simulated_robot:
         for idx, action in enumerate(actions, start=1):
             action_name = action.__class__.__name__
-            if hasattr(action, "performable") and action.performable is not None:
-                action_name = action.performable.__name__
+
+            current_plan = None
             try:
                 current_plan = SequentialPlan(context, action)
                 current_plan.perform()
             except Exception as exc:
-                _record_failed_action(node, action, exc, step_index=idx)
-                failed_actions.append(
-                    {
-                        "index": idx,
-                        "action": action_name,
-                        "exception_type": type(exc).__name__,
-                        "exception_message": str(exc),
-                    }
-                )
                 print(
                     f"[FAIL] Step {idx} ({action_name}) failed with "
                     f"{type(exc).__name__}: {exc}"
                 )
             finally:
-                session.add(to_dao(current_plan))
-                session.commit()
+                if current_plan is None:
+                    continue
+                dao = to_dao(current_plan)
+                session.add(dao)
+                try:
+                    session.commit()
+                except Exception as e:
+                    session.rollback()
+                    print(f"[DB] commit failed: {type(e).__name__}: {e}")
 
-    if failed_actions:
-        print("\nFailed actions summary:")
-        for fail in failed_actions:
-            print(
-                f"  - #{fail['index']} {fail['action']}: "
-                f"{fail['exception_type']} - {fail['exception_message']}"
-            )
 
-    _dump_experiment_metrics_csv(
-        node,
-        os.path.join(os.path.dirname(__file__), "experiment_metrics.csv"),
-    )
 
 if __name__ == "__main__":
     session = pycram_sessionmaker()()
-    drop_database(session.bind)
+    # drop_database(session.bind)
     Base.metadata.create_all(session.bind)
+    session.commit()
     main()
