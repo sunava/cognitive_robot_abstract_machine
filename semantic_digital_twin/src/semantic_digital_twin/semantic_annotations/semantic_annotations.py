@@ -1114,7 +1114,7 @@ class Sponge(Tool):
         pairs = [
             AlignmentPair(
                 tip_normal=Vector3(0, 0, 1, reference_frame=self.root),
-                goal_normal=Vector3(0, 0, 1, reference_frame=goal_reference_frame),
+                goal_normal=Vector3(0, 0, -1, reference_frame=goal_reference_frame),
             ),
         ]
         return pairs

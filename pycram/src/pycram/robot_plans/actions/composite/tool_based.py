@@ -430,6 +430,16 @@ class WipingAction(GeneralizedActionPlan):
         default=None, init=False, repr=False
     )
 
+    def _target_pose_to_spatial(self):
+        if self.target_pose is None:
+            return None
+        if getattr(self.target_pose, "frame_id", None) is None:
+            logger.warning(
+                "WipingAction target_pose has no frame_id; defaulting to world root."
+            )
+            self.target_pose.frame_id = self.world.root
+        return self.target_pose.to_spatial_type()
+
     def _infer_surface_body_from_target_pose(self) -> Body:
         if self.target_pose is None:
             raise ValueError(
@@ -437,7 +447,7 @@ class WipingAction(GeneralizedActionPlan):
             )
 
         target_world = self.world.transform(
-            self.target_pose.to_spatial_type(), self.world.root
+            self._target_pose_to_spatial(), self.world.root
         )
         target_world_pos = np.asarray(
             target_world.to_position().to_np()[:3], dtype=float
@@ -502,20 +512,31 @@ class WipingAction(GeneralizedActionPlan):
         return self._resolve_surface_body()
 
     def _sample_points(self):
-        surface_body = self._resolve_surface_body()
+        if self.container is not None:
+            logger.info("WipingAction: using container-based raster sequence.")
+            seq = build_surface_sequence(
+                self.container,
+                use_visual_aabb=self.use_visual_aabb,
+                apply_shape_scale=self.apply_shape_scale,
+                pattern="raster",
+            )
+            return seq.sample(frame=self.container.global_pose, dt=self.dt)
 
-        seq = build_surface_sequence(
-            surface_body,
-            use_visual_aabb=self.use_visual_aabb,
-            apply_shape_scale=self.apply_shape_scale,
-            pattern="raster",
+        if self.target_pose is None:
+            raise ValueError(
+                "WipingAction requires either container or target_pose for sampling."
+            )
+
+        t_pose = self._target_pose_to_spatial()
+        segment = MotionSegment(
+            name="planar_spiral",
+            duration_s=2.0,
+            local_curve=lambda tau: planar_spiral_xy(
+                tau, r0=0.00, r1=0.12, cycles=2.5
+            ),
         )
-        frame = (
-            self.target_pose.to_spatial_type()
-            if self.target_pose is not None
-            else surface_body.global_pose
-        )
-        return seq.sample(frame=frame, dt=self.dt)
+        seq = MotionSequence([segment])
+        return seq.sample(frame=t_pose, dt=self.dt)
 
     @classmethod
     def description(

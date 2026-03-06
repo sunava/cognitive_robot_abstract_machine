@@ -269,8 +269,8 @@ def main():
     node = rclpy.create_node("pycram_demo")
 
     tf_wrapper = TFWrapper(node=node)
-    TFPublisher(node=node, world=world)
-    VizMarkerPublisher(world, node)
+    TFPublisher(node=node, _world=world)
+    VizMarkerPublisher(_world=world, node=node)
 
     tf_wrapper.wait_for_transform(
         "apartment/apartment_root",
@@ -296,7 +296,9 @@ def main():
     bowl_small_body = try_get_body(world, "bowl_small")
     bowl_middle_body = try_get_body(world, "bowl_middle")
     bowl_big_body = try_get_body(world, "bowl_big")
-    clean_up_pose = PoseStamped.from_list([2.5,4,0.95])
+    #clean_up_pose = PoseStamped.from_list([2.5, 4, 0.95], frame=world.root)
+    clean_up_pose = PoseStamped.from_spatial_type(HomogeneousTransformationMatrix.from_xyz_rpy(0.587,2.55,1.4, 90,0,0,
+                                                                                               reference_frame=world.root))
     context.ros_node = node
     print(PoseStamped.from_spatial_type(context.robot.root.global_pose))
 
@@ -311,7 +313,8 @@ def main():
         WipingActionDescription(
             target_pose=clean_up_pose,
             arm=Arms.LEFT,
-            tool=None,
+            tool=sponge,
+            pointer_stride=3,
         )
         # SimpleMoveTCPAction(target_location=poses[0], arm=Arms.RIGHT),
     ]
