@@ -3,7 +3,8 @@ import os
 import time
 import unittest
 from copy import deepcopy
-from typing import Optional
+
+import numpy as np
 
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.adapters.urdf import URDFParser
@@ -16,36 +17,11 @@ from semantic_digital_twin.spatial_types.spatial_types import (
 )
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import OmniDrive
-from semantic_digital_twin.world_description.geometry import Scale, Color
-from .datastructures.dataclasses import Context
-from .plan import Plan
+from pycram.datastructures.dataclasses import Context
+from pycram.datastructures.pose import PoseStamped
+from pycram.plan import Plan
 
 logger = logging.getLogger(__name__)
-
-
-def _build_package_resolver():
-    resolver = {}
-    env_paths = os.environ.get("PYCRAM_PACKAGE_PATH", "")
-    for path in env_paths.split(":"):
-        if path:
-            resolver[os.path.basename(path)] = path
-    kitchen_path = os.environ.get("IAI_KITCHEN_PATH")
-    if kitchen_path:
-        resolver["iai_kitchen"] = kitchen_path
-    default_kitchen_path = os.path.expanduser("~/workspace/ros/src/iai_maps/iai_kitchen")
-    if os.path.exists(default_kitchen_path):
-        resolver.setdefault("iai_kitchen", default_kitchen_path)
-    apartment_path = os.environ.get("IAI_APARTMENT_PATH")
-    if apartment_path:
-        resolver["iai_apartment"] = apartment_path
-    default_apartment_path = os.path.expanduser("~/workspace/ros/src/iai_maps/iai_apartment")
-    if os.path.exists(default_apartment_path):
-        resolver.setdefault("iai_apartment", default_apartment_path)
-    default_pr2_path = os.path.expanduser("~/workspace/ros/src/iai_pr2/iai_pr2_description")
-    if os.path.exists(default_pr2_path):
-        resolver.setdefault("iai_pr2_description", default_pr2_path)
-    return resolver or None
-
 
 try:
     from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
@@ -57,12 +33,9 @@ except ImportError:
     )
 
 
-def setup_world(urdf_path: Optional[str] = None) -> World:
+def setup_world() -> World:
     logger.setLevel(logging.DEBUG)
 
-    resolver = _build_package_resolver()
-    if urdf_path:
-        URDFParser.from_file(file_path=urdf_path, package_resolver=resolver).parse()
     pr2_sem_world = URDFParser.from_file(
         os.path.join(
             os.path.dirname(__file__),
@@ -71,8 +44,7 @@ def setup_world(urdf_path: Optional[str] = None) -> World:
             "resources",
             "robots",
             "pr2_calibrated_with_ft.urdf",
-        ),
-        package_resolver=resolver,
+        )
     ).parse()
     apartment_world = URDFParser.from_file(
         os.path.join(
@@ -82,8 +54,7 @@ def setup_world(urdf_path: Optional[str] = None) -> World:
             "resources",
             "worlds",
             "apartment.urdf",
-        ),
-        package_resolver=resolver,
+        )
     ).parse()
     milk_world = STLParser(
         os.path.join(
@@ -100,10 +71,9 @@ def setup_world(urdf_path: Optional[str] = None) -> World:
             "breakfast_cereal.stl",
         )
     ).parse()
-
     # apartment_world.merge_world(pr2_sem_world)
-    # apartment_world.merge_world(milk_world)
-    # apartment_world.merge_world(cereal_world)
+    apartment_world.merge_world(milk_world)
+    apartment_world.merge_world(cereal_world)
 
     with apartment_world.modify_world():
         pr2_root = pr2_sem_world.get_body_by_name("base_footprint")
@@ -114,19 +84,19 @@ def setup_world(urdf_path: Optional[str] = None) -> World:
         apartment_world.merge_world(pr2_sem_world, c_root_bf)
         c_root_bf.origin = HomogeneousTransformationMatrix.from_xyz_rpy(1.5, 2.5, 0)
 
-    # apartment_world.get_body_by_name("milk.stl").parent_connection.origin = (
-    #     HomogeneousTransformationMatrix.from_xyz_rpy(
-    #         2.37, 2, 1.05, reference_frame=apartment_world.root
-    #     )
-    # )
-    # apartment_world.get_body_by_name(
-    #     "breakfast_cereal.stl"
-    # ).parent_connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(
-    #     2.37, 1.8, 1.05, reference_frame=apartment_world.root
-    # )
-    # milk_view = Milk(root=apartment_world.get_body_by_name("milk.stl"))
-    # with apartment_world.modify_world():
-    #     apartment_world.add_semantic_annotation(milk_view)
+    apartment_world.get_body_by_name("milk.stl").parent_connection.origin = (
+        HomogeneousTransformationMatrix.from_xyz_rpy(
+            2.37, 2, 1.05, reference_frame=apartment_world.root
+        )
+    )
+    apartment_world.get_body_by_name(
+        "breakfast_cereal.stl"
+    ).parent_connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(
+        2.37, 1.8, 1.05, reference_frame=apartment_world.root
+    )
+    milk_view = Milk(root=apartment_world.get_body_by_name("milk.stl"))
+    with apartment_world.modify_world():
+        apartment_world.add_semantic_annotation(milk_view)
 
     return apartment_world
 
@@ -136,7 +106,6 @@ class SemanticWorldTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        resolver = _build_package_resolver()
         cls.pr2_sem_world = URDFParser(
             os.path.join(
                 os.path.dirname(__file__),
@@ -145,8 +114,7 @@ class SemanticWorldTestCase(unittest.TestCase):
                 "resources",
                 "robots",
                 "pr2_calibrated_with_ft.urdf",
-            ),
-            package_resolver=resolver,
+            )
         ).parse()
         cls.apartment_world = URDFParser(
             os.path.join(
@@ -156,7 +124,55 @@ class SemanticWorldTestCase(unittest.TestCase):
                 "resources",
                 "worlds",
                 "apartment.urdf",
-            ),
-            package_resolver=resolver,
+            )
         ).parse()
         cls.apartment_world.merge_world(cls.pr2_sem_world)
+
+
+def _make_sine_scan_poses(
+    anchor: PoseStamped,
+    lanes: int = 6,
+    lane_spacing: float = 0.03,
+    y_span: float = 0.18,
+    amplitude: float = 0.005,
+    wiggles: float = 1.0,
+    points_per_lane: int = 16,
+    lane_axis: str = "z",
+) -> list[PoseStamped]:
+    x0 = anchor.pose.position.x
+    y0 = anchor.pose.position.y
+    z0 = anchor.pose.position.z
+    q = anchor.pose.orientation
+
+    y_min = y0 - 0.5 * y_span
+    y_max = y0 + 0.5 * y_span
+    poses: list[PoseStamped] = []
+
+    if lane_axis not in ("x", "z"):
+        raise ValueError(f"lane_axis must be 'x' or 'z', got: {lane_axis}")
+
+    for i in range(lanes):
+        yc = np.linspace(y_min, y_max, points_per_lane)
+        if i % 2 == 1:
+            yc = yc[::-1]
+
+        phase = 2.0 * np.pi * wiggles * (yc - y_min) / max(y_span, 1e-9)
+        wiggle = amplitude * np.sin(phase)
+        if lane_axis == "x":
+            lane_center = x0 + i * lane_spacing
+            xc = lane_center + wiggle
+            zc = np.full_like(yc, z0, dtype=float)
+        else:
+            lane_center = z0 + i * lane_spacing
+            zc = lane_center + wiggle
+            xc = np.full_like(yc, x0, dtype=float)
+
+        for x, y, z in zip(xc, yc, zc):
+            poses.append(
+                PoseStamped.from_list(
+                    position=[float(x), float(y), float(z)],
+                    orientation=[q.x, q.y, q.z, q.w],
+                    frame=anchor.frame_id,
+                )
+            )
+    return poses

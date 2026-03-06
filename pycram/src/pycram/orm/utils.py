@@ -11,10 +11,10 @@ from krrood.ormatic.utils import create_engine
 from semantic_digital_twin.orm.exceptions import DatabaseNotAvailableError
 
 try:
-    from .ormatic_interface import mapper_registry
+    from pycram.orm.ormatic_interface import mapper_registry
 except ImportError:
     pass
-from ..designators.object_designator import *
+from pycram.designators.object_designator import *
 import json
 
 logger = logging.getLogger(__name__)
