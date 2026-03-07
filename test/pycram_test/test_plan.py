@@ -703,7 +703,7 @@ def test_algebra_sequential_plan(mutable_model_world):
         target_location=target_location,
         keep_joint_states=...,
     )
-
+    navigate_action.expression
     parameters = UnderspecifiedParameters(navigate_action)
     model = fully_factorized(parameters.variables.values())
 
@@ -736,6 +736,7 @@ def test_parameterization_of_pick_up(mutable_model_world):
             manipulator=variable(Manipulator, world.semantic_annotations),
         ),
     )
+    pick_up_description.expression
 
     parameters = UnderspecifiedParameters(pick_up_description)
 
