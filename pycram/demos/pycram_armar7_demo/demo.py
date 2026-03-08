@@ -35,7 +35,9 @@ import pycram
 robot_path = os.path.join("package://iai_kit_armar7/urdf/Armar7.urdf")
 
 robot_starting_pose = HomogeneousTransformationMatrix.from_xyz_rpy(
-    3.8, 8.40, 0,
+    3.8,
+    8.40,
+    0,
 )
 
 robot_world = world_with_urdf_factory(
