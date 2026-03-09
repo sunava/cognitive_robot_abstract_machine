@@ -45,8 +45,8 @@ def setup_world() -> World:
             "..",
             "..",
             "resources",
-            "worlds",
-            "apartment.urdf",
+            "pycram_object_gap_demo",
+            "apartment_without_walls.urdf",
         )
     ).parse()
     milk_world = STLParser(
