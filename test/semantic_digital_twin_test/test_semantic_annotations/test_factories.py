@@ -2,7 +2,7 @@ import time
 import unittest
 from dataclasses import dataclass
 
-from random_events.product_algebra import Event
+from random_events.product_algebra import Event, SimpleEvent
 
 from semantic_digital_twin.orm.ormatic_interface import *
 
@@ -646,9 +646,10 @@ class TestFactories(unittest.TestCase):
         sampler = table._untruncated_2d_gaussian_sampler(
             objects_of_interest=objects_of_interest, variance=1
         )
-        [_, x_variable, y_variable] = sampler.variables
+        [object_variable, x_variable, y_variable] = sampler.variables
         for object in objects_of_interest:
-            expectation = sampler.expectation([x_variable, y_variable])
+            conditional, _ = sampler.conditional({object_variable: object})
+            expectation = conditional.expectation([x_variable, y_variable])
             surface_T_object = world.transform(
                 object.global_pose, table.supporting_surface
             )

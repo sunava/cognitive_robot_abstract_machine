@@ -787,7 +787,9 @@ class HasSupportingSurface(HasStorageSpace, ABC):
         samples = surface_circuit.sample(amount)
         samples = samples[np.argsort(surface_circuit.log_likelihood(samples))[::-1]]
         samples = np.concatenate((samples, z_coordinate), axis=1)
-        return [Point3(*s[1:], reference_frame=self.supporting_surface) for s in samples]
+        return [
+            Point3(*s[1:], reference_frame=self.supporting_surface) for s in samples
+        ]
 
     def _build_surface_sampler(
         self,
@@ -896,18 +898,19 @@ class HasSupportingSurface(HasStorageSpace, ABC):
 
             x_p = GaussianDistribution(
                 SpatialVariables.x.value,
-                float(surface_P_obj[0]),
+                float(surface_P_obj.x),
                 variance,
             )
             y_p = GaussianDistribution(
                 SpatialVariables.y.value,
-                float(surface_P_obj[1]),
+                float(surface_P_obj.y),
                 variance,
             )
 
             p_object_root.add_subcircuit(leaf(object_of_interest_p, surface_circuit))
             p_object_root.add_subcircuit(leaf(x_p, surface_circuit))
             p_object_root.add_subcircuit(leaf(y_p, surface_circuit))
+            ...
 
         return surface_circuit
 
