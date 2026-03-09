@@ -321,7 +321,7 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
             root_link = self.world.root
 
         plane_pairs = list(self.alignment_pairs)
-
+        motion_state_chart_nodes = self._only_allow_gripper_collision_rules(self.arm)
         nodes = []
         for point in self.waypoints:
             tasks = [
@@ -344,18 +344,5 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
                 nodes.append(tasks[0])
             else:
                 nodes.append(Parallel(tasks))
-
-        if not nodes:
-            raise ValueError(
-                "No aligned waypoint tasks generated; cannot build waypoint sequence."
-            )
-
-        motion_state_chart_nodes = []
-
-        if self.allow_gripper_collision:
-            motion_state_chart_nodes.extend(
-                self._only_allow_gripper_collision_rules(self.arm)
-            )
-
         motion_state_chart_nodes.append(Sequence(nodes=nodes))
         return Parallel(motion_state_chart_nodes)
