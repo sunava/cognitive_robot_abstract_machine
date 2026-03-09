@@ -20,7 +20,7 @@ from pycram.designator import DesignatorDescription
 from pycram.motion_executor import MotionExecutor
 from pycram.view_manager import ViewManager
 from semantic_digital_twin.collision_checking.collision_rules import (
-    AllowCollisionBetweenGroups,
+    AllowCollisionBetweenGroups, AvoidExternalCollisions,
 )
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 

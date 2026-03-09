@@ -217,13 +217,37 @@ class GeneralizedActionPlan(ActionDescription):
                 MoveTCPWaypointsAlignedMotion(
                     pointery,
                     self.arm,
-                    allow_gripper_collision=True,
+                    allow_gripper_collision=False,
+                    # avoid_all_collisions=True,
                     alignment_pairs=alignment_pairs,
                     tip=tip
                 ),
             ).perform()
-        except Exception:
-            raise
+        except Exception as exc:
+            collision_contacts = None
+            try:
+                collision_contacts = len(
+                    self.world.collision_manager.compute_collisions().contacts
+                )
+            except Exception:
+                collision_contacts = None
+
+            msg = str(exc)
+            if (
+                "No waypoints provided to MoveTCPWaypointsAlignedMotion" in msg
+                or "No aligned waypoint tasks generated" in msg
+                or "No waypoints left after applying pointer_stride" in msg
+            ):
+                raise ValueError(
+                    "Aligned motion failed: no waypoint sequence to execute "
+                    f"(waypoints={len(pointery)}, collisions_now={collision_contacts})."
+                ) from exc
+
+            raise RuntimeError(
+                "Aligned motion failed during execution "
+                f"(waypoints={len(pointery)}, collisions_now={collision_contacts}): "
+                f"{type(exc).__name__}: {exc}"
+            ) from exc
 
     def _sample_points(selfs):
         raise NotImplementedError

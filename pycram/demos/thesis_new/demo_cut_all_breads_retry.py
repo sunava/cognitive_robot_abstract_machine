@@ -1,5 +1,4 @@
 import os
-import traceback
 import numpy as np
 import rclpy
 
@@ -8,7 +7,7 @@ from pycram.datastructures.enums import Arms
 from pycram.datastructures.pose import PoseStamped
 from pycram.designators.location_designator import CostmapLocation
 from pycram.language import SequentialPlan
-from pycram.motion_executor import simulated_robot
+from pycram.motion_executor import simulated_robot, simulated_robot_without_collision, simulated_robot_with_collision
 from pycram.robot_plans import (
     MoveTorsoActionDescription,
     ParkArmsActionDescription,
@@ -21,8 +20,8 @@ from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.adapters.ros.tf_publisher import TFPublisher
 from semantic_digital_twin.adapters.ros.tfwrapper import TFWrapper
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import VizMarkerPublisher
+from semantic_digital_twin.collision_checking.collision_rules import AvoidExternalCollisions, AvoidSelfCollisions
 from semantic_digital_twin.datastructures.definitions import TorsoState
-from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Knife
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
@@ -113,8 +112,8 @@ def _try_cut(context, bread, arm, tool):
             arm=arm,
             tool=tool,
             technique="saw",
-            pointer_stride=10,
-            num_cuts_x=4,
+            pointer_stride=13,
+            num_cuts_x=1,
         ),
     ).perform()
 
@@ -135,7 +134,6 @@ def main(seed=None):
         time=Time(),
     )
 
-    PR2.from_world(world)
     right_knife, left_knife = _attach_knives(world)
     breads = _collect_breads(world)
 
@@ -153,7 +151,7 @@ def main(seed=None):
     success_fallback = 0
     failed = 0
 
-    with simulated_robot:
+    with simulated_robot_with_collision:
         SequentialPlan(
             context,
             ParkArmsActionDescription(Arms.BOTH),
@@ -168,25 +166,34 @@ def main(seed=None):
                 success_primary += 1
                 print(f"[ok] {bread_name}: cut with RIGHT arm")
                 continue
+            except TimeoutError as exc_right_timeout:
+                print(
+                    f"[retry] {bread_name}: RIGHT timed out "
+                    f"({type(exc_right_timeout).__name__}: {exc_right_timeout})"
+                )
             except Exception as exc_right:
                 print(
                     f"[retry] {bread_name}: RIGHT failed "
                     f"({type(exc_right).__name__}: {exc_right})"
                 )
-                print(traceback.format_exc())
 
             print(f"[cut] {bread_name}: try LEFT arm")
             try:
                 _try_cut(context, bread, Arms.LEFT, left_knife)
                 success_fallback += 1
                 print(f"[ok] {bread_name}: cut with LEFT arm (fallback)")
+            except TimeoutError as exc_left_timeout:
+                failed += 1
+                print(
+                    f"[fail] {bread_name}: LEFT timed out "
+                    f"({type(exc_left_timeout).__name__}: {exc_left_timeout})"
+                )
             except Exception as exc_left:
                 failed += 1
                 print(
                     f"[fail] {bread_name}: LEFT failed "
                     f"({type(exc_left).__name__}: {exc_left})"
                 )
-                print(traceback.format_exc())
 
     print("[summary]")
     print(f"  total breads: {len(breads)}")

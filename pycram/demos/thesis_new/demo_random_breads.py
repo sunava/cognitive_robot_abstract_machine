@@ -6,6 +6,10 @@ from pycram.testing import setup_world
 from rclpy.duration import Duration as RclpyDuration
 from rclpy.time import Time
 from semantic_digital_twin.adapters.mesh import STLParser
+from semantic_digital_twin.collision_checking.collision_manager import CollisionManager
+from semantic_digital_twin.collision_checking.pybullet_collision_detector import (
+    BulletCollisionDetector,
+)
 from semantic_digital_twin.adapters.ros.tf_publisher import TFPublisher
 from semantic_digital_twin.adapters.ros.tfwrapper import TFWrapper
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import VizMarkerPublisher
@@ -208,6 +212,10 @@ def _spawn_bread_at_local_pose(world, surface_body, bread_name, scale, x_local, 
 
 def setup_random_bread_world(seed=None):
     world = setup_world()
+    world.collision_manager = CollisionManager(
+        _world=world,
+        collision_detector=BulletCollisionDetector(_world=world),
+    )
     rng = np.random.default_rng(seed)
 
     surfaces = _collect_surface_bodies(world)

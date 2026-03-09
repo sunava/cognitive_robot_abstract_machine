@@ -45,7 +45,8 @@ class MotionExecutor:
     Giskard's motion state chart that is created from the motions.
     """
 
-    ros_node: Any = field(kw_only=True, default=None)
+    ros_node: Any = field(kw_only=True, default=None
+                          )
     """
     ROS node that should be used for communication. Only relevant for real execution.
     """
@@ -169,6 +170,9 @@ class ExecutionEnvironment:
 simulated_robot = ExecutionEnvironment(ExecutionType.SIMULATED)
 simulated_robot_without_collision = ExecutionEnvironment(
     ExecutionType.SIMULATED, with_collision_avoidance=False
+)
+simulated_robot_with_collision = ExecutionEnvironment(
+    ExecutionType.SIMULATED, with_collision_avoidance=True
 )
 real_robot = ExecutionEnvironment(ExecutionType.REAL)
 semi_real_robot = ExecutionEnvironment(ExecutionType.SEMI_REAL)

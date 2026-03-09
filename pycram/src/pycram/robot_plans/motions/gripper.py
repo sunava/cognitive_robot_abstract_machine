@@ -1,9 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, List
 
 from giskardpy.motion_statechart.data_types import DefaultWeights
 from giskardpy.motion_statechart.goals.collision_avoidance import (
     ExternalCollisionAvoidance,
+    UpdateTemporaryCollisionRules,
 )
 from giskardpy.motion_statechart.goals.templates import Sequence, Parallel
 from giskardpy.motion_statechart.tasks.align_planes import AlignPlanes
@@ -12,6 +13,7 @@ from giskardpy.motion_statechart.tasks.cartesian_tasks import (
     CartesianPosition,
 )
 from giskardpy.motion_statechart.tasks.joint_tasks import JointPositionList
+from pycram.datastructures.dataclasses import AlignmentPair
 from pycram.datastructures.enums import (
     Arms,
     MovementType,
@@ -23,6 +25,8 @@ from pycram.robot_plans.motions.base import BaseMotion
 from pycram.utils import translate_pose_along_local_axis
 from pycram.view_manager import ViewManager
 from semantic_digital_twin.datastructures.definitions import GripperState
+from semantic_digital_twin.collision_checking.collision_rules import AvoidAllCollisions, AvoidCollisionBetweenGroups
+from semantic_digital_twin.spatial_types import Point3
 from semantic_digital_twin.world_description.world_entity import Body
 
 
@@ -276,6 +280,7 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
     """
     If the gripper can collide with something
     """
+
     movement_type: WaypointsMovementType = (
         WaypointsMovementType.ENFORCE_ORIENTATION_FINAL_POINT
     )
@@ -292,6 +297,11 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
 
     @property
     def _motion_chart(self):
+        if not self.waypoints:
+            raise ValueError(
+                "No waypoints provided to MoveTCPWaypointsAlignedMotion."
+            )
+
         if self.tip is None:
             tip = ViewManager().get_end_effector_view(self.arm, self.robot_view).tool_frame
             if tip is None:
@@ -330,9 +340,22 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
                 )
                 for pair in plane_pairs
             )
-            # Parallel with a single task can break downstream symbolic composition.
             if len(tasks) == 1:
                 nodes.append(tasks[0])
             else:
                 nodes.append(Parallel(tasks))
-        return Sequence(nodes=nodes)
+
+        if not nodes:
+            raise ValueError(
+                "No aligned waypoint tasks generated; cannot build waypoint sequence."
+            )
+
+        motion_state_chart_nodes = []
+
+        if self.allow_gripper_collision:
+            motion_state_chart_nodes.extend(
+                self._only_allow_gripper_collision_rules(self.arm)
+            )
+
+        motion_state_chart_nodes.append(Sequence(nodes=nodes))
+        return Parallel(motion_state_chart_nodes)
