@@ -73,7 +73,6 @@ class ExperimentRecord:
         for key in (
             "distance_success",
             "target_intersection_success",
-            "cutting_success",
             "mixing_success",
         ):
             if key in self.data:

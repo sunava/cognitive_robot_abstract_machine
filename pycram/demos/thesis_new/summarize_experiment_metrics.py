@@ -67,7 +67,7 @@ def _failure_summary(row):
         return "+".join(str(x) for x in failed)
 
     fallbacks = []
-    for key in ("distance_success", "target_intersection_success", "cutting_success", "mixing_success"):
+    for key in ("distance_success", "target_intersection_success", "mixing_success"):
         value = _to_bool(row.get(key))
         if value is False:
             fallbacks.append(key)
@@ -108,7 +108,6 @@ def build_trial_summary(rows):
             ),
             "mean_distance": _round_or_none(_to_float(row.get("mean_distance")), 4),
             "min_distance": _round_or_none(_to_float(row.get("min_distance")), 4),
-            "cutting_success": _to_bool(row.get("cutting_success")),
             "mixing_success": _to_bool(row.get("mixing_success")),
             "num_points_executed": row.get("num_points_executed"),
             "pointer_stride": row.get("pointer_stride"),
@@ -208,7 +207,6 @@ def main():
         "inside_target_volume_ratio",
         "mean_distance",
         "min_distance",
-        "cutting_success",
         "mixing_success",
         "num_points_executed",
         "pointer_stride",

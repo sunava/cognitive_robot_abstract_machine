@@ -95,19 +95,14 @@ def cutting_depth_metrics(
         & (points_body[:, 1] <= maxs[1])
     )
     above_top = points_body[:, 2] > z_top
-    below_cut = points_body[:, 2] <= z_cut
 
     has_entry = bool(np.any(inside_xy & above_top))
-    has_depth = bool(np.any(inside_xy & below_cut))
-    crosses = has_entry and has_depth
 
     return {
         "z_top": z_top,
         "z_cut": z_cut,
         "inside_xy_ratio": float(np.mean(inside_xy)),
         "has_entry_from_above": has_entry,
-        "reaches_cut_depth": has_depth,
-        "cutting_success": crosses,
     }
 
 

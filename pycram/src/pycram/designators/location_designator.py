@@ -133,6 +133,7 @@ class CostmapLocation(LocationDesignatorDescription):
             Union[Iterable[GraspDescription], GraspDescription]
         ] = None,
         rotation_agnostic: bool = False,
+        samples: int = 600,
     ):
         """
         Location designator that uses costmaps as base to calculate locations for complex constrains like reachable or
@@ -175,6 +176,7 @@ class CostmapLocation(LocationDesignatorDescription):
         self.grasps: List[Optional[Grasp]] = (
             grasp_descriptions if grasp_descriptions is not None else [None]
         )
+        self.samples: int = samples
 
     def ground(self) -> PoseStamped:
         """
@@ -284,7 +286,7 @@ class CostmapLocation(LocationDesignatorDescription):
             final_map = self.setup_costmaps(
                 target, params_box.visible_for, params_box.reachable_for
             )
-            final_map.number_of_samples = 600
+            final_map.number_of_samples = self.samples
             final_map.orientation_generator = (
                 OrientationGenerator.orientation_generator_for_axis(
                     list(self.robot_view.base.main_axis.to_np())

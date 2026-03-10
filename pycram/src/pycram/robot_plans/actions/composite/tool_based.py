@@ -96,8 +96,6 @@ def _logging_helper_collect_cutting_fields(action: Any, points_world: np.ndarray
     )
     return {
         "has_entry_from_above": metrics.get("has_entry_from_above"),
-        "reaches_cut_depth": metrics.get("reaches_cut_depth"),
-        "cutting_success": metrics.get("cutting_success"),
     }
 
 
@@ -470,16 +468,6 @@ class CuttingAction(GeneralizedActionPlan):
     Optional DB-logged cutting flag populated during execute().
     """
 
-    reaches_cut_depth: Optional[bool] = None
-    """
-    Optional DB-logged cutting flag populated during execute().
-    """
-
-    cutting_success: Optional[bool] = None
-    """
-    Optional DB-logged cutting flag populated during execute().
-    """
-
     def _sample_points(self):
         seq = build_cutting_sequence(
             self.container,
@@ -509,8 +497,6 @@ class CuttingAction(GeneralizedActionPlan):
             num_cuts_x: Union[Iterable[int], int] = 1,
             db_debug_waypoint_count: Union[Iterable[Optional[float]], Optional[float]] = None,
             has_entry_from_above: Union[Iterable[Optional[bool]], Optional[bool]] = None,
-            reaches_cut_depth: Union[Iterable[Optional[bool]], Optional[bool]] = None,
-            cutting_success: Union[Iterable[Optional[bool]], Optional[bool]] = None,
             clear_viz: Union[Iterable[bool], bool] = False,
             pointer_stride: Union[Iterable[int], int] = 1,
 
@@ -525,8 +511,6 @@ class CuttingAction(GeneralizedActionPlan):
             num_cuts_x=num_cuts_x,
             db_debug_waypoint_count=db_debug_waypoint_count,
             has_entry_from_above=has_entry_from_above,
-            reaches_cut_depth=reaches_cut_depth,
-            cutting_success=cutting_success,
             clear_viz=clear_viz,
             pointer_stride=pointer_stride,
         )

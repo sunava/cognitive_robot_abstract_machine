@@ -15,7 +15,9 @@ from semantic_digital_twin.collision_checking.pybullet_collision_detector import
 )
 from semantic_digital_twin.adapters.ros.tf_publisher import TFPublisher
 from semantic_digital_twin.adapters.ros.tfwrapper import TFWrapper
-from semantic_digital_twin.adapters.ros.visualization.viz_marker import VizMarkerPublisher
+from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
+    VizMarkerPublisher,
+)
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.geometry import Color, Scale
 
@@ -26,11 +28,11 @@ RESOURCES_DIR = os.path.abspath(
 )
 
 PREFERRED_SURFACE_NAMES = (
-    "island_countertop",
-    "countertop",
+    # "island_countertop",
+    # "countertop",
     "table_area_main",
-    "coffee_table",
-    "bedside_table",
+    # "coffee_table",
+    # "bedside_table",
 )
 
 # Automatic count model: breads ~= usable_surface_area * BREADS_PER_SQM.
@@ -128,9 +130,7 @@ def _tint_surfaces_light_brown(world):
 
 
 def _surface_sampling_bounds(surface_body):
-    mins, maxs = body_local_aabb(
-        surface_body, use_visual=False, apply_shape_scale=True
-    )
+    mins, maxs = body_local_aabb(surface_body, use_visual=False, apply_shape_scale=True)
     extents = maxs - mins
 
     margin_x = min(0.08, max(0.0, 0.25 * extents[0]))
@@ -159,9 +159,7 @@ def _sample_xy(lo_x, hi_x, lo_y, hi_y, mins, maxs, rng):
 def _bread_base_xy_radius():
     """Approximate bread XY footprint as a circle radius in local bread frame."""
     bread = _parse_stl("pycram_object_gap_demo", "bread.stl")
-    mins, maxs = body_local_aabb(
-        bread.root, use_visual=False, apply_shape_scale=True
-    )
+    mins, maxs = body_local_aabb(bread.root, use_visual=False, apply_shape_scale=True)
     dx = max(0.0, float(maxs[0] - mins[0]))
     dy = max(0.0, float(maxs[1] - mins[1]))
     return 0.5 * np.hypot(dx, dy)
@@ -191,7 +189,9 @@ def _pose_xyz(spatial_pose):
     return float(xyz[0]), float(xyz[1]), float(xyz[2])
 
 
-def _spawn_bread_at_local_pose(world, surface_body, bread_name, scale, x_local, y_local, yaw, z_local):
+def _spawn_bread_at_local_pose(
+    world, surface_body, bread_name, scale, x_local, y_local, yaw, z_local
+):
     bread = _parse_stl("pycram_object_gap_demo", "bread.stl")
     bread.root.name.name = bread_name
     _set_uniform_scale(
@@ -313,19 +313,23 @@ def setup_random_bread_world(seed=None):
                         for ox, oy, orad in occupied_xy
                     ):
                         yaw = float(rng.uniform(-np.pi, np.pi))
-                        candidate_local_pose = HomogeneousTransformationMatrix.from_xyz_rpy(
-                            x=float(x_local),
-                            y=float(y_local),
-                            z=float(z_local),
-                            roll=0.0,
-                            pitch=0.0,
-                            yaw=float(yaw),
-                            reference_frame=surface_body,
+                        candidate_local_pose = (
+                            HomogeneousTransformationMatrix.from_xyz_rpy(
+                                x=float(x_local),
+                                y=float(y_local),
+                                z=float(z_local),
+                                roll=0.0,
+                                pitch=0.0,
+                                yaw=float(yaw),
+                                reference_frame=surface_body,
+                            )
                         )
                         candidate_world_pose = world.transform(
                             candidate_local_pose, world.root
                         )
-                        target_pose = PoseStamped.from_spatial_type(candidate_world_pose)
+                        target_pose = PoseStamped.from_spatial_type(
+                            candidate_world_pose
+                        )
                         if not _is_pose_reachable_for_cutting(
                             spawn_robot, world, target_pose
                         ):
