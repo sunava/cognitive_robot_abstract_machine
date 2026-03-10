@@ -14,7 +14,7 @@ def robot_setup(
     :param bool with_perception: True or False, if you want to percieve in REAL
     """
     if simulation:
-        from demos.pycram_suturo_demos.helper_methods_and_useful_classes.simulation_setup import (
+        from pycram_suturo_demos.helper_methods_and_useful_classes.simulation_setup import (
             setup_hsrb_in_environment,
         )
 
@@ -24,12 +24,10 @@ def robot_setup(
             with_objects=with_objects,
         )
     else:
-        from demos.pycram_suturo_demos.helper_methods_and_useful_classes.real_setup import (
+        from pycram_suturo_demos.helper_methods_and_useful_classes.real_setup import (
             world_setup_with_test_objects,
         )
 
-        setup_result = world_setup_with_test_objects(
-            with_object=with_objects, with_perception=with_perception
-        )
+        setup_result = world_setup_with_test_objects(with_object=with_objects)
 
     return setup_result
