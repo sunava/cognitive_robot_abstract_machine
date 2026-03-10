@@ -134,6 +134,7 @@ class ParkArmsAction(ActionDescription):
     """
 
     def execute(self) -> None:
+        print(f"Executing: {self.__class__.__name__}")
         joint_names, joint_poses = self.get_joint_poses()
 
         SequentialPlan(

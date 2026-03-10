@@ -25,7 +25,10 @@ from pycram.robot_plans.motions.base import BaseMotion
 from pycram.utils import translate_pose_along_local_axis
 from pycram.view_manager import ViewManager
 from semantic_digital_twin.datastructures.definitions import GripperState
-from semantic_digital_twin.collision_checking.collision_rules import AvoidAllCollisions, AvoidCollisionBetweenGroups
+from semantic_digital_twin.collision_checking.collision_rules import (
+    AvoidAllCollisions,
+    AvoidCollisionBetweenGroups,
+)
 from semantic_digital_twin.spatial_types import Point3
 from semantic_digital_twin.world_description.world_entity import Body
 
@@ -298,12 +301,14 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
     @property
     def _motion_chart(self):
         if not self.waypoints:
-            raise ValueError(
-                "No waypoints provided to MoveTCPWaypointsAlignedMotion."
-            )
+            raise ValueError("No waypoints provided to MoveTCPWaypointsAlignedMotion.")
 
         if self.tip is None:
-            tip = ViewManager().get_end_effector_view(self.arm, self.robot_view).tool_frame
+            tip = (
+                ViewManager()
+                .get_end_effector_view(self.arm, self.robot_view)
+                .tool_frame
+            )
             if tip is None:
                 raise ValueError(f"No tool frame available for arm {self.arm}.")
 
@@ -329,6 +334,7 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
                     root_link=root_link,
                     tip_link=tip_link,
                     goal_point=point,
+                    weight=DefaultWeights.WEIGHT_BELOW_CA,
                 )
             ]
             tasks.extend(
@@ -337,6 +343,7 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
                     root_link=root_link,
                     tip_normal=pair.tip_normal,
                     goal_normal=pair.goal_normal,
+                    weight=DefaultWeights.WEIGHT_BELOW_CA,
                 )
                 for pair in plane_pairs
             )

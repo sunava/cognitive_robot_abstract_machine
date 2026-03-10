@@ -36,6 +36,7 @@ class NavigateAction(ActionDescription):
     """
 
     def execute(self) -> None:
+        print(f"Executing: {self.__class__.__name__}")
         return SequentialPlan(
             self.context, MoveMotion(self.target_location, teleport=self.teleport)
         ).perform()

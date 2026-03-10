@@ -39,7 +39,10 @@ from krrood.symbolic_math.symbolic_math import Matrix
 from krrood.utils import get_full_class_name
 from semantic_digital_twin.world_description.geometry import TriangleMesh
 from semantic_digital_twin.world_description.inertial_properties import Inertial
-from semantic_digital_twin.world_description.shape_collection import ShapeCollection, BoundingBoxCollection
+from semantic_digital_twin.world_description.shape_collection import (
+    ShapeCollection,
+    BoundingBoxCollection,
+)
 from semantic_digital_twin.mixin import HasSimulatorProperties
 from semantic_digital_twin.adapters.world_entity_kwargs_tracker import (
     WorldEntityWithIDKwargsTracker,

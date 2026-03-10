@@ -2,6 +2,9 @@ import os
 import numpy as np
 import rclpy
 
+from pycram.datastructures.dataclasses import Context
+from pycram.datastructures.pose import PoseStamped
+from pycram.costmaps import OccupancyCostmap, RingCostmap
 from pycram.testing import setup_world
 from rclpy.duration import Duration as RclpyDuration
 from rclpy.time import Time
@@ -210,12 +213,59 @@ def _spawn_bread_at_local_pose(world, surface_body, bread_name, scale, x_local, 
     return world_pose
 
 
+def _is_pose_reachable_for_cutting(robot, world, target_pose):
+    """Lightweight reachability gate: at least one collision-free base pose near target."""
+    ground_pose = PoseStamped.from_list(
+        [target_pose.position.x, target_pose.position.y, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+        frame=target_pose.frame_id,
+    )
+
+    base_bb = robot.base.bounding_box
+    base_depth = float(getattr(base_bb, "depth", float("nan")))
+    base_width = float(getattr(base_bb, "width", float("nan")))
+    obstacle_clearance = 0.25 * (base_depth + base_width)
+    if (not np.isfinite(obstacle_clearance)) or obstacle_clearance <= 0.0:
+        obstacle_clearance = 0.20
+
+    occupancy = OccupancyCostmap(
+        distance_to_obstacle=obstacle_clearance,
+        world=world,
+        robot_view=robot,
+        width=140,
+        height=140,
+        resolution=0.03,
+        origin=ground_pose,
+    )
+    # Ring around the target to keep robot in arm-reach neighborhood.
+    ring = RingCostmap(
+        resolution=0.03,
+        width=140,
+        height=140,
+        std=12,
+        distance=0.55,
+        world=world,
+        origin=ground_pose,
+    )
+
+    final_map = occupancy + ring
+    final_map.number_of_samples = 30
+
+    try:
+        next(iter(final_map))
+        return True
+    except StopIteration:
+        return False
+    except Exception:
+        return False
+
+
 def setup_random_bread_world(seed=None):
     world = setup_world()
-    world.collision_manager = CollisionManager(
-        _world=world,
-        collision_detector=BulletCollisionDetector(_world=world),
-    )
+    # world.collision_manager = CollisionManager(
+    #     _world=world,
+    #     collision_detector=BulletCollisionDetector(_world=world),
+    # )
     rng = np.random.default_rng(seed)
 
     surfaces = _collect_surface_bodies(world)
@@ -224,6 +274,8 @@ def setup_random_bread_world(seed=None):
 
     scale_choices = np.array([0.8, 1.0, 1.2, 1.4, 1.6], dtype=float)
     base_radius = _bread_base_xy_radius()
+    spawn_context = Context.from_world(world)
+    spawn_robot = spawn_context.robot
 
     placements = []
     surface_plan = []
@@ -261,6 +313,24 @@ def setup_random_bread_world(seed=None):
                         for ox, oy, orad in occupied_xy
                     ):
                         yaw = float(rng.uniform(-np.pi, np.pi))
+                        candidate_local_pose = HomogeneousTransformationMatrix.from_xyz_rpy(
+                            x=float(x_local),
+                            y=float(y_local),
+                            z=float(z_local),
+                            roll=0.0,
+                            pitch=0.0,
+                            yaw=float(yaw),
+                            reference_frame=surface_body,
+                        )
+                        candidate_world_pose = world.transform(
+                            candidate_local_pose, world.root
+                        )
+                        target_pose = PoseStamped.from_spatial_type(candidate_world_pose)
+                        if not _is_pose_reachable_for_cutting(
+                            spawn_robot, world, target_pose
+                        ):
+                            continue
+
                         created_idx += 1
                         bread_name = f"bread_{created_idx:04d}"
                         world_pose = _spawn_bread_at_local_pose(

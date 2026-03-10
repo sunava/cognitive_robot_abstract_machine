@@ -9,7 +9,9 @@ import numpy as np
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.collision_checking.collision_manager import CollisionManager
-from semantic_digital_twin.collision_checking.pybullet_collision_detector import BulletCollisionDetector
+from semantic_digital_twin.collision_checking.pybullet_collision_detector import (
+    BulletCollisionDetector,
+)
 from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Milk,
@@ -36,29 +38,13 @@ except ImportError:
         "Could not import VizMarkerPublisher. This is probably because you are not running ROS."
     )
 
-def pr2_world_setup():
-    urdf_dir = "package://iai_pr2_description/robots/pr2_with_ft2_cableguide.xacro"
-    world = world_with_urdf_factory(urdf_dir, PR2, OmniDrive)
-    world.collision_manager = CollisionManager(
-        _world=world,
-        collision_detector=CollisionlessCollisionDetector(_world=world),
-    )
-    return world
-
-
-def pr2_s():
-    return URDFParser.from_file(
-        "package://iai_pr2_description/robots/pr2_with_ft2_cableguide.xacro"
-    ).parse()
 
 def setup_world() -> World:
     logger.setLevel(logging.DEBUG)
 
-    pr2_sem_world = pr2_s()
-    #     URDFParser.from_file(
-    #     "package://iai_pr2_description/robots/pr2_with_ft2_cableguide.xacro"
-    # ).parse())
-    #
+    pr2_sem_world = URDFParser.from_file(
+        "package://iai_pr2_description/robots/pr2_with_ft2_cableguide.xacro"
+    ).parse()
 
     apartment_world = URDFParser.from_file(
         os.path.join(
@@ -66,8 +52,8 @@ def setup_world() -> World:
             "..",
             "..",
             "resources",
-            "pycram_object_gap_demo",
-            "apartment_without_walls.urdf",
+            "worlds",
+            "apartment.urdf",
         )
     ).parse()
     milk_world = STLParser(
@@ -97,6 +83,7 @@ def setup_world() -> World:
         )
         apartment_world.merge_world(pr2_sem_world, c_root_bf)
         c_root_bf.origin = HomogeneousTransformationMatrix.from_xyz_rpy(1.5, 2.5, 0)
+        c_root_bf.has_hardware_interface = True
     PR2.from_world(apartment_world)
 
     apartment_world.get_body_by_name("milk.stl").parent_connection.origin = (
@@ -112,10 +99,10 @@ def setup_world() -> World:
     milk_view = Milk(root=apartment_world.get_body_by_name("milk.stl"))
     with apartment_world.modify_world():
         apartment_world.add_semantic_annotation(milk_view)
-    apartment_world.collision_manager = CollisionManager(
-        _world=apartment_world,
-        collision_detector=CollisionlessCollisionDetector(_world=apartment_world),
-    )
+    # apartment_world.collision_manager = CollisionManager(
+    #     _world=apartment_world,
+    #     collision_detector=CollisionlessCollisionDetector(_world=apartment_world),
+    # )
     return apartment_world
 
 

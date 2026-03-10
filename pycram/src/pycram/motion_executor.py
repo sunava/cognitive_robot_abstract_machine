@@ -9,9 +9,14 @@ from giskardpy.motion_statechart.data_types import LifeCycleValues
 from giskardpy.motion_statechart.goals.collision_avoidance import (
     ExternalCollisionAvoidance,
     UpdateTemporaryCollisionRules,
+    ExternalCollisionDistanceMonitor,
 )
 from giskardpy.motion_statechart.goals.templates import Sequence
-from giskardpy.motion_statechart.graph_node import EndMotion, MotionStatechartNode
+from giskardpy.motion_statechart.graph_node import (
+    EndMotion,
+    MotionStatechartNode,
+    CancelMotion,
+)
 from giskardpy.motion_statechart.graph_node import Task
 from giskardpy.motion_statechart.motion_statechart import (
     MotionStatechart,
@@ -45,8 +50,7 @@ class MotionExecutor:
     Giskard's motion state chart that is created from the motions.
     """
 
-    ros_node: Any = field(kw_only=True, default=None
-                          )
+    ros_node: Any = field(kw_only=True, default=None)
     """
     ROS node that should be used for communication. Only relevant for real execution.
     """
@@ -59,6 +63,30 @@ class MotionExecutor:
         sequence_node = Sequence(nodes=self.motions)
         if self.with_collision_avoidance:
             self.motion_state_chart.add_node(ExternalCollisionAvoidance())
+            robot = self.world.get_semantic_annotations_by_type(AbstractRobot)[0]
+            self.motion_state_chart.add_node(
+                monitor1 := ExternalCollisionDistanceMonitor(
+                    body=robot.root,
+                    threshold=0,
+                )
+            )
+            self.motion_state_chart.add_node(
+                monitor2 := ExternalCollisionDistanceMonitor(
+                    body=self.world.get_body_by_name("r_shoulder_pan_link"),
+                    threshold=0,
+                )
+            )
+            self.motion_state_chart.add_node(
+                monitor3 := ExternalCollisionDistanceMonitor(
+                    body=self.world.get_body_by_name("l_shoulder_pan_link"),
+                    threshold=0,
+                )
+            )
+            self.motion_state_chart.add_node(
+                CancelMotion.when_any_true(
+                    [monitor1, monitor2, monitor3], exception=Exception(":(")
+                )
+            )
         self.motion_state_chart.add_node(sequence_node)
 
         self.motion_state_chart.add_node(EndMotion.when_true(sequence_node))
@@ -96,7 +124,7 @@ class MotionExecutor:
         )
         executor.compile(self.motion_state_chart)
         try:
-            executor.tick_until_end(timeout=2000)
+            executor.tick_until_end(timeout=2_000)
         except TimeoutError as e:
             failed_nodes = [
                 (
