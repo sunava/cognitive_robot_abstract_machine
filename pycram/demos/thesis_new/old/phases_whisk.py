@@ -132,8 +132,8 @@ def main():
     node = rclpy.create_node("pycram_demo")
 
     tf_wrapper = TFWrapper(node=node)
-    TFPublisher(node=node, world=world)
-    VizMarkerPublisher(world, node)
+    TFPublisher(node=node, _world=world)
+    VizMarkerPublisher(_world=world, node=node)
 
     tf_wrapper.wait_for_transform(
         "apartment/apartment_root",

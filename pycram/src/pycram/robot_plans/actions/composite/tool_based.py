@@ -24,7 +24,7 @@ from demos.thesis_new.thesis_math.world_utils import (
 )
 from demos.thesis_new.utils.rviz import publish_points_sequence
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Tool
-from semantic_digital_twin.spatial_types import Point3
+from semantic_digital_twin.spatial_types import Point3, Vector3
 from semantic_digital_twin.world_description.world_entity import Body
 from ...motions.gripper import MoveTCPWaypointsAlignedMotion
 from ....datastructures.enums import (
@@ -38,6 +38,12 @@ from ....view_manager import ViewManager
 
 logger = logging.getLogger(__name__)
 DEFAULT_SAMPLE_DT = 0.01
+
+
+@dataclass(frozen=True)
+class SurfaceAlignmentTarget:
+    reference_frame: Body
+    goal_normal: Vector3
 
 
 def _logging_helper_apply_fields(action: Any, fields: dict) -> None:
@@ -353,6 +359,9 @@ class WipingAction(GeneralizedActionPlan):
     _resolved_surface_body: Optional[Body] = field(
         default=None, init=False, repr=False
     )
+    _resolved_alignment_target: Optional[SurfaceAlignmentTarget | Body | PoseStamped] = field(
+        default=None, init=False, repr=False
+    )
 
     def _target_pose_to_spatial(self):
         if self.target_pose is None:
@@ -369,16 +378,70 @@ class WipingAction(GeneralizedActionPlan):
             return self._resolved_surface_body
 
         if self.container is None:
-            # todo make logic for if i get a pose i need to calculate the normal OR the body next to it.. rotation is just off for the gripper currently
-            # todo idea: maybe i just rotate how sponge is rotated and then look at the one function from cram back then
-            resolved = ...
+            if self.target_pose is None:
+                raise ValueError(
+                    "WipingAction requires either container or target_pose."
+                )
+            resolved = getattr(self.target_pose, "frame_id", None)
         else:
             resolved = self.container
         self._resolved_surface_body = resolved
         return resolved
 
     def _resolve_alignment_target(self):
+        if self._resolved_alignment_target is not None:
+            return self._resolved_alignment_target
+        if self.container is None and self.target_pose is not None:
+            self._resolved_alignment_target = self._resolve_pose_alignment_target()
+            return self._resolved_alignment_target
         return self._resolve_surface_body()
+
+    def _resolve_pose_alignment_target(self):
+        target_spatial = self._target_pose_to_spatial()
+        target_point_world = target_spatial.to_position()
+        robot_bodies = set(getattr(self.robot_view, "bodies", []))
+        tool_root = getattr(getattr(self, "tool", None), "root", None)
+
+        best_body = None
+        best_point_body = None
+        best_distance = float("inf")
+
+        for body in getattr(self.world, "bodies", []):
+            if body in robot_bodies or body is tool_root:
+                continue
+            try:
+                point_body = self.world.transform(target_point_world, body)
+                point_xyz = np.asarray(point_body.to_np(), dtype=float).reshape(-1)[:3]
+                mins, maxs = body_local_aabb(
+                    body, use_visual=False, apply_shape_scale=True
+                )
+            except Exception:
+                continue
+
+            clamped = np.minimum(np.maximum(point_xyz, mins), maxs)
+            distance = float(np.linalg.norm(point_xyz - clamped))
+            if distance < best_distance:
+                best_distance = distance
+                best_body = body
+                best_point_body = point_xyz
+
+        if best_body is None or best_point_body is None:
+            return self.target_pose
+
+        mins, maxs = body_local_aabb(best_body, use_visual=False, apply_shape_scale=True)
+        face_distances = [
+            (abs(best_point_body[0] - mins[0]), np.array([-1.0, 0.0, 0.0])),
+            (abs(best_point_body[0] - maxs[0]), np.array([1.0, 0.0, 0.0])),
+            (abs(best_point_body[1] - mins[1]), np.array([0.0, -1.0, 0.0])),
+            (abs(best_point_body[1] - maxs[1]), np.array([0.0, 1.0, 0.0])),
+            (abs(best_point_body[2] - mins[2]), np.array([0.0, 0.0, -1.0])),
+            (abs(best_point_body[2] - maxs[2]), np.array([0.0, 0.0, 1.0])),
+        ]
+        _, normal_local = min(face_distances, key=lambda item: item[0])
+        return SurfaceAlignmentTarget(
+            reference_frame=best_body,
+            goal_normal=Vector3.from_iterable(normal_local, reference_frame=best_body),
+        )
 
     def _sample_points(self):
         if self.container is not None:
@@ -397,7 +460,7 @@ class WipingAction(GeneralizedActionPlan):
 
         t_pose = self._target_pose_to_spatial()
         segment = MotionSegment(
-            name="planar_spiral",
+            name="raster",
             duration_s=2.0,
             local_curve=lambda tau: planar_spiral_xy(
                 tau, r0=0.00, r1=0.12, cycles=2.5

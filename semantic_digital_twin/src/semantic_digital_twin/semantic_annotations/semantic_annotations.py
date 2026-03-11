@@ -1099,25 +1099,49 @@ class Knife(ToolWithHandle):
 @dataclass(eq=False)
 class Sponge(Tool):
     def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]:
-        goal_reference_frame = body_to_act_on
+        goal_normal = getattr(body_to_act_on, "goal_normal", None)
+        if goal_normal is not None:
+            return [
+                AlignmentPair(
+                    tip_normal=Vector3(0, 0, -1, reference_frame=self.root),
+                    goal_normal=goal_normal,
+                ),
+            ]
+
+        if isinstance(body_to_act_on, Body):
+            return [
+                AlignmentPair(
+                    tip_normal=Vector3(0, 0, 1, reference_frame=self.root),
+                    goal_normal=Vector3(0, 0, -1, reference_frame=body_to_act_on),
+                ),
+            ]
+
+        goal_reference_frame = getattr(body_to_act_on, "frame_id", None) or self.root
+        goal_normal = Vector3(1, 0, 0, reference_frame=goal_reference_frame)
+
         if hasattr(body_to_act_on, "to_spatial_type"):
             try:
                 pose = body_to_act_on.to_spatial_type()
-                if hasattr(pose, "reference_frame") and pose.reference_frame is not None:
+                if getattr(pose, "reference_frame", None) is not None:
                     goal_reference_frame = pose.reference_frame
+                rotation = pose.to_rotation_matrix().to_np()[:3, :3]
+                if np.allclose(rotation, np.eye(3), atol=1e-6):
+                    rotated_normal = np.array([0.0, 0.0, -1.0], dtype=float)
+                else:
+                    rotated_normal = rotation @ np.array([0.0, 0.0, 1.0], dtype=float)
+                goal_normal = Vector3.from_iterable(
+                    rotated_normal,
+                    reference_frame=goal_reference_frame,
+                )
             except Exception:
                 pass
 
-        if goal_reference_frame is None:
-            goal_reference_frame = self.root
-
-        pairs = [
+        return [
             AlignmentPair(
                 tip_normal=Vector3(0, 0, 1, reference_frame=self.root),
-                goal_normal=Vector3(0, 0, -1, reference_frame=goal_reference_frame),
+                goal_normal=goal_normal,
             ),
         ]
-        return pairs
 
 
     def debug_distance_threshold(self) -> float:
