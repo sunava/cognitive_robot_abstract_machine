@@ -21,7 +21,7 @@ from demos.thesis_new.spawn_random_breads import (
     _tint_surfaces_light_brown,
     body_local_aabb,
 )
-from pycram.testing import setup_world
+from demos.thesis_new.world_setup import setup_thesis_world
 
 RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")
@@ -246,9 +246,9 @@ def _sample_random_bowl_layout(world, seed=None, spawn_bowls=True):
     return world, placements, surface_plan
 
 
-def setup_random_bowl_world(seed=None):
+def setup_random_bowl_world(seed=None, robot_name=None):
     world, placements, surface_plan = _sample_random_bowl_layout(
-        setup_world(), seed=seed, spawn_bowls=True
+        setup_thesis_world(robot_name=robot_name), seed=seed, spawn_bowls=True
     )
     return (
         world,
@@ -265,9 +265,9 @@ def setup_random_bowl_world(seed=None):
     )
 
 
-def sample_random_bowl_poses(seed=None):
+def sample_random_bowl_poses(seed=None, robot_name=None):
     world, placements, surface_plan = _sample_random_bowl_layout(
-        setup_world(), seed=seed, spawn_bowls=False
+        setup_thesis_world(robot_name=robot_name), seed=seed, spawn_bowls=False
     )
     rng = np.random.default_rng(seed)
 

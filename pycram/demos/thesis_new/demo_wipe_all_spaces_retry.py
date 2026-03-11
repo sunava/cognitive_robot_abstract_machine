@@ -8,8 +8,12 @@ from visualization_msgs.msg import Marker, MarkerArray
 
 from demos.thesis.simulation_setup import BoxSpec, add_box
 from demos.thesis_new.spawn_random_bowls import sample_random_bowl_poses
+from demos.thesis_new.tool_mounts import get_tool_mount_pose_kwargs
 from demos.thesis_new.utils.demo_utils import (
+    get_available_arm_tool_frames,
     commit_plan_to_db,
+    get_park_arms_argument,
+    get_primary_robot_name,
     setup_experiment_runtime,
     shutdown_experiment_runtime,
 )
@@ -56,18 +60,18 @@ SUCCESS_TARGET_COLOR = Color(R=0.62, G=0.92, B=0.62)
 DEFAULT_TARGET_COLOR = Color(R=0.78, G=0.80, B=0.86)
 
 RECORDS_DIR = os.path.join(os.path.dirname(__file__), "records")
-RESULTS_CSV_PATH = os.path.join(RECORDS_DIR, "wipe_all_bowls_results.csv")
+RESULTS_CSV_PATH = os.path.join(RECORDS_DIR, "wipe_all_spaces_results.csv")
 EXPERIMENT_CONDITION = "full_system"
 BASELINE_NAME = "task_knowledge+htn+constraint_planning"
-TASK_NAME = "bowl_wiping"
+TASK_NAME = "space_wiping"
 POINTER_STRIDE = 3
 TARGET_MARKER_TOPIC = "/pycram/wipe_targets"
 session = None
 
 
-def _record_bowl_result(
+def _record_space_result(
     results,
-    bowl_name,
+    target_name,
     robot_name,
     outcome,
     succeeded_arm,
@@ -84,14 +88,14 @@ def _record_bowl_result(
         tool_name,
         phase,
         failures,
-        bowl_name=bowl_name,
+        target_name=target_name,
         **kwargs,
     )
 
 
 def _results_csv_fieldnames():
     return [
-        "bowl_name",
+        "target_name",
         "spawn_pose_xyz",
         *BASE_RESULT_FIELDNAMES,
     ]
@@ -103,16 +107,16 @@ def _create_target_pose_marker_publisher(node):
 
 
 def _marker_color_for_target(
-    bowl_name,
-    active_bowl_name,
-    failed_bowl_names,
-    successful_bowl_names,
+    target_name,
+    active_target_name,
+    failed_target_names,
+    successful_target_names,
 ):
-    if bowl_name == active_bowl_name:
+    if target_name == active_target_name:
         return ACTIVE_TARGET_COLOR
-    if bowl_name in failed_bowl_names:
+    if target_name in failed_target_names:
         return FAILED_TARGET_COLOR
-    if bowl_name in successful_bowl_names:
+    if target_name in successful_target_names:
         return SUCCESS_TARGET_COLOR
     return DEFAULT_TARGET_COLOR
 
@@ -121,14 +125,14 @@ def _publish_target_pose_markers(
     node,
     publisher,
     world,
-    sampled_bowls,
+    sampled_targets,
     *,
-    active_bowl_name=None,
-    failed_bowl_names=None,
-    successful_bowl_names=None,
+    active_target_name=None,
+    failed_target_names=None,
+    successful_target_names=None,
 ):
-    failed_bowl_names = failed_bowl_names or set()
-    successful_bowl_names = successful_bowl_names or set()
+    failed_target_names = failed_target_names or set()
+    successful_target_names = successful_target_names or set()
     frame_id = str(world.root.name)
     marker_array = MarkerArray()
 
@@ -136,15 +140,15 @@ def _publish_target_pose_markers(
     clear.action = Marker.DELETEALL
     marker_array.markers.append(clear)
 
-    for idx, bowl_data in enumerate(sampled_bowls):
-        world_pose = bowl_data["world_pose"]
+    for idx, target_data in enumerate(sampled_targets):
+        world_pose = target_data["world_pose"]
         position = world_pose.to_position()
         orientation = world_pose.to_quaternion()
         color = _marker_color_for_target(
-            bowl_data["bowl_name"],
-            active_bowl_name,
-            failed_bowl_names,
-            successful_bowl_names,
+            target_data["bowl_name"],
+            active_target_name,
+            failed_target_names,
+            successful_target_names,
         )
         marker = Marker()
         marker.header.frame_id = frame_id
@@ -174,50 +178,38 @@ def _publish_target_pose_markers(
 
     publisher.publish(marker_array)
     print(
-        f"[viz] published {len(sampled_bowls)} wipe target markers on {TARGET_MARKER_TOPIC}"
+        f"[viz] published {len(sampled_targets)} wipe target markers on {TARGET_MARKER_TOPIC}"
     )
 
 
-def _attach_bimanual_sponges(world):
-    left_sponge = add_box(
-        world,
-        BoxSpec(name="sponge_left", scale_xyz=(0.05, 0.05, 0.05)),
-        tf_frame="/map",
-        color=Color(R=1, G=1, B=0),
-    )
-    right_sponge = add_box(
-        world,
-        BoxSpec(name="sponge_right", scale_xyz=(0.05, 0.05, 0.05)),
-        tf_frame="/map",
-        color=Color(R=1, G=1, B=0),
-    )
-
-    l_robot_tip = world.get_body_by_name("l_gripper_tool_frame")
-    r_robot_tip = world.get_body_by_name("r_gripper_tool_frame")
+def _attach_sponges_for_available_arms(world):
+    arm_frames = get_available_arm_tool_frames(world)
+    tools_by_arm = {}
+    robot_name = get_primary_robot_name(world)
 
     with world.modify_world():
-        world.add_kinematic_structure_entity(left_sponge)
-        world.add_kinematic_structure_entity(right_sponge)
-        world.add_connection(
-            FixedConnection(
-                parent=l_robot_tip,
-                child=left_sponge,
-                parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_axis_angle(
-                    axis=(0, 1, 0), angle=np.pi / 2, reference_frame=l_robot_tip
-                ),
+        for arm, tool_frame in arm_frames:
+            sponge_name = "sponge_right" if arm == Arms.RIGHT else "sponge_left"
+            sponge = add_box(
+                world,
+                BoxSpec(name=sponge_name, scale_xyz=(0.05, 0.05, 0.05)),
+                tf_frame="/map",
+                color=Color(R=1, G=1, B=0),
             )
-        )
-        world.add_connection(
-            FixedConnection(
-                parent=r_robot_tip,
-                child=right_sponge,
-                parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_axis_angle(
-                    axis=(0, 1, 0), angle=np.pi / 2, reference_frame=r_robot_tip
-                ),
+            world.add_kinematic_structure_entity(sponge)
+            world.add_connection(
+                FixedConnection(
+                    parent=tool_frame,
+                    child=sponge,
+                    parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(
+                        reference_frame=tool_frame,
+                        **get_tool_mount_pose_kwargs("wipe", robot_name, arm),
+                    ),
+                )
             )
-        )
+            tools_by_arm[arm] = Sponge(root=sponge)
 
-    return Sponge(root=right_sponge), Sponge(root=left_sponge)
+    return [(arm, tools_by_arm[arm]) for arm, _ in arm_frames]
 
 
 def _try_wipe(context, target_pose, arm, tool):
@@ -229,7 +221,7 @@ def _try_wipe(context, target_pose, arm, tool):
     with simulated_robot_without_collision:
         SequentialPlan(
             context,
-            ParkArmsActionDescription(Arms.BOTH),
+            ParkArmsActionDescription(get_park_arms_argument(context.world)),
             NavigateActionDescription(pickup_loc, True),
         ).perform()
     print(target_pose)
@@ -248,8 +240,8 @@ def _try_wipe(context, target_pose, arm, tool):
     commit_plan_to_db(session, current_plan)
 
 
-def _rotate_bowl_180deg_z(world, bowl):
-    pose = bowl.global_pose
+def _rotate_target_180deg_z(world, target_body):
+    pose = target_body.global_pose
     pos = np.asarray(pose.to_position().to_np(), dtype=float).reshape(-1)[:3]
     quat = np.asarray(pose.to_quaternion().to_np(), dtype=float).reshape(-1)[:4]
     rot_quat = quaternion_from_euler(0.0, 0.0, np.pi)
@@ -265,10 +257,10 @@ def _rotate_bowl_180deg_z(world, bowl):
         reference_frame=world.root,
     )
     with world.modify_world():
-        bowl.parent_connection.origin = rotated_pose
+        target_body.parent_connection.origin = rotated_pose
 
 
-def main_wiping(seed=None):
+def main_wiping(seed=None, robot_name=None):
     global session
     if session is None:
         session = pycram_sessionmaker()()
@@ -279,16 +271,18 @@ def main_wiping(seed=None):
         if seed is not None
         else int(np.random.SeedSequence().generate_state(1, dtype=np.uint32)[0])
     )
-    world, sampled_bowls, surface_plan = sample_random_bowl_poses(seed=effective_seed)
+    world, sampled_targets, surface_plan = sample_random_bowl_poses(
+        seed=effective_seed, robot_name=robot_name
+    )
 
     node = setup_experiment_runtime(
         world=world,
-        node_name="pycram_wipe_all_bowls_retry",
+        node_name="pycram_wipe_all_spaces_retry",
     )
     target_marker_pub = _create_target_pose_marker_publisher(node)
 
-    right_sponge, left_sponge = _attach_bimanual_sponges(world)
-    _publish_target_pose_markers(node, target_marker_pub, world, sampled_bowls)
+    arm_tools = _attach_sponges_for_available_arms(world)
+    _publish_target_pose_markers(node, target_marker_pub, world, sampled_targets)
 
     context = Context.from_world(world)
     context.ros_node = node
@@ -302,46 +296,46 @@ def main_wiping(seed=None):
         print(
             f"  - {surface_name}: area={area_m2:.3f}m^2 target={target_count} placed={placed_count}"
         )
-    print(f"[setup] sampled bowl poses to wipe: {len(sampled_bowls)}")
+    print(f"[setup] sampled target poses to wipe: {len(sampled_targets)}")
 
     success_primary = 0
     success_fallback = 0
     failed = 0
-    failed_bowl_names = set()
-    successful_bowl_names = set()
-    bowl_results = []
+    failed_target_names = set()
+    successful_target_names = set()
+    target_results = []
     initialize_csv(RESULTS_CSV_PATH, _results_csv_fieldnames())
 
     with simulated_robot_without_collision:
         SequentialPlan(
             context,
-            ParkArmsActionDescription(Arms.BOTH),
+            ParkArmsActionDescription(get_park_arms_argument(world)),
             MoveTorsoActionDescription(TorsoState.HIGH),
         ).perform()
 
-    for bowl_data in sampled_bowls:
+    for target_data in sampled_targets:
         attempt_failures = []
         attempt_count = 0
         collision_failure_count = 0
-        bowl_start_time = time.perf_counter()
+        target_start_time = time.perf_counter()
         perturbation_applied = False
         perturbation_type = ""
-        bowl_name = bowl_data["bowl_name"]
+        target_name = target_data["bowl_name"]
         _publish_target_pose_markers(
             node,
             target_marker_pub,
             world,
-            sampled_bowls,
-            active_bowl_name=bowl_name,
-            failed_bowl_names=failed_bowl_names,
-            successful_bowl_names=successful_bowl_names,
+            sampled_targets,
+            active_target_name=target_name,
+            failed_target_names=failed_target_names,
+            successful_target_names=successful_target_names,
         )
-        target_pose = PoseStamped.from_spatial_type(bowl_data["world_pose"])
-        spawn_xyz = np.round(np.asarray(bowl_data["pose_xyz"], dtype=float), 4).tolist()
+        target_pose = PoseStamped.from_spatial_type(target_data["world_pose"])
+        spawn_xyz = np.round(np.asarray(target_data["pose_xyz"], dtype=float), 4).tolist()
         common_result_kwargs = {
             "task_name": TASK_NAME,
             "run_id": run_id,
-            "task_instance_id": bowl_name,
+            "task_instance_id": target_name,
             "seed": effective_seed,
             "world_name": world_name,
             "experiment_condition": EXPERIMENT_CONDITION,
@@ -360,174 +354,120 @@ def main_wiping(seed=None):
             "assistance_type": "",
         }
 
-        print(f"[wipe] {bowl_name}: try RIGHT arm at spawn pose {spawn_xyz}")
-        try:
-            attempt_count += 1
-            _try_wipe(context, target_pose, Arms.RIGHT, right_sponge)
-            success_primary += 1
-            successful_bowl_names.add(bowl_name)
+        for attempt_index, (arm, tool) in enumerate(arm_tools):
+            phase = "primary" if attempt_index == 0 else "fallback"
+            decision = "wipe" if attempt_index == 0 else "retry_with_left_arm"
+            decision_reason = "primary_success" if attempt_index == 0 else "right_arm_failed"
+            print(f"[wipe] {target_name}: try {arm.name} arm at spawn pose {spawn_xyz}")
+            try:
+                attempt_count += 1
+                _try_wipe(context, target_pose, arm, tool)
+                if attempt_index == 0:
+                    success_primary += 1
+                else:
+                    success_fallback += 1
+                successful_target_names.add(target_name)
+                _publish_target_pose_markers(
+                    node,
+                    target_marker_pub,
+                    world,
+                    sampled_targets,
+                    failed_target_names=failed_target_names,
+                    successful_target_names=successful_target_names,
+                )
+                result_row = _record_space_result(
+                    target_results,
+                    target_name,
+                    robot_name,
+                    "success",
+                    arm.name,
+                    _tool_name(tool),
+                    phase,
+                    attempt_failures,
+                    **common_result_kwargs,
+                    feasibility_reason="ok",
+                    robot_decision=decision,
+                    decision_reason=decision_reason,
+                    assistance_requested=False,
+                    assistance_completed=False,
+                    task_blocked_by_prerequisite=False,
+                    task_resumed_after_assistance=False,
+                    final_success=True,
+                    total_attempts=attempt_count,
+                    retry_count=max(0, attempt_count - 1),
+                    collision_failure_count=collision_failure_count,
+                    recovery_used=attempt_index > 0,
+                    recovery_success=attempt_index > 0,
+                    perturbation_applied=perturbation_applied,
+                    perturbation_type=perturbation_type,
+                    execution_time_s=time.perf_counter() - target_start_time,
+                )
+                append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
+                suffix = "" if attempt_index == 0 else " (fallback)"
+                print(f"[ok] {target_name}: wiped with {arm.name} arm{suffix}")
+                break
+            except TimeoutError as exc:
+                collision_failure_count += 1
+                attempt_failures.append(
+                    f"{arm.name} {phase} -> {_format_attempt_error(exc)}"
+                )
+                print(
+                    f"[{'retry' if attempt_index < len(arm_tools) - 1 else 'fail'}] {target_name}: {arm.name} timed out "
+                    f"({type(exc).__name__}: {exc})"
+                )
+            except Exception as exc:
+                if _is_collision_like_failure(exc):
+                    collision_failure_count += 1
+                attempt_failures.append(
+                    f"{arm.name} {phase} -> {_format_attempt_error(exc)}"
+                )
+                print(
+                    f"[{'retry' if attempt_index < len(arm_tools) - 1 else 'fail'}] {target_name}: {arm.name} failed "
+                    f"({type(exc).__name__}: {exc})"
+                )
+        else:
+            failed += 1
+            failed_target_names.add(target_name)
             _publish_target_pose_markers(
                 node,
                 target_marker_pub,
                 world,
-                sampled_bowls,
-                failed_bowl_names=failed_bowl_names,
-                successful_bowl_names=successful_bowl_names,
+                sampled_targets,
+                failed_target_names=failed_target_names,
+                successful_target_names=successful_target_names,
             )
-            result_row = _record_bowl_result(
-                bowl_results,
-                bowl_name,
+            last_tool = arm_tools[-1][1]
+            result_row = _record_space_result(
+                target_results,
+                target_name,
                 robot_name,
-                "success",
-                "RIGHT",
-                _tool_name(right_sponge),
-                "primary",
+                "failed",
+                "",
+                _tool_name(last_tool),
+                "fallback" if len(arm_tools) > 1 else "primary",
                 attempt_failures,
                 **common_result_kwargs,
-                feasibility_reason="ok",
-                robot_decision="wipe",
-                decision_reason="primary_success",
+                feasibility_reason="collision_or_motion_failure",
+                robot_decision="task_failed",
+                decision_reason="all_wipe_attempts_failed",
                 assistance_requested=False,
                 assistance_completed=False,
                 task_blocked_by_prerequisite=False,
                 task_resumed_after_assistance=False,
-                final_success=True,
+                final_success=False,
                 total_attempts=attempt_count,
                 retry_count=max(0, attempt_count - 1),
                 collision_failure_count=collision_failure_count,
-                recovery_used=False,
+                recovery_used=len(arm_tools) > 1,
                 recovery_success=False,
                 perturbation_applied=perturbation_applied,
                 perturbation_type=perturbation_type,
-                execution_time_s=time.perf_counter() - bowl_start_time,
+                execution_time_s=time.perf_counter() - target_start_time,
             )
             append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
-            print(f"[ok] {bowl_name}: wiped with RIGHT arm")
-            continue
-        except TimeoutError as exc_right_timeout:
-            collision_failure_count += 1
-            attempt_failures.append(
-                f"RIGHT primary -> {_format_attempt_error(exc_right_timeout)}"
-            )
-            print(
-                f"[retry] {bowl_name}: RIGHT timed out "
-                f"({type(exc_right_timeout).__name__}: {exc_right_timeout})"
-            )
-        except Exception as exc_right:
-            if _is_collision_like_failure(exc_right):
-                collision_failure_count += 1
-            attempt_failures.append(
-                f"RIGHT primary -> {_format_attempt_error(exc_right)}"
-            )
-            print(
-                f"[retry] {bowl_name}: RIGHT failed "
-                f"({type(exc_right).__name__}: {exc_right})"
-            )
-
-        print(f"[wipe] {bowl_name}: try LEFT arm")
-        try:
-            attempt_count += 1
-            _try_wipe(context, target_pose, Arms.LEFT, left_sponge)
-            success_fallback += 1
-            successful_bowl_names.add(bowl_name)
-            _publish_target_pose_markers(
-                node,
-                target_marker_pub,
-                world,
-                sampled_bowls,
-                failed_bowl_names=failed_bowl_names,
-                successful_bowl_names=successful_bowl_names,
-            )
-            result_row = _record_bowl_result(
-                bowl_results,
-                bowl_name,
-                robot_name,
-                "success",
-                "LEFT",
-                _tool_name(left_sponge),
-                "fallback",
-                attempt_failures,
-                **common_result_kwargs,
-                feasibility_reason="ok",
-                robot_decision="retry_with_left_arm",
-                decision_reason="right_arm_failed",
-                assistance_requested=False,
-                assistance_completed=False,
-                task_blocked_by_prerequisite=False,
-                task_resumed_after_assistance=False,
-                final_success=True,
-                total_attempts=attempt_count,
-                retry_count=max(0, attempt_count - 1),
-                collision_failure_count=collision_failure_count,
-                recovery_used=True,
-                recovery_success=True,
-                perturbation_applied=perturbation_applied,
-                perturbation_type=perturbation_type,
-                execution_time_s=time.perf_counter() - bowl_start_time,
-            )
-            append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
-            print(f"[ok] {bowl_name}: wiped with LEFT arm (fallback)")
-            continue
-        except TimeoutError as exc_left_timeout:
-            collision_failure_count += 1
-            attempt_failures.append(
-                f"LEFT fallback -> {_format_attempt_error(exc_left_timeout)}"
-            )
-            print(
-                f"[fail] {bowl_name}: LEFT timed out "
-                f"({type(exc_left_timeout).__name__}: {exc_left_timeout})"
-            )
-        except Exception as exc_left:
-            if _is_collision_like_failure(exc_left):
-                collision_failure_count += 1
-            attempt_failures.append(
-                f"LEFT fallback -> {_format_attempt_error(exc_left)}"
-            )
-            print(
-                f"[fail] {bowl_name}: LEFT failed "
-                f"({type(exc_left).__name__}: {exc_left})"
-            )
-        failed += 1
-        failed_bowl_names.add(bowl_name)
-        _publish_target_pose_markers(
-            node,
-            target_marker_pub,
-            world,
-            sampled_bowls,
-            failed_bowl_names=failed_bowl_names,
-            successful_bowl_names=successful_bowl_names,
-        )
-        result_row = _record_bowl_result(
-            bowl_results,
-            bowl_name,
-            robot_name,
-            "failed",
-            "",
-            _tool_name(left_sponge),
-            "fallback",
-            attempt_failures,
-            **common_result_kwargs,
-            feasibility_reason="collision_or_motion_failure",
-            robot_decision="task_failed",
-            decision_reason="all_wipe_attempts_failed",
-            assistance_requested=False,
-            assistance_completed=False,
-            task_blocked_by_prerequisite=False,
-            task_resumed_after_assistance=False,
-            final_success=False,
-            total_attempts=attempt_count,
-            retry_count=max(0, attempt_count - 1),
-            collision_failure_count=collision_failure_count,
-            recovery_used=True,
-            recovery_success=False,
-            perturbation_applied=perturbation_applied,
-            perturbation_type=perturbation_type,
-            execution_time_s=time.perf_counter() - bowl_start_time,
-        )
-        append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
 
     print("[summary]")
-    print(f"  total sampled bowl poses: {len(sampled_bowls)}")
+    print(f"  total sampled target poses: {len(sampled_targets)}")
     print(f"  success primary (RIGHT): {success_primary}")
     print(f"  success fallback (LEFT): {success_fallback}")
     print(f"  failed both arms: {failed}")

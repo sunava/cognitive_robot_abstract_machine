@@ -70,22 +70,21 @@ class MotionExecutor:
                     threshold=0,
                 )
             )
+            #
+            # self.motion_state_chart.add_node(
+            #     monitor2 := ExternalCollisionDistanceMonitor(
+            #         body=self.world.get_body_by_name("r_shoulder_pan_link"),
+            #         threshold=0,
+            #     )
+            # )
+            # self.motion_state_chart.add_node(
+            #     monitor3 := ExternalCollisionDistanceMonitor(
+            #         body=self.world.get_body_by_name("l_shoulder_pan_link"),
+            #         threshold=0,
+            #     )
+            # )
             self.motion_state_chart.add_node(
-                monitor2 := ExternalCollisionDistanceMonitor(
-                    body=self.world.get_body_by_name("r_shoulder_pan_link"),
-                    threshold=0,
-                )
-            )
-            self.motion_state_chart.add_node(
-                monitor3 := ExternalCollisionDistanceMonitor(
-                    body=self.world.get_body_by_name("l_shoulder_pan_link"),
-                    threshold=0,
-                )
-            )
-            self.motion_state_chart.add_node(
-                CancelMotion.when_any_true(
-                    [monitor1, monitor2, monitor3], exception=Exception(":(")
-                )
+                CancelMotion.when_any_true([monitor1], exception=Exception(":("))
             )
         self.motion_state_chart.add_node(sequence_node)
 

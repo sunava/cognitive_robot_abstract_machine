@@ -1,5 +1,4 @@
-from demos.thesis_new.demo_cut_all_breads_retry import main_cutting
-from demos.thesis_new.demo_mix_all_bowls_retry import main_mixing
+from demos.thesis_new import run_thesis_demo
 from pycram.orm.ormatic_interface import Base
 from pycram.orm.utils import pycram_sessionmaker
 
@@ -7,17 +6,18 @@ if __name__ == "__main__":
     session = pycram_sessionmaker()()
     Base.metadata.create_all(session.bind)
     session.commit()
-    main_cutting()
-    main_mixing()
-    main_cutting()
-    main_mixing()
-    main_cutting()
-    main_mixing()
-    main_cutting()
-    main_mixing()
-    main_cutting()
-    main_mixing()
-    main_cutting()
-    main_mixing()
-    main_cutting()
-    main_mixing()
+    run_thesis_demo("wipe", robot_name="tiago")
+    run_thesis_demo("cut")
+    run_thesis_demo("mix")
+    run_thesis_demo("cut")
+    run_thesis_demo("mix")
+    run_thesis_demo("cut")
+    run_thesis_demo("mix")
+    run_thesis_demo("cut")
+    run_thesis_demo("mix")
+    run_thesis_demo("cut")
+    run_thesis_demo("mix")
+    run_thesis_demo("cut")
+    run_thesis_demo("mix")
+    run_thesis_demo("cut")
+    run_thesis_demo("mix")
