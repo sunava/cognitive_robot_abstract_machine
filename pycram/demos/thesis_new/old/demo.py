@@ -17,8 +17,14 @@ from pycram.language import SequentialPlan
 from pycram.motion_executor import simulated_robot
 from pycram.orm.ormatic_interface import Base
 from pycram.orm.utils import pycram_sessionmaker
-from pycram.robot_plans import MoveTorsoActionDescription, MixingActionDescription, \
-    ParkArmsActionDescription, NavigateActionDescription, CuttingActionDescription, WipingActionDescription
+from pycram.robot_plans import (
+    MoveTorsoActionDescription,
+    MixingActionDescription,
+    ParkArmsActionDescription,
+    NavigateActionDescription,
+    CuttingActionDescription,
+    WipingActionDescription,
+)
 
 from pycram.testing import setup_world
 from rclpy.duration import Duration as RclpyDuration
@@ -38,7 +44,7 @@ from semantic_digital_twin.world_description.geometry import Color, Scale
 from semantic_digital_twin.world_description.world_entity import Body
 
 RESOURCES_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "resources")
+    os.path.join(os.path.dirname(__file__), "../..", "..", "resources")
 )
 
 
@@ -89,34 +95,55 @@ def setup_complex_world():
 
     knife = STLParser(
         os.path.join(
-            os.path.dirname(__file__), "..", "..", "resources", "pycram_object_gap_demo", "big-knife.stl"
+            os.path.dirname(__file__),
+            "../..",
+            "..",
+            "resources",
+            "pycram_object_gap_demo",
+            "big-knife.stl",
         )
     ).parse()
-
 
     whisk = STLParser(
         os.path.join(
-            os.path.dirname(__file__), "..", "..", "resources", "pycram_object_gap_demo", "whisk.stl"
+            os.path.dirname(__file__),
+            "../..",
+            "..",
+            "resources",
+            "pycram_object_gap_demo",
+            "whisk.stl",
         )
     ).parse()
-
 
     l_robot_tip = world.get_body_by_name("l_gripper_tool_frame")
     r_robot_tip = world.get_body_by_name("r_gripper_tool_frame")
     sponge = add_box(
-        world, BoxSpec(name="sponge", scale_xyz=(0.05, 0.05, 0.05)), tf_frame="/map", color=Color(R=1, G=1, B=0)
+        world,
+        BoxSpec(name="sponge", scale_xyz=(0.05, 0.05, 0.05)),
+        tf_frame="/map",
+        color=Color(R=1, G=1, B=0),
     )
 
     with world.modify_world():
         connection_knife = FixedConnection(
-            parent=r_robot_tip, child=knife.root,
-            parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(x=0.08, y=0, z=0, roll=0, pitch=0, yaw=0,
-                                                         reference_frame=r_robot_tip)
+            parent=r_robot_tip,
+            child=knife.root,
+            parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(
+                x=0.08, y=0, z=0, roll=0, pitch=0, yaw=0, reference_frame=r_robot_tip
+            ),
         )
         connection_whisk = FixedConnection(
-            parent=l_robot_tip, child=whisk.root,
-            parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(x=0, y=0, z=0.08, roll=0, pitch=-np.pi/2, yaw=0,
-                                                         reference_frame=l_robot_tip)
+            parent=l_robot_tip,
+            child=whisk.root,
+            parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(
+                x=0,
+                y=0,
+                z=0.08,
+                roll=0,
+                pitch=-np.pi / 2,
+                yaw=0,
+                reference_frame=l_robot_tip,
+            ),
         )
         # world.merge_world(sponge)
         world.merge_world(knife, connection_knife)
@@ -154,9 +181,15 @@ def setup_complex_world():
         )
         world.merge_world_at_pose(
             bread_big,
-            HomogeneousTransformationMatrix.from_xyz_rpy(x=2.5, y=2.8, z=1, roll=0, pitch=0, yaw=-np.pi/2,
-                                                         reference_frame=world.root),
-
+            HomogeneousTransformationMatrix.from_xyz_rpy(
+                x=2.5,
+                y=2.8,
+                z=1,
+                roll=0,
+                pitch=0,
+                yaw=-np.pi / 2,
+                reference_frame=world.root,
+            ),
         )
     return world
 
@@ -181,7 +214,6 @@ def main():
     PR2.from_world(world)
     context = Context.from_world(world)
 
-
     knife_body = try_get_body(world, "big-knife.stl")
     knife = Knife(root=knife_body)
     whisk_body = try_get_body(world, "whisk.stl")
@@ -194,7 +226,7 @@ def main():
     bowl_small_body = try_get_body(world, "bowl_small")
     bowl_middle_body = try_get_body(world, "bowl_middle")
     bowl_big_body = try_get_body(world, "bowl_big")
-    clean_up_pose = PoseStamped.from_list([2.5,4,0.95])
+    clean_up_pose = PoseStamped.from_list([2.5, 4, 0.95])
     context.ros_node = node
     print(PoseStamped.from_spatial_type(context.robot.root.global_pose))
 
@@ -202,7 +234,7 @@ def main():
         ParkArmsActionDescription(Arms.BOTH),
         MoveTorsoActionDescription(TorsoState.HIGH),
         NavigateActionDescription(
-            PoseStamped.from_list([2.0 ,2.5,0.0], [0, 0, 0, 1], world.root),
+            PoseStamped.from_list([2.0, 2.5, 0.0], [0, 0, 0, 1], world.root),
             True,
         ),
         CuttingActionDescription(
@@ -259,7 +291,6 @@ def main():
             pointer_stride=3,
             mix_duration_s=12.0,
         ),
-
         # WipingActionDescription(
         #     target_pose=clean_up_pose,
         #     arm=Arms.LEFT,
@@ -291,7 +322,6 @@ def main():
                 except Exception as e:
                     session.rollback()
                     print(f"[DB] commit failed: {type(e).__name__}: {e}")
-
 
 
 if __name__ == "__main__":

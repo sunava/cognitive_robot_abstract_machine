@@ -13,8 +13,14 @@ from pycram.datastructures.enums import Arms
 from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
 from pycram.motion_executor import simulated_robot
-from pycram.robot_plans import MoveTorsoActionDescription, MixingActionDescription, \
-    ParkArmsActionDescription, NavigateActionDescription, CuttingActionDescription, WipingActionDescription
+from pycram.robot_plans import (
+    MoveTorsoActionDescription,
+    MixingActionDescription,
+    ParkArmsActionDescription,
+    NavigateActionDescription,
+    CuttingActionDescription,
+    WipingActionDescription,
+)
 
 from pycram.testing import setup_world
 from rclpy.duration import Duration as RclpyDuration
@@ -27,16 +33,15 @@ from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
 )
 from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.robots.pr2 import PR2
-from semantic_digital_twin.semantic_annotations.semantic_annotations import  Sponge
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Sponge
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.world_description.geometry import Color, Scale
 from semantic_digital_twin.world_description.world_entity import Body
 
 RESOURCES_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "resources")
+    os.path.join(os.path.dirname(__file__), "../..", "..", "resources")
 )
-
 
 
 def _parse_stl(*relative_path_parts):
@@ -84,12 +89,12 @@ def setup_complex_world():
     bread_big.root.name.name = "bread_big"
     _set_uniform_scale(bread_big, (1.5, 1.5, 1.5), color=Color(R=0.76, G=0.60, B=0.42))
 
-
-
     sponge = add_box(
-        world, BoxSpec(name="sponge", scale_xyz=(0.05, 0.05, 0.05)), tf_frame="/map", color=Color(R=1, G=1, B=0)
+        world,
+        BoxSpec(name="sponge", scale_xyz=(0.05, 0.05, 0.05)),
+        tf_frame="/map",
+        color=Color(R=1, G=1, B=0),
     )
-
 
     #
     # whisk = STLParser(
@@ -98,11 +103,13 @@ def setup_complex_world():
     #     )
     # ).parse()
 
-
     l_robot_tip = world.get_body_by_name("l_gripper_tool_frame")
     r_robot_tip = world.get_body_by_name("r_gripper_tool_frame")
     sponge = add_box(
-        world, BoxSpec(name="sponge", scale_xyz=(0.05, 0.05, 0.05)), tf_frame="/map", color=Color(R=1, G=1, B=0)
+        world,
+        BoxSpec(name="sponge", scale_xyz=(0.05, 0.05, 0.05)),
+        tf_frame="/map",
+        color=Color(R=1, G=1, B=0),
     )
 
     with world.modify_world():
@@ -119,11 +126,12 @@ def setup_complex_world():
         # world.merge_world(sponge)
         world.add_kinematic_structure_entity(sponge)
         connection_sponge = FixedConnection(
-            parent=l_robot_tip, child=sponge,
-            parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_axis_angle(axis=(0, 1, 0),
-                                                                                               angle=np.pi / 2,
-                                                                                               reference_frame=l_robot_tip
-                                                                                               ))
+            parent=l_robot_tip,
+            child=sponge,
+            parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_axis_angle(
+                axis=(0, 1, 0), angle=np.pi / 2, reference_frame=l_robot_tip
+            ),
+        )
         world.add_connection(connection_sponge)
         # world.merge_world(knife, connection_knife)
         # world.merge_world(whisk, connection_whisk)
@@ -160,9 +168,15 @@ def setup_complex_world():
         )
         world.merge_world_at_pose(
             bread_big,
-            HomogeneousTransformationMatrix.from_xyz_rpy(x=2.5, y=2.8, z=1, roll=0, pitch=0, yaw=-np.pi/2,
-                                                         reference_frame=world.root),
-
+            HomogeneousTransformationMatrix.from_xyz_rpy(
+                x=2.5,
+                y=2.8,
+                z=1,
+                roll=0,
+                pitch=0,
+                yaw=-np.pi / 2,
+                reference_frame=world.root,
+            ),
         )
     return world
 
@@ -296,9 +310,12 @@ def main():
     bowl_small_body = try_get_body(world, "bowl_small")
     bowl_middle_body = try_get_body(world, "bowl_middle")
     bowl_big_body = try_get_body(world, "bowl_big")
-    #clean_up_pose = PoseStamped.from_list([2.5, 4, 0.95], frame=world.root)
-    clean_up_pose = PoseStamped.from_spatial_type(HomogeneousTransformationMatrix.from_xyz_rpy(0.587,2.55,1.4, 90,0,0,
-                                                                                               reference_frame=world.root))
+    # clean_up_pose = PoseStamped.from_list([2.5, 4, 0.95], frame=world.root)
+    clean_up_pose = PoseStamped.from_spatial_type(
+        HomogeneousTransformationMatrix.from_xyz_rpy(
+            0.587, 2.55, 1.4, 90, 0, 0, reference_frame=world.root
+        )
+    )
     context.ros_node = node
     print(PoseStamped.from_spatial_type(context.robot.root.global_pose))
 
@@ -306,16 +323,15 @@ def main():
         ParkArmsActionDescription(Arms.BOTH),
         MoveTorsoActionDescription(TorsoState.HIGH),
         NavigateActionDescription(
-            PoseStamped.from_list([2.0 ,2.5,0.0], [0, 0, 0, 1], world.root),
+            PoseStamped.from_list([2.0, 2.5, 0.0], [0, 0, 0, 1], world.root),
             True,
         ),
-
         WipingActionDescription(
             target_pose=clean_up_pose,
             arm=Arms.LEFT,
             tool=sponge,
             pointer_stride=3,
-        )
+        ),
         # SimpleMoveTCPAction(target_location=poses[0], arm=Arms.RIGHT),
     ]
 
@@ -355,6 +371,7 @@ def main():
         node,
         os.path.join(os.path.dirname(__file__), "experiment_metrics.csv"),
     )
+
 
 if __name__ == "__main__":
     main()

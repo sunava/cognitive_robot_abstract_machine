@@ -5,10 +5,17 @@ import rclpy
 from demos.thesis.simulation_setup import add_box, BoxSpec
 from demos.thesis_new.old.Phasenbausteine import FixedFrameProvider, Pose
 from demos.thesis_new.thesis_math.frame_provider import WorldTransformFrameProvider
-from demos.thesis_new.thesis_math.motion_presets import build_default_sequence, build_container_sequence
+from demos.thesis_new.thesis_math.motion_presets import (
+    build_default_sequence,
+    build_container_sequence,
+)
 from demos.thesis_new.utils.rviz import MotionSequenceRviz
 
-from demos.thesis_new.thesis_math.world_utils import try_get_body, make_identity_pose_stamped, body_local_aabb
+from demos.thesis_new.thesis_math.world_utils import (
+    try_get_body,
+    make_identity_pose_stamped,
+    body_local_aabb,
+)
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
 from pycram.datastructures.pose import PoseStamped
@@ -39,7 +46,7 @@ def _setup_world():
 
     bowl = STLParser(
         os.path.join(
-            os.path.dirname(__file__), "..", "..", "resources", "objects", "bowl.stl"
+            os.path.dirname(__file__), "../..", "..", "resources", "objects", "bowl.stl"
         )
     ).parse()
     # for shape in bowl.root.visual.shapes:
@@ -96,7 +103,6 @@ def _print_phase_points(label, points, phase_ids, phases=None, world=None):
     return poses
 
 
-
 def main():
     """Run the RViz demo for default and bowl-constrained sequences."""
     world = _setup_world()
@@ -127,14 +133,11 @@ def main():
             ]
         )
 
-
     seq = build_default_sequence()
 
     prov_world = FixedFrameProvider(Pose())
     _, P_world, id_world = seq.sample(prov_world, dt=0.01)
-   # poses = _print_phase_points("world", P_world, id_world, phases=seq.phases)
-
-
+    # poses = _print_phase_points("world", P_world, id_world, phases=seq.phases)
 
     rv = MotionSequenceRviz(
         P_world,
@@ -164,16 +167,14 @@ def main():
     # #poses = _print_phase_points("bowl", P_container, id_container, phases=seq_container.phases, world=world)
     #
 
-
-
-    #print("one pose only" + str(poses[0]))
+    # print("one pose only" + str(poses[0]))
 
     #
     with world.modify_world():
         knife = STLParser(
             os.path.join(
                 os.path.dirname(__file__),
-                "..",
+                "../..",
                 "..",
                 "resources",
                 "pycram_object_gap_demo",
@@ -182,7 +183,8 @@ def main():
         ).parse()
         robot_tip = world.get_body_by_name("r_gripper_tool_frame")
         connection = FixedConnection(
-            parent=robot_tip, child=knife.root,
+            parent=robot_tip,
+            child=knife.root,
             parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_quaternion(
                 0.1, 0, 0, reference_frame=robot_tip
             ),
@@ -220,7 +222,6 @@ def main():
     #     node=node,
     # )
     # rv_container.publish_once()
-
 
 
 if __name__ == "__main__":

@@ -204,9 +204,13 @@ class NumpyType(TypeDecorator):
 
     impl = types.LargeBinary(4 * 1024 * 1024 * 1024 - 1)  # 4 GB max
 
-    def process_bind_param(self, value: np.ndarray, dialect):
+    def process_bind_param(self, value: Optional[np.ndarray], dialect):
+        if value is None:
+            return None
         array = value.astype(np.float64)
         return array.tobytes()
 
     def process_result_value(self, value: impl, dialect) -> Optional[np.ndarray]:
+        if value is None:
+            return None
         return np.frombuffer(value, dtype=np.float64)

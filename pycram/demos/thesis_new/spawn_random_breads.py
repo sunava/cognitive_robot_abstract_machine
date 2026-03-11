@@ -28,11 +28,11 @@ RESOURCES_DIR = os.path.abspath(
 )
 
 PREFERRED_SURFACE_NAMES = (
-    # "island_countertop",
-    # "countertop",
+    "island_countertop",
+    "countertop",
     "table_area_main",
-    # "coffee_table",
-    # "bedside_table",
+    "coffee_table",
+    "bedside_table",
 )
 
 # Automatic count model: breads ~= usable_surface_area * BREADS_PER_SQM.
