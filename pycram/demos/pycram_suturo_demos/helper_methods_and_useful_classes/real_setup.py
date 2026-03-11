@@ -151,6 +151,7 @@ def world_setup_with_test_objects(
         except Exception:
             test_spawning(hsrb_world)
 
+    viz = None
     if with_viz:
         viz = try_make_viz(hsrb_world, node)
 

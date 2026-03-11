@@ -8,7 +8,9 @@ from typing import Callable
 
 from typing_extensions import Union, Optional, Type, Any, Iterable
 
-from demos.pycram_suturo_demos.helper_methods_and_useful_classes.pickup_helper_methods import attach_object_to_hsrb
+from pycram_suturo_demos.helper_methods_and_useful_classes.pickup_helper_methods import (
+    attach_object_to_hsrb,
+)
 from semantic_digital_twin.datastructures.definitions import GripperState
 from semantic_digital_twin.world_description.world_entity import Body
 from ...motions.pick_up import PullUpMotion
@@ -214,7 +216,6 @@ class PickUpAction(ActionDescription):
         )
 
 
-
 @dataclass
 class GraspingAction(ActionDescription):
     """
@@ -342,7 +343,6 @@ class GiskardPickUpAction(ActionDescription):
             ),
         ).perform()
 
-
     def validate(
         self,
         result: Optional[Any] = None,
@@ -375,6 +375,7 @@ class GiskardPickUpAction(ActionDescription):
             simulated=simulated,
             gripper_vertical=gripper_vertical,
         )
+
 
 @dataclass
 class GiskardGraspAction(ActionDescription):
@@ -437,11 +438,11 @@ class GiskardGraspAction(ActionDescription):
 
     @classmethod
     def description(
-            cls,
-            object_designator: Union[Iterable[Body], Body],
-            arm: Union[Iterable[Arms], Arms] = None,
-            gripper_vertical: Union[Iterable[bool], bool] = True,
-            simulated: bool = True,
+        cls,
+        object_designator: Union[Iterable[Body], Body],
+        arm: Union[Iterable[Arms], Arms] = None,
+        gripper_vertical: Union[Iterable[bool], bool] = True,
+        simulated: bool = True,
     ) -> PartialDesignator[GiskardGraspAction]:
         return PartialDesignator[GiskardGraspAction](
             GiskardGraspAction,
@@ -450,6 +451,8 @@ class GiskardGraspAction(ActionDescription):
             arm=arm,
             gripper_vertical=gripper_vertical,
         )
+
+
 @dataclass
 class GiskardPullUpAction(ActionDescription):
     """
@@ -487,7 +490,9 @@ class GiskardPullUpAction(ActionDescription):
         # Register attach as a post-perform callback BEFORE queuing the motion
 
         manipulator = ViewManager.get_end_effector_view(self.arm, self.robot_view)
-        attach_object_to_hsrb(world=self.world, object_designator=self.object_designator)
+        attach_object_to_hsrb(
+            world=self.world, object_designator=self.object_designator
+        )
         SequentialPlan(
             self.context,
             PullUpMotion(
@@ -502,10 +507,10 @@ class GiskardPullUpAction(ActionDescription):
 
     @classmethod
     def description(
-            cls,
-            object_designator: Union[Iterable[Body], Body],
-            arm: Union[Iterable[Arms], Arms] = None,
-            simulated: bool = True,
+        cls,
+        object_designator: Union[Iterable[Body], Body],
+        arm: Union[Iterable[Arms], Arms] = None,
+        simulated: bool = True,
     ) -> PartialDesignator[GiskardPullUpAction]:
         return PartialDesignator[GiskardPullUpAction](
             GiskardPullUpAction,
@@ -513,6 +518,7 @@ class GiskardPullUpAction(ActionDescription):
             arm=arm,
             simulated=simulated,
         )
+
 
 ReachActionDescription = ReachAction.description
 PickUpActionDescription = PickUpAction.description

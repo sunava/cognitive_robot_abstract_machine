@@ -2,7 +2,9 @@ from typing import Any
 
 from dulwich.porcelain import switch
 
-from demos.pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import robot_setup
+from pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
+    robot_setup,
+)
 from pycram.datastructures.enums import PickUpType
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.robots.abstract_robot import ParallelGripper
@@ -13,8 +15,12 @@ from semantic_digital_twin.world_description.connections import Connection6DoF
 from semantic_digital_twin.world_description.geometry import Box, Scale, Color
 from semantic_digital_twin.world_description.shape_collection import ShapeCollection
 from semantic_digital_twin.world_description.world_entity import Body
-from suturo_resources.queries import query_semantic_annotations_on_surfaces, query_annotations_by_color, \
-    query_get_next_object_euclidean_x_y
+
+# from suturo_resources.queries import (
+#     query_semantic_annotations_on_surfaces,
+#     # query_annotations_by_color,
+#     query_get_next_object_euclidean_x_y,
+# )
 from suturo_resources.suturo_map import load_environment
 
 import semantic_digital_twin
@@ -32,7 +38,9 @@ def initialization(simulation: bool, with_simulated_objects: bool = False):
     :return: Tuple of (node, world, robot_view, context, manipulator).
     """
     result = robot_setup(
-        simulation=simulation, with_simulated_objects=with_simulated_objects
+        simulation=simulation,
+        with_simulated_objects=with_simulated_objects,
+        with_viz=False,
     )
     logger.info("initialization done")
     return (
@@ -159,7 +167,9 @@ def detach_object_from_hsrb(world: World, object_designator: Body):
         world.move_branch_with_fixed_connection(object_designator, world.root)
 
 
-def try_perceiving_and_spawning_and_find_object(world: World, object_name: str) -> Body | None:
+def try_perceiving_and_spawning_and_find_object(
+    world: World, object_name: str
+) -> Body | None:
     """
     Attempts to perceive and spawn all objects via RoboKudo, then retrieves
     the object matching the given name. Gracefully handles missing RoboKudo import.
@@ -172,6 +182,7 @@ def try_perceiving_and_spawning_and_find_object(world: World, object_name: str) 
         from demos.pycram_suturo_demos.helper_methods_and_useful_classes.object_creation import (
             perceive_and_spawn_all_objects,
         )
+
         perceived_objects: dict[Any, Any] = perceive_and_spawn_all_objects(world)
         logger.info(f"perceived following objects: '{perceived_objects}'")
     except ImportError:
@@ -208,7 +219,9 @@ def get_object_with_color(world: World, color: Color) -> Body | None:
     """
     robot_view = world.get_semantic_annotations_by_type(HSRB)[0]
     cooking_table_annotation = world.get_semantic_annotation_by_name("cooking_table")
-    objects_on_table = query_semantic_annotations_on_surfaces([cooking_table_annotation], world).tolist()
+    objects_on_table = query_semantic_annotations_on_surfaces(
+        [cooking_table_annotation], world
+    ).tolist()
     colored_objects = query_annotations_by_color(color, objects_on_table)
     return colored_objects[0].bodies[0] if colored_objects else None
 
@@ -246,14 +259,12 @@ def try_perceive_and_spawn(world: World) -> dict:
     :param world: The world in which to spawn perceived objects.
     :return: A dict of perceived objects, or an empty dict on import failure.
     """
-    try:
-        from demos.pycram_suturo_demos.helper_methods_and_useful_classes.object_creation import (
-            perceive_and_spawn_all_objects,
-        )
-        perceived_objects = perceive_and_spawn_all_objects(world=world)
-    except ImportError:
-        logger.warning("Could not import robokudo")
-        perceived_objects = {}
+    perceived_objects = {}
+    from pycram_suturo_demos.helper_methods_and_useful_classes.object_creation import (
+        perceive_and_spawn_all_objects,
+    )
+
+    perceived_objects = perceive_and_spawn_all_objects(world=world)
     return perceived_objects
 
 
@@ -274,7 +285,9 @@ def get_pickup_mode() -> tuple[PickUpType, str, Color]:
         "object by name": PickUpType.PICK_UP_OBJECT_SEARCH,
     }
 
-    mode_str = input("Pick up by name, color, or nearest object? (e.g: nearest object) ")
+    mode_str = input(
+        "Pick up by name, color, or nearest object? (e.g: nearest object) "
+    )
     mode = mode_map.get(mode_str.strip().lower(), PickUpType.PICK_UP_OBJECT_BY_NEAREST)
 
     match mode:
@@ -282,14 +295,18 @@ def get_pickup_mode() -> tuple[PickUpType, str, Color]:
             object_name = input("Which object do you want to pick up? ")
             logger.info(f"Looking for object: {object_name}")
         case PickUpType.PICK_UP_OBJECT_BY_COLOR:
-            color_str = input("Which color should the object be? (e.g: red, blue, green) ")
+            color_str = input(
+                "Which color should the object be? (e.g: red, blue, green) "
+            )
             object_color = parse_color(color_str)
             logger.info(f"Object color: {object_color}")
 
     return mode, object_name, object_color
 
 
-def object_to_pickup_by_mode(world: World, mode: PickUpType, object_name: str = "", color: Color = Color.WHITE()) -> Body | None:
+def object_to_pickup_by_mode(
+    world: World, mode: PickUpType, object_name: str = "", color: Color = Color.WHITE()
+) -> Body | None:
     """
     Resolves which object to pick up based on the given pickup mode. This is best performed RIGHT before pickup, since the nearest_object method uses the robots position
 
