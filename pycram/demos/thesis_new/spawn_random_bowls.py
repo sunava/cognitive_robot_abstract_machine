@@ -37,6 +37,25 @@ VERTICAL_WIPE_SURFACE_CANDIDATES = (
     ("oven_area_oven_door", 2),
     ("sink_area_dish_washer_door", 2),
 )
+GENERIC_VERTICAL_WIPE_KEYWORDS = (
+    "cabinet",
+    "shelf",
+    # "wall",
+    "door",
+)
+GENERIC_VERTICAL_WIPE_EXCLUDE_KEYWORDS = (
+    "chair",
+    "table",
+    "counter",
+    "sofa",
+    "plant",
+    "lamp",
+    "marker",
+    "cone",
+    "hydrant",
+    "tree",
+    "human",
+)
 
 
 def _parse_stl(*relative_path_parts):
@@ -81,9 +100,7 @@ def _sample_vertical_wipe_targets(world, rng, surface_name, count, start_idx):
     except Exception:
         return [], []
 
-    mins, maxs = body_local_aabb(
-        surface_body, use_visual=False, apply_shape_scale=True
-    )
+    mins, maxs = body_local_aabb(surface_body, use_visual=False, apply_shape_scale=True)
     extents = maxs - mins
     y_margin = min(0.08, max(0.0, 0.18 * extents[1]))
     z_margin = min(0.10, max(0.0, 0.18 * extents[2]))
@@ -162,6 +179,22 @@ def _resolve_vertical_wipe_surfaces(world):
             resolved.append((body_name, count))
             seen.add(body_name)
             break
+
+    for body in getattr(world, "bodies", []):
+        body_name = _body_name(body)
+        body_basename = (_body_basename(body) or "").lower()
+        if not body_name or not body_basename or body_name in seen:
+            continue
+        if any(
+            skip in body_basename for skip in GENERIC_VERTICAL_WIPE_EXCLUDE_KEYWORDS
+        ):
+            continue
+        if not any(
+            keyword in body_basename for keyword in GENERIC_VERTICAL_WIPE_KEYWORDS
+        ):
+            continue
+        resolved.append((body_name, 2))
+        seen.add(body_name)
     return resolved
 
 

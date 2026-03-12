@@ -34,7 +34,32 @@ PREFERRED_SURFACE_NAMES = (
     "coffee_table",
     "bedside_table",
     "kitchen_island_surface",
-    "sink_area_surface",
+    "dinning_room_table__dinning_room_table__base_link",
+    "table_living_room__table_living_room__base_link",
+)
+SURFACE_INCLUDE_KEYWORDS = (
+    "counter",
+    "table",
+    "shelf",
+    "cabinet",
+)
+SURFACE_EXCLUDE_KEYWORDS = (
+    "drawer",
+    "door",
+    "handle",
+    "waterfall",
+    "back",
+    "panel",
+    "wall",
+    "chair",
+    "sofa",
+    "plant",
+    "lamp",
+    "marker",
+    "cone",
+    "hydrant",
+    "tree",
+    "human",
 )
 
 # Automatic count model: breads ~= usable_surface_area * BREADS_PER_SQM.
@@ -87,13 +112,10 @@ def _surface_like_name(name):
     if basename.endswith("_surface"):
         return True
 
-    if ("counter" not in basename) and ("table" not in basename):
+    if not any(keyword in basename for keyword in SURFACE_INCLUDE_KEYWORDS):
         return False
 
-    if any(
-        skip in basename
-        for skip in ("drawer", "door", "handle", "waterfall", "back", "panel")
-    ):
+    if any(skip in basename for skip in SURFACE_EXCLUDE_KEYWORDS):
         return False
     return True
 
@@ -283,9 +305,7 @@ def _is_pose_reachable_for_cutting(robot, world, target_pose):
 
 
 def setup_random_bread_world(seed=None, robot_name=None, environment_name=None):
-    world = setup_thesis_world(
-        robot_name=robot_name, environment_name=environment_name
-    )
+    world = setup_thesis_world(robot_name=robot_name, environment_name=environment_name)
     # world.collision_manager = CollisionManager(
     #     _world=world,
     #     collision_detector=BulletCollisionDetector(_world=world),

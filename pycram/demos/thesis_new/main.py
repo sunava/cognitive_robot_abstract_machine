@@ -9,6 +9,21 @@ if __name__ == "__main__":
     run_thesis_demo(
         "wipe",
         robot_name="pr2",
+        environment_name="isr-testbed",
+    )
+    run_thesis_demo(
+        "cut",
+        robot_name="pr2",
+        environment_name="isr-testbed",
+    )
+    run_thesis_demo(
+        "mix",
+        robot_name="pr2",
+        environment_name="isr-testbed",
+    )
+    run_thesis_demo(
+        "wipe",
+        robot_name="pr2",
         environment_name="kitchen",
     )
     run_thesis_demo("cut")
