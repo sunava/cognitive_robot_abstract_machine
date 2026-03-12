@@ -6,13 +6,10 @@ from dataclasses import field, dataclass
 from datetime import datetime
 from enum import IntEnum
 from itertools import chain
+
 import numpy as np
 import rustworkx as rx
 import rustworkx.visualization
-
-from krrood.entity_query_language.query.match import Match
-from krrood.probabilistic_knowledge.probable_variable import MatchToInstanceTranslator
-from random_events.variable import Variable
 from typing_extensions import (
     Optional,
     Callable,
@@ -30,10 +27,6 @@ from typing_extensions import (
     ClassVar,
 )
 
-from giskardpy.motion_statechart.graph_node import Task, MotionStatechartNode
-from krrood.class_diagrams.failures import ClassIsUnMappedInClassDiagram
-from krrood.ormatic.dao import get_dao_class, to_dao
-from random_events.product_algebra import SimpleEvent
 from giskardpy.motion_statechart.graph_node import Task
 from krrood.entity_query_language.query.match import Match
 from krrood.ormatic.utils import leaf_types
@@ -109,6 +102,7 @@ class Plan:
         self.context = context
         self.world = context.world
         self.robot = context.robot
+        self.ros_node = context.ros_node
         self.super_plan: Plan = context.super_plan
 
         self.add_node(self.root)
@@ -622,6 +616,31 @@ class Plan:
         """
         if cls.on_end_callback and action_type in cls.on_end_callback:
             cls.on_end_callback[action_type].remove(callback)
+
+    def generate_parameterizations(
+        self,
+    ) -> List[Tuple[ActionDescription, Optional[Parameterization]]]:
+        """
+        Parameterize all parameters of a plan using the krrood parameterizer.
+
+        :return: Dictionary mapping all Designator nodes to their parameterizations.
+        """
+
+        ordered_nodes = [self.root] + self.root.recursive_children
+
+        designator_nodes = [
+            node
+            for node in ordered_nodes
+            if isinstance(node, DesignatorNode) and node.designator_type is not None
+        ]
+
+        result = []
+        for node in designator_nodes:
+            if isinstance(node, Match):
+                obj = MatchToInstanceTranslator(node)
+            else:
+                result.append((node, None))
+        return result
 
 
 def managed_node(func: Callable) -> Callable:
