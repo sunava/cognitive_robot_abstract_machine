@@ -23,7 +23,7 @@ from semantic_digital_twin.world import World
 class TestExternalCollisionExpressionManager:
     def test_simple(self, cylinder_bot_world):
         float_variable_data = FloatVariableData()
-        float_variable_data.add_variable(FloatVariable("muh"))
+        float_variable_data.register_expression(FloatVariable("muh"))
 
         env1 = cylinder_bot_world.get_kinematic_structure_entity_by_name("environment")
         env2 = cylinder_bot_world.get_kinematic_structure_entity_by_name("environment2")
@@ -121,7 +121,7 @@ class TestExternalCollisionExpressionManager:
 class TestSelfCollisionExpressionManager:
     def test_simple(self, self_collision_bot_world):
         float_variable_data = FloatVariableData()
-        float_variable_data.add_variable(FloatVariable("muh"))
+        float_variable_data.register_expression(FloatVariable("muh"))
 
         r_tip = self_collision_bot_world.get_kinematic_structure_entity_by_name("r_tip")
         l_tip = self_collision_bot_world.get_kinematic_structure_entity_by_name("l_tip")
@@ -221,7 +221,7 @@ class TestSelfCollisionExpressionManager:
 
     def test_reset(self, self_collision_bot_world):
         float_variable_data = FloatVariableData()
-        float_variable_data.add_variable(FloatVariable("muh"))
+        float_variable_data.register_expression(FloatVariable("muh"))
 
         r_tip = self_collision_bot_world.get_kinematic_structure_entity_by_name("r_tip")
         l_tip = self_collision_bot_world.get_kinematic_structure_entity_by_name("l_tip")
@@ -248,8 +248,8 @@ class TestSelfCollisionExpressionManager:
         self_collisions.register_groups_of_body_combination(root, r_tip)
         # insert a variable between the collision entries to possibly mess with the internal indexing
         v = FloatVariable("muh2")
-        index = float_variable_data.add_variable(v)
-        float_variable_data.set_value(index, 23)
+        float_variable_data.register_expression(v)
+        float_variable_data.set_value(v, 23)
         self_collisions.register_groups_of_body_combination(l_tip, r_tip)
 
         self_collisions.reset_collision_data()
