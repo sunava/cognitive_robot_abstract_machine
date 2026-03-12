@@ -511,3 +511,8 @@ def quaternion_slerp(q1, q2, t):
     if 0.001 > abs(sin_half_theta):
         return 0.5 * q1 + 0.5 * q2
     return ratio_a * q1 + ratio_b * q2
+
+
+def fast_sparse_diag(weights):
+    n = len(weights)
+    return sp.csc_matrix((weights, np.arange(n), np.arange(n + 1)), shape=(n, n))

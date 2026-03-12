@@ -295,7 +295,6 @@ class QPControllerDebugger:
     def inequality_constr_names(self):
         return self.qp_controller.qp_data_factory.qp_data._inequality_bounds.names
 
-    @profile
     def update(
         self,
         qp_data: QPDataExplicit,
@@ -369,7 +368,6 @@ class QPController:
     qp_solver: QPSolver = field(default=None, init=False)
     debugger: QPControllerDebugger = field(default=None, init=False)
 
-    @profile
     def __post_init__(self, degrees_of_freedom: List[DegreeOfFreedom]):
         self.qp_solver = self.config.qp_solver_class()
         if self.config.verbose:
