@@ -83,8 +83,11 @@ class MotionExecutor:
             #         threshold=0,
             #     )
             # )
+            # self.motion_state_chart.add_node(
+            #     CancelMotion.when_any_true([monitor1], exception=Exception(":("))
+            # )
             self.motion_state_chart.add_node(
-                CancelMotion.when_any_true([monitor1], exception=Exception(":("))
+                CancelMotion.when_true(monitor1, exception=Exception(":("))
             )
         self.motion_state_chart.add_node(sequence_node)
 

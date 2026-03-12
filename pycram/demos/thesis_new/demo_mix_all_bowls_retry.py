@@ -159,7 +159,7 @@ def _rotate_bowl_180deg_z(world, bowl):
         bowl.parent_connection.origin = rotated_pose
 
 
-def main_mixing(seed=None, robot_name=None):
+def main_mixing(seed=None, robot_name=None, environment_name=None):
     global session
     if session is None:
         session = pycram_sessionmaker()()
@@ -171,7 +171,9 @@ def main_mixing(seed=None, robot_name=None):
         else int(np.random.SeedSequence().generate_state(1, dtype=np.uint32)[0])
     )
     world, _, surface_plan = setup_random_bowl_world(
-        seed=effective_seed, robot_name=robot_name
+        seed=effective_seed,
+        robot_name=robot_name,
+        environment_name=environment_name,
     )
 
     node = setup_experiment_runtime(

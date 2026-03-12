@@ -6,7 +6,11 @@ if __name__ == "__main__":
     session = pycram_sessionmaker()()
     Base.metadata.create_all(session.bind)
     session.commit()
-    run_thesis_demo("wipe", robot_name="tiago")
+    run_thesis_demo(
+        "wipe",
+        robot_name="pr2",
+        environment_name="kitchen",
+    )
     run_thesis_demo("cut")
     run_thesis_demo("mix")
     run_thesis_demo("cut")

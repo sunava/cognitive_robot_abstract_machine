@@ -33,6 +33,8 @@ PREFERRED_SURFACE_NAMES = (
     "table_area_main",
     "coffee_table",
     "bedside_table",
+    "kitchen_island_surface",
+    "sink_area_surface",
 )
 
 # Automatic count model: breads ~= usable_surface_area * BREADS_PER_SQM.
@@ -70,11 +72,28 @@ def _body_name(body):
     return maybe_name if isinstance(maybe_name, str) else None
 
 
+def _body_basename(body_or_name):
+    name = body_or_name if isinstance(body_or_name, str) else _body_name(body_or_name)
+    if not name:
+        return None
+    return str(name).split("/")[-1]
+
+
 def _surface_like_name(name):
-    lname = name.lower()
-    if ("counter" not in lname) and ("table" not in lname):
+    basename = (_body_basename(name) or "").lower()
+    if not basename:
         return False
-    if any(skip in lname for skip in ("drawer", "door", "handle", "waterfall", "back")):
+
+    if basename.endswith("_surface"):
+        return True
+
+    if ("counter" not in basename) and ("table" not in basename):
+        return False
+
+    if any(
+        skip in basename
+        for skip in ("drawer", "door", "handle", "waterfall", "back", "panel")
+    ):
         return False
     return True
 
@@ -83,10 +102,13 @@ def _collect_surface_bodies(world):
     surfaces = []
     seen = set()
 
-    for name in PREFERRED_SURFACE_NAMES:
-        try:
-            body = world.get_body_by_name(name)
-        except Exception:
+    preferred_basenames = {name.lower() for name in PREFERRED_SURFACE_NAMES}
+    for body in getattr(world, "bodies", []):
+        name = _body_name(body)
+        basename = (_body_basename(name) or "").lower()
+        if not name or not basename or basename not in preferred_basenames:
+            continue
+        if name in seen:
             continue
         surfaces.append(body)
         seen.add(name)
@@ -260,8 +282,10 @@ def _is_pose_reachable_for_cutting(robot, world, target_pose):
         return False
 
 
-def setup_random_bread_world(seed=None, robot_name=None):
-    world = setup_thesis_world(robot_name=robot_name)
+def setup_random_bread_world(seed=None, robot_name=None, environment_name=None):
+    world = setup_thesis_world(
+        robot_name=robot_name, environment_name=environment_name
+    )
     # world.collision_manager = CollisionManager(
     #     _world=world,
     #     collision_detector=BulletCollisionDetector(_world=world),
@@ -270,7 +294,7 @@ def setup_random_bread_world(seed=None, robot_name=None):
 
     surfaces = _collect_surface_bodies(world)
     if not surfaces:
-        raise RuntimeError("No apartment surfaces found for random bread placement.")
+        raise RuntimeError("No support surfaces found for random bread placement.")
 
     scale_choices = np.array([0.8, 1.0, 1.2, 1.4, 1.6], dtype=float)
     base_radius = _bread_base_xy_radius()

@@ -233,7 +233,7 @@ def _rotate_bread_180deg_z(world, bread):
         bread.parent_connection.origin = rotated_pose
 
 
-def main_cutting(seed=None, robot_name=None):
+def main_cutting(seed=None, robot_name=None, environment_name=None):
     global session
     if session is None:
         session = pycram_sessionmaker()()
@@ -245,7 +245,9 @@ def main_cutting(seed=None, robot_name=None):
         else int(np.random.SeedSequence().generate_state(1, dtype=np.uint32)[0])
     )
     world, _, surface_plan = setup_random_bread_world(
-        seed=effective_seed, robot_name=robot_name
+        seed=effective_seed,
+        robot_name=robot_name,
+        environment_name=environment_name,
     )
 
     node = setup_experiment_runtime(

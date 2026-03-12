@@ -224,7 +224,7 @@ def _try_wipe(context, target_pose, arm, tool):
             ParkArmsActionDescription(get_park_arms_argument(context.world)),
             NavigateActionDescription(pickup_loc, True),
         ).perform()
-    print(target_pose)
+    # print(target_pose)
     with simulated_robot_with_collision:
         current_plan = SequentialPlan(
             context,
@@ -260,7 +260,7 @@ def _rotate_target_180deg_z(world, target_body):
         target_body.parent_connection.origin = rotated_pose
 
 
-def main_wiping(seed=None, robot_name=None):
+def main_wiping(seed=None, robot_name=None, environment_name=None):
     global session
     if session is None:
         session = pycram_sessionmaker()()
@@ -272,7 +272,9 @@ def main_wiping(seed=None, robot_name=None):
         else int(np.random.SeedSequence().generate_state(1, dtype=np.uint32)[0])
     )
     world, sampled_targets, surface_plan = sample_random_bowl_poses(
-        seed=effective_seed, robot_name=robot_name
+        seed=effective_seed,
+        robot_name=robot_name,
+        environment_name=environment_name,
     )
 
     node = setup_experiment_runtime(
@@ -331,7 +333,9 @@ def main_wiping(seed=None, robot_name=None):
             successful_target_names=successful_target_names,
         )
         target_pose = PoseStamped.from_spatial_type(target_data["world_pose"])
-        spawn_xyz = np.round(np.asarray(target_data["pose_xyz"], dtype=float), 4).tolist()
+        spawn_xyz = np.round(
+            np.asarray(target_data["pose_xyz"], dtype=float), 4
+        ).tolist()
         common_result_kwargs = {
             "task_name": TASK_NAME,
             "run_id": run_id,
@@ -357,7 +361,9 @@ def main_wiping(seed=None, robot_name=None):
         for attempt_index, (arm, tool) in enumerate(arm_tools):
             phase = "primary" if attempt_index == 0 else "fallback"
             decision = "wipe" if attempt_index == 0 else "retry_with_left_arm"
-            decision_reason = "primary_success" if attempt_index == 0 else "right_arm_failed"
+            decision_reason = (
+                "primary_success" if attempt_index == 0 else "right_arm_failed"
+            )
             print(f"[wipe] {target_name}: try {arm.name} arm at spawn pose {spawn_xyz}")
             try:
                 attempt_count += 1
@@ -474,6 +480,7 @@ def main_wiping(seed=None, robot_name=None):
     print(f"  results csv: {RESULTS_CSV_PATH}")
 
     shutdown_experiment_runtime(node)
+
 
 def main_mixing(seed=None):
     return main_wiping(seed=seed)

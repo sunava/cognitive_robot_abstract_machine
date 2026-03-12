@@ -3,12 +3,12 @@ import numpy as np
 
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.pose import PoseStamped
-from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.geometry import Color
 
 from demos.thesis_new.spawn_random_breads import (
+    _body_basename,
     _body_name,
     _collect_surface_bodies,
     _count_for_surface,
@@ -30,9 +30,12 @@ BOWL_RADIUS_SAFETY_FACTOR = 1.08
 MIN_BOWL_CLEARANCE_M = 0.03
 STRICT_CLEAN_MODE = True
 DEFAULT_BOWL_COLOR = Color(R=0.78, G=0.80, B=0.86)
-VERTICAL_WIPE_SURFACES = (
+VERTICAL_WIPE_SURFACE_CANDIDATES = (
     ("cabinet3", 2),
-    (PrefixedName("cabinet9", "apartment"), 2),
+    ("cabinet9", 2),
+    ("iai_fridge_door", 2),
+    ("oven_area_oven_door", 2),
+    ("sink_area_dish_washer_door", 2),
 )
 
 
@@ -143,12 +146,31 @@ def _sample_vertical_wipe_targets(world, rng, surface_name, count, start_idx):
     return placements, [surface_plan_entry]
 
 
+def _resolve_vertical_wipe_surfaces(world):
+    resolved = []
+    seen = set()
+    for candidate_name, count in VERTICAL_WIPE_SURFACE_CANDIDATES:
+        for body in getattr(world, "bodies", []):
+            body_name = _body_name(body)
+            body_basename = _body_basename(body)
+            if not body_name or not body_basename:
+                continue
+            if candidate_name not in (body_name, body_basename):
+                continue
+            if body_name in seen:
+                continue
+            resolved.append((body_name, count))
+            seen.add(body_name)
+            break
+    return resolved
+
+
 def _sample_random_bowl_layout(world, seed=None, spawn_bowls=True):
     rng = np.random.default_rng(seed)
 
     surfaces = _collect_surface_bodies(world)
     if not surfaces:
-        raise RuntimeError("No apartment surfaces found for random bowl placement.")
+        raise RuntimeError("No support surfaces found for random bowl placement.")
 
     scale_choices = np.array([0.8, 1.0, 1.2, 1.4, 1.6], dtype=float)
     base_radius = _bowl_base_xy_radius()
@@ -246,9 +268,11 @@ def _sample_random_bowl_layout(world, seed=None, spawn_bowls=True):
     return world, placements, surface_plan
 
 
-def setup_random_bowl_world(seed=None, robot_name=None):
+def setup_random_bowl_world(seed=None, robot_name=None, environment_name=None):
     world, placements, surface_plan = _sample_random_bowl_layout(
-        setup_thesis_world(robot_name=robot_name), seed=seed, spawn_bowls=True
+        setup_thesis_world(robot_name=robot_name, environment_name=environment_name),
+        seed=seed,
+        spawn_bowls=True,
     )
     return (
         world,
@@ -265,9 +289,11 @@ def setup_random_bowl_world(seed=None, robot_name=None):
     )
 
 
-def sample_random_bowl_poses(seed=None, robot_name=None):
+def sample_random_bowl_poses(seed=None, robot_name=None, environment_name=None):
     world, placements, surface_plan = _sample_random_bowl_layout(
-        setup_thesis_world(robot_name=robot_name), seed=seed, spawn_bowls=False
+        setup_thesis_world(robot_name=robot_name, environment_name=environment_name),
+        seed=seed,
+        spawn_bowls=False,
     )
     rng = np.random.default_rng(seed)
 
@@ -280,7 +306,7 @@ def sample_random_bowl_poses(seed=None, robot_name=None):
     extra_targets = []
     extra_surface_plan = []
     next_idx = len(renamed_placements) + 1
-    for surface_name, count in VERTICAL_WIPE_SURFACES:
+    for surface_name, count in _resolve_vertical_wipe_surfaces(world):
         targets, plan_entries = _sample_vertical_wipe_targets(
             world, rng, surface_name, count, start_idx=next_idx
         )
