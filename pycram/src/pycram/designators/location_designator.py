@@ -253,7 +253,9 @@ class CostmapLocation(LocationDesignatorDescription):
         for params in self.generate_permutations():
             test_world = deepcopy(self.world)
             test_world.name = "Test World"
-
+            VizMarkerPublisher(
+                _world=test_world, node=self.context.ros_node
+            ).with_tf_publisher()
             params_box = Box(params)
             # Target is either a pose or an object since the object is later needed for the visibility validator
             target = (
@@ -296,8 +298,9 @@ class CostmapLocation(LocationDesignatorDescription):
             for pose_candidate in final_map:
                 logger.debug(f"Testing candidate pose at {pose_candidate}")
                 pose_candidate.position.z = 0
-                test_robot.root.parent_connection.origin = (
-                    pose_candidate.to_spatial_type()
+                test_robot.root.parent_connection.origin = self.world.transform(
+                    pose_candidate.to_spatial_type(),
+                    self.robot_view.root.parent_connection.parent,
                 )
 
                 collisions = collision_check(
