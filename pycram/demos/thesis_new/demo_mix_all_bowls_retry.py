@@ -38,10 +38,13 @@ from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.world_description.geometry import Color
 
 from demos.thesis_new.spawn_random_bowls import _parse_stl, setup_random_bowl_world
+from demos.thesis_new.tool_mounts import get_tool_mount_pose_kwargs
+from demos.thesis_new.world_setup import resolve_robot_name
 from demos.thesis_new.utils.demo_utils import (
-    attach_bimanual_tools,
+    attach_available_tools,
     collect_named_targets,
     commit_plan_to_db,
+    get_park_arms_argument,
     highlight_current_target,
     setup_experiment_runtime,
     shutdown_experiment_runtime,
@@ -116,7 +119,7 @@ def _try_mix(context, bowl, arm, tool):
     with simulated_robot_without_collision:
         SequentialPlan(
             context,
-            ParkArmsActionDescription(Arms.BOTH),
+            ParkArmsActionDescription(get_park_arms_argument(context.world)),
             NavigateActionDescription(pickup_loc, True),
         ).perform()
 
@@ -156,7 +159,7 @@ def _rotate_bowl_180deg_z(world, bowl):
         bowl.parent_connection.origin = rotated_pose
 
 
-def main_mixing(seed=None):
+def main_mixing(seed=None, robot_name=None):
     global session
     if session is None:
         session = pycram_sessionmaker()()
@@ -167,21 +170,24 @@ def main_mixing(seed=None):
         if seed is not None
         else int(np.random.SeedSequence().generate_state(1, dtype=np.uint32)[0])
     )
-    world, _, surface_plan = setup_random_bowl_world(seed=effective_seed)
+    world, _, surface_plan = setup_random_bowl_world(
+        seed=effective_seed, robot_name=robot_name
+    )
 
     node = setup_experiment_runtime(
         world=world,
         node_name="pycram_mix_all_bowls_retry",
     )
 
-    right_whisk, left_whisk = attach_bimanual_tools(
+    resolved_robot_name = resolve_robot_name(robot_name)
+    arm_tools = attach_available_tools(
         world,
         _parse_stl,
         mesh_parts=("pycram_object_gap_demo", "whisk.stl"),
         right_name="whisk_right",
         left_name="whisk_left",
-        right_pose_kwargs={"x": 0.0, "y": 0.0, "z": -0.08, "roll": 0.0, "pitch": np.pi / 2, "yaw": 0.0},
-        left_pose_kwargs={"x": 0.0, "y": 0.0, "z": 0.08, "roll": 0.0, "pitch": -np.pi / 2, "yaw": 0.0},
+        right_pose_kwargs=get_tool_mount_pose_kwargs("mix", resolved_robot_name, Arms.RIGHT),
+        left_pose_kwargs=get_tool_mount_pose_kwargs("mix", resolved_robot_name, Arms.LEFT),
         tool_cls=Whisk,
     )
     bowls = collect_named_targets(world, "bowl_")
@@ -212,7 +218,7 @@ def main_mixing(seed=None):
     with simulated_robot_without_collision:
         SequentialPlan(
             context,
-            ParkArmsActionDescription(Arms.BOTH),
+            ParkArmsActionDescription(get_park_arms_argument(world)),
             MoveTorsoActionDescription(TorsoState.HIGH),
         ).perform()
 
@@ -258,147 +264,102 @@ def main_mixing(seed=None):
             "assistance_type": "",
         }
 
-        print(f"[mix] {bowl_name}: try RIGHT arm")
-        try:
-            attempt_count += 1
-            _try_mix(context, bowl, Arms.RIGHT, right_whisk)
-            success_primary += 1
-            successful_bowls.add(bowl)
+        for attempt_index, (arm, tool) in enumerate(arm_tools):
+            phase = "primary" if attempt_index == 0 else "fallback"
+            decision = "mix" if attempt_index == 0 else "retry_with_left_arm"
+            decision_reason = "primary_success" if attempt_index == 0 else "right_arm_failed"
+            print(f"[mix] {bowl_name}: try {arm.name} arm")
+            try:
+                attempt_count += 1
+                _try_mix(context, bowl, arm, tool)
+                if attempt_index == 0:
+                    success_primary += 1
+                else:
+                    success_fallback += 1
+                successful_bowls.add(bowl)
+                result_row = _record_bowl_result(
+                    bowl_results,
+                    bowl_name,
+                    robot_name,
+                    "success",
+                    arm.name,
+                    _tool_name(tool),
+                    phase,
+                    attempt_failures,
+                    **common_result_kwargs,
+                    feasibility_reason="ok",
+                    robot_decision=decision,
+                    decision_reason=decision_reason,
+                    assistance_requested=False,
+                    assistance_completed=False,
+                    task_blocked_by_prerequisite=False,
+                    task_resumed_after_assistance=False,
+                    final_success=True,
+                    total_attempts=attempt_count,
+                    retry_count=max(0, attempt_count - 1),
+                    collision_failure_count=collision_failure_count,
+                    recovery_used=attempt_index > 0,
+                    recovery_success=attempt_index > 0,
+                    perturbation_applied=perturbation_applied,
+                    perturbation_type=perturbation_type,
+                    execution_time_s=time.perf_counter() - bowl_start_time,
+                )
+                append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
+                suffix = "" if attempt_index == 0 else " (fallback)"
+                print(f"[ok] {bowl_name}: mixed with {arm.name} arm{suffix}")
+                break
+            except TimeoutError as exc:
+                collision_failure_count += 1
+                attempt_failures.append(
+                    f"{arm.name} {phase} -> {_format_attempt_error(exc)}"
+                )
+                print(
+                    f"[{'retry' if attempt_index < len(arm_tools) - 1 else 'fail'}] {bowl_name}: {arm.name} timed out "
+                    f"({type(exc).__name__}: {exc})"
+                )
+            except Exception as exc:
+                if _is_collision_like_failure(exc):
+                    collision_failure_count += 1
+                attempt_failures.append(
+                    f"{arm.name} {phase} -> {_format_attempt_error(exc)}"
+                )
+                print(
+                    f"[{'retry' if attempt_index < len(arm_tools) - 1 else 'fail'}] {bowl_name}: {arm.name} failed "
+                    f"({type(exc).__name__}: {exc})"
+                )
+        else:
+            failed += 1
+            failed_bowls.add(bowl)
+            last_tool = arm_tools[-1][1]
             result_row = _record_bowl_result(
                 bowl_results,
                 bowl_name,
                 robot_name,
-                "success",
-                "RIGHT",
-                _tool_name(right_whisk),
-                "primary",
+                "failed",
+                "",
+                _tool_name(last_tool),
+                "fallback" if len(arm_tools) > 1 else "primary",
                 attempt_failures,
                 **common_result_kwargs,
-                feasibility_reason="ok",
-                robot_decision="mix",
-                decision_reason="primary_success",
+                feasibility_reason="collision_or_motion_failure",
+                robot_decision="task_failed",
+                decision_reason="all_mix_attempts_failed",
                 assistance_requested=False,
                 assistance_completed=False,
                 task_blocked_by_prerequisite=False,
                 task_resumed_after_assistance=False,
-                final_success=True,
+                final_success=False,
                 total_attempts=attempt_count,
                 retry_count=max(0, attempt_count - 1),
                 collision_failure_count=collision_failure_count,
-                recovery_used=False,
+                recovery_used=len(arm_tools) > 1,
                 recovery_success=False,
                 perturbation_applied=perturbation_applied,
                 perturbation_type=perturbation_type,
                 execution_time_s=time.perf_counter() - bowl_start_time,
             )
             append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
-            print(f"[ok] {bowl_name}: mixed with RIGHT arm")
             continue
-        except TimeoutError as exc_right_timeout:
-            collision_failure_count += 1
-            attempt_failures.append(
-                f"RIGHT primary -> {_format_attempt_error(exc_right_timeout)}"
-            )
-            print(
-                f"[retry] {bowl_name}: RIGHT timed out "
-                f"({type(exc_right_timeout).__name__}: {exc_right_timeout})"
-            )
-        except Exception as exc_right:
-            if _is_collision_like_failure(exc_right):
-                collision_failure_count += 1
-            attempt_failures.append(
-                f"RIGHT primary -> {_format_attempt_error(exc_right)}"
-            )
-            print(
-                f"[retry] {bowl_name}: RIGHT failed "
-                f"({type(exc_right).__name__}: {exc_right})"
-            )
-
-        print(f"[mix] {bowl_name}: try LEFT arm")
-        try:
-            attempt_count += 1
-            _try_mix(context, bowl, Arms.LEFT, left_whisk)
-            success_fallback += 1
-            successful_bowls.add(bowl)
-            result_row = _record_bowl_result(
-                bowl_results,
-                bowl_name,
-                robot_name,
-                "success",
-                "LEFT",
-                _tool_name(left_whisk),
-                "fallback",
-                attempt_failures,
-                **common_result_kwargs,
-                feasibility_reason="ok",
-                robot_decision="retry_with_left_arm",
-                decision_reason="right_arm_failed",
-                assistance_requested=False,
-                assistance_completed=False,
-                task_blocked_by_prerequisite=False,
-                task_resumed_after_assistance=False,
-                final_success=True,
-                total_attempts=attempt_count,
-                retry_count=max(0, attempt_count - 1),
-                collision_failure_count=collision_failure_count,
-                recovery_used=True,
-                recovery_success=True,
-                perturbation_applied=perturbation_applied,
-                perturbation_type=perturbation_type,
-                execution_time_s=time.perf_counter() - bowl_start_time,
-            )
-            append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
-            print(f"[ok] {bowl_name}: mixed with LEFT arm (fallback)")
-            continue
-        except TimeoutError as exc_left_timeout:
-            collision_failure_count += 1
-            attempt_failures.append(
-                f"LEFT fallback -> {_format_attempt_error(exc_left_timeout)}"
-            )
-            print(
-                f"[fail] {bowl_name}: LEFT timed out "
-                f"({type(exc_left_timeout).__name__}: {exc_left_timeout})"
-            )
-        except Exception as exc_left:
-            if _is_collision_like_failure(exc_left):
-                collision_failure_count += 1
-            attempt_failures.append(
-                f"LEFT fallback -> {_format_attempt_error(exc_left)}"
-            )
-            print(
-                f"[fail] {bowl_name}: LEFT failed "
-                f"({type(exc_left).__name__}: {exc_left})"
-            )
-        failed += 1
-        failed_bowls.add(bowl)
-        result_row = _record_bowl_result(
-            bowl_results,
-            bowl_name,
-            robot_name,
-            "failed",
-            "",
-            _tool_name(left_whisk),
-            "fallback",
-            attempt_failures,
-            **common_result_kwargs,
-            feasibility_reason="collision_or_motion_failure",
-            robot_decision="task_failed",
-            decision_reason="all_mix_attempts_failed",
-            assistance_requested=False,
-            assistance_completed=False,
-            task_blocked_by_prerequisite=False,
-            task_resumed_after_assistance=False,
-            final_success=False,
-            total_attempts=attempt_count,
-            retry_count=max(0, attempt_count - 1),
-            collision_failure_count=collision_failure_count,
-            recovery_used=True,
-            recovery_success=False,
-            perturbation_applied=perturbation_applied,
-            perturbation_type=perturbation_type,
-            execution_time_s=time.perf_counter() - bowl_start_time,
-        )
-        append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
 
     highlight_current_target(
         world,

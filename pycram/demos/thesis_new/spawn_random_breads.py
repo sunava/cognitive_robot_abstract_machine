@@ -5,7 +5,6 @@ import rclpy
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.pose import PoseStamped
 from pycram.costmaps import OccupancyCostmap, RingCostmap
-from pycram.testing import setup_world
 from rclpy.duration import Duration as RclpyDuration
 from rclpy.time import Time
 from semantic_digital_twin.adapters.mesh import STLParser
@@ -22,6 +21,7 @@ from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.geometry import Color, Scale
 
 from demos.thesis_new.thesis_math.world_utils import body_local_aabb
+from demos.thesis_new.world_setup import setup_thesis_world
 
 RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")
@@ -260,8 +260,8 @@ def _is_pose_reachable_for_cutting(robot, world, target_pose):
         return False
 
 
-def setup_random_bread_world(seed=None):
-    world = setup_world()
+def setup_random_bread_world(seed=None, robot_name=None):
+    world = setup_thesis_world(robot_name=robot_name)
     # world.collision_manager = CollisionManager(
     #     _world=world,
     #     collision_detector=BulletCollisionDetector(_world=world),

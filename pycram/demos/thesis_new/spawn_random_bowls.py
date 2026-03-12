@@ -3,6 +3,7 @@ import numpy as np
 
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.pose import PoseStamped
+from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.geometry import Color
@@ -20,7 +21,7 @@ from demos.thesis_new.spawn_random_breads import (
     _tint_surfaces_light_brown,
     body_local_aabb,
 )
-from pycram.testing import setup_world
+from demos.thesis_new.world_setup import setup_thesis_world
 
 RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")
@@ -29,6 +30,10 @@ BOWL_RADIUS_SAFETY_FACTOR = 1.08
 MIN_BOWL_CLEARANCE_M = 0.03
 STRICT_CLEAN_MODE = True
 DEFAULT_BOWL_COLOR = Color(R=0.78, G=0.80, B=0.86)
+VERTICAL_WIPE_SURFACES = (
+    ("cabinet3", 2),
+    (PrefixedName("cabinet9", "apartment"), 2),
+)
 
 
 def _parse_stl(*relative_path_parts):
@@ -67,8 +72,78 @@ def _spawn_bowl_at_local_pose(
     return world_pose
 
 
-def setup_random_bowl_world(seed=None):
-    world = setup_world()
+def _sample_vertical_wipe_targets(world, rng, surface_name, count, start_idx):
+    try:
+        surface_body = world.get_body_by_name(surface_name)
+    except Exception:
+        return [], []
+
+    mins, maxs = body_local_aabb(
+        surface_body, use_visual=False, apply_shape_scale=True
+    )
+    extents = maxs - mins
+    y_margin = min(0.08, max(0.0, 0.18 * extents[1]))
+    z_margin = min(0.10, max(0.0, 0.18 * extents[2]))
+    lo_y = mins[1] + y_margin
+    hi_y = maxs[1] - y_margin
+    lo_z = mins[2] + z_margin
+    hi_z = maxs[2] - z_margin
+
+    placements = []
+    occupied_yz = []
+    door_offset = 0.03
+    yz_clearance = 0.18
+
+    for local_idx in range(count):
+        for _attempt in range(80):
+            if hi_y <= lo_y:
+                y_local = 0.5 * (mins[1] + maxs[1])
+            else:
+                y_local = float(rng.uniform(lo_y, hi_y))
+            if hi_z <= lo_z:
+                z_local = 0.5 * (mins[2] + maxs[2])
+            else:
+                z_local = float(rng.uniform(lo_z, hi_z))
+
+            if any(
+                ((y_local - oy) ** 2 + (z_local - oz) ** 2) < yz_clearance**2
+                for oy, oz in occupied_yz
+            ):
+                continue
+
+            local_pose = HomogeneousTransformationMatrix.from_xyz_rpy(
+                x=float(maxs[0] + door_offset),
+                y=float(y_local),
+                z=float(z_local),
+                roll=0.0,
+                pitch=np.pi / 2,
+                yaw=0.0,
+                reference_frame=surface_body,
+            )
+            world_pose = world.transform(local_pose, world.root)
+            placements.append(
+                {
+                    "bowl_name": f"wipe_target_{start_idx + local_idx:04d}",
+                    "surface_name": str(surface_body.name),
+                    "scale": 1.0,
+                    "pose_xyz": _pose_xyz(world_pose),
+                    "world_pose": world_pose,
+                }
+            )
+            occupied_yz.append((y_local, z_local))
+            break
+
+    surface_area = max(0.0, float(hi_y - lo_y)) * max(0.0, float(hi_z - lo_z))
+    surface_plan_entry = (
+        str(surface_body.name),
+        surface_area,
+        count,
+        len(placements),
+    )
+    return placements, [surface_plan_entry]
+
+
+def _sample_random_bowl_layout(world, seed=None, spawn_bowls=True):
     rng = np.random.default_rng(seed)
 
     surfaces = _collect_surface_bodies(world)
@@ -140,19 +215,27 @@ def setup_random_bowl_world(seed=None):
 
                         created_idx += 1
                         bowl_name = f"bowl_{created_idx:04d}"
-                        world_pose = _spawn_bowl_at_local_pose(
-                            world=world,
-                            surface_body=surface_body,
-                            bowl_name=bowl_name,
-                            scale=scale,
-                            x_local=x_local,
-                            y_local=y_local,
-                            yaw=yaw,
-                            z_local=z_local,
-                        )
+                        world_pose = candidate_world_pose
+                        if spawn_bowls:
+                            world_pose = _spawn_bowl_at_local_pose(
+                                world=world,
+                                surface_body=surface_body,
+                                bowl_name=bowl_name,
+                                scale=scale,
+                                x_local=x_local,
+                                y_local=y_local,
+                                yaw=yaw,
+                                z_local=z_local,
+                            )
                         occupied_xy.append((x_local, y_local, radius))
                         placements.append(
-                            (bowl_name, surface_name, scale, _pose_xyz(world_pose))
+                            {
+                                "bowl_name": bowl_name,
+                                "surface_name": surface_name,
+                                "scale": scale,
+                                "pose_xyz": _pose_xyz(world_pose),
+                                "world_pose": world_pose,
+                            }
                         )
                         placed = True
                         break
@@ -161,3 +244,48 @@ def setup_random_bowl_world(seed=None):
             surface_plan.append((surface_name, area_m2, target_count, len(occupied_xy)))
 
     return world, placements, surface_plan
+
+
+def setup_random_bowl_world(seed=None, robot_name=None):
+    world, placements, surface_plan = _sample_random_bowl_layout(
+        setup_thesis_world(robot_name=robot_name), seed=seed, spawn_bowls=True
+    )
+    return (
+        world,
+        [
+            (
+                placement["bowl_name"],
+                placement["surface_name"],
+                placement["scale"],
+                placement["pose_xyz"],
+            )
+            for placement in placements
+        ],
+        surface_plan,
+    )
+
+
+def sample_random_bowl_poses(seed=None, robot_name=None):
+    world, placements, surface_plan = _sample_random_bowl_layout(
+        setup_thesis_world(robot_name=robot_name), seed=seed, spawn_bowls=False
+    )
+    rng = np.random.default_rng(seed)
+
+    renamed_placements = []
+    for idx, placement in enumerate(placements, start=1):
+        renamed = dict(placement)
+        renamed["bowl_name"] = f"wipe_target_{idx:04d}"
+        renamed_placements.append(renamed)
+
+    extra_targets = []
+    extra_surface_plan = []
+    next_idx = len(renamed_placements) + 1
+    for surface_name, count in VERTICAL_WIPE_SURFACES:
+        targets, plan_entries = _sample_vertical_wipe_targets(
+            world, rng, surface_name, count, start_idx=next_idx
+        )
+        extra_targets.extend(targets)
+        extra_surface_plan.extend(plan_entries)
+        next_idx += len(targets)
+
+    return world, renamed_placements + extra_targets, surface_plan + extra_surface_plan
