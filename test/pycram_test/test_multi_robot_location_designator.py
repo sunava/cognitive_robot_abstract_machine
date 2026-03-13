@@ -4,7 +4,7 @@ import pytest
 import rclpy
 from typing_extensions import Generator, Tuple
 
-from krrood.entity_query_language.backends import FullyFactorizedBackend
+from krrood.entity_query_language.backends import ProbabilisticBackend
 from krrood.entity_query_language.factories import underspecified, variable_from
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
@@ -145,7 +145,7 @@ def test_reachability_pose_costmap_location(immutable_multiple_robot_simple_apar
     )
     underspecified_costmap_location.resolve()
     specified_costmap_location = next(
-        FullyFactorizedBackend().evaluate(underspecified_costmap_location)
+        ProbabilisticBackend().evaluate(underspecified_costmap_location)
     )
     location = next(iter(specified_costmap_location))
 
@@ -162,29 +162,34 @@ def test_visibility_costmap_location(immutable_multiple_robot_simple_apartment):
     with simulated_robot:
         plan.perform()
     location_desig = CostmapLocation(
-        world.get_body_by_name("milk.stl"), visible_for=robot_view
+        PoseStamped.from_spatial_type(world.get_body_by_name("milk.stl").global_pose),
+        context=context,
+        visible=True,
     )
-    plan = execute_single(context, NavigateAction(location_desig))
-    location = location_desig.resolve()
+    location = next(iter(location_desig))
+
     assert len(location.position.to_list()) == 3
     assert len(location.orientation.to_list()) == 4
 
 
 def test_visibility_pose_costmap_location(immutable_multiple_robot_simple_apartment):
     world, robot_view, context = immutable_multiple_robot_simple_apartment
-    plan = SequentialPlan(
+    plan = sequential(
+        [
+            ParkArmsAction(Arms.BOTH),
+            MoveTorsoAction(TorsoState.HIGH),
+        ],
         context,
-        ParkArmsActionDescription(Arms.BOTH),
-        MoveTorsoActionDescription(TorsoState.HIGH),
     )
     with simulated_robot:
         plan.perform()
     location_desig = CostmapLocation(
         PoseStamped.from_list([-1, 0, 1.2], frame=world.root),
-        visible_for=robot_view,
+        visible=True,
+        context=context,
     )
-    plan = SequentialPlan(context, NavigateActionDescription(location_desig))
-    location = location_desig.resolve()
+
+    location = next(iter(location_desig))
     assert len(location.position.to_list()) == 3
     assert len(location.orientation.to_list()) == 4
 
@@ -193,21 +198,24 @@ def test_reachability_and_visibility_costmap_location(
     immutable_multiple_robot_simple_apartment,
 ):
     world, robot_view, context = immutable_multiple_robot_simple_apartment
-    plan = SequentialPlan(
+    plan = sequential(
+        [
+            ParkArmsAction(Arms.BOTH),
+            MoveTorsoAction(TorsoState.HIGH),
+        ],
         context,
-        ParkArmsActionDescription(Arms.BOTH),
-        MoveTorsoActionDescription(TorsoState.HIGH),
     )
     with simulated_robot:
         plan.perform()
     world.notify_state_change()
     location_desig = CostmapLocation(
-        world.get_body_by_name("milk.stl"),
-        reachable_for=robot_view,
-        visible_for=robot_view,
+        PoseStamped.from_spatial_type(world.get_body_by_name("milk.stl").global_pose),
+        reachable=True,
+        visible=True,
+        context=context,
+        reachable_arm=Arms.BOTH,
     )
-    plan = SequentialPlan(context, NavigateActionDescription(location_desig))
-    location = location_desig.resolve()
+    location = next(iter(location_desig))
     assert len(location.position.to_list()) == 3
     assert len(location.orientation.to_list()) == 4
 
@@ -215,12 +223,11 @@ def test_reachability_and_visibility_costmap_location(
 def test_accessing_location(immutable_model_world):
     world, robot_view, context = immutable_model_world
     location_desig = AccessingLocation(
-        world.get_body_by_name("handle_cab10_m"),
-        robot_desig=robot_view,
+        handle=world.get_body_by_name("handle_cab10_m"),
         arm=Arms.RIGHT,
+        context=context,
     )
-    plan = SequentialPlan(context, NavigateActionDescription(location_desig))
-    access_pose = location_desig.resolve()
+    access_pose = next(iter(location_desig))
 
     assert len(access_pose.position.to_list()) == 3
     assert len(access_pose.orientation.to_list()) == 4
