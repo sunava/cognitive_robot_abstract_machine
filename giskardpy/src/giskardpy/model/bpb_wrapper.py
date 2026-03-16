@@ -6,7 +6,7 @@ from uuid import UUID
 import giskardpy_bullet_bindings as pb
 import trimesh
 
-# from pkg_resources import resource_filename
+from pkg_resources import resource_filename
 
 from giskardpy.middleware import get_middleware
 from giskardpy.model.collisions import GiskardCollision
