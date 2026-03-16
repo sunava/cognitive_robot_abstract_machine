@@ -1,5 +1,6 @@
 import time
 
+from rclpy import timer
 
 from pycram.designators.location_designator import CostmapLocation
 
@@ -55,11 +56,14 @@ from pycram.robot_plans import (
     NavigateActionDescription,
     CuttingActionDescription,
     WipingActionDescription,
+    MoveGripperMotion,
+    SetGripperAction,
+    SetGripperActionDescription,
 )
 
 from semantic_digital_twin.adapters.mesh import STLParser
 
-from semantic_digital_twin.datastructures.definitions import TorsoState
+from semantic_digital_twin.datastructures.definitions import TorsoState, GripperState
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Knife, Whisk
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.geometry import Color, Scale
@@ -262,8 +266,12 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
         mesh_parts=("pycram_object_gap_demo", "big-knife.stl"),
         right_name="knife_right",
         left_name="knife_left",
-        right_pose_kwargs=get_tool_mount_pose_kwargs("cut", resolved_robot_name, Arms.RIGHT),
-        left_pose_kwargs=get_tool_mount_pose_kwargs("cut", resolved_robot_name, Arms.LEFT),
+        right_pose_kwargs=get_tool_mount_pose_kwargs(
+            "cut", resolved_robot_name, Arms.RIGHT
+        ),
+        left_pose_kwargs=get_tool_mount_pose_kwargs(
+            "cut", resolved_robot_name, Arms.LEFT
+        ),
         tool_cls=Knife,
     )
     breads = collect_named_targets(world, "bread_")
@@ -351,7 +359,9 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
         ]
         attempt_succeeded = False
 
-        for group_index, (phase_name, current_arm_tools) in enumerate(arm_attempt_groups):
+        for group_index, (phase_name, current_arm_tools) in enumerate(
+            arm_attempt_groups
+        ):
             if group_index == 1:
                 print(f"[retry] {bread_name}: rotate 180deg around Z and try again")
                 perturbation_applied = True
@@ -363,11 +373,25 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
                 is_fallback_phase = group_index == 0 and attempt_index > 0
                 if group_index == 0:
                     decision = "cut" if attempt_index == 0 else "retry_with_left_arm"
-                    decision_reason = "primary_success" if attempt_index == 0 else "right_arm_failed"
+                    decision_reason = (
+                        "primary_success" if attempt_index == 0 else "right_arm_failed"
+                    )
                 else:
                     decision = "rotate_object_and_retry"
                     decision_reason = "both_arms_failed_before_rotation"
-                print(f"[cut] {bread_name}: try {arm.name} arm" + (" after rotation" if group_index == 1 else ""))
+                print(
+                    f"[cut] {bread_name}: try {arm.name} arm"
+                    + (" after rotation" if group_index == 1 else "")
+                )
+                with simulated_robot_with_collision:
+                    current_plan = SequentialPlan(
+                        context,
+                        SetGripperActionDescription(
+                            motion=GripperState.CLOSE, gripper=Arms.BOTH
+                        ),
+                    )
+                    current_plan.perform()
+                    # time.sleep(50)
                 try:
                     attempt_count += 1
                     _try_cut(context, bread, arm, tool)
@@ -407,8 +431,14 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
                         perturbation_type=perturbation_type,
                         execution_time_s=time.perf_counter() - bread_start_time,
                     )
-                    append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
-                    suffix = " after rotation" if group_index == 1 else (" (fallback)" if attempt_index > 0 else "")
+                    append_csv_row(
+                        RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row
+                    )
+                    suffix = (
+                        " after rotation"
+                        if group_index == 1
+                        else (" (fallback)" if attempt_index > 0 else "")
+                    )
                     print(f"[ok] {bread_name}: cut with {arm.name} arm{suffix}")
                     attempt_succeeded = True
                     break
@@ -419,8 +449,9 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
                     )
                     print(
                         f"[{'retry' if not (group_index == len(arm_attempt_groups) - 1 and attempt_index == len(current_arm_tools) - 1) else 'fail'}] "
-                        f"{bread_name}: {arm.name}" + (" after rotation" if group_index == 1 else "") +
-                        f" timed out ({type(exc).__name__}: {exc})"
+                        f"{bread_name}: {arm.name}"
+                        + (" after rotation" if group_index == 1 else "")
+                        + f" timed out ({type(exc).__name__}: {exc})"
                     )
                 except Exception as exc:
                     if _is_collision_like_failure(exc):
@@ -430,8 +461,9 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
                     )
                     print(
                         f"[{'retry' if not (group_index == len(arm_attempt_groups) - 1 and attempt_index == len(current_arm_tools) - 1) else 'fail'}] "
-                        f"{bread_name}: {arm.name}" + (" after rotation" if group_index == 1 else "") +
-                        f" failed ({type(exc).__name__}: {exc})"
+                        f"{bread_name}: {arm.name}"
+                        + (" after rotation" if group_index == 1 else "")
+                        + f" failed ({type(exc).__name__}: {exc})"
                     )
             if attempt_succeeded:
                 break

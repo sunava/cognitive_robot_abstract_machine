@@ -1,4 +1,5 @@
 import os
+import logging
 import numpy as np
 import rclpy
 
@@ -74,6 +75,8 @@ BREAD_RADIUS_SAFETY_FACTOR = 1.08
 # Optional per-surface overrides (set value to force exact count).
 SURFACE_COUNT_OVERRIDES = {}
 COUNTERTOP_TINT = Color(R=0.82, G=0.70, B=0.55)
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_stl(*relative_path_parts):
@@ -290,6 +293,24 @@ def _is_pose_reachable_for_cutting(robot, world, target_pose):
         distance=0.55,
         world=world,
         origin=ground_pose,
+    )
+
+    logger.debug(
+        "cutting reachability target=(%.3f, %.3f, %.3f) frame=%s "
+        "clearance=%.3f base_bb=(depth=%.3f, width=%.3f) "
+        "occupancy_positive=%d ring_positive=%d map=(%dx%d@%.3f)",
+        target_pose.position.x,
+        target_pose.position.y,
+        target_pose.position.z,
+        target_pose.frame_id,
+        obstacle_clearance,
+        base_depth,
+        base_width,
+        int(np.sum(occupancy.map > 0)),
+        int(np.sum(ring.map > 0)),
+        occupancy.width,
+        occupancy.height,
+        occupancy.resolution,
     )
 
     final_map = occupancy + ring

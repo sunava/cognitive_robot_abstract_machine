@@ -45,10 +45,11 @@ from pycram.robot_plans import (
     NavigateActionDescription,
     ParkArmsActionDescription,
     WipingActionDescription,
+    SetGripperActionDescription,
 )
 
 from pycram.tf_transformations import quaternion_from_euler, quaternion_multiply
-from semantic_digital_twin.datastructures.definitions import TorsoState
+from semantic_digital_twin.datastructures.definitions import TorsoState, GripperState
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Sponge
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
@@ -213,6 +214,12 @@ def _attach_sponges_for_available_arms(world):
 
 
 def _try_wipe(context, target_pose, arm, tool):
+
+    # clean_up_pose = PoseStamped()
+    # clean_up_pose.pose.position.x = 4.26
+    # clean_up_pose.pose.position.y = 2.59
+    # clean_up_pose.pose.position.z = 0.95
+    # target_pose = clean_up_pose
     pickup_loc = CostmapLocation(
         target=target_pose,
         reachable_arm=arm,
@@ -365,6 +372,15 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
                 "primary_success" if attempt_index == 0 else "right_arm_failed"
             )
             print(f"[wipe] {target_name}: try {arm.name} arm at spawn pose {spawn_xyz}")
+            with simulated_robot_with_collision:
+                current_plan = SequentialPlan(
+                    context,
+                    SetGripperActionDescription(
+                        motion=GripperState.CLOSE, gripper=Arms.BOTH
+                    ),
+                )
+                current_plan.perform()
+                # time.sleep(50)
             try:
                 attempt_count += 1
                 _try_wipe(context, target_pose, arm, tool)

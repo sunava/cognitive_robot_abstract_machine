@@ -20,6 +20,7 @@ from pycram.robot_plans import (
     MoveTorsoActionDescription,
     NavigateActionDescription,
     ParkArmsActionDescription,
+    SetGripperActionDescription,
 )
 from pycram.external_interfaces.sparql_queries.mixing import safe_get_mixing_knowledge
 from rclpy.duration import Duration as RclpyDuration
@@ -31,7 +32,7 @@ from semantic_digital_twin.adapters.ros.tfwrapper import TFWrapper
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
 )
-from semantic_digital_twin.datastructures.definitions import TorsoState
+from semantic_digital_twin.datastructures.definitions import TorsoState, GripperState
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Whisk
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
@@ -188,8 +189,12 @@ def main_mixing(seed=None, robot_name=None, environment_name=None):
         mesh_parts=("pycram_object_gap_demo", "whisk.stl"),
         right_name="whisk_right",
         left_name="whisk_left",
-        right_pose_kwargs=get_tool_mount_pose_kwargs("mix", resolved_robot_name, Arms.RIGHT),
-        left_pose_kwargs=get_tool_mount_pose_kwargs("mix", resolved_robot_name, Arms.LEFT),
+        right_pose_kwargs=get_tool_mount_pose_kwargs(
+            "mix", resolved_robot_name, Arms.RIGHT
+        ),
+        left_pose_kwargs=get_tool_mount_pose_kwargs(
+            "mix", resolved_robot_name, Arms.LEFT
+        ),
         tool_cls=Whisk,
     )
     bowls = collect_named_targets(world, "bowl_")
@@ -269,8 +274,19 @@ def main_mixing(seed=None, robot_name=None, environment_name=None):
         for attempt_index, (arm, tool) in enumerate(arm_tools):
             phase = "primary" if attempt_index == 0 else "fallback"
             decision = "mix" if attempt_index == 0 else "retry_with_left_arm"
-            decision_reason = "primary_success" if attempt_index == 0 else "right_arm_failed"
+            decision_reason = (
+                "primary_success" if attempt_index == 0 else "right_arm_failed"
+            )
             print(f"[mix] {bowl_name}: try {arm.name} arm")
+            with simulated_robot_with_collision:
+                current_plan = SequentialPlan(
+                    context,
+                    SetGripperActionDescription(
+                        motion=GripperState.CLOSE, gripper=Arms.BOTH
+                    ),
+                )
+                current_plan.perform()
+                # time.sleep(50)
             try:
                 attempt_count += 1
                 _try_mix(context, bowl, arm, tool)

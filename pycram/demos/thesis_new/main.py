@@ -8,11 +8,11 @@ if __name__ == "__main__":
     session.commit()
     run_thesis_demo(
         "wipe",
-        robot_name="pr2",
-        environment_name="isr-testbed",
+        robot_name="armar7",
+        environment_name="apartment",
     )
     run_thesis_demo(
-        "cut",
+        "mix",
         robot_name="pr2",
         environment_name="isr-testbed",
     )
@@ -25,6 +25,11 @@ if __name__ == "__main__":
         "wipe",
         robot_name="pr2",
         environment_name="kitchen",
+    )
+    run_thesis_demo(
+        "wipe",
+        robot_name="pr2",
+        environment_name="robocanes",
     )
     run_thesis_demo("cut")
     run_thesis_demo("mix")

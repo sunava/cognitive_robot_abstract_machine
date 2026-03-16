@@ -253,9 +253,9 @@ class CostmapLocation(LocationDesignatorDescription):
         for params in self.generate_permutations():
             test_world = deepcopy(self.world)
             test_world.name = "Test World"
-            VizMarkerPublisher(
-                _world=test_world, node=self.context.ros_node
-            ).with_tf_publisher()
+            # VizMarkerPublisher(
+            #     _world=test_world, node=self.context.ros_node
+            # ).with_tf_publisher()
             params_box = Box(params)
             # Target is either a pose or an object since the object is later needed for the visibility validator
             target = (
@@ -1598,6 +1598,7 @@ class GiskardLocation(LocationDesignatorDescription):
         ground_pose.position.z = 0.0
 
         base_bb = self.robot_view.base.bounding_box
+        distance_to_obstacle = (base_bb.width / 2 + base_bb.depth / 2) / 2
 
         occupancy_map = OccupancyCostmap(
             resolution=0.02,
@@ -1606,7 +1607,7 @@ class GiskardLocation(LocationDesignatorDescription):
             world=self.world,
             robot_view=self.robot_view,
             origin=ground_pose,
-            distance_to_obstacle=(base_bb.width / 2 + base_bb.depth / 2) / 2,
+            distance_to_obstacle=distance_to_obstacle,
         )
         gaussian_map = GaussianCostmap(
             resolution=0.02,
@@ -1614,6 +1615,20 @@ class GiskardLocation(LocationDesignatorDescription):
             mean=200,
             sigma=15,
             world=self.world,
+        )
+
+        logger.debug(
+            "GiskardLocation.setup_costmap target=(%.3f, %.3f, %.3f) "
+            "base_bb=(w=%.3f, d=%.3f) distance_to_obstacle=%.3f "
+            "occupancy_positive=%d gaussian_positive=%d",
+            ground_pose.position.x,
+            ground_pose.position.y,
+            ground_pose.position.z,
+            base_bb.width,
+            base_bb.depth,
+            distance_to_obstacle,
+            int(np.sum(occupancy_map.map > 0)),
+            int(np.sum(gaussian_map.map > 0)),
         )
 
         reachability_map = occupancy_map + gaussian_map

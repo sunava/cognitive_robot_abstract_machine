@@ -64,6 +64,62 @@ DEFAULT_TOOL_MOUNTS = {
 ROBOT_TOOL_MOUNT_OVERRIDES = {
     "pr2": {},
     "tiago": {},
+    "armar7": {
+        "cut": {
+            Arms.RIGHT: {
+                "x": 0.0,
+                "y": -0.15,
+                "z": 0.03,
+                "roll": -np.pi,
+                "pitch": 0,
+                "yaw": -np.pi / 2,
+            },
+            Arms.LEFT: {
+                "x": 0.0,
+                "y": -0.15,
+                "z": 0.03,
+                "roll": np.pi,
+                "pitch": 0,
+                "yaw": -np.pi / 2,
+            },
+        },
+        "mix": {
+            Arms.RIGHT: {
+                "x": 0.0,
+                "y": 0.15,
+                "z": 0.0,
+                "roll": 0.0,
+                "pitch": 0,
+                "yaw": np.pi / 2,
+            },
+            Arms.LEFT: {
+                "x": 0.0,
+                "y": 0.15,
+                "z": 0.0,
+                "roll": 0,
+                "pitch": 0,
+                "yaw": np.pi / 2,
+            },
+        },
+        "wipe": {
+            Arms.RIGHT: {
+                "x": 0.0,
+                "y": 0,
+                "z": 0,
+                "roll": 0.0,
+                "pitch": -np.pi / 2,
+                "yaw": 0.0,
+            },
+            Arms.LEFT: {
+                "x": 0.0,
+                "y": 0,
+                "z": 0,
+                "roll": 0.0,
+                "pitch": np.pi / 2,
+                "yaw": 0.0,
+            },
+        },
+    },
     "hsrb": {
         "cut": {
             Arms.LEFT: {

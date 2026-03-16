@@ -25,6 +25,7 @@ RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")
 )
 WORLDS_DIR = os.path.join(RESOURCES_DIR, "worlds")
+EXTRA_ENVIRONMENT_PATHS = {}
 
 ROBOT_SPECS = {
     "pr2": (
@@ -88,6 +89,7 @@ def _supported_environment_names():
         file_path = os.path.join(WORLDS_DIR, filename)
         if os.path.isfile(file_path) and filename.endswith(".urdf"):
             supported.append(os.path.splitext(filename)[0])
+    supported.extend(sorted(EXTRA_ENVIRONMENT_PATHS))
     supported.extend(sorted(ISR_TESTBED_ALIASES))
     return sorted(supported)
 
@@ -106,6 +108,24 @@ def _resolve_isr_testbed_path():
         return candidate
 
     raise FileNotFoundError("Could not resolve an ISR testbed URDF path.")
+
+
+def _resolve_robocanes_path():
+    candidates = [
+        "/home/vee/workspace/ros/src/robocane_manual/urdf/robocane.urdf",
+        "/home/vee/workspace/ros/install/robocane_manual//share/robocane_manual/urdf/robocane.urdf",
+        "package://robocane_manual/urdf/robocane.urdf",
+    ]
+    print(candidates)
+    for candidate in candidates:
+        if os.path.isabs(candidate):
+            if os.path.isfile(candidate):
+                return candidate
+            continue
+
+        return candidate
+
+    raise FileNotFoundError("Could not resolve a Robocanes URDF path.")
 
 
 def _remove_unresolved_meshes(urdf_path: str) -> str:
@@ -145,7 +165,15 @@ def _remove_unresolved_meshes(urdf_path: str) -> str:
 
 
 def _parse_environment_world(environment_path):
-    if any(alias in environment_path.lower() for alias in ISR_TESTBED_ALIASES):
+    environment_path_lower = environment_path.lower()
+    if any(alias in environment_path_lower for alias in ISR_TESTBED_ALIASES):
+        return URDFParser(urdf=_remove_unresolved_meshes(environment_path)).parse()
+    if (
+        environment_path_lower.endswith("/robocane_manual/urdf/robocanes.urdf")
+        or environment_path_lower.endswith("/robocane_manual/urdf/robocane.urdf")
+        or environment_path_lower == "package://robocane_manual/urdf/robocane.urdf"
+        or environment_path_lower == "package://robocane_manual/urdf/robocane.urdf"
+    ):
         return URDFParser(urdf=_remove_unresolved_meshes(environment_path)).parse()
     return URDFParser.from_file(environment_path).parse()
 
@@ -161,8 +189,12 @@ def resolve_environment_path(environment_name=None):
 
     if normalized.lower() in ISR_TESTBED_ALIASES:
         return _resolve_isr_testbed_path()
+    if normalized.lower() == "robocane":
+        return _resolve_robocanes_path()
 
     candidate = normalized[:-5] if normalized.endswith(".urdf") else normalized
+    if candidate in EXTRA_ENVIRONMENT_PATHS:
+        return EXTRA_ENVIRONMENT_PATHS[candidate]
     environment_path = os.path.join(WORLDS_DIR, f"{candidate}.urdf")
     if os.path.isfile(environment_path):
         return environment_path

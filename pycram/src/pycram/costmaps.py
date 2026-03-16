@@ -358,7 +358,18 @@ class Costmap:
             new_map = (new_map / np.max(new_map)).reshape((self.height, self.width))
         else:
             new_map = new_map.reshape((self.height, self.width))
-            logger.warning("Merged costmap is empty.")
+            logger.warning(
+                "Merged costmap is empty. left=%s right=%s overlap=%d "
+                "left_positive=%d right_positive=%d origin=(%.3f, %.3f, %.3f)",
+                type(self).__name__,
+                type(other_cm).__name__,
+                int(np.sum(merge)),
+                int(np.sum(self.map > 0)),
+                int(np.sum(other_cm.map > 0)),
+                self.origin.position.x,
+                self.origin.position.y,
+                self.origin.position.z,
+            )
         return Costmap(
             resolution=self.resolution,
             height=self.height,
@@ -557,15 +568,14 @@ class OccupancyCostmap(Costmap):
         ray_tracer = RayTracer(self.world)
         r_t = ray_tracer.ray_test(rays[:, 0], rays[:, 1])
         if self.robot_view:
-            res[r_t[1]] = [
-                (
-                    1
-                    if r_t[2][i]
-                    in self.world.get_kinematic_structure_entities_of_branch(
-                        self.robot_view.root
-                    )
-                    else 0
+            branch_entity_hashes = {
+                hash(entity)
+                for entity in self.world.get_kinematic_structure_entities_of_branch(
+                    self.robot_view.root
                 )
+            }
+            res[r_t[1]] = [
+                (1 if hash(r_t[2][i]) in branch_entity_hashes else 0)
                 for i in range(len(r_t[1]))
             ]
         else:

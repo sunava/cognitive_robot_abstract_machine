@@ -23,8 +23,9 @@ def get_thesis_demo_runner(task_name):
 
 def run_thesis_demo(task_name, *, seed=None, robot_name=None, environment_name=None):
     runner = get_thesis_demo_runner(task_name)
+    resolved_robot_name = resolve_robot_name(robot_name)
     return runner(
         seed=seed,
-        robot_name=resolve_robot_name(robot_name),
+        robot_name=resolved_robot_name,
         environment_name=environment_name,
     )

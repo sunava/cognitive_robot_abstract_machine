@@ -10,12 +10,7 @@ RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")
 )
 DEFAULT_ENVIRONMENT_PATH = os.path.join(
-    "/home/vee",
-    "worlds",
-    "tmc_gazebo",
-    "tmc_gazebo_worlds",
-    "worlds",
-    "apartment-hsr.urdf",
+    "/home/vee/workspace/ros/src/robocane_manual/urdf/robocane.urdf",
 )
 
 

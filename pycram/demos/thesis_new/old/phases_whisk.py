@@ -142,7 +142,6 @@ def main():
         time=Time(),
     )
 
-    PR2.from_world(world)
     context = Context.from_world(world)
 
     whisk_body = try_get_body(world, "whisk.stl")
@@ -162,7 +161,9 @@ def main():
         ParkArmsActionDescription(Arms.BOTH),
         MoveTorsoActionDescription(TorsoState.HIGH),
         # MixingActionDescription(container=bowl_body, arm=Arms.RIGHT, tool_body=whisk_body),
-        WipingActionDescription(surface_body=island, arm=Arms.LEFT),
+        WipingActionDescription(
+            tool=sponge_body, target_pose=clean_up_pose, arm=Arms.LEFT
+        ),
         # )
         # SimpleMoveTCPAction(target_location=poses[0], arm=Arms.RIGHT),
     )
