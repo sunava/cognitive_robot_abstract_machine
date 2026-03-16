@@ -1,10 +1,24 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from importlib.metadata import files
+from pathlib import Path
 from typing import Self
 
+from semantic_digital_twin.collision_checking.collision_matrix import (
+    MaxAvoidedCollisionsOverride,
+)
+from semantic_digital_twin.collision_checking.collision_rules import (
+    SelfCollisionMatrixRule,
+    AvoidExternalCollisions,
+    AvoidSelfCollisions,
+)
 from semantic_digital_twin.robots.robot_mixins import HasNeck, SpecifiesLeftRightArm
-from semantic_digital_twin.datastructures.definitions import StaticJointState, GripperState, TorsoState
+from semantic_digital_twin.datastructures.definitions import (
+    StaticJointState,
+    GripperState,
+    TorsoState,
+)
 from semantic_digital_twin.datastructures.joint_state import JointState
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.robots.abstract_robot import (
@@ -27,6 +41,52 @@ class Justin(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
     """
     Class that describes the Justin Robot.
     """
+
+    def _setup_collision_rules(self):
+        """
+        Loads the SRDF file for the PR2 robot, if it exists.
+        """
+        srdf_path = os.path.join(
+            Path(files("semantic_digital_twin")).parent.parent,
+            "resources",
+            "collision_configs",
+            "justin.srdf",
+        )
+        self._world.collision_manager.add_ignore_collision_rule(
+            SelfCollisionMatrixRule.from_collision_srdf(srdf_path, self._world)
+        )
+
+        self._world.collision_manager.extend_default_rules(
+            [
+                AvoidExternalCollisions(
+                    buffer_zone_distance=0.1, violated_distance=0.0, robot=self
+                ),
+                AvoidExternalCollisions(
+                    buffer_zone_distance=0.05,
+                    violated_distance=0.0,
+                    robot=self,
+                    body_subset=self.left_arm.bodies_with_collision
+                    + self.right_arm.bodies_with_collision,
+                ),
+                AvoidExternalCollisions(
+                    buffer_zone_distance=0.2,
+                    violated_distance=0.05,
+                    robot=self,
+                    body_subset={self._world.get_body_by_name("base_link")},
+                ),
+                AvoidSelfCollisions(
+                    buffer_zone_distance=0.05, violated_distance=0.0, robot=self
+                ),
+            ]
+        )
+
+        self._world.collision_manager.extend_max_avoided_bodies_rules(
+            [
+                MaxAvoidedCollisionsOverride(
+                    2, bodies={self._world.get_body_by_name("base_link")}
+                ),
+            ]
+        )
 
     def load_srdf(self):
         """

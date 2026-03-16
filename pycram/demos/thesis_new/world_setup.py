@@ -6,6 +6,7 @@ from semantic_digital_twin.adapters.package_resolver import CompositePathResolve
 from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.robots.armar7 import Armar7
 from semantic_digital_twin.robots.hsrb import HSRB
+from semantic_digital_twin.robots.justin import Justin
 from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.robots.stretch import Stretch
 from semantic_digital_twin.robots.tiago import Tiago
@@ -20,6 +21,7 @@ THESIS_NEW_DEFAULT_ENVIRONMENT = "apartment"
 THESIS_NEW_ENVIRONMENT_ENV = "THESIS_NEW_ENVIRONMENT"
 DEFAULT_ROBOT_START_POSE = HomogeneousTransformationMatrix.from_xyz_rpy(1.5, 2.0, 0.0)
 ARMAR7_START_POSE = HomogeneousTransformationMatrix.from_xyz_rpy(3.8, 8.40, 0.0)
+JUSTIN_START_POSE = ARMAR7_START_POSE
 ISR_TESTBED_ALIASES = {"isr", "isr-testbed", "isr_testbed"}
 RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")
@@ -57,6 +59,12 @@ ROBOT_SPECS = {
         Armar7,
         OmniDrive,
         ARMAR7_START_POSE,
+    ),
+    "justin": (
+        "/home/vee/workspace/ros/src/iai_robots/iai_dlr_rollin_justin/urdf/rollin_justin.urdf",
+        Justin,
+        OmniDrive,
+        JUSTIN_START_POSE,
     ),
 }
 
