@@ -2,8 +2,8 @@ from sqlalchemy.orm import sessionmaker
 
 from krrood.entity_query_language.backends import (
     SQLAlchemyBackend,
-    PythonBackend,
     ProbabilisticBackend,
+    EntityQueryLanguageBackend,
 )
 from krrood.entity_query_language.factories import (
     variable,
@@ -45,7 +45,7 @@ def test_same_query_multiple_backends(session, database):
         )
     )
 
-    python_backend = PythonBackend()
+    python_backend = EntityQueryLanguageBackend()
     result = list(python_backend.evaluate(q))
     assert len(result) == 1
 
@@ -65,7 +65,7 @@ def test_same_query_multiple_backends(session, database):
 
     registry = DictRegistry({KRROODPose: model})
 
-    pm_backend = ProbabilisticBackend(registry, 10)
+    pm_backend = ProbabilisticBackend(model_registry=registry, number_of_samples=10)
     values = list(pm_backend.evaluate(prob_q))
     for value in values:
         assert value.position.x > 0.5
