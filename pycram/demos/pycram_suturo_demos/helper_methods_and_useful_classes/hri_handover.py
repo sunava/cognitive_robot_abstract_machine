@@ -7,45 +7,24 @@ import rclpy
 import nlp_human_robot_interaction as hri
 from time import sleep
 
-from demos.pycram_suturo_demos.pycram_basic_hsr_demos.gripper_open_close_demo import (
+from pycram.datastructures.enums import Arms
+from pycram_suturo_demos.pycram_basic_hsr_demos.gripper_open_close_demo import (
     GripperActionClient,
 )
-from giskardpy.motion_statechart.graph_node import Task
-from giskardpy.motion_statechart.tasks.joint_tasks import JointPositionList
 from pycram.language import SequentialPlan
 from pycram.motion_executor import ExecutionEnvironment, simulated_robot, real_robot
-from pycram.robot_plans import BaseMotion
+from pycram.robot_plans import (
+    BaseMotion,
+    MoveTCPMotion,
+    HandoverActionDescription,
+    ParkArmsActionDescription,
+)
 from semantic_digital_twin.datastructures.joint_state import JointState
-from test.conftest import hsr_world_setup
+from semantic_digital_twin.world import World
+from dataclasses import dataclass, field
 
 
-class HandoverMotion(BaseMotion):
-    def perform(self):
-        return
-
-    def motion_chart(self) -> Task:
-        prehandover_goal = JointPositionList(
-            goal_state=JointState.from_str_dict({
-                "arm_lift_joint": 0.30,  # arm raised a bit
-                "arm_flex_joint": -1.0,  # flex arm forward to roughly horizontal
-                "arm_roll_joint": 0.0,  # neutral roll, arm faces forward
-                "wrist_flex_joint": -0.5,  # tilt gripper opening slightly upward
-                "wrist_roll_joint": 0.0,  # neutral wrist roll
-                # Bonus:
-                "head_pan_joint": 0.0,  # head facing forward
-                "head_tilt_joint": -0.3,  # head looking slightly downward at hands
-                "torso_lift_joint": 0.25,  # raise torso to ~mid-high
-            },
-                world=hsr_world_setup,
-            ),
-        )
-
-        return prehandover_goal
-
-
-
-
-from demos.pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
+from pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
     robot_setup,
 )
 
@@ -63,11 +42,10 @@ def initialization(simulation: bool = True):
     return rclpy_node, world, robot_view, context
 
 
-
 def countdown(n, node: hri.TalkingNode):
     while n > 0:
         node.pub(str(n))
-        sleep(1.5)
+        sleep(2)
         n -= 1
 
 
@@ -80,9 +58,11 @@ def take_object_from_human():
     grippy.send_goal(effort=gripper_open)
 
     talk.pub("Please put the object into my gripper. Closing gripper in ")
-    countdown(5, talk)
-    grippy.send_goal(effort=gripper_close)
     sleep(5)
+    countdown(5, talk)
+    sleep(1)
+    grippy.send_goal(effort=gripper_close)
+    sleep(3)
 
 
 def give_object_to_human():
@@ -92,9 +72,11 @@ def give_object_to_human():
     grippy = GripperActionClient()
 
     talk.pub("Please take the object from my gripper. Opening gripper in ")
-    countdown(5, talk)
-    grippy.send_goal(effort=gripper_open)
     sleep(5)
+    countdown(5, talk)
+    sleep(1)
+    grippy.send_goal(effort=gripper_open)
+    sleep(3)
 
 
 def main():
@@ -102,19 +84,30 @@ def main():
     rclpy.init()
 
     if with_giskard:
-        SIMULATED = True
+        SIMULATED = False
         robot_type: ExecutionEnvironment = simulated_robot if SIMULATED else real_robot
 
         rclpy_node, world, robot_view, context = initialization(simulation=SIMULATED)
+
         with robot_type:
 
             SequentialPlan(
                 context,
-                HandoverMotion(),
+                HandoverActionDescription(world=world),
             ).perform()
 
-    take_object_from_human()
-    # give_object_to_human()
+            take_object_from_human()
+            # give_object_to_human()
+
+            print("Parking arms")
+            SequentialPlan(
+                context,
+                ParkArmsActionDescription(Arms.LEFT),
+            ).perform()
+            print("Done")
+    else:
+        take_object_from_human()
+        # give_object_to_human()
     sleep(5)
 
 

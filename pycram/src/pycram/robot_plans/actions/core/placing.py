@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 
 from semantic_digital_twin.datastructures.definitions import GripperState
+from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import Connection6DoF
 from semantic_digital_twin.world_description.world_entity import Body
 from typing_extensions import Union, Optional, Type, Any, Iterable
@@ -11,6 +12,7 @@ from typing_extensions import Union, Optional, Type, Any, Iterable
 from .pick_up import PickUpAction
 from pycram.robot_plans.motions.gripper import PlaceMotion
 from ...motions.gripper import MoveTCPMotion
+from ...motions.hri_handover import HandoverMotion
 from ....datastructures.enums import (
     Arms,
     ApproachDirection,
@@ -254,6 +256,7 @@ class GiskardPlaceAction(ActionDescription):
             simulated=simulated,
         )
 
+
 @dataclass
 class GiskardRetractAction(ActionDescription):
     """
@@ -285,11 +288,12 @@ class GiskardRetractAction(ActionDescription):
 
     def execute(self) -> None:
         from ... import RetractMotion, GiskardMoveGripperMotion
+
         arm = ViewManager.get_arm_view(self.arm, self.robot_view)
         manipulator = arm.manipulator
         SequentialPlan(
             self.context,
-            GiskardMoveGripperMotion(GripperState.OPEN,self.simulated),
+            GiskardMoveGripperMotion(GripperState.OPEN, self.simulated),
             RetractMotion(
                 simulated=self.simulated,
                 gripper=manipulator,
@@ -348,6 +352,30 @@ class GiskardRetractAction(ActionDescription):
             simulated=simulated,
         )
 
+
+@dataclass
+class HandoverAction(ActionDescription):
+
+    world: World = field(kw_only=True, default=None)
+
+    def execute(self) -> None:
+        SequentialPlan(
+            self.context,
+            HandoverMotion(world=self.world),
+        ).perform()
+
+    @classmethod
+    def description(
+        cls,
+        world: World | None = None,
+    ) -> PartialDesignator[HandoverAction]:
+        return PartialDesignator[HandoverAction](
+            HandoverAction,
+            world=world,
+        )
+
+
 PlaceActionDescription = PlaceAction.description
 GiskardPlaceActionDescription = GiskardPlaceAction.description
 GiskardRetractActionDescription = GiskardRetractAction.description
+HandoverActionDescription = HandoverAction.description
