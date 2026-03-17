@@ -9,7 +9,6 @@ from typing import List, Optional, TYPE_CHECKING
 import numpy as np
 import pandas
 import pandas as pd
-from line_profiler import profile
 
 import krrood.symbolic_math.symbolic_math as sm
 from giskardpy.qp.adapters.qp_adapter import QPDataSymbolic
@@ -438,7 +437,6 @@ class QPController:
     def has_not_free_variables(self) -> bool:
         return len(self.active_dofs) == 0
 
-    @profile
     def compute_command(
         self,
         world_state: np.ndarray,

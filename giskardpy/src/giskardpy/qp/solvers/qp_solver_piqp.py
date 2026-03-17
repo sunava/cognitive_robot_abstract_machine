@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import piqp
-from line_profiler.explicit_profiler import profile
 
 from giskardpy.qp.exceptions import InfeasibleException
 from giskardpy.qp.qp_data import QPDataExplicit
@@ -23,7 +22,6 @@ class QPSolverPIQP(QPSolver[QPDataExplicit]):
         self.solver.settings.eps_duality_gap_rel = 1e-5
         # self.solver.settings.kkt_solver = piqp.KKTSolver.sparse_multistage
 
-    @profile
     def solver_call_explicit_interface(self, qp_data: QPDataExplicit) -> np.ndarray:
         weight_matrix = fast_sparse_diagonal(qp_data.quadratic_weights)
         if len(qp_data.inequality_upper_bounds) == 0:
