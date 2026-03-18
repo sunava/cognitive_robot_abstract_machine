@@ -102,7 +102,7 @@ def test_pose(pycram_testing_session, test_simple_plan):
     session.commit()
     result = session.scalars(select(PoseMappingDAO)).all()
     assert len(result) > 0
-    assert all([r.position is not None and r.rotation is not None for r in result])
+    assert all([r.position is not None and r.orientation is not None for r in result])
 
 
 def test_action_to_pose(pycram_testing_session, test_simple_plan):
@@ -134,7 +134,7 @@ def test_pose_creation(pycram_testing_session, test_simple_plan):
     pose_dao = to_dao(pose)
 
     session.add(pose_dao.position)
-    session.add(pose_dao.rotation)
+    session.add(pose_dao.orientation)
     session.add(pose_dao)
     session.commit()
 
