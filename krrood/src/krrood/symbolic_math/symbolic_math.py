@@ -47,7 +47,7 @@ from typing_extensions import (
     Type,
 )
 
-from .exceptions import (
+from krrood.symbolic_math.exceptions import (
     HasFreeVariablesError,
     DuplicateVariablesError,
     WrongNumberOfArgsError,
@@ -56,6 +56,8 @@ from .exceptions import (
     NotScalerError,
     UnsupportedOperationError,
     WrongDimensionsError,
+    CannotConvertToStringError,
+    NoArgsAllowedError,
 )
 
 EPS: float = sys.float_info.epsilon * 4.0
@@ -310,13 +312,15 @@ class CompiledFunction:
         Binds the arg at index arg_idx to the memoryview of a numpy_array.
         If your args keep the same memory across calls, you only need to bind them once.
         """
-        self._function_buffer.set_arg(arg_idx, memoryview(numpy_array))
+        if not self._is_constant:
+            self._function_buffer.set_arg(arg_idx, memoryview(numpy_array))
 
     def evaluate(self) -> np.ndarray | sp.csc_matrix:
         """
         Evaluate the compiled function with the current args.
         """
-        self._function_evaluator()
+        if not self._is_constant:
+            self._function_evaluator()
         return self._out
 
     def __call__(self, *args: np.ndarray) -> np.ndarray | sp.csc_matrix:
@@ -423,7 +427,7 @@ class CompiledFunctionWithViews:
         return self.split_out_view
 
 
-@dataclass(eq=False)
+@dataclass(eq=False, repr=False)
 class SymbolicMathType(ABC):
     """
     A wrapper around CasADi's ca.SX, with better usability
@@ -486,7 +490,7 @@ class SymbolicMathType(ABC):
         return self.to_np()
 
     def __repr__(self):
-        return repr(self.casadi_sx)
+        return f"{self.__class__.__name__}({repr(self.casadi_sx)[3:-1]})"
 
     def __getitem__(
         self, item: np.ndarray | int | slice | Tuple[int | slice, int | slice]
@@ -771,7 +775,7 @@ class SymbolicMathType(ABC):
         return H.dot(v)
 
 
-@dataclass(eq=False, init=False)
+@dataclass(eq=False, init=False, repr=False)
 class Scalar(SymbolicMathType):
     """
     A symbolic type representing a scalar value.
@@ -963,7 +967,7 @@ class Scalar(SymbolicMathType):
         return self._rbinary(other, ca.fmod)
 
 
-@dataclass(eq=False, init=False)
+@dataclass(eq=False, init=False, repr=False)
 class FloatVariable(Scalar):
     """
     A symbolic expression representing a single float variable.
@@ -979,11 +983,29 @@ class FloatVariable(Scalar):
     .. warning:: Does not ensure that two FloatVariable instances are identical.
     """
 
+    resolve: Callable[[], float] | None = field(default=None, init=False)
+    """
+    This is called by SymbolicType.evaluate().
+    Subclasses should set it to return the current float value for this variable.
+    """
+
     def __init__(self, name: str):
         self.name = name
         casadi_sx = ca.SX.sym(self.name)
         self._registry[casadi_sx] = self
         super().__init__(casadi_sx)
+
+    @classmethod
+    def create_with_resolver(cls, name: str, resolver: Callable[[], float]) -> Self:
+        """
+        Creates a FloatVariable with a resolver function that is called when the variable is evaluated.
+        :param name: name of the variable
+        :param resolver: callable that returns the value of the variable
+        :return: the FloatVariable
+        """
+        self = cls(name)
+        self.resolve = resolver
+        return self
 
     def __str__(self):
         return str(self.name)
@@ -994,16 +1016,8 @@ class FloatVariable(Scalar):
     def __hash__(self):
         return hash(self.casadi_sx)
 
-    def resolve(self) -> float:
-        """
-        This method is called by SymbolicType.evaluate().
-        Subclasses should override this method to return the current float value for this variable.
-        :return: This variables' current value.
-        """
-        return np.nan
 
-
-@dataclass(eq=False)
+@dataclass(eq=False, repr=False)
 class Vector(SymbolicMathType):
     """
     A vector of symbolic expressions.
@@ -1130,7 +1144,7 @@ class Vector(SymbolicMathType):
         return Vector.from_casadi_sx(ca.vertcat(to_sx(self), to_sx(other)))
 
 
-@dataclass(eq=False)
+@dataclass(eq=False, repr=False)
 class Matrix(SymbolicMathType):
     """
     A matrix of symbolic expressions.
@@ -2052,7 +2066,7 @@ def trinary_logic_to_str(expression: Scalar) -> str:
             right = trinary_logic_to_str(cas_expr.dep(1))
             return f"({left} or {right})"
         case _:
-            raise SymbolicMathError(message=f"cannot convert {expression} to a string")
+            raise CannotConvertToStringError(expression=expression)
 
 
 # %% ifs
@@ -2228,11 +2242,14 @@ def if_eq_cases(
         return else_result
     """
     a_sx = to_sx(a)
-    result_sx = to_sx(else_result)
-    for b, b_result in b_result_cases:
+    result_sx_list = []
+    ind = to_sx(-1)
+    for i, (b, b_result) in enumerate(b_result_cases):
         b_sx = to_sx(b)
-        b_result_sx = to_sx(b_result)
-        result_sx = ca.if_else(ca.eq(a_sx, b_sx), b_result_sx, result_sx)
+        ind = ca.if_else(ca.eq(a_sx, b_sx), i, ind)
+        result_sx_list.append(to_sx(b_result))
+
+    result_sx = ca.conditional(ind, result_sx_list, to_sx(else_result))
     return _create_return_type(else_result).from_casadi_sx(result_sx)
 
 
@@ -2249,11 +2266,14 @@ def if_cases(
     else:
         return else_result
     """
-    result_sx = to_sx(else_result)
+    result_sx_list = []
+    ind = to_sx(len(cases))
     for i in reversed(range(len(cases))):
         case = to_sx(cases[i][0])
-        case_result = to_sx(cases[i][1])
-        result_sx = ca.if_else(case, case_result, result_sx)
+        ind = ca.if_else(case, i, ind)
+        result_sx_list.insert(0, to_sx(cases[i][1]))
+
+    result_sx = ca.conditional(ind, result_sx_list, to_sx(else_result))
     return _create_return_type(else_result).from_casadi_sx(result_sx)
 
 
@@ -2273,11 +2293,14 @@ def if_less_eq_cases(
         return else_result
     """
     a_sx = to_sx(a)
-    result_sx = to_sx(else_result)
+    result_sx_list = []
+    ind = to_sx(len(b_result_cases))
     for i in reversed(range(len(b_result_cases))):
         b_sx = to_sx(b_result_cases[i][0])
-        b_result_sx = to_sx(b_result_cases[i][1])
-        result_sx = ca.if_else(ca.le(a_sx, b_sx), b_result_sx, result_sx)
+        ind = ca.if_else(ca.le(a_sx, b_sx), i, ind)
+        result_sx_list.insert(0, to_sx(b_result_cases[i][1]))
+
+    result_sx = ca.conditional(ind, result_sx_list, to_sx(else_result))
     return _create_return_type(else_result).from_casadi_sx(result_sx)
 
 
@@ -2294,9 +2317,7 @@ def substitution_cache(method):
 
     def wrapper(*args, **kwargs):
         if len(kwargs) > 0:
-            raise SymbolicMathError(
-                message="substitution_cache does not support kwargs"
-            )
+            raise NoArgsAllowedError()
         global _substitution_cache
         cache_key = method.__name__
         if not cache_key in _substitution_cache:
@@ -2328,7 +2349,7 @@ NumericalMatrix = np.ndarray | Iterable[Iterable[NumericalScalar]]
 SymbolicScalar = FloatVariable | Scalar
 
 ScalarData = NumericalScalar | SymbolicScalar
-VectorData = NumericalVector | Vector
+VectorData = NumericalVector | Vector | Iterable[ScalarData]
 MatrixData = NumericalMatrix | Matrix
 
 GenericSymbolicType = TypeVar(
