@@ -6,9 +6,14 @@ from giskardpy.motion_statechart.data_types import DefaultWeights
 from giskardpy.motion_statechart.goals.pick_up import CloseHand, OpenHand
 from giskardpy.motion_statechart.goals.templates import Sequence, Parallel
 from giskardpy.motion_statechart.graph_node import Goal, NodeArtifacts, CancelMotion
-from giskardpy.motion_statechart.ros2_nodes.force_torque_monitor import ForceImpactMonitor
+from giskardpy.motion_statechart.ros2_nodes.force_torque_monitor import (
+    ForceImpactMonitor,
+)
 from giskardpy.motion_statechart.tasks.align_planes import AlignPlanes
-from giskardpy.motion_statechart.tasks.cartesian_tasks import CartesianPosition, CartesianPose
+from giskardpy.motion_statechart.tasks.cartesian_tasks import (
+    CartesianPosition,
+    CartesianPose,
+)
 from krrood.symbolic_math.symbolic_math import trinary_logic_or
 from semantic_digital_twin.robots.abstract_robot import Manipulator
 from semantic_digital_twin.spatial_types import (
@@ -38,8 +43,12 @@ class Place(Sequence):
     def __post_init__(self):
         super().__post_init__()
         # Note: Retracting separate from placing
-        approach = ApproachPlacement(manipulator=self.manipulator, object_geometry=self.object_geometry,
-                                     goal=self.goal, ft=self.ft)
+        approach = ApproachPlacement(
+            manipulator=self.manipulator,
+            object_geometry=self.object_geometry,
+            goal=self.goal,
+            ft=self.ft,
+        )
         open_gripper = OpenHand(simulated_execution=self.simulated)
         self.nodes.append(approach)
         self.nodes.append(open_gripper)
@@ -63,21 +72,35 @@ class ApproachPlacement(Goal):
         if isinstance(self.goal, HomogeneousTransformationMatrix):
             goal_pose = self.goal
             if goal_pose.reference_frame != context.world.root:
-                goal_pose = context.world.transform(spatial_object=goal_pose, target_frame=context.world.root)
+                goal_pose = context.world.transform(
+                    spatial_object=goal_pose, target_frame=context.world.root
+                )
 
             pre_tool_pose = HomogeneousTransformationMatrix.from_point_rotation_matrix(
-                point=goal_pose.to_position() + Vector3(0, 0, 0.2, reference_frame=context.world.root),
-                rotation_matrix=goal_pose.to_rotation_matrix(),
+                point=goal_pose.to_position()
+                + Vector3(0, 0, 0.15, reference_frame=context.world.root),
+                rotation_matrix=self.object_geometry.global_pose.to_rotation_matrix(),  # goal_pose.to_rotation_matrix(),
                 reference_frame=context.world.root,
             )
-            pre_pose_goal = CartesianPose(root_link=context.world.root, tip_link=self.manipulator.tool_frame,
-                                          goal_pose=pre_tool_pose)
-            self.object_goal = CartesianPose(root_link=context.world.root, tip_link=self.object_geometry,
-                                             goal_pose=goal_pose)
+            pre_pose_goal = CartesianPose(
+                root_link=context.world.root,
+                tip_link=self.object_geometry,
+                goal_pose=pre_tool_pose,
+            )
+            self.object_goal = CartesianPose(
+                root_link=context.world.root,
+                tip_link=self.object_geometry,
+                goal_pose=goal_pose,
+                reference_linear_velocity=0.1,
+            )
             self.add_node(Sequence([pre_pose_goal, self.object_goal]))
         elif isinstance(self.goal, Point3):
-            goal_point = context.world.transform(spatial_object=self.goal, target_frame=context.world.root)
-            pre_point = goal_point + Vector3(0, 0, 0.2, reference_frame=context.world.root)
+            goal_point = context.world.transform(
+                spatial_object=self.goal, target_frame=context.world.root
+            )
+            pre_point = goal_point + Vector3(
+                0, 0, 0.1, reference_frame=context.world.root
+            )
             pre_point.reference_frame = context.world.root
 
             # Z-up throughout: align object Z with world Z, yaw remains free
@@ -87,20 +110,31 @@ class ApproachPlacement(Goal):
                 tip_normal=Vector3.Z(self.object_geometry),
                 goal_normal=Vector3.Z(context.world.root),
             )
-            pre_pos = CartesianPosition(root_link=context.world.root, tip_link=self.object_geometry,
-                                        goal_point=pre_point)
-            self.object_goal = CartesianPosition(root_link=context.world.root, tip_link=self.object_geometry,
-                                                 goal_point=goal_point)
+            pre_pos = CartesianPosition(
+                root_link=context.world.root,
+                tip_link=self.object_geometry,
+                goal_point=pre_point,
+            )
+            self.object_goal = CartesianPosition(
+                root_link=context.world.root,
+                tip_link=self.object_geometry,
+                goal_point=goal_point,
+                reference_velocity=0.1,
+            )
             self.add_node(z_up)
             self.add_node(Sequence([pre_pos, self.object_goal]))
         else:
-            raise TypeError(f"goal must be HomogeneousTransformationMatrix or Point3, got {type(self.goal)}")
+            raise TypeError(
+                f"goal must be HomogeneousTransformationMatrix or Point3, got {type(self.goal)}"
+            )
 
     def build(self, context: BuildContext) -> NodeArtifacts:
         artifacts = super().build(context)
         if self.ft:
-            artifacts.observation = trinary_logic_or(self.ft_monitor.observation_variable,
-                                                     self.object_goal.observation_variable)
+            artifacts.observation = trinary_logic_or(
+                self.ft_monitor.observation_variable,
+                self.object_goal.observation_variable,
+            )
         else:
             artifacts.observation = self.object_goal.observation_variable
         return artifacts
@@ -111,6 +145,7 @@ class Retracting(Goal):
     """
     Retracts the tool frame of a manipulator by a certain distance.
     """
+
     manipulator: Manipulator = field(kw_only=True)
     distance: float = field(default=0.15, kw_only=True)
     velocity: float = field(default=0.1, kw_only=True)
