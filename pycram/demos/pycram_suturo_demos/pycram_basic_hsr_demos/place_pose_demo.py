@@ -1,13 +1,8 @@
 import logging
 
-import rclpy
-
 import semantic_digital_twin
-from demos.pycram_suturo_demos.helper_methods_and_useful_classes.object_creation import (
-    spawn_semantic_with_body,
-)
-from demos.pycram_suturo_demos.helper_methods_and_useful_classes.place_pose import (
-    get_pose_on_semantic_annotation_for_object_by_semantic_annotation,
+from pycram_suturo_demos.helper_methods_and_useful_classes.object_creation import (
+    move_object_to_new_pose,
 )
 from demos.pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
     robot_setup,
@@ -17,7 +12,7 @@ from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Milk,
 )
-from semantic_digital_twin.spatial_types.spatial_types import Pose
+from semantic_digital_twin.spatial_types.spatial_types import Pose, Point3
 from semantic_digital_twin.world_description.geometry import Scale
 
 SIMULATED = True
@@ -31,7 +26,6 @@ logger = logging.getLogger(__name__)
 
 
 def simulation_demo():
-    rclpy.init()
     setup_result = robot_setup(simulation=True, with_simulated_objects=False)
     world, robot_view, context = (
         setup_result.world,
@@ -39,28 +33,37 @@ def simulation_demo():
         setup_result.context,
     )
 
-    # Spawn example object
+    desk = world.get_semantic_annotation_by_name("desk")
+
     with world.modify_world():
         milk = Milk.create_with_new_body_in_world(
-            name=PrefixedName("milk_carton"), world=world, scale=Scale(0.1, 0.1, 0.2)
+            name=PrefixedName(f"milk_carton"),
+            world=world,
+            scale=Scale(0.1, 0.1, 0.2),
         )
 
-    # Get pose
-    pose = get_pose_on_semantic_annotation_for_object_by_semantic_annotation(
-        "desk", milk, world
-    )
+    points = desk.sample_points_from_surface(milk)
+    point = points[0] if points else Point3()
+    pose = Pose(position=point, reference_frame=point.reference_frame)
 
-    # "Error handling"
-    pose = pose if pose is not None else Pose()
+    with world.modify_world():
+        move_object_to_new_pose(milk, pose.to_homogeneous_matrix())
+        desk.add_object(milk)
 
-    # Spawn object at newfound location
-    milk = spawn_semantic_with_body(
-        "Milk",
-        "milk_carton",
-        Scale(0.1, 0.1, 0.2),
-        pose,
-        world,
-    )
+    for i in range(0, 10):
+        with world.modify_world():
+            obj = Milk.create_with_new_body_in_world(
+                name=PrefixedName(f"milk_carton_{i}"),
+                world=world,
+                scale=Scale(0.1, 0.1, 0.2),
+            )
+        points = desk.sample_points_from_surface(obj)
+        point = points[0] if points else Point3()
+        pose = Pose(position=point, reference_frame=point.reference_frame)
+
+        with world.modify_world():
+            move_object_to_new_pose(obj, pose.to_homogeneous_matrix())
+            desk.add_object(obj)
 
 
 def real_demo():
