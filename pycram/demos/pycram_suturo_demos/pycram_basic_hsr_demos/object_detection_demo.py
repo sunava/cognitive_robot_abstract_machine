@@ -1,5 +1,7 @@
 import logging
 
+import rclpy
+
 import semantic_digital_twin
 from pycram_suturo_demos.helper_methods_and_useful_classes.object_creation import (
     spawn_semantic_with_body,
@@ -9,6 +11,7 @@ from pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
     robot_setup,
 )
 from pycram.motion_executor import simulated_robot, real_robot
+from pycram_suturo_demos.pycram_basic_hsr_demos.start_up import setup_hsrb_context
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.geometry import Scale
@@ -17,7 +20,7 @@ logger = logging.getLogger(__name__)
 logging.getLogger(semantic_digital_twin.world.__name__).setLevel(logging.WARN)
 
 
-SIMULATED = True
+SIMULATED = False
 """
 Set this flag to True to run the demo in a simulated environment, 
 or False to run it on the real robot.
@@ -50,15 +53,7 @@ def real_demo():
     """
     Runs perception on the real robot and spawns all perceived objects in the world.
     """
-
-    setup_result = robot_setup(
-        simulation=False, with_simulated_objects=True, with_perception=False
-    )
-    world, robot_view, context = (
-        setup_result.world,
-        setup_result.robot_view,
-        setup_result.context,
-    )
+    rclpy_node, world, robot_view, context = setup_hsrb_context()
     perceive_and_spawn_all_objects(world=world)
 
 

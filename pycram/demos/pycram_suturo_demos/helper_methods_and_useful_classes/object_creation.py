@@ -1,6 +1,10 @@
 import json
 import os
+from typing import List
 
+from pycram_suturo_demos.helper_methods_and_useful_classes.mapping_perception_semantic_annotations import (
+    perception_semantic_annotations,
+)
 from pycram_suturo_demos.helper_methods_and_useful_classes.semantic_helper_methods import (
     get_object_class_from_string,
 )
@@ -164,15 +168,18 @@ def spawn_semantic_with_body(
         world_root_T_self = pose.to_homogeneous_matrix()
         world_root_T_self.reference_frame = world.root
 
-    try_remove_semantic_annotation_and_body(name, world)
-
-    with world.modify_world():
-        object_to_spawn = semantic_type.create_with_new_body_in_world(
-            name=PrefixedName(name),
-            world=world,
-            scale=scale,
-            world_root_T_self=world_root_T_self,
-        )
+    object_to_spawn: HasRootBody = world.get_semantic_annotation_by_name(name)
+    if object_to_spawn is not None:
+        with world.modify_world():
+            move_object_to_new_pose(object_to_spawn, world_root_T_self)
+    else:
+        with world.modify_world():
+            object_to_spawn = semantic_type.create_with_new_body_in_world(
+                name=PrefixedName(name),
+                world=world,
+                scale=scale,
+                world_root_T_self=world_root_T_self,
+            )
     return object_to_spawn
 
 
@@ -213,10 +220,15 @@ def perceive_and_spawn_all_objects(world: World):
             reference_frame=object_pose_stamped.header.frame_id,
         )
 
-        # TODO: Needs testing if this is correct and more error handling
-        object_name = extract_name_from_json_string(perceived_object.attribute)
-        object_type = perceived_object.type
-        # object_name = "muesli_vitalis_box_nutmix"
+        # TODO: Grr Perception is not updated so we use our own mapping
+        # object_name = extract_name_from_json_string(perceived_object.attribute)
+        # object_type = perceived_object.type
+
+        object_name = perceived_object.type
+        object_type = perception_semantic_annotations[object_name]
+
+        # If nothing else works
+        # object_name = "muesli_vitalis_box_nutmix2"
         # object_type = "cereal"
 
         spawn_semantic_with_body(
