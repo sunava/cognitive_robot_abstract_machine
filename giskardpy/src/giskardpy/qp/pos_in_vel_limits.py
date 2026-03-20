@@ -1,6 +1,9 @@
 from copy import copy
 
 import numpy as np
+from semantic_digital_twin.world_description.degree_of_freedom import (
+    DegreeOfFreedomLimits,
+)
 from typing_extensions import Tuple
 
 import giskardpy.utils.math as gm
@@ -142,7 +145,7 @@ def b_profile(
     dt: float,
     ph: int,
     eps: float = 0.00001,
-) -> Tuple[Vector, Vector, Vector, Vector, Vector, Vector]:
+) -> DegreeOfFreedomLimits:
     vel_limit = upper_limits.velocity
     acc_limit = upper_limits.acceleration
     jerk_limit = upper_limits.jerk
@@ -267,11 +270,15 @@ def b_profile(
     acc_profile_ub = acc_profile
     jerk_profile_lb = sm.min(jerk_profile, -jerk_profile) * dt**2
     jerk_profile_ub = sm.max(jerk_profile, jerk_profile) * dt**2
-    return (
-        pos_vel_profile_lb,
-        pos_vel_profile_ub,
-        acc_profile_lb,
-        acc_profile_ub,
-        jerk_profile_lb,
-        jerk_profile_ub,
+    return DegreeOfFreedomLimits(
+        lower=DerivativeMap(
+            velocity=pos_vel_profile_lb,
+            acceleration=acc_profile_lb,
+            jerk=jerk_profile_lb,
+        ),
+        upper=DerivativeMap(
+            velocity=pos_vel_profile_ub,
+            acceleration=acc_profile_ub,
+            jerk=jerk_profile_ub,
+        ),
     )

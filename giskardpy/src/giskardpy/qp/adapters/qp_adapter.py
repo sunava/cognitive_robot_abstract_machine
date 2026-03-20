@@ -7,6 +7,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from itertools import product
 from typing import Tuple, List, Dict, TYPE_CHECKING, Type
+from uuid import UUID
 
 import krrood.symbolic_math.symbolic_math as sm
 import numpy as np
@@ -21,7 +22,10 @@ from giskardpy.utils.decorators import memoize
 from giskardpy.utils.math import mpc
 from krrood.symbolic_math.symbolic_math import Vector, Matrix
 from semantic_digital_twin.spatial_types.derivatives import Derivatives, DerivativeMap
-from semantic_digital_twin.world_description.degree_of_freedom import DegreeOfFreedom
+from semantic_digital_twin.world_description.degree_of_freedom import (
+    DegreeOfFreedom,
+    DegreeOfFreedomLimits,
+)
 from typing_extensions import Self
 
 logger = logging.getLogger(__name__)
@@ -222,12 +226,12 @@ class DofLimits(DirectLimits):
 
         return sm.Vector(lb), sm.Vector(ub)
 
-    def all_the_limits(
+    def all_limits(
         self,
         degree_of_freedom: DegreeOfFreedom,
         max_derivative: Derivatives,
         config: QPControllerConfig,
-    ) -> Tuple[sm.Vector, sm.Vector, sm.Vector, sm.Vector, sm.Vector, sm.Vector]:
+    ) -> DegreeOfFreedomLimits:
         lower_limits = DerivativeMap()
         upper_limits = DerivativeMap()
 
@@ -242,9 +246,7 @@ class DofLimits(DirectLimits):
         lower_limits.velocity = degree_of_freedom.limits.lower.velocity
         upper_limits.velocity = degree_of_freedom.limits.upper.velocity
         if config.prediction_horizon == 1:
-            return sm.Vector([lower_limits.velocity]), sm.Vector(
-                [upper_limits.velocity]
-            )
+            raise NotImplementedError("tell ichumuh you actually need this")
 
         # %% acc limits
         if degree_of_freedom.limits.lower.acceleration is None:
@@ -270,7 +272,7 @@ class DofLimits(DirectLimits):
             lower_limits.jerk = degree_of_freedom.limits.lower.jerk
 
         try:
-            lbv, ubv, lba, uba, lbj, ubj = b_profile(
+            return b_profile(
                 dof_symbols=degree_of_freedom.variables,
                 lower_limits=lower_limits,
                 upper_limits=upper_limits,
@@ -298,7 +300,6 @@ class DofLimits(DirectLimits):
                 raise VelocityLimitUnreachableException(error_msg)
             else:
                 raise
-        return lbv, ubv, lba, uba, lbj, ubj
 
     def free_variable_bounds(
         self,
@@ -308,33 +309,22 @@ class DofLimits(DirectLimits):
         max_derivative = config.max_derivative
         lower_bounds = []
         upper_bounds = []
-        cache = {}
+        cache: dict[UUID, DegreeOfFreedomLimits] = {}
         for degree_of_freedom in degrees_of_freedom:
-            (
-                lower_velocity,
-                upper_velocity,
-                _,
-                _,
-                lower_jerk_limits,
-                upper_jerk_limits,
-            ) = self.all_the_limits(
+            all_limits = self.all_limits(
                 degree_of_freedom=degree_of_freedom,
                 max_derivative=max_derivative,
                 config=config,
             )
-            cache[degree_of_freedom.id] = {
-                Derivatives.velocity: (lower_velocity, upper_velocity),
-                Derivatives.jerk: (lower_jerk_limits, upper_jerk_limits),
-            }
+            cache[degree_of_freedom.id] = all_limits
         for derivative, t in product(
             [Derivatives.velocity, Derivatives.jerk], range(config.prediction_horizon)
         ):
             if t >= config.prediction_horizon - (max_derivative - derivative):
                 continue
             for degree_of_freedom in degrees_of_freedom:
-                current_profile = cache[degree_of_freedom.id][derivative]
-                lower_bounds.append(current_profile[0][t])
-                upper_bounds.append(current_profile[1][t])
+                lower_bounds.append(cache[degree_of_freedom.id].lower[derivative][t])
+                upper_bounds.append(cache[degree_of_freedom.id].upper[derivative][t])
 
         self.lower_bounds = sm.Vector(lower_bounds)
         self.upper_bounds = sm.Vector(upper_bounds)
