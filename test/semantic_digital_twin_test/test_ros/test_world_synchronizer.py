@@ -33,6 +33,7 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Handle,
     Door,
     Fridge,
+    Drawer,
 )
 from semantic_digital_twin.spatial_types import Vector3
 from semantic_digital_twin.world import World
@@ -296,14 +297,8 @@ def test_model_synchronization_merge_full_world(rclpy_node):
     w1 = World(name="w1")
     w2 = World(name="w2")
 
-    synchronizer_1 = ModelSynchronizer(
-        node=rclpy_node,
-        _world=w1,
-    )
-    synchronizer_2 = ModelSynchronizer(
-        node=rclpy_node,
-        _world=w2,
-    )
+    synchronizer_1 = ModelSynchronizer(node=rclpy_node, _world=w1)
+    synchronizer_2 = ModelSynchronizer(node=rclpy_node, _world=w2)
 
     pr2_world = URDFParser.from_file(
         os.path.join(
@@ -341,9 +336,12 @@ def test_model_synchronization_merge_full_world(rclpy_node):
 
     w1_connection_hashes = [hash(c) for c in w1.connections]
     w2_connection_hashes = [hash(c) for c in w2.connections]
-    assert w1_connection_hashes == w2_connection_hashes
-    assert len(w1.connections) == len(w2.connections)
-    assert len(w2.degrees_of_freedom) == len(w1.degrees_of_freedom)
+    assert (
+        w1_connection_hashes == w2_connection_hashes
+    ), f"w1: {[c.name for c in w1.connections]}, w2: {[c.name for c in w2.connections]}"
+    assert len(w1.degrees_of_freedom) == len(
+        w2.degrees_of_freedom
+    ), f"w1: {[d.name for d in w1.degrees_of_freedom]}, w2: {[d.name for d in w2.degrees_of_freedom]}"
 
     synchronizer_1.close()
     synchronizer_2.close()
@@ -463,10 +461,50 @@ def test_semantic_annotation_modifications(rclpy_node):
         w1.add_semantic_annotation(v1)
         w1.add_semantic_annotation(v2)
 
-    time.sleep(0.2)
+    time.sleep(0.5)
     assert [hash(sa) for sa in w1.semantic_annotations] == [
         hash(sa) for sa in w2.semantic_annotations
     ]
+
+
+def test_semantic_annotation_change_parameter_during_same_modification_block(
+    rclpy_node,
+):
+    w1 = World(name="w1")
+    w2 = World(name="w2")
+
+    synchronizer_1 = ModelSynchronizer(
+        node=rclpy_node,
+        _world=w1,
+    )
+    synchronizer_2 = ModelSynchronizer(
+        node=rclpy_node,
+        _world=w2,
+    )
+    root = Body(name=PrefixedName("root"))
+    b1 = Body(name=PrefixedName("b1"))
+    drawer = Drawer(root=b1)
+
+    b2 = Body(name=PrefixedName("b2"))
+    handle = Handle(root=b2)
+
+    with w1.modify_world():
+        w1.add_body(root)
+        w1.add_body(b1)
+        w1.add_body(b2)
+        root_C_b1 = Connection6DoF.create_with_dofs(parent=root, child=b1, world=w1)
+        w1.add_connection(root_C_b1)
+        root_C_b2 = Connection6DoF.create_with_dofs(parent=root, child=b2, world=w1)
+        w1.add_connection(root_C_b2)
+    with w1.modify_world():
+        w1.add_semantic_annotation(drawer)
+        w1.add_semantic_annotation(handle)
+        drawer.add_handle(handle)
+
+    time.sleep(1)
+    assert [hash(sa) for sa in w1.semantic_annotations] == [
+        hash(sa) for sa in w2.semantic_annotations
+    ], f"w1: {[sa.name for sa in w1.semantic_annotations]}, w2: {[sa.name for sa in w2.semantic_annotations]}"
 
 
 def test_synchronize_6dof(rclpy_node):
@@ -767,7 +805,6 @@ def test_attribute_updates(rclpy_node):
         hash(sa) for sa in world2.semantic_annotations
     ], f"{[sa.name for sa in world1.semantic_annotations]} vs {[sa.name for sa in world2.semantic_annotations]}"
 
-    print(f"{door.id=}")
     with world1.modify_world():
         fridge.add_door(door)
 

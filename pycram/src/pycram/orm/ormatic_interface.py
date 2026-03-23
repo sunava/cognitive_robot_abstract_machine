@@ -2111,12 +2111,12 @@ class WorldModelModificationBlockDAO_modifications_association(
     source_worldmodelmodificationblockdao_id: Mapped[int] = mapped_column(
         ForeignKey("WorldModelModificationBlockDAO.database_id")
     )
-    target_worldmodelmodificationdao_id: Mapped[int] = mapped_column(
-        ForeignKey("WorldModelModificationDAO.database_id")
+    target_worldmodificationdao_id: Mapped[int] = mapped_column(
+        ForeignKey("WorldModificationDAO.database_id")
     )
 
-    target: Mapped[WorldModelModificationDAO] = relationship(
-        "WorldModelModificationDAO", foreign_keys=[target_worldmodelmodificationdao_id]
+    target: Mapped[WorldModificationDAO] = relationship(
+        "WorldModificationDAO", foreign_keys=[target_worldmodificationdao_id]
     )
 
 
@@ -13378,14 +13378,37 @@ class CameraDAO(
     }
 
 
-class WorldModelModificationDAO(
+class WorldModelModificationBlockDAO(
     Base,
     DataAccessObject[
-        semantic_digital_twin.world_description.world_modification.WorldModelModification
+        semantic_digital_twin.world_description.world_modification.WorldModelModificationBlock
     ],
 ):
 
-    __tablename__ = "WorldModelModificationDAO"
+    __tablename__ = "WorldModelModificationBlockDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        Integer, primary_key=True, use_existing_column=True
+    )
+
+    modifications: Mapped[
+        builtins.list[WorldModelModificationBlockDAO_modifications_association]
+    ] = relationship(
+        "WorldModelModificationBlockDAO_modifications_association",
+        collection_class=builtins.list,
+        cascade="all, delete-orphan",
+        foreign_keys="[WorldModelModificationBlockDAO_modifications_association.source_worldmodelmodificationblockdao_id]",
+    )
+
+
+class WorldModificationDAO(
+    Base,
+    DataAccessObject[
+        semantic_digital_twin.world_description.world_modification.WorldModification
+    ],
+):
+
+    __tablename__ = "WorldModificationDAO"
 
     database_id: Mapped[builtins.int] = mapped_column(
         Integer, primary_key=True, use_existing_column=True
@@ -13397,7 +13420,55 @@ class WorldModelModificationDAO(
 
     __mapper_args__ = {
         "polymorphic_on": "polymorphic_type",
+        "polymorphic_identity": "WorldModificationDAO",
+    }
+
+
+class SetDofHasHardwareInterfaceDAO(
+    WorldModificationDAO,
+    DataAccessObject[
+        semantic_digital_twin.world_description.world_modification.SetDofHasHardwareInterface
+    ],
+):
+
+    __tablename__ = "SetDofHasHardwareInterfaceDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        ForeignKey(WorldModificationDAO.database_id),
+        primary_key=True,
+        use_existing_column=True,
+    )
+
+    value: Mapped[builtins.bool] = mapped_column(use_existing_column=True)
+
+    degree_of_freedom_ids: Mapped[typing.List[uuid.UUID]] = mapped_column(
+        JSON, nullable=False, use_existing_column=True
+    )
+
+    __mapper_args__ = {
+        "polymorphic_identity": "SetDofHasHardwareInterfaceDAO",
+        "inherit_condition": database_id == WorldModificationDAO.database_id,
+    }
+
+
+class WorldModelModificationDAO(
+    WorldModificationDAO,
+    DataAccessObject[
+        semantic_digital_twin.world_description.world_modification.WorldModelModification
+    ],
+):
+
+    __tablename__ = "WorldModelModificationDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        ForeignKey(WorldModificationDAO.database_id),
+        primary_key=True,
+        use_existing_column=True,
+    )
+
+    __mapper_args__ = {
         "polymorphic_identity": "WorldModelModificationDAO",
+        "inherit_condition": database_id == WorldModificationDAO.database_id,
     }
 
 
@@ -13414,16 +13485,6 @@ class AddActuatorModificationDAO(
         ForeignKey(WorldModelModificationDAO.database_id),
         primary_key=True,
         use_existing_column=True,
-    )
-
-    actuator_id: Mapped[int] = mapped_column(
-        ForeignKey("ActuatorDAO.database_id", use_alter=True),
-        nullable=True,
-        use_existing_column=True,
-    )
-
-    actuator: Mapped[ActuatorDAO] = relationship(
-        "ActuatorDAO", uselist=False, foreign_keys=[actuator_id], post_update=True
     )
 
     __mapper_args__ = {
@@ -13447,16 +13508,6 @@ class AddConnectionModificationDAO(
         use_existing_column=True,
     )
 
-    connection_id: Mapped[int] = mapped_column(
-        ForeignKey("ConnectionDAO.database_id", use_alter=True),
-        nullable=True,
-        use_existing_column=True,
-    )
-
-    connection: Mapped[ConnectionDAO] = relationship(
-        "ConnectionDAO", uselist=False, foreign_keys=[connection_id], post_update=True
-    )
-
     __mapper_args__ = {
         "polymorphic_identity": "AddConnectionModificationDAO",
         "inherit_condition": database_id == WorldModelModificationDAO.database_id,
@@ -13476,16 +13527,6 @@ class AddDegreeOfFreedomModificationDAO(
         ForeignKey(WorldModelModificationDAO.database_id),
         primary_key=True,
         use_existing_column=True,
-    )
-
-    dof_id: Mapped[int] = mapped_column(
-        ForeignKey("DegreeOfFreedomDAO.database_id", use_alter=True),
-        nullable=True,
-        use_existing_column=True,
-    )
-
-    dof: Mapped[DegreeOfFreedomDAO] = relationship(
-        "DegreeOfFreedomDAO", uselist=False, foreign_keys=[dof_id], post_update=True
     )
 
     __mapper_args__ = {
@@ -13509,19 +13550,6 @@ class AddKinematicStructureEntityModificationDAO(
         use_existing_column=True,
     )
 
-    kinematic_structure_entity_id: Mapped[int] = mapped_column(
-        ForeignKey("KinematicStructureEntityDAO.database_id", use_alter=True),
-        nullable=True,
-        use_existing_column=True,
-    )
-
-    kinematic_structure_entity: Mapped[KinematicStructureEntityDAO] = relationship(
-        "KinematicStructureEntityDAO",
-        uselist=False,
-        foreign_keys=[kinematic_structure_entity_id],
-        post_update=True,
-    )
-
     __mapper_args__ = {
         "polymorphic_identity": "AddKinematicStructureEntityModificationDAO",
         "inherit_condition": database_id == WorldModelModificationDAO.database_id,
@@ -13541,19 +13569,6 @@ class AddSemanticAnnotationModificationDAO(
         ForeignKey(WorldModelModificationDAO.database_id),
         primary_key=True,
         use_existing_column=True,
-    )
-
-    semantic_annotation_id: Mapped[int] = mapped_column(
-        ForeignKey("SemanticAnnotationDAO.database_id", use_alter=True),
-        nullable=True,
-        use_existing_column=True,
-    )
-
-    semantic_annotation: Mapped[SemanticAnnotationDAO] = relationship(
-        "SemanticAnnotationDAO",
-        uselist=False,
-        foreign_keys=[semantic_annotation_id],
-        post_update=True,
     )
 
     __mapper_args__ = {
@@ -13577,10 +13592,6 @@ class RemoveActuatorModificationDAO(
         use_existing_column=True,
     )
 
-    actuator_id: Mapped[uuid.UUID] = mapped_column(
-        sqlalchemy.sql.sqltypes.UUID, nullable=False, use_existing_column=True
-    )
-
     __mapper_args__ = {
         "polymorphic_identity": "RemoveActuatorModificationDAO",
         "inherit_condition": database_id == WorldModelModificationDAO.database_id,
@@ -13600,10 +13611,6 @@ class RemoveBodyModificationDAO(
         ForeignKey(WorldModelModificationDAO.database_id),
         primary_key=True,
         use_existing_column=True,
-    )
-
-    body_id: Mapped[uuid.UUID] = mapped_column(
-        sqlalchemy.sql.sqltypes.UUID, nullable=False, use_existing_column=True
     )
 
     __mapper_args__ = {
@@ -13627,13 +13634,6 @@ class RemoveConnectionModificationDAO(
         use_existing_column=True,
     )
 
-    parent_id: Mapped[uuid.UUID] = mapped_column(
-        sqlalchemy.sql.sqltypes.UUID, nullable=False, use_existing_column=True
-    )
-    child_id: Mapped[uuid.UUID] = mapped_column(
-        sqlalchemy.sql.sqltypes.UUID, nullable=False, use_existing_column=True
-    )
-
     __mapper_args__ = {
         "polymorphic_identity": "RemoveConnectionModificationDAO",
         "inherit_condition": database_id == WorldModelModificationDAO.database_id,
@@ -13653,10 +13653,6 @@ class RemoveDegreeOfFreedomModificationDAO(
         ForeignKey(WorldModelModificationDAO.database_id),
         primary_key=True,
         use_existing_column=True,
-    )
-
-    dof_id: Mapped[uuid.UUID] = mapped_column(
-        sqlalchemy.sql.sqltypes.UUID, nullable=False, use_existing_column=True
     )
 
     __mapper_args__ = {
@@ -13680,73 +13676,10 @@ class RemoveSemanticAnnotationModificationDAO(
         use_existing_column=True,
     )
 
-    semantic_annotation_id: Mapped[int] = mapped_column(
-        ForeignKey("SemanticAnnotationDAO.database_id", use_alter=True),
-        nullable=True,
-        use_existing_column=True,
-    )
-
-    semantic_annotation: Mapped[SemanticAnnotationDAO] = relationship(
-        "SemanticAnnotationDAO",
-        uselist=False,
-        foreign_keys=[semantic_annotation_id],
-        post_update=True,
-    )
-
     __mapper_args__ = {
         "polymorphic_identity": "RemoveSemanticAnnotationModificationDAO",
         "inherit_condition": database_id == WorldModelModificationDAO.database_id,
     }
-
-
-class SetDofHasHardwareInterfaceDAO(
-    WorldModelModificationDAO,
-    DataAccessObject[
-        semantic_digital_twin.world_description.world_modification.SetDofHasHardwareInterface
-    ],
-):
-
-    __tablename__ = "SetDofHasHardwareInterfaceDAO"
-
-    database_id: Mapped[builtins.int] = mapped_column(
-        ForeignKey(WorldModelModificationDAO.database_id),
-        primary_key=True,
-        use_existing_column=True,
-    )
-
-    value: Mapped[builtins.bool] = mapped_column(use_existing_column=True)
-
-    degree_of_freedom_ids: Mapped[typing.List[uuid.UUID]] = mapped_column(
-        JSON, nullable=False, use_existing_column=True
-    )
-
-    __mapper_args__ = {
-        "polymorphic_identity": "SetDofHasHardwareInterfaceDAO",
-        "inherit_condition": database_id == WorldModelModificationDAO.database_id,
-    }
-
-
-class WorldModelModificationBlockDAO(
-    Base,
-    DataAccessObject[
-        semantic_digital_twin.world_description.world_modification.WorldModelModificationBlock
-    ],
-):
-
-    __tablename__ = "WorldModelModificationBlockDAO"
-
-    database_id: Mapped[builtins.int] = mapped_column(
-        Integer, primary_key=True, use_existing_column=True
-    )
-
-    modifications: Mapped[
-        builtins.list[WorldModelModificationBlockDAO_modifications_association]
-    ] = relationship(
-        "WorldModelModificationBlockDAO_modifications_association",
-        collection_class=builtins.list,
-        cascade="all, delete-orphan",
-        foreign_keys="[WorldModelModificationBlockDAO_modifications_association.source_worldmodelmodificationblockdao_id]",
-    )
 
 
 class WorldStateMappingDAO(
