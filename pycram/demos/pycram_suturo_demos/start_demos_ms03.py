@@ -10,6 +10,8 @@ from std_msgs.msg import String
 from pycram_suturo_demos.helper_methods_and_useful_classes.nlp_human_robot_interaction import TalkingNode
 from pycram.external_interfaces.nlp_interface import NlpInterface, FilterOptions
 
+from pycram_suturo_demos.pycram_basic_hsr_demos.dialog_with_human_demo import main as dialog_with_human_demo_main
+
 
 
 class NlpInterfaceDemoStartM3(NlpInterface):
@@ -82,7 +84,10 @@ def main():
                 case 'seating':
                     if "waving" in resp[2][0][4]:
                         print("start 'Tell the waving person where he/she can sit'")
-                        talk.pub("I will go and show them where to sit.")
+                        #talk.pub("I will go and show them where to sit.")
+
+                        dialog_with_human_demo_main()
+
                 case 'lookup':
                     where = resp[2][0][1]
                     print(f"Start Challenge 'Is there something on the {where}.'")

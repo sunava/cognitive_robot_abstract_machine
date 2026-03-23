@@ -308,6 +308,7 @@ class NlpNode(Node):
     def __init__(self):
 
         self.tti_nlp_node = TextToImagePublisher()
+        self.tts_nlp_node = TalkingNode()
 
         # Initialize ROS2 node with name "nlp"
         super().__init__('nlp')
@@ -448,6 +449,7 @@ class NlpNode(Node):
             # happens sometimes when no answer received
             if self.response[0] == "." and self.response[1] == "affirm":
                 self.get_logger().info(f"No response received within timeout")
+                self.tts_nlp_node.pub("Sorry, I couldn't understand.", delay=10)
                 print("Sorry, I couldn't understand.")
                 return None
             # sometimes multiple outputs, have to wait to ensure all of them are received
@@ -470,6 +472,7 @@ class NlpNode(Node):
             return resp, all_out
         else:
             self.get_logger().info(f"No response received within timeout")
+            self.tts_nlp_node.pub("Sorry, I couldn't understand.", delay=10)
             print("Sorry, I couldn't understand.")
             return None
 

@@ -6,7 +6,7 @@ from time import sleep
 
 def main():
     talking = TalkingNode()
-    talking.pub("To answer, start talking after I asked my question.")
+    talking.pub("To answer, start talking when my display changes.")
     sleep(8)
     # print("-------------------------------------------------------------------------------------------------")
     # print("Hello, please introduce yourself, who are you and what is your favorite drink?")
