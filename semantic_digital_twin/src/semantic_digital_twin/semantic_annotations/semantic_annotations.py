@@ -882,33 +882,36 @@ class Sofa(Furniture, HasSupportingSurface):
         name: PrefixedName,
         world: World,
         world_root_T_self: Optional[HomogeneousTransformationMatrix] = None,
-        length: float = 2.0,  # Total width (x-axis)
-        width: float = 0.90,  # Total depth (y-axis)
-        height: float = 0.85, # Total height (z-axis)
+        connection_limits: Optional[DegreeOfFreedomLimits] = None,
+        active_axis: Optional[Vector3] = None,
+        connection_multiplier: float = 1.0,
+        connection_offset: float = 0.0,
+        scale: Scale = Scale(0.9, 2.0, 0.85), # Default: x=depth, y=width, z=height
+        *,
         color: Color = Color(0.5, 0.5, 0.5), # Grey default
         **kwargs,
     ) -> Self:
         """
         Creates a sofa as a single body by subtracting the sitting area from the outer bounding box.
         """
-        # Dimensions
-        seat_height = height * 0.45
-        backrest_depth = width * 0.20
-        armrest_width = length * 0.10
+        # Dimensions based on scale: x=depth, y=width, z=height
+        seat_height = scale.z * 0.45
+        backrest_depth = scale.x * 0.20
+        armrest_width = scale.y * 0.10
 
         # 1. Create the outer bounding box event
-        outer_event = Scale(length, width, height).to_simple_event()
+        outer_event = scale.to_simple_event()
 
         # 2. Create the cutout event (the empty space where you sit)
         # We extend the cutout slightly in the "open" directions (Top and Front)
         # to ensure the subtraction cleanly breaks the surface.
-        # X: Between armrests
-        # Y: In front of backrest (assuming backrest is at +Y, front is -Y)
-        # Z: Above the seat
+        # X (Depth): Opening at -X (front), backrest at +X
+        # Y (Width): Between armrests
+        # Z (Height): Above the seat
         cutout_event = SimpleEvent({
-            SpatialVariables.x.value: closed(-length / 2 + armrest_width, length / 2 - armrest_width),
-            SpatialVariables.y.value: closed(-width / 2 - 0.001, width / 2 - backrest_depth),
-            SpatialVariables.z.value: closed(-height / 2 + seat_height, height / 2 + 0.001)
+            SpatialVariables.x.value: closed(-scale.x / 2 - 0.001, scale.x / 2 - backrest_depth),
+            SpatialVariables.y.value: closed(-scale.y / 2 + armrest_width, scale.y / 2 - armrest_width),
+            SpatialVariables.z.value: closed(-scale.z / 2 + seat_height, scale.z / 2 + 0.001)
         })
 
         # 3. Subtract cutout from outer box
@@ -925,7 +928,14 @@ class Sofa(Furniture, HasSupportingSurface):
         sofa_body.visual = shapes
 
         sofa = cls._create_with_connection_in_world(
-            name, world, sofa_body, world_root_T_self
+            name=name,
+            world=world,
+            kinematic_structure_entity=sofa_body,
+            world_root_T_self=world_root_T_self,
+            connection_limits=connection_limits,
+            active_axis=active_axis,
+            connection_multiplier=connection_multiplier,
+            connection_offset=connection_offset,
         )
 
         sofa.calculate_supporting_surface()

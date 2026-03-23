@@ -733,9 +733,7 @@ class TestFactories(unittest.TestCase):
             sofa = Sofa.create_with_new_body_in_world(
                 name=PrefixedName("sofa"),
                 world=world,
-                length=2.0,
-                width=0.9,
-                height=0.85
+                scale=Scale(0.9, 2.0, 0.85)
             )
 
         self.assertIsNotNone(sofa)
