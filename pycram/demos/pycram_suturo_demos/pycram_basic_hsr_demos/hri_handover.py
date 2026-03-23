@@ -78,8 +78,8 @@ def give_object_to_human():
     grippy.send_goal(effort=gripper_open)
     sleep(3)
 
-
-def main():
+# human has object and robot takes object from human
+def handover_human_robot():
     with_giskard = True
     rclpy.init()
 
@@ -110,6 +110,39 @@ def main():
         # give_object_to_human()
     sleep(5)
 
+# robot has object and human takes object from robot
+def handover_robot_human():
+    with_giskard = True
+    rclpy.init()
+
+    if with_giskard:
+        SIMULATED = False
+        robot_type: ExecutionEnvironment = simulated_robot if SIMULATED else real_robot
+
+        rclpy_node, world, robot_view, context = initialization(simulation=SIMULATED)
+
+        with robot_type:
+
+            SequentialPlan(
+                context,
+                HandoverActionDescription(world=world),
+            ).perform()
+
+            give_object_to_human()
+
+            print("Parking arms")
+            SequentialPlan(
+                context,
+                ParkArmsActionDescription(Arms.LEFT),
+            ).perform()
+            print("Done")
+    else:
+        give_object_to_human()
+    sleep(5)
+
+
+def main():
+    handover_human_robot()
 
 if __name__ == "__main__":
     main()
