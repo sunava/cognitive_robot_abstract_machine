@@ -1,4 +1,4 @@
-from random_events.set import SetElement, Set, EMPTY_SET_SYMBOL
+from random_events.set import SetElement, Set
 import enum
 import unittest
 

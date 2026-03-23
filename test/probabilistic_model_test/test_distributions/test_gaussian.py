@@ -1,6 +1,15 @@
 import unittest
 
-from probabilistic_model.distributions.gaussian import *
+import numpy as np
+
+from krrood.adapters.json_serializer import SubclassJSONSerializer
+from probabilistic_model.distributions import DiracDeltaDistribution, GaussianDistribution, \
+    TruncatedGaussianDistribution
+from random_events.interval import closed, reals, singleton, SimpleInterval, Bound
+from random_events.product_algebra import SimpleEvent, VariableMap
+import plotly.graph_objects as go
+
+from random_events.variable import Continuous
 
 
 class GaussianDistributionTestCase(unittest.TestCase):

@@ -2,14 +2,19 @@ from __future__ import annotations
 
 import itertools
 import textwrap
+from dataclasses import field, dataclass
+from typing import Any, Iterable, Self, Dict, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
 from sortedcontainers import SortedDict, SortedValuesView, SortedSet
 from typing_extensions import List, TYPE_CHECKING, Union, Set as teSet
 
-from random_events.sigma_algebra import *
-from random_events.variable import *
+from krrood.adapters.json_serializer import SubclassJSONSerializer
+from random_events.interval import Interval, SimpleInterval
+from random_events.sigma_algebra import AbstractSimpleSet, AbstractCompositeSet
+from random_events.variable import Variable, Continuous
+import random_events_lib as rl
 
 # Type definitions
 if TYPE_CHECKING:

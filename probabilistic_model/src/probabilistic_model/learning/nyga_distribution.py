@@ -35,12 +35,12 @@ class InductionStep:
     The entire sorted and unique data points
     """
 
-    cumulative_weights: np.array
+    cumulative_weights: npt.NDArray
     """
     The cumulative log_weights of the samples in the dataset.
     """
 
-    cumulative_log_weights: np.array
+    cumulative_log_weights: npt.NDArray
     """
     The cumulative logarithmic log_weights of the samples in the dataset.
     """

@@ -3,8 +3,11 @@ from __future__ import annotations
 from functools import cached_property
 
 from typing_extensions import Hashable, Optional
+from typing import Any, Iterable, Self, Dict, Optional, Tuple
+from dataclasses import field, dataclass
 
-from random_events.sigma_algebra import *
+from random_events.sigma_algebra import AbstractSimpleSet, AbstractCompositeSet
+import random_events_lib as rl
 
 # Type Definitions
 HashMap: Dict[int, Hashable]
