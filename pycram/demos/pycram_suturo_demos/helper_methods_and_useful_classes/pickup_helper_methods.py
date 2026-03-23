@@ -1,3 +1,5 @@
+import math
+from dataclasses import dataclass
 from typing import Any
 
 import rclpy
@@ -357,3 +359,42 @@ def validate_grasped() -> bool:
 
     is_object_between_fingertips = item_between_fingertips(fingertip_distance=msg)
     return is_object_between_fingertips
+
+@dataclass
+class PickupDeadzone:
+    min_distance: float = 0.3   # too close, robot can't reach down
+    max_distance: float = 0.8   # too far to reach
+    max_angle_deg: float = 45.0 # cone in front of robot (±45°)
+    max_height_diff: float = 0.2 # object must be near floor level
+
+def is_in_pickup_zone(self, object_position: tuple[float, float, float]) -> bool:
+    """
+    object_position: (x, y, z) in robot's base frame
+    x = forward, y = left, z = up
+    """
+    ox, oy, oz = object_position
+
+    # Horizontal distance from robot base
+    distance = math.sqrt(ox ** 2 + oy ** 2)
+
+    # Too close or too far
+    if distance < self.deadzone.min_distance:
+        logger.debug(f"Object too close: {distance:.2f}m")
+        return False
+    if distance > self.deadzone.max_distance:
+        logger.debug(f"Object too far: {distance:.2f}m")
+        return False
+
+    # Outside forward cone
+    angle_deg = math.degrees(math.atan2(abs(oy), ox))
+    if angle_deg > self.deadzone.max_angle_deg:
+        logger.debug(f"Object outside reach cone: {angle_deg:.1f}°")
+        return False
+
+    # Object too high or too low
+    if abs(oz) > self.deadzone.max_height_diff:
+        logger.debug(f"Object height out of range: {oz:.2f}m")
+        return False
+
+    return True
+
