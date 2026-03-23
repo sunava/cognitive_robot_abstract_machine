@@ -34,7 +34,26 @@ def move_demo(simulated: bool, target_pose: str, world: World, context: Context)
         orientation=[0.0, 0.0, 0, 1],
         frame=world.root,
     )
+    # TODO edit on robocup
     ROBOT_START_POSE = PoseStamped.from_list(
+        position=[0.0, 0.0, 0.0],
+        orientation=[0, 0, 0, 1],
+        frame=world.root,
+    )
+
+    PERCEPTION_ANGLE_0 = PoseStamped.from_list(
+        position=[0.0, 0.0, 0.0],
+        orientation=[0, 0, 0, 1],
+        frame=world.root,
+    )
+
+    PERCEPTION_ANGLE_1 = PoseStamped.from_list(
+        position=[0.0, 0.0, 0.0],
+        orientation=[0, 0, 0, 1],
+        frame=world.root,
+    )
+
+    PERCEPTION_ANGLE_2 = PoseStamped.from_list(
         position=[0.0, 0.0, 0.0],
         orientation=[0, 0, 0, 1],
         frame=world.root,
@@ -70,5 +89,16 @@ def move_demo(simulated: bool, target_pose: str, world: World, context: Context)
             robot_move(target_pose_method=CABINET)
         case "POPCORN_TABLE":
             logger.info("Moving to popcorn table")
-            # robot_move(target_pose_method=ROBOT_PRE_START_POSE_TO_TABLE)
             robot_move(target_pose_method=POPCORN_TABLE)
+        case "PERCEPTION_ANGLE_0":
+            logger.info("Moving to perception angle 0")
+            robot_move(target_pose_method=PERCEPTION_ANGLE_0)
+        case "PERCEPTION_ANGLE_1":
+            logger.info("Moving to perception angle 1")
+            robot_move(target_pose_method=PERCEPTION_ANGLE_1)
+        case "PERCEPTION_ANGLE_2":
+            logger.info("Moving to perception angle 2")
+            robot_move(target_pose_method=PERCEPTION_ANGLE_2)
+        case _:
+            logger.info("Moving to robot start pose")
+            robot_move(target_pose_method=ROBOT_PRE_START_POSE)
