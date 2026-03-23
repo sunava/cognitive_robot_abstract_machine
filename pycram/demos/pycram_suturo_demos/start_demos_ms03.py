@@ -94,6 +94,7 @@ def main():
 
     #print(resp)
 
+    # TODO: add demo starts
     match nlp.filter_response(resp, FilterOptions.INTENT):
         case 'seating':
             if "waving" in resp[2][0][4]:
