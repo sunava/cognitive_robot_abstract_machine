@@ -19,7 +19,7 @@ from demos.pycram_suturo_demos.helper_methods_and_useful_classes.pickup_helper_m
     attach_object_to_hsrb,
     detach_object_from_hsrb,
 )
-from demos.pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
+from demos.pycram_suturo_demos.helper_methods_and_useful_classes.A_robot_setup import (
     robot_setup,
 )
 from krrood.symbolic_math.symbolic_math import Scalar, FloatVariable

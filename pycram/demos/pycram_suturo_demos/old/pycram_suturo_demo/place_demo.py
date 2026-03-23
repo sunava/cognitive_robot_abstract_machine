@@ -14,7 +14,7 @@ from pycram.robot_plans import (
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
 )
-from pycram_suturo_demos.helper_methods_and_useful_classes.real_setup import (
+from pycram_suturo_demos.helper_methods_and_useful_classes.A_real_setup import (
     world_setup_with_test_objects,
 )
 

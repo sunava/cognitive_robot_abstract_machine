@@ -7,10 +7,9 @@ from pycram.process_module import simulated_robot
 
 from semantic_digital_twin.adapters.viz_marker import VizMarkerPublisher
 from semantic_digital_twin.world import World
-from simulation_setup import setup_hsrb_in_environment
+from pycram_suturo_demos.old.old_startups.A_simulation_setup import setup_hsrb_in_environment
 from pycram.robot_plans import SimplePouringActionDescription
 from pycram.robot_plans import ParkArmsActionDescription
-from pycram.alternative_motion_mappings import hsrb_motion_mapping
 
 result = setup_hsrb_in_environment(load_environment=load_environment, with_viz=True)
 world: World

@@ -14,7 +14,7 @@ from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
 from pycram.motion_executor import real_robot
 from pycram.robot_plans import ParkArmsActionDescription
-from pycram_suturo_demos.pycram_basic_hsr_demos.start_up import setup_hsrb_context
+from pycram_suturo_demos.pycram_basic_hsr_demos.A_start_up import setup_hsrb_context
 from semantic_digital_twin.adapters.ros import (
     HomogeneousTransformationMatrixToRos2Converter,
 )

@@ -1,3 +1,5 @@
+import time
+
 from rclpy import logging
 
 from pycram.datastructures.dataclasses import Context
@@ -11,6 +13,7 @@ from pycram.robot_plans import (
     GiskardPullUpActionDescription,
     MoveTorsoActionDescription,
 )
+from pycram_suturo_demos.start_demos_ms03 import TalkingNode
 from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.world_entity import Body
@@ -23,6 +26,7 @@ def pickup_demo(
     object_to_pickup: Body = None,
 ):
     # logger creaton
+    talking_node = TalkingNode()
     logger = logging.get_logger(__name__)
 
     # if the determined object is None, the pickup is skipped, because the object was not parsed properly
@@ -44,7 +48,9 @@ def pickup_demo(
 
     # ------------------------ EXECUTION
     with robot_type:
+        talking_node.pub("Stating pickup")
         logger.info("Starting pickup demo")
+        time.sleep(2)
         SequentialPlan(
             context,
             GiskardGraspActionDescription(
@@ -67,6 +73,9 @@ def pickup_demo(
                     gripper_vertical=True,
                 ),
             ).perform()
+
+        talking_node.pub("Object grasped, pulling up and parking arms")
+        time.sleep(2)
         plan_pullup.perform()
         logger.info("parking arms finished")
         logger.info("PickUp has been executed")

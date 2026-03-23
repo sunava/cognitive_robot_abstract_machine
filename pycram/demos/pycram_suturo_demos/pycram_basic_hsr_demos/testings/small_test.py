@@ -2,7 +2,7 @@ import time
 
 import rclpy
 
-from demos.pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
+from demos.pycram_suturo_demos.helper_methods_and_useful_classes.A_robot_setup import (
     robot_setup,
 )
 from pycram.datastructures.enums import Arms

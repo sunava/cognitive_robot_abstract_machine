@@ -18,13 +18,13 @@ from pycram.robot_plans import (
     PickUpActionDescription,
     MoveTorsoActionDescription,
 )
-from pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
+from pycram_suturo_demos.helper_methods_and_useful_classes.A_robot_setup import (
     robot_setup,
 )
 from pycram_suturo_demos.pycram_basic_hsr_demos.gripper_open_close_demo import (
     GripperActionClient,
 )
-from pycram_suturo_demos.pycram_basic_hsr_demos.start_up import setup_hsrb_context
+from pycram_suturo_demos.pycram_basic_hsr_demos.A_start_up import setup_hsrb_context
 from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.robots.abstract_robot import ParallelGripper, Manipulator

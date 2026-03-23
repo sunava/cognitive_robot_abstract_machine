@@ -4,7 +4,7 @@ import semantic_digital_twin
 from pycram_suturo_demos.helper_methods_and_useful_classes.object_creation import (
     move_object_to_new_pose,
 )
-from demos.pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
+from demos.pycram_suturo_demos.helper_methods_and_useful_classes.A_robot_setup import (
     robot_setup,
 )
 from pycram.motion_executor import simulated_robot, real_robot

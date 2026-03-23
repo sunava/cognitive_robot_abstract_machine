@@ -4,7 +4,7 @@ import logging
 
 import rclpy
 
-import nlp_human_robot_interaction as hri
+import pycram_suturo_demos.helper_methods_and_useful_classes.nlp_human_robot_interaction as hri
 from time import sleep
 
 from pycram.datastructures.enums import Arms
@@ -24,7 +24,7 @@ from semantic_digital_twin.world import World
 from dataclasses import dataclass, field
 
 
-from pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
+from pycram_suturo_demos.helper_methods_and_useful_classes.A_robot_setup import (
     robot_setup,
 )
 

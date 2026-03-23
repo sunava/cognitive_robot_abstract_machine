@@ -2,7 +2,7 @@ from typing import Any
 
 from dulwich.porcelain import switch
 
-from pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
+from pycram_suturo_demos.helper_methods_and_useful_classes.A_robot_setup import (
     robot_setup,
 )
 from pycram.datastructures.enums import PickUpType
@@ -249,24 +249,6 @@ def parse_color(color_str: str) -> Color:
         "orange": Color.ORANGE(),
     }
     return color_map.get(color_str.strip().lower(), Color.WHITE())
-
-
-def try_perceive_and_spawn(world: World) -> dict:
-    """
-    Attempts to perceive and spawn all objects via RoboKudo.
-    Returns an empty dict if RoboKudo is unavailable.
-
-    :param world: The world in which to spawn perceived objects.
-    :return: A dict of perceived objects, or an empty dict on import failure.
-    """
-    perceived_objects = {}
-    from pycram_suturo_demos.helper_methods_and_useful_classes.object_creation import (
-        perceive_and_spawn_all_objects,
-    )
-
-    perceived_objects = perceive_and_spawn_all_objects(world=world)
-    return perceived_objects
-
 
 def get_pickup_mode() -> tuple[PickUpType, str, Color]:
     """

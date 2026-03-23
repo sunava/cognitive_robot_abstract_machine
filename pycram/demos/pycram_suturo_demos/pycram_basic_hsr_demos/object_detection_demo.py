@@ -7,11 +7,11 @@ from pycram_suturo_demos.helper_methods_and_useful_classes.object_creation impor
     spawn_semantic_with_body,
     perceive_and_spawn_all_objects,
 )
-from pycram_suturo_demos.helper_methods_and_useful_classes.robot_setup import (
+from pycram_suturo_demos.helper_methods_and_useful_classes.A_robot_setup import (
     robot_setup,
 )
 from pycram.motion_executor import simulated_robot, real_robot
-from pycram_suturo_demos.pycram_basic_hsr_demos.start_up import setup_hsrb_context
+from pycram_suturo_demos.pycram_basic_hsr_demos.A_start_up import setup_hsrb_context
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.geometry import Scale

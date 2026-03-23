@@ -13,7 +13,7 @@ from pycram_suturo_demos.helper_methods_and_useful_classes.waving_detection impo
 from pycram.external_interfaces import nav2_move
 from pycram.datastructures.enums import Arms
 from pycram.datastructures.pose import PoseStamped
-from pycram_suturo_demos.pycram_basic_hsr_demos.start_up import setup_hsrb_context
+from pycram_suturo_demos.pycram_basic_hsr_demos.A_start_up import setup_hsrb_context
 from pycram.external_interfaces.nav2_move import buffer_in_front_of
 from pycram.external_interfaces.robokudo import shutdown_robokudo_interface
 from pycram.language import SequentialPlan
