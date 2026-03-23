@@ -1,7 +1,9 @@
 from typing import Any
 
+import rclpy
 from dulwich.porcelain import switch
 
+from pycram.ros.ros2.ros_tools import wait_for_message
 from pycram_suturo_demos.helper_methods_and_useful_classes.A_robot_setup import (
     robot_setup,
 )
@@ -311,3 +313,47 @@ def object_to_pickup_by_mode(
             object_to_pickup = get_nearest_object(world=world)
             logger.info(f"object_to_pickup by nearest: {object_to_pickup}")
     return object_to_pickup
+
+def item_between_fingertips(
+        fingertip_distance: float,
+        closed_value: float = -0.1007,
+        open_value: float = 0.0538,
+        threshhold: float = 0.05,
+) -> bool:
+    """
+    Returns True if the gripper is not fully closed and not fully open,
+    which can indicate that an item is between the fingertips.
+
+    Args:
+        fingertip_distance: Current value from /gripper_command/fingertip_distance
+        closed_value: Typical fully closed value
+        open_value: Typical fully open value
+        threshhold: Tolerance around the reference values
+
+    Returns:
+        True if the distance suggests an object is between the fingertips.
+    """
+    closed_min = closed_value - threshhold
+    closed_max = closed_value + threshhold
+    open_min = open_value - threshhold
+    open_max = open_value + threshhold
+
+    is_closed = closed_min <= fingertip_distance <= closed_max
+    is_open = open_min <= fingertip_distance <= open_max
+
+    # Object likely present if it is neither clearly open nor clearly closed
+    return not is_closed and not is_open
+
+def validate_grasped() -> bool:
+    node = rclpy.create_node("gripper_distance_subscriber")
+
+    msg = wait_for_message(msg_type=float, node=node, topic_name="/gripper_command/fingertip_distance")
+    success = msg is not None
+    if success:
+        logger.info(f"Gripper fingertip distance: {msg.data}")
+    else:
+        logger.warning("Timed out waiting for gripper fingertip distance")
+    node.destroy_node()
+
+    is_object_between_fingertips = item_between_fingertips(fingertip_distance=msg)
+    return is_object_between_fingertips
