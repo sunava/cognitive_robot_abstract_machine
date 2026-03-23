@@ -8,7 +8,7 @@ from std_msgs.msg import String
 
 
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
-from semantic_helper_methods import get_object_class_from_string as get_obj
+from pycram_suturo_demos.helper_methods_and_useful_classes.semantic_helper_methods import get_object_class_from_string as get_obj
 
 
 from pycram.external_interfaces.nlp_interface import NlpInterface

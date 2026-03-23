@@ -13,6 +13,46 @@ from rclpy.node import Node
 from std_msgs.msg import String
 from enum import Enum
 
+# quick fix for robocup
+# TODO: make better
+from pycram.ros_utils.text_to_image import TextToImagePublisher
+
+
+
+class TalkingNode(Node):
+    """
+    ROS2 node that interfaces with a speech/NLP system.
+
+    Responsibilities:
+    -----------------
+    - Publish a trigger message to start the speech recognition/NLP pipeline.
+    - Subscribe to the processed NLP output.
+    - Parse NLP output into a structured Python list.
+    - Expose a blocking `talk_nlp()` call that waits for NLP results.
+    """
+
+    def __init__(self):
+
+        # Initialize ROS2 node with name "talking"
+        super().__init__('nlp_interface_talking')
+
+        # Publisher to let Toya talk
+        self.talk_pub = self.create_publisher(
+            String,
+            '/tts_text',
+            10
+        )
+
+    def pub(self, text: str, delay: int = 0):
+        msg = String()
+        msg.data = text
+        self.get_logger().info(f"Publishing: {text}")
+
+        self.talk_pub.publish(msg)
+        time.sleep(delay)
+
+
+
 """
 ---Roles:---
 NatrualPerson = Person,  
@@ -62,6 +102,10 @@ class NlpInterface(ABC):
     def __init__(self):
         # Initialize the ROS2 NLP node
         self.node = NlpNode()
+
+        # TODO: Another quick fix for robocup, make better
+        self.tts = TalkingNode()
+        self.tti = TextToImagePublisher()
 
         """
         stores the last NLP output
@@ -174,6 +218,7 @@ class NlpInterface(ABC):
         """
         for tries in range(0, tries):
             print("Say what you want me to do:")
+            self.tts.pub("Say what you want me to do:", delay=6)
 
             # Start NLP listening and store result
             self.start_nlp()
@@ -230,11 +275,14 @@ class NlpInterface(ABC):
 
         # Ask user for confirmation
         print(f"Did I understand correctly, you said:{get_complete_sentence(self.all_last_outputs)}")
+        self.tts.pub(f"Did I understand correctly, you said:{get_complete_sentence(self.all_last_outputs)}. Say Yes you did or no you did not.", delay=17)
+        self.tti.publish_text("now")
 
         # Listen for confirmation response
         self.last_confirmation = NlpNode.talk_nlp(self.node, timeout=self.timeout)
 
         if self.last_confirmation is None:
+            self.tts.pub("Sorry, I couldn't understand.", delay=10)
             return False
         elif self.last_confirmation[0][1] == "affirm":
             return True
@@ -258,6 +306,8 @@ class NlpNode(Node):
     """
 
     def __init__(self):
+
+        self.tti_nlp_node = TextToImagePublisher()
 
         # Initialize ROS2 node with name "nlp"
         super().__init__('nlp')
@@ -392,6 +442,8 @@ class NlpNode(Node):
 
         all_out : list[list[Any]] = []
 
+        self.tti_nlp_node.publish_text(text=" ")
+
         if self.response:
             # happens sometimes when no answer received
             if self.response[0] == "." and self.response[1] == "affirm":
@@ -437,5 +489,7 @@ class NlpNode(Node):
         self.nlp_pub.publish(msg)
         self.get_logger().info(f"Publishing once: {msg}")
         print("speak now: ..................")
+        self.tti_nlp_node.publish_text(f"now")
+
 
 
