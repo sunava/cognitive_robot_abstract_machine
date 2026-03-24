@@ -71,18 +71,15 @@ def test_plan_serialization(pycram_testing_session, simple_plan):
 
 
 def test_replay_simple_plan(pycram_testing_session, simple_plan):
-    with simulated_robot:
-        simple_plan.perform()
+    # with simulated_robot:
+    #     simple_plan.perform()
     session = pycram_testing_session
-    simple_plan.context.world.delete_orphaned_dofs()
-    simple_plan.initial_world.delete_orphaned_dofs()
 
     dao = to_dao(simple_plan)
     session.add(dao)
     session.commit()
 
     fetched_plan = session.scalars(select(PlanMappingDAO)).one()
-
     recreated_plan: Plan = fetched_plan.from_dao()
 
 

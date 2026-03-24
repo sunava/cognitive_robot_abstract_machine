@@ -25,6 +25,7 @@ import krrood.ormatic.custom_types
 import krrood.ormatic.type_dict
 import krrood.symbol_graph.symbol_graph
 import sqlalchemy.sql.sqltypes
+import test.krrood_test.dataset.alternative_mappings_construction_order
 import test.krrood_test.dataset.example_classes
 import test.krrood_test.dataset.semantic_world_like_classes
 import typing
@@ -80,6 +81,44 @@ class GenericClassAssociationDAO_associated_value_list_association(
 
     target: Mapped[GenericClass_PositionDAO] = relationship(
         "GenericClass_PositionDAO", foreign_keys=[target_genericclass_positiondao_id]
+    )
+
+
+class MappedClassMappingDAO_ordinary_instances_association(
+    Base, AssociationDataAccessObject
+):
+
+    __tablename__ = "_19668793974571578544828137460532703360004743570622687442539036"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_mappedclassmappingdao_id: Mapped[int] = mapped_column(
+        ForeignKey("MappedClassMappingDAO.database_id")
+    )
+    target_ordinaryclassdao_id: Mapped[int] = mapped_column(
+        ForeignKey("OrdinaryClassDAO.database_id")
+    )
+
+    target: Mapped[OrdinaryClassDAO] = relationship(
+        "OrdinaryClassDAO", foreign_keys=[target_ordinaryclassdao_id]
+    )
+
+
+class MappedClassMappingDAO_relations_between_ordinary_instances_association(
+    Base, AssociationDataAccessObject
+):
+
+    __tablename__ = "_26167740335884010150583932756509788774215869726918341139290431"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_mappedclassmappingdao_id: Mapped[int] = mapped_column(
+        ForeignKey("MappedClassMappingDAO.database_id")
+    )
+    target_ordinaryclassrelationdao_id: Mapped[int] = mapped_column(
+        ForeignKey("OrdinaryClassRelationDAO.database_id")
+    )
+
+    target: Mapped[OrdinaryClassRelationDAO] = relationship(
+        "OrdinaryClassRelationDAO", foreign_keys=[target_ordinaryclassrelationdao_id]
     )
 
 
@@ -415,6 +454,89 @@ class CabinetDAO_drawers_association(Base, AssociationDataAccessObject):
     )
 
 
+class AssociationWithMappedClassDAO(
+    Base,
+    DataAccessObject[
+        test.krrood_test.dataset.alternative_mappings_construction_order.AssociationWithMappedClass
+    ],
+):
+
+    __tablename__ = "AssociationWithMappedClassDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        Integer, primary_key=True, use_existing_column=True
+    )
+
+    reference_to_mapped_class_id: Mapped[int] = mapped_column(
+        ForeignKey("MappedClassMappingDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
+
+    reference_to_mapped_class: Mapped[MappedClassMappingDAO] = relationship(
+        "MappedClassMappingDAO",
+        uselist=False,
+        foreign_keys=[reference_to_mapped_class_id],
+        post_update=True,
+    )
+
+
+class BuildFirstMappingDAO(
+    Base,
+    DataAccessObject[
+        test.krrood_test.dataset.alternative_mappings_construction_order.BuildFirstMapping
+    ],
+):
+
+    __tablename__ = "BuildFirstMappingDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        Integer, primary_key=True, use_existing_column=True
+    )
+
+    value: Mapped[builtins.str] = mapped_column(String(255), use_existing_column=True)
+
+    backreference_to_ordinary_class_id: Mapped[int] = mapped_column(
+        ForeignKey("OrdinaryClassDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
+
+    backreference_to_ordinary_class: Mapped[OrdinaryClassDAO] = relationship(
+        "OrdinaryClassDAO",
+        uselist=False,
+        foreign_keys=[backreference_to_ordinary_class_id],
+        post_update=True,
+    )
+
+
+class BuildFirstAssociationDAO(
+    Base,
+    DataAccessObject[
+        test.krrood_test.dataset.alternative_mappings_construction_order.BuildFirstAssociation
+    ],
+):
+
+    __tablename__ = "BuildFirstAssociationDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        Integer, primary_key=True, use_existing_column=True
+    )
+
+    build_first_id: Mapped[int] = mapped_column(
+        ForeignKey("BuildFirstMappingDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
+
+    build_first: Mapped[BuildFirstMappingDAO] = relationship(
+        "BuildFirstMappingDAO",
+        uselist=False,
+        foreign_keys=[build_first_id],
+        post_update=True,
+    )
+
+
 class CallableWrapperDAO(
     Base, DataAccessObject[test.krrood_test.dataset.example_classes.CallableWrapper]
 ):
@@ -433,6 +555,44 @@ class CallableWrapperDAO(
 
     func: Mapped[FunctionMappingDAO] = relationship(
         "FunctionMappingDAO", uselist=False, foreign_keys=[func_id], post_update=True
+    )
+
+
+class EntryPointMappingDAO(
+    Base,
+    DataAccessObject[
+        test.krrood_test.dataset.alternative_mappings_construction_order.EntryPointMapping
+    ],
+):
+
+    __tablename__ = "EntryPointMappingDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        Integer, primary_key=True, use_existing_column=True
+    )
+
+    reference_to_mapped_class_id: Mapped[int] = mapped_column(
+        ForeignKey("MappedClassMappingDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
+    association_with_mapped_class_id: Mapped[int] = mapped_column(
+        ForeignKey("AssociationWithMappedClassDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
+
+    reference_to_mapped_class: Mapped[MappedClassMappingDAO] = relationship(
+        "MappedClassMappingDAO",
+        uselist=False,
+        foreign_keys=[reference_to_mapped_class_id],
+        post_update=True,
+    )
+    association_with_mapped_class: Mapped[AssociationWithMappedClassDAO] = relationship(
+        "AssociationWithMappedClassDAO",
+        uselist=False,
+        foreign_keys=[association_with_mapped_class_id],
+        post_update=True,
     )
 
 
@@ -667,6 +827,39 @@ class JSONWrapperDAO(
     ] = mapped_column(JSON, nullable=False, use_existing_column=True)
 
 
+class MappedClassMappingDAO(
+    Base,
+    DataAccessObject[
+        test.krrood_test.dataset.alternative_mappings_construction_order.MappedClassMapping
+    ],
+):
+
+    __tablename__ = "MappedClassMappingDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        Integer, primary_key=True, use_existing_column=True
+    )
+
+    ordinary_instances: Mapped[
+        builtins.list[MappedClassMappingDAO_ordinary_instances_association]
+    ] = relationship(
+        "MappedClassMappingDAO_ordinary_instances_association",
+        collection_class=builtins.list,
+        cascade="all, delete-orphan",
+        foreign_keys="[MappedClassMappingDAO_ordinary_instances_association.source_mappedclassmappingdao_id]",
+    )
+    relations_between_ordinary_instances: Mapped[
+        builtins.list[
+            MappedClassMappingDAO_relations_between_ordinary_instances_association
+        ]
+    ] = relationship(
+        "MappedClassMappingDAO_relations_between_ordinary_instances_association",
+        collection_class=builtins.list,
+        cascade="all, delete-orphan",
+        foreign_keys="[MappedClassMappingDAO_relations_between_ordinary_instances_association.source_mappedclassmappingdao_id]",
+    )
+
+
 class MixinDAO(Base, DataAccessObject[test.krrood_test.dataset.example_classes.Mixin]):
 
     __tablename__ = "MixinDAO"
@@ -703,6 +896,76 @@ class NamedNumbersDAO(
 
     numbers: Mapped[typing.List[builtins.int]] = mapped_column(
         JSON, nullable=False, use_existing_column=True
+    )
+
+
+class OrdinaryClassDAO(
+    Base,
+    DataAccessObject[
+        test.krrood_test.dataset.alternative_mappings_construction_order.OrdinaryClass
+    ],
+):
+
+    __tablename__ = "OrdinaryClassDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        Integer, primary_key=True, use_existing_column=True
+    )
+
+    association_id: Mapped[int] = mapped_column(
+        ForeignKey("BuildFirstAssociationDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
+
+    association: Mapped[BuildFirstAssociationDAO] = relationship(
+        "BuildFirstAssociationDAO",
+        uselist=False,
+        foreign_keys=[association_id],
+        post_update=True,
+    )
+
+
+class OrdinaryClassRelationDAO(
+    Base,
+    DataAccessObject[
+        test.krrood_test.dataset.alternative_mappings_construction_order.OrdinaryClassRelation
+    ],
+):
+
+    __tablename__ = "OrdinaryClassRelationDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        Integer, primary_key=True, use_existing_column=True
+    )
+
+    parent_id: Mapped[int] = mapped_column(
+        ForeignKey("OrdinaryClassDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
+    child_id: Mapped[int] = mapped_column(
+        ForeignKey("OrdinaryClassDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
+    build_first_id: Mapped[int] = mapped_column(
+        ForeignKey("BuildFirstMappingDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
+
+    parent: Mapped[OrdinaryClassDAO] = relationship(
+        "OrdinaryClassDAO", uselist=False, foreign_keys=[parent_id], post_update=True
+    )
+    child: Mapped[OrdinaryClassDAO] = relationship(
+        "OrdinaryClassDAO", uselist=False, foreign_keys=[child_id], post_update=True
+    )
+    build_first: Mapped[BuildFirstMappingDAO] = relationship(
+        "BuildFirstMappingDAO",
+        uselist=False,
+        foreign_keys=[build_first_id],
+        post_update=True,
     )
 
 

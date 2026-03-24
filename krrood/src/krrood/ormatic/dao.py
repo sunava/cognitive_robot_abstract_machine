@@ -9,6 +9,7 @@ from dataclasses import dataclass, field, is_dataclass, fields, MISSING
 from functools import lru_cache
 from typing import _GenericAlias
 
+import rustworkx
 import sqlalchemy.inspection
 import sqlalchemy.orm
 from sqlalchemy import Column
@@ -261,6 +262,14 @@ class FromDataAccessObjectState(DataAccessObjectState[FromDataAccessObjectWorkIt
     Cache for synthetic parent DAOs to maintain identity across discovery and filling phases.
     """
 
+    _class_dependencies: rustworkx.PyDiGraph = field(
+        default_factory=lambda: rustworkx.PyDiGraph(multigraph=False)
+    )
+    """
+    A rustowkrx graph that tracks the dependencies between classes defined 
+    in `AlternativeMapping.required_pre_build_classes`
+    """
+
     def is_initialized(self, dao_instance: DataAccessObject) -> bool:
         """
         Check if the given DAO instance has been fully initialized.
@@ -311,6 +320,90 @@ class FromDataAccessObjectState(DataAccessObjectState[FromDataAccessObjectWorkIt
                 elif f.default_factory is not MISSING:
                     object.__setattr__(result, f.name, f.default_factory())
         self.register(dao_instance, result)
+        return result
+
+    def _build_dependency_graph(self, types: List[Type[DataAccessObject]]):
+        """
+        Build a dependency graph for the given types that can be used to infer the built order.
+        :param types: The types to build the dependency graph for.
+        """
+        types_to_index: Dict[Type, int] = (
+            {}
+        )  # quickly access the index of a type in the graph
+
+        # add every type to the graph
+        for type_ in types:
+            types_to_index[type_] = self._class_dependencies.add_node(type_)
+
+            # if its an alternative mapping, build its dependencies
+            if issubclass(type_, AlternativeMapping):
+
+                # get all concrete types that are affected by the dependencies
+                for required_pre_build_class in type_.required_pre_build_classes:
+                    for concrete_type in types:
+                        original_concrete_type = concrete_type.original_class()
+                        if issubclass(original_concrete_type, AlternativeMapping):
+                            original_concrete_type = (
+                                original_concrete_type.original_class()
+                            )
+
+                        # skip types that are not affected
+                        if not issubclass(
+                            original_concrete_type, required_pre_build_class
+                        ):
+                            continue
+
+                        # add type if not exists to the graph
+                        if (
+                            required_pre_build_class not in types_to_index
+                            and required_pre_build_class in types
+                        ):
+                            types_to_index[required_pre_build_class] = (
+                                self._class_dependencies.add_node(
+                                    required_pre_build_class
+                                )
+                            )
+
+                        self._class_dependencies.add_edge(
+                            types_to_index[type_],
+                            types_to_index[concrete_type],
+                            None,
+                        )
+        # import matplotlib.pyplot as plt
+        # from rustworkx.visualization import mpl_draw
+        #
+        # mpl_draw(self._class_dependencies, with_labels=True)
+        # plt.show()
+
+    def _order_work_items_by_dependency_graph(
+        self, work_items: List[FromDataAccessObjectWorkItem]
+    ) -> List[FromDataAccessObjectWorkItem]:
+        """
+        Order the work items such that dependencies are met first.
+        :param work_items: The work items to order.
+        :return: The newly sorted work items.
+        """
+
+        number_of_work_items = len(work_items)
+        result = []
+        for type_index in rustworkx.topological_sort(self._class_dependencies):
+            type_ = self._class_dependencies[type_index]
+            dao_class = get_dao_class(type_)
+
+            print(dao_class, type_)
+
+            matching_types = [
+                work_item
+                for work_item in work_items
+                if isinstance(work_item.dao_instance, dao_class)
+            ]
+            result.extend(matching_types)
+
+            for work_item in matching_types:
+                work_items.remove(work_item)
+
+        assert len(work_items) == 0
+        assert len(result) == number_of_work_items
         return result
 
 
@@ -807,6 +900,10 @@ class DataAccessObject(HasGeneric[T]):
         state.push_work_item(self, state.get(self))
 
         self._discover_dependencies(state, discovery_order)
+
+        # reorder discovery order to respect the states dependency graph
+        discovery_order = state._order_work_items_by_dependency_graph(discovery_order)
+
         self._fill_domain_objects(state, discovery_order)
         self._finalize_containers(state, discovery_order)
         self._call_post_inits(state, discovery_order)
@@ -828,11 +925,17 @@ class DataAccessObject(HasGeneric[T]):
         """
         state.discovery_mode = True
 
+        collected_types = set()  # a set of all classes that have been discovered
+
         while state.work_items:
             # Use pop() to treat the deque as a stack (LIFO) for DFS
             work_item = state.work_items.pop()
             discovery_order.append(work_item)
+            collected_types.add(type(work_item.dao_instance))
             work_item.dao_instance._fill_from_dao(work_item.domain_object, state)
+
+        # build dependency graphg used to order the discovery queue
+        state._build_dependency_graph(list(collected_types))
 
         state.discovery_mode = False
 
@@ -850,7 +953,7 @@ class DataAccessObject(HasGeneric[T]):
         # Pass 2.1: Populate all relationships and scalars for all discovered instances.
         # This ensures that all objects point to each other (even if not yet fully resolved).
         state.resolution_mode = False
-        for work_item in reversed(discovery_order):
+        for work_item in discovery_order:
             if not state.is_initialized(work_item.dao_instance):
                 work_item.dao_instance._populate_relationships_and_scalars_from_dao(
                     work_item.domain_object, state
@@ -858,7 +961,7 @@ class DataAccessObject(HasGeneric[T]):
 
         # Pass 2.2: Finalize resolution and resolve AlternativeMappings.
         state.resolution_mode = True
-        for work_item in reversed(discovery_order):
+        for work_item in discovery_order:
             if not state.is_initialized(work_item.dao_instance):
                 work_item.dao_instance._resolve_from_dao(work_item.domain_object, state)
                 state.mark_initialized(work_item.dao_instance)
@@ -1055,6 +1158,7 @@ class DataAccessObject(HasGeneric[T]):
         :param state: The conversion state.
         :return: The final domain object.
         """
+        print("handling alternative mapping of type", type(alternative_mapping))
         final_result = alternative_mapping.to_domain_object()
         # Update memo if AlternativeMapping changed the instance
         state.register(self, final_result)
@@ -1271,9 +1375,9 @@ class AlternativeMapping(HasGeneric[T], abc.ABC):
         raise NotImplementedError
 
     @classmethod
-    def required_pre_build_alternative_mappings(cls) -> List[Type[AlternativeMapping]]:
+    def required_pre_build_classes(cls) -> List[Type]:
         """
-        A list of other alternative mappings that have to be built before this one.
+        A list of other classes that have to be built before this one in the `from_dao` algorithm.
         """
 
 
@@ -1308,6 +1412,10 @@ def get_dao_class(
     :param expected_type: The expected domain type (from relationship).
     :return: The corresponding DAO class or None.
     """
+
+    if issubclass(original_clazz, DataAccessObject):
+        return original_clazz
+
     alternative_mapping = get_alternative_mapping(original_clazz)
     if alternative_mapping is not None:
         original_clazz = alternative_mapping

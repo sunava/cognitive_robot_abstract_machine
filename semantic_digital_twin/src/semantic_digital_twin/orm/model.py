@@ -1,16 +1,17 @@
 from dataclasses import dataclass, field
 from io import BytesIO
-from typing import Type
+
 from uuid import UUID
 
 import numpy as np
 import trimesh
 import trimesh.exchange.stl
 from sqlalchemy import TypeDecorator, types
-from typing_extensions import List
-from typing_extensions import Optional
+from typing_extensions import List, Optional, Type
+
 
 from krrood.ormatic.dao import AlternativeMapping
+
 from semantic_digital_twin.mixin import HasSimulatorProperties
 from semantic_digital_twin.spatial_types import (
     RotationMatrix,
@@ -18,13 +19,18 @@ from semantic_digital_twin.spatial_types import (
     Point3,
     HomogeneousTransformationMatrix,
 )
-from semantic_digital_twin.spatial_types.spatial_types import Quaternion, Pose
+from semantic_digital_twin.spatial_types.spatial_types import (
+    Quaternion,
+    Pose,
+    SpatialType,
+)
 from semantic_digital_twin.world import World, WorldModelManager
 from semantic_digital_twin.world_description.connections import Connection
 from semantic_digital_twin.world_description.degree_of_freedom import DegreeOfFreedom
 from semantic_digital_twin.world_description.world_entity import (
     SemanticAnnotation,
     KinematicStructureEntity,
+    WorldEntity,
 )
 from semantic_digital_twin.world_description.world_state import WorldState
 
@@ -72,16 +78,8 @@ class WorldMapping(HasSimulatorProperties, AlternativeMapping[World]):
         return result
 
     @classmethod
-    def required_pre_build_alternative_mappings(cls) -> List[Type[AlternativeMapping]]:
-        return [
-            WorldStateMapping,
-            Vector3Mapping,
-            Point3Mapping,
-            QuaternionMapping,
-            RotationMatrixMapping,
-            HomogeneousTransformationMatrixMapping,
-            PoseMapping,
-        ]
+    def required_pre_build_classes(cls) -> List[Type]:
+        return [WorldState, SpatialType, WorldEntity]
 
 
 @dataclass
@@ -184,7 +182,7 @@ class RotationMatrixMapping(AlternativeMapping[RotationMatrix]):
         return result
 
     @classmethod
-    def required_pre_build_alternative_mappings(cls) -> List[Type[AlternativeMapping]]:
+    def required_pre_build_classes(cls) -> List[Type[AlternativeMapping]]:
         return [QuaternionMapping]
 
 
@@ -220,8 +218,8 @@ class HomogeneousTransformationMatrixMapping(
         )
 
     @classmethod
-    def required_pre_build_alternative_mappings(cls) -> List[Type[AlternativeMapping]]:
-        return [Vector3Mapping, QuaternionMapping]
+    def required_pre_build_classes(cls) -> List[Type]:
+        return [Quaternion, Point3]
 
 
 @dataclass
