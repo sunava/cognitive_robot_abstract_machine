@@ -1,0 +1,50 @@
+from __future__ import annotations
+
+
+import logging
+import rclpy
+from pycram.datastructures.pose import PoseStamped
+from pycram.external_interfaces.nav2_move import start_nav_to_pose
+from pycram_suturo_demos.helper_methods_and_useful_classes.nlp_human_robot_interaction import TalkingNode
+from pycram.motion_executor import ExecutionEnvironment, simulated_robot, real_robot
+from pycram_suturo_demos.helper_methods_and_useful_classes.A_robot_setup import (
+    robot_setup,
+)
+
+
+
+door_pos = PoseStamped.from_list(position=[0, 0, 0], orientation=[0, 0, 0, 1])
+
+
+def initialization(simulation: bool = True):
+    logger = logging.getLogger(__name__)
+
+    result = robot_setup(simulation=simulation)
+    rclpy_node, world, robot_view, context = (
+        result.node,
+        result.world,
+        result.robot_view,
+        result.context,
+    )
+    return rclpy_node, world, robot_view, context
+
+
+
+def main():
+    rclpy.init()
+    talk = TalkingNode()
+
+    SIMULATED = False
+    robot_type: ExecutionEnvironment = simulated_robot if SIMULATED else real_robot
+
+    rclpy_node, world, robot_view, context = initialization(simulation=SIMULATED)
+
+    with robot_type:
+        talk.pub("I will drive to the door now.", delay=6)
+        start_nav_to_pose(nav_pose=door_pos)
+        talk.pub("Please open the door for me.", delay=6)
+
+
+
+if __name__ == "__main__":
+    main()
