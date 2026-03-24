@@ -62,22 +62,7 @@ def pickup_demo(
                 gripper_vertical=True,
             ),
         ).perform()
-        for i in range(2):
-            grasped = validate_grasped()
-            if not grasped:
-                talking_node.pub(f"Object not grasped, retracting and parking arms and retrying, {i+1} of 3",delay=standard_delay)
-                # TODO: back off further than currently doing, so toya has more space to reposition.
-                SequentialPlan(
-                    context,
-                    GiskardRetractActionDescription(simulated=simulation, arm=Arms.LEFT),
-                    ParkArmsActionDescription(Arms.BOTH),
-                    GiskardGraspActionDescription(
-                        simulated=simulation,
-                        object_designator=object_to_pickup,
-                        arm=Arms.LEFT,
-                        gripper_vertical=True,
-                    ),
-                ).perform()
+
         talking_node.pub("Object grasped, pulling up and parking arms",delay=standard_delay)
         plan_pullup.perform()
         logger.info("PickUp has is now finished",delay=standard_delay)

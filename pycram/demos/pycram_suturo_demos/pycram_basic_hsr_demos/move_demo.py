@@ -103,3 +103,28 @@ def move_demo(simulated: bool, target_pose: str, world: World, context: Context)
         case _:
             logger.info("Moving to robot start pose")
             robot_move(target_pose_method=ROBOT_PRE_START_POSE)
+
+def move_to_coords_demo(simulated: bool, target_pose: PoseStamped, context: Context):
+    logger = logging.getLogger(__name__)
+
+    def robot_move(target_pose_method: PoseStamped):
+        """
+        Sends a navigation goal to Nav2.
+        """
+        if simulated:
+            with simulated_robot:
+                SequentialPlan(
+                    context,
+                    NavigateActionDescription(
+                        target_location=target_pose_method, keep_joint_states=True
+                    ),
+                ).perform()
+        else:
+            from pycram.external_interfaces import nav2_move
+
+            os.environ["ROS_PYTHON_CHECK_FIELDS"] = "1"
+            goal = target_pose_method.ros_message()
+            print(f"Moving to {goal}'")
+            nav2_move.start_nav_to_pose(goal)
+
+    robot_move(target_pose_method=target_pose)

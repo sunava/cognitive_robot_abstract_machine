@@ -322,14 +322,15 @@ class GiskardPickUpAction(ActionDescription):
     def execute(self) -> None:
         try:
             from ...motions.pick_up import PickupMotion
+            from ... import GiskardRetractActionDescription, ParkArmsActionDescription
+
         except ImportError:
             raise ImportError(
                 "The GiskardPickUpAction requires Giskardpy_ros, not only giskardpy."
             )
 
         # Register attach as a post-perform callback BEFORE queuing the motion
-
-        manipulator = ViewManager.get_end_effector_view(self.arm, self.robot_view)
+        robot_pose_pre_manipulation = self.robot_view.root.global_pose.to_np()
         SequentialPlan(
             self.context,
             GiskardGraspActionDescription(
@@ -339,6 +340,21 @@ class GiskardPickUpAction(ActionDescription):
                 gripper_vertical=self.gripper_vertical,
             ),
         ).perform()
+        if not self.simulated and not self.validate_grasp():
+            for i in range(2):
+                grasped = self.validate_grasped()
+                if not grasped:
+                    SequentialPlan(
+                        self.context,
+                        GiskardRetractActionDescription(simulated=self.simulated, arm=Arms.LEFT, back_off_pose=robot_pose_pre_manipulation),
+                        ParkArmsActionDescription(Arms.BOTH),
+                        GiskardGraspActionDescription(
+                            simulated=self.simulated,
+                            object_designator=self.object_designator,
+                            arm=Arms.LEFT,
+                            gripper_vertical=True,
+                        ),
+                    ).perform()
         SequentialPlan(
             self.context,
             GiskardPullUpActionDescription(
@@ -348,22 +364,51 @@ class GiskardPickUpAction(ActionDescription):
             ),
         ).perform()
 
-    def validate(
-        self,
-        result: Optional[Any] = None,
-        max_wait_time: Optional[timedelta] = None,
-    ):
+    # implement sometime, currently not implemented, since Motions have weird heirachys
+    def item_between_fingertips(self,
+            fingertip_distance: float,
+            closed_value: float = -0.1007,
+            open_value: float = 0.0538,
+            threshhold: float = 0.05,
+    ) -> bool:
         """
-        TODO
-        Check if picked up object is in contact with the gripper.
+        Returns True if the gripper is not fully closed and not fully open,
+        which can indicate that an item is between the fingertips.
+
+        Args:
+            fingertip_distance: Current value from /gripper_command/fingertip_distance
+            closed_value: Typical fully closed value
+            open_value: Typical fully open value
+            threshhold: Tolerance around the reference values
+
+        Returns:
+            True if the distance suggests an object is between the fingertips.
         """
-        if not has_gripper_grasped_body(self.arm, self.object_designator):
-            raise ObjectNotGraspedError(
-                self.object_designator,
-                World.robot,
-                self.arm,
-                self.grasp_description,
-            )
+        closed_min = closed_value - threshhold
+        closed_max = closed_value + threshhold
+        open_min = open_value - threshhold
+        open_max = open_value + threshhold
+
+        is_closed = closed_min <= fingertip_distance <= closed_max
+        is_open = open_min <= fingertip_distance <= open_max
+
+        # Object likely present if it is neither clearly open nor clearly closed
+        return not is_closed and not is_open
+
+    def validate_grasped(self):
+        node = rclpy.create_node("gripper_distance_subscriber")
+
+        msg = wait_for_message(msg_type=float, node=node, topic_name="/gripper_command/fingertip_distance")
+        success = msg is not None
+        if success:
+            logger.info(f"Gripper fingertip distance: {msg.data}")
+        else:
+            logger.warning("Timed out waiting for gripper fingertip distance")
+        node.destroy_node()
+
+        is_object_between_fingertips = self.item_between_fingertips(fingertip_distance=msg)
+        return is_object_between_fingertips
+
 
     @classmethod
     def description(
@@ -438,50 +483,6 @@ class GiskardGraspAction(ActionDescription):
             ),
         ).perform()
 
-    # implement sometime, currently not implemented, since Motions have weird heirachys
-    def item_between_fingertips(self,
-            fingertip_distance: float,
-            closed_value: float = -0.1007,
-            open_value: float = 0.0538,
-            threshhold: float = 0.05,
-    ) -> bool:
-        """
-        Returns True if the gripper is not fully closed and not fully open,
-        which can indicate that an item is between the fingertips.
-
-        Args:
-            fingertip_distance: Current value from /gripper_command/fingertip_distance
-            closed_value: Typical fully closed value
-            open_value: Typical fully open value
-            threshhold: Tolerance around the reference values
-
-        Returns:
-            True if the distance suggests an object is between the fingertips.
-        """
-        closed_min = closed_value - threshhold
-        closed_max = closed_value + threshhold
-        open_min = open_value - threshhold
-        open_max = open_value + threshhold
-
-        is_closed = closed_min <= fingertip_distance <= closed_max
-        is_open = open_min <= fingertip_distance <= open_max
-
-        # Object likely present if it is neither clearly open nor clearly closed
-        return not is_closed and not is_open
-
-    def validate(self):
-        node = rclpy.create_node("gripper_distance_subscriber")
-
-        msg = wait_for_message(msg_type=float, node=node, topic_name="/gripper_command/fingertip_distance")
-        success = msg is not None
-        if success:
-            logger.info(f"Gripper fingertip distance: {msg.data}")
-        else:
-            logger.warning("Timed out waiting for gripper fingertip distance")
-        node.destroy_node()
-
-        is_object_between_fingertips = self.item_between_fingertips(fingertip_distance=msg)
-        return is_object_between_fingertips
 
 
     @classmethod
