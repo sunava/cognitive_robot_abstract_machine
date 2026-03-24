@@ -432,8 +432,8 @@ def test_merge_world(world_setup, pr2_world_copy):
     assert base_link in world.kinematic_structure_entities
     assert r_gripper_tool_frame in world.kinematic_structure_entities
     assert l_shoulder_pan_joint in world.connections
-    assert torso_lift_link._world == world
-    assert r_shoulder_pan_joint._world == world
+    assert torso_lift_link in world.bodies
+    assert r_shoulder_pan_joint in world.connections
 
 
 def test_merge_with_connection(world_setup, pr2_world_copy):
@@ -473,8 +473,8 @@ def test_merge_with_connection(world_setup, pr2_world_copy):
     assert base_link in world.kinematic_structure_entities
     assert r_gripper_tool_frame in world.kinematic_structure_entities
     assert new_connection in world.connections
-    assert torso_lift_link._world == world
-    assert r_shoulder_pan_joint._world == world
+    assert torso_lift_link in world.bodies
+    assert r_shoulder_pan_joint in world.connections
     assert world.state[connection.dof.id].position == 0.55
     assert world.compute_forward_kinematics_np(world.root, base_link)[
         0, 3
@@ -507,8 +507,8 @@ def test_merge_with_pose(world_setup, pr2_world_copy):
 
     assert base_link in world.kinematic_structure_entities
     assert r_gripper_tool_frame in world.kinematic_structure_entities
-    assert torso_lift_link._world == world
-    assert r_shoulder_pan_joint._world == world
+    assert torso_lift_link in world.bodies
+    assert r_shoulder_pan_joint in world.connections
     assert world.compute_forward_kinematics_np(world.root, base_link)[
         0, 3
     ] == pytest.approx(1.0, abs=1e-6)
@@ -546,8 +546,8 @@ def test_merge_with_pose_rotation(world_setup, pr2_world_copy):
 
     assert base_link in world.kinematic_structure_entities
     assert r_gripper_tool_frame in world.kinematic_structure_entities
-    assert torso_lift_link._world == world
-    assert r_shoulder_pan_joint._world == world
+    assert torso_lift_link in world.bodies
+    assert r_shoulder_pan_joint in world.connections
     fk_base = world.compute_forward_kinematics_np(world.root, base_footprint)
     assert fk_base[0, 3] == pytest.approx(1.0, abs=1e-6)
     assert fk_base[1, 3] == pytest.approx(1.0, abs=1e-6)
@@ -979,7 +979,6 @@ def test_dof_removal_simple():
             world=world, parent=body1, child=body2, axis=Vector3.Z()
         )
         world.add_connection(c2)
-        ...
 
 
 def test_dof_removal():
@@ -996,9 +995,12 @@ def test_dof_removal():
     world.merge_world(world2)
 
     with world.modify_world():
-        world.remove_connection(body2.parent_connection)
+        new_body2 = world.get_kinematic_structure_entity_by_id(body2.id)
+        world.remove_connection(new_body2.parent_connection)
 
-        c_root_bf = OmniDrive.create_with_dofs(parent=body1, child=body2, world=world)
+        c_root_bf = OmniDrive.create_with_dofs(
+            parent=body1, child=new_body2, world=world
+        )
         world.add_connection(c_root_bf)
 
 

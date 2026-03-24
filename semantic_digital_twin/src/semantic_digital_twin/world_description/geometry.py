@@ -316,9 +316,6 @@ class Shape(ABC, SubclassJSONSerializer, HasSimulatorProperties):
         """
         new_origin = HomogeneousTransformationMatrix(
             self.origin.to_np(),
-            reference_frame=world.get_kinematic_structure_entity_by_name(
-                self.origin.reference_frame.name
-            ),
         )
         shape_props = fields(self)
         new_props = {

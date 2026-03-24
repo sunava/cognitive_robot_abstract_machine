@@ -1167,13 +1167,28 @@ class World(HasSimulatorProperties):
 
         with self.modify_world(), other.modify_world():
             self_root = self.root
-            other_root = other.root
-            self._merge_dofs_with_state_of_world(other)
-            self._merge_connections_of_world(other)
-            self._remove_kinematic_structure_entities_of_world(other)
-            self._merge_semantic_annotations_of_world(other)
+            other_root_id = other.root.id
+            for modification in other._model_manager.model_modification_blocks:
+                modification.apply(self)
+
+            for other_dof in other.degrees_of_freedom:
+                dof: DegreeOfFreedom = self.get_world_entity_with_id_by_id(other_dof.id)
+                self.state[dof.id].position = other.state[dof.id].position
+                self.state[dof.id].velocity = other.state[dof.id].velocity
+                self.state[dof.id].acceleration = other.state[dof.id].acceleration
+                self.state[dof.id].jerk = other.state[dof.id].jerk
+
+            if root_connection is not None:
+                child_id = root_connection.child.id
+                child = self.get_kinematic_structure_entity_by_id(child_id)
+                parent_id = root_connection.parent.id
+                parent = self.get_kinematic_structure_entity_by_id(parent_id)
+                root_connection.parent = parent
+                root_connection.child = child
+                root_connection.parent_T_connection_expression.reference_frame = parent
 
             if not root_connection and self_root:
+                other_root = self.get_kinematic_structure_entity_by_id(other_root_id)
                 root_connection = Connection6DoF.create_with_dofs(
                     parent=self_root, child=other_root, world=self
                 )
@@ -1836,10 +1851,10 @@ class World(HasSimulatorProperties):
                 new_body = Body(
                     name=body.name,
                     id=body.id,
+                    visual=body.visual.copy_for_world(new_world),
+                    collision=body.collision.copy_for_world(new_world),
                 )
                 new_world.add_kinematic_structure_entity(new_body)
-                new_body.visual = body.visual.copy_for_world(new_world)
-                new_body.collision = body.collision.copy_for_world(new_world)
             for region in self.regions:
                 new_region = Region(
                     name=region.name,

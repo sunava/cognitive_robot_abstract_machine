@@ -254,6 +254,40 @@ class MaxAvoidedCollisionsOverrideDAO_bodies_association(
     target: Mapped[BodyDAO] = relationship("BodyDAO", foreign_keys=[target_bodydao_id])
 
 
+class SelfCollisionMatrixRuleDAO_allowed_collision_pairs_association(
+    Base, AssociationDataAccessObject
+):
+
+    __tablename__ = "_61274754000288052279657223915681004397558962435449167568608251"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_selfcollisionmatrixruledao_id: Mapped[int] = mapped_column(
+        ForeignKey("SelfCollisionMatrixRuleDAO.database_id")
+    )
+    target_collisioncheckdao_id: Mapped[int] = mapped_column(
+        ForeignKey("CollisionCheckDAO.database_id")
+    )
+
+    target: Mapped[CollisionCheckDAO] = relationship(
+        "CollisionCheckDAO", foreign_keys=[target_collisioncheckdao_id]
+    )
+
+
+class SelfCollisionMatrixRuleDAO_allowed_collision_bodies_association(
+    Base, AssociationDataAccessObject
+):
+
+    __tablename__ = "_14396452434524994467973541080545578269638262176329214669324005"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_selfcollisionmatrixruledao_id: Mapped[int] = mapped_column(
+        ForeignKey("SelfCollisionMatrixRuleDAO.database_id")
+    )
+    target_bodydao_id: Mapped[int] = mapped_column(ForeignKey("BodyDAO.database_id"))
+
+    target: Mapped[BodyDAO] = relationship("BodyDAO", foreign_keys=[target_bodydao_id])
+
+
 class ShapeDAO_simulator_additional_properties_association(
     Base, AssociationDataAccessObject
 ):
@@ -2185,6 +2219,23 @@ class SelfCollisionMatrixRuleDAO(
         ForeignKey(AllowCollisionRuleDAO.database_id),
         primary_key=True,
         use_existing_column=True,
+    )
+
+    allowed_collision_pairs: Mapped[
+        builtins.set[SelfCollisionMatrixRuleDAO_allowed_collision_pairs_association]
+    ] = relationship(
+        "SelfCollisionMatrixRuleDAO_allowed_collision_pairs_association",
+        collection_class=builtins.set,
+        cascade="all, delete-orphan",
+        foreign_keys="[SelfCollisionMatrixRuleDAO_allowed_collision_pairs_association.source_selfcollisionmatrixruledao_id]",
+    )
+    allowed_collision_bodies: Mapped[
+        builtins.set[SelfCollisionMatrixRuleDAO_allowed_collision_bodies_association]
+    ] = relationship(
+        "SelfCollisionMatrixRuleDAO_allowed_collision_bodies_association",
+        collection_class=builtins.set,
+        cascade="all, delete-orphan",
+        foreign_keys="[SelfCollisionMatrixRuleDAO_allowed_collision_bodies_association.source_selfcollisionmatrixruledao_id]",
     )
 
     __mapper_args__ = {

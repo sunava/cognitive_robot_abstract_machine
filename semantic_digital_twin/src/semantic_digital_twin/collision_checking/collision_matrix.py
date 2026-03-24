@@ -8,6 +8,7 @@ from typing import Dict, Any
 from typing_extensions import Tuple, TYPE_CHECKING, Self
 
 from krrood.adapters.json_serializer import SubclassJSONSerializer, to_json, from_json
+from krrood.class_diagrams.attribute_introspector import DataclassOnlyIntrospector
 from semantic_digital_twin.adapters.world_entity_kwargs_tracker import (
     WorldEntityWithIDKwargsTracker,
 )
@@ -41,6 +42,13 @@ class CollisionCheck(SubclassJSONSerializer):
     """
     Minimum distance to check for collisions.
     """
+
+    def copy_for_world(self, world: World) -> Self:
+        return CollisionCheck(
+            body_a=world.get_world_entity_with_id_by_id(self.body_a.id),
+            body_b=world.get_world_entity_with_id_by_id(self.body_b.id),
+            distance=self.distance,
+        )
 
     @classmethod
     def create_and_validate(
@@ -174,6 +182,12 @@ class CollisionRule(ABC):
     Used to prevent updating the collision matrix when the world model has not changed.
     """
 
+    def get_init_kwargs_for_world(self, world: World) -> dict[str, Any]:
+        """
+        Returns a dictionary of keyword arguments that can be used to initialize the collision rule.
+        """
+        return {}
+
     @abstractmethod
     def apply_to_collision_matrix(self, collision_matrix: CollisionMatrix):
         """
@@ -210,6 +224,9 @@ class MaxAvoidedCollisionsRule(ABC):
     Base class for collision rules that define the maximum number of collisions that can be avoided for a given body.
     """
 
+    def get_init_kwargs_for_world(self, world: World) -> dict[str, Any]:
+        return {}
+
     @abstractmethod
     def get_max_avoided_collisions(self, body: Body) -> int | None:
         """
@@ -242,6 +259,15 @@ class MaxAvoidedCollisionsOverride(MaxAvoidedCollisionsRule, SubclassJSONSeriali
     """
     Bodies for which the maximum number of avoided collisions is overridden.
     """
+
+    def get_init_kwargs_for_world(self, world: World) -> dict[str, Any]:
+        return {
+            **super().get_init_kwargs_for_world(world),
+            "value": self.value,
+            "bodies": set(
+                world.get_world_entity_with_id_by_id(b.id) for b in self.bodies
+            ),
+        }
 
     def get_max_avoided_collisions(self, body: Body) -> int | None:
         if body not in self.bodies:

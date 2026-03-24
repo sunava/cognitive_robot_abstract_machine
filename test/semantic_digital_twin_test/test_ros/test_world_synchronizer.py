@@ -492,6 +492,44 @@ def test_semantic_annotation_modifications(rclpy_node):
     ]
 
 
+def test_semantic_annotation_modifications_merge_world(rclpy_node):
+    w0 = World(name="w0")
+    root = Body(name=PrefixedName("root"))
+    with w0.modify_world():
+        w0.add_body(root)
+
+    with w0.modify_world():
+        door = Door.create_with_new_body_in_world(
+            name=PrefixedName("door"),
+            world=w0,
+        )
+        handle = Handle.create_with_new_body_in_world(
+            name=PrefixedName("handle"),
+            world=w0,
+        )
+        door.add_handle(handle)
+
+    w1 = World(name="w1")
+    w2 = World(name="w2")
+
+    synchronizer_1 = ModelSynchronizer(
+        node=rclpy_node,
+        _world=w1,
+    )
+    synchronizer_2 = ModelSynchronizer(
+        node=rclpy_node,
+        _world=w2,
+    )
+
+    with w1.modify_world():
+        w1.merge_world(w0)
+
+    time.sleep(1)
+    assert [hash(sa) for sa in w1.semantic_annotations] == [
+        hash(sa) for sa in w2.semantic_annotations
+    ]
+
+
 def test_semantic_annotation_change_parameter_during_same_modification_block(
     rclpy_node,
 ):

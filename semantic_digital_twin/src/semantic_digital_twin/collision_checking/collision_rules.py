@@ -174,6 +174,19 @@ class AvoidExternalCollisions(AvoidCollisionRule, SubclassJSONSerializer):
     If None, all robot bodies are used.
     """
 
+    def get_init_kwargs_for_world(self, world: World) -> dict[str, Any]:
+        return {
+            **super().get_init_kwargs_for_world(world),
+            "robot": world.get_world_entity_with_id_by_id(self.robot.id),
+            "body_subset": (
+                set(
+                    world.get_world_entity_with_id_by_id(b.id) for b in self.body_subset
+                )
+                if self.body_subset
+                else None
+            ),
+        }
+
     def _update(self, world: World):
         self.added_collision_checks = set()
         if self.body_subset is None:
@@ -221,6 +234,12 @@ class AvoidSelfCollisions(AvoidCollisionRule):
     The robot managed by the rule.
     """
 
+    def get_init_kwargs_for_world(self, world: World) -> dict[str, Any]:
+        return {
+            **super().get_init_kwargs_for_world(world),
+            "robot": world.get_world_entity_with_id_by_id(self.robot.id),
+        }
+
     def _update(self, world: World):
         self.added_collision_checks = set(
             CollisionCheck.create_and_validate(
@@ -251,6 +270,15 @@ class AllowCollisionForBodies(AllowCollisionRule):
     The set of bodies for which all collisions should be allowed.
     """
 
+    def get_init_kwargs_for_world(self, world: World) -> dict[str, Any]:
+        return {
+            **super().get_init_kwargs_for_world(world),
+            "allowed_collision_bodies": set(
+                world.get_world_entity_with_id_by_id(b.id)
+                for b in self.allowed_collision_bodies
+            ),
+        }
+
     def _update(self, world: World): ...
 
 
@@ -268,6 +296,17 @@ class AllowCollisionBetweenGroups(AllowCollisionRule):
     """
     The second group of bodies.
     """
+
+    def get_init_kwargs_for_world(self, world: World) -> dict[str, Any]:
+        return {
+            **super().get_init_kwargs_for_world(world),
+            "body_group_a": [
+                world.get_world_entity_with_id_by_id(b.id) for b in self.body_group_a
+            ],
+            "body_group_b": [
+                world.get_world_entity_with_id_by_id(b.id) for b in self.body_group_b
+            ],
+        }
 
     def _update(self, world: World):
         self.allowed_collision_pairs = set()
@@ -321,6 +360,12 @@ class AllowSelfCollisions(AllowCollisionRule):
     The robot for which self-collisions should be allowed.
     """
 
+    def get_init_kwargs_for_world(self, world: World) -> dict[str, Any]:
+        return {
+            **super().get_init_kwargs_for_world(world),
+            "robot": world.get_world_entity_with_id_by_id(self.robot.id),
+        }
+
     def _update(self, world: World):
         self.allowed_collision_pairs = set(
             CollisionCheck.create_and_validate(body_a, body_b)
@@ -349,6 +394,14 @@ class AllowDefaultInCollision(AllowCollisionRule):
     """
     The distance used for collision checking to decide if a robot is in collision by default.
     """
+
+    def get_init_kwargs_for_world(self, world: World) -> dict[str, Any]:
+        return {
+            **super().get_init_kwargs_for_world(world),
+            "robot": world.get_world_entity_with_id_by_id(self.robot.id),
+            "bodies": [world.get_world_entity_with_id_by_id(b.id) for b in self.bodies],
+            "collision_threshold": self.collision_threshold,
+        }
 
     def _update(self, world: World):
         with world.reset_state_context():
@@ -414,6 +467,18 @@ class AllowAlwaysInCollision(AllowCollisionRule):
     """
     The percentage of tries that must result in collision for the rule to allow collision.
     """
+
+    def get_init_kwargs_for_world(self, world: World) -> dict[str, Any]:
+        return {
+            **super().get_init_kwargs_for_world(world),
+            "robot": world.get_world_entity_with_id_by_id(self.robot.id),
+            "collision_checks": set(
+                c.copy_for_world(world) for c in self.collision_checks
+            ),
+            "distance_threshold_always": self.distance_threshold_always,
+            "number_of_tries": self.number_of_tries,
+            "almost_percentage": self.almost_percentage,
+        }
 
     def _update(self, world: World):
         collision_matrix = CollisionMatrix()
@@ -495,6 +560,21 @@ class AllowNeverInCollision(AllowCollisionRule):
     A callback function to report progress.
     .. note: This callback is optional and can be used to monitor the progress of the collision check.
     """
+
+    def get_init_kwargs_for_world(self, world: World) -> dict[str, Any]:
+        return {
+            **super().get_init_kwargs_for_world(world),
+            "robot": world.get_world_entity_with_id_by_id(self.robot.id),
+            "collision_checks": set(
+                c.copy_for_world(world) for c in self.collision_checks
+            ),
+            "distance_threshold_max": self.distance_threshold_max,
+            "distance_threshold_min": self.distance_threshold_min,
+            "distance_threshold_range": self.distance_threshold_range,
+            "distance_threshold_zero": self.distance_threshold_zero,
+            "number_of_tries": self.number_of_tries,
+            "progress_callback": self.progress_callback,
+        }
 
     def __post_init__(self):
         if self.progress_callback is None:
@@ -614,6 +694,27 @@ class SelfCollisionMatrixRule(AllowCollisionRule, SubclassJSONSerializer):
     SRDF_DISABLE_ALL_COLLISIONS: ClassVar[str] = "disable_all_collisions"
     SRDF_DISABLE_SELF_COLLISION: ClassVar[str] = "disable_self_collision"
     SRDF_MOVEIT_DISABLE_COLLISIONS: ClassVar[str] = "disable_collisions"
+
+    allowed_collision_pairs: set[CollisionCheck] = field(default_factory=set)
+    """
+    Set of collision checks that are allowed to occur.
+    """
+    allowed_collision_bodies: set[Body] = field(default_factory=set)
+    """
+    Set of bodies that are allowed to collide.
+    """
+
+    def get_init_kwargs_for_world(self, world: World) -> dict[str, Any]:
+        return {
+            **super().get_init_kwargs_for_world(world),
+            "allowed_collision_pairs": set(
+                c.copy_for_world(world) for c in self.allowed_collision_pairs
+            ),
+            "allowed_collision_bodies": set(
+                world.get_world_entity_with_id_by_id(b.id)
+                for b in self.allowed_collision_bodies
+            ),
+        }
 
     def update(self, world: World):
         """
