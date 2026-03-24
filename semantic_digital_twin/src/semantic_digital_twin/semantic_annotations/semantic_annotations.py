@@ -173,8 +173,7 @@ class Aperture(HasRootRegion):
         parent_T_self: Optional[HomogeneousTransformationMatrix] = None,
     ) -> Self:
 
-        world._forward_kinematic_manager.recompile()
-        world._forward_kinematic_manager.recompute()
+        world.update_forward_kinematics()
         body_scale = (
             body.collision.as_bounding_box_collection_in_frame(body)
             .bounding_box()
@@ -938,6 +937,7 @@ class Sofa(Furniture, HasSupportingSurface):
             connection_offset=connection_offset,
         )
 
+        world.update_forward_kinematics()
         sofa.calculate_supporting_surface()
         return sofa
 
