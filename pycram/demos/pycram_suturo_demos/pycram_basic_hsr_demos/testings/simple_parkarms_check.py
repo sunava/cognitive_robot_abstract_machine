@@ -1,8 +1,12 @@
 import logging
 import time
 
+from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
-from pycram.robot_plans import GiskardPickUpActionDescription, GiskardPlaceActionDescription
+from pycram.robot_plans import (
+    GiskardPickUpActionDescription,
+    GiskardPlaceActionDescription,
+)
 from pycram_suturo_demos.helper_methods_and_useful_classes.A_robot_setup import (
     robot_setup,
 )
@@ -27,19 +31,34 @@ world, robot, context, node = (
     result.node,
 )
 object_to_pickup = world.get_body_by_name("milk.stl")
+object_to_pickup_startpose = PoseStamped.from_list(
+    [
+        object_to_pickup.global_pose.x,
+        object_to_pickup.global_pose.y,
+        object_to_pickup.global_pose.z,
+    ],
+    [0, 0, 0, 1],
+    frame=world.root,
+)
+
 
 plan = SequentialPlan(context, ParkArmsActionDescription(Arms.BOTH))
 plan2 = SequentialPlan(
     context,
-    GiskardPickUpActionDescription(simulated=SIMULATED,
-        object_designator=object_to_pickup, arm=Arms.LEFT, gripper_vertical=True
+    GiskardPickUpActionDescription(
+        simulated=SIMULATED,
+        object_designator=object_to_pickup,
+        arm=Arms.LEFT,
+        gripper_vertical=True,
     ),
 )
-print()
 plan3 = SequentialPlan(
     context,
-    GiskardPlaceActionDescription(simulated=SIMULATED,
-    object_designator=object_to_pickup, arm=Arms.LEFT, target_location=object_to_pickup.global_pose.to_pose().to
+    GiskardPlaceActionDescription(
+        simulated=SIMULATED,
+        object_designator=object_to_pickup,
+        arm=Arms.LEFT,
+        target_location=object_to_pickup_startpose,
     ),
 )
 with robot_type:

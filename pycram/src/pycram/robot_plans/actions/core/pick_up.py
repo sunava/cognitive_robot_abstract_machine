@@ -346,7 +346,11 @@ class GiskardPickUpAction(ActionDescription):
                 if not grasped:
                     SequentialPlan(
                         self.context,
-                        GiskardRetractActionDescription(simulated=self.simulated, arm=Arms.LEFT, back_off_pose=robot_pose_pre_manipulation),
+                        GiskardRetractActionDescription(
+                            simulated=self.simulated,
+                            arm=Arms.LEFT,
+                            back_off_pose=robot_pose_pre_manipulation,
+                        ),
                         ParkArmsActionDescription(Arms.BOTH),
                         GiskardGraspActionDescription(
                             simulated=self.simulated,
@@ -365,11 +369,12 @@ class GiskardPickUpAction(ActionDescription):
         ).perform()
 
     # implement sometime, currently not implemented, since Motions have weird heirachys
-    def item_between_fingertips(self,
-            fingertip_distance: float,
-            closed_value: float = -0.1007,
-            open_value: float = 0.0538,
-            threshhold: float = 0.05,
+    def item_between_fingertips(
+        self,
+        fingertip_distance: float,
+        closed_value: float = -0.1007,
+        open_value: float = 0.0538,
+        threshhold: float = 0.05,
     ) -> bool:
         """
         Returns True if the gripper is not fully closed and not fully open,
@@ -398,7 +403,9 @@ class GiskardPickUpAction(ActionDescription):
     def validate_grasped(self):
         node = rclpy.create_node("gripper_distance_subscriber")
 
-        msg = wait_for_message(msg_type=float, node=node, topic_name="/gripper_command/fingertip_distance")
+        msg = wait_for_message(
+            msg_type=float, node=node, topic_name="/gripper_command/fingertip_distance"
+        )
         success = msg is not None
         if success:
             logger.info(f"Gripper fingertip distance: {msg.data}")
@@ -406,9 +413,10 @@ class GiskardPickUpAction(ActionDescription):
             logger.warning("Timed out waiting for gripper fingertip distance")
         node.destroy_node()
 
-        is_object_between_fingertips = self.item_between_fingertips(fingertip_distance=msg)
+        is_object_between_fingertips = self.item_between_fingertips(
+            fingertip_distance=msg
+        )
         return is_object_between_fingertips
-
 
     @classmethod
     def description(
@@ -482,8 +490,6 @@ class GiskardGraspAction(ActionDescription):
                 gripper_vertical=self.gripper_vertical,
             ),
         ).perform()
-
-
 
     @classmethod
     def description(

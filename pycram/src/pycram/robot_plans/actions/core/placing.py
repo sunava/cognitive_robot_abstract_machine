@@ -197,9 +197,9 @@ class GiskardPlaceAction(ActionDescription):
         manipulator = arm.manipulator
         if self.ignore_orientation:
             goal = self.target_location.pose.to_spatial_type().to_position()
-            goal.reference_frame = self.target_location.frame_id
         else:
             goal = self.target_location.pose.to_spatial_type()
+        goal.reference_frame = self.target_location.frame_id
         SequentialPlan(
             self.context,
             PlaceMotion(

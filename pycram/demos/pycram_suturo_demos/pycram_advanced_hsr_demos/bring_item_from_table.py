@@ -7,8 +7,13 @@ from typing import Optional
 import rclpy
 
 from pycram.datastructures.dataclasses import Context
+from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
-from pycram.robot_plans import MoveTorsoAction, MoveTorsoActionDescription
+from pycram.robot_plans import (
+    MoveTorsoAction,
+    MoveTorsoActionDescription,
+    LookAtActionDescription,
+)
 from pycram_suturo_demos.helper_methods_and_useful_classes.pickup_helper_methods import (
     initialization,
     object_to_pickup_by_mode,
@@ -45,11 +50,11 @@ Full sequence constains:
 
 
 def pickup_main(
-    world: World,
+    # world: World,
     context: Context,
-    robot_view: HSRB,
+    # robot_view: HSRB,
     object_name: str,
-    object_color: Optional[str],
+    # object_color: Optional[str],
 ):
     rclpy.init()
     table = ""
@@ -58,7 +63,16 @@ def pickup_main(
     talking_node = TalkingNode()
     standard_delay = 2
 
-    def try_percieve_and_retrieve():
+    world = context.world
+    robot_view = context.robot
+    # please leave inside for testing purposes
+    # rclpy_node, world, robot_view, context, manipulator = initialization(
+    #     simulation=simulated, with_simulated_objects=with_simulated_objects
+    # )
+
+    def try_percieve_and_retrieve(angle: int = 1):
+        table = world.get_body_by_name("table")
+
         talking_node.pub(
             text=f"Trying to position, to perceive object.", delay=standard_delay
         )
@@ -67,10 +81,20 @@ def pickup_main(
             simulated=simulated,
             world=world,
             context=context,
-            target_pose="PERCEPTION_ANGLE_" + str(i),
+            target_pose="PERCEPTION_ANGLE_" + str(angle),
         )
-        # SequentialPlan(context, MoveTorsoActionDescription(TorsoState.MID), )
+        SequentialPlan(
+            context,
+            MoveTorsoActionDescription(TorsoState.MID),
+            LookAtActionDescription(
+                PoseStamped=Look_At_Pose, camera=robot_view.get_default_camera()
+            ),
+        ).perform()
         perceive_and_spawn_all_objects(world)
+        SequentialPlan(
+            context,
+            MoveTorsoActionDescription(TorsoState.LOW),
+        )
         try:
             object_to_pickup: Body | None = world.get_body_by_name(object_name)
             talking_node.pub(
@@ -85,15 +109,6 @@ def pickup_main(
             )
             time.sleep(2)
             return object_to_pickup
-
-    # please leave inside for testing purposes
-    # rclpy_node, world, robot_view, context, manipulator = initialization(
-    #     simulation=simulated, with_simulated_objects=with_simulated_objects
-    # )
-
-    # table = world.get_semantic_annotation_by_name(
-    #     "table"
-    # )
 
     logger.info("Generating basic movements")
     # Move to table, on which the object is to be expected.
