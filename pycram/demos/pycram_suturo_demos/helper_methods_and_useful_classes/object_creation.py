@@ -1,6 +1,9 @@
 import json
 import os
+from time import sleep
 from typing import List
+
+from suturo_resources.queries import query_class_by_label
 
 from pycram_suturo_demos.helper_methods_and_useful_classes.mapping_perception_semantic_annotations import (
     perception_semantic_annotations,
@@ -152,7 +155,7 @@ def spawn_semantic_with_body(
     """
 
     if isinstance(semantic_type, str):
-        semantic_type: HasRootBody = get_object_class_from_string(semantic_type)
+        semantic_type = query_class_by_label(semantic_type)
 
     pose.z -= 0.015  # To avoid spawning objects in the air due to small inaccuracies in the pose estimation.
 
@@ -168,11 +171,11 @@ def spawn_semantic_with_body(
         world_root_T_self = pose.to_homogeneous_matrix()
         world_root_T_self.reference_frame = world.root
 
-    object_to_spawn: HasRootBody = world.get_semantic_annotation_by_name(name)
-    if object_to_spawn is not None:
+    try:
+        object_to_spawn: HasRootBody = world.get_semantic_annotation_by_name(name)
         with world.modify_world():
             move_object_to_new_pose(object_to_spawn, world_root_T_self)
-    else:
+    except WorldEntityNotFoundError:
         with world.modify_world():
             object_to_spawn = semantic_type.create_with_new_body_in_world(
                 name=PrefixedName(name),
@@ -195,6 +198,10 @@ def perceive_and_spawn_all_objects(world: World):
         from pycram.external_interfaces import robokudo
     except ImportError:
         raise ImportError()
+
+    # Fix because perception output is always one query behind
+    robokudo.send_query()
+    sleep(2)
 
     perceived_objects_result = robokudo.query_all_objects().res
     for perceived_object in perceived_objects_result:
@@ -221,16 +228,18 @@ def perceive_and_spawn_all_objects(world: World):
         )
 
         # TODO: Grr Perception is not updated so we use our own mapping
-        # object_name = extract_name_from_json_string(perceived_object.attribute)
-        # object_type = perceived_object.type
+        object_name = extract_name_from_json_string(perceived_object.attribute[0])
+        object_type = perceived_object.type
 
-        object_name = perceived_object.type
-        object_type = perception_semantic_annotations[object_name]
+        # object_name = perceived_object.type
+        # object_type = perception_semantic_annotations[object_name]
 
         # If nothing else works
         # object_name = "muesli_vitalis_box_nutmix2"
         # object_type = "cereal"
 
+        print(f"object_name: {object_name}")
+        print(f"object_type: {object_type}")
         spawn_semantic_with_body(
             semantic_type=object_type,
             name=object_name,
