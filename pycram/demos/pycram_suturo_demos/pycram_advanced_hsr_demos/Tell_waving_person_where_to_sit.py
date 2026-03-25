@@ -163,93 +163,98 @@ def find_free_seat() -> str:
     return pycram.external_interfaces.robokudo.query_specific_region("sofa")
 
 
-with real_robot:
-    print(
-        f"Robot Position-> X:{get_robot_pose().position.x} Y:{get_robot_pose().position.y}"
-    )
-    os.environ["ROS_PYTHON_CHECK_FIELDS"] = "1"
-    text_pub = TextToImagePublisher()
-    tts = TtsPublisher()
-    # 1. Scan for a waving human
-    text_pub.publish_text("Looking for a waving human...")
-    tts.publish("Looking for a waving human")
-    look_in_direction(Direction.LEFT)
-    human = scan_for_waving_human()
-    if human is None:
-        text_pub.publish_text("No waving human found, giving up.")
-        tts.publish("No waving human found, giving up.")
+def main():
+    with real_robot:
+        print(
+            f"Robot Position-> X:{get_robot_pose().position.x} Y:{get_robot_pose().position.y}"
+        )
+        os.environ["ROS_PYTHON_CHECK_FIELDS"] = "1"
+        text_pub = TextToImagePublisher()
+        tts = TtsPublisher()
+        # 1. Scan for a waving human
+        text_pub.publish_text("Looking for a waving human...")
+        tts.publish("Looking for a waving human")
+        look_in_direction(Direction.LEFT)
+        human = scan_for_waving_human()
+        if human is None:
+            text_pub.publish_text("No waving human found, giving up.")
+            tts.publish("No waving human found, giving up.")
+            shutdown_robokudo_interface()
+            tts.shutdown()
+            exit(1)
+        human_pose = transform_perception_to_map(human)
+        text_pub.publish_text(
+            f"Found human:\n X:{human_pose.pose.position.x} \n Y:{human_pose.pose.position.y}"
+        )
+        tts.publish("Found Human")
+        # 2. Drive to the human
+        human_goal = human_pose.ros_message()
+        text_pub.publish_text(
+            f"Driving to human:\n X:{human_goal.pose.position.x } \n Y:{human_goal.pose.position.y}"
+        )
+        tts.publish("Driving to human")
+        drive_to_pose(human_goal)
+        text_pub.publish_text(f"Hello, I will now look for a free seat...")
+        tts.publish("Hello, I will see if I can find a free seat for you")
+        sleep(6)
+
+        # 3. Drive to sofa
+        sofa_pose = PoseStamped.from_list(
+            position=[3.660223589941574, 3.507497103196295, 0.0],
+            orientation=[0.0, 0.0, -0.6691896974921895, 0.7430916153276875],
+            frame=world.root,
+        )
+        goal = sofa_pose.ros_message()
+        text_pub.publish_text(
+            f"Driving to sofa:\n X:{goal.pose.position.x} \n Y:{goal.pose.position.y}"
+        )
+        nav2_move.start_nav_to_pose(goal)
+        print(
+            f"Robot Position-> X:{get_robot_pose().position.x} Y:{get_robot_pose().position.y}"
+        )
+        # 4. Find a free seat
+        result = find_free_seat()
+        text_pub.publish_text(f"Got Data")
+        tts.publish("I got Data")
+
+        # 5. Drive back to the human
+        text_pub.publish_text(
+            f"Driving back to human:\n X:{human_goal.pose.position.x } \n Y:{human_goal.pose.position.y}"
+        )
+        drive_to_pose(human_goal)
+
+        # 6. Tell the human where to sit
+        if len(result.res) == 0:
+            text_pub.publish_text(f"Something went wrong while finding seats.")
+            tts.publish("Something went wrong while finding seats")
+            print(f"Aborted")
+        else:
+            right_seat = result.res[0].attribute[0]
+            list_right = right_seat.split(",")
+            left_seat = result.res[0].attribute[1]
+            list_left = left_seat.split(",")
+            print(list_right)
+            print(list_left)
+            if list_right[1] == " False" and list_left[1] == " False":
+                text_pub.publish_text(f"Both seats free")
+                tts.publish("Both seats free")
+                print(f"Both seats free")
+            elif list_right[1] == " True" and list_left[1] == " True":
+                text_pub.publish_text(f"No seats free")
+                tts.publish("No seats free")
+                print(f"No seats free")
+            elif list_right[1] == " False" and list_left[1] == " True":
+                text_pub.publish_text(f"Right seats free")
+                tts.publish("Right seats free")
+                print(f"Right seat free")
+            else:
+                text_pub.publish_text(f"Left seats free")
+                tts.publish("Left seats free")
+                print(f"Left seat free")
+
         shutdown_robokudo_interface()
         tts.shutdown()
-        exit(1)
-    human_pose = transform_perception_to_map(human)
-    text_pub.publish_text(
-        f"Found human:\n X:{human_pose.pose.position.x} \n Y:{human_pose.pose.position.y}"
-    )
-    tts.publish("Found Human")
-    # 2. Drive to the human
-    human_goal = human_pose.ros_message()
-    text_pub.publish_text(
-        f"Driving to human:\n X:{human_goal.pose.position.x } \n Y:{human_goal.pose.position.y}"
-    )
-    tts.publish("Driving to human")
-    drive_to_pose(human_goal)
-    text_pub.publish_text(f"Hello, I will now look for a free seat...")
-    tts.publish("Hello, I will see if I can find a free seat for you")
-    sleep(6)
 
-    # 3. Drive to sofa
-    sofa_pose = PoseStamped.from_list(
-        position=[3.660223589941574, 3.507497103196295, 0.0],
-        orientation=[0.0, 0.0, -0.6691896974921895, 0.7430916153276875],
-        frame=world.root,
-    )
-    goal = sofa_pose.ros_message()
-    text_pub.publish_text(
-        f"Driving to sofa:\n X:{goal.pose.position.x} \n Y:{goal.pose.position.y}"
-    )
-    nav2_move.start_nav_to_pose(goal)
-    print(
-        f"Robot Position-> X:{get_robot_pose().position.x} Y:{get_robot_pose().position.y}"
-    )
-    # 4. Find a free seat
-    result = find_free_seat()
-    text_pub.publish_text(f"Got Data")
-    tts.publish("I got Data")
 
-    # 5. Drive back to the human
-    text_pub.publish_text(
-        f"Driving back to human:\n X:{human_goal.pose.position.x } \n Y:{human_goal.pose.position.y}"
-    )
-    drive_to_pose(human_goal)
-
-    # 6. Tell the human where to sit
-    if len(result.res) == 0:
-        text_pub.publish_text(f"Something went wrong while finding seats.")
-        tts.publish("Something went wrong while finding seats")
-        print(f"Aborted")
-    else:
-        right_seat = result.res[0].attribute[0]
-        list_right = right_seat.split(",")
-        left_seat = result.res[0].attribute[1]
-        list_left = left_seat.split(",")
-        print(list_right)
-        print(list_left)
-        if list_right[1] == " False" and list_left[1] == " False":
-            text_pub.publish_text(f"Both seats free")
-            tts.publish("Both seats free")
-            print(f"Both seats free")
-        elif list_right[1] == " True" and list_left[1] == " True":
-            text_pub.publish_text(f"No seats free")
-            tts.publish("No seats free")
-            print(f"No seats free")
-        elif list_right[1] == " False" and list_left[1] == " True":
-            text_pub.publish_text(f"Right seats free")
-            tts.publish("Right seats free")
-            print(f"Right seat free")
-        else:
-            text_pub.publish_text(f"Left seats free")
-            tts.publish("Left seats free")
-            print(f"Left seat free")
-
-    shutdown_robokudo_interface()
-    tts.shutdown()
+if __name__ == "__main__":
+    main()
