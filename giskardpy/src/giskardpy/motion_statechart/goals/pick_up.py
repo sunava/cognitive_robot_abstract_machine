@@ -14,6 +14,7 @@ from giskardpy.motion_statechart.graph_node import (
     CancelMotion,
     MotionStatechartNode,
 )
+from giskardpy.motion_statechart.monitors.monitors import LocalMinimumReached
 from giskardpy.motion_statechart.ros2_nodes.force_torque_monitor import (
     ForceImpactMonitor,
 )
@@ -22,7 +23,6 @@ from giskardpy.motion_statechart.data_types import DefaultWeights
 from giskardpy.motion_statechart.goals.collision_avoidance import (
     SelfCollisionAvoidance,
     ExternalCollisionAvoidance,
-    ExternalCollisionDistanceMonitor,
     UpdateTemporaryCollisionRules,
     make_external_collision_rules,
 )
@@ -51,6 +51,12 @@ from semantic_digital_twin.world_description.world_entity import (
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+
+class ObjectNotReachableException(Exception):
+    pass
+
+class ObjectDoesntFitException(Exception):
+    pass
 
 @dataclass
 class _AllowObjectCollisions(AllowCollisionRule):
@@ -88,7 +94,7 @@ class GraspSide(Enum):
     BOTTOM = auto()
 
 
-HSR_GRIPPER_WIDTH = 0.15
+HSR_GRIPPER_WIDTH = 0.135
 AXIS_ALIGNMENT_THRESHOLD = 0.9
 
 
@@ -104,7 +110,7 @@ class PickUp(Goal):
         self.sequence = Sequence(
             [
                 OpenHand(simulated_execution=self.simulated_execution),
-                GraspingSequence(grasp_magic=self.grasp_magic),
+                sequence:=GraspingSequence(grasp_magic=self.grasp_magic),
                 CloseHand(ft=self.ft, simulated_execution=self.simulated_execution),
             ]
         )
@@ -217,11 +223,13 @@ class GraspMagic(ABC):
                 valid_faces.append((local_axis, axis_in_world, graspable_dim))
 
         if not valid_faces:
-            raise Exception(
+            raise ObjectDoesntFitException(
                 f"No valid grasp face found. gripper_width={self.gripper_width}, "
                 f"gripper_vertical={self.gripper_vertical}, "
                 f"dims: w={obj_bbox.width:.3f} d={obj_bbox.depth:.3f} h={obj_bbox.height:.3f}"
             )
+
+        # print(f'Valid face: {valid_faces[0][1].to_np()}')
 
         grasp_axis = max(valid_faces, key=lambda x: abs(x[1].dot(obj_to_robot)))[0]
         grasp_axis.reference_frame = self.object_geometry
@@ -404,6 +412,8 @@ class BoxGraspMagic(GraspMagic):
             tip_link=tool_frame,
             goal_point=grasp_point,
             name="grasp_position",
+            reference_velocity=0.05,
+            threshold=0.025
         )
         grasp_align = Parallel(
             self._get_orientation_nodes(
@@ -532,6 +542,14 @@ class GraspingSequence(Goal):
             ]
         )
         self.add_node(self._seq)
+        stuck = LocalMinimumReached()
+        self.add_node(stuck)
+        cancel = CancelMotion(exception=ObjectNotReachableException("Object isnt reachable"))
+        cancel.start_condition = trinary_logic_and(
+            stuck.observation_variable,
+            trinary_logic_not(self._seq.observation_variable),
+        )
+        self.add_node(cancel)
 
     def build(self, context: MotionStatechartContext) -> NodeArtifacts:
         artifacts = super().build(context)
