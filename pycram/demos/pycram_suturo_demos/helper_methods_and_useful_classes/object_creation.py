@@ -162,7 +162,6 @@ def spawn_semantic_with_body(
     resolved_reference_frame = _resolve_reference_frame(pose.reference_frame, world)
     pose.reference_frame = resolved_reference_frame
 
-    pose.z -= 0.015  # To avoid spawning objects in the air due to small inaccuracies in the pose estimation.
     # If the pose has a frame_id, we need to transform it to the world root frame.
     # Otherwise, we can assume it is already in the world root frame.
     if pose.reference_frame is not None and pose.reference_frame != world.root:
@@ -238,8 +237,6 @@ def perceive_and_spawn_all_objects(world: World):
         # object_name = "muesli_vitalis_box_nutmix2"
         # object_type = "cereal"
 
-        print(f"object_name: {object_name}")
-        print(f"object_type: {object_type}")
         spawn_semantic_with_body(
             semantic_type=object_type,
             name=object_name,
