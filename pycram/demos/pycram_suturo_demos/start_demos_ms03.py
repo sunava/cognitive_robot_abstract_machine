@@ -10,14 +10,18 @@ from std_msgs.msg import String
 
 from pycram_suturo_demos.helper_methods_and_useful_classes.nlp_human_robot_interaction import TalkingNode
 from pycram.external_interfaces.nlp_interface import NlpInterface, FilterOptions
+from pycram_suturo_demos.pycram_basic_hsr_demos.A_start_up import setup_hsrb_context
 
 from pycram_suturo_demos.pycram_basic_hsr_demos.dialog_with_human_demo import main as dialog_with_human_demo_main
+from pycram_suturo_demos.pycram_advanced_hsr_demos.Tell_waving_person_where_to_sit import main as tell_waving_person_where_to_sit_demo
+from pycram_suturo_demos.pycram_advanced_hsr_demos.bring_object_from_table_to_shelf_demo import main as bring_object_from_table_to_shelf_demo
 
 from pycram.external_interfaces.nav2_move import start_nav_to_pose
 
+rclpy_node, world, robot_view, context = setup_hsrb_context()
 
-start_point = PoseStamped.from_list(position=[0, 0, 0], orientation=[0, 0, 0, 1])
 
+start_point = PoseStamped.from_list(position=[1.8, 3.26, 0], orientation=[0, 0, 0.0829799, 0.9965595])
 
 
 class NlpInterfaceDemoStartM3(NlpInterface):
@@ -93,8 +97,8 @@ def main():
                     if "waving" in resp[2][0][4]:
                         print("start 'Tell the waving person where he/she can sit'")
                         #talk.pub("I will go and show them where to sit.")
-
-                        dialog_with_human_demo_main()
+                        tell_waving_person_where_to_sit_demo()
+                        #dialog_with_human_demo_main()
 
                 case 'lookup':
                     where = resp[2][0][1]
@@ -111,6 +115,7 @@ def main():
                     elif len(re) == 2:
                         print(f"Start Challenge 'Bring object {item[0]} from the {re[0]} to the {re[1]}.'")
                         talk.pub(f"I will drive to the {re[0]} now and get the object {item[0]} and bring it to the {re[1]}.")
+                        bring_object_from_table_to_shelf_demo(context=context, object_to_pick=item[0])
                     else:
                         print("Oh no")
                 case 'open':

@@ -13,7 +13,7 @@ from pycram_suturo_demos.helper_methods_and_useful_classes.A_robot_setup import 
 
 
 
-door_pos = PoseStamped.from_list(position=[0, 0, 0], orientation=[0, 0, 0, 1])
+door_pos = PoseStamped.from_list(position=[1.3, 1.12, 0], orientation=[0, 0, -0.8197653913600055, 0.5726994876271299])
 
 
 def initialization(simulation: bool = True):
