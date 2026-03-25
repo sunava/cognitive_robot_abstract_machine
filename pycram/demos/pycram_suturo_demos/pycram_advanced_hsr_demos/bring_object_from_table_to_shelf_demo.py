@@ -331,6 +331,6 @@ def main(
     park_arms(context)
     move_torso(context, TorsoState.LOW)
 
-    tts.publish("I finished all tasks and will to the starting position")
+    tts.publish("I finished all tasks and will move to the starting position")
     reset_to_start(context, STARTING_POSE)
     tts.shutdown()
