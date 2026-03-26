@@ -372,10 +372,16 @@ class GiskardPickUpAction(ActionDescription):
             ),
         ).perform()
 
-        os.environ["ROS_PYTHON_CHECK_FIELDS"] = "1"
-        goal = robot_pose_pre_manipulation.ros_message()
-        print(f"Moving to {robot_pose_pre_manipulation}'")
-        nav2_move.start_nav_to_pose(robot_pose_pre_manipulation)
+        if self.simulated:
+            SequentialPlan(
+                self.context, MoveMotion(robot_pose_pre_manipulation, True)
+            ).perform()
+        else:
+            from pycram.external_interfaces import nav2_move
+            os.environ["ROS_PYTHON_CHECK_FIELDS"] = "1"
+            goal = robot_pose_pre_manipulation.ros_message()
+            print(f"Moving to {robot_pose_pre_manipulation}'")
+            nav2_move.start_nav_to_pose(robot_pose_pre_manipulation)
 
         SequentialPlan(self.context,ParkArmsActionDescription(Arms.BOTH)).perform()
 
