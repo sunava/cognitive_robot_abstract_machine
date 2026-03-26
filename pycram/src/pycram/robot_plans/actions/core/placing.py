@@ -269,6 +269,75 @@ class GiskardPlaceAction(ActionDescription):
             ignore_orientation=ignore_orientation,
         )
 
+@dataclass
+class GiskardPlaceAndDetachAction(ActionDescription):
+    """
+    Places an Object at a position using an arm. By directly called GiskardMotion
+    """
+
+    object_designator: Body
+    """
+    Object designator_description describing the object that should be place
+    """
+
+    target_location: PoseStamped
+    """
+    Pose in the world at which the object should be placed
+    """
+
+    arm: Arms
+    """
+    Arm that is currently holding the object
+    """
+
+    simulated: bool = field(default=True, kw_only=True)
+    """
+    Parsing simulation argument
+    """
+
+    ignore_orientation: bool = field(default=False, kw_only=True)
+    """
+    If True, the orientation of the object will be ignored.
+    """
+
+    _pre_perform_callbacks = []
+    """
+    List to save the callbacks which should be called before performing the action.
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+
+    def execute(self) -> None:
+        SequentialPlan(
+            self.context,
+            GiskardPlaceActionDescription(
+                simulated=self.simulated,
+                object_designator=self.object_designator,
+                arm=Arms.LEFT,
+                target_location=self.target_location,
+            ),
+        ).perform()
+        with self.world.modify_world():
+            self.world.move_branch_with_fixed_connection(self.object_designator, self.world.root)
+
+    @classmethod
+    def description(
+        cls,
+        object_designator: Union[Iterable[Body], Body],
+        target_location: Union[Iterable[PoseStamped], PoseStamped],
+        arm: Union[Iterable[Arms], Arms],
+        simulated: bool = True,
+        ignore_orientation: bool = False,
+    ) -> PartialDesignator[GiskardPlaceAndDetachAction]:
+        return PartialDesignator[GiskardPlaceAndDetachAction](
+            GiskardPlaceAndDetachAction,
+            object_designator=object_designator,
+            target_location=target_location,
+            arm=arm,
+            simulated=simulated,
+            ignore_orientation=ignore_orientation,
+        )
 
 @dataclass
 class GiskardRetractAction(ActionDescription):
@@ -408,5 +477,6 @@ class HandoverAction(ActionDescription):
 
 PlaceActionDescription = PlaceAction.description
 GiskardPlaceActionDescription = GiskardPlaceAction.description
+GiskardPlaceAndDetachActionDescription = GiskardPlaceAndDetachAction.description
 GiskardRetractActionDescription = GiskardRetractAction.description
 HandoverActionDescription = HandoverAction.description
