@@ -18,9 +18,14 @@ from pycram_suturo_demos.helper_methods_and_useful_classes.pickup_helper_methods
     initialization,
     object_to_pickup_by_mode,
     get_pickup_mode,
-    perceive_and_spawn_all_objects, look_at_point, try_percieve_and_retrieve,
+    perceive_and_spawn_all_objects,
+    look_at_point,
+    try_percieve_and_retrieve,
 )
-from pycram_suturo_demos.pycram_basic_hsr_demos.hri_handover import handover_robot_human_no_init
+from pycram_suturo_demos.pycram_basic_hsr_demos.hri_handover import (
+    handover_robot_human_no_init,
+    handover_human_robot_no_init,
+)
 from pycram_suturo_demos.pycram_basic_hsr_demos.move_demo import move_demo
 from pycram_suturo_demos.pycram_basic_hsr_demos.pickup_demo import (
     pickup_demo,
@@ -86,13 +91,21 @@ def bring_item_from_table_to_human_demo(
     for j in range(2):
 
         for i in range(3):
-            object_to_pickup: Body | None = try_percieve_and_retrieve(context=context, object_name=object_name,
-                                                               talking_node=talking_node, simulated=simulated, angle=i)
+            object_to_pickup: Body | None = try_percieve_and_retrieve(
+                context=context,
+                object_name=object_name,
+                talking_node=talking_node,
+                simulated=simulated,
+                angle=i,
+            )
             if object_to_pickup:
                 break
 
         if object_to_pickup is None:
-            talking_node.pub(text="I couldnt find the object, driving back to start.", delay=standard_delay)
+            talking_node.pub(
+                text="I couldnt find the object, driving back to start.",
+                delay=standard_delay,
+            )
             move_to_starting_pose()
             break
 
@@ -103,13 +116,22 @@ def bring_item_from_table_to_human_demo(
         )
 
         if pickup_callback:
-            talking_node.pub(text="The object has been picked up, now moving to starting pose for handover", delay=standard_delay)
+            talking_node.pub(
+                text="The object has been picked up, now moving to starting pose for handover",
+                delay=standard_delay,
+            )
             break
         else:
-            talking_node.pub(text="object has not been picked up, retrying", delay=standard_delay)
+            talking_node.pub(
+                text="object has not been picked up, retrying", delay=standard_delay
+            )
             continue
-
+    if pickup_callback is False:
+        talking_node.pub(
+            text="object has not been picked up, initiating human to hand-over",
+            delay=standard_delay,
+        )
+        handover_human_robot_no_init(context=context, simulated=simulated)
 
     move_to_starting_pose()
     handover_robot_human_no_init(context=context, simulated=simulated)
-

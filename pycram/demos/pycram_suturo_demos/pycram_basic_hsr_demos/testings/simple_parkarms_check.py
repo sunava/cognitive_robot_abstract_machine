@@ -12,8 +12,14 @@ from pycram_suturo_demos.helper_methods_and_useful_classes.A_robot_setup import 
 )
 from pycram.datastructures.enums import Arms
 from pycram.motion_executor import real_robot, simulated_robot
-from pycram_suturo_demos.helper_methods_and_useful_classes.pickup_helper_methods import look_at_point
+from pycram_suturo_demos.helper_methods_and_useful_classes.pickup_helper_methods import (
+    look_at_point,
+)
+from pycram_suturo_demos.pycram_advanced_hsr_demos.bring_object_from_table_to_shelf_demo import (
+    try_and_scan_for_object_on_table,
+)
 from pycram_suturo_demos.pycram_basic_hsr_demos.move_demo import move_demo
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Milk
 from semantic_digital_twin.spatial_types import Point3, HomogeneousTransformationMatrix
 
 print("before ParkArms import")
@@ -44,11 +50,14 @@ object_to_pickup_startpose = PoseStamped.from_list(
     frame=world.root,
 )
 
-table = world.get_body_by_name("cooking_table")
-look_at = HomogeneousTransformationMatrix.to_position(table.global_pose)
+
+table = world.get_semantic_annotation_by_name("cooking_table")
+look_at = table.global_pose.to_position()
 
 plan = SequentialPlan(context, ParkArmsActionDescription(Arms.BOTH))
-plan_move = move_demo(simulated=SIMULATED,context=context,world=world, target_pose="POPCORN_TABLE")
+plan_move = move_demo(
+    simulated=SIMULATED, context=context, world=world, target_pose="POPCORN_TABLE"
+)
 plan2 = SequentialPlan(
     context,
     GiskardPickUpActionDescription(
@@ -70,10 +79,9 @@ plan3 = SequentialPlan(
 )
 
 with robot_type:
+    look_at_point(context, look_at)
     plan.perform()
     print("parked arms")
     plan2.perform()
     look_at_point(context, look_at)
     plan3.perform()
-
-    move_demo(simulated=SIMULATED, context=context, world=world, target_pose="POPCORN_TABLE")

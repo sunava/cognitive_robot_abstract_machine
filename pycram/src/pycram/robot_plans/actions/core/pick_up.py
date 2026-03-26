@@ -17,6 +17,7 @@ from pycram_suturo_demos.helper_methods_and_useful_classes.pickup_helper_methods
 from semantic_digital_twin.datastructures.definitions import GripperState
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.world_entity import Body
+from pycram.robot_plans.actions.core.navigation import nav2NavigateActionDescription
 from ...motions.pick_up import PullUpMotion
 
 # from ...motions.gripper import MoveGripperMotion, MoveTCPMotion
@@ -333,7 +334,9 @@ class GiskardPickUpAction(ActionDescription):
             )
 
         # Register attach as a post-perform callback BEFORE queuing the motion
-        robot_pose_pre_manipulation = PoseStamped.from_spatial_type(self.context.robot.root.global_pose)
+        robot_pose_pre_manipulation = PoseStamped.from_spatial_type(
+            self.context.robot.root.global_pose
+        )
 
         grasped: bool = False
 
@@ -357,11 +360,11 @@ class GiskardPickUpAction(ActionDescription):
                     arm=Arms.LEFT,
                     back_off_pose=robot_pose_pre_manipulation,
                 ),
-                ParkArmsActionDescription(Arms.BOTH)).perform()
+                ParkArmsActionDescription(Arms.BOTH),
+            ).perform()
             logger.error(f"Internal PickUpError with error message: {e}")
             grasped = False
             return grasped
-
 
         SequentialPlan(
             self.context,
@@ -374,16 +377,18 @@ class GiskardPickUpAction(ActionDescription):
 
         if self.simulated:
             SequentialPlan(
-                self.context, MoveMotion(robot_pose_pre_manipulation, True)
+                self.context,
+                nav2NavigateActionDescription(robot_pose_pre_manipulation, True),
             ).perform()
         else:
             from pycram.external_interfaces import nav2_move
+
             os.environ["ROS_PYTHON_CHECK_FIELDS"] = "1"
             goal = robot_pose_pre_manipulation.ros_message()
             print(f"Moving to {robot_pose_pre_manipulation}'")
             nav2_move.start_nav_to_pose(robot_pose_pre_manipulation)
 
-        SequentialPlan(self.context,ParkArmsActionDescription(Arms.BOTH)).perform()
+        SequentialPlan(self.context, ParkArmsActionDescription(Arms.BOTH)).perform()
 
         return grasped
 
@@ -421,7 +426,7 @@ class GiskardPickUpAction(ActionDescription):
 
     def validate_grasped(self):
         rclpy.init()
-        node = rclpy.create_node('fingertip_distance_subscriber')
+        node = rclpy.create_node("fingertip_distance_subscriber")
         msg = None
 
         def callback(data: None):
@@ -431,9 +436,9 @@ class GiskardPickUpAction(ActionDescription):
         # TODO change msg time, idk what msg type it is
         subscription = node.create_subscription(
             msg_type=None,
-            topic='/gripper_command/fingertip_distance',
+            topic="/gripper_command/fingertip_distance",
             callback=callback,
-            qos_profile=10
+            qos_profile=10,
         )
 
         while msg is None:
@@ -442,11 +447,13 @@ class GiskardPickUpAction(ActionDescription):
         logger.info(f"Gripper fingertip distance: {msg.data}")
         node.destroy_node()
 
-        is_object_between_fingertips : bool = self.item_between_fingertips(
+        is_object_between_fingertips: bool = self.item_between_fingertips(
             fingertip_distance=msg.smth
         )
         if not is_object_between_fingertips:
-            raise ObjectNotGraspedError(obj=self.object_designator, robot=self.context.robot, arm=self.arm)
+            raise ObjectNotGraspedError(
+                obj=self.object_designator, robot=self.context.robot, arm=self.arm
+            )
 
     @classmethod
     def description(
