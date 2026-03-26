@@ -294,10 +294,18 @@ def try_to_pick_up_else_hri(context: Context, obj: HasRootBody):
     handover_human_robot_no_init(simulated=False, context=context)
 
 
+def init_poses_frame(context: Context):
+    pose: Pose
+    for pose in _poses:
+        pose.reference_frame = context.world.root
+
+
 def main(
     context: Context,
     object_to_pick: str = None,
 ):
+    init_poses_frame(context)
+
     # Save starting pose to drive to after demo is finished
     STARTING_POSE = context.robot.root.global_pose.to_pose()
 
