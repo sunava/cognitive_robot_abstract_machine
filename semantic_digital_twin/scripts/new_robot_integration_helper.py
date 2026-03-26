@@ -12,6 +12,8 @@ from semantic_digital_twin.robots.unitree_g1 import UnitreeG1
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.world_entity import Body
 
+# This script is part of the "How to add robots" example
+
 your_ros2_package_name = "iai_offis_g1_description"
 your_path_from_package_root_to_urdf = "urdf/offis_unitree_g1.urdf"
 robot_world = URDFParser.from_file(
