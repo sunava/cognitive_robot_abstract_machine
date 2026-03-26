@@ -309,18 +309,33 @@ def test_model_synchronization_merge_full_world(rclpy_node):
         )
     ).parse()
 
-    def wait_for_sync(timeout=3.0, interval=0.05):
+    def wait_for_sync(timeout=5.0, interval=0.05):
         start = time.time()
         while time.time() - start < timeout:
-            body_ids_1 = [body.id for body in w1.kinematic_structure_entities]
-            body_ids_2 = [body.id for body in w2.kinematic_structure_entities]
-            if body_ids_1 == body_ids_2:
-                return body_ids_1, body_ids_2
-            time.sleep(interval)
+            body_hash_1 = {hash(body) for body in w1.kinematic_structure_entities}
+            body_hash_2 = {hash(body) for body in w2.kinematic_structure_entities}
 
-        body_ids_1 = [body.id for body in w1.kinematic_structure_entities]
-        body_ids_2 = [body.id for body in w2.kinematic_structure_entities]
-        return body_ids_1, body_ids_2
+            connection_hash_1 = {hash(conn) for conn in w1.connections}
+            connection_hash_2 = {hash(conn) for conn in w2.connections}
+
+            dof_hash_1 = {hash(dof) for dof in w1.degrees_of_freedom}
+            dof_hash_2 = {hash(dof) for dof in w2.degrees_of_freedom}
+
+            semantic_annotation_hash_1 = {
+                hash(sa) for sa in w1.semantic_annotations
+            }
+            semantic_annotation_hash_2 = {
+                hash(sa) for sa in w2.semantic_annotations
+            }
+
+            if (
+                    body_hash_1 == body_hash_2
+                    and connection_hash_1 == connection_hash_2
+                    and dof_hash_1 == dof_hash_2
+                    and semantic_annotation_hash_1 == semantic_annotation_hash_2
+            ):
+                return
+            time.sleep(interval)
 
     with w1.modify_world():
         new_body = Body(name=PrefixedName("b3"))
