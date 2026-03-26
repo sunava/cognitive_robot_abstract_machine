@@ -7,6 +7,7 @@ import rclpy
 import pycram_suturo_demos.helper_methods_and_useful_classes.nlp_human_robot_interaction as hri
 from time import sleep
 
+from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
 from pycram_suturo_demos.pycram_basic_hsr_demos.gripper_open_close_demo import (
     GripperActionClient,
@@ -140,6 +141,26 @@ def handover_robot_human():
         give_object_to_human()
     sleep(5)
 
+def handover_robot_human_no_init(*, simulated : bool = False, context: Context = None):
+    from pycram.datastructures.dataclasses import Context
+    SIMULATED = simulated
+    robot_type: ExecutionEnvironment = simulated_robot if SIMULATED else real_robot
+
+    with robot_type:
+        SequentialPlan(
+            context,
+            HandoverActionDescription(world=context.world),
+        ).perform()
+
+        give_object_to_human()
+
+        print("Parking arms")
+        SequentialPlan(
+            context,
+            ParkArmsActionDescription(Arms.LEFT),
+        ).perform()
+        print("Done")
+    sleep(5)
 
 def main():
     handover_human_robot()
