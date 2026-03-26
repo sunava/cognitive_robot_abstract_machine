@@ -58,6 +58,7 @@ def pickup_demo(
 
         logger.info("PickUp has is now finished", delay=standard_delay)
 
+
 def pickup_with_callback_demo(
     simulation: bool = True,
     context: Context = None,
