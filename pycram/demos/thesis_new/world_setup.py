@@ -3,6 +3,7 @@ import os
 from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.robots.armar7 import Armar7
 from semantic_digital_twin.robots.hsrb import HSRB
+from semantic_digital_twin.robots.justin import Justin
 from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.robots.stretch import Stretch
 from semantic_digital_twin.robots.tiago import Tiago
@@ -49,6 +50,12 @@ ROBOT_SPECS = {
     "armar7": (
         "package://iai_kit_armar7/urdf/Armar7.urdf",
         Armar7,
+        OmniDrive,
+        ARMAR7_START_POSE,
+    ),
+    "justin": (
+        "package://iai_dlr_rollin_justin/urdf/rollin_justin.urdf",
+        Justin,
         OmniDrive,
         ARMAR7_START_POSE,
     ),

@@ -442,44 +442,44 @@ class Costmap:
         ):
             self.number_of_samples = self.map.flatten().shape[0]
 
-        segmented_maps = self.segment_map()
-        samples_per_map = self.number_of_samples // len(segmented_maps)
-        for seg_map in segmented_maps:
+        flat_map = self.map.flatten()
+        nonzero_indices = np.flatnonzero(flat_map > 0)
+        if nonzero_indices.size == 0:
+            return
 
-            if self.sample_randomly:
-                indices = np.random.choice(seg_map.size, samples_per_map, replace=False)
-            else:
-                indices = np.argpartition(seg_map.flatten(), -samples_per_map)[
-                    -samples_per_map:
-                ]
+        sample_count = min(self.number_of_samples, nonzero_indices.size)
+        if self.sample_randomly:
+            selected = np.random.choice(nonzero_indices, sample_count, replace=False)
+        else:
+            ranked = np.argsort(flat_map[nonzero_indices])[::-1]
+            selected = nonzero_indices[ranked[:sample_count]]
 
-            indices = np.dstack(np.unravel_index(indices, self.map.shape)).reshape(
-                samples_per_map, 2
+        indices = np.dstack(np.unravel_index(selected, self.map.shape)).reshape(
+            sample_count, 2
+        )
+
+        height = self.map.shape[0]
+        width = self.map.shape[1]
+        center = np.array([height // 2, width // 2])
+        for ind in indices:
+            if self.map[ind[0]][ind[1]] == 0:
+                continue
+            # Sample globally by descending costmap value so the planner tries the
+            # strongest cells first and leaves collision checking to later filters.
+            vector_to_origin = (center - ind) * self.resolution
+            point_to_origin = TransformStamped.from_list(
+                [*vector_to_origin, 0], self.origin.orientation.to_list()
             )
+            origin_to_map = ~self.origin.to_transform_stamped(None)
+            point_to_map = point_to_origin * origin_to_map
+            map_to_point = ~point_to_map
 
-            height = seg_map.shape[0]
-            width = seg_map.shape[1]
-            center = np.array([height // 2, width // 2])
-            for ind in indices:
-                if seg_map[ind[0]][ind[1]] == 0:
-                    continue
-                # The position is calculated by creating a vector from the 2D position in the costmap (given by x and y)
-                # and the center of the costmap (since this is the origin). This vector is then turned into a transformation
-                # and multiplied with the transformation of the origin.
-                vector_to_origin = (center - ind) * self.resolution
-                point_to_origin = TransformStamped.from_list(
-                    [*vector_to_origin, 0], self.origin.orientation.to_list()
-                )
-                origin_to_map = ~self.origin.to_transform_stamped(None)
-                point_to_map = point_to_origin * origin_to_map
-                map_to_point = ~point_to_map
-
-                orientation = ori_gen(map_to_point.translation.to_list(), self.origin)
-                yield PoseStamped.from_list(
-                    map_to_point.translation.to_list(),
-                    orientation,
-                    self.world.root,
-                )
+            orientation = ori_gen(map_to_point.translation.to_list(), self.origin)
+            yield PoseStamped.from_list(
+                map_to_point.translation.to_list(),
+                orientation,
+                self.world.root,
+            )
 
     def segment_map(self) -> List[np.ndarray]:
         """
@@ -585,6 +585,13 @@ class OccupancyCostmap(Costmap):
             self._distance_to_obstacle_index * 2,
             self._distance_to_obstacle_index * 2,
         )
+        if map.shape[0] < sub_shape[0] or map.shape[1] < sub_shape[1]:
+            logger.warning(
+                "OccupancyCostmap inflation kernel %s is larger than local map %s. Returning an empty occupancy map.",
+                sub_shape,
+                map.shape,
+            )
+            return np.zeros_like(map, dtype="int16")
         view_shape = tuple(np.subtract(map.shape, sub_shape) + 1) + sub_shape
         strides = map.strides + map.strides
 
@@ -594,6 +601,44 @@ class OccupancyCostmap(Costmap):
         sum = np.sum(sub_matrices, axis=2)
         map = (sum == (self._distance_to_obstacle_index * 2) ** 2).astype("int16")
         return map
+
+    @staticmethod
+    def _center_crop_or_pad(
+        map: np.ndarray, target_shape: tuple[int, int]
+    ) -> np.ndarray:
+        """
+        Resize a 2D costmap to the requested shape by center-cropping or symmetric
+        padding. Occupancy map creation can shrink or grow depending on the
+        inflation kernel, so downstream code must not assume padding is always
+        positive.
+
+        :param map: The 2D costmap to normalize.
+        :param target_shape: Desired output shape as ``(rows, cols)``.
+        :return: Costmap with exactly ``target_shape``.
+        """
+
+        normalized = map
+        for axis, target_size in enumerate(target_shape):
+            current_size = normalized.shape[axis]
+            delta = target_size - current_size
+            if delta < 0:
+                crop_before = (-delta) // 2
+                crop_after = crop_before + target_size
+                if axis == 0:
+                    normalized = normalized[crop_before:crop_after, :]
+                else:
+                    normalized = normalized[:, crop_before:crop_after]
+            elif delta > 0:
+                pad_before = delta // 2
+                pad_after = delta - pad_before
+                pad_width = (
+                    ((pad_before, pad_after), (0, 0))
+                    if axis == 0
+                    else ((0, 0), (pad_before, pad_after))
+                )
+                normalized = np.pad(normalized, pad_width)
+
+        return normalized
 
     def _create_from_world(self) -> np.ndarray:
         """
@@ -613,11 +658,9 @@ class OccupancyCostmap(Costmap):
         )
 
         map = self.inflate_obstacles(map)
-        # The map loses some size due to the strides and because I dont want to
-        # deal with indices outside of the index range
-        offset = self.width - map.shape[0]
-        odd = 0 if offset % 2 == 0 else 1
-        map = np.pad(map, (offset // 2, offset // 2 + odd))
+        # Inflation can change the array shape depending on kernel size. Normalize
+        # back to the requested footprint instead of assuming only positive padding.
+        map = self._center_crop_or_pad(map, res.shape)
 
         return np.flip(map)
 

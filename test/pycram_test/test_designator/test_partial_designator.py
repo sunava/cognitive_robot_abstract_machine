@@ -263,3 +263,9 @@ def test_correct_error():
     with pytest.raises(RuntimeError) as cm:
         list(lazy_product(bad_generator()))
     assert "bad_generator" in str(cm.value)
+
+
+def test_lazy_product_reports_non_restartable_iterable():
+    with pytest.raises(RuntimeError) as cm:
+        list(lazy_product([0, 1], iter([3])))
+    assert "iterable '1'" in str(cm.value)

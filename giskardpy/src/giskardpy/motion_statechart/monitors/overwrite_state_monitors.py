@@ -6,9 +6,11 @@ from typing import Optional, Type, Tuple
 import krrood.symbolic_math.symbolic_math as sm
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import (
+    DiffDrive,
     OmniDrive,
 )
 from semantic_digital_twin.world_description.world_entity import Connection
+from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from giskardpy.motion_statechart.context import MotionStatechartContext
 from giskardpy.motion_statechart.exceptions import NodeInitializationError
 from giskardpy.motion_statechart.graph_node import MotionStatechartNode, NodeArtifacts
@@ -43,12 +45,25 @@ class SetOdometry(MotionStatechartNode):
 
     base_pose: HomogeneousTransformationMatrix = field(kw_only=True)
     """The pose of the robot base."""
-    odom_connection: Optional[OmniDrive] = field(default=None, kw_only=True)
+    odom_connection: Optional[Connection] = field(default=None, kw_only=True)
     """
     The odometry connection to use. 
     If it is None and there is only one drive in the world, it will be used.
     """
-    _odom_joints: Tuple[Type[Connection], ...] = field(default=(OmniDrive,), init=False)
+    _odom_joints: Tuple[Type[Connection], ...] = field(
+        default=(OmniDrive, DiffDrive), init=False
+    )
+
+    def _resolve_robot_drive(
+        self, context: MotionStatechartContext
+    ) -> Optional[Connection]:
+        robots = context.world.get_semantic_annotations_by_type(AbstractRobot)
+        if len(robots) != 1:
+            return None
+        drive = getattr(robots[0], "drive", None)
+        if isinstance(drive, self._odom_joints):
+            return drive
+        return None
 
     def build(self, context: MotionStatechartContext) -> NodeArtifacts:
         if self.odom_connection is None:
@@ -60,10 +75,15 @@ class SetOdometry(MotionStatechartNode):
             elif len(drive_connections) == 1:
                 self.odom_connection = drive_connections[0]
             else:
-                raise NodeInitializationError(
-                    node=self,
-                    reason="Multiple drive joint found in world, please set 'group_name'",
-                )
+                self.odom_connection = self._resolve_robot_drive(context)
+                if self.odom_connection is None:
+                    raise NodeInitializationError(
+                        node=self,
+                        reason=(
+                            "Multiple drive joints found in world and the active "
+                            "robot drive could not be resolved automatically."
+                        ),
+                    )
         return NodeArtifacts(observation=sm.Scalar.const_true())
 
     def on_start(self, context: MotionStatechartContext):

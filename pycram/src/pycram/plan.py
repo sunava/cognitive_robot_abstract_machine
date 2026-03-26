@@ -10,6 +10,9 @@ from itertools import chain
 import numpy as np
 import rustworkx as rx
 import rustworkx.visualization
+
+from krrood.entity_query_language.query.match import Match
+from random_events.variable import Variable
 from typing_extensions import (
     Optional,
     Callable,

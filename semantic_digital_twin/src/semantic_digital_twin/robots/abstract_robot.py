@@ -24,6 +24,7 @@ from semantic_digital_twin.spatial_types.spatial_types import (
 )
 from semantic_digital_twin.world_description.connections import (
     ActiveConnection,
+    DiffDrive,
     OmniDrive,
     ActiveConnection1DOF,
 )
@@ -579,13 +580,13 @@ class AbstractRobot(Agent, ABC):
     def _setup_joint_states(self): ...
 
     @property
-    def drive(self) -> Optional[OmniDrive]:
+    def drive(self) -> Optional[OmniDrive | DiffDrive]:
         """
         The connection which the robot uses for driving.
         """
         try:
             parent_connection = self.root.parent_connection
-            if isinstance(parent_connection, OmniDrive):
+            if isinstance(parent_connection, (OmniDrive, DiffDrive)):
                 return parent_connection
         except AttributeError:
             pass

@@ -13,14 +13,17 @@ from pycram.tf_transformations import quaternion_from_euler, quaternion_multiply
 
 
 from demos.thesis_new.spawn_random_breads import setup_random_bread_world
+from demos.thesis_new.spawn_random_breads import build_cutting_reachability_costmaps
 from demos.thesis_new.tool_mounts import get_tool_mount_pose_kwargs
 from demos.thesis_new.world_setup import resolve_robot_name
 from demos.thesis_new.utils.demo_utils import (
     attach_available_tools,
+    update_navigation_costmap_debug_publishers,
     collect_named_targets,
     commit_plan_to_db,
     get_park_arms_argument,
     highlight_current_target,
+    resolve_navigation_target,
     setup_experiment_runtime,
     shutdown_experiment_runtime,
 )
@@ -55,11 +58,12 @@ from pycram.robot_plans import (
     NavigateActionDescription,
     CuttingActionDescription,
     WipingActionDescription,
+    SetGripperActionDescription,
 )
 
 from semantic_digital_twin.adapters.mesh import STLParser
 
-from semantic_digital_twin.datastructures.definitions import TorsoState
+from semantic_digital_twin.datastructures.definitions import TorsoState, GripperState
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Knife, Whisk
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.geometry import Color, Scale
@@ -83,6 +87,22 @@ session = None
 
 def _parse_stl(*relative_path_parts):
     return STLParser(os.path.join(RESOURCES_DIR, *relative_path_parts)).parse()
+
+
+def _update_costmap_debug_publishers(node, robot, world, bread, publishers):
+    target_pose = PoseStamped.from_spatial_type(bread.global_pose)
+    occupancy, ring, final_map = build_cutting_reachability_costmaps(
+        robot, world, target_pose
+    )
+    return update_navigation_costmap_debug_publishers(
+        node,
+        world,
+        publishers,
+        occupancy,
+        ring,
+        final_map,
+        namespace_prefix="cutting",
+    )
 
 
 def _record_bread_result(
@@ -181,15 +201,28 @@ def _results_csv_fieldnames():
 
 
 def _try_cut(context, bread, arm, tool):
+
+    with simulated_robot_without_collision:
+        SequentialPlan(
+            context,
+            NavigateActionDescription(
+                PoseStamped.from_list([20, 20, 0], frame=context.world.root),
+                teleport=True,
+            ),
+        ).perform()
+
     pickup_loc = CostmapLocation(
         target=PoseStamped.from_spatial_type(bread.global_pose),
         reachable_arm=arm,
         reachable_for=context.robot,
+        validate_reachability=False,
+        samples=200,
     )
     with simulated_robot_without_collision:
         SequentialPlan(
             context,
             ParkArmsActionDescription(get_park_arms_argument(context.world)),
+            MoveTorsoActionDescription(TorsoState.HIGH),
             NavigateActionDescription(pickup_loc, True),
         ).perform()
 
@@ -262,8 +295,12 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
         mesh_parts=("pycram_object_gap_demo", "big-knife.stl"),
         right_name="knife_right",
         left_name="knife_left",
-        right_pose_kwargs=get_tool_mount_pose_kwargs("cut", resolved_robot_name, Arms.RIGHT),
-        left_pose_kwargs=get_tool_mount_pose_kwargs("cut", resolved_robot_name, Arms.LEFT),
+        right_pose_kwargs=get_tool_mount_pose_kwargs(
+            "cut", resolved_robot_name, Arms.RIGHT
+        ),
+        left_pose_kwargs=get_tool_mount_pose_kwargs(
+            "cut", resolved_robot_name, Arms.LEFT
+        ),
         tool_cls=Knife,
     )
     breads = collect_named_targets(world, "bread_")
@@ -276,7 +313,10 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
     cutting_knowledge = safe_get_cutting_knowledge(
         CUTTING_QUERY_VERB, CUTTING_QUERY_FOODON
     )
-
+    with simulated_robot_without_collision:
+        SequentialPlan(
+            context, SetGripperActionDescription(Arms.LEFT, GripperState.CLOSE)
+        ).perform()
     print("[setup] surface plan:")
     print(f"[setup] seed: {effective_seed}")
     for surface_name, area_m2, target_count, placed_count in surface_plan:
@@ -294,6 +334,7 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
     successful_breads = set()
     bread_results = []
     initialize_csv(RESULTS_CSV_PATH, _results_csv_fieldnames())
+    debug_costmap_publishers = {}
 
     with simulated_robot_without_collision:
         SequentialPlan(
@@ -302,6 +343,9 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
             MoveTorsoActionDescription(TorsoState.HIGH),
         ).perform()
     for bread in breads:
+        debug_costmap_publishers = _update_costmap_debug_publishers(
+            node, context.robot, world, bread, debug_costmap_publishers
+        )
         attempt_failures = []
         attempt_count = 0
         collision_failure_count = 0
@@ -351,7 +395,9 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
         ]
         attempt_succeeded = False
 
-        for group_index, (phase_name, current_arm_tools) in enumerate(arm_attempt_groups):
+        for group_index, (phase_name, current_arm_tools) in enumerate(
+            arm_attempt_groups
+        ):
             if group_index == 1:
                 print(f"[retry] {bread_name}: rotate 180deg around Z and try again")
                 perturbation_applied = True
@@ -363,11 +409,16 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
                 is_fallback_phase = group_index == 0 and attempt_index > 0
                 if group_index == 0:
                     decision = "cut" if attempt_index == 0 else "retry_with_left_arm"
-                    decision_reason = "primary_success" if attempt_index == 0 else "right_arm_failed"
+                    decision_reason = (
+                        "primary_success" if attempt_index == 0 else "right_arm_failed"
+                    )
                 else:
                     decision = "rotate_object_and_retry"
                     decision_reason = "both_arms_failed_before_rotation"
-                print(f"[cut] {bread_name}: try {arm.name} arm" + (" after rotation" if group_index == 1 else ""))
+                print(
+                    f"[cut] {bread_name}: try {arm.name} arm"
+                    + (" after rotation" if group_index == 1 else "")
+                )
                 try:
                     attempt_count += 1
                     _try_cut(context, bread, arm, tool)
@@ -407,8 +458,14 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
                         perturbation_type=perturbation_type,
                         execution_time_s=time.perf_counter() - bread_start_time,
                     )
-                    append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
-                    suffix = " after rotation" if group_index == 1 else (" (fallback)" if attempt_index > 0 else "")
+                    append_csv_row(
+                        RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row
+                    )
+                    suffix = (
+                        " after rotation"
+                        if group_index == 1
+                        else (" (fallback)" if attempt_index > 0 else "")
+                    )
                     print(f"[ok] {bread_name}: cut with {arm.name} arm{suffix}")
                     attempt_succeeded = True
                     break
@@ -419,8 +476,9 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
                     )
                     print(
                         f"[{'retry' if not (group_index == len(arm_attempt_groups) - 1 and attempt_index == len(current_arm_tools) - 1) else 'fail'}] "
-                        f"{bread_name}: {arm.name}" + (" after rotation" if group_index == 1 else "") +
-                        f" timed out ({type(exc).__name__}: {exc})"
+                        f"{bread_name}: {arm.name}"
+                        + (" after rotation" if group_index == 1 else "")
+                        + f" timed out ({type(exc).__name__}: {exc})"
                     )
                 except Exception as exc:
                     if _is_collision_like_failure(exc):
@@ -430,8 +488,9 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
                     )
                     print(
                         f"[{'retry' if not (group_index == len(arm_attempt_groups) - 1 and attempt_index == len(current_arm_tools) - 1) else 'fail'}] "
-                        f"{bread_name}: {arm.name}" + (" after rotation" if group_index == 1 else "") +
-                        f" failed ({type(exc).__name__}: {exc})"
+                        f"{bread_name}: {arm.name}"
+                        + (" after rotation" if group_index == 1 else "")
+                        + f" failed ({type(exc).__name__}: {exc})"
                     )
             if attempt_succeeded:
                 break

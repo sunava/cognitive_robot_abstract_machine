@@ -263,7 +263,9 @@ class CartesianPositionTrajectory(CartesianTask):
         """
         Search for the closest point in the trajectory to the current position, without going backwards.
         """
-        remaining_points = self._goal_points_np[self.current_index :]
+        remaining_points = self._goal_points_np[
+            self.current_index : self.current_index + 10
+        ]
         distances = np.linalg.norm(
             remaining_points - goal_reference_frame_P_tip_np, axis=1
         )

@@ -20,6 +20,7 @@ from pycram.robot_plans import (
     MoveTorsoActionDescription,
     NavigateActionDescription,
     ParkArmsActionDescription,
+    SetGripperActionDescription,
 )
 from pycram.external_interfaces.sparql_queries.mixing import safe_get_mixing_knowledge
 from rclpy.duration import Duration as RclpyDuration
@@ -31,7 +32,7 @@ from semantic_digital_twin.adapters.ros.tfwrapper import TFWrapper
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
 )
-from semantic_digital_twin.datastructures.definitions import TorsoState
+from semantic_digital_twin.datastructures.definitions import TorsoState, GripperState
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Whisk
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
@@ -46,8 +47,11 @@ from demos.thesis_new.utils.demo_utils import (
     commit_plan_to_db,
     get_park_arms_argument,
     highlight_current_target,
+    build_navigation_costmaps,
+    resolve_navigation_target,
     setup_experiment_runtime,
     shutdown_experiment_runtime,
+    update_navigation_costmap_debug_publishers,
 )
 from demos.thesis_new.utils.experiment_logging import (
     BASE_RESULT_FIELDNAMES,
@@ -72,9 +76,22 @@ EXPERIMENT_CONDITION = "full_system"
 BASELINE_NAME = "task_knowledge+htn+constraint_planning"
 TASK_NAME = "bowl_mixing"
 MIX_DURATION_S = 6.0
-POINTER_STRIDE = 3
+POINTER_STRIDE = 0
 MIXING_QUERY_TASK = "Whisking"
 session = None
+
+
+def _update_costmap_debug_publishers(node, robot, world, target_pose, publishers):
+    occupancy, ring, final_map = build_navigation_costmaps(robot, world, target_pose)
+    return update_navigation_costmap_debug_publishers(
+        node,
+        world,
+        publishers,
+        occupancy,
+        ring,
+        final_map,
+        namespace_prefix="mixing",
+    )
 
 
 def _record_bowl_result(
@@ -111,15 +128,29 @@ def _results_csv_fieldnames():
 
 
 def _try_mix(context, bowl, arm, tool):
+
+    with simulated_robot_without_collision:
+        SequentialPlan(
+            context,
+            NavigateActionDescription(
+                PoseStamped.from_list([20, 20, 0], frame=context.world.root),
+                teleport=True,
+            ),
+        ).perform()
+
     pickup_loc = CostmapLocation(
         target=PoseStamped.from_spatial_type(bowl.global_pose),
         reachable_arm=arm,
         reachable_for=context.robot,
+        validate_reachability=False,
+        samples=200,
     )
+
     with simulated_robot_without_collision:
         SequentialPlan(
             context,
             ParkArmsActionDescription(get_park_arms_argument(context.world)),
+            MoveTorsoActionDescription(TorsoState.HIGH),
             NavigateActionDescription(pickup_loc, True),
         ).perform()
 
@@ -188,8 +219,12 @@ def main_mixing(seed=None, robot_name=None, environment_name=None):
         mesh_parts=("pycram_object_gap_demo", "whisk.stl"),
         right_name="whisk_right",
         left_name="whisk_left",
-        right_pose_kwargs=get_tool_mount_pose_kwargs("mix", resolved_robot_name, Arms.RIGHT),
-        left_pose_kwargs=get_tool_mount_pose_kwargs("mix", resolved_robot_name, Arms.LEFT),
+        right_pose_kwargs=get_tool_mount_pose_kwargs(
+            "mix", resolved_robot_name, Arms.RIGHT
+        ),
+        left_pose_kwargs=get_tool_mount_pose_kwargs(
+            "mix", resolved_robot_name, Arms.LEFT
+        ),
         tool_cls=Whisk,
     )
     bowls = collect_named_targets(world, "bowl_")
@@ -200,7 +235,10 @@ def main_mixing(seed=None, robot_name=None, environment_name=None):
     world_name = _body_name(world.root)
     run_id = new_run_id()
     mixing_knowledge = safe_get_mixing_knowledge(MIXING_QUERY_TASK)
-
+    with simulated_robot_without_collision:
+        SequentialPlan(
+            context, SetGripperActionDescription(Arms.LEFT, GripperState.CLOSE)
+        ).perform()
     print("[setup] surface plan:")
     print(f"[setup] seed: {effective_seed}")
     for surface_name, area_m2, target_count, placed_count in surface_plan:
@@ -216,6 +254,7 @@ def main_mixing(seed=None, robot_name=None, environment_name=None):
     successful_bowls = set()
     bowl_results = []
     initialize_csv(RESULTS_CSV_PATH, _results_csv_fieldnames())
+    debug_costmap_publishers = {}
 
     with simulated_robot_without_collision:
         SequentialPlan(
@@ -225,6 +264,13 @@ def main_mixing(seed=None, robot_name=None, environment_name=None):
         ).perform()
 
     for bowl in bowls:
+        debug_costmap_publishers = _update_costmap_debug_publishers(
+            node,
+            context.robot,
+            world,
+            PoseStamped.from_spatial_type(bowl.global_pose),
+            debug_costmap_publishers,
+        )
         attempt_failures = []
         attempt_count = 0
         collision_failure_count = 0
@@ -269,7 +315,9 @@ def main_mixing(seed=None, robot_name=None, environment_name=None):
         for attempt_index, (arm, tool) in enumerate(arm_tools):
             phase = "primary" if attempt_index == 0 else "fallback"
             decision = "mix" if attempt_index == 0 else "retry_with_left_arm"
-            decision_reason = "primary_success" if attempt_index == 0 else "right_arm_failed"
+            decision_reason = (
+                "primary_success" if attempt_index == 0 else "right_arm_failed"
+            )
             print(f"[mix] {bowl_name}: try {arm.name} arm")
             try:
                 attempt_count += 1

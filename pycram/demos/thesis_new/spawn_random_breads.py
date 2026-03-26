@@ -2,9 +2,7 @@ import os
 import numpy as np
 import rclpy
 
-from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.pose import PoseStamped
-from pycram.costmaps import OccupancyCostmap, RingCostmap
 from rclpy.duration import Duration as RclpyDuration
 from rclpy.time import Time
 from semantic_digital_twin.adapters.mesh import STLParser
@@ -20,6 +18,7 @@ from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.geometry import Color, Scale
 
+from demos.thesis_new.utils.demo_utils import build_navigation_costmaps
 from demos.thesis_new.thesis_math.world_utils import body_local_aabb
 from demos.thesis_new.world_setup import setup_thesis_world
 
@@ -235,14 +234,8 @@ def _spawn_bread_at_local_pose(
     return world_pose
 
 
-def _is_pose_reachable_for_cutting(robot, world, target_pose):
-    """Lightweight reachability gate: at least one collision-free base pose near target."""
-    ground_pose = PoseStamped.from_list(
-        [target_pose.position.x, target_pose.position.y, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-        frame=target_pose.frame_id,
-    )
-
+def build_cutting_reachability_costmaps(robot, world, target_pose):
+    """Build the occupancy, ring, and merged heuristic maps for a cutting target."""
     base_bb = robot.base.bounding_box
     base_depth = float(getattr(base_bb, "depth", float("nan")))
     base_width = float(getattr(base_bb, "width", float("nan")))
@@ -250,28 +243,23 @@ def _is_pose_reachable_for_cutting(robot, world, target_pose):
     if (not np.isfinite(obstacle_clearance)) or obstacle_clearance <= 0.0:
         obstacle_clearance = 0.20
 
-    occupancy = OccupancyCostmap(
-        distance_to_obstacle=obstacle_clearance,
-        world=world,
-        robot_view=robot,
+    return build_navigation_costmaps(
+        robot,
+        world,
+        target_pose,
         width=140,
         height=140,
         resolution=0.03,
-        origin=ground_pose,
-    )
-    # Ring around the target to keep robot in arm-reach neighborhood.
-    ring = RingCostmap(
-        resolution=0.03,
-        width=140,
-        height=140,
-        std=12,
-        distance=0.55,
-        world=world,
-        origin=ground_pose,
+        ring_std=12,
+        ring_distance=0.55,
+        obstacle_clearance=obstacle_clearance,
+        number_of_samples=30,
     )
 
-    final_map = occupancy + ring
-    final_map.number_of_samples = 30
+
+def _is_pose_reachable_for_cutting(robot, world, target_pose):
+    """Lightweight reachability gate: at least one collision-free base pose near target."""
+    _, _, final_map = build_cutting_reachability_costmaps(robot, world, target_pose)
 
     try:
         next(iter(final_map))
@@ -283,9 +271,7 @@ def _is_pose_reachable_for_cutting(robot, world, target_pose):
 
 
 def setup_random_bread_world(seed=None, robot_name=None, environment_name=None):
-    world = setup_thesis_world(
-        robot_name=robot_name, environment_name=environment_name
-    )
+    world = setup_thesis_world(robot_name=robot_name, environment_name=environment_name)
     # world.collision_manager = CollisionManager(
     #     _world=world,
     #     collision_detector=BulletCollisionDetector(_world=world),

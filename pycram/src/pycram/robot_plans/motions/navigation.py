@@ -28,7 +28,10 @@ class MoveMotion(BaseMotion):
     @property
     def _motion_chart(self):
         if self.teleport:
-            return SetOdometry(base_pose=self.target.to_spatial_type())
+            return SetOdometry(
+                base_pose=self.target.to_spatial_type(),
+                odom_connection=self.robot_view.drive,
+            )
         else:
             return CartesianPose(
                 root_link=self.world.root,

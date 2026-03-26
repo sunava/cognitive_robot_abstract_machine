@@ -38,4 +38,3 @@ class Turtlebot(AbstractRobot):
             world.add_semantic_annotation(turtlebot)
 
         return turtlebot
-

@@ -5,16 +5,18 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Self
 
-from pkg_resources import resource_filename
+from importlib.resources import files
+from pathlib import Path
 
 from giskardpy.motion_statechart.graph_node import MotionStatechartNode
 from giskardpy.motion_statechart.tasks.align_planes import AlignPlanes
-from giskardpy.motion_statechart.tasks.feature_functions import AngleGoal
+from semantic_digital_twin.robots.robot_mixins import HasNeck, SpecifiesLeftRightArm
 from semantic_digital_twin.collision_checking.collision_matrix import (
     MaxAvoidedCollisionsOverride,
 )
 from semantic_digital_twin.collision_checking.collision_rules import (
     SelfCollisionMatrixRule,
+    AvoidAllCollisions,
     AvoidExternalCollisions,
     AvoidSelfCollisions,
 )
@@ -28,21 +30,21 @@ from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.robots.abstract_robot import (
     Neck,
     Finger,
+    ParallelGripper,
     Arm,
     Camera,
     FieldOfView,
     Torso,
     AbstractRobot,
-    HumanoidGripper,
     Base,
+    HumanoidGripper,
 )
-from semantic_digital_twin.robots.robot_mixins import HasNeck, SpecifiesLeftRightArm
 from semantic_digital_twin.spatial_types import Quaternion, Vector3
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import (
+    ActiveConnection,
     FixedConnection,
     ActiveConnection1DOF,
-    ActiveConnection,
 )
 
 
@@ -211,7 +213,7 @@ class Armar7(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
 
     def _setup_collision_rules(self):
         srdf_path = os.path.join(
-            resource_filename("semantic_digital_twin", "../../"),
+            Path(files("semantic_digital_twin")).parent.parent,
             "resources",
             "collision_configs",
             "armar7.srdf",
