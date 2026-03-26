@@ -1148,7 +1148,7 @@ class World(HasSimulatorProperties):
                 parent=self.root, child=other.root, world=self
             )
             self.merge_world(other, root_connection)
-            root_connection.origin = pose
+        root_connection.origin = pose
 
     def merge_world(
         self,
@@ -1167,12 +1167,12 @@ class World(HasSimulatorProperties):
 
         with self.modify_world(), other.modify_world():
             self_root = self.root
+            other_state = deepcopy(other.state)
+
             other_root_id = other.root.id
             other._clear_world_entities()
             for modification in other._model_manager.model_modification_blocks:
                 modification.apply(self)
-
-            other_state = deepcopy(other.state)
 
             # Transfer the state entries using DOF UUIDs (WorldState iterates over UUIDs)
             for dof_id in other_state:
@@ -1201,7 +1201,6 @@ class World(HasSimulatorProperties):
             if root_connection:
                 self.add_connection(root_connection)
 
-            # self.collision_manager.merge_collision_manager(other.collision_manager)
             other.clear()
 
     # %% Subgraph Targeting
