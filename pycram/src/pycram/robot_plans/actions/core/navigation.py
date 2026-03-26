@@ -7,7 +7,6 @@ import numpy as np
 from typing_extensions import Union, Optional, Type, Any, Iterable
 
 from pycram.datastructures.dataclasses import Context
-from pycram_suturo_demos.pycram_advanced_hsr_demos.bring_object_from_table_to_shelf_demo import pose_to_ros
 from semantic_digital_twin.robots.abstract_robot import Camera
 from pycram.robot_plans.actions.base import ActionDescription
 from pycram.robot_plans.motions.robot_body import LookingMotion
@@ -84,7 +83,7 @@ class nav2NavigateAction(ActionDescription):
         from pycram.external_interfaces import nav2_move
 
         if Pose:
-            self.target_location = pose_to_ros(self.target_location)
+            self.target_location = self.pose_to_ros(self.target_location)
         if self.simulated:
             SequentialPlan(
                 self.context, MoveMotion(self.target_location, self.keep_joint_states)
