@@ -5,14 +5,16 @@ from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
 from pycram.robot_plans import (
     GiskardPickUpActionDescription,
-    GiskardPlaceActionDescription,
+    GiskardPlaceAndDetachActionDescription, GiskardPlaceActionDescription,
 )
 from pycram_suturo_demos.helper_methods_and_useful_classes.A_robot_setup import (
     robot_setup,
 )
 from pycram.datastructures.enums import Arms
 from pycram.motion_executor import real_robot, simulated_robot
+from pycram_suturo_demos.helper_methods_and_useful_classes.pickup_helper_methods import look_at_point
 from pycram_suturo_demos.pycram_basic_hsr_demos.move_demo import move_demo
+from semantic_digital_twin.spatial_types import Point3, HomogeneousTransformationMatrix
 
 print("before ParkArms import")
 from pycram.robot_plans.actions.core.robot_body import ParkArmsActionDescription
@@ -42,9 +44,11 @@ object_to_pickup_startpose = PoseStamped.from_list(
     frame=world.root,
 )
 
+table = world.get_body_by_name("cooking_table")
+look_at = HomogeneousTransformationMatrix.to_position(table.global_pose)
 
 plan = SequentialPlan(context, ParkArmsActionDescription(Arms.BOTH))
-plan_move = SequentialPlan(context, move_demo(simulated=SIMULATED,context=context,world=world, target_pose="POPCORN_TABLE"))
+plan_move = move_demo(simulated=SIMULATED,context=context,world=world, target_pose="POPCORN_TABLE")
 plan2 = SequentialPlan(
     context,
     GiskardPickUpActionDescription(
@@ -56,15 +60,20 @@ plan2 = SequentialPlan(
 )
 plan3 = SequentialPlan(
     context,
-    GiskardPlaceActionDescription(
+    GiskardPlaceAndDetachActionDescription(
         simulated=SIMULATED,
         object_designator=object_to_pickup,
         arm=Arms.LEFT,
         target_location=object_to_pickup_startpose,
+        ignore_orientation=True,
     ),
 )
+
 with robot_type:
     plan.perform()
     print("parked arms")
     plan2.perform()
+    look_at_point(context, look_at)
     plan3.perform()
+
+    move_demo(simulated=SIMULATED, context=context, world=world, target_pose="POPCORN_TABLE")
