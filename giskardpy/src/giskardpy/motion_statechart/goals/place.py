@@ -51,7 +51,7 @@ class Place(Goal):
     goal: Union[HomogeneousTransformationMatrix, Point3] = field(kw_only=True)
     ft: bool = field(kw_only=True, default=False)
     simulated: bool = field(default=True, kw_only=True)
-    pre_place_distance: float = field(default=0.15, kw_only=True)
+    pre_place_distance: float = field(default=0.05, kw_only=True)
     _motion_sequence: Sequence = field(init=False)
 
     def expand(self, context: MotionStatechartContext) -> None:
@@ -94,7 +94,7 @@ class ApproachPlacement(Goal):
     object_geometry: Body = field(kw_only=True)
     goal: Union[HomogeneousTransformationMatrix, Point3] = field(kw_only=True)
     ft: bool = field(kw_only=True, default=False)
-    pre_place_distance: float = field(default=0.1, kw_only=True)
+    pre_place_distance: float = field(default=0.05, kw_only=True)
 
     def expand(self, context: MotionStatechartContext) -> None:
         super().expand(context)
@@ -120,12 +120,13 @@ class ApproachPlacement(Goal):
                 root_link=context.world.root,
                 tip_link=self.object_geometry,
                 goal_pose=pre_tool_pose,
+                threshold=0.02
             )
             self.object_goal = CartesianPose(
                 root_link=context.world.root,
                 tip_link=self.object_geometry,
                 goal_pose=goal_pose,
-                reference_linear_velocity=0.1,
+                reference_linear_velocity=0.05,
             )
             self.add_node(Sequence([pre_pose_goal, self.object_goal]))
         elif isinstance(self.goal, Point3):
@@ -148,12 +149,13 @@ class ApproachPlacement(Goal):
                 root_link=context.world.root,
                 tip_link=self.object_geometry,
                 goal_point=pre_point,
+                threshold=0.02
             )
             self.object_goal = CartesianPosition(
                 root_link=context.world.root,
                 tip_link=self.object_geometry,
                 goal_point=goal_point,
-                reference_velocity=0.1,
+                reference_velocity=0.05,
             )
             self.add_node(z_up)
             self.add_node(Sequence([pre_pos, self.object_goal]))

@@ -5,7 +5,10 @@ from typing import Optional
 from time import sleep
 import pycram.external_interfaces.robokudo
 import semantic_digital_twin
-from demos.pycram_suturo_demos.helper_methods_and_useful_classes.waving_detection import (
+from pycram_suturo_demos.helper_methods_and_useful_classes.nlp_human_robot_interaction import (
+    TalkingNode,
+)
+from pycram_suturo_demos.helper_methods_and_useful_classes.waving_detection import (
     ContinuousWavingDetector,
 )
 from pycram.external_interfaces import nav2_move, robokudo
@@ -30,7 +33,6 @@ from std_msgs.msg import String
 
 class TtsPublisher:
     def __init__(self, node_name="tts_text_publisher", topic_name="/tts_text"):
-        rclpy.init()
         self.node = Node(node_name)
         self.publisher = self.node.create_publisher(String, topic_name, 10)
 
@@ -54,7 +56,7 @@ base_frame = world.get_body_by_name("base_link")
 
 MIN_DISTANCE_M: float = 0.8
 WAVING_TIMEOUT_PER_DIRECTION: float = 10.0
-BUFFER_SWITCH = True
+BUFFER_SWITCH = False
 
 
 class Direction(Enum):
@@ -62,13 +64,14 @@ class Direction(Enum):
     RIGHT = [0.1, -1, 1]
     BACK = [-1, 0, 1]
     FRONT = [1, 0, 1]
+    FRONT_SOFA = [1, 0, 0.75]
     FRONT_DOWN = [1, 0, 0.5]
 
 
 def get_sofa_pose() -> PoseStamped:
     sofa_pose = PoseStamped.from_list(
-        position=[3.660223589941574, 3.507497103196295, 0.0],
-        orientation=[0.0, 0.0, -0.6691896974921895, 0.7430916153276875],
+        position=[2.436592493983716, -1.263586281296266, 0.0],
+        orientation=[0.0, 0.0, 0.2790542921412484, 0.7430916153276875],
         frame=world.root,
     )
     return sofa_pose
@@ -121,7 +124,7 @@ def look_in_direction(direction: Direction):
     look_at_pose_in_map = world.transform(look_at_pose, world.root)
     SequentialPlan(
         context,
-        ParkArmsActionDescription(Arms.BOTH),
+        # ParkArmsActionDescription(Arms.BOTH),
         LookAtActionDescription([look_at_pose_in_map.to_pose()]),
     ).perform()
 
@@ -152,6 +155,7 @@ def scan_for_waving_human() -> Optional[PoseStamped]:
 
 
 def find_free_seat() -> str:
+    look_in_direction(Direction.FRONT_SOFA)
     return pycram.external_interfaces.robokudo.query_specific_region("sofa")
 
 
@@ -163,9 +167,10 @@ def main():
         )
         os.environ["ROS_PYTHON_CHECK_FIELDS"] = "1"
         text_pub = TextToImagePublisher()
-        tts = TtsPublisher()
+        tts = TalkingNode()
 
         # 1. Scan for a waving human
+        park_arms()
         text_pub.publish_text("Looking for a waving human...")
         tts.pub("Looking for a waving human")
         test = robokudo.send_query()
@@ -176,7 +181,6 @@ def main():
             text_pub.publish_text("No waving human found, giving up.")
             tts.pub("No waving human found, giving up.")
             shutdown_robokudo_interface()
-            tts.shutdown()
             exit(1)
 
         human_pose = transform_perception_to_map(human)
@@ -219,6 +223,7 @@ def main():
         text_pub.publish_text(
             f"Driving back to human:\n X:{human_goal.pose.position.x} \n Y:{human_goal.pose.position.y}"
         )
+        tts.pub("Driving back to human")
         drive_to_pose(human_goal)
 
         # 6. Tell the human where to sit
@@ -299,9 +304,9 @@ def main():
                 tts.pub("Something went wrong while interpreting the data")
 
         # 7. Drive back to the start position and shutdown
+        tts.pub("I will now go back to the start position")
         nav2_move.start_nav_to_pose(start_position.ros_message())
         shutdown_robokudo_interface()
-        tts.shutdown()
 
 
 if __name__ == "__main__":
