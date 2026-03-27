@@ -228,7 +228,6 @@ def change_orientation(start_pose: PoseStamped) -> PoseStamped:
 
 
 def buffer_in_front_of(target_pose: PoseStamped, min_distance: float) -> PoseStamped:
-
     from pycram.tf_transformations import quaternion_matrix
 
     quat = [
@@ -238,15 +237,12 @@ def buffer_in_front_of(target_pose: PoseStamped, min_distance: float) -> PoseSta
         target_pose.pose.orientation.w,
     ]
 
-    # 4x4 rotation matrix -> extract the forward (x-axis) column
     rot_matrix = quaternion_matrix(quat)
-    forward_vector = rot_matrix[:3, 0]  # first column = x-axis
+    forward_vector = rot_matrix[:3, 0]
 
-    # Step *back* along the forward vector by min_distance
-    stand_x = target_pose.pose.position.x + min_distance * forward_vector[0]
-    stand_y = target_pose.pose.position.y + min_distance * forward_vector[1]
+    stand_x = target_pose.pose.position.x - min_distance * forward_vector[0]
+    stand_y = target_pose.pose.position.y - min_distance * forward_vector[1]
 
-    # Build standoff pose - keep the same orientation (already faces the target)
     standoff = PoseStamped()
     standoff.header.frame_id = "map"
     standoff.pose.position.x = float(stand_x)
