@@ -64,7 +64,7 @@ class Direction(Enum):
     RIGHT = [0.1, -1, 1]
     BACK = [-1, 0, 1]
     FRONT = [1, 0, 1]
-    FRONT_SOFA = [1, 0, 0.75]
+    FRONT_SOFA = [1, 0, 0.65]
     FRONT_DOWN = [1, 0, 0.5]
 
 
