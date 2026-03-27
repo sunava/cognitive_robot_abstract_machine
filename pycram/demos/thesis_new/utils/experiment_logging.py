@@ -2,6 +2,8 @@ import csv
 import os
 import uuid
 
+from pycram.failures import NavigationPoseUnreachable
+
 
 BASE_RESULT_FIELDNAMES = [
     "task_name",
@@ -77,7 +79,7 @@ def format_attempt_error(exc):
 
 
 def is_collision_like_failure(exc):
-    return isinstance(exc, TimeoutError)
+    return isinstance(exc, (TimeoutError, NavigationPoseUnreachable))
 
 
 def required_prerequisite_text(knowledge):
@@ -142,3 +144,6 @@ def build_base_result_row(
     }
     results.append(row)
     return row
+
+
+from pycram.failures import NavigationPoseUnreachable

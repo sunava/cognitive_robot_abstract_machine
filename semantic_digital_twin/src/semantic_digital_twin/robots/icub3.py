@@ -6,7 +6,11 @@ from typing import Self
 import numpy as np
 
 from semantic_digital_twin.robots.robot_mixins import HasNeck, SpecifiesLeftRightArm
-from semantic_digital_twin.datastructures.definitions import StaticJointState, GripperState, TorsoState
+from semantic_digital_twin.datastructures.definitions import (
+    StaticJointState,
+    GripperState,
+    TorsoState,
+)
 from semantic_digital_twin.datastructures.joint_state import JointState
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.robots.abstract_robot import (

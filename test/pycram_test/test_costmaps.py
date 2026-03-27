@@ -1,5 +1,6 @@
 import pytest
 from copy import deepcopy
+from unittest.mock import Mock
 
 import numpy as np
 from random_events.variable import Continuous
@@ -198,6 +199,27 @@ def test_occupancy_robot_exclusion(immutable_model_world):
         distance_to_obstacle=0.3,
     )
     assert np.sum(occupancy_map.map) == 137641
+
+
+def test_occupancy_costmap_handles_oversized_inflation_kernel(monkeypatch):
+    monkeypatch.setattr(
+        OccupancyCostmap,
+        "create_ray_mask_around_origin",
+        lambda self: np.ones((6, 6), dtype="int16"),
+    )
+
+    occupancy_map = OccupancyCostmap(
+        resolution=1.0,
+        height=6,
+        width=6,
+        world=Mock(),
+        robot_view=None,
+        origin=PoseStamped(),
+        distance_to_obstacle=10.0,
+    )
+
+    assert occupancy_map.map.shape == (6, 6)
+    assert np.count_nonzero(occupancy_map.map) == 0
 
 
 def test_gaussian_costmap(immutable_model_world):

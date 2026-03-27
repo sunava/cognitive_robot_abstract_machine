@@ -1,6 +1,5 @@
 import time
 
-from rclpy import timer
 
 from pycram.designators.location_designator import CostmapLocation
 
@@ -14,14 +13,17 @@ from pycram.tf_transformations import quaternion_from_euler, quaternion_multiply
 
 
 from demos.thesis_new.spawn_random_breads import setup_random_bread_world
+from demos.thesis_new.spawn_random_breads import build_cutting_reachability_costmaps
 from demos.thesis_new.tool_mounts import get_tool_mount_pose_kwargs
 from demos.thesis_new.world_setup import resolve_robot_name
 from demos.thesis_new.utils.demo_utils import (
     attach_available_tools,
+    update_navigation_costmap_debug_publishers,
     collect_named_targets,
     commit_plan_to_db,
     get_park_arms_argument,
     highlight_current_target,
+    resolve_navigation_target,
     setup_experiment_runtime,
     shutdown_experiment_runtime,
 )
@@ -56,8 +58,6 @@ from pycram.robot_plans import (
     NavigateActionDescription,
     CuttingActionDescription,
     WipingActionDescription,
-    MoveGripperMotion,
-    SetGripperAction,
     SetGripperActionDescription,
 )
 
@@ -87,6 +87,22 @@ session = None
 
 def _parse_stl(*relative_path_parts):
     return STLParser(os.path.join(RESOURCES_DIR, *relative_path_parts)).parse()
+
+
+def _update_costmap_debug_publishers(node, robot, world, bread, publishers):
+    target_pose = PoseStamped.from_spatial_type(bread.global_pose)
+    occupancy, ring, final_map = build_cutting_reachability_costmaps(
+        robot, world, target_pose
+    )
+    return update_navigation_costmap_debug_publishers(
+        node,
+        world,
+        publishers,
+        occupancy,
+        ring,
+        final_map,
+        namespace_prefix="cutting",
+    )
 
 
 def _record_bread_result(
@@ -185,15 +201,28 @@ def _results_csv_fieldnames():
 
 
 def _try_cut(context, bread, arm, tool):
+
+    with simulated_robot_without_collision:
+        SequentialPlan(
+            context,
+            NavigateActionDescription(
+                PoseStamped.from_list([20, 20, 0], frame=context.world.root),
+                teleport=True,
+            ),
+        ).perform()
+
     pickup_loc = CostmapLocation(
         target=PoseStamped.from_spatial_type(bread.global_pose),
         reachable_arm=arm,
         reachable_for=context.robot,
+        validate_reachability=False,
+        samples=200,
     )
     with simulated_robot_without_collision:
         SequentialPlan(
             context,
             ParkArmsActionDescription(get_park_arms_argument(context.world)),
+            MoveTorsoActionDescription(TorsoState.HIGH),
             NavigateActionDescription(pickup_loc, True),
         ).perform()
 
@@ -284,7 +313,10 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
     cutting_knowledge = safe_get_cutting_knowledge(
         CUTTING_QUERY_VERB, CUTTING_QUERY_FOODON
     )
-
+    with simulated_robot_without_collision:
+        SequentialPlan(
+            context, SetGripperActionDescription(Arms.LEFT, GripperState.CLOSE)
+        ).perform()
     print("[setup] surface plan:")
     print(f"[setup] seed: {effective_seed}")
     for surface_name, area_m2, target_count, placed_count in surface_plan:
@@ -302,6 +334,7 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
     successful_breads = set()
     bread_results = []
     initialize_csv(RESULTS_CSV_PATH, _results_csv_fieldnames())
+    debug_costmap_publishers = {}
 
     with simulated_robot_without_collision:
         SequentialPlan(
@@ -310,6 +343,9 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
             MoveTorsoActionDescription(TorsoState.HIGH),
         ).perform()
     for bread in breads:
+        debug_costmap_publishers = _update_costmap_debug_publishers(
+            node, context.robot, world, bread, debug_costmap_publishers
+        )
         attempt_failures = []
         attempt_count = 0
         collision_failure_count = 0
@@ -383,15 +419,6 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
                     f"[cut] {bread_name}: try {arm.name} arm"
                     + (" after rotation" if group_index == 1 else "")
                 )
-                with simulated_robot_with_collision:
-                    current_plan = SequentialPlan(
-                        context,
-                        SetGripperActionDescription(
-                            motion=GripperState.CLOSE, gripper=Arms.BOTH
-                        ),
-                    )
-                    current_plan.perform()
-                    # time.sleep(50)
                 try:
                     attempt_count += 1
                     _try_cut(context, bread, arm, tool)

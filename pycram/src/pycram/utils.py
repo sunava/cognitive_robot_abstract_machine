@@ -474,10 +474,8 @@ def lazy_product(*iterables: Iterable, iter_names: List[str] = None) -> Iterable
     for i, consumable_iterable in enumerate(consumable_iterables):
         try:
             current_value.append(next(consumable_iterable))
-        except StopIteration as e:
-            raise RuntimeError(
-                f"No values in the iterable: {consumable_iterable} for iterable '{iter_names[i] if iter_names else i}'"
-            )
+        except StopIteration:
+            return
 
     while True:
         yield tuple(current_value)
@@ -494,10 +492,8 @@ def lazy_product(*iterables: Iterable, iter_names: List[str] = None) -> Iterable
                 consumable_iterables[index] = iter(iterables[index])
                 try:
                     current_value[index] = next(consumable_iterables[index])
-                except StopIteration as e:
-                    raise StopIteration(
-                        f"No more values in the iterable: {iterables[index]}"
-                    )
+                except StopIteration:
+                    return
 
 
 def translate_pose_along_local_axis(

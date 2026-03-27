@@ -11,6 +11,7 @@ from giskardpy.motion_statechart.tasks.align_planes import AlignPlanes
 from giskardpy.motion_statechart.tasks.cartesian_tasks import (
     CartesianPose,
     CartesianPosition,
+    CartesianPositionTrajectory,
 )
 from giskardpy.motion_statechart.tasks.joint_tasks import JointPositionList
 from pycram.datastructures.dataclasses import AlignmentPair
@@ -29,7 +30,7 @@ from semantic_digital_twin.collision_checking.collision_rules import (
     AvoidAllCollisions,
     AvoidCollisionBetweenGroups,
 )
-from semantic_digital_twin.spatial_types import Point3
+from semantic_digital_twin.spatial_types import Point3, Vector3
 from semantic_digital_twin.world_description.world_entity import Body
 
 
@@ -325,31 +326,35 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
         if root_link is None:
             root_link = self.world.root
 
-        plane_pairs = list(self.alignment_pairs)
         motion_state_chart_nodes = self._only_allow_gripper_collision_rules(self.arm)
-        nodes = []
-        for point in self.waypoints:
-            tasks = [
-                CartesianPosition(
-                    root_link=root_link,
-                    tip_link=tip_link,
-                    goal_point=point,
-                    weight=DefaultWeights.WEIGHT_BELOW_CA,
-                )
-            ]
-            tasks.extend(
-                AlignPlanes(
-                    tip_link=tip_link,
-                    root_link=root_link,
-                    tip_normal=pair.tip_normal,
-                    goal_normal=pair.goal_normal,
-                    weight=DefaultWeights.WEIGHT_BELOW_CA,
-                )
-                for pair in plane_pairs
+        tasks = [
+            CartesianPositionTrajectory(
+                root_link=root_link,
+                tip_link=tip_link,
+                goal_points=self.waypoints,
+                weight=DefaultWeights.WEIGHT_BELOW_CA,
+                name="MoveTCPWaypointsAligned",
             )
-            if len(tasks) == 1:
-                nodes.append(tasks[0])
-            else:
-                nodes.append(Parallel(tasks))
-        motion_state_chart_nodes.append(Sequence(nodes=nodes))
+        ]
+        tasks.extend(
+            AlignPlanes(
+                tip_link=tip_link,
+                root_link=root_link,
+                tip_normal=pair.tip_normal,
+                goal_normal=pair.goal_normal,
+                weight=DefaultWeights.WEIGHT_BELOW_CA,
+            )
+            for pair in self.alignment_pairs
+        )
+        if self.robot_view.name.name == "rollin_justin":
+            tasks.append(
+                AlignPlanes(
+                    tip_link=self.world.get_body_by_name("torso4"),
+                    root_link=self.world.get_body_by_name("torso1"),
+                    tip_normal=Vector3.X(self.world.get_body_by_name("torso4")),
+                    goal_normal=Vector3.Z(self.world.get_body_by_name("torso1")),
+                    weight=DefaultWeights.WEIGHT_ABOVE_CA,
+                )
+            )
+        motion_state_chart_nodes.append(Parallel(tasks))
         return Parallel(motion_state_chart_nodes)

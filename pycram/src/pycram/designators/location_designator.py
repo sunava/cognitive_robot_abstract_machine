@@ -134,6 +134,7 @@ class CostmapLocation(LocationDesignatorDescription):
         ] = None,
         rotation_agnostic: bool = False,
         samples: int = 600,
+        validate_reachability: bool = True,
     ):
         """
         Location designator that uses costmaps as base to calculate locations for complex constrains like reachable or
@@ -165,6 +166,7 @@ class CostmapLocation(LocationDesignatorDescription):
                 grasp_descriptions if grasp_descriptions is not None else [None]
             ),
             rotation_agnostic=rotation_agnostic,
+            validate_reachability=validate_reachability,
         )
         self.target: Union[PoseStamped, Body] = target
         self.reachable_for: AbstractRobot = reachable_for
@@ -177,6 +179,7 @@ class CostmapLocation(LocationDesignatorDescription):
             grasp_descriptions if grasp_descriptions is not None else [None]
         )
         self.samples: int = samples
+        self.validate_reachability: bool = validate_reachability
 
     def ground(self) -> PoseStamped:
         """
@@ -219,7 +222,8 @@ class CostmapLocation(LocationDesignatorDescription):
                 width=200,
                 height=200,
                 resolution=0.02,
-                origin=target,
+                # These maps are merged into the same navigation frame.
+                origin=ground_pose,
             )
             final_map += visible
 
@@ -231,7 +235,8 @@ class CostmapLocation(LocationDesignatorDescription):
                 std=15,
                 distance=0.4,  # That needs to be replaced with an estimate of the reachability space of the robot arms
                 world=self.world,
-                origin=target,
+                # These maps are merged into the same navigation frame.
+                origin=ground_pose,
             )
             final_map += ring
 
@@ -294,8 +299,36 @@ class CostmapLocation(LocationDesignatorDescription):
                     list(self.robot_view.base.main_axis.to_np())
                 )
             )
+            nonzero_cells = int(np.count_nonzero(final_map.map > 0))
+            segmented_maps = final_map.segment_map()
+            max_value = (
+                float(np.max(final_map.map)) if final_map.map.size else float("nan")
+            )
+            print(
+                "[CostmapLocation] target=%s samples=%s nonzero_cells=%s segments=%s max_value=%.6f reachable_for=%s visible_for=%s validate_reachability=%s"
+                % (
+                    target,
+                    final_map.number_of_samples,
+                    nonzero_cells,
+                    len(segmented_maps),
+                    max_value,
+                    bool(params_box.reachable_for),
+                    bool(params_box.visible_for),
+                    bool(params_box.validate_reachability),
+                )
+            )
+
+            candidate_count = 0
+            collision_rejections = 0
+            visibility_rejections = 0
+            reachability_rejections = 0
+            yielded_count = 0
 
             for pose_candidate in final_map:
+                candidate_count += 1
+                print(
+                    f"[CostmapLocation] candidate[{candidate_count}]={pose_candidate}"
+                )
                 logger.debug(f"Testing candidate pose at {pose_candidate}")
                 pose_candidate.position.z = 0
                 test_robot.root.parent_connection.origin = self.world.transform(
@@ -309,23 +342,54 @@ class CostmapLocation(LocationDesignatorDescription):
                 )
 
                 if collisions:
+                    collision_rejections += 1
+                    print(
+                        f"[CostmapLocation] reject[{candidate_count}] reason=collision collisions={len(collisions)}"
+                    )
                     logger.debug(f"Candidate pose in collision, skipping")
                     continue
 
                 if not (params_box.reachable_for or params_box.visible_for):
                     self._last_result = pose_candidate
+                    yielded_count += 1
+                    print(
+                        f"[CostmapLocation] yield[{candidate_count}] reason=no_additional_validation"
+                    )
                     yield pose_candidate
                     continue
 
                 if params_box.visible_for and not visibility_validator(
                     test_robot, target, test_world
                 ):
+                    visibility_rejections += 1
+                    print(
+                        f"[CostmapLocation] reject[{candidate_count}] reason=visibility"
+                    )
                     logger.debug(f"Candidate pose not visible, skipping")
                     continue
 
                 if not params_box.reachable_for:
                     self._last_result = pose_candidate
+                    yielded_count += 1
+                    print(
+                        f"[CostmapLocation] yield[{candidate_count}] reason=visibility_only"
+                    )
                     yield pose_candidate
+                    continue
+
+                if not params_box.validate_reachability:
+                    pose = GraspPose(
+                        pose_candidate.pose,
+                        pose_candidate.header,
+                        arm=params_box.reachable_arm,
+                        grasp_description=None,
+                    )
+                    self._last_result = pose
+                    yielded_count += 1
+                    print(
+                        f"[CostmapLocation] yield[{candidate_count}] reason=heuristic_only arm={params_box.reachable_arm}"
+                    )
+                    yield pose
                     continue
 
                 grasp_descriptions = (
@@ -349,7 +413,8 @@ class CostmapLocation(LocationDesignatorDescription):
                         ee.manipulator.tool_frame,
                         test_robot,
                         test_world,
-                        use_fullbody_ik=test_robot.full_body_controlled,
+                        use_fullbody_ik=True,
+                        # use_fullbody_ik=test_robot.full_body_controlled,
                     )
                     if is_reachable:
                         pose = GraspPose(
@@ -359,7 +424,28 @@ class CostmapLocation(LocationDesignatorDescription):
                             grasp_description=grasp_desc,
                         )
                         self._last_result = pose
+                        yielded_count += 1
+                        print(
+                            f"[CostmapLocation] yield[{candidate_count}] reason=reachable arm={params_box.reachable_arm} grasp={grasp_desc}"
+                        )
                         yield pose
+                    else:
+                        reachability_rejections += 1
+                        print(
+                            f"[CostmapLocation] reject[{candidate_count}] reason=reachability arm={params_box.reachable_arm} grasp={grasp_desc}"
+                        )
+
+            if yielded_count == 0:
+                print(
+                    "[CostmapLocation] exhausted target=%s candidates=%s collision_rejections=%s visibility_rejections=%s reachability_rejections=%s"
+                    % (
+                        target,
+                        candidate_count,
+                        collision_rejections,
+                        visibility_rejections,
+                        reachability_rejections,
+                    )
+                )
 
 
 class AccessingLocation(LocationDesignatorDescription):
@@ -560,8 +646,9 @@ class AccessingLocation(LocationDesignatorDescription):
             final_map.orientation_generator = orientation_generator
             for pose_candidate in final_map:
                 pose_candidate.position.z = 0
-                test_robot.root.parent_connection.origin = (
-                    pose_candidate.to_spatial_type()
+                test_robot.root.parent_connection.origin = self.world.transform(
+                    pose_candidate.to_spatial_type(),
+                    self.robot_view.root.parent_connection.parent,
                 )
                 try:
                     collision_check(test_robot, test_world)

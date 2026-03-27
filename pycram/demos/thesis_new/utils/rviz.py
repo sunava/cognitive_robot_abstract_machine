@@ -1,6 +1,7 @@
 import numpy as np
 
 from geometry_msgs.msg import Point
+from pycram.datastructures.pose import TransformStamped
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
 
@@ -49,6 +50,22 @@ def _phase_color(k, a=1.0):
     ]
     r, g, b = palette[int(k) % len(palette)]
     return _color(r, g, b, a)
+
+
+def _heat_color(value, alpha=0.85):
+    """Map a normalized scalar in [0, 1] to a readable heatmap color."""
+    v = float(np.clip(value, 0.0, 1.0))
+    if v <= 0.25:
+        t = v / 0.25
+        return _color(0.10, 0.25 + 0.55 * t, 0.95, alpha)
+    if v <= 0.50:
+        t = (v - 0.25) / 0.25
+        return _color(0.10, 0.80 + 0.15 * t, 0.95 - 0.55 * t, alpha)
+    if v <= 0.75:
+        t = (v - 0.50) / 0.25
+        return _color(0.10 + 0.90 * t, 0.95, 0.40 - 0.30 * t, alpha)
+    t = (v - 0.75) / 0.25
+    return _color(1.00, 0.95 - 0.70 * t, 0.10, alpha)
 
 
 def _next_marker_group(prefix="rviz"):
@@ -187,6 +204,146 @@ class MotionSequenceRviz:
                 mid += 1
                 start = end
 
+        self.pub.publish(arr)
+
+
+class CostmapHeatmapRviz:
+    def __init__(
+        self,
+        costmap,
+        *,
+        node,
+        topic="costmap_heatmap",
+        frame_id="map",
+        marker_ns=None,
+        marker_type=Marker.CUBE_LIST,
+        z_offset=0.02,
+        z_scale=0.08,
+        xy_scale=None,
+        cell_height=0.003,
+        alpha=0.85,
+        republish_hz=2.0,
+        min_value=1e-9,
+        min_normalized_value=0.0,
+        sample_stride=1,
+    ):
+        """
+        Publish a costmap as a colored RViz heatmap using a list marker.
+        """
+        if node is None:
+            raise ValueError("node must be provided when publishing a costmap heatmap")
+
+        self.costmap = costmap
+        self.node = node
+        self.topic = _norm_topic(topic)
+        self.frame_id = str(frame_id)
+        self.marker_ns = (
+            str(marker_ns)
+            if marker_ns is not None
+            else _next_marker_group("costmap_heat")
+        )
+        self.marker_type = int(marker_type)
+        self.z_offset = float(z_offset)
+        self.z_scale = float(z_scale)
+        self.xy_scale = xy_scale
+        self.cell_height = float(cell_height)
+        self.alpha = float(alpha)
+        self.min_value = float(min_value)
+        self.min_normalized_value = float(min_normalized_value)
+        self.sample_stride = max(int(sample_stride), 1)
+        self.pub = self.node.create_publisher(MarkerArray, self.topic, 10)
+
+        self.node.get_logger().info(
+            f"Publishing costmap heatmap on {self.topic} in frame '{self.frame_id}'"
+        )
+
+        self.publish_once()
+
+        self._timer = None
+        if republish_hz is not None and float(republish_hz) > 0.0:
+            self._timer = self.node.create_timer(
+                1.0 / float(republish_hz), self.publish_once
+            )
+
+    def set_costmap(self, costmap):
+        self.costmap = costmap
+
+    def _costmap_to_points_and_colors(self):
+        if self.costmap is None:
+            return [], []
+
+        map_data = np.asarray(self.costmap.map, dtype=float)
+        valid_mask = np.isfinite(map_data) & (map_data > self.min_value)
+        if not np.any(valid_mask):
+            return [], []
+
+        values = map_data[valid_mask]
+        v_min = float(np.min(values))
+        v_max = float(np.max(values))
+        denom = v_max - v_min
+
+        origin_transform = TransformStamped.from_list(
+            self.costmap.origin.position.to_list(),
+            self.costmap.origin.orientation.to_list(),
+        )
+        corner_transform = origin_transform * TransformStamped.from_list(
+            [
+                -self.costmap.height * self.costmap.resolution / 2.0,
+                -self.costmap.width * self.costmap.resolution / 2.0,
+                self.z_offset,
+            ],
+            [0.0, 0.0, 0.0, 1.0],
+        )
+
+        points = []
+        colors = []
+        for row, col in np.argwhere(valid_mask):
+            if (row % self.sample_stride) != 0 or (col % self.sample_stride) != 0:
+                continue
+            normalized = 1.0 if denom <= 0.0 else (map_data[row, col] - v_min) / denom
+            if normalized < self.min_normalized_value:
+                continue
+
+            cell_transform = corner_transform * TransformStamped.from_list(
+                [
+                    (float(row) + 0.5) * self.costmap.resolution,
+                    (float(col) + 0.5) * self.costmap.resolution,
+                    normalized * self.z_scale,
+                ],
+                [0.0, 0.0, 0.0, 1.0],
+            )
+            point = Point()
+            point.x = float(cell_transform.translation.x)
+            point.y = float(cell_transform.translation.y)
+            point.z = float(cell_transform.translation.z)
+            points.append(point)
+
+            colors.append(_heat_color(normalized, alpha=self.alpha))
+
+        return points, colors
+
+    def publish_once(self):
+        now = self.node.get_clock().now().to_msg()
+        marker = Marker()
+        marker.header.frame_id = self.frame_id
+        marker.header.stamp = now
+        marker.ns = self.marker_ns
+        marker.id = 0
+        marker.type = self.marker_type
+        marker.action = Marker.ADD
+        marker.pose.orientation.w = 1.0
+        default_xy_scale = float(self.costmap.resolution) if self.costmap else 0.01
+        xy_scale = (
+            float(self.xy_scale) if self.xy_scale is not None else default_xy_scale
+        )
+        marker.scale.x = xy_scale
+        marker.scale.y = xy_scale
+        marker.scale.z = self.cell_height
+
+        marker.points, marker.colors = self._costmap_to_points_and_colors()
+
+        arr = MarkerArray()
+        arr.markers.append(marker)
         self.pub.publish(arr)
 
 

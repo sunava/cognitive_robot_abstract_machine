@@ -1,11 +1,8 @@
 import os
-import logging
 import numpy as np
 import rclpy
 
-from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.pose import PoseStamped
-from pycram.costmaps import OccupancyCostmap, RingCostmap
 from rclpy.duration import Duration as RclpyDuration
 from rclpy.time import Time
 from semantic_digital_twin.adapters.mesh import STLParser
@@ -21,6 +18,7 @@ from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.geometry import Color, Scale
 
+from demos.thesis_new.utils.demo_utils import build_navigation_costmaps
 from demos.thesis_new.thesis_math.world_utils import body_local_aabb
 from demos.thesis_new.world_setup import setup_thesis_world
 
@@ -35,32 +33,7 @@ PREFERRED_SURFACE_NAMES = (
     "coffee_table",
     "bedside_table",
     "kitchen_island_surface",
-    "dinning_room_table__dinning_room_table__base_link",
-    "table_living_room__table_living_room__base_link",
-)
-SURFACE_INCLUDE_KEYWORDS = (
-    "counter",
-    "table",
-    "shelf",
-    "cabinet",
-)
-SURFACE_EXCLUDE_KEYWORDS = (
-    "drawer",
-    "door",
-    "handle",
-    "waterfall",
-    "back",
-    "panel",
-    "wall",
-    "chair",
-    "sofa",
-    "plant",
-    "lamp",
-    "marker",
-    "cone",
-    "hydrant",
-    "tree",
-    "human",
+    "sink_area_surface",
 )
 
 # Automatic count model: breads ~= usable_surface_area * BREADS_PER_SQM.
@@ -75,8 +48,6 @@ BREAD_RADIUS_SAFETY_FACTOR = 1.08
 # Optional per-surface overrides (set value to force exact count).
 SURFACE_COUNT_OVERRIDES = {}
 COUNTERTOP_TINT = Color(R=0.82, G=0.70, B=0.55)
-
-logger = logging.getLogger(__name__)
 
 
 def _parse_stl(*relative_path_parts):
@@ -115,10 +86,13 @@ def _surface_like_name(name):
     if basename.endswith("_surface"):
         return True
 
-    if not any(keyword in basename for keyword in SURFACE_INCLUDE_KEYWORDS):
+    if ("counter" not in basename) and ("table" not in basename):
         return False
 
-    if any(skip in basename for skip in SURFACE_EXCLUDE_KEYWORDS):
+    if any(
+        skip in basename
+        for skip in ("drawer", "door", "handle", "waterfall", "back", "panel")
+    ):
         return False
     return True
 
@@ -260,14 +234,8 @@ def _spawn_bread_at_local_pose(
     return world_pose
 
 
-def _is_pose_reachable_for_cutting(robot, world, target_pose):
-    """Lightweight reachability gate: at least one collision-free base pose near target."""
-    ground_pose = PoseStamped.from_list(
-        [target_pose.position.x, target_pose.position.y, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-        frame=target_pose.frame_id,
-    )
-
+def build_cutting_reachability_costmaps(robot, world, target_pose):
+    """Build the occupancy, ring, and merged heuristic maps for a cutting target."""
     base_bb = robot.base.bounding_box
     base_depth = float(getattr(base_bb, "depth", float("nan")))
     base_width = float(getattr(base_bb, "width", float("nan")))
@@ -275,46 +243,23 @@ def _is_pose_reachable_for_cutting(robot, world, target_pose):
     if (not np.isfinite(obstacle_clearance)) or obstacle_clearance <= 0.0:
         obstacle_clearance = 0.20
 
-    occupancy = OccupancyCostmap(
-        distance_to_obstacle=obstacle_clearance,
-        world=world,
-        robot_view=robot,
+    return build_navigation_costmaps(
+        robot,
+        world,
+        target_pose,
         width=140,
         height=140,
         resolution=0.03,
-        origin=ground_pose,
-    )
-    # Ring around the target to keep robot in arm-reach neighborhood.
-    ring = RingCostmap(
-        resolution=0.03,
-        width=140,
-        height=140,
-        std=12,
-        distance=0.55,
-        world=world,
-        origin=ground_pose,
+        ring_std=12,
+        ring_distance=0.55,
+        obstacle_clearance=obstacle_clearance,
+        number_of_samples=30,
     )
 
-    logger.debug(
-        "cutting reachability target=(%.3f, %.3f, %.3f) frame=%s "
-        "clearance=%.3f base_bb=(depth=%.3f, width=%.3f) "
-        "occupancy_positive=%d ring_positive=%d map=(%dx%d@%.3f)",
-        target_pose.position.x,
-        target_pose.position.y,
-        target_pose.position.z,
-        target_pose.frame_id,
-        obstacle_clearance,
-        base_depth,
-        base_width,
-        int(np.sum(occupancy.map > 0)),
-        int(np.sum(ring.map > 0)),
-        occupancy.width,
-        occupancy.height,
-        occupancy.resolution,
-    )
 
-    final_map = occupancy + ring
-    final_map.number_of_samples = 30
+def _is_pose_reachable_for_cutting(robot, world, target_pose):
+    """Lightweight reachability gate: at least one collision-free base pose near target."""
+    _, _, final_map = build_cutting_reachability_costmaps(robot, world, target_pose)
 
     try:
         next(iter(final_map))

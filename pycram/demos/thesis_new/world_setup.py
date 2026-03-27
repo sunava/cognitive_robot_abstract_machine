@@ -1,8 +1,5 @@
 import os
-import warnings
-from xml.etree import ElementTree as ET
 
-from semantic_digital_twin.adapters.package_resolver import CompositePathResolver
 from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.robots.armar7 import Armar7
 from semantic_digital_twin.robots.hsrb import HSRB
@@ -10,7 +7,6 @@ from semantic_digital_twin.robots.justin import Justin
 from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.robots.stretch import Stretch
 from semantic_digital_twin.robots.tiago import Tiago
-from semantic_digital_twin.exceptions import ParsingError
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import DiffDrive, OmniDrive
 from semantic_digital_twin.world_description.utils import world_with_urdf_factory
@@ -21,13 +17,10 @@ THESIS_NEW_DEFAULT_ENVIRONMENT = "apartment"
 THESIS_NEW_ENVIRONMENT_ENV = "THESIS_NEW_ENVIRONMENT"
 DEFAULT_ROBOT_START_POSE = HomogeneousTransformationMatrix.from_xyz_rpy(1.5, 2.0, 0.0)
 ARMAR7_START_POSE = HomogeneousTransformationMatrix.from_xyz_rpy(3.8, 8.40, 0.0)
-JUSTIN_START_POSE = ARMAR7_START_POSE
-ISR_TESTBED_ALIASES = {"isr", "isr-testbed", "isr_testbed"}
 RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")
 )
 WORLDS_DIR = os.path.join(RESOURCES_DIR, "worlds")
-EXTRA_ENVIRONMENT_PATHS = {}
 
 ROBOT_SPECS = {
     "pr2": (
@@ -61,10 +54,10 @@ ROBOT_SPECS = {
         ARMAR7_START_POSE,
     ),
     "justin": (
-        "/home/vee/workspace/ros/src/iai_robots/iai_dlr_rollin_justin/urdf/rollin_justin.urdf",
+        "package://iai_dlr_rollin_justin/urdf/rollin_justin.urdf",
         Justin,
         OmniDrive,
-        JUSTIN_START_POSE,
+        ARMAR7_START_POSE,
     ),
 }
 
@@ -97,96 +90,11 @@ def _supported_environment_names():
         file_path = os.path.join(WORLDS_DIR, filename)
         if os.path.isfile(file_path) and filename.endswith(".urdf"):
             supported.append(os.path.splitext(filename)[0])
-    supported.extend(sorted(EXTRA_ENVIRONMENT_PATHS))
-    supported.extend(sorted(ISR_TESTBED_ALIASES))
     return sorted(supported)
 
 
-def _resolve_isr_testbed_path():
-    candidates = [
-        "/home/vee/workspace/ros/src/isr_testbed/urdf/isr-testbed.urdf",
-        "/home/vee/workspace/ros/install/isr_testbed/share/isr_testbed/urdf/isr-testbed.urdf",
-        "package://isr_testbed/urdf/isr-testbed.urdf",
-    ]
-    for candidate in candidates:
-        if os.path.isabs(candidate):
-            if os.path.isfile(candidate):
-                return candidate
-            continue
-        return candidate
-
-    raise FileNotFoundError("Could not resolve an ISR testbed URDF path.")
-
-
-def _resolve_robocanes_path():
-    candidates = [
-        "/home/vee/workspace/ros/src/robocane_manual/urdf/robocane.urdf",
-        "/home/vee/workspace/ros/install/robocane_manual//share/robocane_manual/urdf/robocane.urdf",
-        "package://robocane_manual/urdf/robocane.urdf",
-    ]
-    print(candidates)
-    for candidate in candidates:
-        if os.path.isabs(candidate):
-            if os.path.isfile(candidate):
-                return candidate
-            continue
-
-        return candidate
-
-    raise FileNotFoundError("Could not resolve a Robocanes URDF path.")
-
-
-def _remove_unresolved_meshes(urdf_path: str) -> str:
-    path_resolver = CompositePathResolver()
-    resolved_urdf_path = path_resolver.resolve(urdf_path)
-
-    with open(resolved_urdf_path, "r") as urdf_file:
-        root = ET.fromstring(urdf_file.read())
-
-    missing_packages = set()
-    for link in root.findall("link"):
-        for tag_name in ("visual", "collision"):
-            for geometry_parent in list(link.findall(tag_name)):
-                mesh = geometry_parent.find("geometry/mesh")
-                if mesh is None:
-                    continue
-
-                filename = mesh.get("filename")
-                if not filename:
-                    continue
-
-                try:
-                    path_resolver.resolve(filename)
-                except ParsingError:
-                    link.remove(geometry_parent)
-                    if filename.startswith("package://"):
-                        missing_packages.add(filename.split("/", 3)[2])
-
-    if missing_packages:
-        warnings.warn(
-            "Skipping unresolved mesh assets from packages: "
-            + ", ".join(sorted(missing_packages)),
-            RuntimeWarning,
-        )
-
-    return ET.tostring(root, encoding="unicode")
-
-
-def _parse_environment_world(environment_path):
-    environment_path_lower = environment_path.lower()
-    if any(alias in environment_path_lower for alias in ISR_TESTBED_ALIASES):
-        return URDFParser(urdf=_remove_unresolved_meshes(environment_path)).parse()
-    if (
-        environment_path_lower.endswith("/robocane_manual/urdf/robocanes.urdf")
-        or environment_path_lower.endswith("/robocane_manual/urdf/robocane.urdf")
-        or environment_path_lower == "package://robocane_manual/urdf/robocane.urdf"
-        or environment_path_lower == "package://robocane_manual/urdf/robocane.urdf"
-    ):
-        return URDFParser(urdf=_remove_unresolved_meshes(environment_path)).parse()
-    return URDFParser.from_file(environment_path).parse()
-
-
 def resolve_environment_path(environment_name=None):
+    print(environment_name)
     selected = environment_name or os.environ.get(
         THESIS_NEW_ENVIRONMENT_ENV, THESIS_NEW_DEFAULT_ENVIRONMENT
     )
@@ -195,14 +103,7 @@ def resolve_environment_path(environment_name=None):
     if normalized.startswith("package://") or os.path.isabs(normalized):
         return normalized
 
-    if normalized.lower() in ISR_TESTBED_ALIASES:
-        return _resolve_isr_testbed_path()
-    if normalized.lower() == "robocane":
-        return _resolve_robocanes_path()
-
     candidate = normalized[:-5] if normalized.endswith(".urdf") else normalized
-    if candidate in EXTRA_ENVIRONMENT_PATHS:
-        return EXTRA_ENVIRONMENT_PATHS[candidate]
     environment_path = os.path.join(WORLDS_DIR, f"{candidate}.urdf")
     if os.path.isfile(environment_path):
         return environment_path
@@ -220,7 +121,7 @@ def setup_thesis_world(robot_name=None, environment_name=None):
     ]
     environment_path = resolve_environment_path(environment_name)
 
-    environment_world = _parse_environment_world(environment_path)
+    environment_world = URDFParser.from_file(environment_path).parse()
 
     robot_world = world_with_urdf_factory(robot_urdf, None, drive_cls)
     environment_world.merge_world_at_pose(robot_world, robot_start_pose)

@@ -2,16 +2,23 @@ import rclpy
 
 from rclpy.duration import Duration as RclpyDuration
 from rclpy.time import Time
+from visualization_msgs.msg import Marker
+from pycram.costmaps import OccupancyCostmap, RingCostmap
+from pycram.datastructures.pose import PoseStamped
 from pycram.datastructures.enums import Arms
+from pycram.failures import NavigationPoseUnreachable
 from semantic_digital_twin.adapters.ros.tf_publisher import TFPublisher
 from semantic_digital_twin.adapters.ros.tfwrapper import TFWrapper
-from semantic_digital_twin.adapters.ros.visualization.viz_marker import VizMarkerPublisher
+from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
+    VizMarkerPublisher,
+)
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from semantic_digital_twin.robots.robot_mixins import SpecifiesLeftRightArm
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
 
 from demos.thesis_new.utils.experiment_logging import body_name
+from demos.thesis_new.utils.rviz import CostmapHeatmapRviz
 from demos.thesis_new.world_setup import resolve_robot_name_from_annotation
 
 
@@ -34,6 +41,120 @@ def setup_experiment_runtime(world, node_name):
 def shutdown_experiment_runtime(node):
     node.destroy_node()
     rclpy.shutdown()
+
+
+def build_navigation_costmaps(
+    robot,
+    world,
+    target_pose,
+    *,
+    width=200,
+    height=200,
+    resolution=0.02,
+    ring_std=15,
+    ring_distance=0.4,
+    obstacle_clearance=None,
+    number_of_samples=200,
+):
+    ground_pose = PoseStamped.from_list(
+        [target_pose.position.x, target_pose.position.y, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+        frame=target_pose.frame_id,
+    )
+
+    if obstacle_clearance is None:
+        base_bb = robot.base.bounding_box
+        obstacle_clearance = (base_bb.depth / 2 + base_bb.width / 2) / 2
+
+    occupancy = OccupancyCostmap(
+        distance_to_obstacle=obstacle_clearance,
+        world=world,
+        robot_view=robot,
+        width=width,
+        height=height,
+        resolution=resolution,
+        origin=ground_pose,
+    )
+    ring = RingCostmap(
+        resolution=resolution,
+        width=width,
+        height=height,
+        std=ring_std,
+        distance=ring_distance,
+        world=world,
+        origin=ground_pose,
+    )
+    final_map = occupancy + ring
+    final_map.number_of_samples = number_of_samples
+    return occupancy, ring, final_map
+
+
+def update_navigation_costmap_debug_publishers(
+    node,
+    world,
+    publishers,
+    occupancy,
+    ring,
+    final_map,
+    *,
+    namespace_prefix,
+):
+    if not publishers:
+        publishers["occupancy"] = CostmapHeatmapRviz(
+            occupancy,
+            node=node,
+            topic="/debug/costmap/occupancy",
+            frame_id=str(world.root.name),
+            marker_ns=f"{namespace_prefix}_occupancy_costmap",
+            z_scale=0.04,
+        )
+        publishers["ring"] = CostmapHeatmapRviz(
+            ring,
+            node=node,
+            topic="/debug/costmap/ring",
+            frame_id=str(world.root.name),
+            marker_ns=f"{namespace_prefix}_ring_costmap",
+            z_scale=0.10,
+            min_normalized_value=0.12,
+        )
+        publishers["final"] = CostmapHeatmapRviz(
+            final_map,
+            node=node,
+            topic="/debug/costmap/final",
+            frame_id=str(world.root.name),
+            marker_ns=f"{namespace_prefix}_final_costmap",
+            marker_type=Marker.SPHERE_LIST,
+            z_offset=0.025,
+            z_scale=0.14,
+            xy_scale=0.042,
+            cell_height=0.042,
+            alpha=0.72,
+            min_normalized_value=0.20,
+            sample_stride=2,
+        )
+        return publishers
+
+    publishers["occupancy"].set_costmap(occupancy)
+    publishers["occupancy"].publish_once()
+    publishers["ring"].set_costmap(ring)
+    publishers["ring"].publish_once()
+    publishers["final"].set_costmap(final_map)
+    publishers["final"].publish_once()
+    return publishers
+
+
+def resolve_navigation_target(location_designator, *, description):
+    try:
+        candidates = list(location_designator)
+    except RuntimeError as exc:
+        if "No values in the iterable" not in str(exc):
+            raise
+        candidates = []
+    if candidates:
+        return candidates
+    raise NavigationPoseUnreachable(
+        f"No collision-free navigation pose found for {description}."
+    )
 
 
 def collect_named_targets(world, prefix):
