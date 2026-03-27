@@ -156,11 +156,11 @@ def test_state_synchronization(rclpy_node):
     # Allow time for publishers/subscribers to connect on unique topics
     time.sleep(0.2)
 
-    w1.state.data[0, 0] = 1.0
+    w1.state._data[0, 0] = 1.0
     w1.notify_state_change()
     time.sleep(0.2)
-    assert w1.state.data[0, 0] == 1.0
-    assert w1.state.data[0, 0] == w2.state.data[0, 0]
+    assert w1.state._data[0, 0] == 1.0
+    assert w1.state._data[0, 0] == w2.state._data[0, 0]
 
     synchronizer_1.close()
     synchronizer_2.close()
@@ -184,11 +184,11 @@ def test_state_synchronization_world_model_change_after_init(rclpy_node):
     # Allow time for publishers/subscribers to connect on unique topics
     time.sleep(0.2)
 
-    w1.state.data[0, 0] = 1.0
+    w1.state._data[0, 0] = 1.0
     w1.notify_state_change()
     time.sleep(0.2)
-    assert w1.state.data[0, 0] == 1.0
-    assert w1.state.data[0, 0] == w2.state.data[0, 0]
+    assert w1.state._data[0, 0] == 1.0
+    assert w1.state._data[0, 0] == w2.state._data[0, 0]
 
     synchronizer_1.close()
     synchronizer_2.close()
@@ -561,7 +561,7 @@ def test_synchronize_6dof(rclpy_node):
     c2 = w2.get_connection_by_name(c1.name)
     assert isinstance(c2, Connection6DoF)
     assert w1.state[c1.qw_id].position == w2.state[c2.qw_id].position
-    np.testing.assert_array_almost_equal(w1.state.data, w2.state.data)
+    np.testing.assert_array_almost_equal(w1.state._data, w2.state._data)
 
 
 def test_synchronous_state_synchronization(rclpy_node):
@@ -597,12 +597,12 @@ def test_synchronous_state_synchronization(rclpy_node):
         # Allow time for publishers/subscribers to discover each other
         time.sleep(0.2)
 
-        w1.state.data[0, 0] = 1.0
+        w1.state._data[0, 0] = 1.0
         w1.notify_state_change()
 
         # With synchronous publishing the state must already be propagated
         # by the time notify_state_change returns.
-        assert w1.state.data[0, 0] == w2.state.data[0, 0]
+        assert w1.state._data[0, 0] == w2.state._data[0, 0]
 
         synchronizer_1.close()
         synchronizer_2.close()
@@ -711,7 +711,7 @@ def test_synchronous_publish_blocks_until_receiver_acknowledges(rclpy_node):
 
         # Trigger a synchronous state change in a background thread. It
         # should block because the receiver's acknowledgment will never arrive.
-        w1.state.data[0, 0] = 1.0
+        w1.state._data[0, 0] = 1.0
         publish_done = threading.Event()
 
         def do_publish():
@@ -742,7 +742,7 @@ def test_synchronous_publish_blocks_until_receiver_acknowledges(rclpy_node):
         # The state should also be propagated because the receiver's
         # subscription callback still applied the message (only the
         # acknowledgment was intercepted, not message processing).
-        assert w1.state.data[0, 0] == w2.state.data[0, 0]
+        assert w1.state._data[0, 0] == w2.state._data[0, 0]
 
         synchronizer_2.acknowledge_publisher = real_acknowledgment_publisher
         synchronizer_1.close()
@@ -766,7 +766,7 @@ def test_compute_state_changes_single_change(rclpy_node):
     w = create_dummy_world()
     s = StateSynchronizer(node=rclpy_node, _world=w)
     # change first position
-    w.state.data[0, 0] += 1e-3
+    w.state._data[0, 0] += 1e-3
     changes = s.compute_state_changes()
     names = w.state.keys()
     assert list(changes.keys()) == [names[0]]
@@ -791,7 +791,7 @@ def test_compute_state_changes_nan_handling(rclpy_node):
     w = create_dummy_world()
     s = StateSynchronizer(node=rclpy_node, _world=w)
     # set both previous and current to NaN for entry 0
-    w.state.data[0, 0] = np.nan
+    w.state._data[0, 0] = np.nan
     s.previous_world_state_data[0] = np.nan
     assert s.compute_state_changes() == {}
     s.close()
@@ -1218,14 +1218,14 @@ def test_acknowledgement_with_missed_messages(rclpy_node):
         # Allow time for publishers/subscribers to discover each other
         time.sleep(0.5)
 
-        w1.state.data[0, 0] = 1.0
+        w1.state._data[0, 0] = 1.0
         w1.notify_state_change()
 
         # the notify should time out giving us the old state
-        assert w2.state.data[0, 0] == 0
+        assert w2.state._data[0, 0] == 0
         synchronizer_2.apply_missed_messages()
         # after apply message we should have the correct state
-        assert w1.state.data[0, 0] == w2.state.data[0, 0]
+        assert w1.state._data[0, 0] == w2.state._data[0, 0]
 
         synchronizer_1.close()
         synchronizer_2.close()

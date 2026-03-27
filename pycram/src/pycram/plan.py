@@ -1012,7 +1012,7 @@ class ActionNode(BaseActionNode, Generic[ActionType]):
         Creates a ExecutionData object and logs additional information about the execution of this node.
         """
         robot_pose = deepcopy(self.plan.robot.root.global_transform).to_pose()
-        exec_data = ExecutionData(robot_pose, self.plan.world.state.data)
+        exec_data = ExecutionData(robot_pose, self.plan.world.state._data)
         self.execution_data = exec_data
         self._last_mod = self.plan.world._model_manager.model_modification_blocks[-1]
 
@@ -1035,7 +1035,7 @@ class ActionNode(BaseActionNode, Generic[ActionType]):
         self.execution_data.execution_end_pose = deepcopy(
             self.plan.robot.root.global_transform
         ).to_pose()
-        self.execution_data.execution_end_world_state = self.plan.world.state.data
+        self.execution_data.execution_end_world_state = self.plan.world.state._data
         new_modifications = []
         for i in range(len(self.plan.world._model_manager.model_modification_blocks)):
             if (

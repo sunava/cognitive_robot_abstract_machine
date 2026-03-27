@@ -89,7 +89,7 @@ class WorldState(MutableMapping[UUID, WorldStateEntryView]):
     _world: World = field(default=None)
 
     # 4 rows (pos, vel, acc, jerk), columns are joints
-    data: np.ndarray = field(default_factory=lambda: np.zeros((4, 0), dtype=float))
+    _data: np.ndarray = field(default_factory=lambda: np.zeros((4, 0), dtype=float))
 
     # list of dof ids in column order
     _ids: List[UUID] = field(default_factory=list)
@@ -120,21 +120,23 @@ class WorldState(MutableMapping[UUID, WorldStateEntryView]):
             callback.notify(**kwargs)
 
     def clear(self):
-        self.data = np.zeros((4, 0), dtype=float)
-        self._ids = []
-        self._index = {}
-        self.version += 1
+        with self.world_lock:
+            self._data = np.zeros((4, 0), dtype=float)
+            self._ids = []
+            self._index = {}
+            self.version += 1
 
     def _add_dof(self, uuid: UUID) -> None:
-        idx = len(self._ids)
-        self._ids.append(uuid)
-        self._index[uuid] = idx
-        # append a zero column
-        new_col = np.zeros((4, 1), dtype=float)
-        if self.data.shape[1] == 0:
-            self.data = new_col
-        else:
-            self.data = np.hstack((self.data, new_col))
+        with self.world_lock:
+            idx = len(self._ids)
+            self._ids.append(uuid)
+            self._index[uuid] = idx
+            # append a zero column
+            new_col = np.zeros((4, 1), dtype=float)
+            if self._data.shape[1] == 0:
+                self._data = new_col
+            else:
+                self._data = np.hstack((self._data, new_col))
 
     def __getitem__(self, dof_id: UUID) -> WorldStateEntryView:
         with self.world_lock:
@@ -142,7 +144,7 @@ class WorldState(MutableMapping[UUID, WorldStateEntryView]):
                 raise DofNotInWorldStateError(dof_id)
             idx = self._index[dof_id]
             return WorldStateEntryView(
-                data=self.data[:, idx], lock=self._world._world_lock
+                data=self._data[:, idx], lock=self._world._world_lock
             )
 
     def __setitem__(
@@ -157,7 +159,7 @@ class WorldState(MutableMapping[UUID, WorldStateEntryView]):
             if arr.shape != (4,):
                 raise IncorrectWorldStateValueShapeError(dof_id)
             idx = self._index[dof_id]
-            self.data[:, idx] = arr
+            self._data[:, idx] = arr
 
     def __delitem__(self, dof_id: UUID) -> None:
         with self.world_lock:
@@ -166,67 +168,80 @@ class WorldState(MutableMapping[UUID, WorldStateEntryView]):
             idx = self._index.pop(dof_id)
             self._ids.pop(idx)
             # remove column from data
-            self.data = np.delete(self.data, idx, axis=1)
+            self._data = np.delete(self._data, idx, axis=1)
             # rebuild indices
             for i, nm in enumerate(self._ids):
                 self._index[nm] = i
 
     def __iter__(self) -> Iterator[UUID]:
-        return iter(self._ids)
+        with self.world_lock:
+            return iter(self._ids)
 
     def __len__(self) -> int:
-        return len(self._ids)
+        with self.world_lock:
+            return len(self._ids)
 
     def __eq__(self, other: Self) -> bool:
-        if self is other:
-            return True
+        with self.world_lock:
+            if self is other:
+                return True
 
-        if len(self) != len(other):
-            return False
+            if len(self) != len(other):
+                return False
 
-        if set(self._ids) != set(other._ids):
-            return False
+            if set(self._ids) != set(other._ids):
+                return False
 
-        return np.allclose(
-            self.data,
-            other.data,
-            rtol=1e-8,
-            atol=1e-12,
-            equal_nan=True,
-        )
+            return np.allclose(
+                self._data,
+                other._data,
+                rtol=1e-8,
+                atol=1e-12,
+                equal_nan=True,
+            )
 
     def keys(self) -> List[UUID]:
-        return self._ids
+        with self.world_lock:
+            return self._ids
 
     def items(self) -> List[tuple[UUID, np.ndarray]]:
-        return [
-            (dof_id, self.data[:, self._index[dof_id]].copy()) for dof_id in self._ids
-        ]
+        with self.world_lock:
+            return [
+                (dof_id, self._data[:, self._index[dof_id]].copy())
+                for dof_id in self._ids
+            ]
 
     def values(self) -> List[np.ndarray]:
         with self.world_lock:
-            return [self.data[:, self._index[dof_id]].copy() for dof_id in self._ids]
+            return [self._data[:, self._index[dof_id]].copy() for dof_id in self._ids]
 
     def __contains__(self, dof_or_uuid: Union[DegreeOfFreedom, UUID]) -> bool:
-        dof_id = (
-            dof_or_uuid.id if isinstance(dof_or_uuid, DegreeOfFreedom) else dof_or_uuid
-        )
-        return dof_id in self._index
+        with self.world_lock:
+            dof_id = (
+                dof_or_uuid.id
+                if isinstance(dof_or_uuid, DegreeOfFreedom)
+                else dof_or_uuid
+            )
+            return dof_id in self._index
 
     def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}({{ "
-            + ", ".join(
-                f"{n}: {list(self.data[:, i])}" for i, n in enumerate(self._ids)
+        with self.world_lock:
+            return (
+                f"{self.__class__.__name__}({{ "
+                + ", ".join(
+                    f"{n}: {list(self._data[:, i])}" for i, n in enumerate(self._ids)
+                )
+                + " })"
             )
-            + " })"
-        )
 
     def to_position_dict(self) -> Dict[PrefixedName, float]:
-        return {
-            self._world.get_degree_of_freedom_by_id(dof_id).name: self[dof_id].position
-            for dof_id in self._ids
-        }
+        with self.world_lock:
+            return {
+                self._world.get_degree_of_freedom_by_id(dof_id)
+                .name: self[dof_id]
+                .position
+                for dof_id in self._ids
+            }
 
     @property
     def world_lock(self) -> threading.RLock:
@@ -253,7 +268,7 @@ class WorldState(MutableMapping[UUID, WorldStateEntryView]):
         Retrieve the data for a whole derivative row.
         """
         with self.world_lock:
-            return self.data[derivative, :]
+            return self._data[derivative, :]
 
     def set_derivative(self, derivative: Derivatives, new_state: np.ndarray):
         """
@@ -261,35 +276,37 @@ class WorldState(MutableMapping[UUID, WorldStateEntryView]):
         Assums that the order of the DOFs is consistent.
         """
         with self.world_lock:
-            self.data[derivative, :] = new_state
+            self._data[derivative, :] = new_state
 
     def __deepcopy__(self, memo):
         """
         Create a deep copy of the WorldState.
         """
-        new_state = WorldState(_world=self._world)
-        new_state.data = self.data.copy()
-        new_state._ids = self._ids.copy()
-        new_state._index = self._index.copy()
-        return new_state
+        with self.world_lock:
+            new_state = WorldState(_world=self._world)
+            new_state._data = self._data.copy()
+            new_state._ids = self._ids.copy()
+            new_state._index = self._index.copy()
+            return new_state
 
     def add_degree_of_freedom(self, dof: DegreeOfFreedom):
         """
         Adds a degree of freedom to the world state, initializing its position to 0 or the nearest limit.
         """
-        dof.create_variables()
+        with self.world_lock:
+            dof.create_variables()
 
-        lower = dof.limits.lower.position
-        upper = dof.limits.upper.position
-        initial_position = 0
+            lower = dof.limits.lower.position
+            upper = dof.limits.upper.position
+            initial_position = 0
 
-        if lower is not None:
-            initial_position = max(lower, initial_position)
-        if upper is not None:
-            initial_position = min(upper, initial_position)
+            if lower is not None:
+                initial_position = max(lower, initial_position)
+            if upper is not None:
+                initial_position = min(upper, initial_position)
 
-        self._add_dof(dof.id)
-        self[dof.id].position = initial_position
+            self._add_dof(dof.id)
+            self[dof.id].position = initial_position
 
     def get_variables(self) -> List[FloatVariable]:
         """
@@ -302,23 +319,24 @@ class WorldState(MutableMapping[UUID, WorldStateEntryView]):
         :returns: A combined list of variables corresponding to the positions, velocities,
             accelerations, and jerks for each degree of freedom in the state.
         """
-        positions = [
-            self._world.get_degree_of_freedom_by_id(v_id).variables.position
-            for v_id in self
-        ]
-        velocities = [
-            self._world.get_degree_of_freedom_by_id(v_id).variables.velocity
-            for v_id in self
-        ]
-        accelerations = [
-            self._world.get_degree_of_freedom_by_id(v_id).variables.acceleration
-            for v_id in self
-        ]
-        jerks = [
-            self._world.get_degree_of_freedom_by_id(v_id).variables.jerk
-            for v_id in self
-        ]
-        return positions + velocities + accelerations + jerks
+        with self.world_lock:
+            positions = [
+                self._world.get_degree_of_freedom_by_id(v_id).variables.position
+                for v_id in self
+            ]
+            velocities = [
+                self._world.get_degree_of_freedom_by_id(v_id).variables.velocity
+                for v_id in self
+            ]
+            accelerations = [
+                self._world.get_degree_of_freedom_by_id(v_id).variables.acceleration
+                for v_id in self
+            ]
+            jerks = [
+                self._world.get_degree_of_freedom_by_id(v_id).variables.jerk
+                for v_id in self
+            ]
+            return positions + velocities + accelerations + jerks
 
     @property
     def position_float_variables(self) -> List[FloatVariable]:
@@ -338,19 +356,20 @@ class WorldState(MutableMapping[UUID, WorldStateEntryView]):
             applied.
         :return:
         """
-        if len(commands) != len(self._ids):
-            raise MismatchingCommandLengthError(
-                expected_length=len(self._ids),
-                actual_length=len(commands),
-            )
+        with self.world_lock:
+            if len(commands) != len(self._ids):
+                raise MismatchingCommandLengthError(
+                    expected_length=len(self._ids),
+                    actual_length=len(commands),
+                )
 
-        self.set_derivative(derivative, commands)
+            self.set_derivative(derivative, commands)
 
-        for i in range(derivative - 1, -1, -1):
-            self.set_derivative(
-                i,
-                self.get_derivative(i) + self.get_derivative(i + 1) * dt,
-            )
+            for i in range(derivative - 1, -1, -1):
+                self.set_derivative(
+                    i,
+                    self.get_derivative(i) + self.get_derivative(i + 1) * dt,
+                )
 
 
 @dataclass
@@ -384,19 +403,23 @@ class WorldStateView:
 
     @property
     def positions(self) -> np.ndarray:
-        return self._data[Derivatives.position, :]
+        with self.lock:
+            return self._data[Derivatives.position, :]
 
     @property
     def velocities(self) -> np.ndarray:
-        return self._data[Derivatives.velocity, :]
+        with self.lock:
+            return self._data[Derivatives.velocity, :]
 
     @property
     def accelerations(self) -> np.ndarray:
-        return self._data[Derivatives.acceleration, :]
+        with self.lock:
+            return self._data[Derivatives.acceleration, :]
 
     @property
     def jerks(self) -> np.ndarray:
-        return self._data[Derivatives.jerk, :]
+        with self.lock:
+            return self._data[Derivatives.jerk, :]
 
 
 @dataclass
@@ -407,11 +430,6 @@ class WorldStateTrajectory:
     This class is used to track and manage a sequence of world states at various
     timestamps. It provides functionality to append new states to the trajectory,
     and to retrieve states or their timing information.
-
-    :ivar times: Array of timestamps corresponding to the recorded world states.
-    :type times: numpy.ndarray
-    :ivar data: Multidimensional array containing the recorded world state data.
-    :type data: numpy.ndarray
     """
 
     world: World
@@ -443,9 +461,10 @@ class WorldStateTrajectory:
     @property
     def times(self) -> np.ndarray:
         """Array of timestamps corresponding to the recorded world states."""
-        if self._times_cache is None:
-            self._times_cache = np.array(self._times, dtype=float)
-        return self._times_cache
+        with self.world_lock():
+            if self._times_cache is None:
+                self._times_cache = np.array(self._times, dtype=float)
+            return self._times_cache
 
     @property
     def data(self) -> np.ndarray:
@@ -455,12 +474,13 @@ class WorldStateTrajectory:
         The second dimension indexes the derivatives.
         The third dimension indexes the DOFs.
         """
-        if self._data_cache is None:
-            if not self._data:
-                # return an empty array with the correct number of dimensions
-                return np.zeros((0, 4, len(self._ids)), dtype=float)
-            self._data_cache = np.stack(self._data, axis=0)
-        return self._data_cache
+        with self.world_lock():
+            if self._data_cache is None:
+                if not self._data:
+                    # return an empty array with the correct number of dimensions
+                    return np.zeros((0, 4, len(self._ids)), dtype=float)
+                self._data_cache = np.stack(self._data, axis=0)
+            return self._data_cache
 
     @classmethod
     def from_world_state(cls, state: WorldState, time: float):
@@ -478,8 +498,11 @@ class WorldStateTrajectory:
             _ids=state._ids.copy(),
             _index=state._index.copy(),
             _times=[time],
-            _data=[state.data.copy()],
+            _data=[state._data.copy()],
         )
+
+    def world_lock(self):
+        return self.world._world_lock
 
     def append(self, state: WorldState, time: float):
         """
@@ -491,23 +514,25 @@ class WorldStateTrajectory:
         :param time: The time corresponding to the new state to append. Must be
             greater than the last time in the series.
         """
-        current_world_model_version = state._world.get_world_model_manager().version
-        if current_world_model_version != self._world_version:
-            raise WrongWorldModelVersion(
-                expected_version=self._world_version,
-                actual_version=current_world_model_version,
-            )
-        if self._times and time <= self._times[-1]:
-            raise NonMonotonicTimeError(
-                last_time=float(self._times[-1]), attempted_time=time
-            )
-        self._times.append(time)
-        self._data.append(state.data.copy())
-        self._times_cache = None
-        self._data_cache = None
+        with self.world_lock():
+            current_world_model_version = state._world.get_world_model_manager().version
+            if current_world_model_version != self._world_version:
+                raise WrongWorldModelVersion(
+                    expected_version=self._world_version,
+                    actual_version=current_world_model_version,
+                )
+            if self._times and time <= self._times[-1]:
+                raise NonMonotonicTimeError(
+                    last_time=float(self._times[-1]), attempted_time=time
+                )
+            self._times.append(time)
+            self._data.append(state._data.copy())
+            self._times_cache = None
+            self._data_cache = None
 
     def keys(self) -> Iterator[float]:
-        yield from self._times
+        with self.world_lock():
+            yield from self._times
 
     def values(self) -> Iterator[WorldStateView]:
         """
@@ -520,8 +545,12 @@ class WorldStateTrajectory:
         :yield: An iterator of `WorldStateView` objects representing the data
                 at each time step.
         """
-        for idx in range(len(self._times)):
-            yield WorldStateView(self._data[idx], self._ids, self._index)
+        with self.world_lock():
+            for idx in range(len(self._times)):
+                yield WorldStateView(
+                    self._data[idx], self._ids, self._index, self.world._world_lock
+                )
 
     def items(self) -> Iterator[tuple[float, WorldStateView]]:
-        yield from zip(self.keys(), self.values())
+        with self.world_lock():
+            yield from zip(self.keys(), self.values())

@@ -227,10 +227,10 @@ def test_compute_fk(world_setup):
 
     connection: PrismaticConnection = world.get_connection(r1, r2)
 
-    state_memory_id = id(world.state.data)
+    state_memory_id = id(world.state._data)
     world.state[connection.dof.id].position = 1.0
     world.notify_state_change()
-    assert state_memory_id == id(world.state.data)
+    assert state_memory_id == id(world.state._data)
     fk = world.compute_forward_kinematics_np(l2, r2)
     assert np.allclose(
         fk,
@@ -277,7 +277,7 @@ def test_compute_fk_expression(world_setup):
 
 def test_apply_control_commands(world_setup):
     world, l1, l2, bf, r1, r2 = world_setup
-    state_memory_id = id(world.state.data)
+    state_memory_id = id(world.state._data)
     connection: PrismaticConnection = world.get_connection(r1, r2)
     cmd = np.array([100.0, 0, 0, 0, 0, 0, 0, 0])
     dt = 0.1
@@ -287,7 +287,7 @@ def test_apply_control_commands(world_setup):
     assert world.state[connection.dof.id].velocity == 100.0 * dt * dt
     assert world.state[connection.dof.id].position == 100.0 * dt * dt * dt
     # the state should reuse the same memory
-    assert state_memory_id == id(world.state.data)
+    assert state_memory_id == id(world.state._data)
 
 
 def test_compute_relative_pose(world_setup):
@@ -1091,7 +1091,7 @@ def test_world_state_trajectory(world_setup, tmp_path):
     # The first DOF should have changed due to jerk command
     assert not np.allclose(traj.data[0, :, 0], traj.data[-1, :, 0])  # First DOF changed
     assert np.allclose(
-        traj.data[0, :, 1:], initial_state.data[:, 1:]
+        traj.data[0, :, 1:], initial_state._data[:, 1:]
     )  # Other DOFs unchanged initially
 
     plotter = WorldStateTrajectoryPlotter()
@@ -1102,7 +1102,7 @@ def test_world_state_trajectory(world_setup, tmp_path):
     assert traj._world_version == world.get_world_model_manager().version
 
     # Verify that trajectory data matches current world state
-    np.testing.assert_allclose(traj.data[-1, :, :], world.state.data)
+    np.testing.assert_allclose(traj.data[-1, :, :], world.state._data)
 
     # verify that the state increased on each step
     previous = initial_state[dof_uuid]
@@ -1148,14 +1148,14 @@ def test_reattach_child_to_new_parent(world_setup):
 
 
 def test_reset_state_context(pr2_world_state_reset):
-    state_copy = pr2_world_state_reset.state.data.copy()
+    state_copy = pr2_world_state_reset.state._data.copy()
     with pr2_world_state_reset.reset_state_context():
         pr2_world_state_reset.get_body_by_name(
             "base_footprint"
         ).parent_connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(
             10, 10, 0
         )
-    assert np.allclose(state_copy, pr2_world_state_reset.state.data)
+    assert np.allclose(state_copy, pr2_world_state_reset.state._data)
 
 
 def test_copy_for_world():

@@ -376,7 +376,9 @@ class StateSynchronizer(StateChangeCallback, SynchronizerOnCallback):
 
         if indices:
             with self._world._world_lock:
-                self._world.state.data[0, indices] = np.asarray(msg.states, dtype=float)
+                self._world.state._data[0, indices] = np.asarray(
+                    msg.states, dtype=float
+                )
                 self.update_previous_world_state()
                 self._world.notify_state_change(publish_changes=False)
 
