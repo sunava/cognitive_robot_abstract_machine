@@ -291,6 +291,7 @@ def _rotate_target_180deg_z(world, target_body):
 
 
 def _rotate_pose_180deg_z(target_pose):
+    target_pose = target_pose.to_spatial_type()
     pos = np.asarray(target_pose.to_position().to_np(), dtype=float).reshape(-1)[:3]
     quat = np.asarray(target_pose.to_quaternion().to_np(), dtype=float).reshape(-1)[:4]
     rot_quat = quaternion_from_euler(0.0, 0.0, np.pi)
@@ -303,7 +304,7 @@ def _rotate_pose_180deg_z(target_pose):
         quat_y=float(new_quat[1]),
         quat_z=float(new_quat[2]),
         quat_w=float(new_quat[3]),
-        reference_frame=target_pose.frame_id,
+        reference_frame=target_pose.reference_frame,
     )
     return PoseStamped.from_spatial_type(rotated_pose)
 

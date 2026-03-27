@@ -8,7 +8,7 @@ if __name__ == "__main__":
     session.commit()
     run_thesis_demo(
         "wipe",
-        robot_name="stretch",
+        robot_name="tiago",
         environment_name="apartment",
     )
     run_thesis_demo("cut", robot_name="pr2")
