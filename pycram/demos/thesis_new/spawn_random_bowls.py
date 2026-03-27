@@ -2,7 +2,6 @@ import os
 import numpy as np
 
 from pycram.datastructures.dataclasses import Context
-from pycram.datastructures.pose import PoseStamped
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.geometry import Color
@@ -260,9 +259,8 @@ def _sample_random_bowl_layout(world, seed=None, spawn_bowls=True):
                         candidate_world_pose = world.transform(
                             candidate_local_pose, world.root
                         )
-                        target_pose = PoseStamped.from_spatial_type(
-                            candidate_world_pose
-                        )
+                        target_pose = candidate_world_pose
+
                         if not _is_pose_reachable_for_cutting(
                             spawn_robot, world, target_pose
                         ):

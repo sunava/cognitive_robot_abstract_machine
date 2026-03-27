@@ -8,7 +8,10 @@ from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.robots.stretch import Stretch
 from semantic_digital_twin.robots.tiago import Tiago
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
-from semantic_digital_twin.world_description.connections import DiffDrive, OmniDrive
+from semantic_digital_twin.world_description.connections import (
+    DifferentialDrive,
+    OmniDrive,
+)
 from semantic_digital_twin.world_description.utils import world_with_urdf_factory
 
 THESIS_NEW_DEFAULT_ROBOT = "pr2"
@@ -38,13 +41,13 @@ ROBOT_SPECS = {
     "stretch": (
         os.path.join(RESOURCES_DIR, "robots", "stretch_description.urdf"),
         Stretch,
-        DiffDrive,
+        DifferentialDrive,
         DEFAULT_ROBOT_START_POSE,
     ),
     "tiago": (
         "package://iai_tiago_description/urdf/tiago_from_our_robot.urdf",
         Tiago,
-        DiffDrive,
+        DifferentialDrive,
         DEFAULT_ROBOT_START_POSE,
     ),
     "armar7": (

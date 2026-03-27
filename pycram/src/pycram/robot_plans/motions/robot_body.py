@@ -1,13 +1,14 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from geometry_msgs.msg import Vector3Stamped, PoseStamped
+
 from giskardpy.motion_statechart.goals.collision_avoidance import (
     ExternalCollisionAvoidance,
 )
 from giskardpy.motion_statechart.goals.templates import Parallel
 from giskardpy.motion_statechart.tasks.joint_tasks import JointPositionList, JointState
 from giskardpy.motion_statechart.tasks.pointing import Pointing
-from pycram.datastructures.pose import Vector3Stamped, PoseStamped
 from pycram.robot_plans.motions.base import BaseMotion
 from semantic_digital_twin.robots.abstract_robot import Camera
 

@@ -7,8 +7,8 @@ if __name__ == "__main__":
     Base.metadata.create_all(session.bind)
     session.commit()
     run_thesis_demo(
-        "wipe",
-        robot_name="tiago",
+        "cut",
+        robot_name="pr2",
         environment_name="apartment",
     )
     run_thesis_demo("cut", robot_name="pr2")

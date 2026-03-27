@@ -6,7 +6,6 @@ import rclpy
 import pycram
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
-from pycram.datastructures.pose import PoseStamped
 from pycram.designators.location_designator import CostmapLocation
 from pycram.language import SequentialPlan
 from pycram.motion_executor import (
@@ -35,6 +34,7 @@ from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
 from semantic_digital_twin.datastructures.definitions import TorsoState, GripperState
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Whisk
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
+from semantic_digital_twin.spatial_types.spatial_types import Pose, Point3
 from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.world_description.geometry import Color
 
@@ -133,7 +133,7 @@ def _try_mix(context, bowl, arm, tool):
         SequentialPlan(
             context,
             NavigateActionDescription(
-                PoseStamped.from_list([20, 20, 0], frame=context.world.root),
+                Pose(position=Point3(20, 20, 0), reference_frame=context.world.root),
                 teleport=True,
             ),
         ).perform()

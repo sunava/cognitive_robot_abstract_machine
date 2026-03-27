@@ -7,7 +7,7 @@ from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import (
     OmniDrive,
-    DiffDrive,
+    DifferentialDrive,
     Connection6DoF,
 )
 from semantic_digital_twin.world_description.world_entity import Body
@@ -16,7 +16,7 @@ from semantic_digital_twin.world_description.world_entity import Body
 def world_with_urdf_factory(
     urdf_path: str,
     robot_semantic_annotation: Type[AbstractRobot] | None,
-    drive_connection_type: Type[OmniDrive | DiffDrive],
+    drive_connection_type: Type[OmniDrive | DifferentialDrive],
     robot_starting_pose: HomogeneousTransformationMatrix | None = None,
     urdf_path_resolver: PathResolver | None = None,
 ):

@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
-from pycram.datastructures.pose import PoseStamped
 from pycram.designators.location_designator import CostmapLocation
 from pycram.language import SequentialPlan
 from pycram.motion_executor import simulated_robot
@@ -20,7 +19,9 @@ from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.robots.armar7 import Armar7
 from semantic_digital_twin.spatial_types import (
     HomogeneousTransformationMatrix,
+    Point3,
 )
+from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.utils import get_path_to_project_root
 from semantic_digital_twin.world_description.connections import (
     OmniDrive,
@@ -28,11 +29,10 @@ from semantic_digital_twin.world_description.connections import (
 from semantic_digital_twin.world_description.utils import world_with_urdf_factory
 import pycram
 
-
 # %% Environment Setup
-# environment_path = os.path.join("package://iai_apartment/urdf/apartment.urdf")
+environment_path = os.path.join("package://iai_apartment/urdf/apartment.urdf")
 # environment_path = os.path.join("package://iai_kit_mobile_lab/urdf/mobile_kitchen.urdf")
-environment_path = os.path.join("package://iai_kit_mobile_lab/urdf/R007.urdf")
+# environment_path = os.path.join("package://iai_kit_mobile_lab/urdf/R007.urdf")
 world = URDFParser.from_file(environment_path).parse()
 
 # %% Robot Setup
@@ -90,9 +90,7 @@ except ImportError:
 # %% Demo
 context = Context.from_world(world)
 armar7 = world.get_semantic_annotations_by_type(Armar7)[0]
-milk_place_pose = PoseStamped.from_list(
-    [2.2, 7.6, 0.865], [0, 0, 1, 0], frame=world.root
-)
+milk_place_pose = Pose(Point3(x=2.2, y=7.6, z=0.865), reference_frame=world.root)
 
 with simulated_robot:
     SequentialPlan(
@@ -100,9 +98,7 @@ with simulated_robot:
         ParkArmsActionDescription(Arms.BOTH),
         NavigateActionDescription(
             pickup_loc := CostmapLocation(
-                target=PoseStamped.from_spatial_type(
-                    world.get_body_by_name("milk.stl").global_pose
-                ),
+                target=world.get_body_by_name("milk.stl").global_pose,
                 reachable_arm=Arms.LEFT,
                 reachable_for=armar7,
             ),

@@ -6,7 +6,7 @@ from typing import Optional, Type, Tuple
 import krrood.symbolic_math.symbolic_math as sm
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import (
-    DiffDrive,
+    DifferentialDrive,
     OmniDrive,
 )
 from semantic_digital_twin.world_description.world_entity import Connection
@@ -51,7 +51,7 @@ class SetOdometry(MotionStatechartNode):
     If it is None and there is only one drive in the world, it will be used.
     """
     _odom_joints: Tuple[Type[Connection], ...] = field(
-        default=(OmniDrive, DiffDrive), init=False
+        default=(OmniDrive, DifferentialDrive), init=False
     )
 
     def _resolve_robot_drive(

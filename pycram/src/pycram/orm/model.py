@@ -9,10 +9,8 @@ from typing_extensions import Optional
 
 from pycram.datastructures.dataclasses import ExecutionData
 from pycram.datastructures.enums import TaskStatus
-from pycram.datastructures.pose import PyCramQuaternion
 from pycram.designator import DesignatorDescription
 from pycram.failures import PlanFailure
-from pycram.language import TryInOrderNode, ParallelNode, TryAllNode, CodeNode, MonitorNode, SequentialPlan
 from pycram.plan import (
     ActionDescriptionNode,
     MotionNode,
@@ -21,7 +19,8 @@ from pycram.plan import (
     DesignatorNode,
     Plan,
 )
-from pycram.robot_plans import ActionDescription, BaseMotion
+from pycram.robot_plans.actions.base import ActionDescription
+from pycram.robot_plans.motions.base import BaseMotion
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -31,21 +30,6 @@ from pycram.robot_plans import ActionDescription, BaseMotion
 #            Specify the columns(attributes) that are supposed to be tracked in the database.
 #            One attribute equals one column. Please refer to the ORMatic documentation for more information.
 # ----------------------------------------------------------------------------------------------------------------------
-
-
-@dataclass
-class PyCRAMQuaternionMapping(AlternativeMapping[PyCramQuaternion]):
-    x: float = 0
-    y: float = 0
-    z: float = 0
-    w: float = 1
-
-    @classmethod
-    def from_domain_object(cls, obj: T):
-        return cls(obj.x, obj.y, obj.z, obj.w)
-
-    def to_domain_object(self) -> T:
-        return PyCramQuaternion(self.x, self.y, self.z, self.w)
 
 
 @dataclass
@@ -113,12 +97,7 @@ class ActionDescriptionNodeMapping(
         )
 
     def to_domain_object(self) -> T:
-        return ActionDescriptionNode(
-            status=self.status,
-            start_time=self.start_time,
-            end_time=self.end_time,
-            reason=self.reason,
-        )
+        raise NotImplementedError()
 
 
 @dataclass
@@ -184,8 +163,7 @@ class PlanMapping(AlternativeMapping[Plan]):
         )
 
     def to_domain_object(self) -> T:
-        ...
-
+        raise NotImplementedError()
 
 
 #
@@ -204,13 +182,9 @@ class NumpyType(TypeDecorator):
 
     impl = types.LargeBinary(4 * 1024 * 1024 * 1024 - 1)  # 4 GB max
 
-    def process_bind_param(self, value: Optional[np.ndarray], dialect):
-        if value is None:
-            return None
+    def process_bind_param(self, value: np.ndarray, dialect):
         array = value.astype(np.float64)
         return array.tobytes()
 
     def process_result_value(self, value: impl, dialect) -> Optional[np.ndarray]:
-        if value is None:
-            return None
         return np.frombuffer(value, dtype=np.float64)

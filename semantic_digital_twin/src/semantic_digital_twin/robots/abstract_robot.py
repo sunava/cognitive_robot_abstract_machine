@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from abc import abstractmethod, ABC
+from collections import defaultdict
 from dataclasses import dataclass, field
 
 from typing_extensions import (
@@ -24,7 +25,7 @@ from semantic_digital_twin.spatial_types.spatial_types import (
 )
 from semantic_digital_twin.world_description.connections import (
     ActiveConnection,
-    DiffDrive,
+    DifferentialDrive,
     OmniDrive,
     ActiveConnection1DOF,
 )
@@ -570,8 +571,11 @@ class AbstractRobot(Agent, ABC):
     @abstractmethod
     def _setup_collision_rules(self): ...
 
-    @abstractmethod
-    def _setup_velocity_limits(self): ...
+    def _setup_velocity_limits(self):
+        vel_limits = defaultdict(
+            lambda: 1.0,
+        )
+        self.tighten_dof_velocity_limits_of_1dof_connections(new_limits=vel_limits)
 
     @abstractmethod
     def _setup_hardware_interfaces(self): ...
@@ -580,13 +584,13 @@ class AbstractRobot(Agent, ABC):
     def _setup_joint_states(self): ...
 
     @property
-    def drive(self) -> Optional[OmniDrive | DiffDrive]:
+    def drive(self) -> Optional[OmniDrive | DifferentialDrive]:
         """
         The connection which the robot uses for driving.
         """
         try:
             parent_connection = self.root.parent_connection
-            if isinstance(parent_connection, (OmniDrive, DiffDrive)):
+            if isinstance(parent_connection, (OmniDrive, DifferentialDrive)):
                 return parent_connection
         except AttributeError:
             pass

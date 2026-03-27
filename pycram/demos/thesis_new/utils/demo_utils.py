@@ -4,7 +4,6 @@ from rclpy.duration import Duration as RclpyDuration
 from rclpy.time import Time
 from visualization_msgs.msg import Marker
 from pycram.costmaps import OccupancyCostmap, RingCostmap
-from pycram.datastructures.pose import PoseStamped
 from pycram.datastructures.enums import Arms
 from pycram.failures import NavigationPoseUnreachable
 from semantic_digital_twin.adapters.ros.tf_publisher import TFPublisher
@@ -15,6 +14,7 @@ from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from semantic_digital_twin.robots.robot_mixins import SpecifiesLeftRightArm
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
+from semantic_digital_twin.spatial_types.spatial_types import Pose, Point3
 from semantic_digital_twin.world_description.connections import FixedConnection
 
 from demos.thesis_new.utils.experiment_logging import body_name
@@ -56,10 +56,15 @@ def build_navigation_costmaps(
     obstacle_clearance=None,
     number_of_samples=200,
 ):
-    ground_pose = PoseStamped.from_list(
-        [target_pose.position.x, target_pose.position.y, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-        frame=target_pose.frame_id,
+    # Navigation costmaps represent feasible base poses on the floor plane, so the
+    # map origin must not inherit the manipulated object's height.
+    ground_pose = Pose(
+        position=Point3(
+            target_pose.to_position().x,
+            target_pose.to_position().y,
+            0.0,
+        ),
+        reference_frame=target_pose.reference_frame,
     )
 
     if obstacle_clearance is None:

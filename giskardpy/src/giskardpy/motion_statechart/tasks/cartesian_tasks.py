@@ -18,6 +18,7 @@ from semantic_digital_twin.spatial_types import (
     RotationMatrix,
     HomogeneousTransformationMatrix,
 )
+from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.degree_of_freedom import PositionVariable
 from semantic_digital_twin.world_description.world_entity import (
     Body,
@@ -46,7 +47,7 @@ class CartesianTask(Task, ABC):
     """
     Base class for all cartesian tasks.
     Offers goal binding policy functionality to subclasses.
-    .. note:: make sure to call super().build(context) in subclasses, if you override it.
+    .. note:: make sure to call `super().build(context)` in subclasses, if you override it.
     """
 
     root_link: KinematicStructureEntity = field(kw_only=True)
@@ -142,7 +143,7 @@ class CartesianPosition(CartesianTask):
             frame_P_goal=root_P_goal,
             frame_P_current=root_P_current,
             reference_velocity=self.reference_velocity,
-            weight=self.weight,
+            quadratic_weight=self.weight,
         )
 
         # Success condition: distance below threshold
@@ -159,14 +160,26 @@ class CartesianPositionTrajectory(CartesianTask):
     .. warning:: the trajectory is assumed to be dense and smooth.
     """
 
-    default_reference_velocity: ClassVar[float] = 0.2
-
     goal_points: list[Point3] = field(kw_only=True)
     """Target 3D point to reach."""
     _goal_points_np: np.ndarray = field(init=False, repr=False)
     """Goal points in numpy format."""
+    maximum_skip_ahead: int | None = field(default=None, kw_only=True)
+    """
+    This limits how many points can be skipped in very dense trajectories.
+    Setting this number is required if your trajectory contains loops.
+    """
+
     threshold: float = field(default=0.01, kw_only=True)
-    """Distance threshold for goal achievement in meters."""
+    """
+    Distance threshold for goal achievement in meters.
+    """
+
+    look_ahead_distance: float = field(default=0.01, kw_only=True)
+    """
+    Distance from the current position to tracking target.
+    Increasing this value can increase the tracking velocity, but might reduce tracking accuracy.
+    """
 
     reference_velocity: Optional[float] = field(
         default_factory=lambda: CartesianPosition.default_reference_velocity,
@@ -223,20 +236,17 @@ class CartesianPositionTrajectory(CartesianTask):
             frame_P_goal=root_P_goal,
             frame_P_current=root_P_current,
             reference_velocity=self.reference_velocity,
-            weight=self.weight,
+            quadratic_weight=self.weight,
         )
 
-        final_point = self.root_T_goal_reference_frame @ self.goal_points[-1]
-
-        distance_to_goal = final_point.euclidean_distance(root_P_current)
-        artifacts.observation = distance_to_goal < self.threshold
-        self.compile_current_point_for_on_tick(context)
+        self.compile_current_point_on_tick(context)
         return artifacts
 
-    def compile_current_point_for_on_tick(self, context: MotionStatechartContext):
+    def compile_current_point_on_tick(self, context: MotionStatechartContext):
         """
         Computing the current point relative to the goal reference frame is expensive, this method turns it into
         a compiled expression.
+        :param context: the current context, needed for the world reference.
         """
         root_T_tip = context.world.compose_forward_kinematics_expression(
             self.root_link, self.tip_link
@@ -262,10 +272,14 @@ class CartesianPositionTrajectory(CartesianTask):
     def _update_trajectory_index(self, goal_reference_frame_P_tip_np: np.ndarray):
         """
         Search for the closest point in the trajectory to the current position, without going backwards.
+        :param goal_reference_frame_P_tip_np: the current position in the goal reference frame as a 3d numpy array.
         """
-        remaining_points = self._goal_points_np[
-            self.current_index : self.current_index + 10
-        ]
+        if self.maximum_skip_ahead is None:
+            remaining_points = self._goal_points_np[self.current_index :]
+        else:
+            remaining_points = self._goal_points_np[
+                self.current_index : self.current_index + self.maximum_skip_ahead
+            ]
         distances = np.linalg.norm(
             remaining_points - goal_reference_frame_P_tip_np, axis=1
         )
@@ -275,6 +289,11 @@ class CartesianPositionTrajectory(CartesianTask):
     def _compute_target_point(
         self, goal_reference_frame_P_tip_np: np.ndarray
     ) -> np.ndarray:
+        """
+        Computes a target point at a fixed distance away from the current position projected onto the trajectory.
+        This ensures a constant velocity and pulls the tip onto the trajectory.
+        :param goal_reference_frame_P_tip_np: the current position in the goal reference frame as a 3d numpy array.
+        """
         if self.current_index >= len(self._goal_points_np) - 1:
             # If we've reached the end of the trajectory, return the last point
             return self._goal_points_np[-1]
@@ -301,11 +320,14 @@ class CartesianPositionTrajectory(CartesianTask):
         # Aim for a point 'threshold' distance away from the PROJECTED point
         # This ensures that the target point is always 'threshold' away along the path,
         # which creates a vector that pulls the robot back to the path AND forward.
-        return p_projected + unit_tangent * self.threshold
+        return p_projected + unit_tangent * self.look_ahead_distance
 
     def on_tick(
         self, context: MotionStatechartContext
     ) -> Optional[ObservationStateValues]:
+        """
+        Update the target point on the trajectory and return true if we have reached the end of the trajectory.
+        """
         goal_reference_frame_P_tip_np = (
             self._compiled_goal_reference_frame_P_tip.evaluate()
         )
@@ -314,12 +336,20 @@ class CartesianPositionTrajectory(CartesianTask):
         context.float_variable_data.set_value(
             self.goal_reference_frame_P_current_target_point, target_point
         )
+        if (
+            np.linalg.norm(target_point - goal_reference_frame_P_tip_np)
+            < self.threshold
+            and self.current_index == len(self._goal_points_np) - 1
+        ):
+            return ObservationStateValues.TRUE
+        return ObservationStateValues.FALSE
 
     def _init_goal_reference_frame_P_current_target_point(
         self, float_variable_data: FloatVariableData
     ):
         """
         Initialize the symbolic expression representing the current target point in the goal reference frame.
+        :param float_variable_data: The FloatVariableData instance to register the expression with.
         """
         self.goal_reference_frame_P_current_target_point = Point3.create_with_variables(
             "goal_reference_frame_P_current_target_point"
@@ -422,7 +452,7 @@ class CartesianPositionStraight(CartesianTask):
                 name=name,
                 reference_velocity=self.reference_velocity,
                 equality_bound=bound,
-                weight=DefaultWeights.WEIGHT_ABOVE_CA * weight_mult,
+                quadratic_weight=DefaultWeights.WEIGHT_ABOVE_CA * weight_mult,
                 task_expression=expr_p[i],
             )
 
@@ -480,7 +510,7 @@ class CartesianOrientation(CartesianTask):
             frame_R_current=root_R_current,
             frame_R_goal=root_R_goal,
             reference_velocity=self.reference_velocity,
-            weight=self.weight,
+            quadratic_weight=self.weight,
         )
 
         # Success condition: rotation error below threshold
@@ -495,7 +525,7 @@ class CartesianPose(CartesianTask):
     This goal will use the kinematic chain between root and tip link to move tip_link into the 6D goal_pose.
     """
 
-    goal_pose: HomogeneousTransformationMatrix = field(kw_only=True)
+    goal_pose: Pose = field(kw_only=True)
     """The goal pose."""
 
     reference_linear_velocity: float = field(
@@ -523,12 +553,16 @@ class CartesianPose(CartesianTask):
             self.root_link = context.world.root
 
         # Extract position and orientation from goal pose
-        goal_orientation = self.goal_pose.to_rotation_matrix()
-        goal_point = self.goal_pose.to_position()
+        goal_reference_frame_R_goal_orientation = self.goal_pose.to_rotation_matrix()
+        goal_reference_frame_P_goal_position = self.goal_pose.to_position()
 
         # Transform goal into root frame
-        root_P_goal = self.root_T_goal_reference_frame @ goal_point
-        root_R_goal = self.root_T_goal_reference_frame @ goal_orientation
+        root_P_goal = (
+            self.root_T_goal_reference_frame @ goal_reference_frame_P_goal_position
+        )
+        root_R_goal = (
+            self.root_T_goal_reference_frame @ goal_reference_frame_R_goal_orientation
+        )
 
         # Get current tip pose in root frame
         root_T_current = context.world.compose_forward_kinematics_expression(
@@ -542,7 +576,7 @@ class CartesianPose(CartesianTask):
             frame_P_goal=root_P_goal,
             frame_P_current=root_P_current,
             reference_velocity=self.reference_linear_velocity,
-            weight=self.weight,
+            quadratic_weight=self.weight,
         )
 
         distance_to_goal = root_P_goal.euclidean_distance(root_P_current)
@@ -556,7 +590,7 @@ class CartesianPose(CartesianTask):
             frame_R_current=root_R_current,
             frame_R_goal=root_R_goal,
             reference_velocity=self.reference_angular_velocity,
-            weight=self.weight,
+            quadratic_weight=self.weight,
         )
 
         rotation_error = root_R_current.rotational_error(root_R_goal)
@@ -616,7 +650,7 @@ class CartesianPositionVelocityLimit(Task):
         artifacts.constraints.add_translational_velocity_limit(
             frame_P_current=root_P_tip,
             max_velocity=self.max_linear_velocity,
-            weight=self.weight,
+            quadratic_weight=self.weight,
         )
 
         position_variables: List[PositionVariable] = root_P_tip.free_variables()
@@ -653,7 +687,7 @@ class CartesianRotationVelocityLimit(Task):
     """Root link of the kinematic chain. Defines the reference frame from which the tip's motion is measured."""
     tip_link: KinematicStructureEntity = field(kw_only=True)
     """Tip link of the kinematic chain. The translational velocity of this link (expressed in the root link frame) is constrained."""
-    max_angular_velocity: float = field(default=0.5, kw_only=True)
+    max_angular_velocity: float = field(default=0.4, kw_only=True)
     """Maximum allowed angular speed. Interpreted in radians per second (rad/s).
     The enforcement ensures the magnitude of the instantaneous
     rotation rate does not exceed this threshold."""
@@ -672,7 +706,7 @@ class CartesianRotationVelocityLimit(Task):
         artifacts.constraints.add_rotational_velocity_limit(
             frame_R_current=root_R_tip,
             max_velocity=self.max_angular_velocity,
-            weight=self.weight,
+            quadratic_weight=self.weight,
         )
 
         _, angle = root_R_tip.to_axis_angle()
@@ -709,7 +743,7 @@ class CartesianVelocityLimit(Parallel):
     """Maximum allowed linear speed of the tip in meters per second (m/s).
     Default: 0.1 m/s. The enforcement ensures the Euclidean norm of the
     tip-frame translational velocity does not exceed this value."""
-    max_angular_velocity: float = field(default=0.5, kw_only=True)
+    max_angular_velocity: float = field(default=0.4, kw_only=True)
     """Maximum allowed angular speed. Interpreted in radians per second (rad/s).
     Default: 0.5 rad/s. The enforcement ensures the magnitude of the instantaneous
     rotation rate does not exceed this threshold."""

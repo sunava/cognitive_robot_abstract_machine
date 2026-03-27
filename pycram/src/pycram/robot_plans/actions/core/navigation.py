@@ -6,17 +6,18 @@ from datetime import timedelta
 import numpy as np
 from typing_extensions import Union, Optional, Type, Any, Iterable
 
+from pycram.designators.location_designator import CostmapLocation
+from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.robots.abstract_robot import Camera
 from pycram.robot_plans.actions.base import ActionDescription
 from pycram.robot_plans.motions.robot_body import LookingMotion
 from pycram.robot_plans.motions.navigation import MoveMotion
 from pycram.config.action_conf import ActionConfig
 from pycram.datastructures.partial_designator import PartialDesignator
-from pycram.datastructures.pose import PoseStamped
-from pycram.failures import LookAtGoalNotReached
 from pycram.failures import NavigationGoalNotReachedError
 from pycram.language import SequentialPlan
 from pycram.validation.error_checkers import PoseErrorChecker
+from semantic_digital_twin.world import World
 
 
 @dataclass
@@ -25,9 +26,14 @@ class NavigateAction(ActionDescription):
     Navigates the Robot to a position.
     """
 
-    target_location: PoseStamped
+    target_location: Pose
     """
     Location to which the robot should be navigated
+    """
+
+    keep_joint_states: bool = ActionConfig.navigate_keep_joint_states
+    """
+    Keep the joint states of the robot the same during the navigation.
     """
 
     teleport: bool = False
@@ -36,20 +42,42 @@ class NavigateAction(ActionDescription):
     """
 
     def execute(self) -> None:
-        print(f"Executing: {self.__class__.__name__}")
+        if isinstance(self.target_location, CostmapLocation):
+            self.target_location.plan_node = self.plan_node
+            # Tries to find a pick-up position for the robot that uses the given arm
+            self.target_location = self.target_location.resolve()
+
+            print("Navigation through costmap:", str(self.target_location.to_np()))
+
         return SequentialPlan(
-            self.context, MoveMotion(self.target_location, teleport=self.teleport)
+            self.context,
+            MoveMotion(
+                self.target_location, self.keep_joint_states, teleport=self.teleport
+            ),
         ).perform()
+
+    def validate(
+        self, result: Optional[Any] = None, max_wait_time: Optional[timedelta] = None
+    ):
+        pose_validator = PoseErrorChecker(World.conf.get_pose_tolerance())
+        if not pose_validator.is_error_acceptable(
+            World.robot.pose, self.target_location
+        ):
+            raise NavigationGoalNotReachedError(World.robot.pose, self.target_location)
 
     @classmethod
     def description(
         cls,
-        target_location: Union[Iterable[PoseStamped], PoseStamped],
+        target_location: Union[Iterable[Pose], Pose],
+        keep_joint_states: Union[
+            Iterable[bool], bool
+        ] = ActionConfig.navigate_keep_joint_states,
         teleport: Union[Iterable[bool], bool] = False,
     ) -> PartialDesignator[NavigateAction]:
         return PartialDesignator[NavigateAction](
             NavigateAction,
             target_location=target_location,
+            keep_joint_states=keep_joint_states,
             teleport=teleport,
         )
 
@@ -60,7 +88,7 @@ class LookAtAction(ActionDescription):
     Lets the robot look at a position.
     """
 
-    target: PoseStamped
+    target: Pose
     """
     Position at which the robot should look, given as 6D pose
     """
@@ -88,7 +116,7 @@ class LookAtAction(ActionDescription):
     @classmethod
     def description(
         cls,
-        target: Union[Iterable[PoseStamped], PoseStamped],
+        target: Union[Iterable[Pose], Pose],
         camera: Optional[Union[Iterable[Camera], Camera]] = None,
     ) -> PartialDesignator[LookAtAction]:
         return PartialDesignator[LookAtAction](

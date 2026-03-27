@@ -34,7 +34,6 @@ from demos.thesis_new.utils.experiment_logging import (
 )
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
-from pycram.datastructures.pose import PoseStamped
 from pycram.designators.location_designator import CostmapLocation
 from pycram.language import SequentialPlan
 from pycram.motion_executor import (
@@ -54,7 +53,8 @@ from pycram.robot_plans import (
 from pycram.tf_transformations import quaternion_from_euler, quaternion_multiply
 from semantic_digital_twin.datastructures.definitions import TorsoState, GripperState
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Sponge
-from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
+from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix, Point3
+from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.world_description.geometry import Color
 
@@ -234,8 +234,11 @@ def _try_wipe(context, target_pose, arm, tool):
         SequentialPlan(
             context,
             NavigateActionDescription(
-                PoseStamped.from_list([20, 20, 0], frame=context.world.root),
-                teleport=True,
+                Pose(
+                    position=Point3(20, 20, 0),
+                    reference_frame=context.world.root,
+                    teleport=True,
+                )
             ),
         ).perform()
 

@@ -40,6 +40,8 @@ class Pointing(CartesianTask):
     def build(self, context: MotionStatechartContext) -> NodeArtifacts:
         artifacts = super().build(context)
 
+        goal_reference_frame_P_goal_point = self.goal_point
+
         tip_V_pointing_axis = context.world.transform(
             target_frame=self.tip_link, spatial_object=self.pointing_axis
         )
@@ -49,7 +51,9 @@ class Pointing(CartesianTask):
             self.root_link, self.tip_link
         )
 
-        root_P_goal_point = self.root_T_goal_reference_frame @ self.goal_point
+        root_P_goal_point = (
+            self.root_T_goal_reference_frame @ goal_reference_frame_P_goal_point
+        )
 
         root_V_goal_axis = root_P_goal_point - root_T_tip.to_position()
         root_V_goal_axis.scale(1)
@@ -61,7 +65,7 @@ class Pointing(CartesianTask):
             frame_V_current=root_V_pointing_axis,
             frame_V_goal=root_V_goal_axis,
             reference_velocity=self.max_velocity,
-            weight=self.weight,
+            quadratic_weight=self.weight,
         )
         artifacts.observation = (
             root_V_pointing_axis.angle_between(root_V_goal_axis) <= self.threshold
@@ -122,7 +126,7 @@ class PointingCone(CartesianTask):
             frame_V_current=root_V_pointing_axis,
             frame_V_goal=root_V_goal_axis_proj,
             reference_velocity=self.max_velocity,
-            weight=self.weight,
+            quadratic_weight=self.weight,
         )
         artifacts.observation = (
             root_V_pointing_axis.angle_between(root_V_goal_axis_proj) <= self.threshold

@@ -3,9 +3,9 @@ from __future__ import annotations
 from abc import ABC
 from collections import defaultdict
 from dataclasses import dataclass, field
-from itertools import combinations, product
+from itertools import combinations
+from itertools import product
 from typing import Dict, Any
-from itertools import combinations, combinations_with_replacement
 
 import numpy as np
 from lxml import etree
@@ -13,23 +13,21 @@ from typing_extensions import (
     List,
     TYPE_CHECKING,
     Self,
-    Iterable,
     Callable,
     ClassVar,
 )
 
+from krrood.adapters.json_serializer import SubclassJSONSerializer, to_json, from_json
+from semantic_digital_twin.adapters.world_entity_kwargs_tracker import (
+    WorldEntityWithIDKwargsTracker,
+)
 from semantic_digital_twin.collision_checking.collision_detector import (
-    ClosestPoints,
     CollisionCheckingResult,
 )
-from krrood.adapters.json_serializer import SubclassJSONSerializer, to_json, from_json
 from semantic_digital_twin.collision_checking.collision_matrix import (
     CollisionRule,
     CollisionMatrix,
     CollisionCheck,
-)
-from semantic_digital_twin.adapters.world_entity_kwargs_tracker import (
-    WorldEntityWithIDKwargsTracker,
 )
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 

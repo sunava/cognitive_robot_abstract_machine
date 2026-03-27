@@ -14,7 +14,7 @@ from krrood.symbolic_math.exceptions import (
 from krrood.symbolic_math.symbolic_math import FloatVariable, SymbolicMathType
 
 
-hidden_index_name = "__float_variable_index__"
+hidden_index_name = "__FLOAT_VARIABLE_INDEX__"
 
 
 @dataclass

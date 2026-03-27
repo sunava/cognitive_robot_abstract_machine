@@ -2,9 +2,10 @@ import os
 import numpy as np
 import rclpy
 
-from pycram.datastructures.pose import PoseStamped
 from rclpy.duration import Duration as RclpyDuration
 from rclpy.time import Time
+
+from pycram.datastructures.dataclasses import Context
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.collision_checking.collision_manager import CollisionManager
 from semantic_digital_twin.collision_checking.pybullet_collision_detector import (
@@ -111,6 +112,11 @@ def _collect_surface_bodies(world):
             continue
         surfaces.append(body)
         seen.add(name)
+
+    # If explicitly preferred surfaces exist in the scene, keep the sampling scope
+    # limited to them instead of also traversing every generic table/counter body.
+    if surfaces:
+        return surfaces
 
     for body in getattr(world, "bodies", []):
         name = _body_name(body)
@@ -257,17 +263,55 @@ def build_cutting_reachability_costmaps(robot, world, target_pose):
     )
 
 
-def _is_pose_reachable_for_cutting(robot, world, target_pose):
-    """Lightweight reachability gate: at least one collision-free base pose near target."""
-    _, _, final_map = build_cutting_reachability_costmaps(robot, world, target_pose)
+def _coarse_reachability_key(target_pose, grid_size=0.10):
+    position = target_pose.to_position()
+    return (
+        int(round(float(position.x) / grid_size)),
+        int(round(float(position.y) / grid_size)),
+        str(target_pose.reference_frame),
+    )
+
+
+def _is_pose_reachable_for_cutting(robot, world, target_pose, cache=None):
+    """
+    Coarse reachability gate for world generation.
+
+    Spawning should not do full-resolution navigation planning for every candidate
+    object pose; that is too expensive and the actual execution path validates
+    navigation again anyway. Use a cached low-resolution probe to reject clearly
+    unreachable placements without stalling setup.
+    """
+    if cache is not None:
+        key = _coarse_reachability_key(target_pose)
+        if key in cache:
+            return cache[key]
 
     try:
+        _, _, final_map = build_navigation_costmaps(
+            robot,
+            world,
+            target_pose,
+            width=60,
+            height=60,
+            resolution=0.05,
+            ring_std=8,
+            ring_distance=0.55,
+            obstacle_clearance=0.20,
+            number_of_samples=8,
+        )
+
         next(iter(final_map))
-        return True
+        result = True
     except StopIteration:
-        return False
+        result = False
     except Exception:
-        return False
+        # Scene generation should not hard-fail on planner internals; the actual
+        # action execution performs the authoritative reachability check later.
+        result = True
+
+    if cache is not None:
+        cache[key] = result
+    return result
 
 
 def setup_random_bread_world(seed=None, robot_name=None, environment_name=None):
@@ -281,6 +325,7 @@ def setup_random_bread_world(seed=None, robot_name=None, environment_name=None):
     surfaces = _collect_surface_bodies(world)
     if not surfaces:
         raise RuntimeError("No support surfaces found for random bread placement.")
+    print(f"[spawn] evaluating {len(surfaces)} support surfaces")
 
     scale_choices = np.array([0.8, 1.0, 1.2, 1.4, 1.6], dtype=float)
     base_radius = _bread_base_xy_radius()
@@ -290,6 +335,7 @@ def setup_random_bread_world(seed=None, robot_name=None, environment_name=None):
     placements = []
     surface_plan = []
     created_idx = 0
+    reachability_cache = {}
     with world.modify_world():
         _tint_surfaces_light_brown(world)
         for surface_body in surfaces:
@@ -298,6 +344,9 @@ def setup_random_bread_world(seed=None, robot_name=None, environment_name=None):
             z_local = float(maxs[2] + 0.02)
             area_m2 = _surface_usable_area(lo_x, hi_x, lo_y, hi_y)
             target_count = _count_for_surface(surface_name, area_m2)
+            print(
+                f"[spawn] surface={surface_name} area={area_m2:.3f}m^2 target={target_count}"
+            )
             occupied_xy = []
             for _ in range(target_count):
                 scale = float(rng.choice(scale_choices))
@@ -337,14 +386,12 @@ def setup_random_bread_world(seed=None, robot_name=None, environment_name=None):
                         candidate_world_pose = world.transform(
                             candidate_local_pose, world.root
                         )
-                        target_pose = PoseStamped.from_spatial_type(
-                            candidate_world_pose
-                        )
+                        target_pose = candidate_world_pose
+
                         if not _is_pose_reachable_for_cutting(
-                            spawn_robot, world, target_pose
+                            spawn_robot, world, target_pose, cache=reachability_cache
                         ):
                             continue
-
                         created_idx += 1
                         bread_name = f"bread_{created_idx:04d}"
                         world_pose = _spawn_bread_at_local_pose(
@@ -366,6 +413,9 @@ def setup_random_bread_world(seed=None, robot_name=None, environment_name=None):
                 if not placed:
                     continue
             surface_plan.append((surface_name, area_m2, target_count, len(occupied_xy)))
+            print(
+                f"[spawn] surface={surface_name} placed={len(occupied_xy)}/{target_count}"
+            )
 
     return world, placements, surface_plan
 

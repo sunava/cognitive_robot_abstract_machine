@@ -1,10 +1,8 @@
 import numpy as np
 
 from geometry_msgs.msg import Point
-from pycram.datastructures.pose import TransformStamped
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
-
 
 _MARKER_GROUP_COUNTER = 0
 
@@ -66,6 +64,98 @@ def _heat_color(value, alpha=0.85):
         return _color(0.10 + 0.90 * t, 0.95, 0.40 - 0.30 * t, alpha)
     t = (v - 0.75) / 0.25
     return _color(1.00, 0.95 - 0.70 * t, 0.10, alpha)
+
+
+def _quaternion_to_rotation_matrix(quaternion):
+    """Convert an xyzw quaternion to a 3x3 rotation matrix."""
+    x, y, z, w = np.asarray(quaternion, dtype=float)
+    xx, yy, zz = x * x, y * y, z * z
+    xy, xz, yz = x * y, x * z, y * z
+    wx, wy, wz = w * x, w * y, w * z
+    return np.array(
+        [
+            [1.0 - 2.0 * (yy + zz), 2.0 * (xy - wz), 2.0 * (xz + wy)],
+            [2.0 * (xy + wz), 1.0 - 2.0 * (xx + zz), 2.0 * (yz - wx)],
+            [2.0 * (xz - wy), 2.0 * (yz + wx), 1.0 - 2.0 * (xx + yy)],
+        ],
+        dtype=float,
+    )
+
+
+def _transform_point(position, orientation, local_point):
+    """Apply a pose defined by position and quaternion to a local 3D point."""
+    position_vec = np.asarray(position, dtype=float).reshape(-1)
+    if position_vec.size == 4:
+        position_vec = position_vec[:3]
+    elif position_vec.size != 3:
+        raise ValueError(
+            f"position must contain 3 values (xyz) or 4 homogeneous values, got {position_vec.size}"
+        )
+
+    local_point_vec = np.asarray(local_point, dtype=float).reshape(-1)
+    if local_point_vec.size != 3:
+        raise ValueError(
+            f"local_point must contain exactly 3 values, got {local_point_vec.size}"
+        )
+
+    world_point = position_vec + _quaternion_to_rotation_matrix(orientation) @ local_point_vec
+    point = Point()
+    point.x = float(world_point[0])
+    point.y = float(world_point[1])
+    point.z = float(world_point[2])
+    return point
+
+
+def _pose_to_position_and_orientation_lists(pose):
+    """Extract xyz and xyzw lists from pose-like objects with either old or new APIs."""
+    if pose is None:
+        raise ValueError("pose must not be None")
+
+    position = getattr(pose, "position", None)
+    if position is None and hasattr(pose, "to_position"):
+        position = pose.to_position()
+
+    orientation = getattr(pose, "orientation", None)
+    if orientation is None and hasattr(pose, "to_quaternion"):
+        orientation = pose.to_quaternion()
+
+    if position is None or orientation is None:
+        raise AttributeError(
+            "pose must provide position/orientation attributes or "
+            "to_position()/to_quaternion() methods"
+        )
+    if hasattr(position, "to_list"):
+        position_values = position.to_list()
+    else:
+        position_values = [
+            getattr(position, axis) for axis in ("x", "y", "z") if hasattr(position, axis)
+        ]
+
+    if hasattr(orientation, "to_list"):
+        orientation_values = orientation.to_list()
+    else:
+        orientation_values = [
+            getattr(orientation, axis)
+            for axis in ("x", "y", "z", "w")
+            if hasattr(orientation, axis)
+        ]
+
+    position_values = np.asarray(position_values, dtype=float).reshape(-1)
+    orientation_values = np.asarray(orientation_values, dtype=float).reshape(-1)
+
+    if position_values.size == 4:
+        position_values = position_values[:3]
+    elif position_values.size != 3:
+        raise ValueError(
+            f"pose position must contain 3 values (xyz) or 4 homogeneous values, got {position_values.size}"
+        )
+
+    if orientation_values.size != 4:
+        raise ValueError(
+            f"pose orientation must contain 4 quaternion values (xyzw), got {orientation_values.size}"
+        )
+
+    return position_values.tolist(), orientation_values.tolist()
 
 
 def _next_marker_group(prefix="rviz"):
@@ -282,17 +372,16 @@ class CostmapHeatmapRviz:
         v_max = float(np.max(values))
         denom = v_max - v_min
 
-        origin_transform = TransformStamped.from_list(
-            self.costmap.origin.position.to_list(),
-            self.costmap.origin.orientation.to_list(),
+        origin_position, origin_orientation = _pose_to_position_and_orientation_lists(
+            self.costmap.origin
         )
-        corner_transform = origin_transform * TransformStamped.from_list(
+        corner_offset = np.array(
             [
                 -self.costmap.height * self.costmap.resolution / 2.0,
                 -self.costmap.width * self.costmap.resolution / 2.0,
                 self.z_offset,
             ],
-            [0.0, 0.0, 0.0, 1.0],
+            dtype=float,
         )
 
         points = []
@@ -304,19 +393,17 @@ class CostmapHeatmapRviz:
             if normalized < self.min_normalized_value:
                 continue
 
-            cell_transform = corner_transform * TransformStamped.from_list(
+            local_point = corner_offset + np.array(
                 [
                     (float(row) + 0.5) * self.costmap.resolution,
                     (float(col) + 0.5) * self.costmap.resolution,
                     normalized * self.z_scale,
                 ],
-                [0.0, 0.0, 0.0, 1.0],
+                dtype=float,
             )
-            point = Point()
-            point.x = float(cell_transform.translation.x)
-            point.y = float(cell_transform.translation.y)
-            point.z = float(cell_transform.translation.z)
-            points.append(point)
+            points.append(
+                _transform_point(origin_position, origin_orientation, local_point)
+            )
 
             colors.append(_heat_color(normalized, alpha=self.alpha))
 

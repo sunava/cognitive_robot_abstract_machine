@@ -1,13 +1,14 @@
 import logging
 from copy import deepcopy
 from dataclasses import dataclass, field
+from typing import Optional, List, Union, Iterator, Iterable, Tuple
 
 import numpy as np
+import rclpy
 import rustworkx as rx
 from box import Box
 from scipy.spatial import ConvexHull
 from sortedcontainers import SortedSet
-from typing_extensions import List, Union, Iterable, Optional, Iterator, Tuple
 
 from giskardpy.executor import Executor
 from giskardpy.motion_statechart.context import MotionStatechartContext
@@ -34,33 +35,6 @@ from probabilistic_model.probabilistic_circuit.rx.probabilistic_circuit import (
     ProbabilisticCircuit,
     ProductUnit,
 )
-from random_events.interval import closed
-from random_events.polytope import Polytope, NoOptimalSolutionError
-from random_events.product_algebra import Event, SimpleEvent
-from random_events.variable import Continuous
-from semantic_digital_twin.adapters.ros.tf_publisher import TFPublisher
-from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
-    VizMarkerPublisher,
-)
-from semantic_digital_twin.collision_checking.collision_rules import (
-    AvoidExternalCollisions,
-)
-from semantic_digital_twin.datastructures.variables import SpatialVariables
-from semantic_digital_twin.robots.abstract_robot import AbstractRobot
-from semantic_digital_twin.spatial_types import Point3
-from semantic_digital_twin.spatial_types.spatial_types import (
-    HomogeneousTransformationMatrix,
-)
-from semantic_digital_twin.world import World
-from semantic_digital_twin.world_description.connections import FixedConnection
-from semantic_digital_twin.world_description.geometry import BoundingBox
-from semantic_digital_twin.world_description.graph_of_convex_sets import (
-    GraphOfConvexSets,
-)
-from semantic_digital_twin.world_description.shape_collection import (
-    BoundingBoxCollection,
-)
-from semantic_digital_twin.world_description.world_entity import Body
 from pycram.config.action_conf import ActionConfig
 from pycram.costmaps import (
     OccupancyCostmap,
@@ -77,9 +51,8 @@ from pycram.datastructures.enums import (
     ApproachDirection,
     VerticalAlignment,
 )
-from pycram.datastructures.grasp import GraspDescription
+from pycram.datastructures.grasp import GraspDescription, GraspPose
 from pycram.datastructures.partial_designator import PartialDesignator
-from pycram.datastructures.pose import PoseStamped, GraspPose, PyCramVector3
 from pycram.designator import LocationDesignatorDescription
 from pycram.failures import RobotInCollision
 from pycram.pose_validator import (
@@ -89,6 +62,34 @@ from pycram.pose_validator import (
 )
 from pycram.utils import link_pose_for_joint_config
 from pycram.view_manager import ViewManager
+from random_events.interval import closed
+from random_events.polytope import Polytope, NoOptimalSolutionError
+from random_events.product_algebra import Event, SimpleEvent
+from random_events.variable import Continuous
+
+from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
+    VizMarkerPublisher,
+)
+from semantic_digital_twin.collision_checking.collision_rules import (
+    AvoidExternalCollisions,
+)
+from semantic_digital_twin.datastructures.variables import SpatialVariables
+from semantic_digital_twin.robots.abstract_robot import AbstractRobot
+from semantic_digital_twin.spatial_types import Point3, Vector3, Quaternion
+from semantic_digital_twin.spatial_types.spatial_types import (
+    HomogeneousTransformationMatrix,
+    Pose,
+)
+from semantic_digital_twin.world import World
+from semantic_digital_twin.world_description.connections import FixedConnection
+from semantic_digital_twin.world_description.geometry import BoundingBox
+from semantic_digital_twin.world_description.graph_of_convex_sets import (
+    GraphOfConvexSets,
+)
+from semantic_digital_twin.world_description.shape_collection import (
+    BoundingBoxCollection,
+)
+from semantic_digital_twin.world_description.world_entity import Body
 
 logger = logging.getLogger("pycram")
 
@@ -98,16 +99,16 @@ class Location(LocationDesignatorDescription):
     Default location designator which only wraps a pose.
     """
 
-    def __init__(self, pose: PoseStamped):
+    def __init__(self, pose: Pose):
         """
         Basic location designator that represents a single pose.
 
         :param pose: The pose that should be represented by this location designator
         """
         super().__init__()
-        self.pose: PoseStamped = pose
+        self.pose: Pose = pose
 
-    def ground(self) -> PoseStamped:
+    def ground(self) -> Pose:
         """
         Default specialized_designators which returns a resolved designator which contains the pose given in init.
 
@@ -124,7 +125,7 @@ class CostmapLocation(LocationDesignatorDescription):
 
     def __init__(
         self,
-        target: Union[PoseStamped, Body],
+        target: Union[Pose, Body],
         reachable_for: AbstractRobot = None,
         visible_for: AbstractRobot = None,
         reachable_arm: Optional[Union[Iterable[Arms], Arms]] = None,
@@ -168,7 +169,7 @@ class CostmapLocation(LocationDesignatorDescription):
             rotation_agnostic=rotation_agnostic,
             validate_reachability=validate_reachability,
         )
-        self.target: Union[PoseStamped, Body] = target
+        self.target: Union[Pose, Body] = target
         self.reachable_for: AbstractRobot = reachable_for
         self.visible_for: AbstractRobot = visible_for
         self.reachable_arm: Optional[Arms] = reachable_arm
@@ -180,8 +181,54 @@ class CostmapLocation(LocationDesignatorDescription):
         )
         self.samples: int = samples
         self.validate_reachability: bool = validate_reachability
+        self._last_costmap_source: str = "unknown"
 
-    def ground(self) -> PoseStamped:
+    @staticmethod
+    def _describe_target(target: Union[Pose, Body]) -> str:
+        if isinstance(target, Pose):
+            pos = np.asarray(target.to_position().to_np(), dtype=float).reshape(-1)[:3]
+            return f"Pose(x={float(pos[0]):.3f}, y={float(pos[1]):.3f}, z={float(pos[2]):.3f})"
+        name = getattr(getattr(target, "root", None), "name", None)
+        if name is not None:
+            return str(name)
+        return str(target)
+
+    @staticmethod
+    def _iter_sorted_pose_candidates(
+        costmap: Costmap, max_candidates: int
+    ) -> Iterator[Pose]:
+        ori_gen = (
+            costmap.orientation_generator
+            or OrientationGenerator.generate_origin_orientation
+        )
+        positive_indices = np.argwhere(costmap.map > 0)
+        if positive_indices.size == 0:
+            return
+
+        scores = costmap.map[positive_indices[:, 0], positive_indices[:, 1]]
+        score_min = float(np.min(scores))
+        score_max = float(np.max(scores))
+        score_denom = score_max - score_min
+        if score_denom > 0.0:
+            normalized_scores = (scores - score_min) / score_denom
+            keep_mask = normalized_scores > 0.25
+            positive_indices = positive_indices[keep_mask]
+            scores = scores[keep_mask]
+        if positive_indices.size == 0:
+            return
+
+        order = np.argsort(scores)[::-1]
+        if max_candidates is not None and max_candidates > 0:
+            order = order[:max_candidates]
+
+        center = np.array([costmap.height // 2, costmap.width // 2], dtype=float)
+        for row, col in positive_indices[order]:
+            offset = (np.array([row, col], dtype=float) - center) * costmap.resolution
+            position = costmap.origin.to_position() + Vector3(offset[0], offset[1], 0)
+            orientation: Quaternion = ori_gen(position, costmap.origin)
+            yield Pose(position, orientation, costmap.world.root)
+
+    def ground(self) -> Pose:
         """
         Default specialized_designators which returns the first result from the iterator of this instance.
 
@@ -189,16 +236,17 @@ class CostmapLocation(LocationDesignatorDescription):
         """
         return next(iter(self))
 
-    def setup_costmaps(
-        self, target: PoseStamped, visible_for, reachable_for
-    ) -> Costmap:
+    def setup_costmaps(self, target: Pose, visible_for, reachable_for) -> Costmap:
         """
         Sets up the costmaps for the given target and robot. The costmaps are merged and stored in the final_map
 
 
         """
-        ground_pose = deepcopy(target)
-        ground_pose.position.z = 0
+        ground_pose = Pose(
+            position=Point3(target.x, target.y, 0),
+            orientation=target.to_quaternion(),
+            reference_frame=target.reference_frame,
+        )
 
         base_bb = self.robot_view.base.bounding_box
 
@@ -212,6 +260,7 @@ class CostmapLocation(LocationDesignatorDescription):
             origin=ground_pose,
         )
         final_map = occupancy
+        self._last_costmap_source = "occupancy"
 
         if visible_for:
             camera = list(self.robot_view.neck.sensors)[0]
@@ -226,6 +275,12 @@ class CostmapLocation(LocationDesignatorDescription):
                 origin=ground_pose,
             )
             final_map += visible
+            if not self.validate_reachability and np.any(final_map.map > 0):
+                self._last_costmap_source = "occupancy+visibility"
+                return final_map
+            if not self.validate_reachability and np.any(visible.map > 0):
+                self._last_costmap_source = "visibility"
+                return visible
 
         if reachable_for:
             ring = RingCostmap(
@@ -239,10 +294,28 @@ class CostmapLocation(LocationDesignatorDescription):
                 origin=ground_pose,
             )
             final_map += ring
+            if not self.validate_reachability and np.any(final_map.map > 0):
+                self._last_costmap_source = "occupancy+ring"
+                return final_map
+            if not self.validate_reachability and np.any(ring.map > 0):
+                self._last_costmap_source = "ring"
+                return ring
 
+        if not self.validate_reachability:
+            self._last_costmap_source = "occupancy"
+            return occupancy
+
+        if visible_for and reachable_for:
+            self._last_costmap_source = "occupancy+visibility+ring"
+        elif visible_for:
+            self._last_costmap_source = "occupancy+visibility"
+        elif reachable_for:
+            self._last_costmap_source = "occupancy+ring"
+        else:
+            self._last_costmap_source = "occupancy"
         return final_map
 
-    def __iter__(self) -> Iterator[PoseStamped]:
+    def __iter__(self) -> Iterator[Pose]:
         """
         Generates positions for a given set of constrains from a costmap and returns
         them. The generation is based of a costmap which itself is the product of
@@ -258,25 +331,28 @@ class CostmapLocation(LocationDesignatorDescription):
         for params in self.generate_permutations():
             test_world = deepcopy(self.world)
             test_world.name = "Test World"
-            # VizMarkerPublisher(
-            #     _world=test_world, node=self.context.ros_node
-            # ).with_tf_publisher()
+
+            VizMarkerPublisher(
+                _world=test_world, node=rclpy.create_node("urdf_visualization_node")
+            ).with_tf_publisher()
             params_box = Box(params)
             # Target is either a pose or an object since the object is later needed for the visibility validator
             target = (
                 deepcopy(params_box.target)
-                if isinstance(params_box.target, PoseStamped)
-                else PoseStamped.from_spatial_type(params_box.target.global_pose)
+                if isinstance(params_box.target, Pose)
+                else params_box.target.global_pose
             )
 
-            if params_box.visible_for or params_box.reachable_for:
+            if self.validate_reachability and (
+                params_box.visible_for or params_box.reachable_for
+            ):
                 robot_object = (
                     params_box.visible_for
                     if params_box.visible_for
                     else params_box.reachable_for
                 )
             else:
-                robot_object = None
+                robot_object = self.robot_view
 
             test_robot = robot_object.from_world(test_world)
 
@@ -299,40 +375,46 @@ class CostmapLocation(LocationDesignatorDescription):
                     list(self.robot_view.base.main_axis.to_np())
                 )
             )
-            nonzero_cells = int(np.count_nonzero(final_map.map > 0))
-            segmented_maps = final_map.segment_map()
-            max_value = (
-                float(np.max(final_map.map)) if final_map.map.size else float("nan")
-            )
-            print(
-                "[CostmapLocation] target=%s samples=%s nonzero_cells=%s segments=%s max_value=%.6f reachable_for=%s visible_for=%s validate_reachability=%s"
-                % (
-                    target,
-                    final_map.number_of_samples,
-                    nonzero_cells,
-                    len(segmented_maps),
-                    max_value,
-                    bool(params_box.reachable_for),
-                    bool(params_box.visible_for),
-                    bool(params_box.validate_reachability),
-                )
+            target_desc = self._describe_target(params_box.target)
+            positive_cells = int(np.count_nonzero(final_map.map > 0))
+            logger.warning(
+                "CostmapLocation: target=%s source=%s validate_reachability=%s samples=%s positive_cells=%s",
+                target_desc,
+                self._last_costmap_source,
+                self.validate_reachability,
+                self.samples,
+                positive_cells,
             )
 
-            candidate_count = 0
+            tested_candidates = 0
             collision_rejections = 0
             visibility_rejections = 0
             reachability_rejections = 0
-            yielded_count = 0
 
-            for pose_candidate in final_map:
-                candidate_count += 1
-                print(
-                    f"[CostmapLocation] candidate[{candidate_count}]={pose_candidate}"
-                )
+            relaxed_candidate_limit = (
+                None if not self.validate_reachability else self.samples
+            )
+            pose_candidates = (
+                self._iter_sorted_pose_candidates(final_map, relaxed_candidate_limit)
+                if not self.validate_reachability
+                else iter(final_map)
+            )
+
+            for pose_candidate in pose_candidates:
                 logger.debug(f"Testing candidate pose at {pose_candidate}")
-                pose_candidate.position.z = 0
+                tested_candidates += 1
+                odom_height = test_world.compute_forward_kinematics(
+                    test_world.root,
+                    test_robot.root.parent_kinematic_structure_entity,
+                ).z
+                pose_candidate = Pose(
+                    Point3(pose_candidate.x, pose_candidate.y, odom_height),
+                    pose_candidate.to_quaternion(),
+                    reference_frame=target.reference_frame,
+                )
+                print(pose_candidate.reference_frame)
                 test_robot.root.parent_connection.origin = self.world.transform(
-                    pose_candidate.to_spatial_type(),
+                    pose_candidate,
                     self.robot_view.root.parent_connection.parent,
                 )
 
@@ -342,54 +424,37 @@ class CostmapLocation(LocationDesignatorDescription):
                 )
 
                 if collisions:
-                    collision_rejections += 1
-                    print(
-                        f"[CostmapLocation] reject[{candidate_count}] reason=collision collisions={len(collisions)}"
-                    )
                     logger.debug(f"Candidate pose in collision, skipping")
+                    collision_rejections += 1
+                    continue
+
+                if not self.validate_reachability:
+                    logger.warning(
+                        "CostmapLocation: target=%s accepted after tested=%s collision_rejections=%s source=%s",
+                        target_desc,
+                        tested_candidates,
+                        collision_rejections,
+                        self._last_costmap_source,
+                    )
+                    self._last_result = pose_candidate
+                    yield pose_candidate
                     continue
 
                 if not (params_box.reachable_for or params_box.visible_for):
                     self._last_result = pose_candidate
-                    yielded_count += 1
-                    print(
-                        f"[CostmapLocation] yield[{candidate_count}] reason=no_additional_validation"
-                    )
                     yield pose_candidate
                     continue
 
                 if params_box.visible_for and not visibility_validator(
                     test_robot, target, test_world
                 ):
-                    visibility_rejections += 1
-                    print(
-                        f"[CostmapLocation] reject[{candidate_count}] reason=visibility"
-                    )
                     logger.debug(f"Candidate pose not visible, skipping")
+                    visibility_rejections += 1
                     continue
 
                 if not params_box.reachable_for:
                     self._last_result = pose_candidate
-                    yielded_count += 1
-                    print(
-                        f"[CostmapLocation] yield[{candidate_count}] reason=visibility_only"
-                    )
                     yield pose_candidate
-                    continue
-
-                if not params_box.validate_reachability:
-                    pose = GraspPose(
-                        pose_candidate.pose,
-                        pose_candidate.header,
-                        arm=params_box.reachable_arm,
-                        grasp_description=None,
-                    )
-                    self._last_result = pose
-                    yielded_count += 1
-                    print(
-                        f"[CostmapLocation] yield[{candidate_count}] reason=heuristic_only arm={params_box.reachable_arm}"
-                    )
-                    yield pose
                     continue
 
                 grasp_descriptions = (
@@ -417,35 +482,36 @@ class CostmapLocation(LocationDesignatorDescription):
                         # use_fullbody_ik=test_robot.full_body_controlled,
                     )
                     if is_reachable:
-                        pose = GraspPose(
-                            pose_candidate.pose,
-                            pose_candidate.header,
+                        logger.warning(
+                            "CostmapLocation: target=%s accepted after tested=%s collision_rejections=%s visibility_rejections=%s reachability_rejections=%s source=%s",
+                            target_desc,
+                            tested_candidates,
+                            collision_rejections,
+                            visibility_rejections,
+                            reachability_rejections,
+                            self._last_costmap_source,
+                        )
+                        pose = GraspPose.from_pose(
+                            pose=pose_candidate,
                             arm=params_box.reachable_arm,
                             grasp_description=grasp_desc,
                         )
                         self._last_result = pose
-                        yielded_count += 1
-                        print(
-                            f"[CostmapLocation] yield[{candidate_count}] reason=reachable arm={params_box.reachable_arm} grasp={grasp_desc}"
-                        )
                         yield pose
                     else:
                         reachability_rejections += 1
-                        print(
-                            f"[CostmapLocation] reject[{candidate_count}] reason=reachability arm={params_box.reachable_arm} grasp={grasp_desc}"
-                        )
 
-            if yielded_count == 0:
-                print(
-                    "[CostmapLocation] exhausted target=%s candidates=%s collision_rejections=%s visibility_rejections=%s reachability_rejections=%s"
-                    % (
-                        target,
-                        candidate_count,
-                        collision_rejections,
-                        visibility_rejections,
-                        reachability_rejections,
-                    )
-                )
+            logger.warning(
+                "CostmapLocation: no pose found for target=%s source=%s validate_reachability=%s positive_cells=%s tested=%s collision_rejections=%s visibility_rejections=%s reachability_rejections=%s",
+                target_desc,
+                self._last_costmap_source,
+                self.validate_reachability,
+                positive_cells,
+                tested_candidates,
+                collision_rejections,
+                visibility_rejections,
+                reachability_rejections,
+            )
 
 
 class AccessingLocation(LocationDesignatorDescription):
@@ -481,7 +547,7 @@ class AccessingLocation(LocationDesignatorDescription):
         self.prepose_distance = prepose_distance
         self.arm = arm if arm is not None else [Arms.LEFT, Arms.RIGHT]
 
-    def ground(self) -> PoseStamped:
+    def ground(self) -> Pose:
         """
         Default specialized_designators for this location designator, just returns the first element from the iteration
 
@@ -492,8 +558,8 @@ class AccessingLocation(LocationDesignatorDescription):
     @staticmethod
     def adjust_map_for_drawer_opening(
         cost_map: Costmap,
-        init_pose: PoseStamped,
-        goal_pose: PoseStamped,
+        init_pose: Pose,
+        goal_pose: Pose,
         width: float = 0.2,
     ):
         """
@@ -505,11 +571,7 @@ class AccessingLocation(LocationDesignatorDescription):
         :param goal_pose: Pose of the drawer/container when it is fully opened.
         :param width: Width of the drawer/container.
         """
-        motion_vector = [
-            goal_pose.position.x - init_pose.position.x,
-            goal_pose.position.y - init_pose.position.y,
-            goal_pose.position.z - init_pose.position.z,
-        ]
+        motion_vector = goal_pose.to_position() - init_pose.to_position()
         # remove locations between the initial and final pose
         motion_vector_length = np.linalg.norm(motion_vector)
         unit_motion_vector = np.array(motion_vector) / motion_vector_length
@@ -550,8 +612,9 @@ class AccessingLocation(LocationDesignatorDescription):
         """
         Sets up the costmaps for the given handle and robot. The costmaps are merged and stored in the final_map.
         """
-        ground_pose = PoseStamped.from_spatial_type(handle.global_pose)
-        ground_pose.position.z = 0
+        ground_pose = handle.global_transform
+
+        ground_pose.z = 0
 
         base_bb = self.robot_view.base.bounding_box
         occupancy = OccupancyCostmap(
@@ -560,7 +623,7 @@ class AccessingLocation(LocationDesignatorDescription):
             width=200,
             height=200,
             resolution=0.02,
-            origin=ground_pose,
+            origin=ground_pose.to_pose(),
             world=handle._world,
         )
         final_map = occupancy
@@ -570,9 +633,7 @@ class AccessingLocation(LocationDesignatorDescription):
 
         return final_map
 
-    def create_target_sequence(
-        self, params_box: Box, final_map: Costmap
-    ) -> List[PoseStamped]:
+    def create_target_sequence(self, params_box: Box, final_map: Costmap) -> List[Pose]:
         """
         Creates the sequence of target poses
 
@@ -619,7 +680,7 @@ class AccessingLocation(LocationDesignatorDescription):
         target_sequence = [init_pose, half_pose, goal_pose]
         return target_sequence
 
-    def __iter__(self) -> Iterator[PoseStamped]:
+    def __iter__(self) -> Iterator[Pose]:
         """
         Creates poses from which the robot can open the drawer specified by the ObjectPart designator describing the
         handle. Poses are validated by checking if the robot can grasp the handle while the drawer is closed and if
@@ -646,9 +707,8 @@ class AccessingLocation(LocationDesignatorDescription):
             final_map.orientation_generator = orientation_generator
             for pose_candidate in final_map:
                 pose_candidate.position.z = 0
-                test_robot.root.parent_connection.origin = self.world.transform(
-                    pose_candidate.to_spatial_type(),
-                    self.robot_view.root.parent_connection.parent,
+                test_robot.root.parent_connection.origin = (
+                    pose_candidate.to_spatial_type()
                 )
                 try:
                     collision_check(test_robot, test_world)
@@ -661,11 +721,14 @@ class AccessingLocation(LocationDesignatorDescription):
                         VerticalAlignment.NoAlignment,
                         arm_chain.manipulator,
                     ).grasp_orientation()
+                    grasp.reference_frame = test_world.root
                     current_target_sequence = [
                         deepcopy(pose) for pose in target_sequence
                     ]
-                    for pose in current_target_sequence:
-                        pose.rotate_by_quaternion(grasp)
+                    grasp_rotation = grasp.to_rotation_matrix()
+                    current_target_sequence = [
+                        grasp_rotation @ pose for pose in current_target_sequence
+                    ]
 
                     is_reachable = pose_sequence_reachability_validator(
                         current_target_sequence,
@@ -720,7 +783,7 @@ class SemanticCostmapLocation(LocationDesignatorDescription):
         self.edge_size_in_meters: float = edge_size_in_meters
         self.sem_costmap: Optional[SemanticCostmap] = None
 
-    def ground(self) -> PoseStamped:
+    def ground(self) -> Pose:
         """
         Default specialized_designators which returns the first element of the iterator of this instance.
 
@@ -728,7 +791,7 @@ class SemanticCostmapLocation(LocationDesignatorDescription):
         """
         return next(iter(self))
 
-    def __iter__(self) -> Iterator[PoseStamped]:
+    def __iter__(self) -> Iterator[Pose]:
         """
         Creates a costmap on top of a link of an Object and creates positions from it. If there is a specific Object for
         which the position should be found, a height offset will be calculated which ensures that the bottom of the Object
@@ -759,7 +822,7 @@ class SemanticCostmapLocation(LocationDesignatorDescription):
                 max_z = max(np_points, key=lambda p: p[2])[2]
                 height_offset = (max_z - min_z) / 2
             for maybe_pose in self.sem_costmap:
-                maybe_pose.position.z += height_offset
+                maybe_pose.z += height_offset
                 yield maybe_pose
 
 
@@ -817,7 +880,7 @@ class ProbabilisticSemanticLocation(LocationDesignatorDescription):
         self.for_object: Optional[Body] = for_object
         self.highlight_used_surfaces: bool = highlight_used_surfaces
 
-    def ground(self) -> PoseStamped:
+    def ground(self) -> Pose:
         """
         Default specialized_designators which returns the first element of the iterator of this instance.
 
@@ -969,7 +1032,7 @@ class ProbabilisticSemanticLocation(LocationDesignatorDescription):
             if self.link_is_center_link
             else 0.1
         )
-        target_point = body.global_pose.to_position().to_np()[:3]
+        target_point = body.global_transform.to_position().to_np()[:3]
         target_point[2] += z_offset
         target_node = free_space.node_of_point(
             Point3(*target_point, reference_frame=body._world.root)
@@ -1070,22 +1133,22 @@ class ProbabilisticSemanticLocation(LocationDesignatorDescription):
 
     @staticmethod
     def _calculate_surface_z_coord(
-        test_robot: AbstractRobot, surface_coords: Tuple[float, float]
+        test_robot: AbstractRobot, surface_coordinates: Tuple[float, float]
     ) -> Optional[float]:
         """
         Calculates the z-coordinate of the surface at the given surface coordinates on the link.
 
         :param test_robot: The robot that is used to test the surface coordinates.
-        :param surface_coords: The coordinates on the surface where the z-coordinate should be calculated.
+        :param surface_coordinates: The coordinates on the surface where the z-coordinate should be calculated.
 
         :return: The z-coordinate of the surface at the given surface coordinates, or None if the link is not hit.
         """
         # Use a raytest to check if the sampled point is on the target link. This is necessary because the
         # bounding boxes are not perfect, so the sampled point may be slightly off the link.
         # Furthermore, we can use the ray test to get the correct height of the link at the sampled point.
-        surface_x_coord, surface_y_coord = surface_coords
-        ray_start = [surface_x_coord, surface_y_coord, 2]
-        ray_end = [surface_x_coord, surface_y_coord, -2.0]
+        surface_x_coordinates, surface_y_coordinates = surface_coordinates
+        ray_start = [surface_x_coordinates, surface_y_coordinates, 2]
+        ray_end = [surface_x_coordinates, surface_y_coordinates, -2.0]
         result = test_robot._world.ray_tracer.ray_test(
             np.array(ray_start), np.array(ray_end)
         )
@@ -1093,13 +1156,13 @@ class ProbabilisticSemanticLocation(LocationDesignatorDescription):
 
         return hit_pos
 
-    def __iter__(self) -> Iterator[PoseStamped]:
+    def __iter__(self) -> Iterator[Pose]:
         """
         Creates a costmap on top of a link of an Object and creates positions from it. If there is a specific Object for
         which the position should be found, a height offset will be calculated which ensures that the bottom of the Object
         is at the position in the Costmap and not the origin of the Object which is usually in the centre of the Object.
 
-        :yield: A PoseStamped with the found valid position of the Costmap.
+        :yield: A Pose with the found valid position of the Costmap.
         """
         test_world = deepcopy(self.world)
         test_world.name = "Test World"
@@ -1167,34 +1230,44 @@ class ProbabilisticSemanticLocation(LocationDesignatorDescription):
                         world_distribution.probabilistic_circuit.variables, sample
                     )
                 }
-                surface_x_coord = sample_dict[self.surface_x.name]
-                surface_y_coord = sample_dict[self.surface_y.name]
+                surface_x_coordinate = sample_dict[self.surface_x.name]
+                surface_y_coordinate = sample_dict[self.surface_y.name]
                 nav_x = sample_dict[SpatialVariables.x.name]
                 nav_y = sample_dict[SpatialVariables.y.name]
 
-                surface_z_coord = self._calculate_surface_z_coord(
-                    test_robot, (surface_x_coord, surface_y_coord)
+                surface_z_coordinate = self._calculate_surface_z_coord(
+                    test_robot, (surface_x_coordinate, surface_y_coordinate)
                 )
-                if surface_z_coord is None:
+                if surface_z_coordinate is None:
                     continue
 
                 target_quat = OrientationGenerator.generate_random_orientation()
-                target_pose = PoseStamped.from_list(
-                    [surface_x_coord, surface_y_coord, surface_z_coord],
-                    target_quat,
-                    self.world.root,
+                target_pose = Pose(
+                    Point3.from_iterable(
+                        [
+                            surface_x_coordinate,
+                            surface_y_coordinate,
+                            surface_z_coordinate,
+                        ]
+                    ),
+                    Quaternion.from_iterable(target_quat),
+                    reference_frame=self.world.root,
                 )
 
                 nav_quat = OrientationGenerator.generate_origin_orientation(
-                    [nav_x, nav_y], target_pose
+                    Point3.from_iterable([nav_x, nav_y, 0]), target_pose
                 )
-                nav_pose = PoseStamped.from_list(
-                    [nav_x, nav_y, 0], nav_quat, self.world.root
+                nav_pose = Pose(
+                    Point3.from_iterable([nav_x, nav_y, 0]),
+                    nav_quat,
+                    reference_frame=self.world.root,
                 )
 
                 # Reject samples in which the robot is in collision with the environment despite the bloated obstacles,
                 # for example with the arms
-                test_robot.root.parent_connection.origin = nav_pose.to_spatial_type()
+                test_robot.root.parent_connection.origin = (
+                    nav_pose.to_homogeneous_matrix()
+                )
                 try:
                     collision_check(test_robot, test_world)
                 except RobotInCollision:
@@ -1208,7 +1281,8 @@ class ProbabilisticSemanticLocation(LocationDesignatorDescription):
                         ).bounding_box()
                     )
                     final_height_offset = (bounding_box.max_z - bounding_box.min_z) / 2
-                    target_pose.position.z += final_height_offset
+
+                    target_pose.z += final_height_offset
 
                 yield target_pose
 
@@ -1234,7 +1308,7 @@ class ProbabilisticCostmapLocation(LocationDesignatorDescription):
 
     def __init__(
         self,
-        target: Union[PoseStamped, Body],
+        target: Union[Pose, Body],
         reachable_for: Optional[Union[Iterable[AbstractRobot], AbstractRobot]] = None,
         visible_for: Optional[Union[Iterable[AbstractRobot], AbstractRobot]] = None,
         reachable_arm: Optional[Union[Iterable[Arms], Arms]] = None,
@@ -1286,7 +1360,7 @@ class ProbabilisticCostmapLocation(LocationDesignatorDescription):
         self.number_of_samples = number_of_samples
         # The resolution is divided by 2, since each sampled point is a center of a cell in the costmap
         self.costmap_resolution = costmap_resolution / 2
-        self.target: Union[PoseStamped, Body] = target
+        self.target: Union[Pose, Body] = target
         self.reachable_for: AbstractRobot = reachable_for
         self.visible_for: AbstractRobot = visible_for
         self.reachable_arm: Optional[Arms] = reachable_arm
@@ -1297,7 +1371,7 @@ class ProbabilisticCostmapLocation(LocationDesignatorDescription):
             grasp_descriptions if grasp_descriptions is not None else [None]
         )
 
-    def ground(self) -> PoseStamped:
+    def ground(self) -> Pose:
         """
         Default specialized_designators which returns the first element of the iterator of this instance.
 
@@ -1309,7 +1383,7 @@ class ProbabilisticCostmapLocation(LocationDesignatorDescription):
         self,
         world: World,
         free_space_graph: GraphOfConvexSets,
-        target_position: PyCramVector3,
+        target_position: Vector3,
     ) -> Event:
         """
         Calculates an event for the free space inside the room around the target position is located in, in 2d.
@@ -1325,7 +1399,7 @@ class ProbabilisticCostmapLocation(LocationDesignatorDescription):
                 [
                     node.origin.to_np()[0, 3],
                     node.origin.to_np()[1, 3],
-                    target_position.z + 0.2,
+                    float(target_position.z + 0.2),
                 ]
                 for node in free_space_graph.graph.nodes()
             ]
@@ -1336,7 +1410,7 @@ class ProbabilisticCostmapLocation(LocationDesignatorDescription):
         )
 
         robot = self.robot_view
-        robot_pose = robot.root.global_pose
+        robot_pose = robot.root.global_transform
         robot.root.parent_connection.origin = (
             HomogeneousTransformationMatrix.from_xyz_quaternion(100, 100, 0)
         )
@@ -1374,7 +1448,7 @@ class ProbabilisticCostmapLocation(LocationDesignatorDescription):
         return room_event
 
     def _create_free_space_conditions(
-        self, world: World, target_position: PyCramVector3, search_distance: float = 2
+        self, world: World, target_position: Vector3, search_distance: float = 2
     ) -> Tuple[Event, Event, Event]:
         """
         Creates the conditions for the free space around the target position.
@@ -1392,13 +1466,13 @@ class ProbabilisticCostmapLocation(LocationDesignatorDescription):
         link_searchspace = BoundingBoxCollection(
             [
                 BoundingBox(
-                    target_position.x - search_distance,
-                    target_position.y - search_distance,
+                    float(target_position.x - search_distance),
+                    float(target_position.y - search_distance),
                     0,
-                    target_position.x + search_distance,
-                    target_position.y + search_distance,
-                    target_position.z + 0.35,
-                    origin=world.root.global_pose,
+                    float(target_position.x + search_distance),
+                    float(target_position.y + search_distance),
+                    float(target_position.z + 0.35),
+                    origin=world.root.global_transform,
                 )
             ],
             reference_frame=world.root,
@@ -1446,7 +1520,7 @@ class ProbabilisticCostmapLocation(LocationDesignatorDescription):
         return reachable_space_condition, navigation_space_condition, room_condition
 
     def _create_navigation_circuit(
-        self, target_position: PyCramVector3
+        self, target_position: Vector3
     ) -> ProbabilisticCircuit:
         """
         Creates a probabilistic circuit that samples navigation poses around the target position.
@@ -1458,14 +1532,18 @@ class ProbabilisticCostmapLocation(LocationDesignatorDescription):
 
         p_point_root = ProductUnit(probabilistic_circuit=navigation_circuit)
         circuit_root.add_subcircuit(p_point_root, 1.0)
-        target_x_p = DiracDeltaDistribution(self.target_x, target_position.x, 1.0)
-        target_y_p = DiracDeltaDistribution(self.target_y, target_position.y, 1.0)
+        target_x_p = DiracDeltaDistribution(
+            self.target_x, float(target_position.x), 1.0
+        )
+        target_y_p = DiracDeltaDistribution(
+            self.target_y, float(target_position.y), 1.0
+        )
 
         nav_x_p = GaussianDistribution(
-            SpatialVariables.x.value, target_position.x, scale
+            SpatialVariables.x.value, float(target_position.x), scale
         )
         nav_y_p = GaussianDistribution(
-            SpatialVariables.y.value, target_position.y, scale
+            SpatialVariables.y.value, float(target_position.y), scale
         )
 
         p_point_root.add_subcircuit(leaf(target_x_p, navigation_circuit))
@@ -1476,7 +1554,7 @@ class ProbabilisticCostmapLocation(LocationDesignatorDescription):
         navigation_circuit.normalize()
         return navigation_circuit
 
-    def __iter__(self) -> Iterator[PoseStamped]:
+    def __iter__(self) -> Iterator[Pose]:
         """
         Creates a costmap on top of a link of an Object and creates positions from it. If there is a specific Object for
         which the position should be found, a height offset will be calculated which ensures that the bottom of the Object
@@ -1488,15 +1566,13 @@ class ProbabilisticCostmapLocation(LocationDesignatorDescription):
             params_box = Box(params)
             target = (
                 deepcopy(params_box.target)
-                if isinstance(params_box.target, PoseStamped)
+                if isinstance(params_box.target, Pose)
                 else params_box.target
             )
-            target_pose: PoseStamped = (
-                target
-                if isinstance(target, PoseStamped)
-                else PoseStamped.from_spatial_type(target.global_pose)
+            target_pose: Pose = (
+                target if isinstance(target, Pose) else target.global_pose
             )
-            target_position: PyCramVector3 = target_pose.position
+            target_position: Vector3 = target_pose.to_position()
 
             self.test_world = deepcopy(self.world)
             self.test_world.name = "Test World"
@@ -1569,13 +1645,15 @@ class ProbabilisticCostmapLocation(LocationDesignatorDescription):
                 )
 
                 nav_quat = OrientationGenerator.generate_origin_orientation(
-                    [nav_x, nav_y], target_pose
+                    Point3.from_iterable([nav_x, nav_y, 0]), target_pose
                 )
-                pose_candidate = PoseStamped.from_list(
-                    [nav_x, nav_y, 0], nav_quat, self.world.root
+                pose_candidate = Pose(
+                    Point3.from_iterable([nav_x, nav_y, 0]),
+                    nav_quat,
+                    reference_frame=self.world.root,
                 )
                 test_robot.root.parent_connection.origin = (
-                    pose_candidate.to_spatial_type()
+                    pose_candidate.to_homogeneous_matrix()
                 )
 
                 try:
@@ -1625,9 +1703,8 @@ class ProbabilisticCostmapLocation(LocationDesignatorDescription):
                     )
                     if is_reachable:
                         logger.info(f"Succeeded costmap with pose {pose_candidate}")
-                        yield GraspPose(
-                            pose_candidate.pose,
-                            pose_candidate.header,
+                        yield GraspPose.from_pose(
+                            pose_candidate,
                             arm=params_box.reachable_arm,
                             grasp_description=grasp_desc,
                         )
@@ -1640,7 +1717,7 @@ class GiskardLocation(LocationDesignatorDescription):
     Designator uses Giskard and full body control to find a pose for the robot base.
     """
 
-    target_pose: PoseStamped
+    target_pose: Pose
     """
     Target pose for which a standing pose should be found. 
     """
@@ -1669,7 +1746,7 @@ class GiskardLocation(LocationDesignatorDescription):
             grasp_description=self.grasp_description,
         )
 
-    def ground(self) -> PoseStamped:
+    def ground(self) -> Pose:
         """
         Default specialized_designators which returns the first element of the iterator of this instance.
 
@@ -1677,15 +1754,17 @@ class GiskardLocation(LocationDesignatorDescription):
         """
         return next(iter(self))
 
-    def setup_costmap(self, pose: PoseStamped) -> Costmap:
+    def setup_costmap(self, pose: Pose) -> Costmap:
         """
         Setup the reachability costmap for initial pose estimation.
         """
-        ground_pose = deepcopy(pose)
-        ground_pose.position.z = 0.0
+        ground_pose = Pose(
+            position=Point3(pose.x, pose.y, 0.0),
+            orientation=pose.to_quaternion(),
+            reference_frame=pose.reference_frame,
+        )
 
         base_bb = self.robot_view.base.bounding_box
-        distance_to_obstacle = (base_bb.width / 2 + base_bb.depth / 2) / 2
 
         occupancy_map = OccupancyCostmap(
             resolution=0.02,
@@ -1694,7 +1773,7 @@ class GiskardLocation(LocationDesignatorDescription):
             world=self.world,
             robot_view=self.robot_view,
             origin=ground_pose,
-            distance_to_obstacle=distance_to_obstacle,
+            distance_to_obstacle=(base_bb.width / 2 + base_bb.depth / 2) / 2,
         )
         gaussian_map = GaussianCostmap(
             resolution=0.02,
@@ -1704,20 +1783,6 @@ class GiskardLocation(LocationDesignatorDescription):
             world=self.world,
         )
 
-        logger.debug(
-            "GiskardLocation.setup_costmap target=(%.3f, %.3f, %.3f) "
-            "base_bb=(w=%.3f, d=%.3f) distance_to_obstacle=%.3f "
-            "occupancy_positive=%d gaussian_positive=%d",
-            ground_pose.position.x,
-            ground_pose.position.y,
-            ground_pose.position.z,
-            base_bb.width,
-            base_bb.depth,
-            distance_to_obstacle,
-            int(np.sum(occupancy_map.map > 0)),
-            int(np.sum(gaussian_map.map > 0)),
-        )
-
         reachability_map = occupancy_map + gaussian_map
         reachability_map.number_of_samples = 10
 
@@ -1725,7 +1790,7 @@ class GiskardLocation(LocationDesignatorDescription):
 
     def setup_giskard_executor(
         self,
-        pose_sequence: List[PoseStamped],
+        pose_sequence: List[Pose],
         world: World,
         robot_view: AbstractRobot,
         end_effector: Body,
@@ -1744,7 +1809,7 @@ class GiskardLocation(LocationDesignatorDescription):
                 CartesianPose(
                     root_link=world.root,
                     tip_link=end_effector,
-                    goal_pose=pose.to_spatial_type(),
+                    goal_pose=pose,
                 )
                 for pose in pose_sequence
             ]
@@ -1810,7 +1875,7 @@ class GiskardLocation(LocationDesignatorDescription):
                     target_sequence = grasp_desc._pose_sequence(params["target_pose"])
 
                     test_robot.root.parent_connection.origin = (
-                        candidate.to_spatial_type()
+                        candidate.to_homogeneous_matrix()
                     )
 
                     executor = self.setup_giskard_executor(
@@ -1822,14 +1887,16 @@ class GiskardLocation(LocationDesignatorDescription):
                     except (TimeoutError, InfeasibleException) as e:
                         pass
 
-                    dist = test_ee.global_pose.to_position().euclidean_distance(
-                        target_sequence[-1].to_spatial_type().to_position()
+                    dist = test_ee.global_transform.to_position().euclidean_distance(
+                        target_sequence[-1].to_position()
                     )
 
                     if dist > 0.02:
                         continue
 
-                    ret = GraspPose.from_spatial_type(test_robot.root.global_pose)
-                    ret.grasp_description = grasp_desc
-                    ret.arm = params["arm"]
+                    ret = GraspPose.from_pose(
+                        test_robot.root.global_pose,
+                        arm=params["arm"],
+                        grasp_description=grasp_desc,
+                    )
                     yield ret

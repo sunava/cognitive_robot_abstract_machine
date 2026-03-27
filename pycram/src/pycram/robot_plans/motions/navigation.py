@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 from giskardpy.motion_statechart.monitors.overwrite_state_monitors import SetOdometry
 from giskardpy.motion_statechart.tasks.cartesian_tasks import CartesianPose
-from pycram.datastructures.pose import PoseStamped
 from pycram.robot_plans.motions.base import BaseMotion
+from semantic_digital_twin.spatial_types.spatial_types import Pose
 
 
 @dataclass
@@ -12,9 +12,14 @@ class MoveMotion(BaseMotion):
     Moves the robot to a designated location
     """
 
-    target: PoseStamped
+    target: Pose
     """
     Location to which the robot should be moved
+    """
+
+    keep_joint_states: bool = False
+    """
+    Keep the joint states of the robot during/at the end of the motion
     """
 
     teleport: bool = False
@@ -29,12 +34,12 @@ class MoveMotion(BaseMotion):
     def _motion_chart(self):
         if self.teleport:
             return SetOdometry(
-                base_pose=self.target.to_spatial_type(),
+                base_pose=self.target.to_homogeneous_matrix(),
                 odom_connection=self.robot_view.drive,
             )
-        else:
-            return CartesianPose(
-                root_link=self.world.root,
-                tip_link=self.robot_view.root,
-                goal_pose=self.target.to_spatial_type(),
-            )
+
+        return CartesianPose(
+            root_link=self.world.root,
+            tip_link=self.robot_view.root,
+            goal_pose=self.target,
+        )

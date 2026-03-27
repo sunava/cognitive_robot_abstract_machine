@@ -46,7 +46,6 @@ import os
 import numpy as np
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
-from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
 from pycram.motion_executor import simulated_robot
 from pycram.orm.ormatic_interface import Base
@@ -65,7 +64,8 @@ from semantic_digital_twin.adapters.mesh import STLParser
 
 from semantic_digital_twin.datastructures.definitions import TorsoState, GripperState
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Knife, Whisk
-from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
+from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix, Point3
+from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.geometry import Color, Scale
 
 RESOURCES_DIR = os.path.abspath(
@@ -90,7 +90,7 @@ def _parse_stl(*relative_path_parts):
 
 
 def _update_costmap_debug_publishers(node, robot, world, bread, publishers):
-    target_pose = PoseStamped.from_spatial_type(bread.global_pose)
+    target_pose = bread.global_pose
     occupancy, ring, final_map = build_cutting_reachability_costmaps(
         robot, world, target_pose
     )
@@ -201,29 +201,30 @@ def _results_csv_fieldnames():
 
 
 def _try_cut(context, bread, arm, tool):
-
     with simulated_robot_without_collision:
         SequentialPlan(
             context,
             NavigateActionDescription(
-                PoseStamped.from_list([20, 20, 0], frame=context.world.root),
+                Pose(position=Point3(1, 1, 0), reference_frame=context.world.root),
                 teleport=True,
             ),
         ).perform()
+        pickup_loc = CostmapLocation(
+            target=bread.global_pose,
+            reachable_arm=arm,
+            reachable_for=context.robot,
+            validate_reachability=False,
+            samples=1000,
+        )
 
-    pickup_loc = CostmapLocation(
-        target=PoseStamped.from_spatial_type(bread.global_pose),
-        reachable_arm=arm,
-        reachable_for=context.robot,
-        validate_reachability=False,
-        samples=200,
-    )
+        # Tries to find a pick-up position for the robot that uses the given arm
+
     with simulated_robot_without_collision:
         SequentialPlan(
             context,
             ParkArmsActionDescription(get_park_arms_argument(context.world)),
             MoveTorsoActionDescription(TorsoState.HIGH),
-            NavigateActionDescription(pickup_loc, True),
+            NavigateActionDescription(pickup_loc, True, teleport=True),
         ).perform()
 
     with simulated_robot_with_collision:
