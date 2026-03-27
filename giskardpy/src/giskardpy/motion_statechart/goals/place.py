@@ -51,7 +51,7 @@ class Place(Goal):
     goal: Union[HomogeneousTransformationMatrix, Point3] = field(kw_only=True)
     ft: bool = field(kw_only=True, default=False)
     simulated: bool = field(default=True, kw_only=True)
-    pre_place_distance: float = field(default=0.15, kw_only=True)
+    pre_place_distance: float = field(default=0.05, kw_only=True)
     _motion_sequence: Sequence = field(init=False)
 
     def expand(self, context: MotionStatechartContext) -> None:
