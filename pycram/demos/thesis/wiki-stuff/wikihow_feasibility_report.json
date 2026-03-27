@@ -1,0 +1,188 @@
+{
+  "article_count_raw": 222,
+  "article_count_deduped": 214,
+  "error_count": 17,
+  "errors_by_query": {
+    "cut": 2,
+    "chop": 2,
+    "slice": 2,
+    "dice": 1,
+    "mince": 1,
+    "peel": 2,
+    "grate": 1,
+    "shred": 1,
+    "mix": 1,
+    "pour": 1,
+    "wipe": 1,
+    "scrub": 1,
+    "stir": 1
+  },
+  "articles_by_query": {
+    "cut": 44,
+    "dice": 1,
+    "peel": 45,
+    "shred": 1,
+    "mix": 44,
+    "pour": 11,
+    "wipe": 7,
+    "scrub": 17,
+    "slice": 16,
+    "chop": 23,
+    "stir": 5
+  },
+  "title_pattern_counts": {
+    "how_to": 148,
+    "non_instructional": 62,
+    "embedded_how_to": 4
+  },
+  "kitchen_article_count": 11,
+  "non_kitchen_article_count": 203,
+  "kitchen_fraction": 0.051,
+  "parse_success_count": 152,
+  "parse_failure_count": 62,
+  "parse_success_fraction": 0.71,
+  "unknown_object_count": 149,
+  "unknown_object_fraction": 0.98,
+  "generic_domain_count": 122,
+  "generic_domain_fraction": 0.803,
+  "non_instructional_fraction": 0.29,
+  "top_object_classes": [
+    [
+      "UnknownObject",
+      149
+    ],
+    [
+      "ConstructionMaterial",
+      2
+    ],
+    [
+      "FoodItem",
+      1
+    ]
+  ],
+  "top_domains": [
+    [
+      "generic",
+      122
+    ],
+    [
+      "grooming",
+      20
+    ],
+    [
+      "food_preparation",
+      9
+    ],
+    [
+      "cleaning",
+      1
+    ]
+  ],
+  "template_fit_counts": {
+    "cutting": {
+      "full_fit": 1,
+      "partial_fit": 1,
+      "out_of_scope": 119
+    },
+    "mixing": {
+      "full_fit": 0,
+      "partial_fit": 2,
+      "out_of_scope": 116
+    },
+    "pouring": {
+      "full_fit": 0,
+      "partial_fit": 0,
+      "out_of_scope": 102
+    },
+    "wiping": {
+      "full_fit": 0,
+      "partial_fit": 0,
+      "out_of_scope": 99
+    }
+  },
+  "reasons_not_feasible": [
+    "Search results are semantically broad and include many non-kitchen or non-manipulation pages.",
+    "A large share of articles cannot be mapped to a useful object class or domain.",
+    "Many titles are not clean imperative action instances, reducing extraction quality.",
+    "Template-fit statistics are dominated by semantic normalization gaps rather than template scope alone."
+  ],
+  "example_non_kitchen_titles": [
+    "4 Ways to Heal Cuts Quickly (Using Easy, Natural Items) - wikiHow",
+    "3 Ways to Heal an Infected Cut - wikiHow",
+    "4 Ways to Treat Deep Cuts - wikiHow",
+    "5 Ways to Cut Hair - wikiHow",
+    "How to Heal a Cut in Your Nose: At-Home Treatment Options",
+    "How to Heal a Cut on Your Tongue Fast: Care Tips",
+    "How to Cut a Wolf Cut: Easy DIY Guide for Short & Long Hair",
+    "3 Ways to Heal a Cut in Your Mouth - wikiHow",
+    "How to Make Fake Cuts: 14 Steps (with Pictures) - wikiHow",
+    "How to Make Fake Cuts Using Makeup: 6 Steps (with Pictures)",
+    "How to Cut a Man's Hair: Quick & Easy Tutorial",
+    "How to Cut a Pixie Cut: A Step-by-Step Tutorial",
+    "How to Cut Your Own Hair (Long Hair, Short Hair & Bangs)",
+    "How to Cut Hair Straight: 2 Methods for a Precise Bottom Edge",
+    "How to Treat a Cut Lip Fast: First Aid & Healing Time"
+  ],
+  "example_parse_failures": [
+    {
+      "title": "3 Ways to Dice an Onion - wikiHow",
+      "url": "https://www.wikihow.com/Dice-an-Onion"
+    },
+    {
+      "title": "5 Ways to Peel an Egg - wikiHow",
+      "url": "https://www.wikihow.com/Peel-an-Egg"
+    },
+    {
+      "title": "4 Ways to Shred Potatoes - wikiHow",
+      "url": "https://www.wikihow.com/Shred-Potatoes"
+    },
+    {
+      "title": "4 Ways to Heal Cuts Quickly (Using Easy, Natural Items) - wikiHow",
+      "url": "https://www.wikihow.com/Heal-Cuts-Quickly-(Using-Easy,-Natural-Items)"
+    },
+    {
+      "title": "3 Ways to Heal an Infected Cut - wikiHow",
+      "url": "https://www.wikihow.com/Heal-an-Infected-Cut"
+    },
+    {
+      "title": "4 Ways to Treat Deep Cuts - wikiHow",
+      "url": "https://www.wikihow.com/Treat-Deep-Cuts"
+    },
+    {
+      "title": "5 Ways to Cut Hair - wikiHow",
+      "url": "https://www.wikihow.com/Cut-Hair"
+    },
+    {
+      "title": "3 Ways to Heal a Cut in Your Mouth - wikiHow",
+      "url": "https://www.wikihow.com/Heal-a-Cut-in-Your-Mouth"
+    },
+    {
+      "title": "3 Ways to Cut Boys' Hair - wikiHow",
+      "url": "https://www.wikihow.com/Cut-Boys%27-Hair"
+    },
+    {
+      "title": "5 Ways to Cut Curly Hair - wikiHow",
+      "url": "https://www.wikihow.com/Cut-Curly-Hair"
+    },
+    {
+      "title": "3 Ways to Point Cut Hair - wikiHow",
+      "url": "https://www.wikihow.com/Point-Cut-Hair"
+    },
+    {
+      "title": "4 Ways to Grow Hydrangea from Cuttings - wikiHow",
+      "url": "https://www.wikihow.com/Grow-Hydrangea-from-Cuttings"
+    },
+    {
+      "title": "4 Ways to Grow Out a Pixie Cut - wikiHow",
+      "url": "https://www.wikihow.com/Grow-Out-a-Pixie-Cut"
+    },
+    {
+      "title": "3 Ways to Mix Colors - wikiHow",
+      "url": "https://www.wikihow.com/Mix-Colors"
+    },
+    {
+      "title": "Easy Ways to Mix Roundup: 9 Steps (with Pictures) - wikiHow",
+      "url": "https://www.wikihow.com/Mix-Roundup"
+    }
+  ]
+}
