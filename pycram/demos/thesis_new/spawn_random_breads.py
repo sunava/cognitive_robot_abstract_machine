@@ -28,7 +28,7 @@ RESOURCES_DIR = os.path.abspath(
 )
 
 PREFERRED_SURFACE_NAMES = (
-    "island_countertop",
+    # "island_countertop",
     # "countertop",
     # "table_area_main",
     # "coffee_table",

@@ -53,7 +53,7 @@ def setup_world() -> World:
             "..",
             "resources",
             "worlds",
-            "apartment.urdf",
+            "robocup.urdf",
         )
     ).parse()
 

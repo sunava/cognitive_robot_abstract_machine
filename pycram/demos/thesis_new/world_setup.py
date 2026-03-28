@@ -25,6 +25,9 @@ RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")
 )
 WORLDS_DIR = os.path.join(RESOURCES_DIR, "worlds")
+EXTERNAL_ENVIRONMENT_SPECS = {
+    "isr": "package://isr_testbed/urdf/isr-testbed.urdf",
+}
 
 ROBOT_SPECS = {
     "pr2": (
@@ -96,7 +99,8 @@ def resolve_robot_name_from_annotation(robot):
 
 
 def _supported_environment_names():
-    supported = []
+    print("using external environments")
+    supported = list(EXTERNAL_ENVIRONMENT_SPECS)
     for filename in os.listdir(WORLDS_DIR):
         file_path = os.path.join(WORLDS_DIR, filename)
         if os.path.isfile(file_path) and filename.endswith(".urdf"):
@@ -115,6 +119,9 @@ def resolve_environment_path(environment_name=None):
         return normalized
 
     candidate = normalized[:-5] if normalized.endswith(".urdf") else normalized
+    if candidate in EXTERNAL_ENVIRONMENT_SPECS:
+        return EXTERNAL_ENVIRONMENT_SPECS[candidate]
+
     environment_path = os.path.join(WORLDS_DIR, f"{candidate}.urdf")
     if os.path.isfile(environment_path):
         return environment_path
