@@ -133,17 +133,17 @@ def _try_mix(context, bowl, arm, tool):
         SequentialPlan(
             context,
             NavigateActionDescription(
-                Pose(position=Point3(20, 20, 0), reference_frame=context.world.root),
+                Pose(position=Point3(1, 1, 0), reference_frame=context.world.root),
                 teleport=True,
             ),
         ).perform()
 
     pickup_loc = CostmapLocation(
-        target=PoseStamped.from_spatial_type(bowl.global_pose),
+        target=bowl.global_pose,
         reachable_arm=arm,
         reachable_for=context.robot,
         validate_reachability=False,
-        samples=200,
+        samples=1000,
     )
 
     with simulated_robot_without_collision:
@@ -151,7 +151,7 @@ def _try_mix(context, bowl, arm, tool):
             context,
             ParkArmsActionDescription(get_park_arms_argument(context.world)),
             MoveTorsoActionDescription(TorsoState.HIGH),
-            NavigateActionDescription(pickup_loc, True),
+            NavigateActionDescription(pickup_loc, True, teleport=True),
         ).perform()
 
     with simulated_robot_with_collision:
@@ -268,7 +268,7 @@ def main_mixing(seed=None, robot_name=None, environment_name=None):
             node,
             context.robot,
             world,
-            PoseStamped.from_spatial_type(bowl.global_pose),
+            bowl.global_pose,
             debug_costmap_publishers,
         )
         attempt_failures = []

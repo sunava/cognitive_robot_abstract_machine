@@ -407,6 +407,7 @@ class CostmapLocation(LocationDesignatorDescription):
                     test_world.root,
                     test_robot.root.parent_kinematic_structure_entity,
                 ).z
+
                 pose_candidate = Pose(
                     Point3(pose_candidate.x, pose_candidate.y, odom_height),
                     pose_candidate.to_quaternion(),

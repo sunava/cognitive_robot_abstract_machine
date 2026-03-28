@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import logging
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Tuple, List
@@ -23,6 +24,8 @@ from pycram.robot_plans.motions.gripper import MoveGripperMotion, MoveTCPWaypoin
 from pycram.robot_plans.motions.robot_body import MoveJointsMotion
 from pycram.validation.goal_validator import create_multiple_joint_goal_validator
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class MoveTorsoAction(ActionDescription):
@@ -35,15 +38,28 @@ class MoveTorsoAction(ActionDescription):
     The state of the torso that should be set
     """
 
+    def _get_joint_targets(self) -> Tuple[List[str], List[float]]:
+        torso = getattr(self.robot_view, "torso", None)
+        if torso is None:
+            return [], []
+
+        joint_state = torso.get_joint_state_by_type(self.torso_state)
+        joint_names = [c.name.name for c in joint_state.connections]
+        joint_positions = list(joint_state.target_values)
+        return joint_names, joint_positions
+
     def execute(self) -> None:
-        joint_state = self.robot_view.torso.get_joint_state_by_type(self.torso_state)
+        joint_names, joint_positions = self._get_joint_targets()
+        if not joint_names:
+            logger.warning(
+                "Skipping MoveTorsoAction for torso state %s because the current robot exposes no torso joints.",
+                self.torso_state,
+            )
+            return
 
         SequentialPlan(
             self.context,
-            MoveJointsMotion(
-                [c.name.name for c in joint_state.connections],
-                joint_state.target_values,
-            ),
+            MoveJointsMotion(joint_names, joint_positions),
         ).perform()
 
     def validate(
@@ -54,14 +70,12 @@ class MoveTorsoAction(ActionDescription):
         """
         Create a goal validator for the joint positions and wait until the goal is achieved or the timeout is reached.
         """
+        joint_names, joint_positions = self._get_joint_targets()
+        if not joint_names:
+            return
 
-        joint_positions: dict = (
-            RobotDescription.current_robot_description.get_static_joint_chain(
-                "torso", self.torso_state
-            )
-        )
         validator = create_multiple_joint_goal_validator(
-            World.current_world.robot, joint_positions
+            World.current_world.robot, dict(zip(joint_names, joint_positions))
         )
         validator.wait_until_goal_is_achieved(
             max_wait_time=max_wait_time, time_per_read=timedelta(milliseconds=20)
@@ -135,6 +149,12 @@ class ParkArmsAction(ActionDescription):
     def execute(self) -> None:
         print(f"Executing: {self.__class__.__name__}")
         joint_names, joint_poses = self.get_joint_poses()
+        if not joint_names:
+            logger.warning(
+                "Skipping ParkArmsAction for arm %s because no park joint targets are defined for the current robot.",
+                self.arm,
+            )
+            return
 
         SequentialPlan(
             self.context, MoveJointsMotion(names=joint_names, positions=joint_poses)
@@ -161,9 +181,11 @@ class ParkArmsAction(ActionDescription):
         """
         Create a goal validator for the joint positions and wait until the goal is achieved or the timeout is reached.
         """
-        joint_poses = self.get_joint_poses()
+        joint_names, joint_poses = self.get_joint_poses()
+        if not joint_names:
+            return
         validator = create_multiple_joint_goal_validator(
-            World.current_world.robot, joint_poses
+            World.current_world.robot, dict(zip(joint_names, joint_poses))
         )
         validator.wait_until_goal_is_achieved(
             max_wait_time=max_wait_time, time_per_read=timedelta(milliseconds=20)

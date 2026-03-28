@@ -124,7 +124,7 @@ class MotionExecutor:
         )
         executor.compile(self.motion_state_chart)
         try:
-            executor.tick_until_end(timeout=2_000)
+            executor.tick_until_end(timeout=1_000)
         except TimeoutError as e:
             failed_nodes = [
                 (

@@ -7,12 +7,13 @@ from semantic_digital_twin.robots.justin import Justin
 from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.robots.stretch import Stretch
 from semantic_digital_twin.robots.tiago import Tiago
+from semantic_digital_twin.robots.unitree_g1 import UnitreeG1
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import (
     DifferentialDrive,
     OmniDrive,
 )
-from semantic_digital_twin.world_description.utils import world_with_urdf_factory
+from test.conftest import world_with_urdf_factory
 
 THESIS_NEW_DEFAULT_ROBOT = "pr2"
 THESIS_NEW_ROBOT_ENV = "THESIS_NEW_ROBOT"
@@ -61,6 +62,13 @@ ROBOT_SPECS = {
         Justin,
         OmniDrive,
         ARMAR7_START_POSE,
+    ),
+    "g1": (
+        "package://iai_offis_g1_description/urdf/offis_unitree_g1.urdf",
+        UnitreeG1,
+        OmniDrive,
+        ARMAR7_START_POSE,
+        HomogeneousTransformationMatrix.from_xyz_rpy(z=0.8),
     ),
 }
 
@@ -119,16 +127,22 @@ def resolve_environment_path(environment_name=None):
 
 def setup_thesis_world(robot_name=None, environment_name=None):
     resolved_robot_name = resolve_robot_name(robot_name)
-    robot_urdf, robot_cls, drive_cls, robot_start_pose = ROBOT_SPECS[
+    robot_urdf, robot_cls, drive_cls, robot_start_pose, robot_off = ROBOT_SPECS[
         resolved_robot_name
     ]
+
     environment_path = resolve_environment_path(environment_name)
 
     environment_world = URDFParser.from_file(environment_path).parse()
 
-    robot_world = world_with_urdf_factory(robot_urdf, None, drive_cls)
+    robot_world = world_with_urdf_factory(
+        urdf_path=robot_urdf,
+        robot_semantic_annotation=robot_cls,
+        drive_connection_type=drive_cls,
+        robot_localization_pose=robot_off,
+    )
     environment_world.merge_world_at_pose(robot_world, robot_start_pose)
-    robot_cls.from_world(environment_world)
+    # robot_cls.from_world(environment_world)
 
     print(environment_world.root)
     return environment_world

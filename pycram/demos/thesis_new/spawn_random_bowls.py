@@ -11,7 +11,6 @@ from demos.thesis_new.spawn_random_breads import (
     _body_name,
     _collect_surface_bodies,
     _count_for_surface,
-    _is_pose_reachable_for_cutting,
     _pose_xyz,
     _sample_xy,
     _set_uniform_scale,
@@ -21,6 +20,7 @@ from demos.thesis_new.spawn_random_breads import (
     body_local_aabb,
 )
 from demos.thesis_new.world_setup import setup_thesis_world
+from demos.thesis_new.utils.demo_utils import build_navigation_costmaps
 
 RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")
@@ -162,6 +162,43 @@ def _sample_vertical_wipe_targets(world, rng, surface_name, count, start_idx):
     return placements, [surface_plan_entry]
 
 
+def _is_pose_reachable_for_mixing(robot, world, target_pose, cache=None):
+    key = None
+    if cache is not None:
+        position = target_pose.to_position()
+        key = (
+            int(round(float(position.x) / 0.10)),
+            int(round(float(position.y) / 0.10)),
+            str(target_pose.reference_frame),
+        )
+        if key in cache:
+            return cache[key]
+
+    try:
+        _, _, final_map = build_navigation_costmaps(
+            robot,
+            world,
+            target_pose,
+            width=60,
+            height=60,
+            resolution=0.05,
+            ring_std=8,
+            ring_distance=0.55,
+            obstacle_clearance=0.20,
+            number_of_samples=8,
+        )
+        next(iter(final_map))
+        result = True
+    except StopIteration:
+        result = False
+    except Exception:
+        result = True
+
+    if cache is not None and key is not None:
+        cache[key] = result
+    return result
+
+
 def _resolve_vertical_wipe_surfaces(world):
     resolved = []
     seen = set()
@@ -212,6 +249,7 @@ def _sample_random_bowl_layout(world, seed=None, spawn_bowls=True):
     placements = []
     surface_plan = []
     created_idx = 0
+    coarse_reachability_cache = {}
     with world.modify_world():
         _tint_surfaces_light_brown(world)
         for surface_body in surfaces:
@@ -261,8 +299,8 @@ def _sample_random_bowl_layout(world, seed=None, spawn_bowls=True):
                         )
                         target_pose = candidate_world_pose
 
-                        if not _is_pose_reachable_for_cutting(
-                            spawn_robot, world, target_pose
+                        if not _is_pose_reachable_for_mixing(
+                            spawn_robot, world, target_pose, coarse_reachability_cache
                         ):
                             continue
 

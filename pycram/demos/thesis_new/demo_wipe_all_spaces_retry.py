@@ -1,7 +1,7 @@
 import os
 import time
 import numpy as np
-from geometry_msgs.msg import Pose as RosPose
+from geometry_msgs.msg import Pose as RosPose, PoseStamped
 from rclpy.duration import Duration as RclpyDuration
 from rclpy.qos import DurabilityPolicy, QoSProfile
 from visualization_msgs.msg import Marker, MarkerArray
@@ -235,10 +235,10 @@ def _try_wipe(context, target_pose, arm, tool):
             context,
             NavigateActionDescription(
                 Pose(
-                    position=Point3(20, 20, 0),
+                    position=Point3(1, 1, 0),
                     reference_frame=context.world.root,
-                    teleport=True,
-                )
+                ),
+                teleport=True,
             ),
         ).perform()
 
@@ -247,7 +247,7 @@ def _try_wipe(context, target_pose, arm, tool):
         reachable_arm=arm,
         reachable_for=context.robot,
         validate_reachability=False,
-        samples=200,
+        samples=1000,
     )
 
     with simulated_robot_without_collision:
@@ -255,7 +255,7 @@ def _try_wipe(context, target_pose, arm, tool):
             context,
             ParkArmsActionDescription(get_park_arms_argument(context.world)),
             MoveTorsoActionDescription(TorsoState.HIGH),
-            NavigateActionDescription(pickup_loc, True),
+            NavigateActionDescription(pickup_loc, True, teleport=True),
         ).perform()
     with simulated_robot_with_collision:
         current_plan = SequentialPlan(
@@ -309,7 +309,7 @@ def _rotate_pose_180deg_z(target_pose):
         quat_w=float(new_quat[3]),
         reference_frame=target_pose.reference_frame,
     )
-    return PoseStamped.from_spatial_type(rotated_pose)
+    return rotated_pose
 
 
 def main_wiping(seed=None, robot_name=None, environment_name=None):
@@ -388,7 +388,7 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
             failed_target_names=failed_target_names,
             successful_target_names=successful_target_names,
         )
-        target_pose = PoseStamped.from_spatial_type(target_data["world_pose"])
+        target_pose = target_data["world_pose"]
         debug_costmap_publishers = _update_costmap_debug_publishers(
             node,
             context.robot,
