@@ -94,11 +94,11 @@ with simulated_robot:
 ```
 
 ```python
-from pycram.locations.locations import CostmapLocation
+from pycram.locations.locations import CostmapLocation, Arms
 from pycram.robot_plans.actions.core.navigation import NavigateAction
 from pycram.motion_executor import simulated_robot
 
-location_description = CostmapLocation(target=world.get_body_by_name("milk.stl").global_pose, reachable=True, context=context)
+location_description = CostmapLocation(target=world.get_body_by_name("milk.stl").global_pose, reachable=True, reachable_arm=Arms.LEFT, context=context)
 
 plan = execute_single(NavigateAction(next(iter(location_description))), context=context)
 
@@ -121,7 +121,7 @@ designator you can spawn them with the following cell.
 ```python
 location_description = CostmapLocation(target=world.get_body_by_name("milk.stl").global_pose, visible=True, context=context)
 
-plan = execute_single(NavigateAction(next(iter(location_description)), context=context)
+plan = execute_single(NavigateAction(next(iter(location_description))), context=context)
 
 
 with simulated_robot:
@@ -158,6 +158,6 @@ spawned it in a previous example. Furthermore, we need a robot, so we also spawn
 ```python
 from pycram.locations.locations import AccessingLocation
 
-access_location = AccessingLocation(world.get_body_by_name("handle_cab10_t").global_pose, context=context)
+access_location = AccessingLocation(world.get_body_by_name("handle_cab10_t").global_pose, arm=Arms.LEFT, context=context)
 print(access_location.resolve())
 ```
