@@ -34,7 +34,14 @@ class WorldStateEntryView:
     """
 
     data: np.ndarray
+    """
+    The data for a single DOF, as a view into the WorldState's data array.
+    """
+
     lock: threading.RLock
+    """
+    Lock for thread safety.
+    """
 
     def __getitem__(self, item: Derivatives) -> float:
         with self.lock:
