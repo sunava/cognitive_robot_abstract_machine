@@ -116,6 +116,9 @@ class CostmapLocation(Location):
     A grasp description that should be used to calculate the pose.
     """
 
+    def resolve(self) -> Pose:
+        return next(iter(self))
+
     def setup_costmaps(self, target: Pose, visible: bool, reachable: bool) -> Costmap:
         """
         Sets up the costmap for the given target and robot.

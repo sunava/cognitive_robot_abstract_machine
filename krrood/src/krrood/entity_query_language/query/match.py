@@ -232,7 +232,7 @@ class Match(AbstractMatchExpression[T], HasFactoryAndKwargs[T]):
 
     def _initialize_type_(self):
         """
-        Initialize the type of the match based on the provided information.
+        Initialize the type of the match based on the provided information in-place.
         """
         if isclass(self.factory):
             self.type_ = self.factory

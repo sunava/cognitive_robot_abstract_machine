@@ -45,18 +45,15 @@ class TransportAction(ActionDescription):
     """
     Object designator_description describing the object that should be transported.
     """
+
     target_location: Pose
     """
     Target Location to which the object should be transported
     """
+
     arm: Optional[Arms]
     """
     Arm that should be used
-    """
-    place_rotation_agnostic: Optional[bool] = False
-    """
-    If True, the robot will place the object in the same orientation as it is itself, no matter how the object was grasped.
-    This is currently not supported and will be added by luca if he wants it.
     """
 
     def inside_container(self) -> List[Body]:
@@ -84,16 +81,12 @@ class TransportAction(ActionDescription):
             sequential(
                 [
                     NavigateAction(
-                        next(
-                            iter(
-                                CostmapLocation(
-                                    handle.global_pose,
-                                    reachable_arm=self.arm,
-                                    reachable=True,
-                                    context=self.plan.context,
-                                )
-                            )
-                        ),
+                        CostmapLocation(
+                            handle.global_pose,
+                            reachable_arm=self.arm,
+                            reachable=True,
+                            context=self.plan.context,
+                        ).resolve(),
                         True,
                     ),
                     OpenAction(handle, self.arm),
