@@ -40,7 +40,7 @@ class WorldStateEntryView:
 
     lock: threading.RLock
     """
-    Lock for thread safety.
+    Lock for thread safety. This should be the same lock instance as the world has.
     """
 
     def __getitem__(self, item: Derivatives) -> float:
