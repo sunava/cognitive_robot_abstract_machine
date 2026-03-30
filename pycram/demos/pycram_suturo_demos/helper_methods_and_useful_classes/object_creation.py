@@ -1,52 +1,20 @@
 import json
-import os
 from time import sleep
-from typing import List
 
 from suturo_resources.queries import query_class_by_label
 
-from pycram_suturo_demos.helper_methods_and_useful_classes.mapping_perception_semantic_annotations import (
-    perception_semantic_annotations,
-)
-from pycram_suturo_demos.helper_methods_and_useful_classes.semantic_helper_methods import (
-    get_object_class_from_string,
-)
-from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.exceptions import WorldEntityNotFoundError
 from semantic_digital_twin.semantic_annotations.mixins import HasRootBody
 from semantic_digital_twin.spatial_types import (
     Point3,
     Quaternion,
-    Vector3,
     HomogeneousTransformationMatrix,
 )
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import FixedConnection
-from semantic_digital_twin.world_description.geometry import Box, Scale
-from semantic_digital_twin.world_description.shape_collection import ShapeCollection
-from semantic_digital_twin.world_description.world_entity import (
-    Body,
-    SemanticAnnotation,
-)
-
-
-def add_box(name: str, scale_xyz: tuple[float, float, float]):
-    body = Body(
-        name=PrefixedName(name),
-        collision=ShapeCollection([Box(scale=Scale(*scale_xyz))]),
-    )
-    return body
-
-
-def add_milk(name: str, scale_xyz: tuple[float, float, float]):
-    body = STLParser(
-        os.path.join(
-            os.path.dirname(__file__), "..", "..", "resources", "objects", "milk.stl"
-        )
-    ).parse()
-    return body
+from semantic_digital_twin.world_description.geometry import Scale
 
 
 def extract_name_from_json_string(json_string: str) -> str:
@@ -60,60 +28,6 @@ def extract_name_from_json_string(json_string: str) -> str:
 
     data = json.loads(json_string)
     return data["type"]
-
-
-def try_remove_semantic_annotation_and_body(name: str, world: World):
-    """
-    Tries to remove a semantic annotation and its associated body from the world based on the provided name.
-    If no annotation with the provided name exists, it does nothing.
-    """
-
-    try:
-        object_to_remove = world.get_semantic_annotation_by_name(name)
-        with world.modify_world():
-            world.remove_semantic_annotation(object_to_remove)
-            for body in object_to_remove.bodies:
-                world.remove_kinematic_structure_entity(body)
-    except WorldEntityNotFoundError:
-        pass
-
-
-def _resolve_reference_frame(frame, world: World):
-    """
-    Resolve a pose reference frame into a KinematicStructureEntity.
-
-    The semantic digital twin APIs expect reference_frame to be a world entity,
-    but perception messages often provide ROS frame ids as strings.
-    """
-    if frame is None:
-        return None
-
-    if hasattr(frame, "id"):
-        return frame
-
-    if isinstance(frame, str):
-        normalized = frame.strip()
-
-        root_names = {
-            "map",
-            "world",
-            str(world.root.name),
-        }
-        if normalized in root_names:
-            return world.root
-
-        try:
-            return world.get_body_by_name(normalized)
-        except WorldEntityNotFoundError as exc:
-            raise ValueError(
-                f"Unknown reference frame '{normalized}'. "
-                "Expected a world frame/body known to the semantic digital twin."
-            ) from exc
-
-    raise TypeError(
-        f"Unsupported reference_frame type: {type(frame).__name__}. "
-        "Expected None, a frame object, or a frame name string."
-    )
 
 
 def move_object_to_new_pose(
@@ -159,11 +73,8 @@ def spawn_semantic_with_body(
 
     pose.z -= 0.015  # To avoid spawning objects in the air due to small inaccuracies in the pose estimation.
 
-    resolved_reference_frame = _resolve_reference_frame(pose.reference_frame, world)
-    pose.reference_frame = resolved_reference_frame
-
     # If the pose has a frame_id, we need to transform it to the world root frame.
-    # Otherwise, we can assume it is already in the world root frame.
+    # Otherwise, we assume it is already in the world root frame.
     if pose.reference_frame is not None and pose.reference_frame != world.root:
         world_root_T_self = world.transform(pose, world.root).to_homogeneous_matrix()
     else:
@@ -223,19 +134,13 @@ def perceive_and_spawn_all_objects(world: World):
                 object_pose_stamped.pose.orientation.z,
                 object_pose_stamped.pose.orientation.w,
             ),
-            reference_frame=object_pose_stamped.header.frame_id,
+            reference_frame=world.get_kinematic_structure_entity_by_name(
+                object_pose_stamped.header.frame_id
+            ),
         )
 
-        # TODO: Grr Perception is not updated so we use our own mapping
         object_name = extract_name_from_json_string(perceived_object.attribute[0])
         object_type = perceived_object.type
-
-        # object_name = perceived_object.type
-        # object_type = perception_semantic_annotations[object_name]
-
-        # If nothing else works
-        # object_name = "muesli_vitalis_box_nutmix2"
-        # object_type = "cereal"
 
         spawn_semantic_with_body(
             semantic_type=object_type,
