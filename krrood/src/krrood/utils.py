@@ -101,15 +101,15 @@ def get_default_value(dataclass_type, field_name):
     :return: The default value for the field.
     """
     for f in fields(dataclass_type):
-        if f.name == field_name:
-            if f.default is not MISSING:
-                return f.default
-            elif f.default_factory is not MISSING:  # handles mutable defaults
-                return f.default_factory()
-            else:
-                raise KeyError(f"No default value for field '{field_name}'")
-
-    raise KeyError(f"Field '{field_name}' not found in {dataclass_type.__name__}")
+        if f.name != field_name:
+            continue
+        if f.default is not MISSING:
+            return f.default
+        elif f.default_factory is not MISSING:  # handles mutable defaults
+            return f.default_factory()
+        else:
+            raise KeyError(f"No default value for field '{field_name}'")
+    return None
 
 
 def get_default_values_for_dataclass(dataclass_type):
