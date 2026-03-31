@@ -17,12 +17,8 @@ from pycram_suturo_demos.helper_methods_and_useful_classes.pickup_helper_methods
     detach_object_from_hsrb,
     attach_object_to_hsrb,
 )
-from pycram_suturo_demos.pycram_advanced_hsr_demos.bring_object_from_table_to_shelf_demo import (
-    look_at_surface,
-)
 from pycram_suturo_demos.pycram_basic_hsr_demos.A_start_up import setup_hsrb_context
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
-    Table,
     Chips,
 )
 from semantic_digital_twin.world import World
@@ -34,10 +30,6 @@ rclpy_node, world, robot_view, context = setup_hsrb_context()
 
 with real_robot:
     SequentialPlan(context, ParkArmsActionDescription(Arms.BOTH)).perform()
-
-table: Table = world.get_semantic_annotations_by_name("small_table")[0]
-
-look_at_surface(context, table)
 
 perceive_and_spawn_all_objects(world)
 object_to_pickup = world.get_semantic_annotations_by_type(Chips)[0]
