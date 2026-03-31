@@ -102,7 +102,7 @@ class MotionExecutor:
     def _execute_for_real(self):
         from giskardpy_ros.python_interface.python_interface import GiskardWrapper
 
-        giskard = GiskardWrapper(self.ros_node)
+        giskard = GiskardWrapper(self.ros_node, world=self.world)
         giskard.execute(self.motion_state_chart)
 
 

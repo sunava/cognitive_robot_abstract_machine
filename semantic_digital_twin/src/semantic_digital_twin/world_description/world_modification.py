@@ -4,6 +4,7 @@ from abc import abstractmethod, ABC
 from dataclasses import dataclass, field
 from functools import wraps
 from uuid import UUID
+import rustworkx
 
 from typing_extensions import (
     List,
@@ -280,7 +281,10 @@ class RemoveConnectionModification(WorldModelModificationViaID):
         return world.get_connection(parent, child)
 
     def apply(self, world: World):
-        world.remove_connection(self.to_domain_object(world))
+        try:
+            world.remove_connection(self.to_domain_object(world))
+        except rustworkx.NoEdgeBetweenNodes as e:
+            ...
 
     def to_json(self):
         return {

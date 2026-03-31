@@ -861,7 +861,7 @@ class World(HasSimulatorProperties):
             dof.has_hardware_interface = value
 
     # %% Getter
-    @lru_cache(maxsize=_LRU_CACHE_SIZE)
+    # @lru_cache(maxsize=_LRU_CACHE_SIZE)
     def get_connection(
         self, parent: KinematicStructureEntity, child: KinematicStructureEntity
     ) -> Connection:
