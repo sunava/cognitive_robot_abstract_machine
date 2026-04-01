@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Self
 
 import trimesh
+import trimesh.visual
 from PIL import Image
 from typing_extensions import Optional
 
@@ -164,27 +165,6 @@ class Sage10kObject(SubclassJSONSerializer):
     def create_in_world(self, world: World, directory_path: Path) -> Body:
         ply_file = directory_path / "objects" / f"{self.source_id}.ply"
         texture_file = directory_path / "objects" / f"{self.source_id}_texture.png"
-
-        # 1. Load the geometry from the PLY file
-        mesh = trimesh.load(ply_file)
-
-        # 2. Load the texture image
-        tex_image = Image.open(texture_file)
-
-        # 3. Create a material with the image
-        # SimpleMaterial is the standard for basic diffuse textures
-        material = trimesh.visual.texture.SimpleMaterial(image=tex_image)
-
-        # 4. Apply the material to the mesh
-        # Note: The mesh MUST have 'uv' coordinates already defined in the PLY
-        mesh.visual = trimesh.visual.TextureVisuals(
-            uv=mesh.visual.uv, material=material
-        )
-
-        # 5. Preview the result
-        mesh.show()
-
-        b = Body(name=PrefixedName(prefix=self.room_id, name=self.id))
 
     def to_json(self) -> Dict[str, Any]:
         """
