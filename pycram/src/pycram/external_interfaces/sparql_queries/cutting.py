@@ -208,6 +208,64 @@ def query_var(verb, foodobject):
     """
 
 
-verb = "cut:Quartering"
-foodobject = "FOODON_00003523"
-query_var(verb, foodobject)
+def get_cutting_knowledge(verb, foodobject):
+    remove_peel = check_food_part(foodobject, "Peel")
+    remove_core = check_food_part(foodobject, "Core")
+    remove_stem = check_food_part(foodobject, "Stem")
+    remove_shell = check_food_part(foodobject, "Shell")
+
+    required_prerequisites = []
+    if remove_peel:
+        required_prerequisites.append("peeling")
+    if remove_core:
+        required_prerequisites.append("core_removal")
+    if remove_stem:
+        required_prerequisites.append("stem_removal")
+    if remove_shell:
+        required_prerequisites.append("shell_removal")
+
+    return {
+        "query_success": True,
+        "verb": verb,
+        "foodobject": foodobject,
+        "prior_task": get_prior_task(verb),
+        "cutting_tool": get_cutting_tool(foodobject),
+        "cutting_position": get_cutting_position(verb),
+        "repetition": get_repetition(verb),
+        "remove_peel": remove_peel,
+        "remove_core": remove_core,
+        "remove_stem": remove_stem,
+        "remove_shell": remove_shell,
+        "required_prerequisites": required_prerequisites,
+        "peeling_tool": (
+            get_peel_tool(foodobject) if (remove_peel or remove_shell) else None
+        ),
+    }
+
+
+def safe_get_cutting_knowledge(verb, foodobject):
+    try:
+        return get_cutting_knowledge(verb, foodobject)
+    except Exception as exc:
+        return {
+            "query_success": False,
+            "verb": verb,
+            "foodobject": foodobject,
+            "prior_task": None,
+            "cutting_tool": None,
+            "cutting_position": None,
+            "repetition": None,
+            "remove_peel": False,
+            "remove_core": False,
+            "remove_stem": False,
+            "remove_shell": False,
+            "required_prerequisites": [],
+            "peeling_tool": None,
+            "query_error": f"{type(exc).__name__}: {exc}",
+        }
+
+
+if __name__ == "__main__":
+    verb = "cut:Slicing"
+    foodobject = "FOODON_00003523"
+    query_var(verb, foodobject)

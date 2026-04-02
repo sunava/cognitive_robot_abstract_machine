@@ -6,7 +6,8 @@ from datetime import timedelta
 from typing_extensions import Optional, Any
 
 from pycram.config.action_conf import ActionConfig
-from pycram.plans.factories import execute_single
+from pycram.locations.locations import CostmapLocation
+from pycram.plans.factories import execute_single, sequential
 from pycram.robot_plans.actions.base import ActionDescription
 from pycram.robot_plans.motions.navigation import MoveMotion
 from pycram.robot_plans.motions.robot_body import LookingMotion
@@ -30,9 +31,26 @@ class NavigateAction(ActionDescription):
     Keep the joint states of the robot the same during the navigation.
     """
 
+    teleport: bool = False
+    """
+    If the robot should teleport to the target location instead of moving to it
+    """
+
     def execute(self) -> None:
-        self.add_subplan(
-            execute_single(MoveMotion(self.target_location, self.keep_joint_states))
+        if isinstance(self.target_location, CostmapLocation):
+            self.target_location.plan_node = self.plan_node
+            # Tries to find a pick-up position for the robot that uses the given arm
+            self.target_location = self.target_location.resolve()
+
+            print("Navigation through costmap:", str(self.target_location.to_np()))
+
+        return sequential(
+            [
+                MoveMotion(
+                    self.target_location, self.keep_joint_states, teleport=self.teleport
+                ),
+            ],
+            self.context,
         ).perform()
 
 

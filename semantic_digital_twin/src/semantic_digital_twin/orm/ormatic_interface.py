@@ -6340,25 +6340,6 @@ class ForkDAO(
     }
 
 
-class KnifeDAO(
-    CuttleryDAO,
-    DataAccessObject[
-        semantic_digital_twin.semantic_annotations.semantic_annotations.Knife
-    ],
-):
-
-    __tablename__ = "KnifeDAO"
-
-    database_id: Mapped[builtins.int] = mapped_column(
-        ForeignKey(CuttleryDAO.database_id), primary_key=True, use_existing_column=True
-    )
-
-    __mapper_args__ = {
-        "polymorphic_identity": "KnifeDAO",
-        "inherit_condition": database_id == CuttleryDAO.database_id,
-    }
-
-
 class SpoonDAO(
     CuttleryDAO,
     DataAccessObject[
@@ -7827,6 +7808,107 @@ class StatueDAO(
     __mapper_args__ = {
         "polymorphic_identity": "StatueDAO",
         "inherit_condition": database_id == HasRootBodyDAO.database_id,
+    }
+
+
+class ToolDAO(
+    HasRootBodyDAO,
+    DataAccessObject[
+        semantic_digital_twin.semantic_annotations.semantic_annotations.Tool
+    ],
+):
+
+    __tablename__ = "ToolDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        ForeignKey(HasRootBodyDAO.database_id),
+        primary_key=True,
+        use_existing_column=True,
+    )
+
+    __mapper_args__ = {
+        "polymorphic_identity": "ToolDAO",
+        "inherit_condition": database_id == HasRootBodyDAO.database_id,
+    }
+
+
+class SpongeDAO(
+    ToolDAO,
+    DataAccessObject[
+        semantic_digital_twin.semantic_annotations.semantic_annotations.Sponge
+    ],
+):
+
+    __tablename__ = "SpongeDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        ForeignKey(ToolDAO.database_id), primary_key=True, use_existing_column=True
+    )
+
+    __mapper_args__ = {
+        "polymorphic_identity": "SpongeDAO",
+        "inherit_condition": database_id == ToolDAO.database_id,
+    }
+
+
+class ToolWithHandleDAO(
+    HasHandleDAO,
+    DataAccessObject[
+        semantic_digital_twin.semantic_annotations.semantic_annotations.ToolWithHandle
+    ],
+):
+
+    __tablename__ = "ToolWithHandleDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        ForeignKey(HasHandleDAO.database_id), primary_key=True, use_existing_column=True
+    )
+
+    __mapper_args__ = {
+        "polymorphic_identity": "ToolWithHandleDAO",
+        "inherit_condition": database_id == HasHandleDAO.database_id,
+    }
+
+
+class KnifeDAO(
+    ToolWithHandleDAO,
+    DataAccessObject[
+        semantic_digital_twin.semantic_annotations.semantic_annotations.Knife
+    ],
+):
+
+    __tablename__ = "KnifeDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        ForeignKey(ToolWithHandleDAO.database_id),
+        primary_key=True,
+        use_existing_column=True,
+    )
+
+    __mapper_args__ = {
+        "polymorphic_identity": "KnifeDAO",
+        "inherit_condition": database_id == ToolWithHandleDAO.database_id,
+    }
+
+
+class WhiskDAO(
+    ToolWithHandleDAO,
+    DataAccessObject[
+        semantic_digital_twin.semantic_annotations.semantic_annotations.Whisk
+    ],
+):
+
+    __tablename__ = "WhiskDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        ForeignKey(ToolWithHandleDAO.database_id),
+        primary_key=True,
+        use_existing_column=True,
+    )
+
+    __mapper_args__ = {
+        "polymorphic_identity": "WhiskDAO",
+        "inherit_condition": database_id == ToolWithHandleDAO.database_id,
     }
 
 
@@ -9715,6 +9797,20 @@ class WorldStateMappingDAO(
     )
     ids: Mapped[typing.List[uuid.UUID]] = mapped_column(
         JSON, nullable=False, use_existing_column=True
+    )
+
+
+class WorldStateEntryViewDAO(
+    Base,
+    DataAccessObject[
+        semantic_digital_twin.world_description.world_state.WorldStateEntryView
+    ],
+):
+
+    __tablename__ = "WorldStateEntryViewDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        Integer, primary_key=True, use_existing_column=True
     )
 
 

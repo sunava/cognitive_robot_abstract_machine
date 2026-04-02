@@ -7,7 +7,10 @@ from typing_extensions import (
     Any,
 )
 
-from krrood.entity_query_language.backends import QueryBackend, EntityQueryLanguageBackend
+from krrood.entity_query_language.backends import (
+    QueryBackend,
+    EntityQueryLanguageBackend,
+)
 from pycram.plans.plan import Plan
 from pycram.plans.plan_entity import PlanEntity
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
@@ -42,7 +45,13 @@ class Context(PlanEntity):
     """
 
     @classmethod
-    def from_world(cls, world: World, plan: Plan = None, query_backend: Optional[QueryBackend] = None):
+    def from_world(
+        cls,
+        world: World,
+        plan: Plan = None,
+        ros_node: Optional[Any] = None,
+        query_backend: Optional[QueryBackend] = None,
+    ):
         """
         Create a context from a world by getting the first robot in the world. There is no super plan in this case.
 
@@ -55,14 +64,18 @@ class Context(PlanEntity):
         if query_backend is None:
             query_backend = EntityQueryLanguageBackend()
 
-        result =  cls(
+        result = cls(
             world=world,
             robot=world.get_semantic_annotations_by_type(AbstractRobot)[0],
-            query_backend=query_backend
+            ros_node=ros_node,
+            query_backend=query_backend,
         )
         if plan:
             plan.add_plan_entity(result)
         return result
 
 
-
+@dataclass
+class AlignmentPair:
+    tip_normal: Vector3
+    goal_normal: Vector3

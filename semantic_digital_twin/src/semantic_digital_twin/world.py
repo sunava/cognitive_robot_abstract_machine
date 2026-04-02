@@ -43,6 +43,7 @@ from semantic_digital_twin.exceptions import (
     AlreadyBelongsToAWorldError,
     MissingWorldModificationContextError,
     WorldEntityWithIDNotFoundError,
+    WorldEntityWithIDNotInKwargs,
     MissingReferenceFrameError,
     MismatchingPublishChangesAttribute,
     AtomicWorldModificationNotAtomic,
@@ -1171,8 +1172,41 @@ class World(HasSimulatorProperties):
 
             other_root_id = other.root.id
             other._clear_world_entities()
-            for modification in other._model_manager.model_modification_blocks:
-                modification.apply(self)
+            all_modifications = [
+                modification
+                for block in other._model_manager.model_modification_blocks
+                for modification in block
+            ]
+
+            # Some modifications reference world entities by UUID before the referenced
+            # entity appears in replay order. Retry unresolved ones after the first pass.
+            deferred_modifications = []
+            for modification in all_modifications:
+                try:
+                    modification.apply(self)
+                except (WorldEntityWithIDNotInKwargs, WorldEntityWithIDNotFoundError):
+                    deferred_modifications.append(modification)
+
+            while deferred_modifications:
+                unresolved_modifications = []
+                has_progress = False
+
+                for modification in deferred_modifications:
+                    try:
+                        modification.apply(self)
+                    except (
+                        WorldEntityWithIDNotInKwargs,
+                        WorldEntityWithIDNotFoundError,
+                    ):
+                        unresolved_modifications.append(modification)
+                    else:
+                        has_progress = True
+
+                if not has_progress:
+                    # Re-run once without handling to preserve the original exception.
+                    unresolved_modifications[0].apply(self)
+
+                deferred_modifications = unresolved_modifications
 
             self.state.merge_state(other_state)
 

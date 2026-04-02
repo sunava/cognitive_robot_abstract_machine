@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import logging
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Tuple, List
@@ -22,6 +23,8 @@ from semantic_digital_twin.datastructures.definitions import (
     StaticJointState,
 )
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class MoveTorsoAction(ActionDescription):
@@ -36,6 +39,13 @@ class MoveTorsoAction(ActionDescription):
 
     def execute(self) -> None:
         joint_state = self.robot.torso.get_joint_state_by_type(self.torso_state)
+        if len(joint_state.connections) == 0:
+            logger.debug(
+                "Skipping torso motion '%s' because robot '%s' exposes no torso joints.",
+                self.torso_state,
+                self.robot.root.name,
+            )
+            return
         self.add_subplan(
             execute_single(
                 MoveJointsMotion(
@@ -86,11 +96,32 @@ class SetGripperAction(ActionDescription):
 
     def execute(self) -> None:
         arms = [Arms.LEFT, Arms.RIGHT] if self.gripper == Arms.BOTH else [self.gripper]
-        self.add_subplan(
-            sequential(
-                [MoveGripperMotion(gripper=arm, motion=self.motion) for arm in arms]
+        motions = []
+        skipped_arms = []
+        for arm in arms:
+            end_effector = ViewManager().get_end_effector_view(arm, self.robot)
+            joint_state = end_effector.get_joint_state_by_type(self.motion)
+            if len(joint_state.connections) == 0:
+                skipped_arms.append(arm.name)
+                continue
+            motions.append(MoveGripperMotion(gripper=arm, motion=self.motion))
+
+        if not motions:
+            logger.debug(
+                "Skipping gripper motion '%s' because no addressed gripper exposes controllable joints (%s).",
+                self.motion,
+                ", ".join(skipped_arms) if skipped_arms else self.gripper.name,
             )
-        ).perform()
+            return
+
+        if skipped_arms:
+            logger.debug(
+                "Skipping gripper motion '%s' for unsupported grippers: %s",
+                self.motion,
+                ", ".join(skipped_arms),
+            )
+
+        self.add_subplan(sequential(motions)).perform()
 
     def validate(
         self,
@@ -116,6 +147,13 @@ class ParkArmsAction(ActionDescription):
 
     def execute(self) -> None:
         joint_names, joint_poses = self.get_joint_poses()
+        if len(joint_names) == 0:
+            logger.debug(
+                "Skipping park-arms action because robot '%s' exposes no park joint targets for arm selection '%s'.",
+                self.robot.root.name,
+                self.arm,
+            )
+            return
 
         self.add_subplan(
             execute_single(MoveJointsMotion(names=joint_names, positions=joint_poses))

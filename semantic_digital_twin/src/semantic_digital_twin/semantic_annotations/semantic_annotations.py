@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, Self, Tuple
 
@@ -10,6 +10,7 @@ from typing_extensions import List, Type
 
 from krrood.ormatic.utils import classproperty
 from krrood.symbolic_math import symbolic_math
+from pycram.datastructures.dataclasses import AlignmentPair
 from semantic_digital_twin.semantic_annotations.mixins import (
     HasSupportingSurface,
     HasRootRegion,
@@ -954,11 +955,11 @@ class Fork(Cuttlery):
     """
 
 
-@dataclass(eq=False)
-class Knife(Cuttlery):
-    """
-    A butter knife.
-    """
+# @dataclass(eq=False)
+# class Knife(Cuttlery):
+#     """
+#     A butter knife.
+#     """
 
 
 @dataclass(eq=False)
@@ -991,3 +992,160 @@ class LiquidCap(HasRootBody):
     """
     A liquid cap.
     """
+
+
+@dataclass(eq=False)
+class Tool(HasRootBody, ABC):
+    _END_EFFECTOR_SUFFIX = "_end_effector"
+
+    def _end_effector_name(self) -> PrefixedName:
+        root_name = self.root.name
+        return PrefixedName(
+            f"{root_name.name}{self._END_EFFECTOR_SUFFIX}",
+            root_name.prefix,
+        )
+
+    def _find_end_effector_body(self):
+        world = getattr(self.root, "_world", None)
+        if world is None:
+            return None
+
+        target_prefixed_name = self._end_effector_name()
+        target_name_str = target_prefixed_name.name
+        for body in world.bodies:
+            body_name = body.name
+            if body_name == target_prefixed_name or body_name.name == target_name_str:
+                return body
+        return None
+
+    def get_tool_frame(self) -> Body:
+        end_effector = self._find_end_effector_body()
+        if end_effector is None:
+            return self.root
+        return end_effector
+
+    @abstractmethod
+    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]: ...
+
+    def debug_distance_threshold(self) -> float:
+        """Debug the logger threshold for tool-to-target distance metrics."""
+        return 0.005
+
+    def distance_threshold_m(self) -> float:
+        """Backward-compatible alias."""
+        return self.debug_distance_threshold()
+
+
+@dataclass(eq=False)
+class ToolWithHandle(HasHandle, Tool, ABC):
+    def __post_init__(self):
+        world = getattr(self.root, "_world", None)
+        if world is None:
+            return
+
+        tip_name = self._end_effector_name()
+        if self._find_end_effector_body() is not None:
+            return
+
+        tip_body = Body(name=tip_name)
+        with world.modify_world():
+            world.add_kinematic_structure_entity(tip_body)
+            world.add_connection(
+                FixedConnection(
+                    parent=self.root,
+                    child=tip_body,
+                    parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(
+                        x=0.1,
+                        y=0.0,
+                        z=0.0,
+                        reference_frame=self.root,
+                    ),
+                )
+            )
+
+    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]: ...
+
+
+@dataclass(eq=False)
+class Whisk(ToolWithHandle):
+    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]:
+        pairs = [
+            AlignmentPair(
+                tip_normal=Vector3(-1, 0, 0, reference_frame=self.root),
+                goal_normal=Vector3(0, 0, 1, reference_frame=body_to_act_on),
+            )
+        ]
+        return pairs
+
+    def debug_distance_threshold(self) -> float:
+        return 0.01
+
+
+@dataclass(eq=False)
+class Knife(ToolWithHandle):
+    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]:
+        pairs = [
+            AlignmentPair(
+                tip_normal=Vector3(1, 0, 0, reference_frame=self.root),
+                goal_normal=Vector3(0, 1, 0, reference_frame=body_to_act_on),
+            ),
+            AlignmentPair(
+                tip_normal=Vector3(0, 0, 1, reference_frame=self.root),
+                goal_normal=Vector3(0, 0, 1, reference_frame=body_to_act_on),
+            ),
+        ]
+        return pairs
+
+    def debug_distance_threshold(self) -> float:
+        return 0.6
+
+
+@dataclass(eq=False)
+class Sponge(Tool):
+    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]:
+        goal_normal = getattr(body_to_act_on, "goal_normal", None)
+        if goal_normal is not None:
+            return [
+                AlignmentPair(
+                    tip_normal=Vector3(0, 0, -1, reference_frame=self.root),
+                    goal_normal=goal_normal,
+                ),
+            ]
+
+        if isinstance(body_to_act_on, Body):
+            return [
+                AlignmentPair(
+                    tip_normal=Vector3(0, 0, 1, reference_frame=self.root),
+                    goal_normal=Vector3(0, 0, -1, reference_frame=body_to_act_on),
+                ),
+            ]
+
+        goal_reference_frame = getattr(body_to_act_on, "frame_id", None) or self.root
+        goal_normal = Vector3(1, 0, 0, reference_frame=goal_reference_frame)
+
+        if hasattr(body_to_act_on, "to_spatial_type"):
+            try:
+                pose = body_to_act_on.to_spatial_type()
+                if getattr(pose, "reference_frame", None) is not None:
+                    goal_reference_frame = pose.reference_frame
+                rotation = pose.to_rotation_matrix().to_np()[:3, :3]
+                if np.allclose(rotation, np.eye(3), atol=1e-6):
+                    rotated_normal = np.array([0.0, 0.0, -1.0], dtype=float)
+                else:
+                    rotated_normal = rotation @ np.array([0.0, 0.0, 1.0], dtype=float)
+                goal_normal = Vector3.from_iterable(
+                    rotated_normal,
+                    reference_frame=goal_reference_frame,
+                )
+            except Exception:
+                pass
+
+        return [
+            AlignmentPair(
+                tip_normal=Vector3(0, 0, 1, reference_frame=self.root),
+                goal_normal=goal_normal,
+            ),
+        ]
+
+    def debug_distance_threshold(self) -> float:
+        return 0.6

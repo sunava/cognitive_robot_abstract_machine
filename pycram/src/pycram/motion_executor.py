@@ -121,6 +121,8 @@ class MotionExecutor:
             failed_nodes = list(filter(None, failed_nodes))
             logger.error(f"Failed Nodes: {failed_nodes}")
             raise e
+        finally:
+            executor._set_velocity_acceleration_jerk_to_zero()
 
     def _monitor_interrupt(self, giskard_wrapper, kill_event: threading.Event):
         while True:
@@ -170,6 +172,11 @@ class ExecutionEnvironment:
     Type of the execution environment before setting it, used for nested environments
     """
 
+    with_collision_avoidance: bool = field(kw_only=True, default=True)
+    """
+    Whether to use collision avoidance in the execution environment
+    """
+
     def __enter__(self):
         """
         Entering function for 'with' scope, saves the previously set :py:attr:`~MotionExecutor.execution_type` and
@@ -177,6 +184,7 @@ class ExecutionEnvironment:
         """
         self.pre = MotionExecutor.execution_type
         MotionExecutor.execution_type = self.execution_type
+        MotionExecutor.with_collision_avoidance = self.with_collision_avoidance
 
     def __exit__(self, _type, value, traceback):
         """
@@ -191,6 +199,12 @@ class ExecutionEnvironment:
 
 # These are imported, so they don't have to be initialized when executing with
 simulated_robot = ExecutionEnvironment(ExecutionType.SIMULATED)
+simulated_robot_without_collision = ExecutionEnvironment(
+    ExecutionType.SIMULATED, with_collision_avoidance=False
+)
+simulated_robot_with_collision = ExecutionEnvironment(
+    ExecutionType.SIMULATED, with_collision_avoidance=True
+)
 real_robot = ExecutionEnvironment(ExecutionType.REAL)
 semi_real_robot = ExecutionEnvironment(ExecutionType.SEMI_REAL)
 no_execution = ExecutionEnvironment(ExecutionType.NO_EXECUTION)

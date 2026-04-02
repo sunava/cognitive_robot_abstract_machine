@@ -40,20 +40,7 @@
     <parent link="furnitures_root"/>
     <child link="walls"/>
   </joint>
-  <link name="walls">
-    <visual>
-      <geometry>
-        <mesh filename="package://iai_apartment/meshes/visual/walls.dae"/>
-      </geometry>
-    </visual>
-    <collision>
-            <geometry>
-            <!-- <mesh filename="package://iai_apartment/meshes/collision/walls.stl" /> -->
-            <box size="1 1 1"/>
-          </geometry>
-
-    </collision>
-  </link>
+  <link name="walls"/>
   <joint name="windows_joint" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 -0.2"/>
     <parent link="furnitures_root"/>
@@ -373,39 +360,8 @@
       </geometry>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="0.0000 0.0000 0.02977"/>
       <geometry>
-        <box size="0.58 1.08 0.05954"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.022101 0.0000 0.06552"/>
-      <geometry>
-        <box size="0.6106 0.4 0.01196"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0000 0.39975 0.220625"/>
-      <geometry>
-        <box size="0.7 0.4 0.32"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0000 -0.39975 0.220625"/>
-      <geometry>
-        <box size="0.7 0.4 0.32"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.316343 0.0000 0.22"/>
-      <geometry>
-        <box size="0.0673 0.4 0.32"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0.0000 0.0000 0.39"/>
-      <geometry>
-        <box size="0.7 1.2 0.02"/>
+        <mesh filename="package://iai_apartment/meshes/visual/coffee_table.dae"/>
       </geometry>
     </collision>
   </link>
@@ -2186,20 +2142,20 @@
       <inertia ixx="1" ixy="0.0" ixz="0.0" iyy="1" iyz="0.0" izz="1"/>
     </inertial>
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 0.3619"/>
+      <origin rpy="0 0 0" xyz="0 0 0.0"/>
       <geometry>
-        <mesh filename="package://iai_kitchen/meshes/misc/big_table_1.dae"/>
+        <mesh filename="package://iai_kitchen/meshes/misc/big_table_1.obj"/>
       </geometry>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="0 0 0.3619"/>
+      <origin rpy="0 0 0" xyz="0 0 0.0"/>
       <geometry>
         <mesh filename="package://iai_kitchen/meshes/misc/big_table_1.obj"/>
       </geometry>
     </collision>
   </link>
   <joint name="table_area_main_joint" type="fixed">
-    <origin rpy="0 0 1.57" xyz="5 4 0"/>
+    <origin rpy="0 0 1.57" xyz="5 4 0.3619"/>
     <parent link="apartment_root"/>
     <child link="table_area_main"/>
   </joint>
