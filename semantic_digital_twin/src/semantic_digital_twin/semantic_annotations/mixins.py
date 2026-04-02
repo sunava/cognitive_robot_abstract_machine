@@ -747,6 +747,7 @@ class HasSupportingSurface(HasStorageSpace, ABC):
         body_to_sample_for: Optional[HasRootBody] = None,
         category_of_interest: Optional[Type[SemanticAnnotation]] = None,
         amount: int = 100,
+        edge_clearance: Optional[float] = None,
     ) -> List[Point3]:
         """
         Samples points from a surface around the semantic annotation. The surface is determined by the supporting
@@ -759,6 +760,8 @@ class HasSupportingSurface(HasStorageSpace, ABC):
         :param body_to_sample_for: The physical object to sample points for.
         :param category_of_interest: The type of object sample points around.
         :param amount: The number of points to sample.
+        :param edge_clearance: Minimum distance to keep from the supporting surface edge in x/y. If not provided,
+            half of the sampled object's largest x/y extent is used.
 
         :return: A list of sampled points, sorted by distance to the around_object.
         """
@@ -776,6 +779,9 @@ class HasSupportingSurface(HasStorageSpace, ABC):
             ].max()
             z_object_dimension = body_to_sample_for.root.combined_mesh.extents[2]
 
+        if edge_clearance is None:
+            edge_clearance = largest_xy_object_dimension / 2
+
         self_max_z = self.supporting_surface.area.max_point.z
         z_coordinate = np.full(
             (amount, 1),
@@ -785,6 +791,7 @@ class HasSupportingSurface(HasStorageSpace, ABC):
         surface_circuit = self._build_surface_sampler(
             category_of_interest=category_of_interest,
             object_bloat=largest_xy_object_dimension,
+            edge_clearance=edge_clearance,
         )
 
         if surface_circuit is None:
@@ -804,6 +811,7 @@ class HasSupportingSurface(HasStorageSpace, ABC):
         self,
         category_of_interest: Optional[Type[SemanticAnnotation]] = None,
         object_bloat: float = 0.1,
+        edge_clearance: float = 0.0,
     ):
         """
         Build a probabilistic circuit representing the supporting surface, truncated by the objects on the surface,
@@ -811,9 +819,11 @@ class HasSupportingSurface(HasStorageSpace, ABC):
 
         :param category_of_interest: The type of object sample points around.
         :param object_bloat: The amount of bloat to apply to the object event.
+        :param edge_clearance: Minimum distance to keep from the supporting surface edge in x/y.
         """
         truncated_event_2d = self._2d_surface_sample_space_excluding_objects(
-            object_bloat
+            object_bloat,
+            edge_clearance=edge_clearance,
         )
 
         objects_of_interest = (
@@ -831,15 +841,31 @@ class HasSupportingSurface(HasStorageSpace, ABC):
         else:
             return uniform_measure_of_event(truncated_event_2d)
 
-    def _2d_surface_sample_space_excluding_objects(self, object_bloat: float) -> Event:
+    def _2d_surface_sample_space_excluding_objects(
+        self, object_bloat: float, edge_clearance: float = 0.0
+    ) -> Event:
         """
         Compute a 2D event representing the supporting surface, truncated by the objects on the surface.
 
         :param object_bloat: The amount of bloat to apply to the object events.
+        :param edge_clearance: Minimum distance to keep from the supporting surface edge in x/y.
         """
         area_of_self = BoundingBoxCollection.from_shapes(self.supporting_surface.area)
         area_of_self.transform_all_shapes_to_own_frame()
         event = area_of_self.event
+
+        if edge_clearance > 0:
+            shrunk_surface = area_of_self.bounding_box()
+            max_clearance = min(
+                (shrunk_surface.max_x - shrunk_surface.min_x) / 2,
+                (shrunk_surface.max_y - shrunk_surface.min_y) / 2,
+            )
+            applied_clearance = min(edge_clearance, np.nextafter(max_clearance, 0.0))
+            if applied_clearance > 0:
+                shrunk_surface = shrunk_surface.bloat(
+                    -applied_clearance, -applied_clearance, 0.0
+                )
+                event = shrunk_surface.simple_event.as_composite_set()
 
         event_2d = event.marginal(SpatialVariables.xy)
         for obj in self.objects:

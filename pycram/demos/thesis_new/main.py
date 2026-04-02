@@ -11,7 +11,7 @@ if __name__ == "__main__":
     run_thesis_demo(
         "cut",
         robot_name="pr2",
-        environment_name="kitchen",
+        environment_name="apartment",
     )
     run_thesis_demo("cut", robot_name="pr2")
     run_thesis_demo("cut")
