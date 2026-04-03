@@ -7,13 +7,7 @@ from typing import Dict, Any
 
 from typing_extensions import Tuple, TYPE_CHECKING, Self
 
-from krrood.adapters.json_serializer import (
-    SubclassJSONSerializer,
-    to_json,
-    from_json,
-    list_like_classes,
-)
-from krrood.class_diagrams.attribute_introspector import DataclassOnlyIntrospector
+from krrood.adapters.json_serializer import SubclassJSONSerializer, to_json, from_json
 from semantic_digital_twin.adapters.world_entity_kwargs_tracker import (
     WorldEntityWithIDKwargsTracker,
 )
@@ -22,7 +16,7 @@ from semantic_digital_twin.exceptions import (
     InvalidBodiesInCollisionCheckError,
     BodyHasNoGeometryError,
 )
-from semantic_digital_twin.world_description.world_entity import Body, WorldEntityWithID
+from semantic_digital_twin.world_description.world_entity import Body
 
 if TYPE_CHECKING:
     from semantic_digital_twin.collision_checking.collision_groups import CollisionGroup
@@ -47,13 +41,6 @@ class CollisionCheck(SubclassJSONSerializer):
     """
     Minimum distance to check for collisions.
     """
-
-    def copy_for_world(self, world: World) -> Self:
-        return CollisionCheck(
-            body_a=world.get_world_entity_with_id_by_id(self.body_a.id),
-            body_b=world.get_world_entity_with_id_by_id(self.body_b.id),
-            distance=self.distance,
-        )
 
     @classmethod
     def create_and_validate(

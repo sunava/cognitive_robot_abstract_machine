@@ -458,9 +458,14 @@ class MotionExecutorDAO_motions_association(Base, AssociationDataAccessObject):
     source_motionexecutordao_id: Mapped[int] = mapped_column(
         ForeignKey("MotionExecutorDAO.database_id")
     )
-    target_taskdao_id: Mapped[int] = mapped_column(ForeignKey("TaskDAO.database_id"))
+    target_taskdao_id: Mapped[int] = mapped_column(
+        ForeignKey("MotionStatechartNodeDAO.database_id")
+    )
 
-    target: Mapped[TaskDAO] = relationship("TaskDAO", foreign_keys=[target_taskdao_id])
+    target: Mapped[MotionStatechartNodeDAO] = relationship(
+        "MotionStatechartNodeDAO",
+        foreign_keys=[target_taskdao_id],
+    )
 
 
 class MoveTCPWaypointsAlignedMotionDAO_waypoints_association(
@@ -4359,6 +4364,10 @@ class CostmapLocationDAO(
 
     reachable: Mapped[builtins.bool] = mapped_column(use_existing_column=True)
     visible: Mapped[builtins.bool] = mapped_column(use_existing_column=True)
+    samples: Mapped[builtins.int] = mapped_column(use_existing_column=True)
+    validate_reachability: Mapped[builtins.bool] = mapped_column(
+        use_existing_column=True
+    )
 
     reachable_arm: Mapped[typing.Optional[pycram.datastructures.enums.Arms]] = (
         mapped_column(
@@ -4368,20 +4377,12 @@ class CostmapLocationDAO(
         )
     )
 
-    target_id: Mapped[int] = mapped_column(
-        ForeignKey("PoseMappingDAO.database_id", use_alter=True),
-        nullable=True,
-        use_existing_column=True,
-    )
     grasp_description_id: Mapped[typing.Optional[builtins.int]] = mapped_column(
         ForeignKey("GraspDescriptionDAO.database_id", use_alter=True),
         nullable=True,
         use_existing_column=True,
     )
 
-    target: Mapped[PoseMappingDAO] = relationship(
-        "PoseMappingDAO", uselist=False, foreign_keys=[target_id], post_update=True
-    )
     grasp_description: Mapped[GraspDescriptionDAO] = relationship(
         "GraspDescriptionDAO",
         uselist=False,

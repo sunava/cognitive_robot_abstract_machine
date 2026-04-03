@@ -205,7 +205,7 @@ class GeneralizedActionPlan(ActionDescription):
         publish_points_sequence(
             node=self.plan.context.ros_node,
             points=P,
-            frame_id="apartment/apartment_root",
+            frame_id="map",
             topic="/point_sequence",
             phase_id=ids,
             republish_hz=2.0,

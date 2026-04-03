@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, Self, Tuple
 
+import numpy as np
+
 from random_events.interval import closed
 from random_events.product_algebra import SimpleEvent
 from typing_extensions import List, Type
@@ -955,11 +957,11 @@ class Fork(Cuttlery):
     """
 
 
-# @dataclass(eq=False)
-# class Knife(Cuttlery):
-#     """
-#     A butter knife.
-#     """
+@dataclass(eq=False)
+class Knife(Cuttlery):
+    """
+    A butter knife.
+    """
 
 
 @dataclass(eq=False)
@@ -1025,7 +1027,8 @@ class Tool(HasRootBody, ABC):
         return end_effector
 
     @abstractmethod
-    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]: ...
+    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]:
+        ...
 
     def debug_distance_threshold(self) -> float:
         """Debug the logger threshold for tool-to-target distance metrics."""
@@ -1063,8 +1066,10 @@ class ToolWithHandle(HasHandle, Tool, ABC):
                 )
             )
 
-    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]: ...
 
+
+    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]:
+        ...
 
 @dataclass(eq=False)
 class Whisk(ToolWithHandle):
@@ -1095,6 +1100,7 @@ class Knife(ToolWithHandle):
             ),
         ]
         return pairs
+
 
     def debug_distance_threshold(self) -> float:
         return 0.6
@@ -1146,6 +1152,7 @@ class Sponge(Tool):
                 goal_normal=goal_normal,
             ),
         ]
+
 
     def debug_distance_threshold(self) -> float:
         return 0.6

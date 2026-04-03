@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Dict, Any, Self
@@ -38,7 +39,7 @@ if TYPE_CHECKING:
     from ..world import World
 
 
-@dataclass
+@dataclass(eq=False)
 class CollisionConsumer(ABC):
     """
     Interface for classes that want to be notified about changes in the collision matrix or when collision checking is performed.
@@ -69,6 +70,9 @@ class CollisionConsumer(ABC):
         """
         Called when the collision matrix is updated.
         """
+
+    def __hash__(self):
+        return hash(id(self))
 
 
 @dataclass(eq=False)
@@ -319,3 +323,30 @@ class CollisionManager(ModelChangeCallback):
                 data["max_avoided_bodies_rules"], **kwargs
             ),
         )
+
+    def merge_collision_manager(self, other: CollisionManager):
+        """
+        Merges the collision rules of another collision manager into this one.
+        """
+        for default_rule in other.default_rules:
+            if default_rule not in self.default_rules:
+                self.add_default_rule(default_rule)
+
+        for ignore_collision_rule in other.ignore_collision_rules:
+            if ignore_collision_rule not in self.ignore_collision_rules:
+                self.add_ignore_collision_rule(ignore_collision_rule)
+
+        for temporary_rule in other.temporary_rules:
+            if temporary_rule not in self.temporary_rules:
+                self.add_temporary_rule(temporary_rule)
+
+        for max_avoided_bodies_rule in other.max_avoided_bodies_rules:
+            if max_avoided_bodies_rule not in self.max_avoided_bodies_rules:
+                self.extend_max_avoided_bodies_rules([max_avoided_bodies_rule])
+
+    def copy_for_world(self, world: World):
+        new_collision_manager = CollisionManager(
+            _world=world,
+            collision_detector=type(self.collision_detector)(_world=world),
+        )
+        return new_collision_manager

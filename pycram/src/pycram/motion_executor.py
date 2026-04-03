@@ -11,7 +11,7 @@ from giskardpy.motion_statechart.context import MotionStatechartContext
 from giskardpy.motion_statechart.data_types import LifeCycleValues
 from giskardpy.motion_statechart.goals.templates import Sequence
 from giskardpy.motion_statechart.graph_node import EndMotion
-from giskardpy.motion_statechart.graph_node import Task
+from giskardpy.motion_statechart.graph_node import MotionStatechartNode
 from giskardpy.motion_statechart.motion_statechart import (
     MotionStatechart,
 )
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class MotionExecutor:
-    motions: List[Task]
+    motions: List[MotionStatechartNode]
     """
     The motions to execute
     """

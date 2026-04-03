@@ -1,7 +1,6 @@
 import hashlib
 import logging
 import os
-import tempfile
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -221,7 +220,8 @@ def convert_to_decomposed_obj_and_save_in_tmp(
         create_path(obj_file_name)
         with open(obj_file_name, "w") as f:
             f.write(obj_str)
-        if not mesh.is_convex:
+        # if not mesh.is_convex:
+        if False:
             with suppress_stdout_stderr():
                 bullet.vhacd(obj_file_name, obj_file_name, str(log_path / "vhacd.log"))
             logging.info(f'Saved convex decomposition to "{obj_file_name}".')

@@ -2,7 +2,9 @@ from dataclasses import dataclass, field
 from typing import Optional, List
 
 from giskardpy.motion_statechart.data_types import DefaultWeights
+from giskardpy.motion_statechart.goals.collision_avoidance import UpdateTemporaryCollisionRules
 from giskardpy.motion_statechart.goals.templates import Sequence, Parallel
+from giskardpy.motion_statechart.graph_node import MotionStatechartNode
 from giskardpy.motion_statechart.tasks.align_planes import AlignPlanes
 from giskardpy.motion_statechart.tasks.cartesian_tasks import (
     CartesianPose,
@@ -11,6 +13,7 @@ from giskardpy.motion_statechart.tasks.cartesian_tasks import (
 )
 from giskardpy.motion_statechart.tasks.joint_tasks import JointPositionList, JointState
 from pycram.datastructures.dataclasses import AlignmentPair
+from semantic_digital_twin.collision_checking.collision_rules import AllowCollisionBetweenGroups
 from semantic_digital_twin.datastructures.definitions import GripperState
 from semantic_digital_twin.spatial_types.spatial_types import Pose, Point3, Vector3
 from semantic_digital_twin.world_description.world_entity import Body
@@ -308,3 +311,29 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
             )
         motion_state_chart_nodes.append(Parallel(tasks))
         return Parallel(motion_state_chart_nodes)
+
+
+    def _only_allow_gripper_collision_rules(
+        self, arm: Arms
+    ) -> list[MotionStatechartNode]:
+        """
+        Returns collision rules that only allow collisions between the manipulator of an arm and the environment.
+
+        :param arm: The arm for which to get the collision rules
+        """
+        manipulator_bodies = (
+            ViewManager()
+            .get_end_effector_view(arm, self.robot)
+            .bodies_with_collision
+        )
+        rules = [
+            UpdateTemporaryCollisionRules(
+                temporary_rules=[
+                    AllowCollisionBetweenGroups(
+                        self.world.bodies_with_collision, manipulator_bodies
+                    )
+                ]
+            )
+        ]
+        rules.extend(self.robot.special_constraints)
+        return rules

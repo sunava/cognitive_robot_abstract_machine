@@ -629,6 +629,11 @@ class Mesh(Shape):
         )
 
 
+# Backward compatibility aliases kept for older modules that still import these names.
+TriangleMesh = Mesh
+FileMesh = Mesh
+
+
 @dataclass(eq=False)
 class Sphere(Shape):
     """

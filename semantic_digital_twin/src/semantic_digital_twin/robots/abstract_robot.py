@@ -17,7 +17,6 @@ from typing_extensions import (
 
 from semantic_digital_twin.datastructures.definitions import JointStateType
 from semantic_digital_twin.datastructures.joint_state import JointState
-from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.exceptions import NoJointStateWithType
 from semantic_digital_twin.spatial_types.derivatives import DerivativeMap
 from semantic_digital_twin.spatial_types.spatial_types import (
@@ -26,6 +25,7 @@ from semantic_digital_twin.spatial_types.spatial_types import (
 )
 from semantic_digital_twin.world_description.connections import (
     ActiveConnection,
+    DifferentialDrive,
     OmniDrive,
     ActiveConnection1DOF,
 )
@@ -47,6 +47,7 @@ from semantic_digital_twin.world_description.world_entity import (
 
 if TYPE_CHECKING:
     from semantic_digital_twin.world import World
+    from giskardpy.motion_statechart.graph_node import MotionStatechartNode
 
 
 @dataclass
@@ -515,6 +516,14 @@ class AbstractRobot(Agent, ABC):
         return set(self._world.controlled_connections) & set(self.connections)
 
     @property
+    def special_constraints(self) -> list[MotionStatechartNode]:
+        """
+        A list of spacial constraits that may apply to a robot when moving, that are not an explicit part of the kinematic
+        structure. Override if needed.
+        """
+        return []
+
+    @property
     def degrees_of_freedom_with_hardware_interface(self) -> List[DegreeOfFreedom]:
         """
         The number of degrees of freedom of the robot, which is the sum of the degrees of freedom of all its manipulators.
@@ -575,13 +584,13 @@ class AbstractRobot(Agent, ABC):
     def _setup_joint_states(self): ...
 
     @property
-    def drive(self) -> Optional[OmniDrive]:
+    def drive(self) -> Optional[OmniDrive | DifferentialDrive]:
         """
         The connection which the robot uses for driving.
         """
         try:
             parent_connection = self.root.parent_connection
-            if isinstance(parent_connection, OmniDrive):
+            if isinstance(parent_connection, (OmniDrive, DifferentialDrive)):
                 return parent_connection
         except AttributeError:
             pass

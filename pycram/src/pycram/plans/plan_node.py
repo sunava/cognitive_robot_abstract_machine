@@ -10,7 +10,7 @@ from typing import Optional, Any, List, Type, TYPE_CHECKING, Iterable, Iterator
 import rustworkx as rx
 from typing_extensions import Union
 
-from giskardpy.motion_statechart.graph_node import Task
+from giskardpy.motion_statechart.graph_node import MotionStatechartNode
 from krrood.entity_query_language.query.match import Match
 
 from pycram.datastructures.enums import TaskStatus
@@ -371,7 +371,7 @@ class ActionNode(DesignatorNode):
     def action(self) -> ActionDescription:
         return self.designator
 
-    def collect_motions(self) -> List[Task]:
+    def collect_motions(self) -> List[MotionStatechartNode]:
         """
         Collects all child motions of this action. A motion is considered if it is a direct child of this action node,
         i.e. there is no other action node between this action node and the motion.
