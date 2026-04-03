@@ -16,6 +16,7 @@ from semantic_digital_twin.adapters.ros.tfwrapper import TFWrapper
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
 )
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Table
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.geometry import Color, Scale
 
@@ -30,12 +31,12 @@ RESOURCES_DIR = os.path.abspath(
 
 PREFERRED_SURFACE_NAMES = (
     "island_countertop",
-    "countertop",
-    "table_area_main",
-    "coffee_table",
-    "bedside_table",
-    "kitchen_island_surface",
-    "sink_area_surface",
+    # "countertop",
+    # "table_area_main",
+    # "coffee_table",
+    # "bedside_table",
+    # "kitchen_island_surface",
+    # "sink_area_surface",
 )
 MIN_SUPPORT_SURFACE_AREA_M2 = 0.025
 MIN_SUPPORT_SURFACE_SPAN_M = 0.18
@@ -53,6 +54,10 @@ BREAD_RADIUS_SAFETY_FACTOR = 1.08
 # Optional per-surface overrides (set value to force exact count).
 SURFACE_COUNT_OVERRIDES = {}
 COUNTERTOP_TINT = Color(R=0.82, G=0.70, B=0.55)
+DEBUG_SPAWN_FRAMES = True
+DEBUG_FORCE_SPAWN_ALL_TARGETS = False
+DEBUG_DISABLE_REACHABILITY = True
+DEBUG_SPAWN_ACTUAL_POSES = True
 
 
 def _parse_stl(*relative_path_parts):
@@ -81,6 +86,17 @@ def _body_basename(body_or_name):
     if not name:
         return None
     return str(name).split("/")[-1]
+
+
+def _frame_name(frame):
+    if frame is None:
+        return "None"
+    maybe_name = getattr(frame, "name", None)
+    if hasattr(maybe_name, "name"):
+        maybe_name = maybe_name.name
+    if isinstance(maybe_name, str):
+        return maybe_name
+    return str(frame)
 
 
 def _surface_like_name(name):
@@ -260,6 +276,7 @@ def _spawn_bread_at_local_pose(
     world, surface_body, bread_name, scale, x_local, y_local, yaw, z_local
 ):
     bread = _parse_stl("pycram_object_gap_demo", "bread.stl")
+    bread_root_id = bread.root.id
     bread.root.name.name = bread_name
     _set_uniform_scale(
         bread,
@@ -276,6 +293,39 @@ def _spawn_bread_at_local_pose(
         reference_frame=surface_body,
     )
     world_pose = world.transform(local_pose, world.root)
+    world.merge_world_at_pose(bread, world_pose)
+    world.update_forward_kinematics()
+    if DEBUG_SPAWN_ACTUAL_POSES:
+        try:
+            spawned_body = world.get_kinematic_structure_entity_by_id(bread_root_id)
+            actual_pose = world.transform(spawned_body.global_transform, world.root)
+            print(
+                f"[spawn-debug] inserted {bread_name} "
+                f"target={_pose_xyz(world_pose)} actual={_pose_xyz(actual_pose)}"
+            )
+        except Exception as exc:
+            print(f"[spawn-debug] inserted {bread_name} pose lookup failed: {exc}")
+    return world_pose
+
+
+def _spawn_bread_at_surface_point(world, point_on_surface, bread_name, scale, yaw):
+    bread = _parse_stl("pycram_object_gap_demo", "bread.stl")
+    bread.root.name.name = bread_name
+    _set_uniform_scale(
+        bread,
+        (scale, scale, scale),
+        color=Color(R=0.76, G=0.60, B=0.42),
+    )
+    surface_pose = HomogeneousTransformationMatrix.from_xyz_rpy(
+        x=float(point_on_surface.x),
+        y=float(point_on_surface.y),
+        z=float(point_on_surface.z),
+        roll=0.0,
+        pitch=0.0,
+        yaw=float(yaw),
+        reference_frame=point_on_surface.reference_frame,
+    )
+    world_pose = world.transform(surface_pose, world.root)
     world.merge_world_at_pose(bread, world_pose)
     return world_pose
 
@@ -366,6 +416,8 @@ def setup_random_bread_world(seed=None, robot_name=None, environment_name=None):
     if not surfaces:
         raise RuntimeError("No support surfaces found for random bread placement.")
     print(f"[spawn] evaluating {len(surfaces)} support surfaces")
+    if DEBUG_SPAWN_FRAMES:
+        print(f"[spawn-debug] world_root={_frame_name(world.root)}")
 
     scale_choices = np.array([0.8, 1.0, 1.2, 1.4, 1.6], dtype=float)
     base_radius = _bread_base_xy_radius()
@@ -380,6 +432,15 @@ def setup_random_bread_world(seed=None, robot_name=None, environment_name=None):
         _tint_surfaces_light_brown(world)
         for surface_body in surfaces:
             surface_name = _body_name(surface_body) or "unknown_surface"
+            if DEBUG_SPAWN_FRAMES:
+                print(
+                    "[spawn-debug] surface="
+                    f"{surface_name} frame={_frame_name(surface_body)}"
+                )
+            table = Table(root=surface_body)
+            world.add_semantic_annotation(table)
+            table.calculate_supporting_surface()
+            world.update_forward_kinematics()
             mins, maxs, lo_x, hi_x, lo_y, hi_y = _surface_sampling_bounds(surface_body)
             z_local = float(maxs[2] + 0.02)
             area_m2 = _surface_usable_area(lo_x, hi_x, lo_y, hi_y)
@@ -388,6 +449,9 @@ def setup_random_bread_world(seed=None, robot_name=None, environment_name=None):
                 f"[spawn] surface={surface_name} area={area_m2:.3f}m^2 target={target_count}"
             )
             occupied_xy = []
+            reject_no_points = 0
+            reject_clearance = 0
+            reject_reachability = 0
             for _ in range(target_count):
                 scale = float(rng.choice(scale_choices))
                 # Scale-aware safety radius in local surface XY for clean spacing.
@@ -398,63 +462,93 @@ def setup_random_bread_world(seed=None, robot_name=None, environment_name=None):
                     hi_x_eff = hi_x - radius
                     lo_y_eff = lo_y + radius
                     hi_y_eff = hi_y - radius
+
+                    if hi_x_eff <= lo_x_eff or hi_y_eff <= lo_y_eff:
+                        reject_no_points += 1
+                        break
+
                     x_local, y_local = _sample_xy(
                         lo_x_eff, hi_x_eff, lo_y_eff, hi_y_eff, mins, maxs, rng
                     )
-                    if all(
-                        ((x_local - ox) ** 2 + (y_local - oy) ** 2)
-                        >= (
-                            radius
-                            + orad
-                            + (MIN_BREAD_CLEARANCE_M if STRICT_CLEAN_MODE else 0.015)
-                        )
-                        ** 2
-                        for ox, oy, orad in occupied_xy
-                    ):
-                        yaw = float(rng.uniform(-np.pi, np.pi))
-                        candidate_local_pose = (
-                            HomogeneousTransformationMatrix.from_xyz_rpy(
-                                x=float(x_local),
-                                y=float(y_local),
-                                z=float(z_local),
-                                roll=0.0,
-                                pitch=0.0,
-                                yaw=float(yaw),
-                                reference_frame=surface_body,
-                            )
-                        )
-                        candidate_world_pose = world.transform(
-                            candidate_local_pose, world.root
-                        )
-                        target_pose = candidate_world_pose
 
+                    if not DEBUG_FORCE_SPAWN_ALL_TARGETS:
+                        if not all(
+                            ((x_local - ox) ** 2 + (y_local - oy) ** 2)
+                            >= (
+                                radius
+                                + orad
+                                + (
+                                    MIN_BREAD_CLEARANCE_M
+                                    if STRICT_CLEAN_MODE
+                                    else 0.015
+                                )
+                            )
+                            ** 2
+                            for ox, oy, orad in occupied_xy
+                        ):
+                            reject_clearance += 1
+                            continue
+
+                    yaw = float(rng.uniform(-np.pi, np.pi))
+                    candidate_surface_pose = (
+                        HomogeneousTransformationMatrix.from_xyz_rpy(
+                            x=x_local,
+                            y=y_local,
+                            z=z_local,
+                            roll=0.0,
+                            pitch=0.0,
+                            yaw=float(yaw),
+                            reference_frame=surface_body,
+                        )
+                    )
+                    candidate_world_pose = world.transform(
+                        candidate_surface_pose, world.root
+                    )
+                    target_pose = candidate_world_pose
+                    if DEBUG_SPAWN_FRAMES and created_idx == 0:
+                        print(
+                            "[spawn-debug] candidate "
+                            f"surface_frame={_frame_name(surface_body)} "
+                            f"world_frame={_frame_name(candidate_world_pose.reference_frame)} "
+                            f"xyz={_pose_xyz(candidate_world_pose)}"
+                        )
+
+                    if (
+                        not DEBUG_FORCE_SPAWN_ALL_TARGETS
+                        and not DEBUG_DISABLE_REACHABILITY
+                    ):
                         if not _is_pose_reachable_for_cutting(
                             spawn_robot, world, target_pose, cache=reachability_cache
                         ):
+                            reject_reachability += 1
                             continue
-                        created_idx += 1
-                        bread_name = f"bread_{created_idx:04d}"
-                        world_pose = _spawn_bread_at_local_pose(
-                            world=world,
-                            surface_body=surface_body,
-                            bread_name=bread_name,
-                            scale=scale,
-                            x_local=x_local,
-                            y_local=y_local,
-                            yaw=yaw,
-                            z_local=z_local,
-                        )
-                        occupied_xy.append((x_local, y_local, radius))
-                        placements.append(
-                            (bread_name, surface_name, scale, _pose_xyz(world_pose))
-                        )
-                        placed = True
+                    created_idx += 1
+                    bread_name = f"bread_{created_idx:04d}"
+                    world_pose = _spawn_bread_at_local_pose(
+                        world=world,
+                        surface_body=surface_body,
+                        bread_name=bread_name,
+                        scale=scale,
+                        x_local=x_local,
+                        y_local=y_local,
+                        yaw=yaw,
+                        z_local=z_local,
+                    )
+                    occupied_xy.append((x_local, y_local, radius))
+                    placements.append(
+                        (bread_name, surface_name, scale, _pose_xyz(world_pose))
+                    )
+                    placed = True
+                    if placed:
                         break
                 if not placed:
                     continue
             surface_plan.append((surface_name, area_m2, target_count, len(occupied_xy)))
             print(
-                f"[spawn] surface={surface_name} placed={len(occupied_xy)}/{target_count}"
+                f"[spawn] surface={surface_name} placed={len(occupied_xy)}/{target_count} "
+                f"rejects(no_points={reject_no_points}, "
+                f"clearance={reject_clearance}, "
+                f"reachability={reject_reachability})"
             )
 
     return world, placements, surface_plan
@@ -469,12 +563,12 @@ def main(seed=None):
     TFPublisher(node=node, _world=world)
     VizMarkerPublisher(_world=world, node=node)
 
-    tf_wrapper.wait_for_transform(
-        "apartment/apartment_root",
-        "pr2/base_footprint",
-        timeout=RclpyDuration(seconds=1.0),
-        time=Time(),
-    )
+    # tf_wrapper.wait_for_transform(
+    #     "apartment/apartment_root",
+    #     "pr2/base_footprint",
+    #     timeout=RclpyDuration(seconds=1.0),
+    #     time=Time(),
+    # )
 
     for surface_name, area_m2, target_count, placed_count in surface_plan:
         print(

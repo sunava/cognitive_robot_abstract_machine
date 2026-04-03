@@ -1,7 +1,8 @@
+from __future__ import annotations
 import logging
 import threading
+import time
 from dataclasses import dataclass, field
-from datetime import time
 from typing import List, Any, ClassVar
 
 from typing_extensions import TYPE_CHECKING
@@ -10,35 +11,26 @@ from giskardpy.motion_statechart.context import MotionStatechartContext
 from giskardpy.motion_statechart.data_types import LifeCycleValues
 from giskardpy.motion_statechart.goals.collision_avoidance import (
     ExternalCollisionAvoidance,
-    UpdateTemporaryCollisionRules,
     ExternalCollisionDistanceMonitor,
 )
 from giskardpy.motion_statechart.goals.templates import Sequence
-from giskardpy.motion_statechart.graph_node import EndMotion
+from giskardpy.motion_statechart.graph_node import EndMotion, CancelMotion
 from giskardpy.motion_statechart.graph_node import MotionStatechartNode
-from giskardpy.motion_statechart.graph_node import (
-    EndMotion,
-    MotionStatechartNode,
-    CancelMotion,
-)
-from giskardpy.motion_statechart.graph_node import Task
 from giskardpy.motion_statechart.motion_statechart import (
     MotionStatechart,
 )
 from giskardpy.qp.qp_controller_config import QPControllerConfig
 from giskardpy.ros_executor import Ros2Executor
 from pycram.datastructures.enums import ExecutionType
-
-from semantic_digital_twin.collision_checking.collision_rules import (
-    AllowCollisionBetweenGroups,
-)
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
+
 from semantic_digital_twin.world import World
 
 if TYPE_CHECKING:
     from pycram.plans.plan_node import PlanNode
 
 logger = logging.getLogger(__name__)
+DEBUG_PROFILE_MOTION_EXECUTOR = True
 
 
 @dataclass
@@ -128,6 +120,7 @@ class MotionExecutor:
         Creates an executor and executes the motion state chart until it is done.
         """
         logger.debug(f"Executing {self.motions} motions in simulation")
+        setup_start = time.time()
         executor = Ros2Executor(
             context=MotionStatechartContext(
                 world=self.world,
@@ -137,11 +130,22 @@ class MotionExecutor:
             ),
             ros_node=self.ros_node,
         )
+        compile_start = time.time()
         executor.compile(self.motion_state_chart)
+        if DEBUG_PROFILE_MOTION_EXECUTOR:
+            logger.warning(
+                "MotionExecutor profile: motions=%s compile=%.3fs setup=%.3fs world_bodies=%s collision_avoidance=%s",
+                len(self.motions),
+                time.time() - compile_start,
+                time.time() - setup_start,
+                len(getattr(self.world, "bodies", [])),
+                self.with_collision_avoidance,
+            )
         try:
             # execute the motion state chart until it is done
             counter = 0
-            while counter < 2000:
+            tick_start = time.time()
+            while counter < 1000:
                 if self.plan_node.is_interrupted:
                     return
                 elif self.plan_node.is_paused:
@@ -150,6 +154,18 @@ class MotionExecutor:
 
                 executor.tick()
                 counter += 1
+                if executor.motion_statechart.is_end_motion():
+                    break
+            else:
+                raise TimeoutError("Timeout reached while waiting for end of motion.")
+            if DEBUG_PROFILE_MOTION_EXECUTOR:
+                logger.warning(
+                    "MotionExecutor profile: motions=%s ticks=%s tick_total=%.3fs world_bodies=%s",
+                    len(self.motions),
+                    counter,
+                    time.time() - tick_start,
+                    len(getattr(self.world, "bodies", [])),
+                )
 
         except TimeoutError as e:
             failed_nodes = [
@@ -166,6 +182,8 @@ class MotionExecutor:
             raise e
         finally:
             executor._set_velocity_acceleration_jerk_to_zero()
+            executor.motion_statechart.cleanup_nodes(context=executor.context)
+            executor.context.cleanup()
 
     def _monitor_interrupt(self, giskard_wrapper, kill_event: threading.Event):
         while True:

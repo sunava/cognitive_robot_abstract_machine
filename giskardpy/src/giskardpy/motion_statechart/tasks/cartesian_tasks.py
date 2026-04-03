@@ -285,6 +285,7 @@ class CartesianPositionTrajectory(CartesianTask):
         )
         local_closest_index = np.argmin(distances)
         self.current_index += local_closest_index
+        self.current_index = int(self.current_index)
 
     def _compute_target_point(
         self, goal_reference_frame_P_tip_np: np.ndarray

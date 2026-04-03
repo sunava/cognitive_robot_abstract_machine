@@ -289,7 +289,8 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
                 root_link=root_link,
                 tip_link=tip_link,
                 goal_points=self.waypoints,
-                weight=DefaultWeights.WEIGHT_BELOW_CA,
+                maximum_skip_ahead=int(2),
+                weight=float(DefaultWeights.WEIGHT_BELOW_CA),
                 name="MoveTCPWaypointsAligned",
             )
         ]
@@ -299,7 +300,7 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
                 root_link=root_link,
                 tip_normal=pair.tip_normal,
                 goal_normal=pair.goal_normal,
-                weight=DefaultWeights.WEIGHT_BELOW_CA,
+                weight=DefaultWeights.WEIGHT_BELOW_CA.value,
             )
             for pair in self.alignment_pairs
         )
@@ -310,7 +311,7 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
                     root_link=self.world.get_body_by_name("torso1"),
                     tip_normal=Vector3.X(self.world.get_body_by_name("torso4")),
                     goal_normal=Vector3.Z(self.world.get_body_by_name("torso1")),
-                    weight=DefaultWeights.WEIGHT_ABOVE_CA,
+                    weight=DefaultWeights.WEIGHT_ABOVE_CA.value,
                 )
             )
         motion_state_chart_nodes.append(Parallel(tasks))

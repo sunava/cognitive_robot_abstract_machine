@@ -23,6 +23,7 @@ from demos.thesis_new.thesis_math.world_utils import (
     body_local_aabb,
 )
 from demos.thesis_new.utils.rviz import publish_points_sequence
+from semantic_digital_twin.semantic_annotations.mixins import HasRootBody
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Tool
 from semantic_digital_twin.spatial_types import Point3, Vector3
 from semantic_digital_twin.spatial_types.spatial_types import Pose
@@ -151,7 +152,7 @@ class GeneralizedActionPlan(ActionDescription):
     Arm used for the motion.
     """
 
-    tool: Tool
+    tool: HasRootBody
     """
     Tool body used to estimate the tip offset.
     """

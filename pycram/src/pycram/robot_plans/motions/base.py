@@ -107,9 +107,7 @@ class BaseMotion(Designator):
         :param arm: The arm for which to get the collision rules
         """
         manipulator_bodies = (
-            ViewManager()
-            .get_end_effector_view(arm, self.robot_view)
-            .bodies_with_collision
+            ViewManager().get_end_effector_view(arm, self.robot).bodies_with_collision
         )
         rules = [
             UpdateTemporaryCollisionRules(
@@ -120,7 +118,7 @@ class BaseMotion(Designator):
                 ]
             )
         ]
-        rules.extend(self.robot_view.special_constraints)
+        rules.extend(self.robot.special_constraints)
         return rules
 
 

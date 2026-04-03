@@ -1,9 +1,11 @@
 import logging
+import time
 from abc import abstractmethod, ABC
 from copy import deepcopy
 from dataclasses import dataclass, field
 
 import numpy as np
+import rclpy
 from typing_extensions import List, Optional, Iterator, Union
 
 from giskardpy.executor import Executor
@@ -41,16 +43,25 @@ from pycram.pose_validator import (
 )
 from pycram.utils import link_pose_for_joint_config
 from pycram.view_manager import ViewManager
+from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
+    VizMarkerPublisher,
+)
 from semantic_digital_twin.collision_checking.collision_rules import (
     AvoidExternalCollisions,
 )
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
-from semantic_digital_twin.spatial_types.spatial_types import Pose, Point3, Vector3, Quaternion
+from semantic_digital_twin.spatial_types.spatial_types import (
+    Pose,
+    Point3,
+    Vector3,
+    Quaternion,
+)
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.world_description.world_entity import Body
 
 logger = logging.getLogger("pycram")
+DEBUG_PROFILE_COSTMAP_LOCATION = True
 
 
 @dataclass
@@ -126,10 +137,27 @@ class CostmapLocation(Location):
     If False, return collision-free navigation candidates without reachability/visibility IK validation.
     """
 
+    costmap_width: int = 200
+    costmap_height: int = 200
+    costmap_resolution: float = 0.02
+    ring_std: float = 15.0
+    ring_distance: float = 0.4
+    obstacle_clearance: Optional[float] = None
+
     _last_costmap_source: str = field(default="unknown", init=False, repr=False)
 
     def resolve(self) -> Pose:
         return next(iter(self))
+
+    @staticmethod
+    def _describe_target(target: Union[Pose, Body]) -> str:
+        if isinstance(target, Pose):
+            pos = np.asarray(target.to_position().to_np(), dtype=float).reshape(-1)[:3]
+            return f"Pose(x={float(pos[0]):.3f}, y={float(pos[1]):.3f}, z={float(pos[2]):.3f})"
+        name = getattr(getattr(target, "root", None), "name", None)
+        if name is not None:
+            return str(name)
+        return str(target)
 
     @staticmethod
     def _iter_sorted_pose_candidates(
@@ -171,18 +199,24 @@ class CostmapLocation(Location):
         Sets up the costmap for the given target and robot.
         The costmap are merged and stored in the final_map
         """
-        ground_pose = deepcopy(target)
-        ground_pose.z = 0
+        ground_pose = Pose(
+            position=Point3(target.x, target.y, 0),
+            orientation=target.to_quaternion(),
+            reference_frame=target.reference_frame,
+        )
 
         base_bb = self.robot.base.bounding_box
+        obstacle_clearance = self.obstacle_clearance
+        if obstacle_clearance is None:
+            obstacle_clearance = (base_bb.depth / 2 + base_bb.width / 2) / 2
 
         occupancy = OccupancyCostmap(
-            distance_to_obstacle=(base_bb.depth / 2 + base_bb.width / 2) / 2,
+            distance_to_obstacle=obstacle_clearance,
             world=self.world,
             robot_view=self.robot,
-            width=200,
-            height=200,
-            resolution=0.02,
+            width=self.costmap_width,
+            height=self.costmap_height,
+            resolution=self.costmap_resolution,
             origin=ground_pose,
         )
         final_map = occupancy
@@ -194,9 +228,9 @@ class CostmapLocation(Location):
                 min_height=camera.minimal_height,
                 max_height=camera.maximal_height,
                 world=self.world,
-                width=200,
-                height=200,
-                resolution=0.02,
+                width=self.costmap_width,
+                height=self.costmap_height,
+                resolution=self.costmap_resolution,
                 origin=ground_pose,
             )
             final_map += visible_map
@@ -209,11 +243,11 @@ class CostmapLocation(Location):
 
         if reachable:
             ring = RingCostmap(
-                resolution=0.02,
-                width=200,
-                height=200,
-                std=15,
-                distance=0.4,  # That needs to be replaced with an estimate of the reachability space of the robot arms
+                resolution=self.costmap_resolution,
+                width=self.costmap_width,
+                height=self.costmap_height,
+                std=self.ring_std,
+                distance=self.ring_distance,
                 world=self.world,
                 origin=ground_pose,
             )
@@ -251,14 +285,26 @@ class CostmapLocation(Location):
 
            :yield: An instance of CostmapLocation.Location with a valid position that satisfies the given constraints
         """
-
+        profile_start = time.perf_counter()
         test_world = deepcopy(self.world)
-
         test_world.name = "Test World"
+        if DEBUG_PROFILE_COSTMAP_LOCATION:
+            logger.warning(
+                "CostmapLocation profile: deepcopy_world=%.3fs target=%s",
+                time.perf_counter() - profile_start,
+                self._describe_target(self.target),
+            )
 
         robot = self.robot
 
+        robot_copy_start = time.perf_counter()
         test_robot = robot.from_world(test_world)
+        if DEBUG_PROFILE_COSTMAP_LOCATION:
+            logger.warning(
+                "CostmapLocation profile: robot.from_world=%.3fs target=%s",
+                time.perf_counter() - robot_copy_start,
+                self._describe_target(self.target),
+            )
 
         objects_in_hand = list(
             set(test_world.get_kinematic_structure_entities_of_branch(test_robot.root))
@@ -266,8 +312,13 @@ class CostmapLocation(Location):
         )
         object_in_hand = objects_in_hand[0] if objects_in_hand else None
 
-        target_pose = self.target if isinstance(self.target, Pose) else self.target.global_pose
+        target_pose = (
+            deepcopy(self.target)
+            if isinstance(self.target, Pose)
+            else self.target.global_pose
+        )
 
+        costmap_setup_start = time.perf_counter()
         final_map = self.setup_costmaps(target_pose, self.visible, self.reachable)
         final_map.number_of_samples = self.samples
         final_map.orientation_generator = (
@@ -275,33 +326,64 @@ class CostmapLocation(Location):
                 list(self.robot.base.main_axis.to_np())
             )
         )
-
-        relaxed_candidate_limit = (
-            None if self.validate_reachability else self.samples
+        if DEBUG_PROFILE_COSTMAP_LOCATION:
+            logger.warning(
+                "CostmapLocation profile: setup_costmaps=%.3fs target=%s",
+                time.perf_counter() - costmap_setup_start,
+                self._describe_target(self.target),
+            )
+        target_desc = self._describe_target(self.target)
+        positive_cells = int(np.count_nonzero(final_map.map > 0))
+        logger.warning(
+            "CostmapLocation: target=%s source=%s validate_reachability=%s samples=%s positive_cells=%s",
+            target_desc,
+            self._last_costmap_source,
+            self.validate_reachability,
+            self.samples,
+            positive_cells,
         )
-        pose_candidates = (
-            self._iter_sorted_pose_candidates(final_map, relaxed_candidate_limit)
-            if not self.validate_reachability
-            else iter(final_map)
-        )
 
+        tested_candidates = 0
+        collision_rejections = 0
+        visibility_rejections = 0
+        reachability_rejections = 0
+
+        candidate_limit = None if self.validate_reachability else self.samples
+        pose_candidates = self._iter_sorted_pose_candidates(final_map, candidate_limit)
+
+        candidate_loop_start = time.perf_counter()
         for pose_candidate in pose_candidates:
             logger.debug("Testing candidate pose at %s", pose_candidate)
+            tested_candidates += 1
+            if DEBUG_PROFILE_COSTMAP_LOCATION and tested_candidates in (
+                1,
+                10,
+                50,
+                100,
+                250,
+                500,
+                1000,
+            ):
+                logger.warning(
+                    "CostmapLocation profile: target=%s tested=%s elapsed=%.3fs collision_rejections=%s",
+                    target_desc,
+                    tested_candidates,
+                    time.perf_counter() - candidate_loop_start,
+                    collision_rejections,
+                )
             odom_height = test_world.compute_forward_kinematics(
                 test_world.root,
                 test_robot.root.parent_kinematic_structure_entity,
             ).z
-            candidate_pose = Pose(
+            pose_candidate = Pose(
                 Point3(pose_candidate.x, pose_candidate.y, odom_height),
                 pose_candidate.to_quaternion(),
-                reference_frame=self.world.root,
+                reference_frame=target_pose.reference_frame,
             )
-            test_pose = Pose(
-                Point3(pose_candidate.x, pose_candidate.y, odom_height),
-                pose_candidate.to_quaternion(),
-                reference_frame=test_world.root,
+            test_robot.root.parent_connection.origin = self.world.transform(
+                pose_candidate,
+                self.robot.root.parent_connection.parent,
             )
-            test_robot.root.parent_connection.origin = test_pose
 
             collisions = collision_check(
                 robot=test_robot,
@@ -310,27 +392,36 @@ class CostmapLocation(Location):
 
             if collisions:
                 logger.debug("Candidate pose in collision, skipping")
+                collision_rejections += 1
                 continue
 
             if not self.validate_reachability:
-                self._last_result = candidate_pose
-                yield candidate_pose
+                logger.warning(
+                    "CostmapLocation: target=%s accepted after tested=%s collision_rejections=%s source=%s",
+                    target_desc,
+                    tested_candidates,
+                    collision_rejections,
+                    self._last_costmap_source,
+                )
+                self._last_result = pose_candidate
+                yield pose_candidate
                 continue
 
             if not (self.reachable or self.visible):
-                self._last_result = candidate_pose
-                yield candidate_pose
+                self._last_result = pose_candidate
+                yield pose_candidate
                 continue
 
             if self.visible and not visibility_validator(
                 test_robot, target_pose, test_world
             ):
                 logger.debug("Candidate pose not visible, skipping")
+                visibility_rejections += 1
                 continue
 
             if not self.reachable:
-                self._last_result = candidate_pose
-                yield candidate_pose
+                self._last_result = pose_candidate
+                yield pose_candidate
                 continue
 
             grasp_descriptions = (
@@ -355,17 +446,39 @@ class CostmapLocation(Location):
                     ee.manipulator.tool_frame,
                     test_robot,
                     test_world,
-                    use_fullbody_ik=test_robot.full_body_controlled,
+                    use_fullbody_ik=True,
                 )
                 if is_reachable:
+                    logger.warning(
+                        "CostmapLocation: target=%s accepted after tested=%s collision_rejections=%s visibility_rejections=%s reachability_rejections=%s source=%s",
+                        target_desc,
+                        tested_candidates,
+                        collision_rejections,
+                        visibility_rejections,
+                        reachability_rejections,
+                        self._last_costmap_source,
+                    )
                     pose = GraspPose.from_pose(
-                        pose=candidate_pose,
+                        pose=pose_candidate,
                         arm=self.reachable_arm,
                         grasp_description=grasp_description,
                     )
                     self._last_result = pose
                     yield pose
+                else:
+                    reachability_rejections += 1
 
+        logger.warning(
+            "CostmapLocation: no pose found for target=%s source=%s validate_reachability=%s positive_cells=%s tested=%s collision_rejections=%s visibility_rejections=%s reachability_rejections=%s",
+            target_desc,
+            self._last_costmap_source,
+            self.validate_reachability,
+            positive_cells,
+            tested_candidates,
+            collision_rejections,
+            visibility_rejections,
+            reachability_rejections,
+        )
 
 
 @dataclass
@@ -688,7 +801,9 @@ class GiskardLocation(Location):
 
         test_world = deepcopy(self.world)
         test_world.name = "Test World"
-
+        VizMarkerPublisher(
+            _world=test_world, node=rclpy.create_node("urdf_visualization_node")
+        ).with_tf_publisher()
         test_robot = self.robot.__class__.from_world(test_world)
         test_ee = test_world._get_world_entity_by_hash(hash(ee.manipulator.tool_frame))
         with test_world.modify_world():

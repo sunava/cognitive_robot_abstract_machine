@@ -217,18 +217,20 @@ def highlight_current_target(
 ):
     failed_targets = failed_targets or set()
     successful_targets = successful_targets or set()
-    with world.modify_world():
-        for target in targets:
-            if target is active_target:
-                color = active_color
-            elif target in failed_targets:
-                color = failed_color
-            elif target in successful_targets:
-                color = success_color
-            else:
-                color = default_color
-            for shape in iter_visual_shapes(target):
-                shape.color = color
+    for target in targets:
+        if target is active_target:
+            color = active_color
+        elif target in failed_targets:
+            color = failed_color
+        elif target in successful_targets:
+            color = success_color
+        else:
+            color = default_color
+        for shape in iter_visual_shapes(target):
+            shape.color = color
+    for callback in world.get_world_model_manager().model_change_callbacks:
+        if isinstance(callback, VizMarkerPublisher):
+            callback.notify()
 
 
 def attach_bimanual_tools(
@@ -367,12 +369,12 @@ def get_bimanual_tool_frames(world):
 
 
 def commit_plan_to_db(session, current_plan):
-    from krrood.ormatic.dao import to_dao
 
     dao = to_dao(current_plan)
     session.add(dao)
     try:
         session.commit()
+        print("commited")
     except Exception as exc:
         session.rollback()
         print(f"[DB] commit failed: {type(exc).__name__}: {exc}")

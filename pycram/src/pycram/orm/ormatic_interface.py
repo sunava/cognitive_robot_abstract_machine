@@ -87,6 +87,7 @@ import pycram.plans.plan_callbacks
 import pycram.plans.plan_entity
 import pycram.plans.plan_node
 import pycram.robot_plans.actions.base
+import pycram.robot_plans.actions.composite.experiment_record
 import pycram.robot_plans.actions.composite.facing
 import pycram.robot_plans.actions.composite.searching
 import pycram.robot_plans.actions.composite.tool_based
@@ -458,13 +459,12 @@ class MotionExecutorDAO_motions_association(Base, AssociationDataAccessObject):
     source_motionexecutordao_id: Mapped[int] = mapped_column(
         ForeignKey("MotionExecutorDAO.database_id")
     )
-    target_taskdao_id: Mapped[int] = mapped_column(
+    target_motionstatechartnodedao_id: Mapped[int] = mapped_column(
         ForeignKey("MotionStatechartNodeDAO.database_id")
     )
 
     target: Mapped[MotionStatechartNodeDAO] = relationship(
-        "MotionStatechartNodeDAO",
-        foreign_keys=[target_taskdao_id],
+        "MotionStatechartNodeDAO", foreign_keys=[target_motionstatechartnodedao_id]
     )
 
 
@@ -640,40 +640,6 @@ class ProblemDataPartDAO_degrees_of_freedom_association(
     target: Mapped[DegreeOfFreedomDAO] = relationship(
         "DegreeOfFreedomDAO", foreign_keys=[target_degreeoffreedomdao_id]
     )
-
-
-class SelfCollisionMatrixRuleDAO_allowed_collision_pairs_association(
-    Base, AssociationDataAccessObject
-):
-
-    __tablename__ = "_61274754000288052279657223915681004397558962435449167568608251"
-
-    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    source_selfcollisionmatrixruledao_id: Mapped[int] = mapped_column(
-        ForeignKey("SelfCollisionMatrixRuleDAO.database_id")
-    )
-    target_collisioncheckdao_id: Mapped[int] = mapped_column(
-        ForeignKey("CollisionCheckDAO.database_id")
-    )
-
-    target: Mapped[CollisionCheckDAO] = relationship(
-        "CollisionCheckDAO", foreign_keys=[target_collisioncheckdao_id]
-    )
-
-
-class SelfCollisionMatrixRuleDAO_allowed_collision_bodies_association(
-    Base, AssociationDataAccessObject
-):
-
-    __tablename__ = "_14396452434524994467973541080545578269638262176329214669324005"
-
-    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    source_selfcollisionmatrixruledao_id: Mapped[int] = mapped_column(
-        ForeignKey("SelfCollisionMatrixRuleDAO.database_id")
-    )
-    target_bodydao_id: Mapped[int] = mapped_column(ForeignKey("BodyDAO.database_id"))
-
-    target: Mapped[BodyDAO] = relationship("BodyDAO", foreign_keys=[target_bodydao_id])
 
 
 class SequenceDAO_nodes_association(Base, AssociationDataAccessObject):
@@ -3365,6 +3331,20 @@ class ExecutorDAO(Base, DataAccessObject[giskardpy.executor.Executor]):
     }
 
 
+class ExperimentRecordDAO(
+    Base,
+    DataAccessObject[
+        pycram.robot_plans.actions.composite.experiment_record.ExperimentRecord
+    ],
+):
+
+    __tablename__ = "ExperimentRecordDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        Integer, primary_key=True, use_existing_column=True
+    )
+
+
 class ExternalCollisionVariableManagerDAO(
     BaseCollisionVariableManagerDAO,
     DataAccessObject[
@@ -3609,13 +3589,13 @@ class GeneralizedActionPlanDAO(
     )
 
     tool_id: Mapped[int] = mapped_column(
-        ForeignKey("ToolDAO.database_id", use_alter=True),
+        ForeignKey("HasRootBodyDAO.database_id", use_alter=True),
         nullable=True,
         use_existing_column=True,
     )
 
-    tool: Mapped[ToolDAO] = relationship(
-        "ToolDAO", uselist=False, foreign_keys=[tool_id], post_update=True
+    tool: Mapped[HasRootBodyDAO] = relationship(
+        "HasRootBodyDAO", uselist=False, foreign_keys=[tool_id], post_update=True
     )
 
     __mapper_args__ = {
@@ -4366,6 +4346,14 @@ class CostmapLocationDAO(
     visible: Mapped[builtins.bool] = mapped_column(use_existing_column=True)
     samples: Mapped[builtins.int] = mapped_column(use_existing_column=True)
     validate_reachability: Mapped[builtins.bool] = mapped_column(
+        use_existing_column=True
+    )
+    costmap_width: Mapped[builtins.int] = mapped_column(use_existing_column=True)
+    costmap_height: Mapped[builtins.int] = mapped_column(use_existing_column=True)
+    costmap_resolution: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+    ring_std: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+    ring_distance: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+    obstacle_clearance: Mapped[typing.Optional[builtins.float]] = mapped_column(
         use_existing_column=True
     )
 
@@ -9234,23 +9222,6 @@ class SelfCollisionMatrixRuleDAO(
         use_existing_column=True,
     )
 
-    allowed_collision_pairs: Mapped[
-        builtins.set[SelfCollisionMatrixRuleDAO_allowed_collision_pairs_association]
-    ] = relationship(
-        "SelfCollisionMatrixRuleDAO_allowed_collision_pairs_association",
-        collection_class=builtins.set,
-        cascade="all, delete-orphan",
-        foreign_keys="[SelfCollisionMatrixRuleDAO_allowed_collision_pairs_association.source_selfcollisionmatrixruledao_id]",
-    )
-    allowed_collision_bodies: Mapped[
-        builtins.set[SelfCollisionMatrixRuleDAO_allowed_collision_bodies_association]
-    ] = relationship(
-        "SelfCollisionMatrixRuleDAO_allowed_collision_bodies_association",
-        collection_class=builtins.set,
-        cascade="all, delete-orphan",
-        foreign_keys="[SelfCollisionMatrixRuleDAO_allowed_collision_bodies_association.source_selfcollisionmatrixruledao_id]",
-    )
-
     __mapper_args__ = {
         "polymorphic_identity": "SelfCollisionMatrixRuleDAO",
         "inherit_condition": database_id == AllowCollisionRuleDAO.database_id,
@@ -9481,7 +9452,7 @@ class SetOdometryDAO(
         use_existing_column=True,
     )
     odom_connection_id: Mapped[typing.Optional[builtins.int]] = mapped_column(
-        ForeignKey("OmniDriveDAO.database_id", use_alter=True),
+        ForeignKey("ConnectionDAO.database_id", use_alter=True),
         nullable=True,
         use_existing_column=True,
     )
@@ -9492,8 +9463,8 @@ class SetOdometryDAO(
         foreign_keys=[base_pose_id],
         post_update=True,
     )
-    odom_connection: Mapped[OmniDriveDAO] = relationship(
-        "OmniDriveDAO",
+    odom_connection: Mapped[ConnectionDAO] = relationship(
+        "ConnectionDAO",
         uselist=False,
         foreign_keys=[odom_connection_id],
         post_update=True,

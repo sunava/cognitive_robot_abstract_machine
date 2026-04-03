@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, Self, Tuple
+
+import numpy as np
 
 from random_events.interval import closed
 from random_events.product_algebra import SimpleEvent
@@ -959,11 +961,12 @@ class Fork(Cuttlery):
     """
 
 
-@dataclass(eq=False)
-class Knife(Cuttlery):
-    """
-    A butter knife.
-    """
+#
+# @dataclass(eq=False)
+# class Knife(Cuttlery):
+#     """
+#     A butter knife.
+#     """
 
 
 @dataclass(eq=False)
