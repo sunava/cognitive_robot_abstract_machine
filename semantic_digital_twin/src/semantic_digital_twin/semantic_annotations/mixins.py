@@ -724,7 +724,6 @@ class HasSupportingSurface(HasStorageSpace, ABC):
             supporting_surface_z_position = self.root.collision.scale.z
         else:
             supporting_surface_z_position = self.root.collision.scale.z / 2
-        print(f"{supporting_surface_z_position=}")
         self_C_supporting_surface = FixedConnection(
             parent=self.root,
             child=supporting_surface,

@@ -57,6 +57,7 @@ class Context(PlanEntity):
 
         :param world: The world for which to create the context
         :param plan: The plan that manages this context
+        :param ros_node: The ros node.
         :param query_backend: The query backend to use for answering queries
         :return: A context with the first robot in the world and no super plan
         """

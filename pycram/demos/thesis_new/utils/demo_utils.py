@@ -177,6 +177,16 @@ def collect_named_targets(world, prefix):
     return targets
 
 
+def set_entity_global_pose(world, entity, world_T_entity):
+    parent_connection = entity.parent_connection
+    parent_T_entity = world.transform(world_T_entity, parent_connection.parent)
+    with world.modify_world():
+        try:
+            parent_connection.origin = parent_T_entity
+        except NotImplementedError:
+            parent_connection.parent_T_connection_expression = parent_T_entity
+
+
 def iter_visual_shapes(body):
     seen = set()
     for owner in (body, getattr(body, "root", None)):

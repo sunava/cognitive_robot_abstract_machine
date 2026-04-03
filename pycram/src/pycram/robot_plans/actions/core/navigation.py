@@ -44,14 +44,10 @@ class NavigateAction(ActionDescription):
 
             print("Navigation through costmap:", str(self.target_location.to_np()))
 
-        return sequential(
-            [
-                MoveMotion(
+            self.add_subplan(execute_single( MoveMotion(
                     self.target_location, self.keep_joint_states, teleport=self.teleport
-                ),
-            ],
-            self.context,
-        ).perform()
+                ))).perform()
+
 
 
 @dataclass

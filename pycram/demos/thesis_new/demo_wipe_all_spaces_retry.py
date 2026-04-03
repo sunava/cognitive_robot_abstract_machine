@@ -16,6 +16,7 @@ from demos.thesis_new.utils.demo_utils import (
     get_park_arms_argument,
     get_primary_robot_name,
     resolve_navigation_target,
+    set_entity_global_pose,
     setup_experiment_runtime,
     shutdown_experiment_runtime,
     update_navigation_costmap_debug_publishers,
@@ -289,8 +290,7 @@ def _rotate_target_180deg_z(world, target_body):
         quat_w=float(new_quat[3]),
         reference_frame=world.root,
     )
-    with world.modify_world():
-        target_body.parent_connection.origin = rotated_pose
+    set_entity_global_pose(world, target_body, rotated_pose)
 
 
 def _rotate_pose_180deg_z(target_pose):

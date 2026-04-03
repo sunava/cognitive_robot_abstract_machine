@@ -31,7 +31,7 @@ from ...motions.gripper import MoveTCPWaypointsAlignedMotion
 from ....datastructures.enums import (
     Arms,
 )
-from ....plans.factories import sequential
+from ....plans.factories import sequential, execute_single
 
 from ....robot_plans.actions.base import ActionDescription
 from ....view_manager import ViewManager
@@ -203,7 +203,7 @@ class GeneralizedActionPlan(ActionDescription):
         )
 
         publish_points_sequence(
-            node=self.context.ros_node,
+            node=self.plan.context.ros_node,
             points=P,
             frame_id="apartment/apartment_root",
             topic="/point_sequence",
@@ -234,19 +234,16 @@ class GeneralizedActionPlan(ActionDescription):
         except Exception:
             tip = ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
         try:
-            sequential(
-                [
-                    MoveTCPWaypointsAlignedMotion(
-                        pointery,
-                        self.arm,
-                        allow_gripper_collision=False,
-                        # avoid_all_collisions=True,
-                        alignment_pairs=alignment_pairs,
-                        tip=tip,
-                    ),
-                ],
-                self.context,
-            ).perform()
+            self.add_subplan(execute_single(
+                MoveTCPWaypointsAlignedMotion(
+                    pointery,
+                    self.arm,
+                    allow_gripper_collision=False,
+                    # avoid_all_collisions=True,
+                    alignment_pairs=alignment_pairs,
+                    tip=tip,
+                ),)).perform()
+
         except Exception as exc:
             collision_contacts = None
             try:

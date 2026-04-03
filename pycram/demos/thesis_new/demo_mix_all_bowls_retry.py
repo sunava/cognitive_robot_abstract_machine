@@ -49,6 +49,7 @@ from demos.thesis_new.utils.demo_utils import (
     highlight_current_target,
     build_navigation_costmaps,
     resolve_navigation_target,
+    set_entity_global_pose,
     setup_experiment_runtime,
     shutdown_experiment_runtime,
     update_navigation_costmap_debug_publishers,
@@ -186,8 +187,7 @@ def _rotate_bowl_180deg_z(world, bowl):
         quat_w=float(new_quat[3]),
         reference_frame=world.root,
     )
-    with world.modify_world():
-        bowl.parent_connection.origin = rotated_pose
+    set_entity_global_pose(world, bowl, rotated_pose)
 
 
 def main_mixing(seed=None, robot_name=None, environment_name=None):
