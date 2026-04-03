@@ -31,8 +31,8 @@ from ...motions.gripper import MoveTCPWaypointsAlignedMotion
 from ....datastructures.enums import (
     Arms,
 )
-from ....datastructures.partial_designator import PartialDesignator
-from ....language import SequentialPlan
+from ....plans.factories import sequential, execute_single
+
 from ....robot_plans.actions.base import ActionDescription
 from ....view_manager import ViewManager
 
@@ -203,16 +203,16 @@ class GeneralizedActionPlan(ActionDescription):
         )
 
         publish_points_sequence(
-            node=self.context.ros_node,
+            node=self.plan.context.ros_node,
             points=P,
-            frame_id="apartment/apartment_root",
+            frame_id="map",
             topic="/point_sequence",
             phase_id=ids,
             republish_hz=2.0,
             clear_existing=self.clear_viz,
         )
         print("published points_sequence")
-        self.robot_view.full_body_controlled = True
+        self.robot.full_body_controlled = True
         stride = max(1, int(self.pointer_stride))
         pointery = self._to_waypoints(points, stride)
         if self.__class__.__name__ == "CuttingAction":
@@ -232,23 +232,21 @@ class GeneralizedActionPlan(ActionDescription):
         try:
             tip = self.tool.get_tool_frame()
         except Exception:
-            tip = (
-                ViewManager()
-                .get_end_effector_view(self.arm, self.robot_view)
-                .tool_frame
-            )
+            tip = ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
         try:
-            SequentialPlan(
-                self.context,
-                MoveTCPWaypointsAlignedMotion(
-                    pointery,
-                    self.arm,
-                    allow_gripper_collision=False,
-                    # avoid_all_collisions=True,
-                    alignment_pairs=alignment_pairs,
-                    tip=tip,
-                ),
+            self.add_subplan(
+                execute_single(
+                    MoveTCPWaypointsAlignedMotion(
+                        pointery,
+                        self.arm,
+                        allow_gripper_collision=False,
+                        # avoid_all_collisions=True,
+                        alignment_pairs=alignment_pairs,
+                        tip=tip,
+                    ),
+                )
             ).perform()
+
         except Exception as exc:
             collision_contacts = None
             try:
@@ -332,33 +330,6 @@ class MixingAction(GeneralizedActionPlan):
         )
         return seq.sample(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
 
-    def validate(
-        self,
-        result: Optional[Any] = None,
-        max_wait_time: timedelta = timedelta(seconds=2),
-    ):
-        pass
-
-    @classmethod
-    def description(
-        cls,
-        container: Union[Iterable[Body], Body],
-        arm: Union[Iterable[Arms], Arms],
-        tool: Union[Iterable[Tool], Tool],
-        mix_duration_s: Union[Iterable[float], float] = 0.0,
-        clear_viz: Union[Iterable[bool], bool] = False,
-        pointer_stride: Union[Iterable[int], int] = 1,
-    ) -> PartialDesignator[MixingAction]:
-        return PartialDesignator(
-            cls,
-            container=container,
-            arm=arm,
-            tool=tool,
-            mix_duration_s=mix_duration_s,
-            clear_viz=clear_viz,
-            pointer_stride=pointer_stride,
-        )
-
 
 @dataclass(kw_only=True)
 class WipingAction(GeneralizedActionPlan):
@@ -424,7 +395,7 @@ class WipingAction(GeneralizedActionPlan):
     def _resolve_pose_alignment_target(self):
         target_spatial = self._target_pose_to_spatial()
         target_point_world = target_spatial.to_position()
-        robot_bodies = set(getattr(self.robot_view, "bodies", []))
+        robot_bodies = set(getattr(self.robot, "bodies", []))
         tool_root = getattr(getattr(self, "tool", None), "root", None)
 
         best_body = None
@@ -494,30 +465,6 @@ class WipingAction(GeneralizedActionPlan):
         seq = MotionSequence([segment])
         return seq.sample(frame=t_pose, dt=DEFAULT_SAMPLE_DT)
 
-    @classmethod
-    def description(
-        cls,
-        arm: Union[Iterable[Arms], Arms],
-        tool: Union[Iterable[Tool], Tool],
-        length: Union[Iterable[float], float] = 0.20,
-        cycles: Union[Iterable[float], float] = 2.0,
-        container: Union[Iterable[Body], Body] = None,
-        target_pose: Union[Iterable[Pose], Pose] = None,
-        clear_viz: Union[Iterable[bool], bool] = False,
-        pointer_stride: Union[Iterable[int], int] = 1,
-    ) -> PartialDesignator[WipingAction]:
-        return PartialDesignator(
-            cls,
-            arm=arm,
-            container=container,
-            target_pose=target_pose,
-            tool=tool,
-            length=length,
-            cycles=cycles,
-            clear_viz=clear_viz,
-            pointer_stride=pointer_stride,
-        )
-
 
 @dataclass
 class CuttingAction(GeneralizedActionPlan):
@@ -564,45 +511,3 @@ class CuttingAction(GeneralizedActionPlan):
             num_cuts_x=self.num_cuts_x,
         )
         return seq.sample(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
-
-    def validate(
-        self,
-        result: Optional[Any] = None,
-        max_wait_time: timedelta = timedelta(seconds=2),
-    ):
-        pass
-
-    @classmethod
-    def description(
-        cls,
-        container: Union[Iterable[Body], Body],
-        arm: Union[Iterable[Arms], Arms],
-        tool: Union[Iterable[Tool], Tool],
-        technique: Union[Iterable[str], str] = "saw",
-        slice_thickness: Union[Iterable[float], float] = 0.03,
-        num_cuts_x: Union[Iterable[int], int] = 1,
-        db_debug_waypoint_count: Union[
-            Iterable[Optional[float]], Optional[float]
-        ] = None,
-        has_entry_from_above: Union[Iterable[Optional[bool]], Optional[bool]] = None,
-        clear_viz: Union[Iterable[bool], bool] = False,
-        pointer_stride: Union[Iterable[int], int] = 1,
-    ) -> PartialDesignator[CuttingAction]:
-        return PartialDesignator(
-            cls,
-            container=container,
-            arm=arm,
-            tool=tool,
-            technique=technique,
-            slice_thickness=slice_thickness,
-            num_cuts_x=num_cuts_x,
-            db_debug_waypoint_count=db_debug_waypoint_count,
-            has_entry_from_above=has_entry_from_above,
-            clear_viz=clear_viz,
-            pointer_stride=pointer_stride,
-        )
-
-
-MixingActionDescription = MixingAction.description
-WipingActionDescription = WipingAction.description
-CuttingActionDescription = CuttingAction.description

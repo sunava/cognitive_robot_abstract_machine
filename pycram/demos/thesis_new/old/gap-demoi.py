@@ -34,14 +34,12 @@ def _setup_world():
         )
     ).parse()
 
-
     with world.modify_world():
         world.merge_world_at_pose(
             bowl,
             HomogeneousTransformationMatrix.from_xyz_quaternion(
                 2.4, 2.2, 1, reference_frame=world.root
             ),
-
         )
 
     with world.modify_world():
@@ -59,7 +57,6 @@ def _setup_world():
         )
 
     return world
-
 
 
 def main():
@@ -92,26 +89,28 @@ def main():
             ]
         )
 
-
-    plan = SequentialPlan(
-        context,
-        MoveTorsoActionDescription(TorsoState.HIGH)
-    )
+    plan = SequentialPlan(context, MoveTorsoActionDescription(TorsoState.HIGH))
     with simulated_robot:
         plan.perform()
 
     with world.modify_world():
         whisk = STLParser(
             os.path.join(
-                os.path.dirname(__file__), "../..", "..", "resources", "pycram_object_gap_demo", "whisk.stl"
+                os.path.dirname(__file__),
+                "../..",
+                "..",
+                "resources",
+                "pycram_object_gap_demo",
+                "whisk.stl",
             )
         ).parse()
-        robot_tip=world.get_body_by_name("r_gripper_tool_frame")
+        robot_tip = world.get_body_by_name("r_gripper_tool_frame")
         connection = FixedConnection(
-            parent=robot_tip, child=whisk.root,
+            parent=robot_tip,
+            child=whisk.root,
             parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_quaternion(
-            0.1, 0, 0, reference_frame=robot_tip
-        ),
+                0.1, 0, 0, reference_frame=robot_tip
+            ),
         )
         world.merge_world(whisk, connection)
 

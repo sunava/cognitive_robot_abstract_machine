@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from krrood.adapters.json_serializer import to_json
-from krrood.ormatic.dao import to_dao
+from krrood.ormatic.data_access_objects.helper import to_dao
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.exceptions import (
     InvalidPlaneDimensions,
@@ -698,6 +698,27 @@ class TestFactories(unittest.TestCase):
 
         assert not surface_event.contains(surface_P_milk[:2])
         assert not surface_event.contains(surface_P_cereal[:2])
+
+    def test_surface_sampling_respects_edge_clearance(self):
+        world = World()
+        root = Body(name=PrefixedName("root"))
+        with world.modify_world():
+            world.add_body(root)
+        with world.modify_world():
+            table = Table.create_with_new_body_in_world(
+                name=PrefixedName("table"), world=world, scale=Scale(1.0, 1.0, 0.1)
+            )
+
+        with world.modify_world():
+            table.calculate_supporting_surface()
+
+        surface_event = table._2d_surface_sample_space_excluding_objects(
+            0.0, edge_clearance=0.1
+        )
+
+        assert surface_event.contains((0.0, 0.0))
+        assert not surface_event.contains((0.49, 0.0))
+        assert not surface_event.contains((0.0, 0.49))
 
     def test_sample_points_from_surface_with_object_and_category_of_interest(self):
         world = World()

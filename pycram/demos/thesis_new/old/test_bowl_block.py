@@ -86,7 +86,9 @@ def main():
         ),
     )
 
-    seq_container = MotionSequence([phase_spiral_container, phase_shear_container, phase_sweep_container])
+    seq_container = MotionSequence(
+        [phase_spiral_container, phase_shear_container, phase_sweep_container]
+    )
     prov_container = WorldTransformFrameProvider(
         world=world,
         source_frame=bowl_body,

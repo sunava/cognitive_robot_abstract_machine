@@ -40,7 +40,11 @@ def main():
     summary = build_trial_summary(rows, extra_row_fn=_bread_extra_summary_row)
     aggregated = build_aggregated(rows)
 
-    summary_fields = BASE_SUMMARY_FIELDS[:7] + _bread_extra_summary_fields() + BASE_SUMMARY_FIELDS[7:]
+    summary_fields = (
+        BASE_SUMMARY_FIELDS[:7]
+        + _bread_extra_summary_fields()
+        + BASE_SUMMARY_FIELDS[7:]
+    )
     aggregated_fields = BASE_AGGREGATED_FIELDS
 
     append_csv(args.summary_out, summary_fields, summary)

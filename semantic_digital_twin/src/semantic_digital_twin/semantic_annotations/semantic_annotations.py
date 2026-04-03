@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, Self, Tuple
 
@@ -51,7 +51,7 @@ from ..world_description.connections import (
 from semantic_digital_twin.world_description.degree_of_freedom import (
     DegreeOfFreedomLimits,
 )
-from semantic_digital_twin.world_description.geometry import Scale, TriangleMesh
+from semantic_digital_twin.world_description.geometry import Scale, Mesh
 from semantic_digital_twin.world_description.shape_collection import (
     BoundingBoxCollection,
     ShapeCollection,
@@ -1029,8 +1029,7 @@ class Tool(HasRootBody, ABC):
         return end_effector
 
     @abstractmethod
-    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]:
-        ...
+    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]: ...
 
     def debug_distance_threshold(self) -> float:
         """Debug the logger threshold for tool-to-target distance metrics."""
@@ -1039,6 +1038,7 @@ class Tool(HasRootBody, ABC):
     def distance_threshold_m(self) -> float:
         """Backward-compatible alias."""
         return self.debug_distance_threshold()
+
 
 @dataclass(eq=False)
 class ToolWithHandle(HasHandle, Tool, ABC):
@@ -1067,10 +1067,8 @@ class ToolWithHandle(HasHandle, Tool, ABC):
                 )
             )
 
+    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]: ...
 
-
-    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]:
-        ...
 
 @dataclass(eq=False)
 class Whisk(ToolWithHandle):
@@ -1085,6 +1083,7 @@ class Whisk(ToolWithHandle):
 
     def debug_distance_threshold(self) -> float:
         return 0.01
+
 
 @dataclass(eq=False)
 class Knife(ToolWithHandle):
@@ -1101,9 +1100,9 @@ class Knife(ToolWithHandle):
         ]
         return pairs
 
-
     def debug_distance_threshold(self) -> float:
         return 0.6
+
 
 @dataclass(eq=False)
 class Sponge(Tool):
@@ -1151,7 +1150,6 @@ class Sponge(Tool):
                 goal_normal=goal_normal,
             ),
         ]
-
 
     def debug_distance_threshold(self) -> float:
         return 0.6

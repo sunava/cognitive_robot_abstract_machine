@@ -38,13 +38,9 @@ class RosMplViewer(Node):
         self._marker_store = MarkerStore()
         self._seq_store = MarkerStore()
 
-        self.create_subscription(
-            MarkerArray, marker_topic, self._on_marker_array, 10
-        )
+        self.create_subscription(MarkerArray, marker_topic, self._on_marker_array, 10)
         if seq_topic:
-            self.create_subscription(
-                MarkerArray, seq_topic, self._on_seq_array, 10
-            )
+            self.create_subscription(MarkerArray, seq_topic, self._on_seq_array, 10)
 
     def _on_marker_array(self, msg: MarkerArray):
         with self._lock:

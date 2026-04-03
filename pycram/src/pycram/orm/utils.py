@@ -14,7 +14,7 @@ try:
     from pycram.orm.ormatic_interface import mapper_registry
 except ImportError:
     pass
-from pycram.designators.object_designator import *
+
 import json
 
 logger = logging.getLogger(__name__)

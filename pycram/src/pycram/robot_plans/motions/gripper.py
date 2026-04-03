@@ -2,7 +2,11 @@ from dataclasses import dataclass, field
 from typing import Optional, List
 
 from giskardpy.motion_statechart.data_types import DefaultWeights
+from giskardpy.motion_statechart.goals.collision_avoidance import (
+    UpdateTemporaryCollisionRules,
+)
 from giskardpy.motion_statechart.goals.templates import Sequence, Parallel
+from giskardpy.motion_statechart.graph_node import MotionStatechartNode
 from giskardpy.motion_statechart.tasks.align_planes import AlignPlanes
 from giskardpy.motion_statechart.tasks.cartesian_tasks import (
     CartesianPose,
@@ -11,9 +15,11 @@ from giskardpy.motion_statechart.tasks.cartesian_tasks import (
 )
 from giskardpy.motion_statechart.tasks.joint_tasks import JointPositionList, JointState
 from pycram.datastructures.dataclasses import AlignmentPair
+from semantic_digital_twin.collision_checking.collision_rules import (
+    AllowCollisionBetweenGroups,
+)
 from semantic_digital_twin.datastructures.definitions import GripperState
-from semantic_digital_twin.spatial_types import Point3, Vector3
-from semantic_digital_twin.spatial_types.spatial_types import Pose
+from semantic_digital_twin.spatial_types.spatial_types import Pose, Point3, Vector3
 from semantic_digital_twin.world_description.world_entity import Body
 from pycram.robot_plans.motions.base import BaseMotion
 from pycram.datastructures.enums import (
@@ -52,7 +58,7 @@ class ReachMotion(BaseMotion):
     """
 
     def _calculate_pose_sequence(self) -> List[Pose]:
-        end_effector = ViewManager.get_end_effector_view(self.arm, self.robot_view)
+        end_effector = ViewManager.get_end_effector_view(self.arm, self.robot)
 
         target_pose = GraspDescription.get_grasp_pose(
             self.grasp_description, end_effector, self.object_designator
@@ -79,12 +85,12 @@ class ReachMotion(BaseMotion):
 
     @property
     def _motion_chart(self):
-        tip = ViewManager().get_end_effector_view(self.arm, self.robot_view).tool_frame
+        tip = ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
         nodes = [
             CartesianPose(
-                root_link=self.robot_view.root,
+                root_link=self.robot.root,
                 tip_link=tip,
-                goal_pose=pose.to_homogeneous_matrix(),
+                goal_pose=pose,
                 threshold=0.005,
                 name="Reach",
             )
@@ -117,7 +123,7 @@ class MoveGripperMotion(BaseMotion):
 
     @property
     def _motion_chart(self):
-        arm = ViewManager().get_end_effector_view(self.gripper, self.robot_view)
+        arm = ViewManager().get_end_effector_view(self.gripper, self.robot)
 
         return JointPositionList(
             goal_state=arm.get_joint_state_by_type(self.motion),
@@ -128,7 +134,7 @@ class MoveGripperMotion(BaseMotion):
 
 
 @dataclass
-class MoveTCPMotion(BaseMotion):
+class MoveToolCenterPointMotion(BaseMotion):
     """
     Moves the Tool center point (TCP) of the robot
     """
@@ -155,12 +161,8 @@ class MoveTCPMotion(BaseMotion):
 
     @property
     def _motion_chart(self):
-        tip = ViewManager().get_end_effector_view(self.arm, self.robot_view).tool_frame
-        root = (
-            self.world.root
-            if self.robot_view.full_body_controlled
-            else self.robot_view.root
-        )
+        tip = ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
+        root = self.world.root if self.robot.full_body_controlled else self.robot.root
         task = None
         if self.movement_type == MovementType.TRANSLATION:
             task = CartesianPosition(
@@ -173,7 +175,7 @@ class MoveTCPMotion(BaseMotion):
             task = CartesianPose(
                 root_link=root,
                 tip_link=tip,
-                goal_pose=self.target.to_homogeneous_matrix(),
+                goal_pose=self.target,
                 name="MoveTCP",
             )
         return task
@@ -209,22 +211,19 @@ class MoveTCPWaypointsMotion(BaseMotion):
 
     @property
     def _motion_chart(self):
-        tip = ViewManager().get_end_effector_view(self.arm, self.robot_view).tool_frame
-        root = (
-            self.world.root
-            if self.robot_view.full_body_controlled
-            else self.robot_view.root
-        )
+        tip = ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
+        root = self.world.root if self.robot.full_body_controlled else self.robot.root
         nodes = [
             CartesianPose(
                 root_link=root,
                 tip_link=tip,
-                goal_pose=pose.to_spatial_type(),
+                goal_pose=pose.to_homogeneous_matrix(),
                 # threshold=0.005,
             )
             for pose in self.waypoints
         ]
         return Sequence(nodes=nodes)
+
 
 @dataclass
 class MoveTCPWaypointsAlignedMotion(BaseMotion):
@@ -269,11 +268,7 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
             raise ValueError("No waypoints provided to MoveTCPWaypointsAlignedMotion.")
 
         if self.tip is None:
-            tip = (
-                ViewManager()
-                .get_end_effector_view(self.arm, self.robot_view)
-                .tool_frame
-            )
+            tip = ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
             if tip is None:
                 raise ValueError(f"No tool frame available for arm {self.arm}.")
 
@@ -283,9 +278,7 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
             tip_link = self.tip
 
         root_link = (
-            self.world.root
-            if self.robot_view.full_body_controlled
-            else self.robot_view.root
+            self.world.root if self.robot.full_body_controlled else self.robot.root
         )
         if root_link is None:
             root_link = self.world.root
@@ -310,7 +303,7 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
             )
             for pair in self.alignment_pairs
         )
-        if self.robot_view.name.name == "rollin_justin":
+        if self.robot.name.name == "rollin_justin":
             tasks.append(
                 AlignPlanes(
                     tip_link=self.world.get_body_by_name("torso4"),

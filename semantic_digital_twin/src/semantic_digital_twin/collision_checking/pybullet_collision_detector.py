@@ -1,7 +1,6 @@
 import hashlib
 import logging
 import os
-import tempfile
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -29,8 +28,6 @@ from semantic_digital_twin.world_description.geometry import (
     Sphere,
     Cylinder,
     Scale,
-    TriangleMesh,
-    FileMesh,
     Mesh,
 )
 from semantic_digital_twin.world_description.world_entity import Body
@@ -132,17 +129,7 @@ def create_shape_from_geometry(geometry: Shape) -> bullet.CollisionShape:
                 diameter=geometry.width, height=geometry.height
             )
 
-        case TriangleMesh():
-            f = tempfile.NamedTemporaryFile(delete=False, suffix=".obj")
-            with open(f.name, "w") as fd:
-                fd.write(trimesh.exchange.obj.export_obj(geometry.mesh))
-            shape = load_convex_mesh_shape(
-                mesh=geometry,
-                single_shape=False,
-                scale=geometry.scale,
-            )
-
-        case FileMesh():
+        case Mesh():
             shape = load_convex_mesh_shape(
                 mesh=geometry,
                 single_shape=False,

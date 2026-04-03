@@ -98,7 +98,9 @@ def _transform_point(position, orientation, local_point):
             f"local_point must contain exactly 3 values, got {local_point_vec.size}"
         )
 
-    world_point = position_vec + _quaternion_to_rotation_matrix(orientation) @ local_point_vec
+    world_point = (
+        position_vec + _quaternion_to_rotation_matrix(orientation) @ local_point_vec
+    )
     point = Point()
     point.x = float(world_point[0])
     point.y = float(world_point[1])
@@ -128,7 +130,9 @@ def _pose_to_position_and_orientation_lists(pose):
         position_values = position.to_list()
     else:
         position_values = [
-            getattr(position, axis) for axis in ("x", "y", "z") if hasattr(position, axis)
+            getattr(position, axis)
+            for axis in ("x", "y", "z")
+            if hasattr(position, axis)
         ]
 
     if hasattr(orientation, "to_list"):

@@ -2,6 +2,7 @@ import numpy as np
 
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 
+
 class MotionSegment:
     def __init__(self, name, duration_s, local_curve):
         """Define a local motion curve over a fixed duration."""
@@ -19,7 +20,9 @@ class MotionSegment:
         R = F[:3, :3]
         t = F[:3, 3]
 
-        q = np.array([self.local_curve(float(u)) for u in tau], dtype=float).reshape(-1, 3)
+        q = np.array([self.local_curve(float(u)) for u in tau], dtype=float).reshape(
+            -1, 3
+        )
         pts = q @ R.T + t
 
         return times, pts
@@ -35,7 +38,9 @@ class MotionSequence:
         """Total duration across all phases."""
         return float(sum(p.duration_s for p in self.phases))
 
-    def sample(self,  frame: HomogeneousTransformationMatrix, dt: float, t0: float = 0.0):
+    def sample(
+        self, frame: HomogeneousTransformationMatrix, dt: float, t0: float = 0.0
+    ):
         """Sample all phases into one concatenated sequence."""
         all_t, all_p, all_id = [], [], []
         t = float(t0)

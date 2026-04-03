@@ -1,6 +1,10 @@
 import os
 
 from semantic_digital_twin.adapters.urdf import URDFParser
+from semantic_digital_twin.pipeline.pipeline import (
+    Pipeline,
+    CenterLocalGeometryAndPreserveWorldPose,
+)
 from semantic_digital_twin.robots.armar7 import Armar7
 from semantic_digital_twin.robots.hsrb import HSRB
 from semantic_digital_twin.robots.justin import Justin
@@ -28,13 +32,14 @@ WORLDS_DIR = os.path.join(RESOURCES_DIR, "worlds")
 EXTERNAL_ENVIRONMENT_SPECS = {
     "isr": "package://isr_testbed/urdf/isr-testbed.urdf",
 }
-
+# robot_urdf, robot_cls, drive_cls, robot_start_pose, robot_off
 ROBOT_SPECS = {
     "pr2": (
         "package://iai_pr2_description/robots/pr2_with_ft2_cableguide.xacro",
         PR2,
         OmniDrive,
         DEFAULT_ROBOT_START_POSE,
+        HomogeneousTransformationMatrix(),
     ),
     "hsrb": (
         os.path.join(RESOURCES_DIR, "robots", "hsrb.urdf"),
@@ -142,14 +147,22 @@ def setup_thesis_world(robot_name=None, environment_name=None):
 
     environment_world = URDFParser.from_file(environment_path).parse()
 
+    # pipeline = Pipeline(steps=[
+    #     CenterLocalGeometryAndPreserveWorldPose()
+    # ])
+    # environment_world = pipeline.apply(world=environment_world)
+
     robot_world = world_with_urdf_factory(
         urdf_path=robot_urdf,
         robot_semantic_annotation=robot_cls,
         drive_connection_type=drive_cls,
         robot_localization_pose=robot_off,
+        robot_starting_pose=robot_start_pose,
     )
-    environment_world.merge_world_at_pose(robot_world, robot_start_pose)
+    robot_world.merge_world(environment_world)
+    # environment_world.merge_world_at_pose(robot_world, robot_start_pose)
     # robot_cls.from_world(environment_world)
 
-    print(environment_world.root)
-    return environment_world
+    print(robot_world.root)
+    # print(robot_world.bodies)
+    return robot_world

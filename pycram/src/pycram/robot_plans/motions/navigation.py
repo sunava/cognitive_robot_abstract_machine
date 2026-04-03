@@ -35,11 +35,11 @@ class MoveMotion(BaseMotion):
         if self.teleport:
             return SetOdometry(
                 base_pose=self.target.to_homogeneous_matrix(),
-                odom_connection=self.robot_view.drive,
+                odom_connection=self.robot.drive,
             )
 
         return CartesianPose(
             root_link=self.world.root,
-            tip_link=self.robot_view.root,
+            tip_link=self.robot.root,
             goal_pose=self.target,
         )

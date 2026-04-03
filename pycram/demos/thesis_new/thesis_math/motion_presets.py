@@ -47,9 +47,7 @@ def _duration_scale_from_body(
     body, reference_size=0.10, debug=False, apply_shape_scale=False
 ):
     """Compute a scaling factor from the body's AABB size."""
-    mins, maxs = body_local_aabb(
-        body, apply_shape_scale=apply_shape_scale
-    )
+    mins, maxs = body_local_aabb(body, apply_shape_scale=apply_shape_scale)
     extents = maxs - mins
     diag = float(np.linalg.norm(extents))
     ref = float(reference_size)
@@ -57,9 +55,7 @@ def _duration_scale_from_body(
         raise ValueError("reference_size must be positive")
     scale = max(diag, 1e-6) / ref
     if debug:
-        print(
-            f"[motion_presets] aabb_diag={diag:.4f} ref={ref:.4f} scale={scale:.3f}"
-        )
+        print(f"[motion_presets] aabb_diag={diag:.4f} ref={ref:.4f} scale={scale:.3f}")
     return scale
 
 
@@ -73,9 +69,7 @@ def build_container_sequence(
     mix_duration_s=None,
 ):
     """Build a spiral sequence sized to a bowl-like object."""
-    mins, maxs = body_local_aabb(
-        bowl_body, apply_shape_scale=apply_shape_scale
-    )
+    mins, maxs = body_local_aabb(bowl_body, apply_shape_scale=apply_shape_scale)
     size_x = maxs[0] - mins[0]
     size_y = maxs[1] - mins[1]
     size_z = maxs[2] - mins[2]
@@ -115,9 +109,7 @@ def build_container_sequence(
         name="planar_spiral_bowl",
         duration_s=2.0 * duration_scale,
         local_curve=_with_offset(
-            lambda tau: planar_spiral_xy(
-                tau, r0=0.00, r1=spiral_r1, cycles=2.0
-            )
+            lambda tau: planar_spiral_xy(tau, r0=0.00, r1=spiral_r1, cycles=2.0)
         ),
     )
 
@@ -161,9 +153,7 @@ def build_surface_sequence(
     pattern="spiral",
 ):
     """Build a planar sequence on a surface or object (e.g., countertop, cutting)."""
-    mins, maxs = body_local_aabb(
-        surface_body, apply_shape_scale=apply_shape_scale
-    )
+    mins, maxs = body_local_aabb(surface_body, apply_shape_scale=apply_shape_scale)
     size_x = maxs[0] - mins[0]
     size_y = maxs[1] - mins[1]
     size_z = maxs[2] - mins[2]
@@ -172,9 +162,7 @@ def build_surface_sequence(
     center_x = 0.5 * (mins[0] + maxs[0])
     center_y = 0.5 * (mins[1] + maxs[1])
     surface_margin = 0.005
-    start_offset = np.array(
-        [center_x, center_y, maxs[2] - surface_margin], dtype=float
-    )
+    start_offset = np.array([center_x, center_y, maxs[2] - surface_margin], dtype=float)
     duration_scale = _duration_scale_from_body(
         surface_body,
         reference_size=reference_size,
@@ -199,9 +187,7 @@ def build_surface_sequence(
     phase_spiral_surface = MotionSegment(
         name="planar_spiral_surface",
         duration_s=2.0 * duration_scale,
-        local_curve=lambda tau: planar_spiral_xy(
-            tau, r0=0.00, r1=spiral_r1, cycles=2.0
-        )
+        local_curve=lambda tau: planar_spiral_xy(tau, r0=0.00, r1=spiral_r1, cycles=2.0)
         + start_offset,
     )
 

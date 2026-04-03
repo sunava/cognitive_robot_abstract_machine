@@ -2,7 +2,7 @@ import csv
 import os
 import uuid
 
-from pycram.failures import NavigationPoseUnreachable
+from pycram.plans.failures import NavigationGoalNotReachedError
 
 
 BASE_RESULT_FIELDNAMES = [
@@ -79,7 +79,7 @@ def format_attempt_error(exc):
 
 
 def is_collision_like_failure(exc):
-    return isinstance(exc, (TimeoutError, NavigationPoseUnreachable))
+    return isinstance(exc, (TimeoutError, NavigationGoalNotReachedError))
 
 
 def required_prerequisite_text(knowledge):
@@ -144,6 +144,3 @@ def build_base_result_row(
     }
     results.append(row)
     return row
-
-
-from pycram.failures import NavigationPoseUnreachable

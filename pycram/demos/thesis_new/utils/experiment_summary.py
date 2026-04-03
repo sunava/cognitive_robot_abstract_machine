@@ -150,20 +150,38 @@ def build_aggregated(rows, extra_group_fields=None, extra_aggregate_fn=None):
 
     aggregated = []
     for key, items in groups.items():
-        run_id, task_name, experiment_condition, baseline_name, robot_name, *extra_values = key
-        success_values = [1.0 if row.get("outcome") == "success" else 0.0 for row in items]
+        (
+            run_id,
+            task_name,
+            experiment_condition,
+            baseline_name,
+            robot_name,
+            *extra_values,
+        ) = key
+        success_values = [
+            1.0 if row.get("outcome") == "success" else 0.0 for row in items
+        ]
         execution_times = [to_float(row.get("execution_time_s")) for row in items]
         retry_counts = [to_int(row.get("retry_count")) for row in items]
         total_attempts = [to_int(row.get("total_attempts")) for row in items]
-        collision_failures = [to_int(row.get("collision_failure_count")) for row in items]
-        recovery_used = [1.0 if to_bool(row.get("recovery_used")) else 0.0 for row in items]
-        recovery_success = [1.0 if to_bool(row.get("recovery_success")) else 0.0 for row in items]
+        collision_failures = [
+            to_int(row.get("collision_failure_count")) for row in items
+        ]
+        recovery_used = [
+            1.0 if to_bool(row.get("recovery_used")) else 0.0 for row in items
+        ]
+        recovery_success = [
+            1.0 if to_bool(row.get("recovery_success")) else 0.0 for row in items
+        ]
         perturbation_success = [
             1.0
             for row in items
-            if to_bool(row.get("perturbation_applied")) and row.get("outcome") == "success"
+            if to_bool(row.get("perturbation_applied"))
+            and row.get("outcome") == "success"
         ]
-        perturbation_total = [1.0 for row in items if to_bool(row.get("perturbation_applied"))]
+        perturbation_total = [
+            1.0 for row in items if to_bool(row.get("perturbation_applied"))
+        ]
 
         aggregated_row = {
             "run_id": run_id,
@@ -180,9 +198,11 @@ def build_aggregated(rows, extra_group_fields=None, extra_aggregate_fn=None):
             "recovery_used_rate": round(safe_mean(recovery_used), 4),
             "recovery_success_rate": round(safe_mean(recovery_success), 4),
             "success_under_perturbation_rate": round(
-                (sum(perturbation_success) / len(perturbation_total))
-                if perturbation_total
-                else 0.0,
+                (
+                    (sum(perturbation_success) / len(perturbation_total))
+                    if perturbation_total
+                    else 0.0
+                ),
                 4,
             ),
         }

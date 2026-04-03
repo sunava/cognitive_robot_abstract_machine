@@ -6,21 +6,21 @@ from dataclasses import dataclass
 from inspect import signature
 from typing import Optional
 
-from typing_extensions import ClassVar, Type
-from typing_extensions import TypeVar
-
 from giskardpy.motion_statechart.goals.collision_avoidance import (
-    ExternalCollisionAvoidance,
     UpdateTemporaryCollisionRules,
 )
 from giskardpy.motion_statechart.graph_node import Task, MotionStatechartNode
-from krrood.ormatic.dao import HasGeneric
+from krrood.ormatic.data_access_objects.base import HasGeneric
+from pycram.plans.designator import Designator
+from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from pycram.datastructures.enums import ExecutionType, Arms
-from pycram.designator import DesignatorDescription
+from typing_extensions import TypeVar, ClassVar, Type
+
 from pycram.motion_executor import MotionExecutor
 from pycram.view_manager import ViewManager
 from semantic_digital_twin.collision_checking.collision_rules import (
-    AllowCollisionBetweenGroups, AvoidExternalCollisions,
+    AllowCollisionBetweenGroups,
+    AvoidExternalCollisions,
 )
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 
@@ -57,7 +57,13 @@ class AlternativeMotion(HasGeneric[T], ABC):
 
 
 @dataclass
-class BaseMotion(DesignatorDescription):
+class BaseMotion(Designator):
+    """
+    Base class for all motions.
+    Motions are like builders for Motion State Charts.
+    Motions never create any other motions or actions.
+    Motions create exactly one goal.
+    """
 
     @abstractmethod
     def perform(self):
@@ -87,12 +93,10 @@ class BaseMotion(DesignatorDescription):
     @property
     @abstractmethod
     def _motion_chart(self) -> Task:
-        """
-        Returns the motion chart for this motion. Will be overwritten by each motion.
-        """
+        pass
 
     def get_alternative_motion(self) -> Optional[Type[AlternativeMotion]]:
-        return AlternativeMotion.check_for_alternative(self.robot_view, self)
+        return AlternativeMotion.check_for_alternative(self.robot, self)
 
     def _only_allow_gripper_collision_rules(
         self, arm: Arms

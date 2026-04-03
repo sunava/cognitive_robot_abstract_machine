@@ -27,15 +27,19 @@ RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")
 )
 
+
 PREFERRED_SURFACE_NAMES = (
-    # "island_countertop",
-    # "countertop",
-    # "table_area_main",
-    # "coffee_table",
-    # "bedside_table",
-    # "kitchen_island_surface",
-    # "sink_area_surface",
+    "island_countertop",
+    "countertop",
+    "table_area_main",
+    "coffee_table",
+    "bedside_table",
+    "kitchen_island_surface",
+    "sink_area_surface",
 )
+MIN_SUPPORT_SURFACE_AREA_M2 = 0.025
+MIN_SUPPORT_SURFACE_SPAN_M = 0.18
+MAX_SUPPORT_SURFACE_TOP_Z_M = 1.55
 
 # Automatic count model: breads ~= usable_surface_area * BREADS_PER_SQM.
 # Keep this tunable when switching to a new environment.
@@ -87,15 +91,46 @@ def _surface_like_name(name):
     if basename.endswith("_surface"):
         return True
 
-    if ("counter" not in basename) and ("table" not in basename):
+    return False
+
+
+def _surface_geometry_is_usable(body):
+    try:
+        mins, maxs = body_local_aabb(body, use_visual=False, apply_shape_scale=True)
+    except Exception:
         return False
 
-    if any(
-        skip in basename
-        for skip in ("drawer", "door", "handle", "waterfall", "back", "panel")
-    ):
+    extents = maxs - mins
+    if not np.all(np.isfinite(extents)):
+        return False
+
+    span_x = float(extents[0])
+    span_y = float(extents[1])
+    top_z = float(maxs[2])
+    area = max(0.0, span_x) * max(0.0, span_y)
+    if area < MIN_SUPPORT_SURFACE_AREA_M2:
+        return False
+    if min(span_x, span_y) < MIN_SUPPORT_SURFACE_SPAN_M:
+        return False
+    if top_z <= 0.2 or top_z > MAX_SUPPORT_SURFACE_TOP_Z_M:
         return False
     return True
+
+
+def _collect_surfaces_by_geometry(world, seen):
+    surfaces = []
+    for body in getattr(world, "bodies", []):
+        name = _body_name(body)
+        basename = (_body_basename(name) or "").lower()
+        if not name or name in seen or not basename:
+            continue
+        if any(skip in basename for skip in GENERIC_SUPPORT_EXCLUDE_KEYWORDS):
+            continue
+        if not _surface_geometry_is_usable(body):
+            continue
+        surfaces.append(body)
+        seen.add(name)
+    return surfaces
 
 
 def _collect_surface_bodies(world):
@@ -125,10 +160,15 @@ def _collect_surface_bodies(world):
 
         if not _surface_like_name(name):
             continue
+        if not _surface_geometry_is_usable(body):
+            continue
         surfaces.append(body)
         seen.add(name)
 
-    return surfaces
+    if surfaces:
+        return surfaces
+
+    return _collect_surfaces_by_geometry(world, seen)
 
 
 def _iter_visual_shapes(body):

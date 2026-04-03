@@ -3,13 +3,16 @@ import rclpy
 from rclpy.duration import Duration as RclpyDuration
 from rclpy.time import Time
 from visualization_msgs.msg import Marker
-from pycram.costmaps import OccupancyCostmap, RingCostmap
+
+from krrood.ormatic.data_access_objects.helper import to_dao
 from pycram.datastructures.enums import Arms
-from pycram.failures import NavigationPoseUnreachable
+from pycram.locations.costmaps import OccupancyCostmap, RingCostmap
+from pycram.plans.failures import NavigationGoalNotReachedError
 from semantic_digital_twin.adapters.ros.tf_publisher import TFPublisher
 from semantic_digital_twin.adapters.ros.tfwrapper import TFWrapper
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
+    ShapeSource,
 )
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from semantic_digital_twin.robots.robot_mixins import SpecifiesLeftRightArm
@@ -27,7 +30,9 @@ def setup_experiment_runtime(world, node_name):
     node = rclpy.create_node(node_name)
     tf_wrapper = TFWrapper(node=node)
     TFPublisher(node=node, _world=world)
-    VizMarkerPublisher(_world=world, node=node)
+    VizMarkerPublisher(
+        _world=world, node=node, shape_source=ShapeSource.VISUAL_WITH_COLLISION_BACKUP
+    )
     robot = get_primary_robot(world)
     tf_wrapper.wait_for_transform(
         "apartment/apartment_root",
@@ -157,7 +162,7 @@ def resolve_navigation_target(location_designator, *, description):
         candidates = []
     if candidates:
         return candidates
-    raise NavigationPoseUnreachable(
+    raise NavigationGoalNotReachedError(
         f"No collision-free navigation pose found for {description}."
     )
 
@@ -170,6 +175,16 @@ def collect_named_targets(world, prefix):
             targets.append(body)
     targets.sort(key=body_name)
     return targets
+
+
+def set_entity_global_pose(world, entity, world_T_entity):
+    parent_connection = entity.parent_connection
+    parent_T_entity = world.transform(world_T_entity, parent_connection.parent)
+    with world.modify_world():
+        try:
+            parent_connection.origin = parent_T_entity
+        except NotImplementedError:
+            parent_connection.parent_T_connection_expression = parent_T_entity
 
 
 def iter_visual_shapes(body):

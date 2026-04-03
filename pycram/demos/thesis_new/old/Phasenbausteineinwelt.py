@@ -4,10 +4,17 @@ import rclpy
 
 from demos.thesis.simulation_setup import add_box, BoxSpec
 from demos.thesis_new.thesis_math.frame_provider import WorldTransformFrameProvider
-from demos.thesis_new.thesis_math.motion_presets import build_default_sequence, build_container_sequence
+from demos.thesis_new.thesis_math.motion_presets import (
+    build_default_sequence,
+    build_container_sequence,
+)
 from demos.thesis_new.thesis_math.motion_models import Pose, FixedFrameProvider
 from demos.thesis_new.utils.rviz import MotionSequenceRviz
-from demos.thesis_new.thesis_math.world_utils import try_get_body, make_identity_pose_stamped, body_local_aabb
+from demos.thesis_new.thesis_math.world_utils import (
+    try_get_body,
+    make_identity_pose_stamped,
+    body_local_aabb,
+)
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
 from pycram.datastructures.pose import PoseStamped
@@ -92,6 +99,7 @@ def _print_phase_points(label, points, phase_ids, phases=None, world=None):
         poses.append(msg)
     return poses
 
+
 def main():
     """Run the RViz demo for default and bowl-constrained sequences."""
     world = _setup_world()
@@ -122,14 +130,11 @@ def main():
             ]
         )
 
-
     seq = build_default_sequence()
 
     prov_world = FixedFrameProvider(Pose())
     _, P_world, id_world = seq.sample(prov_world, dt=0.01)
-   # poses = _print_phase_points("world", P_world, id_world, phases=seq.phases)
-
-
+    # poses = _print_phase_points("world", P_world, id_world, phases=seq.phases)
 
     rv = MotionSequenceRviz(
         P_world,
@@ -144,9 +149,7 @@ def main():
     if bowl_body is None:
         print("[info] body 'bowl.stl' not found, skipping object-dependent example.")
         return
-    mins, maxs = body_local_aabb(
-        bowl_body, use_visual=False, apply_shape_scale=False
-    )
+    mins, maxs = body_local_aabb(bowl_body, use_visual=False, apply_shape_scale=False)
     print("AABB mins/maxs:", mins, maxs)
     seq_container = build_container_sequence(bowl_body, debug=True)
     prov_container = WorldTransformFrameProvider(
@@ -156,7 +159,9 @@ def main():
         make_identity_spatial=make_identity_pose_stamped,
     )
     _, P_container, id_container = seq_container.sample(prov_container, dt=0.01)
-    poses = _print_phase_points("bowl", P_container, id_container, phases=seq_container.phases, world=world)
+    poses = _print_phase_points(
+        "bowl", P_container, id_container, phases=seq_container.phases, world=world
+    )
 
     print("one pose only" + str(poses[0]))
     plan = SequentialPlan(
@@ -167,7 +172,6 @@ def main():
     with simulated_robot:
         plan.perform()
 
-
     rv_container = MotionSequenceRviz(
         P_container,
         id_container,
@@ -176,7 +180,6 @@ def main():
         node=node,
     )
     rv_container.publish_once()
-
 
 
 if __name__ == "__main__":

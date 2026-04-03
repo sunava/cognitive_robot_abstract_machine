@@ -11,7 +11,10 @@ from demos.thesis.simulation_setup import add_box, BoxSpec
 from demos.thesis_new.thesis_math.frame_provider import WorldTransformFrameProvider
 from demos.thesis_new.old.geometry_utils import aligned_plane_frame
 from demos.thesis_new.thesis_math.motion_models import Pose, FixedFrameProvider
-from demos.thesis_new.thesis_math.motion_presets import build_default_sequence, build_container_sequence
+from demos.thesis_new.thesis_math.motion_presets import (
+    build_default_sequence,
+    build_container_sequence,
+)
 from demos.thesis_new.thesis_math.motion_profiles import (
     ShearProfile,
     SpiralProfile,
@@ -267,7 +270,12 @@ def plot_bowl_sequence():
 
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection="3d")
-    ax.plot(P_container[:, 0], P_container[:, 1], P_container[:, 2], label="sequence in bowl")
+    ax.plot(
+        P_container[:, 0],
+        P_container[:, 1],
+        P_container[:, 2],
+        label="sequence in bowl",
+    )
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("z")
