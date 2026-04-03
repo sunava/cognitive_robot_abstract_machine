@@ -2,10 +2,19 @@ import numpy as np
 
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
+    ShapeSource,
 )
 from semantic_digital_twin.adapters.sage_10k_dataset.loader import Sage10kDatasetLoader
 from semantic_digital_twin.adapters.sage_10k_dataset.schema import Sage10kScene
+from semantic_digital_twin.pipeline.mesh_decomposer import (
+    COACDMeshDecomposer,
+    VHACDMeshDecomposer,
+)
+from semantic_digital_twin.pipeline.pipeline import Pipeline
+from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world import World
+from semantic_digital_twin.world_description.geometry import Mesh
+from semantic_digital_twin.world_description.shape_collection import ShapeCollection
 
 
 def verify_scene(world: World, scene: Sage10kScene):
@@ -41,3 +50,32 @@ def test_loader(rclpy_node):
     )
     pub.with_tf_publisher()
     verify_scene(world, scene)
+
+
+def test_different_decomposition_methods(
+    rclpy_node,
+):
+    loader = Sage10kDatasetLoader()
+    scene = loader.create_scene(scene_url=Sage10kDatasetLoader.available_scenes()[0])
+
+    for room in scene.rooms:
+        new_objects = []
+        for obj in room.objects:
+            if obj.type == "bookshelf":
+                new_objects.append(obj)
+        room.objects = new_objects
+
+        room.walls = []
+        room.doors = []
+
+    world = scene.create_world()
+    decomposer = COACDMeshDecomposer(threshold=0.01)
+    pipeline = Pipeline([decomposer])
+    world = pipeline.apply(world)
+
+    pub = VizMarkerPublisher(
+        _world=world,
+        node=rclpy_node,
+        shape_source=ShapeSource.COLLISION_ONLY,
+    )
+    pub.with_tf_publisher()

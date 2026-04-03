@@ -4551,6 +4551,49 @@ class ReferenceFrameMismatchErrorDAO(
     }
 
 
+class VHACDMeshDecomposerDAO(
+    MeshDecomposerDAO,
+    DataAccessObject[
+        semantic_digital_twin.pipeline.mesh_decomposer.VHACDMeshDecomposer
+    ],
+):
+
+    __tablename__ = "VHACDMeshDecomposerDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        ForeignKey(MeshDecomposerDAO.database_id),
+        primary_key=True,
+        use_existing_column=True,
+    )
+
+    max_convex_hulls: Mapped[builtins.int] = mapped_column(use_existing_column=True)
+    resolution: Mapped[builtins.int] = mapped_column(use_existing_column=True)
+    minimum_volume_percent_error_allowed: Mapped[builtins.float] = mapped_column(
+        use_existing_column=True
+    )
+    max_recursion_depth: Mapped[builtins.int] = mapped_column(use_existing_column=True)
+    shrink_wrap: Mapped[builtins.bool] = mapped_column(use_existing_column=True)
+    max_vertices_per_convex_hull: Mapped[builtins.int] = mapped_column(
+        use_existing_column=True
+    )
+    asynchronous: Mapped[builtins.bool] = mapped_column(use_existing_column=True)
+    min_edge_length: Mapped[builtins.int] = mapped_column(use_existing_column=True)
+    find_best_plane: Mapped[builtins.bool] = mapped_column(use_existing_column=True)
+
+    fill_mode: Mapped[semantic_digital_twin.pipeline.mesh_decomposer.FillMode] = (
+        mapped_column(
+            krrood.ormatic.custom_types.PolymorphicEnumType,
+            nullable=False,
+            use_existing_column=True,
+        )
+    )
+
+    __mapper_args__ = {
+        "polymorphic_identity": "VHACDMeshDecomposerDAO",
+        "inherit_condition": database_id == MeshDecomposerDAO.database_id,
+    }
+
+
 class Vector3MappingDAO(
     SpatialTypeDAO, DataAccessObject[semantic_digital_twin.orm.model.Vector3Mapping]
 ):
