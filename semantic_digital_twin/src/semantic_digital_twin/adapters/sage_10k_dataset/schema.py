@@ -328,7 +328,14 @@ class Sage10kObject(Sage10kWithID):
     """
 
     description: str
+    """
+    A textual description of the object.
+    """
+
     source: str
+    """
+    Always generation
+    """
 
     source_id: str
     """
@@ -336,7 +343,14 @@ class Sage10kObject(Sage10kWithID):
     """
 
     place_id: str
+    """
+    Either the id of the room, wall or floor.
+    """
+
     place_guidance: str
+    """
+    A textual description of the place where the object is located.
+    """
 
     mass: float
     """
@@ -427,6 +441,12 @@ class Sage10kObject(Sage10kWithID):
 
     @classmethod
     def _from_json(cls, data: Dict[str, Any], **kwargs) -> Sage10kObject:
+        place_guidance = data["place_guidance"]
+        if isinstance(place_guidance, dict):
+            import json
+
+            place_guidance = json.dumps(place_guidance)
+
         return cls(
             id=data["id"],
             room_id=data["room_id"],
@@ -435,7 +455,7 @@ class Sage10kObject(Sage10kWithID):
             source=data["source"],
             source_id=data["source_id"],
             place_id=data["place_id"],
-            place_guidance=data["place_guidance"],
+            place_guidance=place_guidance,
             mass=data["mass"],
             position=Sage10kPosition._from_json(data["position"], **kwargs),
             rotation=Sage10kRotation._from_json(data["rotation"], **kwargs),
@@ -791,7 +811,8 @@ class Sage10kScene(Sage10kWithID):
 
     created_from_text: str
     """
-    No idea.
+    I think this is the entire prompt that was used to generate the scene.
+    Usually contains just the descriptiom + 'Complete layout with doors/windows:'
     """
 
     total_area: float
