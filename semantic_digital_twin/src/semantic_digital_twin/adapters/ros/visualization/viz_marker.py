@@ -71,7 +71,7 @@ class VizMarkerPublisher(ModelChangeCallback):
     Which shapes to use for each body
     """
 
-    alpha: float = field(kw_only=True, default=0.5)
+    alpha: float = field(kw_only=True, default=1.0)
     """
     Marker transparency in [0.0, 1.0]. 0.0 is fully transparent.
     """

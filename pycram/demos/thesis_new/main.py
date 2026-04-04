@@ -16,6 +16,17 @@ if __name__ == "__main__":
         robot_name="pr2",
         environment_name="apartment",
     )
+    run_thesis_demo(
+        "cut",
+        robot_name="pr2",
+        environment_name="kitchen",
+    )
+    run_thesis_demo(
+        "cut",
+        robot_name="pr2",
+        environment_name="isr-testbed",
+    )
+
     run_thesis_demo("cut", robot_name="pr2")
     run_thesis_demo("cut")
     run_thesis_demo("mix")

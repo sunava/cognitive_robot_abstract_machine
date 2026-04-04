@@ -1,0 +1,17 @@
+{
+  "bag": "/home/vee/Downloads/thesis_real_bags/converted_bread/converted_bread.db3",
+  "topic_prefix": "/ft/",
+  "event_topic": "/events/read_split",
+  "topics_analyzed": [
+    "/ft/l_gripper_motor",
+    "/ft/l_gripper_motor_clean",
+    "/ft/l_gripper_motor_clean_avg",
+    "/ft/l_gripper_motor_clean_derivative",
+    "/ft/l_gripper_motor_clean_derivative_avg",
+    "/ft/l_gripper_motor_zeroed",
+    "/ft/l_gripper_motor_zeroed_avg",
+    "/ft/l_gripper_motor_zeroed_derivative",
+    "/ft/l_gripper_motor_zeroed_derivative_avg"
+  ],
+  "summary_count": 9
+}

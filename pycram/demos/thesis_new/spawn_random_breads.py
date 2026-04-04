@@ -28,7 +28,7 @@ RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")
 )
 
-
+GENERIC_SUPPORT_EXCLUDE_KEYWORDS = ()
 PREFERRED_SURFACE_NAMES = (
     "island_countertop",
     # "countertop",

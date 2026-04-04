@@ -145,7 +145,7 @@ class MotionExecutor:
             # execute the motion state chart until it is done
             counter = 0
             tick_start = time.time()
-            while counter < 2000:
+            while counter < 1500:
                 if self.plan_node.is_interrupted:
                     return
                 elif self.plan_node.is_paused:

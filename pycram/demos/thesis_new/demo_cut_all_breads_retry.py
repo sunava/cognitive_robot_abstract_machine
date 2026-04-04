@@ -16,10 +16,12 @@ from pycram.robot_plans.actions.core.robot_body import (
     SetGripperAction,
 )
 from pycram.tf_transformations import quaternion_from_euler, quaternion_multiply
+from pycram.tf_transformations import euler_from_quaternion, quaternion_matrix
 
 
 from demos.thesis_new.spawn_random_breads import setup_random_bread_world
 from demos.thesis_new.spawn_random_breads import build_cutting_reachability_costmaps
+from demos.thesis_new.thesis_math.world_utils import body_local_aabb
 from demos.thesis_new.tool_mounts import get_tool_mount_pose_kwargs
 from demos.thesis_new.world_setup import resolve_robot_name
 from demos.thesis_new.utils.demo_utils import (
@@ -86,6 +88,10 @@ CUTTING_COSTMAP_WIDTH = 140
 CUTTING_COSTMAP_HEIGHT = 140
 CUTTING_COSTMAP_RESOLUTION = 0.03
 DEBUG_PROFILE_CUTTING = True
+CUTTING_TECHNIQUE = "saw"
+CUTTING_POINTER_STRIDE = 13
+CUTTING_NUM_CUTS_X = 1
+CUTTING_SLICE_THICKNESS_M = 0.03
 
 
 def _cutting_obstacle_clearance(robot):
@@ -171,6 +177,7 @@ def _record_bread_result(
     perturbation_applied,
     perturbation_type,
     execution_time_s,
+    geometry_binding,
 ):
     return build_base_result_row(
         results,
@@ -214,6 +221,7 @@ def _record_bread_result(
         recovery_success=recovery_success,
         perturbation_applied=perturbation_applied,
         perturbation_type=perturbation_type,
+        **geometry_binding,
         execution_time_s=round(execution_time_s, 4),
     )
 
@@ -288,9 +296,10 @@ def _try_cut(context, bread, arm, tool):
                     container=bread,
                     arm=arm,
                     tool=tool,
-                    technique="saw",
-                    pointer_stride=13,
-                    num_cuts_x=1,
+                    technique=CUTTING_TECHNIQUE,
+                    pointer_stride=CUTTING_POINTER_STRIDE,
+                    num_cuts_x=CUTTING_NUM_CUTS_X,
+                    slice_thickness=CUTTING_SLICE_THICKNESS_M,
                 ),
             ],
             context,
@@ -321,6 +330,130 @@ def _rotate_bread_180deg_z(world, bread):
     print(f"rotated object")
     with world.modify_world():
         bread.parent_connection.origin = rotated_pose
+
+
+def _build_cut_geometry_binding(bread):
+    mins, maxs = body_local_aabb(
+        bread,
+        use_visual=True,
+        apply_shape_scale=True,
+    )
+    size = maxs - mins
+    margin_x = min(0.01, 0.15 * size[0])
+    margin_y = min(0.01, 0.10 * size[1])
+    requested_thickness = max(float(CUTTING_SLICE_THICKNESS_M), 1e-4)
+    usable_x = max(0.0, size[0] - 2.0 * margin_x)
+    anchor_local_x = mins[0] + margin_x + min(0.5 * requested_thickness, 0.5 * usable_x)
+    anchor_local_y = 0.5 * (mins[1] + maxs[1])
+    anchor_local_z = mins[2] + max(0.003, 0.05 * size[2])
+
+    pose = bread.global_pose
+    pos = np.asarray(pose.to_position().to_np(), dtype=float).reshape(-1)[:3]
+    quat = np.asarray(pose.to_quaternion().to_np(), dtype=float).reshape(-1)[:4]
+    roll, pitch, yaw = euler_from_quaternion(quat)
+    rotation = quaternion_matrix(quat)[:3, :3]
+    cut_normal_local = np.array([1.0, 0.0, 0.0], dtype=float)
+    cut_normal_world = rotation @ cut_normal_local
+    cut_normal_world_yaw = float(np.arctan2(cut_normal_world[1], cut_normal_world[0]))
+
+    eps = 1e-9
+    anchor_norm = np.array(
+        [
+            (anchor_local_x - mins[0]) / max(size[0], eps),
+            (anchor_local_y - mins[1]) / max(size[1], eps),
+            (anchor_local_z - mins[2]) / max(size[2], eps),
+        ],
+        dtype=float,
+    )
+
+    support = getattr(getattr(bread, "parent_connection", None), "parent", None)
+    support_name = _body_name(support) if support is not None else ""
+    support_pos = np.full(3, np.nan, dtype=float)
+    support_yaw = float("nan")
+    support_size = np.full(3, np.nan, dtype=float)
+    if support is not None:
+        try:
+            support_pose = support.global_pose
+            support_pos = np.asarray(
+                support_pose.to_position().to_np(), dtype=float
+            ).reshape(-1)[:3]
+            support_quat = np.asarray(
+                support_pose.to_quaternion().to_np(), dtype=float
+            ).reshape(-1)[:4]
+            _, _, support_yaw = euler_from_quaternion(support_quat)
+            support_mins, support_maxs = body_local_aabb(
+                support,
+                use_visual=False,
+                apply_shape_scale=True,
+            )
+            support_size = support_maxs - support_mins
+        except Exception:
+            pass
+
+    return {
+        "object_aabb_min_x": round(float(mins[0]), 6),
+        "object_aabb_min_y": round(float(mins[1]), 6),
+        "object_aabb_min_z": round(float(mins[2]), 6),
+        "object_aabb_max_x": round(float(maxs[0]), 6),
+        "object_aabb_max_y": round(float(maxs[1]), 6),
+        "object_aabb_max_z": round(float(maxs[2]), 6),
+        "object_size_x": round(float(size[0]), 6),
+        "object_size_y": round(float(size[1]), 6),
+        "object_size_z": round(float(size[2]), 6),
+        "object_volume_aabb": round(float(size[0] * size[1] * size[2]), 8),
+        "target_world_x": round(float(pos[0]), 6),
+        "target_world_y": round(float(pos[1]), 6),
+        "target_world_z": round(float(pos[2]), 6),
+        "support_surface_name": support_name or "",
+        "support_world_x": (
+            round(float(support_pos[0]), 6) if np.isfinite(support_pos[0]) else ""
+        ),
+        "support_world_y": (
+            round(float(support_pos[1]), 6) if np.isfinite(support_pos[1]) else ""
+        ),
+        "support_world_z": (
+            round(float(support_pos[2]), 6) if np.isfinite(support_pos[2]) else ""
+        ),
+        "support_yaw_rad": (
+            round(float(support_yaw), 6) if np.isfinite(support_yaw) else ""
+        ),
+        "support_size_x": (
+            round(float(support_size[0]), 6) if np.isfinite(support_size[0]) else ""
+        ),
+        "support_size_y": (
+            round(float(support_size[1]), 6) if np.isfinite(support_size[1]) else ""
+        ),
+        "support_size_z": (
+            round(float(support_size[2]), 6) if np.isfinite(support_size[2]) else ""
+        ),
+        "object_world_x": round(float(pos[0]), 6),
+        "object_world_y": round(float(pos[1]), 6),
+        "object_world_z": round(float(pos[2]), 6),
+        "object_quat_x": round(float(quat[0]), 6),
+        "object_quat_y": round(float(quat[1]), 6),
+        "object_quat_z": round(float(quat[2]), 6),
+        "object_quat_w": round(float(quat[3]), 6),
+        "object_roll_rad": round(float(roll), 6),
+        "object_pitch_rad": round(float(pitch), 6),
+        "object_yaw_rad": round(float(yaw), 6),
+        "anchor_local_x": round(float(anchor_local_x), 6),
+        "anchor_local_y": round(float(anchor_local_y), 6),
+        "anchor_local_z": round(float(anchor_local_z), 6),
+        "anchor_norm_x": round(float(anchor_norm[0]), 6),
+        "anchor_norm_y": round(float(anchor_norm[1]), 6),
+        "anchor_norm_z": round(float(anchor_norm[2]), 6),
+        "cut_normal_local_x": round(float(cut_normal_local[0]), 6),
+        "cut_normal_local_y": round(float(cut_normal_local[1]), 6),
+        "cut_normal_local_z": round(float(cut_normal_local[2]), 6),
+        "cut_normal_world_x": round(float(cut_normal_world[0]), 6),
+        "cut_normal_world_y": round(float(cut_normal_world[1]), 6),
+        "cut_normal_world_z": round(float(cut_normal_world[2]), 6),
+        "cut_normal_world_yaw_rad": round(cut_normal_world_yaw, 6),
+        "technique_name": CUTTING_TECHNIQUE,
+        "slice_thickness_m": round(float(CUTTING_SLICE_THICKNESS_M), 6),
+        "num_cuts_x": int(CUTTING_NUM_CUTS_X),
+        "pointer_stride": int(CUTTING_POINTER_STRIDE),
+    }
 
 
 def main_cutting(seed=None, robot_name=None, environment_name=None):
@@ -365,7 +498,7 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
     context = Context.from_world(world)
     context.ros_node = node
     robot_name = _robot_name(context.robot)
-    world_name = _body_name(world.root)
+    world_name = environment_name
     run_id = new_run_id()
     cutting_knowledge = safe_get_cutting_knowledge(
         CUTTING_QUERY_VERB, CUTTING_QUERY_FOODON
@@ -526,6 +659,7 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
                         perturbation_applied=perturbation_applied,
                         perturbation_type=perturbation_type,
                         execution_time_s=time.perf_counter() - bread_start_time,
+                        geometry_binding=_build_cut_geometry_binding(bread),
                     )
                     append_csv_row(
                         RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row
@@ -619,6 +753,7 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
             perturbation_applied=perturbation_applied,
             perturbation_type=perturbation_type,
             execution_time_s=time.perf_counter() - bread_start_time,
+            geometry_binding=_build_cut_geometry_binding(bread),
         )
         append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
         if DEBUG_PROFILE_CUTTING:

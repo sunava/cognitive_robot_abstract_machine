@@ -23,8 +23,20 @@ THESIS_NEW_DEFAULT_ROBOT = "pr2"
 THESIS_NEW_ROBOT_ENV = "THESIS_NEW_ROBOT"
 THESIS_NEW_DEFAULT_ENVIRONMENT = "apartment"
 THESIS_NEW_ENVIRONMENT_ENV = "THESIS_NEW_ENVIRONMENT"
-DEFAULT_ROBOT_START_POSE = HomogeneousTransformationMatrix.from_xyz_rpy(1.5, 2.0, 0.0)
-ARMAR7_START_POSE = HomogeneousTransformationMatrix.from_xyz_rpy(3.8, 8.40, 0.0)
+DEFAULT_ENVIRONMENT_START_POSE = HomogeneousTransformationMatrix.from_xyz_rpy(
+    1.5, 2.0, 0.0
+)
+ENVIRONMENT_START_POSES = {
+    "apartment": HomogeneousTransformationMatrix.from_xyz_rpy(1.5, 2.0, 0.0),
+    "apartment_without_walls": HomogeneousTransformationMatrix.from_xyz_rpy(
+        1.5, 2.0, 0.0
+    ),
+    "kitchen": HomogeneousTransformationMatrix.from_xyz_rpy(0, 0, 0.0),
+    "robocup": HomogeneousTransformationMatrix.from_xyz_rpy(0, 0, 0.0),
+    "suturo": HomogeneousTransformationMatrix.from_xyz_rpy(0, 0, 0.0),
+    "isr": HomogeneousTransformationMatrix.from_xyz_rpy(0, 0, 0.0),
+    "isr-testbed": HomogeneousTransformationMatrix.from_xyz_rpy(0, 0, 0.0),
+}
 RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")
 )
@@ -32,50 +44,48 @@ WORLDS_DIR = os.path.join(RESOURCES_DIR, "worlds")
 EXTERNAL_ENVIRONMENT_SPECS = {
     "isr": "package://isr_testbed/urdf/isr-testbed.urdf",
 }
-# robot_urdf, robot_cls, drive_cls, robot_start_pose, robot_off
+# robot_urdf, robot_cls, drive_cls, robot_off
 ROBOT_SPECS = {
     "pr2": (
         "package://iai_pr2_description/robots/pr2_with_ft2_cableguide.xacro",
         PR2,
         OmniDrive,
-        DEFAULT_ROBOT_START_POSE,
         HomogeneousTransformationMatrix(),
     ),
     "hsrb": (
         os.path.join(RESOURCES_DIR, "robots", "hsrb.urdf"),
         HSRB,
         OmniDrive,
-        DEFAULT_ROBOT_START_POSE,
+        HomogeneousTransformationMatrix(),
     ),
     "stretch": (
         os.path.join(RESOURCES_DIR, "robots", "stretch_description.urdf"),
         Stretch,
         DifferentialDrive,
-        DEFAULT_ROBOT_START_POSE,
+        HomogeneousTransformationMatrix(),
     ),
     "tiago": (
         "package://iai_tiago_description/urdf/tiago_from_our_robot.urdf",
         Tiago,
         DifferentialDrive,
-        DEFAULT_ROBOT_START_POSE,
+        HomogeneousTransformationMatrix(),
     ),
     "armar7": (
         "package://iai_kit_armar7/urdf/Armar7.urdf",
         Armar7,
         OmniDrive,
-        ARMAR7_START_POSE,
+        HomogeneousTransformationMatrix(),
     ),
     "justin": (
         "package://iai_dlr_rollin_justin/urdf/rollin_justin.urdf",
         Justin,
         OmniDrive,
-        ARMAR7_START_POSE,
+        HomogeneousTransformationMatrix(),
     ),
     "g1": (
         "package://iai_offis_g1_description/urdf/offis_unitree_g1.urdf",
         UnitreeG1,
         OmniDrive,
-        ARMAR7_START_POSE,
         HomogeneousTransformationMatrix.from_xyz_rpy(z=0.8),
     ),
 }
@@ -113,21 +123,28 @@ def _supported_environment_names():
     return sorted(supported)
 
 
-def resolve_environment_path(environment_name=None):
-    print(environment_name)
+def resolve_environment_name(environment_name=None):
     selected = environment_name or os.environ.get(
         THESIS_NEW_ENVIRONMENT_ENV, THESIS_NEW_DEFAULT_ENVIRONMENT
     )
     normalized = str(selected).strip()
 
     if normalized.startswith("package://") or os.path.isabs(normalized):
-        return normalized
+        return os.path.splitext(os.path.basename(normalized))[0]
 
-    candidate = normalized[:-5] if normalized.endswith(".urdf") else normalized
-    if candidate in EXTERNAL_ENVIRONMENT_SPECS:
-        return EXTERNAL_ENVIRONMENT_SPECS[candidate]
+    return normalized[:-5] if normalized.endswith(".urdf") else normalized
 
-    environment_path = os.path.join(WORLDS_DIR, f"{candidate}.urdf")
+
+def resolve_environment_path(environment_name=None):
+    selected = environment_name or os.environ.get(
+        THESIS_NEW_ENVIRONMENT_ENV, THESIS_NEW_DEFAULT_ENVIRONMENT
+    )
+    normalized = resolve_environment_name(selected)
+
+    if normalized in EXTERNAL_ENVIRONMENT_SPECS:
+        return EXTERNAL_ENVIRONMENT_SPECS[normalized]
+
+    environment_path = os.path.join(WORLDS_DIR, f"{normalized}.urdf")
     if os.path.isfile(environment_path):
         return environment_path
 
@@ -137,12 +154,16 @@ def resolve_environment_path(environment_name=None):
     )
 
 
+def resolve_environment_start_pose(environment_name=None):
+    normalized = resolve_environment_name(environment_name)
+    return ENVIRONMENT_START_POSES.get(normalized, DEFAULT_ENVIRONMENT_START_POSE)
+
+
 def setup_thesis_world(robot_name=None, environment_name=None):
     resolved_robot_name = resolve_robot_name(robot_name)
-    robot_urdf, robot_cls, drive_cls, robot_start_pose, robot_off = ROBOT_SPECS[
-        resolved_robot_name
-    ]
+    robot_urdf, robot_cls, drive_cls, robot_off = ROBOT_SPECS[resolved_robot_name]
 
+    robot_start_pose = resolve_environment_start_pose(environment_name)
     environment_path = resolve_environment_path(environment_name)
 
     environment_world = URDFParser.from_file(environment_path).parse()
