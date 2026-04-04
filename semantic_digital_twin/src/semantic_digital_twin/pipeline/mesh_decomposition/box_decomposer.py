@@ -15,58 +15,107 @@ from semantic_digital_twin.world_description.geometry import Mesh, Box, Scale
 class FrozenBox:
     """
     A frozen non-oriented box optimized for the BoxDecomposer.
+
+    :param x: X position.
+    :param y: Y position.
+    :param z: Z position.
+    :param scale: The scale of the box.
     """
 
     x: float
-    """
-    X position.
-    """
-
     y: float
-    """
-    Y position.
-    """
-
     z: float
-    """
-    Z position.
-    """
-
     scale: Scale
-    """
-    The scale of the box.
-    """
 
 
 @dataclass(frozen=True)
 class IndexBox:
+    """
+    A box defined by voxel indices.
+    """
+
     x0: int
+    """
+    The start index along the x-axis.
+    """
+
     x1: int
+    """
+    The end index along the x-axis.
+    """
+
     y0: int
+    """
+    The start index along the y-axis.
+    """
+
     y1: int
+    """
+    The end index along the y-axis.
+    """
+
     z0: int
+    """
+    The start index along the z-axis.
+    """
+
     z1: int
+    """
+    The end index along the z-axis.
+    """
 
     def dims(self) -> tuple[int, int, int]:
+        """
+        Calculate the dimensions of the box in voxels.
+
+        :return: The dimensions along each axis.
+        """
         return (self.x1 - self.x0, self.y1 - self.y0, self.z1 - self.z0)
 
     def volume_vox(self) -> int:
+        """
+        Calculate the volume of the box in voxels.
+
+        :return: The volume.
+        """
         dx, dy, dz = self.dims()
         return max(0, dx) * max(0, dy) * max(0, dz)
 
     def thin_axis(self) -> int:
+        """
+        Identify the axis with the smallest dimension.
+
+        :return: The index of the thinnest axis.
+        """
         dx, dy, dz = self.dims()
         return int(np.argmin([dx, dy, dz]))
 
     def thickness_vox(self) -> int:
+        """
+        Calculate the thickness of the box in voxels.
+
+        :return: The smallest dimension.
+        """
         dx, dy, dz = self.dims()
         return int(min(dx, dy, dz))
 
     def planar_area_vox(self) -> int:
+        """
+        Calculate the area of the largest face in voxels.
+
+        :return: The planar area.
+        """
         dx, dy, dz = sorted(self.dims())
         return int(dy * dz)
 
     def to_frozen_box(self, pitch: float, origin: np.ndarray) -> FrozenBox:
+        """
+        Convert the index-based box to a metric frozen box.
+
+        :param pitch: The size of one voxel.
+        :param origin: The origin of the voxel grid.
+        :return: The converted box.
+        """
         mins = origin + pitch * np.array([self.x0, self.y0, self.z0], dtype=float)
         maxs = origin + pitch * np.array([self.x1, self.y1, self.z1], dtype=float)
         position = (mins + maxs) / 2.0
@@ -127,7 +176,18 @@ def _find_extent(
     x_limit: int = -1,
     y_limit: int = -1,
 ) -> int:
-    """Find the extent of a box along a given axis."""
+    """
+    Find the extent of a box along a given axis in the occupancy grid.
+
+    :param occupancy: The 3D occupancy grid.
+    :param x: The start x-coordinate.
+    :param y: The start y-coordinate.
+    :param z: The start z-coordinate.
+    :param axis: The axis along which to find the extent.
+    :param x_limit: The maximum x-coordinate to consider.
+    :param y_limit: The maximum y-coordinate to consider.
+    :return: The end index along the axis.
+    """
     nx, ny, nz = occupancy.shape
     if axis == 0:
         x1 = x
@@ -287,7 +347,15 @@ def _detect_boards_along_axis(
 
 
 def _get_slab(occupancy: np.ndarray, axis: int, start: int, stop: int) -> np.ndarray:
-    """Extract a slab from the occupancy grid along the given axis."""
+    """
+    Extract a slab from the occupancy grid along the given axis.
+
+    :param occupancy: The 3D occupancy grid.
+    :param axis: The axis along which to extract the slab.
+    :param start: The start index.
+    :param stop: The end index.
+    :return: The extracted slab.
+    """
     if axis == 0:
         return occupancy[start:stop, :, :]
     elif axis == 1:
@@ -305,7 +373,18 @@ def _create_index_box_from_axis_info(
     dim2_min: int,
     dim2_max: int,
 ) -> IndexBox:
-    """Create an IndexBox based on axis and coordinates."""
+    """
+    Create an IndexBox based on axis and coordinates.
+
+    :param axis: The thin axis of the box.
+    :param start: The start index of the thin axis.
+    :param stop: The end index of the thin axis.
+    :param dim1_min: The start index of the first planar dimension.
+    :param dim1_max: The end index of the first planar dimension.
+    :param dim2_min: The start index of the second planar dimension.
+    :param dim2_max: The end index of the second planar dimension.
+    :return: The created box.
+    """
     if axis == 0:
         return IndexBox(start, stop, dim1_min, dim1_max, dim2_min, dim2_max)
     elif axis == 1:
@@ -315,13 +394,25 @@ def _create_index_box_from_axis_info(
 
 
 def _calculate_fill_ratio(mask2d: np.ndarray) -> float:
-    """Calculate the fill ratio of a 2D mask."""
+    """
+    Calculate the fill ratio of a 2D mask.
+
+    :param mask2d: The 2D mask to check.
+    :return: The ratio of filled voxels.
+    """
     if mask2d.size == 0:
         return 0.0
     return float(mask2d.mean())
 
 
 def intersection_volume_vox(a: IndexBox, b: IndexBox) -> int:
+    """
+    Calculate the intersection volume of two index-based boxes in voxels.
+
+    :param a: The first box.
+    :param b: The second box.
+    :return: The intersection volume.
+    """
     dx = max(0, min(a.x1, b.x1) - max(a.x0, b.x0))
     dy = max(0, min(a.y1, b.y1) - max(a.y0, b.y0))
     dz = max(0, min(a.z1, b.z1) - max(a.z0, b.z0))
@@ -391,7 +482,14 @@ def _is_redundant_thicker_box(
     previous: IndexBox,
     intersection_volume: int,
 ) -> bool:
-    """Check if the candidate is a redundant thicker box compared to a previous one."""
+    """
+    Check if the candidate is a redundant thicker box compared to a previous one.
+
+    :param candidate: The candidate box to check.
+    :param previous: A previously kept box.
+    :param intersection_volume: The volume of intersection between the two boxes.
+    :return: True if the candidate is redundant and thicker.
+    """
     same_thin_axis = candidate.thin_axis() == previous.thin_axis()
     candidate_area = candidate.planar_area_vox()
     previous_area = previous.planar_area_vox()
@@ -446,31 +544,21 @@ class BoxDecomposer(MeshDecomposer):
 
     The results are that large planar structures (shelves, walls) become clean single boxes,
     while smaller details are handled separately.
+
+    :param voxel_size: Voxel size in mesh units.
+    :param fill_thin_holes: Whether to fill 1-voxel cracks/voids or not.
+    :param max_board_thickness: Maximum board thickness in voxels.
+    :param min_span_voxel: Threshold for keeping boards.
+    :param min_fill_ratio: Minimum ratio of occupied voxels to bounding box area.
+    :param overlap_threshold: Overlap threshold at which two boards are merged into one.
     """
 
     voxel_size: float = 0.02
-    """Voxel size in mesh units."""
-
     fill_thin_holes: bool = True
-    """Whether to fill 1-voxel cracks/voids or not."""
-
     max_board_thickness: int = 2
-    """
-    Maximum board thickness in voxels.
-    If a board is bigger than this, it will be clipped to this thickness.
-    """
-
     min_span_voxel: int = 3
-    """
-    Threshold for keeping boards.
-    If a board has less than this voxels in its planar dimensions, it is removed.
-    """
-
     min_fill_ratio: float = 0.75
-    """Minimum ratio of occupied voxels to bounding box area."""
-
     overlap_threshold: float = 0.8
-    """Overlap threshold at which two boards are merged into one."""
 
     def apply_to_mesh(self, mesh: Mesh) -> List[Box]:
         """

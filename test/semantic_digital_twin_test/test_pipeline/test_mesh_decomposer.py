@@ -14,6 +14,7 @@ from semantic_digital_twin.pipeline.mesh_decomposition.box_decomposer import (
 from semantic_digital_twin.pipeline.mesh_decomposition.vhacd import VHACDMeshDecomposer
 from semantic_digital_twin.pipeline.mesh_decomposition.coacd import COACDMeshDecomposer
 from semantic_digital_twin.pipeline.pipeline import Pipeline
+from semantic_digital_twin.world_description.geometry import Box
 
 
 @pytest.fixture(scope="function")
@@ -52,11 +53,18 @@ def test_vhacd(jeroen_cup_world_fixture):
     assert len(cup.collision.shapes) > old_collision_length
 
 
-def test_box_decomposer(jeroen_cup_world_fixture):
+def test_box_decomposer(jeroen_cup_world_fixture, rclpy_node):
     [cup] = jeroen_cup_world_fixture.bodies
     old_collision_length = len(cup.collision.shapes)
 
-    pipeline = Pipeline([BoxDecomposer(voxel_size=0.01)])
+    pipeline = Pipeline([BoxDecomposer()])
     pipeline.apply(jeroen_cup_world_fixture)
 
     assert len(cup.collision.shapes) > old_collision_length
+    assert all([isinstance(shape, Box) for shape in cup.collision.shapes])
+    pub = VizMarkerPublisher(
+        _world=cup._world,
+        node=rclpy_node,
+        shape_source=ShapeSource.COLLISION_ONLY,
+    )
+    pub.with_tf_publisher()

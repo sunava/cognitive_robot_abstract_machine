@@ -2313,24 +2313,31 @@ class FieldOfViewDAO(
     horizontal_angle: Mapped[builtins.float] = mapped_column(use_existing_column=True)
 
 
-class GiangBoxDAO(
+class FrozenBoxDAO(
     Base,
     DataAccessObject[
         semantic_digital_twin.pipeline.mesh_decomposition.box_decomposer.FrozenBox
     ],
 ):
 
-    __tablename__ = "GiangBoxDAO"
+    __tablename__ = "FrozenBoxDAO"
 
     database_id: Mapped[builtins.int] = mapped_column(
         Integer, primary_key=True, use_existing_column=True
     )
 
-    position: Mapped[typing.List[builtins.float]] = mapped_column(
-        JSON, nullable=False, use_existing_column=True
+    x: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+    y: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+    z: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+
+    scale_id: Mapped[int] = mapped_column(
+        ForeignKey("ScaleDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
     )
-    size: Mapped[typing.List[builtins.float]] = mapped_column(
-        JSON, nullable=False, use_existing_column=True
+
+    scale: Mapped[ScaleDAO] = relationship(
+        "ScaleDAO", uselist=False, foreign_keys=[scale_id], post_update=True
     )
 
 
