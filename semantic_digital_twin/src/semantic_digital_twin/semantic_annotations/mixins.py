@@ -720,6 +720,10 @@ class HasSupportingSurface(HasStorageSpace, ABC):
             points_3d=points_3d,
         )
 
+        # This assumes the object frame is near the geometric center.
+        # Some URDFs violate that assumption and place the frame close to the ground
+        # instead, as with some coffee-table models. In those cases, place the
+        # supporting surface at the full object height rather than half height.
         if self.root.global_transform.z < 0.1:
             supporting_surface_z_position = self.root.collision.scale.z
         else:
@@ -854,16 +858,21 @@ class HasSupportingSurface(HasStorageSpace, ABC):
         event = area_of_self.event
 
         if edge_clearance > 0:
+            # Start from the full supporting surface bounds in the surface's own frame.
             shrunk_surface = area_of_self.bounding_box()
+            # Clearance cannot exceed half the surface extent, otherwise the box would invert.
             max_clearance = min(
                 (shrunk_surface.max_x - shrunk_surface.min_x) / 2,
                 (shrunk_surface.max_y - shrunk_surface.min_y) / 2,
             )
+            # Clamp the requested clearance slightly below the geometric limit for stability.
             applied_clearance = min(edge_clearance, np.nextafter(max_clearance, 0.0))
             if applied_clearance > 0:
+                # Shrink only in x/y so sampled points stay away from the surface edges.
                 shrunk_surface = shrunk_surface.bloat(
                     -applied_clearance, -applied_clearance, 0.0
                 )
+                # Replace the original event with the shrunken support region.
                 event = shrunk_surface.simple_event.as_composite_set()
 
         event_2d = event.marginal(SpatialVariables.xy)
