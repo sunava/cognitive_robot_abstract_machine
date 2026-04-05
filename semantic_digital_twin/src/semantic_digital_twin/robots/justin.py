@@ -210,7 +210,7 @@ class Justin(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
         """
         Loads the SRDF file for the Justin robot, if it exists.
         """
-        return
+        # return
         srdf_path = os.path.join(
             Path(files("semantic_digital_twin")).parent.parent,
             "resources",

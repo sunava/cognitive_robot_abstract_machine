@@ -63,7 +63,118 @@ DEFAULT_TOOL_MOUNTS = {
 # Adjust these per robot as needed. Values here are merged over the defaults above.
 ROBOT_TOOL_MOUNT_OVERRIDES = {
     "pr2": {},
-    "tiago": {},
+    "g1": {
+        "cut": {
+            Arms.RIGHT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.08,
+                "roll": 0.0,
+                "pitch": -np.pi / 2,
+                "yaw": 0.0,
+            },
+            Arms.LEFT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.08,
+                "roll": 0.0,
+                "pitch": -np.pi / 2,
+                "yaw": 0.0,
+            },
+        },
+        "mix": {
+            Arms.RIGHT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": -0.08,
+                "roll": 0.0,
+                "pitch": np.pi / 2,
+                "yaw": 0.0,
+            },
+            Arms.LEFT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": -0.08,
+                "roll": 0.0,
+                "pitch": np.pi / 2,
+                "yaw": 0.0,
+            },
+        },
+        "wipe": {
+            Arms.RIGHT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0,
+                "roll": np.pi,
+                "pitch": 0,
+                "yaw": 0.0,
+            },
+            Arms.LEFT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0,
+                "roll": np.pi,
+                "pitch": 0,
+                "yaw": 0.0,
+            },
+        },
+    },
+    "tiago": {
+        "cut": {
+            Arms.RIGHT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.08,
+                "roll": 0.0,
+                "pitch": -np.pi / 2,
+                "yaw": 0.0,
+            },
+            Arms.LEFT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.08,
+                "roll": 0.0,
+                "pitch": -np.pi / 2,
+                "yaw": 0.0,
+            },
+        },
+        "mix": {
+            Arms.RIGHT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": -0.08,
+                "roll": 0.0,
+                "pitch": np.pi / 2,
+                "yaw": 0.0,
+            },
+            Arms.LEFT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": -0.08,
+                "roll": 0.0,
+                "pitch": np.pi / 2,
+                "yaw": 0.0,
+            },
+        },
+        "wipe": {
+            Arms.RIGHT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0,
+                "roll": 0.0,
+                "pitch": np.pi / 2,
+                "yaw": 0.0,
+            },
+            Arms.LEFT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0,
+                "roll": 0.0,
+                "pitch": np.pi / 2,
+                "yaw": 0.0,
+            },
+        },
+    },
     "armar7": {
         "cut": {
             Arms.RIGHT: {
@@ -124,18 +235,18 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
         "cut": {
             Arms.RIGHT: {
                 "x": 0.0,
-                "y": -0.15,
-                "z": 0.03,
-                "roll": -np.pi,
-                "pitch": 0,
-                "yaw": -np.pi / 2,
+                "y": 0.10,
+                "z": 0.0,
+                "roll": np.pi,
+                "pitch": 0.0,
+                "yaw": np.pi / 2,
             },
             Arms.LEFT: {
                 "x": 0.0,
-                "y": -0.15,
-                "z": 0.03,
+                "y": -0.10,
+                "z": 0.0,
                 "roll": np.pi,
-                "pitch": 0,
+                "pitch": 0.0,
                 "yaw": -np.pi / 2,
             },
         },
@@ -150,11 +261,11 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
             },
             Arms.LEFT: {
                 "x": 0.0,
-                "y": 0.15,
+                "y": -0.15,
                 "z": 0.0,
                 "roll": 0,
                 "pitch": 0,
-                "yaw": np.pi / 2,
+                "yaw": -np.pi / 2,
             },
         },
         "wipe": {
@@ -163,7 +274,7 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
                 "y": 0,
                 "z": 0,
                 "roll": 0.0,
-                "pitch": -np.pi / 2,
+                "pitch": 0.0,
                 "yaw": 0.0,
             },
             Arms.LEFT: {
@@ -171,7 +282,7 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
                 "y": 0,
                 "z": 0,
                 "roll": 0.0,
-                "pitch": np.pi / 2,
+                "pitch": 0.0,
                 "yaw": 0.0,
             },
         },
@@ -189,7 +300,7 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
         },
         "mix": {
             Arms.LEFT: {
-                "x": 0.08,
+                "x": -0.08,
                 "y": 0.0,
                 "z": 0.0,
                 "roll": 0.0,

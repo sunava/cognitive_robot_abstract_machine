@@ -1,7 +1,6 @@
 import os
 import numpy as np
 
-from pycram.datastructures.dataclasses import Context
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.geometry import Color
@@ -9,14 +8,9 @@ from semantic_digital_twin.world_description.geometry import Color
 from demos.thesis_new.spawn_random_breads import (
     _body_basename,
     _body_name,
-    _collect_surface_bodies,
-    _count_for_surface,
+    _is_excluded_kitchen_spawn_pose,
     _pose_xyz,
-    _sample_xy,
-    _set_uniform_scale,
-    _surface_sampling_bounds,
-    _surface_usable_area,
-    _tint_surfaces_light_brown,
+    _sample_random_surface_layout,
     body_local_aabb,
 )
 from demos.thesis_new.world_setup import setup_thesis_world
@@ -69,31 +63,9 @@ def _bowl_base_xy_radius():
     return 0.5 * np.hypot(dx, dy)
 
 
-def _spawn_bowl_at_local_pose(
-    world, surface_body, bowl_name, scale, x_local, y_local, yaw, z_local
+def _sample_vertical_wipe_targets(
+    world, rng, surface_name, count, start_idx, *, environment_name=None
 ):
-    bowl = _parse_stl("objects", "bowl.stl")
-    bowl.root.name.name = bowl_name
-    _set_uniform_scale(
-        bowl,
-        (scale, scale, scale),
-        color=DEFAULT_BOWL_COLOR,
-    )
-    local_pose = HomogeneousTransformationMatrix.from_xyz_rpy(
-        x=float(x_local),
-        y=float(y_local),
-        z=float(z_local),
-        roll=0.0,
-        pitch=0.0,
-        yaw=float(yaw),
-        reference_frame=surface_body,
-    )
-    world_pose = world.transform(local_pose, world.root)
-    world.merge_world_at_pose(bowl, world_pose)
-    return world_pose
-
-
-def _sample_vertical_wipe_targets(world, rng, surface_name, count, start_idx):
     try:
         surface_body = world.get_body_by_name(surface_name)
     except Exception:
@@ -140,6 +112,10 @@ def _sample_vertical_wipe_targets(world, rng, surface_name, count, start_idx):
                 reference_frame=surface_body,
             )
             world_pose = world.transform(local_pose, world.root)
+            if _is_excluded_kitchen_spawn_pose(
+                world_pose, environment_name=environment_name
+            ):
+                continue
             placements.append(
                 {
                     "bowl_name": f"wipe_target_{start_idx + local_idx:04d}",
@@ -234,106 +210,43 @@ def _resolve_vertical_wipe_surfaces(world):
     return resolved
 
 
-def _sample_random_bowl_layout(world, seed=None, spawn_bowls=True):
-    rng = np.random.default_rng(seed)
-
-    surfaces = _collect_surface_bodies(world)
-    if not surfaces:
-        raise RuntimeError("No support surfaces found for random bowl placement.")
-
-    scale_choices = np.array([0.8, 1.0, 1.2, 1.4, 1.6], dtype=float)
-    base_radius = _bowl_base_xy_radius()
-    spawn_context = Context.from_world(world)
-    spawn_robot = spawn_context.robot
-
+def _sample_random_bowl_layout(
+    world, seed=None, robot_name=None, environment_name=None, spawn_bowls=True
+):
+    world, tuple_placements, surface_plan = _sample_random_surface_layout(
+        world=world,
+        seed=seed,
+        environment_name=environment_name,
+        object_label="bowl",
+        object_name_prefix="bowl",
+        mesh_parts=("objects", "bowl.stl"),
+        object_color=DEFAULT_BOWL_COLOR,
+        scale_choices=np.array([0.8, 1.0, 1.2, 1.4, 1.6], dtype=float),
+        base_radius=_bowl_base_xy_radius(),
+        radius_safety_factor=BOWL_RADIUS_SAFETY_FACTOR,
+        min_clearance_m=MIN_BOWL_CLEARANCE_M,
+        strict_clean_mode=STRICT_CLEAN_MODE,
+        z_offset=0.05,
+        reachability_fn=_is_pose_reachable_for_mixing,
+        debug_disable_reachability=False,
+        debug_force_spawn_all_targets=False,
+        debug_spawn_actual_poses=False,
+        spawn_objects=spawn_bowls,
+        include_world_pose=not spawn_bowls,
+    )
     placements = []
-    surface_plan = []
-    created_idx = 0
-    coarse_reachability_cache = {}
-    with world.modify_world():
-        _tint_surfaces_light_brown(world)
-        for surface_body in surfaces:
-            surface_name = _body_name(surface_body) or "unknown_surface"
-            mins, maxs, lo_x, hi_x, lo_y, hi_y = _surface_sampling_bounds(surface_body)
-            z_local = float(maxs[2] + 0.05)
-            area_m2 = _surface_usable_area(lo_x, hi_x, lo_y, hi_y)
-            target_count = _count_for_surface(surface_name, area_m2)
-            # target_count = 1
-            occupied_xy = []
-            for _ in range(target_count):
-                scale = float(rng.choice(scale_choices))
-                radius = base_radius * scale * BOWL_RADIUS_SAFETY_FACTOR
-                placed = False
-                for _attempt in range(120):
-                    lo_x_eff = lo_x + radius
-                    hi_x_eff = hi_x - radius
-                    lo_y_eff = lo_y + radius
-                    hi_y_eff = hi_y - radius
-                    x_local, y_local = _sample_xy(
-                        lo_x_eff, hi_x_eff, lo_y_eff, hi_y_eff, mins, maxs, rng
-                    )
-                    if all(
-                        ((x_local - ox) ** 2 + (y_local - oy) ** 2)
-                        >= (
-                            radius
-                            + orad
-                            + (MIN_BOWL_CLEARANCE_M if STRICT_CLEAN_MODE else 0.015)
-                        )
-                        ** 2
-                        for ox, oy, orad in occupied_xy
-                    ):
-                        yaw = float(rng.uniform(-np.pi, np.pi))
-                        candidate_local_pose = (
-                            HomogeneousTransformationMatrix.from_xyz_rpy(
-                                x=float(x_local),
-                                y=float(y_local),
-                                z=float(z_local),
-                                roll=0.0,
-                                pitch=0.0,
-                                yaw=float(yaw),
-                                reference_frame=surface_body,
-                            )
-                        )
-                        candidate_world_pose = world.transform(
-                            candidate_local_pose, world.root
-                        )
-                        target_pose = candidate_world_pose
-
-                        if not _is_pose_reachable_for_mixing(
-                            spawn_robot, world, target_pose, coarse_reachability_cache
-                        ):
-                            continue
-
-                        created_idx += 1
-                        bowl_name = f"bowl_{created_idx:04d}"
-                        world_pose = candidate_world_pose
-                        if spawn_bowls:
-                            world_pose = _spawn_bowl_at_local_pose(
-                                world=world,
-                                surface_body=surface_body,
-                                bowl_name=bowl_name,
-                                scale=scale,
-                                x_local=x_local,
-                                y_local=y_local,
-                                yaw=yaw,
-                                z_local=z_local,
-                            )
-                        occupied_xy.append((x_local, y_local, radius))
-                        placements.append(
-                            {
-                                "bowl_name": bowl_name,
-                                "surface_name": surface_name,
-                                "scale": scale,
-                                "pose_xyz": _pose_xyz(world_pose),
-                                "world_pose": world_pose,
-                            }
-                        )
-                        placed = True
-                        break
-                if not placed:
-                    continue
-            surface_plan.append((surface_name, area_m2, target_count, len(occupied_xy)))
-
+    for placement in tuple_placements:
+        bowl_name, surface_name, scale, pose_xyz = placement[:4]
+        world_pose = placement[4] if len(placement) > 4 else None
+        placements.append(
+            {
+                "bowl_name": bowl_name,
+                "surface_name": surface_name,
+                "scale": scale,
+                "pose_xyz": pose_xyz,
+                "world_pose": world_pose,
+            }
+        )
     return world, placements, surface_plan
 
 
@@ -341,6 +254,8 @@ def setup_random_bowl_world(seed=None, robot_name=None, environment_name=None):
     world, placements, surface_plan = _sample_random_bowl_layout(
         setup_thesis_world(robot_name=robot_name, environment_name=environment_name),
         seed=seed,
+        robot_name=robot_name,
+        environment_name=environment_name,
         spawn_bowls=True,
     )
     return (
@@ -362,6 +277,8 @@ def sample_random_bowl_poses(seed=None, robot_name=None, environment_name=None):
     world, placements, surface_plan = _sample_random_bowl_layout(
         setup_thesis_world(robot_name=robot_name, environment_name=environment_name),
         seed=seed,
+        robot_name=robot_name,
+        environment_name=environment_name,
         spawn_bowls=False,
     )
     rng = np.random.default_rng(seed)
@@ -377,7 +294,12 @@ def sample_random_bowl_poses(seed=None, robot_name=None, environment_name=None):
     next_idx = len(renamed_placements) + 1
     for surface_name, count in _resolve_vertical_wipe_surfaces(world):
         targets, plan_entries = _sample_vertical_wipe_targets(
-            world, rng, surface_name, count, start_idx=next_idx
+            world,
+            rng,
+            surface_name,
+            count,
+            start_idx=next_idx,
+            environment_name=environment_name,
         )
         extra_targets.extend(targets)
         extra_surface_plan.extend(plan_entries)

@@ -1,16 +1,18 @@
 from demos.thesis_new.demo_cut_all_breads_retry import main_cutting
 
-# from demos.thesis_new.demo_mix_all_bowls_retry import main_mixing
-# from demos.thesis_new.demo_wipe_all_spaces_retry import main_wiping
+from demos.thesis_new.demo_mix_all_bowls_retry import main_mixing
+
+from demos.thesis_new.demo_wipe_all_spaces_retry import main_wiping
 from demos.thesis_new.world_setup import resolve_robot_name
+from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 
 THESIS_DEMO_RUNNERS = {
     "cut": main_cutting,
     "cutting": main_cutting,
-    # "mix": main_mixing,
-    # "mixing": main_mixing,
-    # "wipe": main_wiping,
-    # "wiping": main_wiping,
+    "mix": main_mixing,
+    "mixing": main_mixing,
+    "wipe": main_wiping,
+    "wiping": main_wiping,
 }
 
 

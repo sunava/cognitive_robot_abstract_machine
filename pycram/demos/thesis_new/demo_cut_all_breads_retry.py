@@ -31,7 +31,7 @@ from demos.thesis_new.utils.demo_utils import (
     commit_plan_to_db,
     get_park_arms_argument,
     highlight_current_target,
-    resolve_navigation_target,
+    resolve_navigation_target_for_environment,
     setup_experiment_runtime,
     shutdown_experiment_runtime,
 )
@@ -90,7 +90,7 @@ CUTTING_COSTMAP_RESOLUTION = 0.03
 DEBUG_PROFILE_CUTTING = True
 CUTTING_TECHNIQUE = "saw"
 CUTTING_POINTER_STRIDE = 13
-CUTTING_NUM_CUTS_X = 1
+CUTTING_NUM_CUTS_X = 4
 CUTTING_SLICE_THICKNESS_M = 0.03
 
 
@@ -230,19 +230,20 @@ def _results_csv_fieldnames():
     return ["bread_name", *BASE_RESULT_FIELDNAMES]
 
 
-def _try_cut(context, bread, arm, tool):
+def _try_cut(context, bread, arm, tool, *, environment_name=None):
     with simulated_robot_without_collision:
         _, _ = _timed(
             "cut/reset_pose",
             lambda: sequential(
                 [
+                    ParkArmsAction(get_park_arms_argument(context.world)),
                     NavigateAction(
                         Pose(
                             position=Point3(1, 1, 0),
                             reference_frame=context.world.root,
                         ),
                         teleport=True,
-                    )
+                    ),
                 ],
                 context,
             ).perform(),
@@ -269,6 +270,14 @@ def _try_cut(context, bread, arm, tool):
         # Tries to find a pick-up position for the robot that uses the given arm
 
     with simulated_robot_without_collision:
+        pickup_pose, _ = _timed(
+            "cut/pickup_loc_resolve",
+            lambda: resolve_navigation_target_for_environment(
+                pickup_loc,
+                description=f"cutting {bread.name}",
+                environment_name=environment_name,
+            )[0],
+        )
         _, _ = _timed(
             "cut/park_arms",
             lambda: sequential(
@@ -283,7 +292,7 @@ def _try_cut(context, bread, arm, tool):
         _, _ = _timed(
             "cut/navigate_action",
             lambda: sequential(
-                [NavigateAction(pickup_loc, True, teleport=True)],
+                [NavigateAction(pickup_pose, True, teleport=True)],
                 context,
             ).perform(),
         )
@@ -505,7 +514,7 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
     )
     with simulated_robot_without_collision:
         sequential(
-            [SetGripperAction(Arms.LEFT, GripperState.CLOSE)],
+            [SetGripperAction(Arms.BOTH, GripperState.CLOSE)],
             context,
         ).perform()
 
@@ -623,7 +632,13 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
 
                 try:
                     attempt_count += 1
-                    _try_cut(context, bread, arm, tool)
+                    _try_cut(
+                        context,
+                        bread,
+                        arm,
+                        tool,
+                        environment_name=environment_name,
+                    )
                     if is_primary_phase:
                         success_primary += 1
                     elif is_fallback_phase:

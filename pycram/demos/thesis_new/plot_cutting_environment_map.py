@@ -19,9 +19,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from demos.thesis_new.thesis_math.world_utils import body_local_aabb
 from demos.thesis_new.world_setup import setup_thesis_world
-from pycram.tf_transformations import quaternion_matrix
 
 
 def parse_args() -> argparse.Namespace:
@@ -76,6 +74,11 @@ REQUIRED_FIELDS = [
     "support_size_x",
     "support_size_y",
 ]
+
+FIXED_PLOT_BOUNDS_BY_ENVIRONMENT = {
+    "isr": (-6.0, 5.0, -5.0, 6.0),
+    "isr-testbed": (-6.0, 5.0, -5.0, 6.0),
+}
 
 
 def load_rows(path: Path) -> list[dict[str, str]]:
@@ -173,45 +176,47 @@ def rotated_rectangle(
     return half @ rotation.T + np.array([center_x, center_y], dtype=float)
 
 
-def body_topdown_polygon(body) -> np.ndarray | None:
+def body_topdown_polygons(body, reference_frame) -> list[np.ndarray]:
     try:
-        mins, maxs = body_local_aabb(body, use_visual=False, apply_shape_scale=True)
+        bbc = body.collision.as_bounding_box_collection_in_frame(reference_frame)
     except Exception:
-        return None
-    size_x = float(maxs[0] - mins[0])
-    size_y = float(maxs[1] - mins[1])
-    if (
-        not np.isfinite(size_x)
-        or not np.isfinite(size_y)
-        or size_x <= 1e-4
-        or size_y <= 1e-4
-    ):
-        return None
+        return []
 
-    pose = body.global_pose
-    pos = np.asarray(pose.to_position().to_np(), dtype=float).reshape(-1)[:3]
-    quat = np.asarray(pose.to_quaternion().to_np(), dtype=float).reshape(-1)[:4]
-    rotation = quaternion_matrix(quat)[:3, :3]
-    corners_local = np.array(
-        [
-            [mins[0], mins[1], 0.0],
-            [maxs[0], mins[1], 0.0],
-            [maxs[0], maxs[1], 0.0],
-            [mins[0], maxs[1], 0.0],
-            [mins[0], mins[1], 0.0],
-        ],
-        dtype=float,
-    )
-    corners_world = corners_local @ rotation.T + pos
-    return corners_world[:, :2]
+    polygons: list[np.ndarray] = []
+    for bb in getattr(bbc, "bounding_boxes", []):
+        min_x = float(bb.min_x)
+        min_y = float(bb.min_y)
+        max_x = float(bb.max_x)
+        max_y = float(bb.max_y)
+        if not np.all(np.isfinite([min_x, min_y, max_x, max_y])):
+            continue
+        if (max_x - min_x) <= 1e-4 or (max_y - min_y) <= 1e-4:
+            continue
+        polygons.append(
+            np.array(
+                [
+                    [min_x, min_y],
+                    [max_x, min_y],
+                    [max_x, max_y],
+                    [min_x, max_y],
+                    [min_x, min_y],
+                ],
+                dtype=float,
+            )
+        )
+    return polygons
 
 
-def is_world_background_body(name: str, robot_name: str = "") -> bool:
+def background_body_skip_reason(name: str, robot_name: str = "") -> str | None:
     lowered = (name or "").lower()
     if not lowered:
-        return False
+        return "empty_name"
     if lowered.startswith(("bread_", "knife_", "whisk_", "bowl_")):
-        return False
+        return "dynamic_task_object"
+    # Preserve key ISR environment furniture/structure even when names contain
+    # generic tokens like "room" or "base_link".
+    if any(token in lowered for token in ["wall", "table", "chair", "bed"]):
+        return None
     if any(
         token in lowered
         for token in [
@@ -225,14 +230,13 @@ def is_world_background_body(name: str, robot_name: str = "") -> bool:
             "robot",
         ]
     ):
-        return False
+        return "robot_body_name"
     if robot_name and robot_name.lower() in lowered:
-        return False
+        return "selected_robot_name"
     if any(
         token in lowered
         for token in [
             "floor",
-            "wall",
             "ceiling",
             "ground",
             "room",
@@ -240,12 +244,11 @@ def is_world_background_body(name: str, robot_name: str = "") -> bool:
             "apartment",
         ]
     ):
-        return False
+        return "world_shell_name"
     if any(
         token in lowered
         for token in [
             "base_footprint",
-            "base_link",
             "base_bellow",
             "caster",
             "torso",
@@ -269,34 +272,93 @@ def is_world_background_body(name: str, robot_name: str = "") -> bool:
             "tool_frame",
         ]
     ):
-        return False
+        return "robot_link_name"
     if lowered.endswith(("_link", "_frame")):
-        return False
-    return True
+        return "link_or_frame_suffix"
+    return None
 
 
-def load_world_background(
+def is_world_background_body(name: str, robot_name: str = "") -> bool:
+    return background_body_skip_reason(name, robot_name=robot_name) is None
+
+
+def inspect_world_background(
     rows: list[dict[str, str]], environment_name: str, robot_name: str
-) -> list[tuple[str, np.ndarray]]:
+) -> tuple[list[tuple[str, np.ndarray]], list[dict[str, str]]]:
     world = setup_thesis_world(robot_name=robot_name, environment_name=environment_name)
     bodies = list(getattr(world, "bodies", []))
+    reference_frame = getattr(world, "root", None)
     polygons: list[tuple[str, np.ndarray]] = []
+    report: list[dict[str, str]] = []
+
     for body in bodies:
         name = getattr(getattr(body, "name", None), "name", None) or getattr(
             body, "name", ""
         )
         if not isinstance(name, str):
+            report.append(
+                {"name": repr(name), "status": "skipped", "reason": "non_string_name"}
+            )
             continue
-        if not is_world_background_body(name, robot_name=robot_name):
+
+        skip_reason = background_body_skip_reason(name, robot_name=robot_name)
+        if skip_reason is not None:
+            report.append({"name": name, "status": "skipped", "reason": skip_reason})
             continue
-        polygon = body_topdown_polygon(body)
-        if polygon is None:
+
+        try:
+            body_polygons = body_topdown_polygons(body, reference_frame)
+        except Exception as exc:
+            report.append(
+                {
+                    "name": name,
+                    "status": "skipped",
+                    "reason": f"polygon_error:{type(exc).__name__}",
+                }
+            )
             continue
-        extent_x = float(np.max(polygon[:, 0]) - np.min(polygon[:, 0]))
-        extent_y = float(np.max(polygon[:, 1]) - np.min(polygon[:, 1]))
-        if extent_x > 20.0 or extent_y > 20.0:
+
+        if not body_polygons:
+            report.append(
+                {"name": name, "status": "skipped", "reason": "no_xy_polygons"}
+            )
             continue
-        polygons.append((name, polygon))
+
+        kept_count = 0
+        skipped_large = 0
+        for polygon in body_polygons:
+            extent_x = float(np.max(polygon[:, 0]) - np.min(polygon[:, 0]))
+            extent_y = float(np.max(polygon[:, 1]) - np.min(polygon[:, 1]))
+            if extent_x > 20.0 or extent_y > 20.0:
+                skipped_large += 1
+                continue
+            polygons.append((name, polygon))
+            kept_count += 1
+
+        if kept_count > 0:
+            report.append(
+                {
+                    "name": name,
+                    "status": "kept",
+                    "reason": f"polygons={kept_count}",
+                }
+            )
+        else:
+            report.append(
+                {
+                    "name": name,
+                    "status": "skipped",
+                    "reason": f"oversized_polygons={skipped_large}",
+                }
+            )
+
+    return polygons, report
+
+
+def load_world_background(
+    rows: list[dict[str, str]], environment_name: str, robot_name: str
+) -> list[tuple[str, np.ndarray]]:
+    polygons, _ = inspect_world_background(rows, environment_name, robot_name)
     return polygons
 
 
@@ -330,9 +392,14 @@ def relevant_bounds(
 
 
 def combined_plot_bounds(
+    environment_name: str,
     rows: list[dict[str, str]],
     world_polygons: list[tuple[str, np.ndarray]],
 ) -> tuple[float, float, float, float] | None:
+    fixed_bounds = FIXED_PLOT_BOUNDS_BY_ENVIRONMENT.get(environment_name)
+    if fixed_bounds is not None:
+        return fixed_bounds
+
     xs: list[float] = []
     ys: list[float] = []
 
@@ -412,12 +479,13 @@ def legend_labels(rows: list[dict[str, str]]) -> list[tuple[str, str, str]]:
 
 
 def plot_environment_success_map(
+    environment_name: str,
     rows: list[dict[str, str]],
     output_dir: Path,
     world_polygons: list[tuple[str, np.ndarray]],
 ) -> None:
     fig, axis = plt.subplots(figsize=(12, 8))
-    bounds = combined_plot_bounds(rows, world_polygons)
+    bounds = combined_plot_bounds(environment_name, rows, world_polygons)
 
     for name, polygon in world_polygons:
         axis.fill(
@@ -540,6 +608,31 @@ def write_environment_summary(rows: list[dict[str, str]], output_dir: Path) -> N
     )
 
 
+def write_background_debug_report(
+    output_dir: Path,
+    environment_name: str,
+    robot_name: str,
+    report_rows: list[dict[str, str]],
+) -> None:
+    kept = [row for row in report_rows if row["status"] == "kept"]
+    skipped = [row for row in report_rows if row["status"] != "kept"]
+    lines = [
+        "2D background debug report",
+        "",
+        f"environment: {environment_name}",
+        f"robot: {robot_name}",
+        f"kept bodies: {len(kept)}",
+        f"skipped bodies: {len(skipped)}",
+        "",
+        "Entries",
+    ]
+    for row in sorted(report_rows, key=lambda item: (item["status"], item["name"])):
+        lines.append(f"{row['status']}\t{row['reason']}\t{row['name']}")
+    (output_dir / "environment_background_debug.txt").write_text(
+        "\n".join(lines) + "\n", encoding="utf-8"
+    )
+
+
 def render_environment_map_set(
     rows: list[dict[str, str]],
     output_dir: Path,
@@ -547,9 +640,14 @@ def render_environment_map_set(
     robot_name: str,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
-    world_polygons = load_world_background(rows, environment_name, robot_name)
-    plot_environment_success_map(rows, output_dir, world_polygons)
+    world_polygons, background_report = inspect_world_background(
+        rows, environment_name, robot_name
+    )
+    plot_environment_success_map(environment_name, rows, output_dir, world_polygons)
     write_environment_summary(rows, output_dir)
+    write_background_debug_report(
+        output_dir, environment_name, robot_name, background_report
+    )
 
 
 def main() -> None:
@@ -566,7 +664,10 @@ def main() -> None:
             environment_name = infer_environment_name(world_rows, args.environment_name)
             robot_name = infer_robot_name(world_rows, args.robot_name)
             render_environment_map_set(
-                world_rows, output_dir, environment_name, robot_name
+                world_rows,
+                output_dir,
+                environment_name,
+                robot_name,
             )
             written_dirs.append(output_dir)
         written = ", ".join(str(path) for path in written_dirs)
@@ -575,7 +676,12 @@ def main() -> None:
 
     environment_name = infer_environment_name(rows, args.environment_name)
     robot_name = infer_robot_name(rows, args.robot_name)
-    render_environment_map_set(rows, args.output_dir, environment_name, robot_name)
+    render_environment_map_set(
+        rows,
+        args.output_dir,
+        environment_name,
+        robot_name,
+    )
     print(f"Wrote environment maps to {args.output_dir}")
 
 

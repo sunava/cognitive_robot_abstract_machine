@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from glob import glob
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -115,7 +116,8 @@ class ColconSourcePackageLocator(PackageLocator):
             dirs[:] = [
                 directory
                 for directory in dirs
-                if directory not in {".git", ".hg", ".svn", "__pycache__", "build", "install", "log"}
+                if directory
+                not in {".git", ".hg", ".svn", "__pycache__", "build", "install", "log"}
             ]
 
             if "package.xml" not in files:
@@ -135,6 +137,79 @@ class ColconSourcePackageLocator(PackageLocator):
 
 
 @dataclass
+class ConventionalWorkspacePackageLocator(PackageLocator):
+    """
+    Resolves packages from common local ROS workspace layouts without relying on
+    sourced environment variables.
+    """
+
+    def resolve(self, package_name: str) -> str:
+        for candidate in self._candidate_package_paths(package_name):
+            if os.path.isdir(candidate):
+                return candidate
+        raise ParsingError(
+            message=(
+                f"Package '{package_name}' not found in conventional workspace "
+                "locations."
+            )
+        )
+
+    def _candidate_package_paths(self, package_name: str) -> List[str]:
+        candidates = []
+        for workspace_root in self._candidate_workspace_roots():
+            candidates.extend(
+                [
+                    os.path.join(workspace_root, "install", "share", package_name),
+                    os.path.join(
+                        workspace_root, "src", "install", "share", package_name
+                    ),
+                    os.path.join(
+                        workspace_root,
+                        "src",
+                        "install",
+                        package_name,
+                        "share",
+                        package_name,
+                    ),
+                    os.path.join(workspace_root, "src", package_name),
+                ]
+            )
+        return self._deduplicate(candidates)
+
+    def _candidate_workspace_roots(self) -> List[str]:
+        cwd = os.path.abspath(os.getcwd())
+        home = os.path.expanduser("~")
+        roots = [cwd]
+
+        parent = cwd
+        while True:
+            parent = os.path.dirname(parent)
+            if not parent or parent == roots[-1]:
+                break
+            roots.append(parent)
+            if parent == home:
+                break
+
+        for pattern in (
+            os.path.join(home, "workspace", "*"),
+            os.path.join(home, "*ws"),
+            os.path.join(home, "*", "*ws"),
+        ):
+            roots.extend(glob(pattern))
+
+        return self._deduplicate(root for root in roots if os.path.isdir(root))
+
+    @staticmethod
+    def _deduplicate(paths) -> List[str]:
+        unique = []
+        for path in paths:
+            normalized = os.path.abspath(path)
+            if normalized not in unique:
+                unique.append(normalized)
+        return unique
+
+
+@dataclass
 class ROSPackageLocator(PackageLocator):
     """
     Tries multiple package locators in order.
@@ -145,6 +220,7 @@ class ROSPackageLocator(PackageLocator):
             AmentPackageLocator(),
             ROSPackagePathLocator(),
             ColconSourcePackageLocator(),
+            ConventionalWorkspacePackageLocator(),
         ]
     )
 

@@ -6,6 +6,7 @@ import os
 import signal
 import sys
 import traceback
+from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Tuple, List, Optional, Dict
@@ -112,11 +113,15 @@ class SelfCollisionMatrixInterface:
         robot_world = URDFParser.from_file(urdf_path).parse()
         self.self_collision_matrix_rule = SelfCollisionMatrixRule()
         self.robot = MinimalRobot.from_world(robot_world)
+        robot_world_viz = deepcopy(robot_world)
         with self.world.modify_world():
             self.world.clear()
             self.world.add_body(map := Body(name=PrefixedName("map")))
+            # merge_world() consumes the source world, so keep the robot's original
+            # world for collision computation and merge a copy for visualization.
             self.world.merge_world(
-                robot_world, FixedConnection(parent=map, child=robot_world.root)
+                robot_world_viz,
+                FixedConnection(parent=map, child=robot_world_viz.root),
             )
 
     def dye_all_bodies_white_transparent(self):

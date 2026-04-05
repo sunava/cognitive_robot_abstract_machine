@@ -22,7 +22,13 @@ from semantic_digital_twin.world_description.connections import FixedConnection
 
 from demos.thesis_new.utils.experiment_logging import body_name
 from demos.thesis_new.utils.rviz import CostmapHeatmapRviz
-from demos.thesis_new.world_setup import resolve_robot_name_from_annotation
+from demos.thesis_new.world_setup import (
+    resolve_environment_name,
+    resolve_robot_name_from_annotation,
+)
+
+KITCHEN_NAVIGATION_X_MAX = 1.5
+KITCHEN_ORIGIN_EXCLUSION_RADIUS_M = 0.75
 
 
 def setup_experiment_runtime(world, node_name):
@@ -162,6 +168,38 @@ def resolve_navigation_target(location_designator, *, description):
         candidates = []
     if candidates:
         return candidates
+    raise NavigationGoalNotReachedError(
+        f"No collision-free navigation pose found for {description}."
+    )
+
+
+def is_excluded_kitchen_pose(pose, *, environment_name=None):
+    if resolve_environment_name(environment_name) != "kitchen":
+        return False
+    position = pose.to_position()
+    x = float(position.x)
+    y = float(position.y)
+    return (
+        x > KITCHEN_NAVIGATION_X_MAX
+        or float((x * x + y * y) ** 0.5) < KITCHEN_ORIGIN_EXCLUSION_RADIUS_M
+    )
+
+
+def resolve_navigation_target_for_environment(
+    location_designator, *, description, environment_name=None
+):
+    candidates = resolve_navigation_target(location_designator, description=description)
+    filtered = [
+        candidate
+        for candidate in candidates
+        if not is_excluded_kitchen_pose(candidate, environment_name=environment_name)
+    ]
+    if filtered:
+        return filtered
+    if candidates:
+        raise NavigationGoalNotReachedError(
+            f"No collision-free navigation pose found for {description} after environment filtering."
+        )
     raise NavigationGoalNotReachedError(
         f"No collision-free navigation pose found for {description}."
     )

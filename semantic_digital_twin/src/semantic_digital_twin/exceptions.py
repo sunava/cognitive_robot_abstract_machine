@@ -403,7 +403,9 @@ class ParsingError(DataclassException, Exception):
     file_path: Optional[str] = None
 
     def __post_init__(self):
-        self.message = f"Error parsing file {self.file_path}."
+        if not self.message:
+            self.message = f"Error parsing file {self.file_path}."
+        super().__post_init__()
 
 
 @dataclass
@@ -466,6 +468,7 @@ class AmbiguousNameError(ValueError):
 class UnresolvedNameError(ValueError):
     """Raised when no semantic annotation class matches a given name."""
 
+
 @dataclass
 class RootNodeNotFoundError(DataclassException):
     """
@@ -476,7 +479,10 @@ class RootNodeNotFoundError(DataclassException):
     """The candidate node names that were considered as potential roots."""
 
     def __post_init__(self):
-        self.message = f"Could not determine unique root node. Candidates: {self.candidates}"
+        self.message = (
+            f"Could not determine unique root node. Candidates: {self.candidates}"
+        )
+
 
 @dataclass
 class CollisionCheckingError(DataclassException):

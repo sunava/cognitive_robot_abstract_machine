@@ -368,7 +368,7 @@ class WipingAction(GeneralizedActionPlan):
                 "WipingAction target_pose has no frame_id; defaulting to world root."
             )
             self.target_pose.frame_id = self.world.root
-        return self.target_pose.to_spatial_type()
+        return self.target_pose
 
     def _resolve_surface_body(self) -> Body:
         if self._resolved_surface_body is not None:
@@ -394,8 +394,7 @@ class WipingAction(GeneralizedActionPlan):
         return self._resolve_surface_body()
 
     def _resolve_pose_alignment_target(self):
-        target_spatial = self._target_pose_to_spatial()
-        target_point_world = target_spatial.to_position()
+        target_point_world = self.target_pose.to_position()
         robot_bodies = set(getattr(self.robot, "bodies", []))
         tool_root = getattr(getattr(self, "tool", None), "root", None)
 

@@ -313,9 +313,7 @@ class CostmapLocation(Location):
         object_in_hand = objects_in_hand[0] if objects_in_hand else None
 
         target_pose = (
-            deepcopy(self.target)
-            if isinstance(self.target, Pose)
-            else self.target.global_pose
+            deepcopy(self.target) if isinstance(self.target, Pose) else self.target
         )
 
         costmap_setup_start = time.perf_counter()
