@@ -22,6 +22,7 @@ from semantic_digital_twin.datastructures.definitions import (
     GripperState,
     StaticJointState,
 )
+from semantic_digital_twin.spatial_types import Vector3
 
 logger = logging.getLogger(__name__)
 
@@ -172,26 +173,6 @@ class ParkArmsAction(ActionDescription):
             values.extend(joint_state.target_values)
         return names, values
 
-    def validate(
-        self,
-        result: Optional[Any] = None,
-        max_wait_time: timedelta = timedelta(seconds=2),
-    ):
-        """
-        Create a goal validator for the joint positions and wait until the goal is achieved or the timeout is reached.
-        """
-        joint_poses = self.get_joint_poses()
-        validator = create_multiple_joint_goal_validator(
-            World.current_world.robot, joint_poses
-        )
-        validator.wait_until_goal_is_achieved(
-            max_wait_time=max_wait_time, time_per_read=timedelta(milliseconds=20)
-        )
-        if not validator.goal_achieved:
-            raise ConfigurationNotReached(
-                validator, configuration_type=StaticJointState.Park
-            )
-
 
 @dataclass
 class CarryAction(ActionDescription):
@@ -230,15 +211,14 @@ class CarryAction(ActionDescription):
     """
 
     def execute(self) -> None:
-        joint_poses = self.get_joint_poses()
+        joint_names, joint_poses = self.get_joint_poses()
         tip_normal = self.axis_to_vector3_stamped(self.tip_axis, link=self.tip_link)
         root_normal = self.axis_to_vector3_stamped(self.root_axis, link=self.root_link)
-
         self.add_subplan(
             execute_single(
                 MoveJointsMotion(
-                    names=list(joint_poses.keys()),
-                    positions=list(joint_poses.values()),
+                    names=joint_names,
+                    positions=joint_poses,
                     align=self.align,
                     tip_link=self.tip_link,
                     tip_normal=tip_normal,
@@ -248,22 +228,18 @@ class CarryAction(ActionDescription):
             )
         ).perform()
 
-    def get_joint_poses(self) -> Dict[str, float]:
+    def get_joint_poses(self) -> Tuple[List[str], List[float]]:
         """
         :return: The joint positions that should be set for the arm to be in the park position.
         """
-        joint_poses = {}
-        arm_chains = RobotDescription.current_robot_description.get_arm_chain(self.arm)
-        if type(arm_chains) is not list:
-            joint_poses = arm_chains.get_static_joint_states(StaticJointState.Park)
-        else:
-            for arm_chain in RobotDescription.current_robot_description.get_arm_chain(
-                self.arm
-            ):
-                joint_poses.update(
-                    arm_chain.get_static_joint_states(StaticJointState.Park)
-                )
-        return joint_poses
+        arm_chain = ViewManager().get_all_arm_views(self.arm, self.robot)
+        names = []
+        values = []
+        for arm in arm_chain:
+            joint_state = arm.get_joint_state_by_type(StaticJointState.PARK)
+            names.extend([c.name.name for c in joint_state.connections])
+            values.extend(joint_state.target_values)
+        return names, values
 
     def axis_to_vector3_stamped(
         self, axis: AxisIdentifier, link: str = "base_link"
@@ -275,26 +251,6 @@ class CarryAction(ActionDescription):
         }[axis]
         v.frame_id = link
         return v
-
-    def validate(
-        self,
-        result: Optional[Any] = None,
-        max_wait_time: timedelta = timedelta(seconds=2),
-    ):
-        """
-        Create a goal validator for the joint positions and wait until the goal is achieved or the timeout is reached.
-        """
-        joint_poses = self.get_joint_poses()
-        validator = create_multiple_joint_goal_validator(
-            World.current_world.robot, joint_poses
-        )
-        validator.wait_until_goal_is_achieved(
-            max_wait_time=max_wait_time, time_per_read=timedelta(milliseconds=20)
-        )
-        if not validator.goal_achieved:
-            raise ConfigurationNotReached(
-                validator, configuration_type=StaticJointState.Park
-            )
 
 
 @dataclass

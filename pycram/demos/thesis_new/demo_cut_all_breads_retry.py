@@ -1,5 +1,6 @@
 import time
 
+from probabilistic_model.bayesian_network.bayesian_network import Root
 from pycram.locations.locations import CostmapLocation
 from pycram.motion_executor import (
     simulated_robot_without_collision,
@@ -14,12 +15,16 @@ from pycram.robot_plans.actions.core.robot_body import (
     ParkArmsAction,
     MoveTorsoAction,
     SetGripperAction,
+    CarryAction,
 )
 from pycram.tf_transformations import quaternion_from_euler, quaternion_multiply
 from pycram.tf_transformations import euler_from_quaternion, quaternion_matrix
 
 
-from demos.thesis_new.spawn_random_breads import setup_random_bread_world
+from demos.thesis_new.spawn_random_breads import (
+    get_cut_object_config,
+    setup_random_bread_world,
+)
 from demos.thesis_new.spawn_random_breads import build_cutting_reachability_costmaps
 from demos.thesis_new.thesis_math.world_utils import body_local_aabb
 from demos.thesis_new.tool_mounts import get_tool_mount_pose_kwargs
@@ -53,7 +58,7 @@ from demos.thesis_new.utils.experiment_logging import (
 import os
 import numpy as np
 from pycram.datastructures.dataclasses import Context
-from pycram.datastructures.enums import Arms
+from pycram.datastructures.enums import Arms, AxisIdentifier
 from pycram.motion_executor import simulated_robot
 from pycram.orm.ormatic_interface import Base
 from pycram.orm.utils import pycram_sessionmaker
@@ -66,11 +71,14 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import Knif
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix, Point3
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.geometry import Color, Scale
+from semantic_digital_twin.world_description.world_entity import WorldEntity
 
 RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")
 )
 DEFAULT_BREAD_COLOR = Color(R=0.76, G=0.60, B=0.42)
+DEFAULT_APPLE_COLOR = Color(R=0.55, G=0.08, B=0.08)
+DEFAULT_CUCUMBER_COLOR = Color(R=0.12, G=0.38, B=0.14)
 ACTIVE_BREAD_COLOR = Color(R=0.52, G=0.82, B=0.98)
 FAILED_BREAD_COLOR = Color(R=0.95, G=0.20, B=0.20)
 SUCCESS_BREAD_COLOR = Color(R=0.62, G=0.92, B=0.62)
@@ -131,6 +139,36 @@ def _update_costmap_debug_publishers(node, robot, world, bread, publishers):
         final_map,
         namespace_prefix="cutting",
     )
+
+
+def _cut_object_default_color(object_kind):
+    normalized = str(object_kind).lower()
+    if normalized == "apple":
+        return DEFAULT_APPLE_COLOR
+    if normalized == "cucumber":
+        return DEFAULT_CUCUMBER_COLOR
+    return DEFAULT_BREAD_COLOR
+
+
+def _cut_object_execution_config(object_kind):
+    normalized = str(object_kind).lower()
+    if normalized == "apple":
+        return {
+            "query_verb": "cut:Halving",
+            "technique": "halving",
+            "num_cuts_x": 1,
+        }
+    if normalized == "cucumber":
+        return {
+            "query_verb": "cut:Slicing",
+            "technique": "slice",
+            "num_cuts_x": CUTTING_NUM_CUTS_X,
+        }
+    return {
+        "query_verb": CUTTING_QUERY_VERB,
+        "technique": CUTTING_TECHNIQUE,
+        "num_cuts_x": CUTTING_NUM_CUTS_X,
+    }
 
 
 def _record_bread_result(
@@ -230,7 +268,17 @@ def _results_csv_fieldnames():
     return ["bread_name", *BASE_RESULT_FIELDNAMES]
 
 
-def _try_cut(context, bread, arm, tool, *, environment_name=None):
+def _try_cut(
+    context,
+    bread,
+    pickup_pose,
+    arm,
+    tool,
+    *,
+    cutting_technique,
+    num_cuts_x,
+    environment_name=None,
+):
     with simulated_robot_without_collision:
         _, _ = _timed(
             "cut/reset_pose",
@@ -249,35 +297,7 @@ def _try_cut(context, bread, arm, tool, *, environment_name=None):
             ).perform(),
         )
 
-        pickup_loc, _ = _timed(
-            "cut/pickup_loc_build",
-            lambda: CostmapLocation(
-                target=bread.global_pose,
-                reachable=True,
-                reachable_arm=arm,
-                validate_reachability=False,
-                samples=1000,
-                costmap_width=CUTTING_COSTMAP_WIDTH,
-                costmap_height=CUTTING_COSTMAP_HEIGHT,
-                costmap_resolution=CUTTING_COSTMAP_RESOLUTION,
-                ring_std=CUTTING_RING_STD,
-                ring_distance=CUTTING_RING_DISTANCE,
-                obstacle_clearance=_cutting_obstacle_clearance(context.robot),
-                context=context,
-            ),
-        )
-
-        # Tries to find a pick-up position for the robot that uses the given arm
-
     with simulated_robot_without_collision:
-        pickup_pose, _ = _timed(
-            "cut/pickup_loc_resolve",
-            lambda: resolve_navigation_target_for_environment(
-                pickup_loc,
-                description=f"cutting {bread.name}",
-                environment_name=environment_name,
-            )[0],
-        )
         _, _ = _timed(
             "cut/park_arms",
             lambda: sequential(
@@ -305,9 +325,9 @@ def _try_cut(context, bread, arm, tool, *, environment_name=None):
                     container=bread,
                     arm=arm,
                     tool=tool,
-                    technique=CUTTING_TECHNIQUE,
+                    technique=cutting_technique,
                     pointer_stride=CUTTING_POINTER_STRIDE,
-                    num_cuts_x=CUTTING_NUM_CUTS_X,
+                    num_cuts_x=num_cuts_x,
                     slice_thickness=CUTTING_SLICE_THICKNESS_M,
                 ),
             ],
@@ -341,7 +361,7 @@ def _rotate_bread_180deg_z(world, bread):
         bread.parent_connection.origin = rotated_pose
 
 
-def _build_cut_geometry_binding(bread):
+def _build_cut_geometry_binding(bread, *, cutting_technique, num_cuts_x):
     mins, maxs = body_local_aabb(
         bread,
         use_visual=True,
@@ -458,19 +478,36 @@ def _build_cut_geometry_binding(bread):
         "cut_normal_world_y": round(float(cut_normal_world[1]), 6),
         "cut_normal_world_z": round(float(cut_normal_world[2]), 6),
         "cut_normal_world_yaw_rad": round(cut_normal_world_yaw, 6),
-        "technique_name": CUTTING_TECHNIQUE,
+        "technique_name": cutting_technique,
         "slice_thickness_m": round(float(CUTTING_SLICE_THICKNESS_M), 6),
-        "num_cuts_x": int(CUTTING_NUM_CUTS_X),
+        "num_cuts_x": int(num_cuts_x),
         "pointer_stride": int(CUTTING_POINTER_STRIDE),
     }
 
 
-def main_cutting(seed=None, robot_name=None, environment_name=None):
+def main_cutting(
+    seed=None,
+    robot_name=None,
+    environment_name=None,
+    object_kind="bread",
+    object_name=None,
+    container_kind=None,
+    container_name=None,
+):
     global session
     if session is None:
         session = pycram_sessionmaker()()
         Base.metadata.create_all(session.bind)
         session.commit()
+    if object_name is not None:
+        object_kind = object_name
+    if container_name is not None:
+        object_kind = container_name
+    if container_kind is not None:
+        object_kind = container_kind
+    object_cfg = get_cut_object_config(object_kind)
+    default_object_color = _cut_object_default_color(object_kind)
+    cut_cfg = _cut_object_execution_config(object_kind)
     effective_seed = (
         int(seed)
         if seed is not None
@@ -480,6 +517,7 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
         seed=effective_seed,
         robot_name=robot_name,
         environment_name=environment_name,
+        object_kind=object_kind,
     )
 
     node = setup_experiment_runtime(
@@ -502,7 +540,7 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
         ),
         tool_cls=Knife,
     )
-    breads = collect_named_targets(world, "bread_")
+    breads = collect_named_targets(world, f"{object_cfg['object_name_prefix']}_")
 
     context = Context.from_world(world)
     context.ros_node = node
@@ -510,7 +548,7 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
     world_name = environment_name
     run_id = new_run_id()
     cutting_knowledge = safe_get_cutting_knowledge(
-        CUTTING_QUERY_VERB, CUTTING_QUERY_FOODON
+        cut_cfg["query_verb"], CUTTING_QUERY_FOODON
     )
     with simulated_robot_without_collision:
         sequential(
@@ -524,7 +562,7 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
         print(
             f"  - {surface_name}: area={area_m2:.3f}m^2 target={target_count} placed={placed_count}"
         )
-    print(f"[setup] breads to cut: {len(breads)}")
+    print(f"[setup] {object_cfg['object_label']}s to cut: {len(breads)}")
 
     success_primary = 0
     success_fallback = 0
@@ -536,7 +574,8 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
     bread_results = []
     initialize_csv(RESULTS_CSV_PATH, _results_csv_fieldnames())
     debug_costmap_publishers = {}
-
+    left_knife = world.get_body_by_name("knife_left")
+    right_knife = world.get_body_by_name("knife_right")
     with simulated_robot_without_collision:
         sequential(
             [
@@ -545,7 +584,14 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
             ],
             context,
         ).perform()
-
+    # CarryAction(
+    #               Arms.LEFT,
+    #               True,
+    #               left_knife,
+    #               AxisIdentifier.Z,
+    #               context.robot,
+    #               AxisIdentifier.Z,
+    #           ),
     for bread in breads:
         bread_name = _body_name(bread)
         debug_costmap_publishers, preview_elapsed = _timed(
@@ -553,6 +599,31 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
             lambda: _update_costmap_debug_publishers(
                 node, context.robot, world, bread, debug_costmap_publishers
             ),
+        )
+        pickup_loc, _ = _timed(
+            f"bread/{bread_name}/pickup_loc_build",
+            lambda: CostmapLocation(
+                target=bread.global_pose,
+                reachable=True,
+                reachable_arm=arm_tools[0][0] if arm_tools else None,
+                validate_reachability=False,
+                samples=1000,
+                costmap_width=CUTTING_COSTMAP_WIDTH,
+                costmap_height=CUTTING_COSTMAP_HEIGHT,
+                costmap_resolution=CUTTING_COSTMAP_RESOLUTION,
+                ring_std=CUTTING_RING_STD,
+                ring_distance=CUTTING_RING_DISTANCE,
+                obstacle_clearance=_cutting_obstacle_clearance(context.robot),
+                context=context,
+            ),
+        )
+        pickup_pose, pickup_resolve_elapsed = _timed(
+            f"bread/{bread_name}/pickup_loc_resolve",
+            lambda: resolve_navigation_target_for_environment(
+                pickup_loc,
+                description=f"cutting {bread.name}",
+                environment_name=environment_name,
+            )[0],
         )
         attempt_failures = []
         attempt_count = 0
@@ -566,7 +637,7 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
                 world,
                 breads,
                 bread,
-                default_color=DEFAULT_BREAD_COLOR,
+                default_color=default_object_color,
                 active_color=ACTIVE_BREAD_COLOR,
                 failed_color=FAILED_BREAD_COLOR,
                 success_color=SUCCESS_BREAD_COLOR,
@@ -629,14 +700,16 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
                     f"[cut] {bread_name}: try {arm.name} arm"
                     + (" after rotation" if group_index == 1 else "")
                 )
-
                 try:
                     attempt_count += 1
                     _try_cut(
                         context,
                         bread,
+                        pickup_pose,
                         arm,
                         tool,
+                        cutting_technique=cut_cfg["technique"],
+                        num_cuts_x=cut_cfg["num_cuts_x"],
                         environment_name=environment_name,
                     )
                     if is_primary_phase:
@@ -674,7 +747,11 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
                         perturbation_applied=perturbation_applied,
                         perturbation_type=perturbation_type,
                         execution_time_s=time.perf_counter() - bread_start_time,
-                        geometry_binding=_build_cut_geometry_binding(bread),
+                        geometry_binding=_build_cut_geometry_binding(
+                            bread,
+                            cutting_technique=cut_cfg["technique"],
+                            num_cuts_x=cut_cfg["num_cuts_x"],
+                        ),
                     )
                     append_csv_row(
                         RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row
@@ -689,6 +766,7 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
                         print(
                             f"[profile] bread/{bread_name}/summary: "
                             f"preview={preview_elapsed:.3f}s "
+                            f"pickup_resolve={pickup_resolve_elapsed:.3f}s "
                             f"highlight={highlight_elapsed:.3f}s "
                             f"total={time.perf_counter() - bread_start_time:.3f}s"
                         )
@@ -768,7 +846,11 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
             perturbation_applied=perturbation_applied,
             perturbation_type=perturbation_type,
             execution_time_s=time.perf_counter() - bread_start_time,
-            geometry_binding=_build_cut_geometry_binding(bread),
+            geometry_binding=_build_cut_geometry_binding(
+                bread,
+                cutting_technique=cut_cfg["technique"],
+                num_cuts_x=cut_cfg["num_cuts_x"],
+            ),
         )
         append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
         if DEBUG_PROFILE_CUTTING:
@@ -781,7 +863,7 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
         world,
         breads,
         None,
-        default_color=DEFAULT_BREAD_COLOR,
+        default_color=default_object_color,
         active_color=ACTIVE_BREAD_COLOR,
         failed_color=FAILED_BREAD_COLOR,
         success_color=SUCCESS_BREAD_COLOR,

@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Optional, List
 
+from IPython.lib.clipboard import wayland_clipboard_get
+
 from giskardpy.motion_statechart.data_types import DefaultWeights
 from giskardpy.motion_statechart.goals.collision_avoidance import (
     UpdateTemporaryCollisionRules,
@@ -282,7 +284,6 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
         )
         if root_link is None:
             root_link = self.world.root
-
         motion_state_chart_nodes = self._only_allow_gripper_collision_rules(self.arm)
         tasks = [
             CartesianPositionTrajectory(

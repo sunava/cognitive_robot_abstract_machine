@@ -65,9 +65,40 @@ DEBUG_FORCE_SPAWN_ALL_TARGETS = False
 DEBUG_DISABLE_REACHABILITY = True
 DEBUG_SPAWN_ACTUAL_POSES = True
 
+CUT_OBJECT_CONFIGS = {
+    "bread": {
+        "object_label": "bread",
+        "object_name_prefix": "bread",
+        "mesh_parts": ("pycram_object_gap_demo", "bread.stl"),
+        "object_color": Color(R=0.76, G=0.60, B=0.42),
+    },
+    "cucumber": {
+        "object_label": "cucumber",
+        "object_name_prefix": "cucumber",
+        "mesh_parts": ("pycram_object_gap_demo", "cucumber.stl"),
+        "object_color": Color(R=0.26, G=0.66, B=0.30),
+    },
+    "apple": {
+        "object_label": "apple",
+        "object_name_prefix": "apple",
+        "mesh_parts": ("pycram_object_gap_demo", "apple.stl"),
+        "object_color": Color(R=0.84, G=0.18, B=0.16),
+    },
+}
+
 
 def _parse_stl(*relative_path_parts):
     return STLParser(os.path.join(RESOURCES_DIR, *relative_path_parts)).parse()
+
+
+def get_cut_object_config(object_kind="bread"):
+    try:
+        return CUT_OBJECT_CONFIGS[str(object_kind).lower()]
+    except KeyError as exc:
+        supported = ", ".join(sorted(CUT_OBJECT_CONFIGS))
+        raise ValueError(
+            f"Unsupported cut object_kind '{object_kind}'. Supported: {supported}"
+        ) from exc
 
 
 def _set_uniform_scale(body, scale_xyz, color=None):
@@ -269,13 +300,17 @@ def _sample_xy(lo_x, hi_x, lo_y, hi_y, mins, maxs, rng):
     return x_local, y_local
 
 
-def _bread_base_xy_radius():
-    """Approximate bread XY footprint as a circle radius in local bread frame."""
-    bread = _parse_stl("pycram_object_gap_demo", "bread.stl")
+def _base_xy_radius_for_mesh(*mesh_parts):
+    """Approximate object XY footprint as a circle radius in local object frame."""
+    bread = _parse_stl(*mesh_parts)
     mins, maxs = body_local_aabb(bread.root, use_visual=False, apply_shape_scale=True)
     dx = max(0.0, float(maxs[0] - mins[0]))
     dy = max(0.0, float(maxs[1] - mins[1]))
     return 0.5 * np.hypot(dx, dy)
+
+
+def _bread_base_xy_radius():
+    return _base_xy_radius_for_mesh("pycram_object_gap_demo", "bread.stl")
 
 
 def _surface_usable_area(lo_x, hi_x, lo_y, hi_y):
@@ -649,18 +684,21 @@ def _is_pose_reachable_for_cutting(robot, world, target_pose, cache=None):
     return result
 
 
-def setup_random_bread_world(seed=None, robot_name=None, environment_name=None):
+def setup_random_bread_world(
+    seed=None, robot_name=None, environment_name=None, object_kind="bread"
+):
+    object_cfg = get_cut_object_config(object_kind)
     world = setup_thesis_world(robot_name=robot_name, environment_name=environment_name)
     return _sample_random_surface_layout(
         world=world,
         seed=seed,
         environment_name=environment_name,
-        object_label="bread",
-        object_name_prefix="bread",
-        mesh_parts=("pycram_object_gap_demo", "bread.stl"),
-        object_color=Color(R=0.76, G=0.60, B=0.42),
+        object_label=object_cfg["object_label"],
+        object_name_prefix=object_cfg["object_name_prefix"],
+        mesh_parts=object_cfg["mesh_parts"],
+        object_color=object_cfg["object_color"],
         scale_choices=np.array([0.8, 1.0, 1.2, 1.4, 1.6], dtype=float),
-        base_radius=_bread_base_xy_radius(),
+        base_radius=_base_xy_radius_for_mesh(*object_cfg["mesh_parts"]),
         radius_safety_factor=BREAD_RADIUS_SAFETY_FACTOR,
         min_clearance_m=MIN_BREAD_CLEARANCE_M,
         strict_clean_mode=STRICT_CLEAN_MODE,

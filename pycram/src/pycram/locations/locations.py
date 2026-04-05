@@ -55,13 +55,21 @@ from semantic_digital_twin.spatial_types.spatial_types import (
     Point3,
     Vector3,
     Quaternion,
+    RotationMatrix,
 )
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.world_description.world_entity import Body
 
 logger = logging.getLogger("pycram")
-DEBUG_PROFILE_COSTMAP_LOCATION = True
+DEBUG_PROFILE_COSTMAP_LOCATION = False
+RVIZ_COSTMAP_CANDIDATE_MIN_NORMALIZED_VALUE = 0.20
+RVIZ_COSTMAP_CANDIDATE_SAMPLE_STRIDE = 2
+TARGET_FACING_YAW_OFFSETS_RAD = (
+    0.0,
+    -np.deg2rad(30.0),
+    np.deg2rad(30.0),
+)
 
 
 @dataclass
@@ -177,7 +185,11 @@ class CostmapLocation(Location):
         score_denom = score_max - score_min
         if score_denom > 0.0:
             normalized_scores = (scores - score_min) / score_denom
-            keep_mask = normalized_scores > 0.25
+            keep_mask = normalized_scores >= RVIZ_COSTMAP_CANDIDATE_MIN_NORMALIZED_VALUE
+            stride_mask = (
+                (positive_indices[:, 0] % RVIZ_COSTMAP_CANDIDATE_SAMPLE_STRIDE) == 0
+            ) & ((positive_indices[:, 1] % RVIZ_COSTMAP_CANDIDATE_SAMPLE_STRIDE) == 0)
+            keep_mask &= stride_mask
             positive_indices = positive_indices[keep_mask]
             scores = scores[keep_mask]
         if positive_indices.size == 0:
@@ -191,8 +203,13 @@ class CostmapLocation(Location):
         for row, col in positive_indices[order]:
             offset = (np.array([row, col], dtype=float) - center) * costmap.resolution
             position = costmap.origin.to_position() + Vector3(offset[0], offset[1], 0)
-            orientation: Quaternion = ori_gen(position, costmap.origin)
-            yield Pose(position, orientation, costmap.world.root)
+            base_orientation: Quaternion = ori_gen(position, costmap.origin)
+            base_rotation = base_orientation.to_rotation_matrix()
+            for yaw_offset in TARGET_FACING_YAW_OFFSETS_RAD:
+                orientation = (
+                    base_rotation @ RotationMatrix.from_rpy(0, 0, yaw_offset)
+                ).to_quaternion()
+                yield Pose(position, orientation, costmap.world.root)
 
     def setup_costmaps(self, target: Pose, visible: bool, reachable: bool) -> Costmap:
         """
@@ -288,6 +305,10 @@ class CostmapLocation(Location):
         profile_start = time.perf_counter()
         test_world = deepcopy(self.world)
         test_world.name = "Test World"
+
+        # VizMarkerPublisher(
+        #     _world=test_world, node=rclpy.create_node("urdf_visualization_node")
+        # ).with_tf_publisher()
         if DEBUG_PROFILE_COSTMAP_LOCATION:
             logger.warning(
                 "CostmapLocation profile: deepcopy_world=%.3fs target=%s",
@@ -353,22 +374,6 @@ class CostmapLocation(Location):
         for pose_candidate in pose_candidates:
             logger.debug("Testing candidate pose at %s", pose_candidate)
             tested_candidates += 1
-            if DEBUG_PROFILE_COSTMAP_LOCATION and tested_candidates in (
-                1,
-                10,
-                50,
-                100,
-                250,
-                500,
-                1000,
-            ):
-                logger.warning(
-                    "CostmapLocation profile: target=%s tested=%s elapsed=%.3fs collision_rejections=%s",
-                    target_desc,
-                    tested_candidates,
-                    time.perf_counter() - candidate_loop_start,
-                    collision_rejections,
-                )
             odom_height = test_world.compute_forward_kinematics(
                 test_world.root,
                 test_robot.root.parent_kinematic_structure_entity,
@@ -387,23 +392,16 @@ class CostmapLocation(Location):
                 robot=test_robot,
                 world=test_world,
             )
-
             if collisions:
                 logger.debug("Candidate pose in collision, skipping")
                 collision_rejections += 1
                 continue
 
             if not self.validate_reachability:
-                logger.warning(
-                    "CostmapLocation: target=%s accepted after tested=%s collision_rejections=%s source=%s",
-                    target_desc,
-                    tested_candidates,
-                    collision_rejections,
-                    self._last_costmap_source,
-                )
                 self._last_result = pose_candidate
+                print("pose_candidate in costmaplocation:" + str(pose_candidate))
                 yield pose_candidate
-                continue
+                return
 
             if not (self.reachable or self.visible):
                 self._last_result = pose_candidate
@@ -799,9 +797,9 @@ class GiskardLocation(Location):
 
         test_world = deepcopy(self.world)
         test_world.name = "Test World"
-        VizMarkerPublisher(
-            _world=test_world, node=rclpy.create_node("urdf_visualization_node")
-        ).with_tf_publisher()
+        # VizMarkerPublisher(
+        #     _world=test_world, node=rclpy.create_node("urdf_visualization_node")
+        # ).with_tf_publisher()
         test_robot = self.robot.__class__.from_world(test_world)
         test_ee = test_world._get_world_entity_by_hash(hash(ee.manipulator.tool_frame))
         with test_world.modify_world():

@@ -13,9 +13,7 @@ if __name__ == "__main__":
     Base.metadata.create_all(session.bind)
     session.commit()
     run_thesis_demo(
-        "wipe",
-        robot_name="pr2",
-        environment_name="suturo",
+        "cut", robot_name="pr2", environment_name="apartment", container_kind="cucumber"
     )
     for action in actions:
         for robot in robots:

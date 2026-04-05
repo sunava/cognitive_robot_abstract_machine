@@ -161,13 +161,15 @@ def update_navigation_costmap_debug_publishers(
 
 def resolve_navigation_target(location_designator, *, description):
     try:
-        candidates = list(location_designator)
+        first_candidate = next(iter(location_designator))
     except RuntimeError as exc:
         if "No values in the iterable" not in str(exc):
             raise
-        candidates = []
-    if candidates:
-        return candidates
+        first_candidate = None
+    except StopIteration:
+        first_candidate = None
+    if first_candidate is not None:
+        return [first_candidate]
     raise NavigationGoalNotReachedError(
         f"No collision-free navigation pose found for {description}."
     )
@@ -188,15 +190,18 @@ def is_excluded_kitchen_pose(pose, *, environment_name=None):
 def resolve_navigation_target_for_environment(
     location_designator, *, description, environment_name=None
 ):
-    candidates = resolve_navigation_target(location_designator, description=description)
-    filtered = [
-        candidate
-        for candidate in candidates
-        if not is_excluded_kitchen_pose(candidate, environment_name=environment_name)
-    ]
-    if filtered:
-        return filtered
-    if candidates:
+    saw_candidate = False
+    try:
+        for candidate in location_designator:
+            saw_candidate = True
+            if is_excluded_kitchen_pose(candidate, environment_name=environment_name):
+                continue
+            return [candidate]
+    except RuntimeError as exc:
+        if "No values in the iterable" not in str(exc):
+            raise
+
+    if saw_candidate:
         raise NavigationGoalNotReachedError(
             f"No collision-free navigation pose found for {description} after environment filtering."
         )

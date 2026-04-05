@@ -32,7 +32,11 @@ from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix,
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.geometry import Color
 
-from demos.thesis_new.spawn_random_bowls import _parse_stl, setup_random_bowl_world
+from demos.thesis_new.spawn_random_bowls import (
+    _parse_stl,
+    setup_random_bowl_world,
+    setup_random_mixing_container_world,
+)
 from demos.thesis_new.thesis_math.world_utils import body_local_aabb
 from demos.thesis_new.tool_mounts import get_tool_mount_pose_kwargs
 from demos.thesis_new.utils.demo_utils import (
@@ -210,7 +214,7 @@ def _results_csv_fieldnames():
     ]
 
 
-def _try_mix(context, bowl, arm, tool, *, environment_name=None):
+def _try_mix(context, bowl, pickup_pose, arm, tool, *, environment_name=None):
     with simulated_robot_without_collision:
         _, _ = _timed(
             "mix/reset_pose",
@@ -229,27 +233,7 @@ def _try_mix(context, bowl, arm, tool, *, environment_name=None):
             ).perform(),
         )
 
-        pickup_loc, _ = _timed(
-            "mix/pickup_loc_build",
-            lambda: CostmapLocation(
-                target=bowl.global_pose,
-                reachable=True,
-                reachable_arm=arm,
-                validate_reachability=False,
-                samples=1000,
-                context=context,
-            ),
-        )
-
     with simulated_robot_without_collision:
-        pickup_pose, _ = _timed(
-            "mix/pickup_loc_resolve",
-            lambda: resolve_navigation_target_for_environment(
-                pickup_loc,
-                description=f"mixing {bowl.name}",
-                environment_name=environment_name,
-            )[0],
-        )
         _, _ = _timed(
             "mix/park_arms",
             lambda: sequential(
@@ -395,7 +379,9 @@ def _build_mixing_geometry_binding(bowl):
     }
 
 
-def main_mixing(seed=None, robot_name=None, environment_name=None):
+def main_mixing(
+    seed=None, robot_name=None, environment_name=None, container_kind="bowl"
+):
     global session
     if session is None:
         session = pycram_sessionmaker()()
@@ -407,11 +393,19 @@ def main_mixing(seed=None, robot_name=None, environment_name=None):
         if seed is not None
         else int(np.random.SeedSequence().generate_state(1, dtype=np.uint32)[0])
     )
-    world, _, surface_plan = setup_random_bowl_world(
-        seed=effective_seed,
-        robot_name=robot_name,
-        environment_name=environment_name,
-    )
+    if str(container_kind).lower() == "pot":
+        world, _, surface_plan = setup_random_mixing_container_world(
+            seed=effective_seed,
+            robot_name=robot_name,
+            environment_name=environment_name,
+            container_kind="pot",
+        )
+    else:
+        world, _, surface_plan = setup_random_bowl_world(
+            seed=effective_seed,
+            robot_name=robot_name,
+            environment_name=environment_name,
+        )
 
     node = setup_experiment_runtime(
         world=world,
@@ -483,6 +477,25 @@ def main_mixing(seed=None, robot_name=None, environment_name=None):
             lambda: _update_costmap_debug_publishers(
                 node, context.robot, world, bowl, debug_costmap_publishers
             ),
+        )
+        pickup_loc, _ = _timed(
+            f"bowl/{bowl_name}/pickup_loc_build",
+            lambda: CostmapLocation(
+                target=bowl.global_pose,
+                reachable=True,
+                reachable_arm=arm_tools[0][0] if arm_tools else None,
+                validate_reachability=False,
+                samples=1000,
+                context=context,
+            ),
+        )
+        pickup_pose, pickup_resolve_elapsed = _timed(
+            f"bowl/{bowl_name}/pickup_loc_resolve",
+            lambda: resolve_navigation_target_for_environment(
+                pickup_loc,
+                description=f"mixing {bowl.name}",
+                environment_name=environment_name,
+            )[0],
         )
         attempt_failures = []
         attempt_count = 0
@@ -566,6 +579,7 @@ def main_mixing(seed=None, robot_name=None, environment_name=None):
                     _try_mix(
                         context,
                         bowl,
+                        pickup_pose,
                         arm,
                         tool,
                         environment_name=environment_name,
@@ -620,6 +634,7 @@ def main_mixing(seed=None, robot_name=None, environment_name=None):
                         print(
                             f"[profile] bowl/{bowl_name}/summary: "
                             f"preview={preview_elapsed:.3f}s "
+                            f"pickup_resolve={pickup_resolve_elapsed:.3f}s "
                             f"highlight={highlight_elapsed:.3f}s "
                             f"total={time.perf_counter() - bowl_start_time:.3f}s"
                         )

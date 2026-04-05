@@ -37,6 +37,45 @@ from semantic_digital_twin.world_description.world_entity import (
 logger = logging.getLogger("pycram")
 
 
+def _entity_name(entity) -> str | None:
+    name = getattr(entity, "name", None)
+    if hasattr(name, "name"):
+        name = name.name
+    return str(name) if name is not None else None
+
+
+def _normalize_allowed_collision_map(allowed_collision):
+    normalized = {}
+    if not allowed_collision:
+        return normalized
+
+    for key, value in allowed_collision.items():
+        key_name = _entity_name(key) if not isinstance(key, str) else str(key)
+        if key_name is None:
+            continue
+        allowed_names = set()
+        for item in value or []:
+            item_name = _entity_name(item) if not isinstance(item, str) else str(item)
+            if item_name is not None:
+                allowed_names.add(item_name)
+        normalized[key_name] = allowed_names
+    return normalized
+
+
+def _contact_is_allowed(contact, allowed_collision_map) -> bool:
+    if not allowed_collision_map:
+        return False
+
+    body_a_name = _entity_name(getattr(contact, "body_a", None))
+    body_b_name = _entity_name(getattr(contact, "body_b", None))
+    if body_a_name is None or body_b_name is None:
+        return False
+
+    return body_b_name in allowed_collision_map.get(
+        body_a_name, set()
+    ) or body_a_name in allowed_collision_map.get(body_b_name, set())
+
+
 def visibility_validator(
     robot: AbstractRobot, object_or_pose: Union[Body, Pose], world: World
 ) -> bool:
@@ -163,7 +202,11 @@ def pose_sequence_reachability_validator(
     return True
 
 
-def collision_check(robot: AbstractRobot, world: World) -> List[ClosestPoints]:
+def collision_check(
+    robot: AbstractRobot,
+    world: World,
+    allowed_collision: dict | None = None,
+) -> List[ClosestPoints]:
     """
     This method checks if a given robot collides with any object within the world
     which it is not allowed to collide with.
@@ -173,15 +216,23 @@ def collision_check(robot: AbstractRobot, world: World) -> List[ClosestPoints]:
     list the function will raise a RobotInCollision exception.
 
     :param robot: The robot object in the (Bullet)World where it should be checked if it collides with something
-    :param allowed_collision: dict of objects with which the robot is allowed to collide each object correlates to a list of links of which this object consists
+    :param allowed_collision: Optional mapping of entity names/objects to names/objects
+     with which collisions should be ignored.
     :param world: The world in which collision should be checked
     :raises: RobotInCollision if the robot collides with an object it is not allowed to collide with.
     """
     world.collision_manager.clear_temporary_rules()
     world.collision_manager.add_temporary_rule(AllowSelfCollisions(robot=robot))
     world.collision_manager.update_collision_matrix(buffer=0.0)
+    robot_branch = set(world.get_kinematic_structure_entities_of_branch(robot.root))
+    allowed_collision_map = _normalize_allowed_collision_map(allowed_collision)
     return [
         contact
         for contact in world.collision_manager.compute_collisions().contacts
         if contact.distance <= 0.0
+        and (
+            getattr(contact, "body_a", None) in robot_branch
+            or getattr(contact, "body_b", None) in robot_branch
+        )
+        and not _contact_is_allowed(contact, allowed_collision_map)
     ]

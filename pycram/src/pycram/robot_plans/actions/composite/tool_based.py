@@ -236,15 +236,16 @@ class GeneralizedActionPlan(ActionDescription):
             tip = ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
         try:
             self.add_subplan(
-                execute_single(
-                    MoveTCPWaypointsAlignedMotion(
-                        pointery,
-                        self.arm,
-                        allow_gripper_collision=False,
-                        # avoid_all_collisions=True,
-                        alignment_pairs=alignment_pairs,
-                        tip=tip,
-                    ),
+                sequential(
+                    [
+                        MoveTCPWaypointsAlignedMotion(
+                            pointery,
+                            self.arm,
+                            allow_gripper_collision=False,
+                            alignment_pairs=alignment_pairs,
+                            tip=tip,
+                        ),
+                    ]
                 )
             ).perform()
 

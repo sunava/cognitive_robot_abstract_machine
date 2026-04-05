@@ -3,6 +3,8 @@ from typing import Optional
 
 from typing_extensions import List
 
+from giskardpy.motion_statechart.goals.templates import Parallel
+from giskardpy.motion_statechart.tasks.align_planes import AlignPlanes
 from giskardpy.motion_statechart.tasks.pointing import Pointing
 from semantic_digital_twin.spatial_types import Vector3
 from semantic_digital_twin.spatial_types.spatial_types import Pose
@@ -55,8 +57,32 @@ class MoveJointsMotion(BaseMotion):
     @property
     def _motion_chart(self):
         dofs = [self.world.get_connection_by_name(name) for name in self.names]
-        return JointPositionList(
+        joint_task = JointPositionList(
             goal_state=JointState.from_mapping(dict(zip(dofs, self.positions)))
+        )
+        if (
+            not self.align
+            or self.tip_link is None
+            or self.tip_normal is None
+            or self.root_link is None
+            or self.root_normal is None
+        ):
+            return joint_task
+
+        return Parallel(
+            [
+                joint_task,
+                AlignPlanes(
+                    tip_link=self.world.get_kinematic_structure_entity_by_name(
+                        self.tip_link
+                    ),
+                    root_link=self.world.get_kinematic_structure_entity_by_name(
+                        self.root_link
+                    ),
+                    tip_normal=self.tip_normal,
+                    goal_normal=self.root_normal,
+                ),
+            ]
         )
 
 

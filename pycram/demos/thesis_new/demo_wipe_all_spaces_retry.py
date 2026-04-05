@@ -305,7 +305,7 @@ def _attach_sponges_for_available_arms(world):
     return [(arm, tools_by_arm[arm]) for arm, _ in arm_frames]
 
 
-def _try_wipe(context, target_pose, arm, tool, *, environment_name=None):
+def _try_wipe(context, target_pose, pickup_pose, arm, tool, *, environment_name=None):
     with simulated_robot_without_collision:
         _, _ = _timed(
             "wipe/reset_pose",
@@ -324,27 +324,7 @@ def _try_wipe(context, target_pose, arm, tool, *, environment_name=None):
             ).perform(),
         )
 
-        pickup_loc, _ = _timed(
-            "wipe/pickup_loc_build",
-            lambda: CostmapLocation(
-                target=target_pose,
-                reachable=True,
-                reachable_arm=arm,
-                validate_reachability=False,
-                samples=1000,
-                context=context,
-            ),
-        )
-
     with simulated_robot_without_collision:
-        pickup_pose, _ = _timed(
-            "wipe/pickup_loc_resolve",
-            lambda: resolve_navigation_target_for_environment(
-                pickup_loc,
-                description="wiping target",
-                environment_name=environment_name,
-            )[0],
-        )
         _, _ = _timed(
             "wipe/park_arms",
             lambda: sequential(
@@ -515,6 +495,25 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
             successful_target_names=successful_target_names,
         )
         highlight_elapsed = 0.0
+        pickup_loc, _ = _timed(
+            f"target/{target_name}/pickup_loc_build",
+            lambda: CostmapLocation(
+                target=target_pose,
+                reachable=True,
+                reachable_arm=arm_tools[0][0] if arm_tools else None,
+                validate_reachability=False,
+                samples=1000,
+                context=context,
+            ),
+        )
+        pickup_pose, pickup_resolve_elapsed = _timed(
+            f"target/{target_name}/pickup_loc_resolve",
+            lambda: resolve_navigation_target_for_environment(
+                pickup_loc,
+                description="wiping target",
+                environment_name=environment_name,
+            )[0],
+        )
         spawn_xyz = np.round(
             np.asarray(target_data["pose_xyz"], dtype=float), 4
         ).tolist()
@@ -599,6 +598,7 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
                     _try_wipe(
                         context,
                         phase_target_pose,
+                        pickup_pose,
                         arm,
                         tool,
                         environment_name=environment_name,
@@ -663,6 +663,7 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
                         print(
                             f"[profile] target/{target_name}/summary: "
                             f"preview={preview_elapsed:.3f}s "
+                            f"pickup_resolve={pickup_resolve_elapsed:.3f}s "
                             f"highlight={highlight_elapsed:.3f}s "
                             f"total={time.perf_counter() - target_start_time:.3f}s"
                         )

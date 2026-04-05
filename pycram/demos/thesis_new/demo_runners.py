@@ -26,11 +26,14 @@ def get_thesis_demo_runner(task_name):
     return THESIS_DEMO_RUNNERS[normalized]
 
 
-def run_thesis_demo(task_name, *, seed=None, robot_name=None, environment_name=None):
+def run_thesis_demo(
+    task_name, *, seed=None, robot_name=None, environment_name=None, **runner_kwargs
+):
     runner = get_thesis_demo_runner(task_name)
     resolved_robot_name = resolve_robot_name(robot_name)
     return runner(
         seed=seed,
         robot_name=resolved_robot_name,
         environment_name=environment_name,
+        **runner_kwargs,
     )

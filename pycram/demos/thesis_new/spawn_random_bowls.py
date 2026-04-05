@@ -23,6 +23,7 @@ BOWL_RADIUS_SAFETY_FACTOR = 1.08
 MIN_BOWL_CLEARANCE_M = 0.03
 STRICT_CLEAN_MODE = True
 DEFAULT_BOWL_COLOR = Color(R=0.78, G=0.80, B=0.86)
+DEFAULT_POT_COLOR = Color(R=0.56, G=0.58, B=0.62)
 VERTICAL_WIPE_SURFACE_CANDIDATES = (
     ("cabinet3", 2),
     ("cabinet9", 2),
@@ -55,12 +56,16 @@ def _parse_stl(*relative_path_parts):
     return STLParser(os.path.join(RESOURCES_DIR, *relative_path_parts)).parse()
 
 
-def _bowl_base_xy_radius():
-    bowl = _parse_stl("objects", "bowl.stl")
+def _container_base_xy_radius(*mesh_parts):
+    bowl = _parse_stl(*mesh_parts)
     mins, maxs = body_local_aabb(bowl.root, use_visual=False, apply_shape_scale=True)
     dx = max(0.0, float(maxs[0] - mins[0]))
     dy = max(0.0, float(maxs[1] - mins[1]))
     return 0.5 * np.hypot(dx, dy)
+
+
+def _bowl_base_xy_radius():
+    return _container_base_xy_radius("objects", "bowl.stl")
 
 
 def _sample_vertical_wipe_targets(
@@ -211,18 +216,38 @@ def _resolve_vertical_wipe_surfaces(world):
 
 
 def _sample_random_bowl_layout(
-    world, seed=None, robot_name=None, environment_name=None, spawn_bowls=True
+    world,
+    seed=None,
+    robot_name=None,
+    environment_name=None,
+    spawn_bowls=True,
+    container_kind="bowl",
 ):
+    mesh_parts = (
+        ("pycram_object_gap_demo", "pot_1.stl")
+        if str(container_kind).lower() == "pot"
+        else ("objects", "bowl.stl")
+    )
+    scale_choices = (
+        np.array([0.8], dtype=float)
+        if str(container_kind).lower() == "pot"
+        else np.array([0.8, 1.0, 1.2, 1.4, 1.6], dtype=float)
+    )
+    object_color = (
+        DEFAULT_POT_COLOR
+        if str(container_kind).lower() == "pot"
+        else DEFAULT_BOWL_COLOR
+    )
     world, tuple_placements, surface_plan = _sample_random_surface_layout(
         world=world,
         seed=seed,
         environment_name=environment_name,
         object_label="bowl",
         object_name_prefix="bowl",
-        mesh_parts=("objects", "bowl.stl"),
-        object_color=DEFAULT_BOWL_COLOR,
-        scale_choices=np.array([0.8, 1.0, 1.2, 1.4, 1.6], dtype=float),
-        base_radius=_bowl_base_xy_radius(),
+        mesh_parts=mesh_parts,
+        object_color=object_color,
+        scale_choices=scale_choices,
+        base_radius=_container_base_xy_radius(*mesh_parts),
         radius_safety_factor=BOWL_RADIUS_SAFETY_FACTOR,
         min_clearance_m=MIN_BOWL_CLEARANCE_M,
         strict_clean_mode=STRICT_CLEAN_MODE,
@@ -251,12 +276,24 @@ def _sample_random_bowl_layout(
 
 
 def setup_random_bowl_world(seed=None, robot_name=None, environment_name=None):
+    return setup_random_mixing_container_world(
+        seed=seed,
+        robot_name=robot_name,
+        environment_name=environment_name,
+        container_kind="bowl",
+    )
+
+
+def setup_random_mixing_container_world(
+    seed=None, robot_name=None, environment_name=None, container_kind="bowl"
+):
     world, placements, surface_plan = _sample_random_bowl_layout(
         setup_thesis_world(robot_name=robot_name, environment_name=environment_name),
         seed=seed,
         robot_name=robot_name,
         environment_name=environment_name,
         spawn_bowls=True,
+        container_kind=container_kind,
     )
     return (
         world,

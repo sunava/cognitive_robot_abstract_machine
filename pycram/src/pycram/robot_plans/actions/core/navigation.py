@@ -37,22 +37,16 @@ class NavigateAction(ActionDescription):
     """
 
     def execute(self) -> None:
-        if isinstance(self.target_location, CostmapLocation):
-            self.target_location.plan_node = self.plan_node
-            # Tries to find a pick-up position for the robot that uses the given arm
-            self.target_location = self.target_location.resolve()
 
-            print("Navigation through costmap:", str(self.target_location.to_np()))
-
-            self.add_subplan(
-                execute_single(
-                    MoveMotion(
-                        self.target_location,
-                        self.keep_joint_states,
-                        teleport=self.teleport,
-                    )
+        self.add_subplan(
+            execute_single(
+                MoveMotion(
+                    self.target_location,
+                    self.keep_joint_states,
+                    teleport=self.teleport,
                 )
-            ).perform()
+            )
+        ).perform()
 
 
 @dataclass

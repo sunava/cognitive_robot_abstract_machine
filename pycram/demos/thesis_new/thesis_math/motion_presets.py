@@ -14,6 +14,8 @@ from demos.thesis_new.thesis_math.motion_profiles import (
 )
 from demos.thesis_new.thesis_math.world_utils import body_local_aabb
 
+APPROACH_Z_EXTRA_CLEARANCE_M = 0.02
+
 
 def build_default_sequence():
     """Return a fixed 3-phase demo sequence in local coordinates."""
@@ -78,14 +80,17 @@ def build_container_sequence(
 
     center_y = 0.5 * (mins[1] + maxs[1])
     surface_margin = 0.005
-    start_offset = np.array([0.0, center_y, maxs[2] - surface_margin], dtype=float)
+    start_offset = np.array(
+        [0.0, center_y, maxs[2] + APPROACH_Z_EXTRA_CLEARANCE_M - surface_margin],
+        dtype=float,
+    )
     duration_scale = _duration_scale_from_body(
         bowl_body,
         reference_size=reference_size,
         debug=debug,
         apply_shape_scale=apply_shape_scale,
     )
-    spiral_r1 = 0.9 * radius_xy
+    spiral_r1 = 0.75 * radius_xy
     if debug:
         print(
             "[motion_presets] params "
@@ -113,7 +118,7 @@ def build_container_sequence(
         ),
     )
 
-    stir_amp = max(0.005, 0.7 * radius_xy)
+    stir_amp = max(0.005, 0.55 * radius_xy)
     stir_base_duration = max(1.0, 2.0 * duration_scale)
     if mix_duration_s is not None and float(mix_duration_s) > 0.0:
         total_duration = float(mix_duration_s)
@@ -162,7 +167,14 @@ def build_surface_sequence(
     center_x = 0.5 * (mins[0] + maxs[0])
     center_y = 0.5 * (mins[1] + maxs[1])
     surface_margin = 0.005
-    start_offset = np.array([center_x, center_y, maxs[2] - surface_margin], dtype=float)
+    start_offset = np.array(
+        [
+            center_x,
+            center_y,
+            maxs[2] + APPROACH_Z_EXTRA_CLEARANCE_M - surface_margin,
+        ],
+        dtype=float,
+    )
     duration_scale = _duration_scale_from_body(
         surface_body,
         reference_size=reference_size,
@@ -237,7 +249,7 @@ def build_cutting_sequence(
     slice_thickness=0.03,
     num_cuts_x=1,
 ):
-    """Build a slicing sequence sized to a food object."""
+    """Build a cutting sequence sized to a food object."""
     mins, maxs = body_local_aabb(
         food_body,
         use_visual=use_visual_aabb,
@@ -256,7 +268,7 @@ def build_cutting_sequence(
 
     margin_x = min(0.01, 0.15 * size_x)
     margin_y = min(0.01, 0.10 * size_y)
-    z_clearance = max(0.01, 0.25 * size_z)
+    z_clearance = max(0.01, 0.25 * size_z) + APPROACH_Z_EXTRA_CLEARANCE_M
     z_top = maxs[2] + z_clearance
     z_cut = mins[2] + max(0.003, 0.05 * size_z)
     center_y = 0.5 * (mins[1] + maxs[1])
@@ -265,8 +277,13 @@ def build_cutting_sequence(
     requested_thickness = max(float(slice_thickness), 1e-4)
     x_anchor = mins[0] + margin_x + min(0.5 * requested_thickness, 0.5 * usable_x)
     x_max_anchor = maxs[0] - margin_x - min(0.5 * requested_thickness, 0.5 * usable_x)
+    technique = str(technique).lower()
+
     n_cuts = max(1, int(num_cuts_x))
-    if n_cuts == 1:
+    if technique in ("halving", "halve"):
+        x_anchors = [0.5 * (mins[0] + maxs[0])]
+        z_cut = 0.5 * (mins[2] + maxs[2])
+    elif n_cuts == 1:
         x_anchors = [x_anchor]
     else:
         if x_max_anchor <= x_anchor:
@@ -291,7 +308,7 @@ def build_cutting_sequence(
 
     technique = str(technique).lower()
     phases = []
-    if technique in "slice":
+    if technique in ("slice", "slicing", "halving", "halve"):
         for cut_idx, x_curr in enumerate(x_anchors):
             phases.extend(
                 [
