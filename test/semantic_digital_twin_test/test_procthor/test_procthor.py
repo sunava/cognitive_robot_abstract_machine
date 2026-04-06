@@ -19,12 +19,21 @@ from semantic_digital_twin.adapters.procthor.procthor_parser import (
 )
 from semantic_digital_twin.adapters.procthor.procthor_resolver import (
     ProcthorResolver,
+    semantic_annotation_to_ycb_mesh_mapping,
 )
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
+from semantic_digital_twin.pipeline.pipeline import (
+    Pipeline,
+    SemanticAnnotationGeometryReplacement,
+    MergeParentWithChildIfCorrectChildSubname,
+)
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Bread,
     Floor,
     Door,
+    Mug,
+    Cup,
+    Bowl,
 )
 from semantic_digital_twin.spatial_types.spatial_types import (
     HomogeneousTransformationMatrix,
@@ -370,6 +379,42 @@ class ProcTHORTestCase(unittest.TestCase):
         ).parse()
 
         assert world is not None
+
+    def test_procthor_ycb_pipeline(self):
+        semantic_digital_twin_database_uri = os.environ.get(
+            "SEMANTIC_DIGITAL_TWIN_DATABASE_URI"
+        )
+
+        # Create database engine and session
+        engine = create_engine(semantic_digital_twin_database_uri)
+        session = Session(engine)
+
+        world = ProcTHORParser.from_file(
+            os.path.join(
+                resource_filename("semantic_digital_twin", "../../"),
+                "resources",
+                "procthor_json",
+                "house_1.json",
+            ),
+            session=session,
+        ).parse()
+
+        pipeline = Pipeline(
+            [
+                MergeParentWithChildIfCorrectChildSubname(matching_subname="volume"),
+                SemanticAnnotationGeometryReplacement(
+                    object_mappings=semantic_annotation_to_ycb_mesh_mapping
+                ),
+            ]
+        )
+        pipeline.apply(world)
+
+        mugs = world.get_semantic_annotations_by_type(Mug)
+        assert len(mugs) == 2
+        cups = world.get_semantic_annotations_by_type(Cup)
+        assert len(cups) == 1
+        bowls = world.get_semantic_annotations_by_type(Bowl)
+        assert len(bowls) == 2
 
     def test_procthor_views(self):
         """

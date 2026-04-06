@@ -1,19 +1,22 @@
 import json
 import logging
 import math
+import os
 from dataclasses import dataclass, field
-from functools import cached_property
+from functools import cached_property, lru_cache
 from pathlib import Path
 from typing import Dict, Tuple, Union, Set, Optional, List, Any, Self
 
 import numpy as np
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import assert_never
 
+from krrood.ormatic.utils import create_engine
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.datastructures.variables import SpatialVariables
+from semantic_digital_twin.orm.exceptions import DatabaseNotAvailableError
 from semantic_digital_twin.orm.ormatic_interface import *
 from semantic_digital_twin.semantic_annotations.position_descriptions import (
     SemanticPositionDescription,
@@ -21,7 +24,6 @@ from semantic_digital_twin.semantic_annotations.position_descriptions import (
     VerticalSemanticDirection,
 )
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
-    Room,
     Floor,
     Handle,
     Door,
@@ -33,6 +35,7 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Bathroom,
     LivingRoom,
 )
+from semantic_digital_twin.spatial_types.derivatives import DerivativeMap
 from semantic_digital_twin.spatial_types.spatial_types import (
     HomogeneousTransformationMatrix,
     Point3,
@@ -40,6 +43,9 @@ from semantic_digital_twin.spatial_types.spatial_types import (
 )
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import FixedConnection
+from semantic_digital_twin.world_description.degree_of_freedom import (
+    DegreeOfFreedomLimits,
+)
 from semantic_digital_twin.world_description.geometry import Scale
 from semantic_digital_twin.world_description.world_entity import Body
 
@@ -151,7 +157,6 @@ class ProcthorDoor:
         Parses the parameters according to the double door assumptions, and returns a double door factory.
         """
         one_door_scale = Scale(self.thickness, self.scale.y * 0.5, self.scale.z)
-        x_direction: float = one_door_scale.x / 2
         y_direction: float = one_door_scale.y / 2
         handle_directions = [Vector3.Y(), Vector3.NEGATIVE_Y()]
 
@@ -175,22 +180,23 @@ class ProcthorDoor:
                 vertical_direction_chain=[VerticalSemanticDirection.FULLY_CENTER],
             )
 
-            wall_T_door = HomogeneousTransformationMatrix.from_xyz_rpy(
-                x=x_direction,
+            door_T_single_door = HomogeneousTransformationMatrix.from_xyz_rpy(
                 y=(
                     (-y_direction)
                     if np.allclose(direction, Vector3.Y())
                     else y_direction
                 ),
             )
-            world_T_door = self.world_T_parent_wall @ wall_T_door
+            world_T_single_door = (
+                self.world_T_parent_wall @ self.wall_T_door @ door_T_single_door
+            )
 
             door = self._add_single_door_to_world(
                 semantic_handle_position=semantic_position,
                 world=world,
                 name=single_door_name,
                 scale=one_door_scale,
-                world_T_door=world_T_door,
+                world_T_door=world_T_single_door,
             )
 
             doors.append(door)
@@ -222,7 +228,11 @@ class ProcthorDoor:
             scale.to_simple_event().as_composite_set().marginal(SpatialVariables.yz)
         )
         door_T_handle = HomogeneousTransformationMatrix.from_xyz_rpy(
-            x=scale.x / 2, y=sampled_2d_point[0], z=sampled_2d_point[1]
+            x=-(scale.x / 2),
+            y=sampled_2d_point[0],
+            z=sampled_2d_point[1],
+            yaw=np.pi,
+            roll=np.pi / 2,
         )
 
         world_T_door = world_T_door or self.world_T_parent_wall @ self.wall_T_door
@@ -245,14 +255,24 @@ class ProcthorDoor:
             door.add_handle(handle)
 
         with world.modify_world():
+            lower_limits = DerivativeMap()
+            lower_limits.position = 0
+            lower_limits.velocity = -1
+            upper_limits = DerivativeMap()
+            upper_limits.position = np.pi * 1.5
+            upper_limits.velocity = 1
+
             world_T_hinge = door.calculate_world_T_hinge_based_on_handle(Vector3.Z())
             hinge = Hinge.create_with_new_body_in_world(
                 name=PrefixedName(f"{name.name}_hinge", name.prefix),
                 world=world,
                 world_root_T_self=world_T_hinge,
                 active_axis=Vector3.Z(),
+                connection_limits=DegreeOfFreedomLimits(
+                    lower=lower_limits,
+                    upper=upper_limits,
+                ),
             )
-
             door.add_hinge(hinge)
         return door
 
@@ -574,7 +594,8 @@ class ProcthorObject:
                 f"Could not find asset {asset_id} in the database. Skipping object and its children."
             )
             return None
-
+        for kse in body_world.kinematic_structure_entities:
+            kse.regenerate_id()
         with body_world.modify_world():
 
             for child in self.object_dict.get("children", {}):
@@ -841,3 +862,16 @@ def get_world_by_asset_id(session: Session, asset_id: str) -> Optional[World]:
             )
 
     return world_mapping.from_dao() if world_mapping else None
+
+
+@lru_cache
+def procthor_sessionmaker():
+    """
+    Creates a session maker for the procthor experiments database.
+    This requires the environment variable `PROCTHOR_EXPERIMENTS_DATABASE_URI` to be set to a reachable database.
+    """
+    uri = os.environ.get("PROCTHOR_EXPERIMENTS_DATABASE_URI")
+    if uri is None:
+        raise DatabaseNotAvailableError()
+    engine = create_engine(uri)
+    return sessionmaker(bind=engine)

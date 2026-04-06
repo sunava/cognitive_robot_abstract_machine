@@ -467,7 +467,7 @@ class InsideOf(KinematicStructureEntitySpatialRelation):
         inside = mesh_b_bbox.contains(mesh_a.vertices)
         if len(inside) == 0:
             return 0.0
-        return sum(inside) / len(inside)
+        return float(sum(inside) / len(inside))
 
 
 @dataclass
