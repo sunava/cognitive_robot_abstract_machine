@@ -36,16 +36,16 @@ def setup_experiment_runtime(world, node_name):
     node = rclpy.create_node(node_name)
     tf_wrapper = TFWrapper(node=node)
     TFPublisher(node=node, _world=world)
-    VizMarkerPublisher(
-        _world=world, node=node, shape_source=ShapeSource.VISUAL_WITH_COLLISION_BACKUP
-    )
+    # VizMarkerPublisher(
+    #     _world=world, node=node, shape_source=ShapeSource.VISUAL_WITH_COLLISION_BACKUP
+    # )
     robot = get_primary_robot(world)
-    tf_wrapper.wait_for_transform(
-        "apartment/apartment_root",
-        str(robot.root.name),
-        timeout=RclpyDuration(seconds=1.0),
-        time=Time(),
-    )
+    # tf_wrapper.wait_for_transform(
+    #     "apartment/apartment_root",
+    #     str(robot.root.name),
+    #     timeout=RclpyDuration(seconds=1.0),
+    #     time=Time(),
+    # )
     return node
 
 

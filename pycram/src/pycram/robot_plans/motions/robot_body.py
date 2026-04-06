@@ -3,6 +3,7 @@ from typing import Optional
 
 from typing_extensions import List
 
+from giskardpy.motion_statechart.data_types import DefaultWeights
 from giskardpy.motion_statechart.goals.templates import Parallel
 from giskardpy.motion_statechart.tasks.align_planes import AlignPlanes
 from giskardpy.motion_statechart.tasks.pointing import Pointing
@@ -14,6 +15,7 @@ from pycram.robot_plans.motions.base import BaseMotion
 from giskardpy.motion_statechart.tasks.joint_tasks import JointPositionList, JointState
 
 from pycram.view_manager import ViewManager
+from semantic_digital_twin.world_description.world_entity import Body
 
 
 @dataclass
@@ -34,7 +36,7 @@ class MoveJointsMotion(BaseMotion):
     """
     If True, aligns the end-effector with a specified axis (optional).
     """
-    tip_link: Optional[str] = None
+    tip_link: Optional[Body] = None
     """
     Name of the tip link to align with, e.g the object (optional).
     """
@@ -42,7 +44,7 @@ class MoveJointsMotion(BaseMotion):
     """
     Normalized vector representing the current orientation axis of the end-effector (optional).
     """
-    root_link: Optional[str] = None
+    root_link: Optional[Body] = None
     """
     Base link of the robot; typically set to the torso (optional).
     """
@@ -73,14 +75,11 @@ class MoveJointsMotion(BaseMotion):
             [
                 joint_task,
                 AlignPlanes(
-                    tip_link=self.world.get_kinematic_structure_entity_by_name(
-                        self.tip_link
-                    ),
-                    root_link=self.world.get_kinematic_structure_entity_by_name(
-                        self.root_link
-                    ),
+                    tip_link=self.tip_link,
+                    root_link=self.root_link,
                     tip_normal=self.tip_normal,
                     goal_normal=self.root_normal,
+                    weight=DefaultWeights.WEIGHT_BELOW_CA.value,
                 ),
             ]
         )

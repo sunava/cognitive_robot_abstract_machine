@@ -23,6 +23,7 @@ from semantic_digital_twin.datastructures.definitions import (
     StaticJointState,
 )
 from semantic_digital_twin.spatial_types import Vector3
+from semantic_digital_twin.world_description.world_entity import Body
 
 logger = logging.getLogger(__name__)
 
@@ -190,30 +191,28 @@ class CarryAction(ActionDescription):
     If True, aligns the end-effector with a specified axis.
     """
 
-    tip_link: Optional[str] = None
+    tip_link: Optional[Body] = None
     """
     Name of the tip link to align with, e.g the object.
     """
 
-    tip_axis: Optional[AxisIdentifier] = None
+    tip_axis: Optional[Vector3] = None
     """
     Tip axis of the tip link, that should be aligned.
     """
 
-    root_link: Optional[str] = None
+    root_link: Optional[Body] = None
     """
     Base link of the robot; typically set to the torso.
     """
 
-    root_axis: Optional[AxisIdentifier] = None
+    root_axis: Optional[Vector3] = None
     """
     Goal axis of the root link, that should be used to align with.
     """
 
     def execute(self) -> None:
         joint_names, joint_poses = self.get_joint_poses()
-        tip_normal = self.axis_to_vector3_stamped(self.tip_axis, link=self.tip_link)
-        root_normal = self.axis_to_vector3_stamped(self.root_axis, link=self.root_link)
         self.add_subplan(
             execute_single(
                 MoveJointsMotion(
@@ -221,9 +220,9 @@ class CarryAction(ActionDescription):
                     positions=joint_poses,
                     align=self.align,
                     tip_link=self.tip_link,
-                    tip_normal=tip_normal,
+                    tip_normal=self.tip_axis,
                     root_link=self.root_link,
-                    root_normal=root_normal,
+                    root_normal=self.root_axis,
                 )
             )
         ).perform()
@@ -240,17 +239,6 @@ class CarryAction(ActionDescription):
             names.extend([c.name.name for c in joint_state.connections])
             values.extend(joint_state.target_values)
         return names, values
-
-    def axis_to_vector3_stamped(
-        self, axis: AxisIdentifier, link: str = "base_link"
-    ) -> Vector3:
-        v = {
-            AxisIdentifier.X: Vector3(x=1.0, y=0.0, z=0.0),
-            AxisIdentifier.Y: Vector3(x=0.0, y=1.0, z=0.0),
-            AxisIdentifier.Z: Vector3(x=0.0, y=0.0, z=1.0),
-        }[axis]
-        v.frame_id = link
-        return v
 
 
 @dataclass

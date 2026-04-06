@@ -68,7 +68,11 @@ from semantic_digital_twin.adapters.mesh import STLParser
 
 from semantic_digital_twin.datastructures.definitions import TorsoState, GripperState
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Knife, Whisk
-from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix, Point3
+from semantic_digital_twin.spatial_types import (
+    HomogeneousTransformationMatrix,
+    Point3,
+    Vector3,
+)
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.geometry import Color, Scale
 from semantic_digital_twin.world_description.world_entity import WorldEntity
@@ -574,26 +578,15 @@ def main_cutting(
     bread_results = []
     initialize_csv(RESULTS_CSV_PATH, _results_csv_fieldnames())
     debug_costmap_publishers = {}
-    left_knife = world.get_body_by_name("knife_left")
-    right_knife = world.get_body_by_name("knife_right")
-    with simulated_robot_without_collision:
-        sequential(
-            [
-                ParkArmsAction(get_park_arms_argument(world)),
-                MoveTorsoAction(TorsoState.HIGH),
-            ],
-            context,
-        ).perform()
-    # CarryAction(
-    #               Arms.LEFT,
-    #               True,
-    #               left_knife,
-    #               AxisIdentifier.Z,
-    #               context.robot,
-    #               AxisIdentifier.Z,
-    #           ),
+
     for bread in breads:
         bread_name = _body_name(bread)
+        bread_start_time = time.perf_counter()
+        attempt_failures = []
+        attempt_count = 0
+        collision_failure_count = 0
+        perturbation_applied = False
+        perturbation_type = ""
         debug_costmap_publishers, preview_elapsed = _timed(
             f"bread/{bread_name}/costmap_preview",
             lambda: _update_costmap_debug_publishers(
@@ -617,20 +610,6 @@ def main_cutting(
                 context=context,
             ),
         )
-        pickup_pose, pickup_resolve_elapsed = _timed(
-            f"bread/{bread_name}/pickup_loc_resolve",
-            lambda: resolve_navigation_target_for_environment(
-                pickup_loc,
-                description=f"cutting {bread.name}",
-                environment_name=environment_name,
-            )[0],
-        )
-        attempt_failures = []
-        attempt_count = 0
-        collision_failure_count = 0
-        bread_start_time = time.perf_counter()
-        perturbation_applied = False
-        perturbation_type = ""
         _, highlight_elapsed = _timed(
             f"bread/{bread_name}/highlight",
             lambda: highlight_current_target(
@@ -670,6 +649,63 @@ def main_cutting(
             ),
             "assistance_type": assistance_type_from_knowledge(cutting_knowledge),
         }
+        try:
+            pickup_pose, pickup_resolve_elapsed = _timed(
+                f"bread/{bread_name}/pickup_loc_resolve",
+                lambda: resolve_navigation_target_for_environment(
+                    pickup_loc,
+                    description=f"cutting {bread.name}",
+                    environment_name=environment_name,
+                )[0],
+            )
+        except Exception as exc:
+            failed += 1
+            failed_breads.add(bread)
+            attempt_failures.append(f"navigation setup -> {_format_attempt_error(exc)}")
+            fallback_tool = arm_tools[-1][1] if arm_tools else None
+            result_row = _record_bread_result(
+                bread_results,
+                bread_name,
+                robot_name,
+                "failed",
+                "",
+                _tool_name(fallback_tool),
+                "pickup_setup",
+                attempt_failures,
+                **common_result_kwargs,
+                feasibility_reason="navigation_target_resolution_failed",
+                robot_decision="skip_object",
+                decision_reason="pickup_pose_unavailable",
+                assistance_requested=False,
+                assistance_completed=False,
+                task_blocked_by_prerequisite=False,
+                task_resumed_after_assistance=False,
+                final_success=False,
+                total_attempts=attempt_count,
+                retry_count=0,
+                collision_failure_count=collision_failure_count,
+                recovery_used=False,
+                recovery_success=False,
+                perturbation_applied=perturbation_applied,
+                perturbation_type=perturbation_type,
+                execution_time_s=time.perf_counter() - bread_start_time,
+                geometry_binding=_build_cut_geometry_binding(
+                    bread,
+                    cutting_technique=cut_cfg["technique"],
+                    num_cuts_x=cut_cfg["num_cuts_x"],
+                ),
+            )
+            append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
+            print(
+                f"[skip] {bread_name}: pickup pose resolution failed "
+                f"({type(exc).__name__}: {exc})"
+            )
+            if DEBUG_PROFILE_CUTTING:
+                print(
+                    f"[profile] bread/{bread_name}/setup_failed_total: "
+                    f"{time.perf_counter() - bread_start_time:.3f}s"
+                )
+            continue
         arm_attempt_groups = [
             ("primary", arm_tools),
             ("after_rotation", arm_tools),
