@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 
 from typing_extensions import Optional, Tuple, Union, List
@@ -149,10 +150,11 @@ class URDFParser:
     @classmethod
     def from_file(
         cls,
-        file_path: str,
+        file_path: str | os.PathLike[str],
         prefix: Optional[str] = None,
         path_resolver: Optional[PathResolver] = None,
     ) -> URDFParser:
+        file_path = os.fspath(file_path)
         if file_path.endswith(".xacro"):
             return cls.from_xacro(file_path, prefix)
 

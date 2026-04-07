@@ -17,7 +17,9 @@ The tutorial demonstrates the creation of a body and its visual and collision in
 First, let's create a world.
 
 ```{code-cell} ipython3
-from pkg_resources import resource_filename
+from pathlib import Path
+
+import semantic_digital_twin
 
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.spatial_types.spatial_types import HomogeneousTransformationMatrix, RotationMatrix
@@ -60,7 +62,7 @@ cylinder_origin = HomogeneousTransformationMatrix.from_point_rotation_matrix(poi
 cylinder = Cylinder(origin=cylinder_origin, width=0.05, height=0.5)
 
 mesh = Mesh(origin=HomogeneousTransformationMatrix(),
-            filename=os.path.join(resource_filename("semantic_digital_twin", "../../"), "resources", "stl", "milk.stl"))
+            filename=Path(semantic_digital_twin.__file__).resolve().parents[2] / "resources" / "stl" / "milk.stl")
 
 collision = ShapeCollection([cylinder, sphere, box])
 visual = ShapeCollection([mesh])
