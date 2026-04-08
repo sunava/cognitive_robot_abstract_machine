@@ -647,14 +647,16 @@ class Mesh(Shape):
         )
 
     @classmethod
-    def project_uv(
+    def project_texture_coordinates(
         cls,
         mesh: trimesh.Trimesh,
         projection_axis: np.ndarray,
         scale: np.ndarray,
     ) -> trimesh.Trimesh:
         """
-        Generate UV coordinates by projecting vertices along an axis and normalizing by scale.
+        Generate texture coordinates by projecting vertices along an axis and normalizing by scale.
+        This prepares the mesh for rendering with a texture map using
+        `UV mapping <https://en.wikipedia.org/wiki/UV_mapping>`_.
 
         :param mesh: The mesh to apply UVs to.
         :param projection_axis: A (3,) array representing the axis to project along (e.g., [0, 0, 1] for Z).

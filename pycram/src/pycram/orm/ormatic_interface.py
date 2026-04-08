@@ -3888,7 +3888,7 @@ class IncorrectWorldStateValueShapeErrorDAO(
 class IndexBoxDAO(
     Base,
     DataAccessObject[
-        semantic_digital_twin.pipeline.mesh_decomposition.box_decomposer.IndexBox
+        semantic_digital_twin.pipeline.mesh_decomposition.box_decomposer.FrozenIndexBox
     ],
 ):
 

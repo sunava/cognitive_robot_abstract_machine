@@ -6,8 +6,6 @@ from pathlib import Path
 from typing import List, Dict, Any, Self
 
 import numpy as np
-import trimesh
-import trimesh.repair
 from typing_extensions import Optional, Tuple, assert_never
 
 from krrood.adapters.exceptions import JSON_TYPE_NAME
@@ -40,10 +38,16 @@ from semantic_digital_twin.world_description.world_entity import (
 class Sage10kBase(SubclassJSONSerializer):
     """
     Base class for all classes of the Sage 10k dataset.
+
     These objects are serialized with JSON in a layout*.json and behave a bit different than the SubClassJSONSerializer
     of KRROOD asserts. The data of Sage10k does not support polymorphism and hence does not give any column that
     specifies their type. The JSON interface therefore just hard codes the type the referenced data should have.
     Use with care.
+
+    .. important::
+
+        All subclasses of Sage10kBase are only to load the data from the Sage 10k dataset.
+        Do not use them for anything else.
     """
 
 
@@ -299,7 +303,7 @@ class Sage10kWall(Sage10kWithID):
 
         wall_mesh = body.collision.combined_mesh
 
-        wall_mesh = Mesh.project_uv(
+        wall_mesh = Mesh.project_texture_coordinates(
             mesh=wall_mesh,
             projection_axis=np.array([1, 0, 0]),
             scale=np.array([self.thickness, wall_length, self.height]),
@@ -598,7 +602,7 @@ class Sage10kDoor(Sage10kWithID):
         body = annotation.root
         door_mesh = body.collision.combined_mesh
 
-        door_mesh = Mesh.project_uv(
+        door_mesh = Mesh.project_texture_coordinates(
             mesh=door_mesh,
             projection_axis=np.array([1, 0, 0]),
             scale=np.array([sage_10k_wall.thickness, self.width, self.height]),
@@ -730,7 +734,7 @@ class Sage10kRoom(Sage10kWithID):
             scale=Scale(x=self.dimensions.x, y=self.dimensions.y, z=0.01)
         ).mesh
 
-        floor_mesh = Mesh.project_uv(
+        floor_mesh = Mesh.project_texture_coordinates(
             mesh=floor_mesh,
             projection_axis=np.array([0, 0, 1]),
             scale=np.array([self.dimensions.x, self.dimensions.y, 0.01]),
@@ -797,7 +801,7 @@ class Sage10kRoom(Sage10kWithID):
             body = wall_annotation.root
             wall_mesh = body.collision.combined_mesh
 
-            wall_mesh = Mesh.project_uv(
+            wall_mesh = Mesh.project_texture_coordinates(
                 mesh=wall_mesh,
                 projection_axis=np.array([1, 0, 0]),
                 scale=np.array([wall.thickness, wall_length, wall.height]),
