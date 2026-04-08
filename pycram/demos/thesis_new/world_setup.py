@@ -186,4 +186,15 @@ def setup_thesis_world(robot_name=None, environment_name=None):
 
     print(robot_world.root)
     # print(robot_world.bodies)
+
+    from semantic_digital_twin.spatial_computations.raytracer import RayTracer
+
+    rt = RayTracer(robot_world)
+    rt.scene.show()
+    viewer = rt.scene.show("jupyter")
+    from IPython.display import display
+
+    display(rt.scene.show("jupyter"))
+
+    print("unter rt scene")
     return robot_world

@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, Self, Tuple
-
-import numpy as np
 
 from random_events.interval import closed
 from random_events.product_algebra import SimpleEvent
 from typing_extensions import List, Type
-
+from abc import abstractmethod
 from krrood.ormatic.utils import classproperty
 from krrood.symbolic_math import symbolic_math
-from pycram.datastructures.dataclasses import AlignmentPair
 from semantic_digital_twin.semantic_annotations.mixins import (
     HasSupportingSurface,
     HasRootRegion,
@@ -41,11 +38,7 @@ from semantic_digital_twin.spatial_types import (
     Vector3,
 )
 from semantic_digital_twin.world import World
-from ..reasoning.predicates import InsideOf
-from ..spatial_types import Point3, HomogeneousTransformationMatrix, Vector3
-from ..spatial_types.spatial_types import Pose
-from ..world import World
-from ..world_description.connections import (
+from semantic_digital_twin.world_description.connections import (
     RevoluteConnection,
     PrismaticConnection,
     FixedConnection,
@@ -90,7 +83,7 @@ class Handle(HasRootBody):
         connection_multiplier: float = 1.0,
         connection_offset: float = 0.0,
         *,
-        scale: Scale = Scale(0.05, 0.02, 0.1),
+        scale: Scale = Scale(0.1, 0.02, 0.02),
         thickness: float = 0.005,
     ) -> Self:
         handle_event = cls._create_handle_geometry(scale=scale).as_composite_set()
@@ -122,15 +115,15 @@ class Handle(HasRootBody):
         :param thickness: The thickness of the handle walls.
         """
 
-        x_interval = closed(-(scale.x - thickness), 0)
+        x_interval = closed(0, scale.x - thickness)
         y_interval = closed(
-            -scale.y / 2,
-            scale.y / 2,
+            -scale.y / 2 + thickness,
+            scale.y / 2 - thickness,
         )
 
-        z_interval = closed(-scale.z / 2 + thickness, scale.z / 2 - thickness)
+        z_interval = closed(-scale.z / 2, scale.z / 2)
 
-        return SimpleEvent(
+        return SimpleEvent.from_data(
             {
                 SpatialVariables.x.value: x_interval,
                 SpatialVariables.y.value: y_interval,
@@ -261,7 +254,7 @@ class Door(HasHandle, HasHinge):
         )
         entry_way_region = Region(
             name=entry_way_region_name,
-            area=ShapeCollection([TriangleMesh(mesh=door_body.combined_mesh)]),
+            area=ShapeCollection([Mesh.from_trimesh(mesh=door_body.combined_mesh)]),
         )
         entry_way_region.area.transform_all_shapes_to_own_frame()
         entry_way = EntryWay(name=entry_way_name, root=entry_way_region)
@@ -528,7 +521,7 @@ class Wall(HasApertures):
         y_interval = closed(-scale.y / 2, scale.y / 2)
         z_interval = closed(0, scale.z)
 
-        return SimpleEvent(
+        return SimpleEvent.from_data(
             {
                 SpatialVariables.x.value: x_interval,
                 SpatialVariables.y.value: y_interval,
@@ -989,16 +982,16 @@ class Pen(HasRootBody):
 
 
 @dataclass(eq=False)
-class Ball(HasRootBody):
+class Baseball(HasRootBody):
     """
-    A Ball.
+    A baseball.
     """
 
 
 @dataclass(eq=False)
-class Baseball(Ball):
+class Ball(HasRootBody):
     """
-    A baseball.
+    A Ball.
     """
 
 
