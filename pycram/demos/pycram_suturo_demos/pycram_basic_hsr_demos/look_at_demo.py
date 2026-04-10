@@ -5,6 +5,7 @@ from pycram.datastructures.enums import Arms
 from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
 from pycram.motion_executor import real_robot
+from pycram.plans.plan import Plan
 from pycram.robot_plans import (
     ParkArmsActionDescription,
     LookAtActionDescription,

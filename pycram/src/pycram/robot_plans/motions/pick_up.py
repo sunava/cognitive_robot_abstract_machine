@@ -17,12 +17,14 @@ class PickupMotion(BaseMotion):
     motion framework via the `_motion_chart` property.
     """
 
-    # The gripper that will execute the pickup (must be a ParallelGripper)
     manipulator: Manipulator = field(default=None, kw_only=True)
-
-    # The world object that should be picked up
+    """
+    The gripper that will execute the pickup (must be a ParallelGripper)
+    """
     object_geometry: Body = field(default=None, kw_only=True)
-
+    """
+    he world object that should be picked up
+    """
     simulated: bool = field(default=True, kw_only=True)
     """
     Parsing simulation argument
@@ -43,6 +45,8 @@ class PickupMotion(BaseMotion):
         The motion framework queries this property to insert the task
         into the MotionStatechart.
         """
+        # todo: object_geomtry is only object not a geomtry
+        # todo: grasp magic is uness -> put manipulator into pick up directly and object
         grasp_magic = BoxGraspMagic(
             manipulator=self.manipulator,
             object_geometry=self.object_geometry,

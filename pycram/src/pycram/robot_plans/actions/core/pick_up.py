@@ -231,7 +231,7 @@ class GiskardGraspAction(ActionDescription):
 
     arm: Arms = field(default=Arms.LEFT, kw_only=True)
     """
-    arms that should be used for pick up
+    Arms that should be used for pick up
     """
 
     gripper_vertical: Optional[bool] = field(default=True, kw_only=True)
@@ -244,10 +244,6 @@ class GiskardGraspAction(ActionDescription):
     """
     List to save the callbacks which should be called before performing the action.
     """
-
-    # def __post_init__(self):
-    #     # Register attach as a post-perform callback BEFORE queuing the motion
-    #     super().__post_init__()
 
     def execute(self) -> None:
         # todo giskardpy_ros will be in the monorepo soon
@@ -297,10 +293,6 @@ class GiskardPullUpAction(ActionDescription):
     """
     List to save the callbacks which should be called before performing the action.
     """
-
-    # def __post_init__(self):
-    #     # Register attach as a post-perform callback BEFORE queuing the motion
-    #     super().__post_init__()
 
     def execute(self) -> None:
         try:

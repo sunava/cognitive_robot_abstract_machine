@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import timedelta
 
+from pycram.robot_plans.motions.hri_handover import HandoverMotion
+from pycram.robot_plans.motions.place import PlaceMotion
 from semantic_digital_twin.datastructures.definitions import GripperState
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world import World
@@ -207,49 +209,7 @@ class GiskardPlaceAction(ActionDescription):
             ),
         ).perform()
 
-    # def validate(
-    #     self, result: Optional[Any] = None, max_wait_time: Optional[timedelta] = None
-    # ):
-    #     """
-    #     Check if the object is placed at the target location.
-    #     """
-    #     self.validate_loss_of_contact()
-    #     self.validate_placement_location()
-    #
-    # def validate_loss_of_contact(self):
-    #     """
-    #     Check if the object is still in contact with the robot after placing it.
-    #     """
-    #     manipulator = ViewManager.get_arm_view(
-    #         self.arm, self.robot_view
-    #     ).manipulator.tool_frame
-    #     contact_links = self.object_designator.get_contact_points_with_body(
-    #         self.robot_view
-    #     ).get_all_bodies()
-    #     if contact_links:
-    #         raise ObjectStillInContact(
-    #             self.object_designator,
-    #             contact_links,
-    #             self.target_location,
-    #             World.robot,
-    #             self.arm,
-    #         )
-    #
-    # def validate_placement_location(self):
-    #     """
-    #     Check if the object is placed at the target location.
-    #     """
-    #     pose_error_checker = PoseErrorChecker(World.conf.get_pose_tolerance())
-    #     if not pose_error_checker.is_error_acceptable(
-    #         self.object_designator.pose, self.target_location
-    #     ):
-    #         raise ObjectNotPlacedAtTargetLocation(
-    #             self.object_designator, self.target_location, World.robot, self.arm
-    #         )
 
-
-# todo why do we need all of this? if giskard is doing the whole process it should also connect and disconnect the objects.
-#
 #
 # @dataclass
 # class GiskardPlaceAndDetachAction(ActionDescription):
@@ -328,24 +288,6 @@ class GiskardPlaceAction(ActionDescription):
 #         ).perform()
 #         print("Retracted")
 #
-#     @classmethod
-#     def description(
-#         cls,
-#         object_designator: Union[Iterable[Body], Body],
-#         target_location: Union[Iterable[PoseStamped], PoseStamped],
-#         arm: Union[Iterable[Arms], Arms],
-#         simulated: bool = True,
-#         ignore_orientation: bool = False,
-#     ) -> PartialDesignator[GiskardPlaceAndDetachAction]:
-#         return PartialDesignator[GiskardPlaceAndDetachAction](
-#             GiskardPlaceAndDetachAction,
-#             object_designator=object_designator,
-#             target_location=target_location,
-#             arm=arm,
-#             simulated=simulated,
-#             ignore_orientation=ignore_orientation,
-#         )
-#
 #
 # @dataclass
 # class GiskardRetractAction(ActionDescription):
@@ -386,90 +328,16 @@ class GiskardPlaceAction(ActionDescription):
 #                 simulated=self.simulated,
 #                 gripper=manipulator,
 #             ),
-#             nav2NavigateActionDescription(
-#                 simulated=self.simulated, target_location=self.back_off_pose
-#             ),
+#
 #         ).perform()
-#
-#     def validate(
-#         self, result: Optional[Any] = None, max_wait_time: Optional[timedelta] = None
-#     ):
-#         """
-#         Check if the object is placed at the target location.
-#         """
-#         self.validate_loss_of_contact()
-#         self.validate_placement_location()
-#
-#     def validate_loss_of_contact(self):
-#         """
-#         Check if the object is still in contact with the robot after placing it.
-#         """
-#         manipulator = ViewManager.get_arm_view(
-#             self.arm, self.robot_view
-#         ).manipulator.tool_frame
-#         contact_links = self.object_designator.get_contact_points_with_body(
-#             self.robot_view
-#         ).get_all_bodies()
-#         if contact_links:
-#             raise ObjectStillInContact(
-#                 self.object_designator,
-#                 contact_links,
-#                 self.target_location,
-#                 World.robot,
-#                 self.arm,
-#             )
-#
-#     def validate_placement_location(self):
-#         """
-#         Check if the object is placed at the target location.
-#         """
-#         pose_error_checker = PoseErrorChecker(World.conf.get_pose_tolerance())
-#         if not pose_error_checker.is_error_acceptable(
-#             self.object_designator.pose, self.target_location
-#         ):
-#             raise ObjectNotPlacedAtTargetLocation(
-#                 self.object_designator, self.target_location, World.robot, self.arm
-#             )
-#
-#     @classmethod
-#     def description(
-#         cls,
-#         arm: Union[Iterable[Arms], Arms],
-#         simulated: bool,
-#         back_off_pose: Union[Iterable[PoseStamped], PoseStamped] | None = None,
-#     ) -> PartialDesignator[GiskardRetractAction]:
-#         return PartialDesignator[GiskardRetractAction](
-#             GiskardRetractAction,
-#             arm=arm,
-#             simulated=simulated,
-#             back_off_pose=back_off_pose,
-#         )
-#
-#
-# @dataclass
-# class HandoverAction(ActionDescription):
-#
-#     world: World = field(kw_only=True, default=None)
-#
-#     def execute(self) -> None:
-#         SequentialPlan(
-#             self.context,
-#             HandoverMotion(world=self.world),
-#         ).perform()
-#
-#     @classmethod
-#     def description(
-#         cls,
-#         world: World | None = None,
-#     ) -> PartialDesignator[HandoverAction]:
-#         return PartialDesignator[HandoverAction](
-#             HandoverAction,
-#             world=world,
-#         )
-#
-#
-# PlaceActionDescription = PlaceAction.description
-# GiskardPlaceActionDescription = GiskardPlaceAction.description
-# GiskardPlaceAndDetachActionDescription = GiskardPlaceAndDetachAction.description
-# GiskardRetractActionDescription = GiskardRetractAction.description
-# HandoverActionDescription = HandoverAction.description
+
+
+@dataclass
+class HandoverAction(ActionDescription):
+
+    world: World = field(kw_only=True, default=None)
+
+    def execute(self) -> None:
+        execute_single(
+            HandoverMotion(world=self.world),
+        ).perform()
