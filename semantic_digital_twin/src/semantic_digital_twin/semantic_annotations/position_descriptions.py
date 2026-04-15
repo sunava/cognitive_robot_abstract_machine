@@ -15,6 +15,7 @@ from random_events.product_algebra import SimpleEvent, Event
 from random_events.variable import Continuous
 
 from semantic_digital_twin.datastructures.variables import SpatialVariables
+from semantic_digital_twin.random_events_compat import make_simple_interval
 
 
 class IntervalConstants:
@@ -22,12 +23,12 @@ class IntervalConstants:
     Predefined intervals for semantic directions.
     """
 
-    ZERO = SimpleInterval.from_data(0, 0, Bound.CLOSED, Bound.CLOSED)
-    ZERO_TO_ONE_THIRD = SimpleInterval.from_data(0, 1 / 3, Bound.CLOSED, Bound.CLOSED)
-    ONE_THIRD_TO_TWO_THIRD = SimpleInterval.from_data(1 / 3, 2 / 3, Bound.OPEN, Bound.OPEN)
-    HALF = SimpleInterval.from_data(0.5, 0.5, Bound.CLOSED, Bound.CLOSED)
-    TWO_THIRD_TO_ONE = SimpleInterval.from_data(2 / 3, 1, Bound.CLOSED, Bound.CLOSED)
-    ONE = SimpleInterval.from_data(1, 1, Bound.CLOSED, Bound.CLOSED)
+    ZERO = make_simple_interval(0, 0, Bound.CLOSED, Bound.CLOSED)
+    ZERO_TO_ONE_THIRD = make_simple_interval(0, 1 / 3, Bound.CLOSED, Bound.CLOSED)
+    ONE_THIRD_TO_TWO_THIRD = make_simple_interval(1 / 3, 2 / 3, Bound.OPEN, Bound.OPEN)
+    HALF = make_simple_interval(0.5, 0.5, Bound.CLOSED, Bound.CLOSED)
+    TWO_THIRD_TO_ONE = make_simple_interval(2 / 3, 1, Bound.CLOSED, Bound.CLOSED)
+    ONE = make_simple_interval(1, 1, Bound.CLOSED, Bound.CLOSED)
 
 
 class SemanticDirection(Enum): ...
@@ -94,7 +95,7 @@ class SemanticPositionDescription:
         span = base.upper - base.lower
         new_lower = base.lower + span * target.lower
         new_upper = base.lower + span * target.upper
-        return SimpleInterval.from_data(new_lower, new_upper, base.left, base.right)
+        return make_simple_interval(new_lower, new_upper, base.left, base.right)
 
     def _apply_zoom(self, simple_event: SimpleEvent) -> SimpleEvent:
         """

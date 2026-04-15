@@ -24,6 +24,7 @@ from random_events.interval import SimpleInterval, Bound, closed
 from random_events.product_algebra import SimpleEvent
 from semantic_digital_twin.datastructures.variables import SpatialVariables
 from semantic_digital_twin.mixin import HasSimulatorProperties
+from semantic_digital_twin.random_events_compat import make_simple_interval
 from semantic_digital_twin.spatial_types import (
     HomogeneousTransformationMatrix,
     Point3,
@@ -882,27 +883,21 @@ class BoundingBox:
         """
         :return: The x interval of the bounding box.
         """
-        return SimpleInterval.from_data(
-            self.min_x, self.max_x, Bound.CLOSED, Bound.CLOSED
-        )
+        return make_simple_interval(self.min_x, self.max_x, Bound.CLOSED, Bound.CLOSED)
 
     @property
     def y_interval(self) -> SimpleInterval:
         """
         :return: The y interval of the bounding box.
         """
-        return SimpleInterval.from_data(
-            self.min_y, self.max_y, Bound.CLOSED, Bound.CLOSED
-        )
+        return make_simple_interval(self.min_y, self.max_y, Bound.CLOSED, Bound.CLOSED)
 
     @property
     def z_interval(self) -> SimpleInterval:
         """
         :return: The z interval of the bounding box.
         """
-        return SimpleInterval.from_data(
-            self.min_z, self.max_z, Bound.CLOSED, Bound.CLOSED
-        )
+        return make_simple_interval(self.min_z, self.max_z, Bound.CLOSED, Bound.CLOSED)
 
     @property
     def scale(self) -> Scale:
