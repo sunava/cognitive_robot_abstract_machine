@@ -80,9 +80,3 @@ class Context(PlanEntity):
 class AlignmentPair:
     tip_normal: Vector3
     goal_normal: Vector3
-
-
-@dataclass
-class AlignmentPair:
-    tip_normal: Vector3
-    goal_normal: Vector3

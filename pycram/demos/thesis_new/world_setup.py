@@ -88,6 +88,12 @@ ROBOT_SPECS = {
         OmniDrive,
         HomogeneousTransformationMatrix.from_xyz_rpy(z=0.8),
     ),
+    # "donbot": (
+    #     "package://iai_donbot_description//urdf/offis_unitree_g1.urdf",
+    #     UnitreeG1,
+    #     OmniDrive,
+    #     HomogeneousTransformationMatrix.from_xyz_rpy(z=0.8),
+    # ),
 }
 
 
