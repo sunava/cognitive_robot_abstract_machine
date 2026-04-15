@@ -38,9 +38,8 @@ def verify_scene(world: World, scene: Sage10kScene):
 
 def test_loader(rclpy_node):
     loader = Sage10kDatasetLoader()
-    scene = loader.create_scene(scene_url=Sage10kDatasetLoader.available_scenes()[0])
+    scene = loader.create_scene(scene_url=Sage10kDatasetLoader.available_scenes()[5])
     world = scene.create_world()
-    print(world.root)
     pub = VizMarkerPublisher(
         _world=world,
         node=rclpy_node,
@@ -54,7 +53,7 @@ def test_different_decomposition_methods(
 ):
 
     loader = Sage10kDatasetLoader()
-    scene = loader.create_scene(scene_url=Sage10kDatasetLoader.available_scenes()[7])
+    scene = loader.create_scene(scene_url=Sage10kDatasetLoader.available_scenes()[0])
 
     for room in scene.rooms:
         new_objects = []

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 from dataclasses import dataclass, field
@@ -10,7 +11,17 @@ from zipfile import ZipFile
 
 import requests
 
+logger = logging.getLogger(__name__)
 from semantic_digital_twin.adapters.sage_10k_dataset.schema import Sage10kScene
+
+try:
+    import huggingface_hub
+except ImportError:
+    logger.warning(
+        "huggingface_hub not installed. `Sage10kDatasetLoader.available_scenes` will not work."
+        "Install it with `pip install huggingface_hub`."
+    )
+    huggingface_hub = None
 
 
 @dataclass
@@ -30,6 +41,7 @@ class Sage10kDatasetLoader:
         Download the scene from the Sage10k dataset and unzip it.
         Returns early if a directory with the requested scene already exists.
 
+        :param scene_url: The URL of the scene to be downloaded.
         :return: The path to the unzipped scene.
         """
         self.directory.mkdir(parents=True, exist_ok=True)
@@ -119,9 +131,8 @@ class Sage10kDatasetLoader:
         :param folder_path: The path to the folder containing the scenes in the repository.
         :return: A list of all possible URLs to the scenes in the dataset.
         """
-        from huggingface_hub import HfFileSystem
 
-        fs = HfFileSystem()
+        fs = huggingface_hub.HfFileSystem()
 
         # Hugging Face filesystem paths follow the format: datasets/repo_id/path
         full_path = f"datasets/{repository}/{folder_path}"

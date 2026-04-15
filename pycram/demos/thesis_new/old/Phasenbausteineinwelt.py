@@ -3,14 +3,17 @@ import os
 import rclpy
 
 from demos.thesis.simulation_setup import add_box, BoxSpec
-from demos.thesis_new.thesis_math.frame_provider import WorldTransformFrameProvider
-from demos.thesis_new.thesis_math.motion_presets import (
+from pycram.robot_plans.actions.composite.thesis_math import WorldTransformFrameProvider
+from pycram.robot_plans.actions.composite.thesis_math import (
     build_default_sequence,
     build_container_sequence,
 )
-from demos.thesis_new.thesis_math.motion_models import Pose, FixedFrameProvider
-from demos.thesis_new.utils.rviz import MotionSequenceRviz
-from demos.thesis_new.thesis_math.world_utils import (
+from pycram.robot_plans.actions.composite.thesis_math.motion_models import (
+    Pose,
+    FixedFrameProvider,
+)
+from pycram.robot_plans.actions.composite.utils.rviz import MotionSequenceRviz
+from pycram.robot_plans.actions.composite.thesis_math import (
     try_get_body,
     make_identity_pose_stamped,
     body_local_aabb,

@@ -310,17 +310,20 @@ class URDFParser:
                 ],
             )
         )
+
+        def _resolve_geom_color(geom):
+            if not hasattr(geom, "material") or not geom.material:
+                return Color(1, 1, 1, 1)
+            rgba = material_dict.get(geom.material.name)
+            return Color(*(rgba if rgba is not None else (1, 1, 1, 1)))
+
         for i, geom in enumerate(geometry):
             params = (*(geom.origin.xyz + geom.origin.rpy),) if geom.origin else ()
             origin_transform = HomogeneousTransformationMatrix.from_xyz_rpy(
                 *params, reference_frame=body
             )
             if isinstance(geom.geometry, urdfpy.Box):
-                color = (
-                    Color(*material_dict.get(geom.material.name, (1, 1, 1, 1)))
-                    if hasattr(geom, "material") and geom.material
-                    else Color(1, 1, 1, 1)
-                )
+                color = _resolve_geom_color(geom)
                 res.append(
                     Box(
                         origin=origin_transform,
@@ -329,11 +332,7 @@ class URDFParser:
                     )
                 )
             elif isinstance(geom.geometry, urdfpy.Sphere):
-                color = (
-                    Color(*material_dict.get(geom.material.name, (1, 1, 1, 1)))
-                    if hasattr(geom, "material") and geom.material
-                    else Color(1, 1, 1, 1)
-                )
+                color = _resolve_geom_color(geom)
                 res.append(
                     Sphere(
                         origin=origin_transform,
@@ -342,11 +341,7 @@ class URDFParser:
                     )
                 )
             elif isinstance(geom.geometry, urdfpy.Cylinder):
-                color = (
-                    Color(*material_dict.get(geom.material.name, (1, 1, 1, 1)))
-                    if hasattr(geom, "material") and geom.material
-                    else Color(1, 1, 1, 1)
-                )
+                color = _resolve_geom_color(geom)
                 res.append(
                     Cylinder(
                         origin=origin_transform,
@@ -358,11 +353,13 @@ class URDFParser:
             elif isinstance(geom.geometry, urdfpy.Mesh):
                 if geom.geometry.filename is None:
                     raise ValueError("Mesh geometry must have a filename.")
+                color = _resolve_geom_color(geom)
                 res.append(
                     Mesh(
                         origin=origin_transform,
                         filename=self.path_resolver.resolve(geom.geometry.filename),
                         scale=Scale(*(geom.geometry.scale or (1, 1, 1))),
+                        color=color,
                     )
                 )
         return ShapeCollection(res, reference_frame=body)

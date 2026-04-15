@@ -4,23 +4,14 @@ import rclpy
 
 from demos.thesis.simulation_setup import add_box, BoxSpec
 from demos.thesis_new.old.Phasenbausteine import FixedFrameProvider, Pose
-from demos.thesis_new.thesis_math.frame_provider import WorldTransformFrameProvider
-from demos.thesis_new.thesis_math.motion_presets import (
+from pycram.robot_plans.actions.composite.thesis_math import (
     build_default_sequence,
-    build_container_sequence,
 )
-from demos.thesis_new.utils.rviz import MotionSequenceRviz
+from pycram.robot_plans.actions.composite.utils.rviz import MotionSequenceRviz
 
-from demos.thesis_new.thesis_math.world_utils import (
-    try_get_body,
-    make_identity_pose_stamped,
-    body_local_aabb,
-)
 from pycram.datastructures.dataclasses import Context
-from pycram.datastructures.enums import Arms
 from pycram.datastructures.pose import PoseStamped
 from pycram.language import SequentialPlan
-from pycram.motion_executor import simulated_robot
 from pycram.testing import setup_world
 from rclpy.duration import Duration as RclpyDuration
 from rclpy.time import Time
@@ -30,7 +21,6 @@ from semantic_digital_twin.adapters.ros.tfwrapper import TFWrapper
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
 )
-from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
 from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl

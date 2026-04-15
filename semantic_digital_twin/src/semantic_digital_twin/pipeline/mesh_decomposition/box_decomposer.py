@@ -15,6 +15,12 @@ from semantic_digital_twin.world_description.geometry import Mesh, Box, Scale
 class FrozenBox:
     """
     A frozen non-oriented box optimized for the BoxDecomposer.
+
+    .. important::
+
+        Use this only in the context of the BoxDecomposer.
+        If you want Boxes for other purposes than this decomposition,
+        use the :py:class:`semantic_digital_twin.world_description.geometry.Box` class.
     """
 
     x: float
@@ -39,9 +45,13 @@ class FrozenBox:
 
 
 @dataclass(frozen=True)
-class IndexBox:
+class FrozenIndexBox:
     """
     A box defined by voxel indices.
+
+    .. important::
+
+        Use this only in the context of the BoxDecomposer.
     """
 
     x0: int
@@ -137,6 +147,48 @@ class IndexBox:
             scale=Scale(x=float(size[0]), y=float(size[1]), z=float(size[2])),
         )
 
+    def intersection_volume_vox(self, other: FrozenIndexBox) -> int:
+        """
+        Calculate the intersection volume of this index-based box with another index based box in voxels.
+
+        :param other: The second box.
+        :return: The intersection volume.
+        """
+        dx = max(0, min(self.x1, other.x1) - max(self.x0, other.x0))
+        dy = max(0, min(self.y1, other.y1) - max(self.y0, other.y0))
+        dz = max(0, min(self.z1, other.z1) - max(self.z0, other.z0))
+        return dx * dy * dz
+
+    @classmethod
+    def create_from_axis_info(
+        cls,
+        axis: int,
+        start: int,
+        stop: int,
+        dim1_min: int,
+        dim1_max: int,
+        dim2_min: int,
+        dim2_max: int,
+    ) -> FrozenIndexBox:
+        """
+        Create an IndexBox based on axis and coordinates.
+
+        :param axis: The thin axis of the box.
+        :param start: The start index of the thin axis.
+        :param stop: The end index of the thin axis.
+        :param dim1_min: The start index of the first planar dimension.
+        :param dim1_max: The end index of the first planar dimension.
+        :param dim2_min: The start index of the second planar dimension.
+        :param dim2_max: The end index of the second planar dimension.
+        :return: The created box.
+        """
+        if axis == 0:
+            return FrozenIndexBox(start, stop, dim1_min, dim1_max, dim2_min, dim2_max)
+        elif axis == 1:
+            return FrozenIndexBox(dim1_min, dim1_max, start, stop, dim2_min, dim2_max)
+        else:
+            return FrozenIndexBox(dim1_min, dim1_max, dim2_min, dim2_max, start, stop)
+
 
 def greedy_merge_boxes(
     occupancy: np.ndarray, pitch: float, origin: np.ndarray
@@ -169,7 +221,7 @@ def greedy_merge_boxes(
 
                 remaining_occupancy[x:x1, y:y1, z:z1] = False
 
-                index_box = IndexBox(x, x1, y, y1, z, z1)
+                index_box = FrozenIndexBox(x, x1, y, y1, z, z1)
                 boxes.append(index_box.to_frozen_box(pitch, origin))
 
                 x = x1
@@ -257,7 +309,7 @@ def detect_planar_boards(
     max_thickness_voxels: int = 2,
     min_span_voxels: int = 3,
     min_fill_ratio: float = 0.75,
-) -> list[IndexBox]:
+) -> list[FrozenIndexBox]:
     """
     Detect planar board-like structures in the occupancy grid.
 
@@ -267,7 +319,7 @@ def detect_planar_boards(
     :param min_fill_ratio: Minimum ratio of occupied voxels to bounding box area.
     :return: A list of candidate IndexBoxes.
     """
-    candidates: list[IndexBox] = []
+    candidates: list[FrozenIndexBox] = []
 
     for axis in range(3):
         candidates.extend(
@@ -289,7 +341,7 @@ def _detect_boards_along_axis(
     max_thickness_voxels: int,
     min_span_voxels: int,
     min_fill_ratio: float,
-) -> list[IndexBox]:
+) -> list[FrozenIndexBox]:
     """
     Detect board-like structures along a specific axis.
 
@@ -301,7 +353,7 @@ def _detect_boards_along_axis(
     :return: A list of candidate IndexBoxes.
     """
     num_voxels = occupancy.shape[axis]
-    candidates: list[IndexBox] = []
+    candidates: list[FrozenIndexBox] = []
 
     for start_voxel in range(num_voxels):
         for thickness in range(1, max_thickness_voxels + 1):
@@ -342,7 +394,7 @@ def _detect_boards_along_axis(
                     continue
 
                 candidates.append(
-                    _create_index_box_from_axis_info(
+                    FrozenIndexBox.create_from_axis_info(
                         axis,
                         start_voxel,
                         end_voxel,
@@ -359,6 +411,7 @@ def _detect_boards_along_axis(
 def _get_slab(occupancy: np.ndarray, axis: int, start: int, stop: int) -> np.ndarray:
     """
     Extract a slab from the occupancy grid along the given axis.
+    A slab is a 2D slice along the given axis.
 
     :param occupancy: The 3D occupancy grid.
     :param axis: The axis along which to extract the slab.
@@ -374,35 +427,6 @@ def _get_slab(occupancy: np.ndarray, axis: int, start: int, stop: int) -> np.nda
         return occupancy[:, :, start:stop]
 
 
-def _create_index_box_from_axis_info(
-    axis: int,
-    start: int,
-    stop: int,
-    dim1_min: int,
-    dim1_max: int,
-    dim2_min: int,
-    dim2_max: int,
-) -> IndexBox:
-    """
-    Create an IndexBox based on axis and coordinates.
-
-    :param axis: The thin axis of the box.
-    :param start: The start index of the thin axis.
-    :param stop: The end index of the thin axis.
-    :param dim1_min: The start index of the first planar dimension.
-    :param dim1_max: The end index of the first planar dimension.
-    :param dim2_min: The start index of the second planar dimension.
-    :param dim2_max: The end index of the second planar dimension.
-    :return: The created box.
-    """
-    if axis == 0:
-        return IndexBox(start, stop, dim1_min, dim1_max, dim2_min, dim2_max)
-    elif axis == 1:
-        return IndexBox(dim1_min, dim1_max, start, stop, dim2_min, dim2_max)
-    else:
-        return IndexBox(dim1_min, dim1_max, dim2_min, dim2_max, start, stop)
-
-
 def _calculate_fill_ratio(mask2d: np.ndarray) -> float:
     """
     Calculate the fill ratio of a 2D mask.
@@ -415,24 +439,10 @@ def _calculate_fill_ratio(mask2d: np.ndarray) -> float:
     return float(mask2d.mean())
 
 
-def intersection_volume_vox(a: IndexBox, b: IndexBox) -> int:
-    """
-    Calculate the intersection volume of two index-based boxes in voxels.
-
-    :param a: The first box.
-    :param b: The second box.
-    :return: The intersection volume.
-    """
-    dx = max(0, min(a.x1, b.x1) - max(a.x0, b.x0))
-    dy = max(0, min(a.y1, b.y1) - max(a.y0, b.y0))
-    dz = max(0, min(a.z1, b.z1) - max(a.z0, b.z0))
-    return dx * dy * dz
-
-
 def deduplicate_index_boxes(
-    candidates: list[IndexBox],
+    candidates: list[FrozenIndexBox],
     overlap_ratio_threshold: float = 0.8,
-) -> list[IndexBox]:
+) -> list[FrozenIndexBox]:
     """
     Deduplicate IndexBox candidates.
 
@@ -459,7 +469,7 @@ def deduplicate_index_boxes(
             box.z0,
         ),
     )
-    kept_boxes: list[IndexBox] = []
+    kept_boxes: list[FrozenIndexBox] = []
 
     for candidate in ordered_candidates:
         candidate_volume = candidate.volume_vox()
@@ -468,7 +478,7 @@ def deduplicate_index_boxes(
 
         discard = False
         for previous in kept_boxes:
-            intersection_volume = intersection_volume_vox(candidate, previous)
+            intersection_volume = candidate.intersection_volume_vox(previous)
 
             # If most of this candidate is already covered, drop it.
             if intersection_volume / candidate_volume >= overlap_ratio_threshold:
@@ -488,8 +498,8 @@ def deduplicate_index_boxes(
 
 
 def _is_redundant_thicker_box(
-    candidate: IndexBox,
-    previous: IndexBox,
+    candidate: FrozenIndexBox,
+    previous: FrozenIndexBox,
     intersection_volume: int,
 ) -> bool:
     """
@@ -519,7 +529,7 @@ def _is_redundant_thicker_box(
 
 
 def subtract_index_boxes_from_occupancy(
-    occupancy: np.ndarray, boxes: list[IndexBox]
+    occupancy: np.ndarray, boxes: list[FrozenIndexBox]
 ) -> np.ndarray:
     """
     Subtract boxes from the occupancy grid.
@@ -540,6 +550,8 @@ class BoxDecomposer(MeshDecomposer):
     Decompose a mesh into boxes using voxelization.
 
     This is very efficient and works well for blocky furniture.
+    Blocky furniture is furniture that has many box-shaped parts, e.g. IKEA shelves.
+
     This works poorly for non-blocky furniture.
 
     A board in this context is something like a board (the supporting surfaces that hold books) in a bookshelf.

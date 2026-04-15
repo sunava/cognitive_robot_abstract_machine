@@ -317,3 +317,96 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
             )
         motion_state_chart_nodes.append(Parallel(tasks))
         return Parallel(motion_state_chart_nodes)
+
+
+@dataclass
+class MoveTCPToPointAlignedMotion(BaseMotion):
+    """
+    Moves the Tool center point (TCP) of the robot
+    """
+
+    point: Point3
+    """
+    Waypoints the TCP should move along 
+    """
+    arm: Arms
+    """
+    Arm with the TCP that should be moved to the target
+    """
+    alignment_pairs: List[AlignmentPair] = field(default_factory=list)
+    """
+    List of alignment pairs for AlignPlanes constraints.
+    """
+    allow_gripper_collision: Optional[bool] = None
+    """
+    If the gripper can collide with something
+    """
+
+    movement_type: WaypointsMovementType = (
+        WaypointsMovementType.ENFORCE_ORIENTATION_FINAL_POINT
+    )
+    """
+    The type of movement that should be performed.
+    """
+    tip: Optional[Body] = None
+    """
+    The end effector that should be used to perform the movement.
+    """
+
+    def perform(self):
+        return
+
+    @property
+    def _motion_chart(self):
+
+        if self.tip is None:
+            tip = ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
+            if tip is None:
+                raise ValueError(f"No tool frame available for arm {self.arm}.")
+
+            tip_children = getattr(tip, "child_kinematic_structure_entities", []) or []
+            tip_link = next((child for child in tip_children if child is not None), tip)
+        else:
+            tip_link = self.tip
+
+        root_link = (
+            self.world.root if self.robot.full_body_controlled else self.robot.root
+        )
+        if root_link is None:
+            root_link = self.world.root
+        if self.allow_gripper_collision:
+            motion_state_chart_nodes = self._only_allow_gripper_collision_rules(
+                self.arm
+            )
+        else:
+            motion_state_chart_nodes = []
+        tasks = [
+            CartesianPosition(
+                root_link=root_link,
+                tip_link=tip_link,
+                goal_point=self.point,
+                name="MoveTCP",
+            )
+        ]
+        tasks.extend(
+            AlignPlanes(
+                tip_link=tip_link,
+                root_link=root_link,
+                tip_normal=pair.tip_normal,
+                goal_normal=pair.goal_normal,
+                weight=DefaultWeights.WEIGHT_BELOW_CA.value,
+            )
+            for pair in self.alignment_pairs
+        )
+        if self.robot.name.name == "rollin_justin":
+            tasks.append(
+                AlignPlanes(
+                    tip_link=self.world.get_body_by_name("torso4"),
+                    root_link=self.world.get_body_by_name("torso1"),
+                    tip_normal=Vector3.X(self.world.get_body_by_name("torso4")),
+                    goal_normal=Vector3.Z(self.world.get_body_by_name("torso1")),
+                    weight=DefaultWeights.WEIGHT_ABOVE_CA.value,
+                )
+            )
+        motion_state_chart_nodes.append(Parallel(tasks))
+        return Parallel(motion_state_chart_nodes)

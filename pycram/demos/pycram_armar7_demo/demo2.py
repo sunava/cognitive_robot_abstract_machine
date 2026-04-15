@@ -109,17 +109,10 @@ def setup_world() -> World:
     world = build_robot_world(base_robot_name)
 
     for robot_name, x, y, z, yaw in ROBOT_LINEUP[1:]:
+
         robot_world = build_robot_world(robot_name)
-        world.merge_world_at_pose(
-            robot_world,
-            HomogeneousTransformationMatrix.from_xyz_rpy(
-                x=x,
-                y=y,
-                z=z,
-                yaw=yaw,
-                reference_frame=world.root,
-            ),
-        )
+        with robot_world.modify_world():
+            robot_world.merge_world(world)
 
     return world
 

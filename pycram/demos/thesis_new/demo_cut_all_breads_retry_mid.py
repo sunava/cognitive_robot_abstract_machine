@@ -2,7 +2,6 @@ from krrood.ormatic.utils import drop_database
 from pycram.locations.locations import CostmapLocation
 from pycram.motion_executor import (
     simulated_robot_without_collision,
-    simulated_robot_with_collision,
 )
 from pycram.plans.factories import sequential
 from pycram.robot_plans.actions.composite.tool_based import CuttingAction
@@ -21,7 +20,7 @@ from demos.thesis_new.spawn_breads_luca import setup_random_bread_world
 from demos.thesis_new.spawn_random_breads import build_cutting_reachability_costmaps
 from demos.thesis_new.tool_mounts import get_tool_mount_pose_kwargs
 from demos.thesis_new.world_setup import resolve_robot_name
-from demos.thesis_new.utils.demo_utils import (
+from pycram.robot_plans.actions.composite.utils.demo_utils import (
     attach_available_tools,
     update_navigation_costmap_debug_publishers,
     collect_named_targets,
@@ -32,7 +31,7 @@ from demos.thesis_new.utils.demo_utils import (
     shutdown_experiment_runtime,
     commit_plan_to_db,
 )
-from demos.thesis_new.utils.experiment_logging import (
+from pycram.robot_plans.actions.composite.utils.experiment_logging import (
     body_name as _body_name,
     format_attempt_error as _format_attempt_error,
 )

@@ -1,7 +1,7 @@
 import numpy as np
 
 from pycram.testing import setup_world
-from demos.thesis_new.thesis_math.frame_provider import WorldTransformFrameProvider
+from pycram.robot_plans.actions.composite.thesis_math import WorldTransformFrameProvider
 from demos.thesis_new.old.Phasenbausteineinwelt import (
     try_get_body,
     body_local_aabb,

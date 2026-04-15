@@ -2,15 +2,8 @@ import os
 import numpy as np
 import rclpy
 
-from rclpy.duration import Duration as RclpyDuration
-from rclpy.time import Time
-
 from pycram.datastructures.dataclasses import Context
 from semantic_digital_twin.adapters.mesh import STLParser
-from semantic_digital_twin.collision_checking.collision_manager import CollisionManager
-from semantic_digital_twin.collision_checking.pybullet_collision_detector import (
-    BulletCollisionDetector,
-)
 from semantic_digital_twin.adapters.ros.tf_publisher import TFPublisher
 from semantic_digital_twin.adapters.ros.tfwrapper import TFWrapper
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
@@ -21,9 +14,11 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import Tabl
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.geometry import Color, Scale
 
-from demos.thesis_new.utils.demo_utils import build_navigation_costmaps
-from demos.thesis_new.thesis_math.world_utils import body_local_aabb
-from demos.thesis_new.world_setup import resolve_environment_name, setup_thesis_world
+from pycram.robot_plans.actions.composite.utils.demo_utils import (
+    build_navigation_costmaps,
+)
+from pycram.robot_plans.actions.composite.thesis_math import body_local_aabb
+from .world_setup import resolve_environment_name, setup_thesis_world
 
 RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")

@@ -1,9 +1,9 @@
-from demos.thesis_new.demo_cut_all_breads_retry import main_cutting
+from .demo_cut_all_breads_retry import main_cutting
 
-from demos.thesis_new.demo_mix_all_bowls_retry import main_mixing
+from .demo_mix_all_bowls_retry import main_mixing
 
-from demos.thesis_new.demo_wipe_all_spaces_retry import main_wiping
-from demos.thesis_new.world_setup import resolve_robot_name
+from .demo_wipe_all_spaces_retry import main_wiping
+from .world_setup import resolve_robot_name
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 
 THESIS_DEMO_RUNNERS = {
