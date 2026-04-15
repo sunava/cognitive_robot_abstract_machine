@@ -7,3 +7,11 @@ repositories:
     type: git
     url: https://github.com/code-iai/iai_pr2.git
     version: ros-jazzy-main
+ iai_robots:
+    type: git
+    url: https://github.com/code-iai/iai_robots.git
+    version: ros-jazzy
+ iai_stretch:
+    type: git
+    url: https://github.com/code-iai/iai_stretch.git
+    version: ros2-jazzy

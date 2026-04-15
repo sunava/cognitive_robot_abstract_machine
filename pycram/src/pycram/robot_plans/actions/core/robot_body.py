@@ -23,6 +23,7 @@ from semantic_digital_twin.datastructures.definitions import (
     StaticJointState,
     JointStateType,
 )
+from semantic_digital_twin.exceptions import NoJointStateWithType
 from semantic_digital_twin.spatial_types import Vector3
 from semantic_digital_twin.world_description.world_entity import Body
 
@@ -175,7 +176,10 @@ class ParkArmsAction(ActionDescription):
         names = []
         values = []
         for arm in arm_chain:
-            joint_state = arm.get_joint_state_by_type(self.joint_state)
+            try:
+                joint_state = arm.get_joint_state_by_type(self.joint_state)
+            except NoJointStateWithType:
+                joint_state = arm.get_joint_state_by_type(StaticJointState.PARK)
             names.extend([c.name.name for c in joint_state.connections])
             values.extend(joint_state.target_values)
         return names, values
