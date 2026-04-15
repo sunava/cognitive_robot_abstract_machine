@@ -15,3 +15,5 @@ pillow
 polytope # needed for random events
 semantic_digital_twin
 scikit-image
+owlready2
+SPARQLWrapper

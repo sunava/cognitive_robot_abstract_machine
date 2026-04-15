@@ -9,7 +9,7 @@ from random_events.interval import *
 from random_events.product_algebra import Event, SimpleEvent, VariableMap
 from random_events.variable import *
 from typing_extensions import Union, Iterable, Any, Self, Dict, List, Tuple
-
+from dataclasses import dataclass, field
 from probabilistic_model.constants import SCALING_FACTOR_FOR_EXPECTATION_IN_PLOT
 from probabilistic_model.probabilistic_model import (
     ProbabilisticModel,

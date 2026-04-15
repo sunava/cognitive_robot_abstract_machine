@@ -29,6 +29,17 @@ from semantic_digital_twin.world_description.world_entity import Body
 
 logger = logging.getLogger(__name__)
 
+if NavigateToPose is None:
+    NavigateActionType = Any
+    NavigateGoalType = Any
+    NavigateResultType = Any
+    NavigateFeedbackType = Any
+else:
+    NavigateActionType = NavigateToPose
+    NavigateGoalType = NavigateToPose.Goal
+    NavigateResultType = NavigateToPose.Result
+    NavigateFeedbackType = NavigateToPose.Feedback
+
 
 Action = TypeVar("Action")
 ActionGoal = TypeVar("ActionGoal")
@@ -108,10 +119,10 @@ class ActionServerTask(
 @dataclass
 class NavigateActionServerTask(
     ActionServerTask[
-        NavigateToPose,
-        NavigateToPose.Goal,
-        NavigateToPose.Result,
-        NavigateToPose.Feedback,
+        NavigateActionType,
+        NavigateGoalType,
+        NavigateResultType,
+        NavigateFeedbackType,
     ]
 ):
     """
@@ -134,6 +145,10 @@ class NavigateActionServerTask(
     """
 
     def build_msg(self, context: MotionStatechartContext):
+        if NavigateToPose is None:
+            raise ModuleNotFoundError(
+                "nav2_msgs.action.NavigateToPose is required to build navigation goals."
+            )
         root_p_goal = context.world.transform(
             target_frame=context.world.root, spatial_object=self.target_pose
         )
@@ -184,6 +199,10 @@ class NavigateActionServerTask(
         return artifacts
 
     def on_tick(self, context: MotionStatechartContext) -> ObservationStateValues:
+        if NavigateToPose is None:
+            raise ModuleNotFoundError(
+                "nav2_msgs.action.NavigateToPose is required to evaluate navigation results."
+            )
         if self._result:
             return (
                 ObservationStateValues.TRUE
