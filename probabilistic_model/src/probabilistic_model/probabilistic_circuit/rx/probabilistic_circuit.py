@@ -505,7 +505,7 @@ class SumUnit(InnerUnit):
     def mount_with_interaction_terms(
         self, other: Self, interaction_model: ProbabilisticModel
     ):
-        """
+        r"""
         Create a distribution that factorizes as follows:
 
         .. math::

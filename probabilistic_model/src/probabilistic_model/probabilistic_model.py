@@ -257,7 +257,7 @@ class ProbabilisticModel(ABC):
         """
 
     def moment(self, order: OrderType, center: CenterType) -> MomentType:
-        """
+        r"""
         Calculate the (centralized) moment of the distribution.
 
         .. math::
