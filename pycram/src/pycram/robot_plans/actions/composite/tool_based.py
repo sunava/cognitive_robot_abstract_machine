@@ -2,37 +2,40 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import timedelta
 
 import numpy as np
-from typing_extensions import Union, Optional, Any, Iterable
+from typing_extensions import Optional, Any
 
-from demos.thesis_new.thesis_math.metrics import (
+from pycram.robot_plans.actions.composite.thesis_math.metrics import (
     points_world_to_body,
     cutting_depth_metrics,
     mixing_bowl_metrics,
 )
-from demos.thesis_new.thesis_math.motion_models import MotionSegment, MotionSequence
-from demos.thesis_new.thesis_math.motion_presets import (
-    build_container_sequence,
-    build_cutting_sequence,
-    build_surface_sequence,
+from pycram.robot_plans.actions.composite.thesis_math.motion_models import (
+    MotionSegment,
+    MotionSequence,
 )
-from demos.thesis_new.thesis_math.motion_profiles import planar_spiral_xy
-from demos.thesis_new.thesis_math.world_utils import (
-    body_local_aabb,
-)
-from demos.thesis_new.utils.rviz import publish_points_sequence
+
+
+from pycram.robot_plans.actions.composite.utils.rviz import publish_points_sequence
 from semantic_digital_twin.semantic_annotations.mixins import HasRootBody
-from semantic_digital_twin.semantic_annotations.semantic_annotations import Tool
 from semantic_digital_twin.spatial_types import Point3, Vector3
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.world_entity import Body
-from ...motions.gripper import MoveTCPWaypointsAlignedMotion
+from .thesis_math.motion_presets import (
+    build_container_sequence,
+    build_surface_sequence,
+    build_cutting_sequence,
+)
+from .thesis_math.motion_profiles import planar_spiral_xy
+from .thesis_math.world_utils import body_local_aabb
+from ...motions.gripper import (
+    MoveTCPWaypointsAlignedMotion,
+)
 from ....datastructures.enums import (
     Arms,
 )
-from ....plans.factories import sequential, execute_single
+from ....plans.factories import sequential
 
 from ....robot_plans.actions.base import ActionDescription
 from ....view_manager import ViewManager
@@ -212,7 +215,6 @@ class GeneralizedActionPlan(ActionDescription):
             republish_hz=2.0,
             clear_existing=self.clear_viz,
         )
-        print("published points_sequence")
         self.robot.full_body_controlled = True
         stride = max(1, int(self.pointer_stride))
         pointery = self._to_waypoints(points, stride)
@@ -234,14 +236,23 @@ class GeneralizedActionPlan(ActionDescription):
             tip = self.tool.get_tool_frame()
         except Exception:
             tip = ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
+        aligned_point = pointery[0]
+        aligned_point.z += 0.01
         try:
             self.add_subplan(
                 sequential(
                     [
+                        # MoveTCPToPointAlignedMotion(
+                        #     aligned_point,
+                        #     self.arm,
+                        #     allow_gripper_collision=False,
+                        #     alignment_pairs=alignment_pairs,
+                        #     tip=tip,
+                        # ),
                         MoveTCPWaypointsAlignedMotion(
                             pointery,
                             self.arm,
-                            allow_gripper_collision=False,
+                            allow_gripper_collision=True,
                             alignment_pairs=alignment_pairs,
                             tip=tip,
                         ),
@@ -343,7 +354,7 @@ class WipingAction(GeneralizedActionPlan):
     """
     Optional alias for surface_body (backward compatibility).
     """
-    target_pose: Optional[PoseStamped] = None
+    target_pose: Optional[Pose] = None
     """
     Center pose for the wiping patch.
     """

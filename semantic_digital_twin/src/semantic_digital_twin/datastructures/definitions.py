@@ -18,3 +18,4 @@ class TorsoState(JointStateType):
 
 class StaticJointState(JointStateType):
     PARK = auto()
+    PARKTOOL = auto()

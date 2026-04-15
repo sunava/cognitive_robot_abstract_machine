@@ -37,9 +37,9 @@ from demos.thesis_new.spawn_random_bowls import (
     setup_random_bowl_world,
     setup_random_mixing_container_world,
 )
-from demos.thesis_new.thesis_math.world_utils import body_local_aabb
+from pycram.robot_plans.actions.composite.thesis_math import body_local_aabb
 from demos.thesis_new.tool_mounts import get_tool_mount_pose_kwargs
-from demos.thesis_new.utils.demo_utils import (
+from pycram.robot_plans.actions.composite.utils.demo_utils import (
     attach_available_tools,
     collect_named_targets,
     commit_plan_to_db,
@@ -51,7 +51,7 @@ from demos.thesis_new.utils.demo_utils import (
     update_navigation_costmap_debug_publishers,
     build_navigation_costmaps,
 )
-from demos.thesis_new.utils.experiment_logging import (
+from pycram.robot_plans.actions.composite.utils.experiment_logging import (
     BASE_RESULT_FIELDNAMES,
     append_csv_row,
     assistance_type_from_knowledge,

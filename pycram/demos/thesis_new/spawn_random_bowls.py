@@ -5,7 +5,7 @@ from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.geometry import Color
 
-from demos.thesis_new.spawn_random_breads import (
+from .spawn_random_breads import (
     _body_basename,
     _body_name,
     _is_excluded_kitchen_spawn_pose,
@@ -13,8 +13,10 @@ from demos.thesis_new.spawn_random_breads import (
     _sample_random_surface_layout,
     body_local_aabb,
 )
-from demos.thesis_new.world_setup import setup_thesis_world
-from demos.thesis_new.utils.demo_utils import build_navigation_costmaps
+from .world_setup import setup_thesis_world
+from pycram.robot_plans.actions.composite.utils.demo_utils import (
+    build_navigation_costmaps,
+)
 
 RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")

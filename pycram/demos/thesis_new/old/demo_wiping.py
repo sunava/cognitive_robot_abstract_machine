@@ -4,10 +4,9 @@ import csv
 import json
 
 import rclpy
-from trimesh.proximity import nearby_faces, closest_point
 
 from demos.thesis.simulation_setup import add_box, BoxSpec
-from demos.thesis_new.thesis_math.world_utils import try_get_body
+from pycram.robot_plans.actions.composite.thesis_math import try_get_body
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
 from pycram.datastructures.pose import PoseStamped
@@ -37,7 +36,6 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import Spon
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.world_description.geometry import Color, Scale
-from semantic_digital_twin.world_description.world_entity import Body
 
 RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../..", "..", "resources")

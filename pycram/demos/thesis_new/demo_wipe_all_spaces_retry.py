@@ -10,7 +10,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 from demos.thesis.simulation_setup import BoxSpec, add_box
 from demos.thesis_new.spawn_random_bowls import sample_random_bowl_poses
 from demos.thesis_new.tool_mounts import get_tool_mount_pose_kwargs
-from demos.thesis_new.utils.demo_utils import (
+from pycram.robot_plans.actions.composite.utils.demo_utils import (
     build_navigation_costmaps,
     commit_plan_to_db,
     get_available_arm_tool_frames,
@@ -21,7 +21,7 @@ from demos.thesis_new.utils.demo_utils import (
     shutdown_experiment_runtime,
     update_navigation_costmap_debug_publishers,
 )
-from demos.thesis_new.utils.experiment_logging import (
+from pycram.robot_plans.actions.composite.utils.experiment_logging import (
     BASE_RESULT_FIELDNAMES,
     append_csv_row,
     body_name as _body_name,

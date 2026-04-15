@@ -253,7 +253,22 @@ class UnitreeG1(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
         )
 
         self.right_arm.add_joint_state(right_arm_park)
+        right_arm_park_cutting = JointState.from_mapping(
+            name=PrefixedName("right_arm_park_cutting", prefix=self.name.name),
+            mapping=dict(
+                zip(
+                    [
+                        c
+                        for c in self.right_arm.connections
+                        if type(c) != FixedConnection
+                    ],
+                    [-1.4, -1, 0, 0, 0, 0, 0],
+                )
+            ),
+            state_type=StaticJointState.PARKTOOL,
+        )
 
+        self.right_arm.add_joint_state(right_arm_park_cutting)
         left_arm_park = JointState.from_mapping(
             name=PrefixedName("left_park", prefix=self.name.name),
             mapping=dict(
@@ -268,8 +283,23 @@ class UnitreeG1(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
             ),
             state_type=StaticJointState.PARK,
         )
-
         self.left_arm.add_joint_state(left_arm_park)
+        left_arm_park_cutting = JointState.from_mapping(
+            name=PrefixedName("left_arm_park_cutting", prefix=self.name.name),
+            mapping=dict(
+                zip(
+                    [
+                        c
+                        for c in self.left_arm.connections
+                        if type(c) != FixedConnection
+                    ],
+                    [1.4, 1, 1, 0, 0, 0, 0],
+                )
+            ),
+            state_type=StaticJointState.PARKTOOL,
+        )
+
+        self.left_arm.add_joint_state(left_arm_park_cutting)
 
         left_gripper_joints = [
             c

@@ -4,7 +4,7 @@ import numpy as np
 import rclpy
 
 from demos.thesis.simulation_setup import add_box, BoxSpec
-from demos.thesis_new.thesis_math.world_utils import try_get_body
+from pycram.robot_plans.actions.composite.thesis_math import try_get_body
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
 from pycram.datastructures.pose import PoseStamped

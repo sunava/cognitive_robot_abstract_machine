@@ -1,6 +1,5 @@
 import time
 
-from probabilistic_model.bayesian_network.bayesian_network import Root
 from pycram.locations.locations import CostmapLocation
 from pycram.motion_executor import (
     simulated_robot_without_collision,
@@ -15,21 +14,20 @@ from pycram.robot_plans.actions.core.robot_body import (
     ParkArmsAction,
     MoveTorsoAction,
     SetGripperAction,
-    CarryAction,
 )
 from pycram.tf_transformations import quaternion_from_euler, quaternion_multiply
 from pycram.tf_transformations import euler_from_quaternion, quaternion_matrix
 
 
-from demos.thesis_new.spawn_random_breads import (
+from .spawn_random_breads import (
     get_cut_object_config,
     setup_random_bread_world,
 )
-from demos.thesis_new.spawn_random_breads import build_cutting_reachability_costmaps
-from demos.thesis_new.thesis_math.world_utils import body_local_aabb
-from demos.thesis_new.tool_mounts import get_tool_mount_pose_kwargs
-from demos.thesis_new.world_setup import resolve_robot_name
-from demos.thesis_new.utils.demo_utils import (
+from .spawn_random_breads import build_cutting_reachability_costmaps
+from pycram.robot_plans.actions.composite.thesis_math import body_local_aabb
+from .tool_mounts import get_tool_mount_pose_kwargs
+from .world_setup import resolve_robot_name
+from pycram.robot_plans.actions.composite.utils.demo_utils import (
     attach_available_tools,
     update_navigation_costmap_debug_publishers,
     collect_named_targets,
@@ -40,7 +38,7 @@ from demos.thesis_new.utils.demo_utils import (
     setup_experiment_runtime,
     shutdown_experiment_runtime,
 )
-from demos.thesis_new.utils.experiment_logging import (
+from pycram.robot_plans.actions.composite.utils.experiment_logging import (
     BASE_RESULT_FIELDNAMES,
     append_csv_row,
     assistance_type_from_knowledge,
@@ -58,8 +56,7 @@ from demos.thesis_new.utils.experiment_logging import (
 import os
 import numpy as np
 from pycram.datastructures.dataclasses import Context
-from pycram.datastructures.enums import Arms, AxisIdentifier
-from pycram.motion_executor import simulated_robot
+from pycram.datastructures.enums import Arms
 from pycram.orm.ormatic_interface import Base
 from pycram.orm.utils import pycram_sessionmaker
 
@@ -67,15 +64,13 @@ from pycram.orm.utils import pycram_sessionmaker
 from semantic_digital_twin.adapters.mesh import STLParser
 
 from semantic_digital_twin.datastructures.definitions import TorsoState, GripperState
-from semantic_digital_twin.semantic_annotations.semantic_annotations import Knife, Whisk
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Knife
 from semantic_digital_twin.spatial_types import (
     HomogeneousTransformationMatrix,
     Point3,
-    Vector3,
 )
 from semantic_digital_twin.spatial_types.spatial_types import Pose
-from semantic_digital_twin.world_description.geometry import Color, Scale
-from semantic_digital_twin.world_description.world_entity import WorldEntity
+from semantic_digital_twin.world_description.geometry import Color
 
 RESOURCES_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "resources")
