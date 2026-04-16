@@ -81,18 +81,26 @@ def _clear_rviz_marker_topics(node):
     clear_marker.action = Marker.DELETEALL
     clear_array.markers.append(clear_marker)
 
+    volatile_qos = QoSProfile(depth=10)
     transient_local_qos = QoSProfile(
         depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL
     )
     publishers = [
-        node.create_publisher(MarkerArray, topic, transient_local_qos)
+        (
+            node.create_publisher(MarkerArray, topic, volatile_qos),
+            node.create_publisher(MarkerArray, topic, transient_local_qos),
+        )
         for topic in RVIZ_MARKER_TOPICS
     ]
-    for publisher in publishers:
-        publisher.publish(clear_array)
+    for _ in range(3):
+        for volatile_pub, transient_pub in publishers:
+            volatile_pub.publish(clear_array)
+            transient_pub.publish(clear_array)
+        rclpy.spin_once(node, timeout_sec=0.05)
+        time.sleep(0.05)
 
     # Give ROS a brief chance to flush the clear messages before the node is destroyed.
-    time.sleep(0.2)
+    time.sleep(0.1)
 
 
 def publish_demo_camera_target(
@@ -109,19 +117,16 @@ def publish_demo_camera_target(
         node._demo_camera_tf_handles = []
 
     def _publish_camera_target():
+        target_pose = target_pose_fn()
+        target_xyz = np.asarray(target_pose.to_position().to_np(), dtype=float).reshape(
+            -1
+        )[:3]
         if camera_pose_fn is not None:
             camera_pose = camera_pose_fn()
-            target_xyz = np.asarray(
-                camera_pose.to_position().to_np(), dtype=float
-            ).reshape(-1)[:3]
             quat = np.asarray(camera_pose.to_quaternion().to_np(), dtype=float).reshape(
                 -1
             )[:4]
         else:
-            target_pose = target_pose_fn()
-            target_xyz = np.asarray(
-                target_pose.to_position().to_np(), dtype=float
-            ).reshape(-1)[:3]
             quat = np.asarray(
                 quaternion_from_euler(0.0, 0.0, 0.0), dtype=float
             ).reshape(-1)[:4]
@@ -132,7 +137,7 @@ def publish_demo_camera_target(
         transform.child_frame_id = frame_name
         transform.transform.translation.x = float(target_xyz[0])
         transform.transform.translation.y = float(target_xyz[1])
-        transform.transform.translation.z = float(target_xyz[2])
+        transform.transform.translation.z = float(target_xyz[2] + 0.12)
         transform.transform.rotation.x = float(quat[0])
         transform.transform.rotation.y = float(quat[1])
         transform.transform.rotation.z = float(quat[2])
