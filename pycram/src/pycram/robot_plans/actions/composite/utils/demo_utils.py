@@ -60,6 +60,10 @@ def setup_experiment_runtime(world, node_name):
     rclpy.init()
     node = rclpy.create_node(node_name)
     _clear_rviz_marker_topics(node)
+    # Let RViz process DELETEALL before republishing the next world snapshot.
+    for _ in range(5):
+        rclpy.spin_once(node, timeout_sec=0.05)
+        time.sleep(0.05)
     tf_wrapper = TFWrapper(node=node)
     TFPublisher(node=node, _world=world)
     VizMarkerPublisher(
