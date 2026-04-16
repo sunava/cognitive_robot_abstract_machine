@@ -767,30 +767,6 @@
       </geometry>
     </visual>
   </link>
-  <joint name="pizza_box__pizza_box__base_link_joint" type="fixed">
-    <origin xyz="2.0 -0.15 0.8" rpy="0.0 0.0 1.0"/>
-    <parent link="world"/>
-    <child link="pizza_box__pizza_box__base_link"/>
-  </joint>
-  <link name="pizza_box__pizza_box__base_link">
-    <inertial>
-      <origin xyz="0.0 0.0 0.0175" rpy="0.0 0.0 0.0"/>
-      <mass value="0.7"/>
-      <inertia ixx="0.0210714499047" ixy="0.0" ixz="0.0" iyy="0.00987728771575" iyz="0.0" izz="0.030805821011"/>
-    </inertial>
-    <collision name="pizza_box__pizza_box__base_link_collision">
-      <origin xyz="0.0 0.0 0.0175" rpy="0.0 0.0 0.0"/>
-      <geometry>
-        <box size="0.41 0.6 0.035"/>
-      </geometry>
-    </collision>
-    <visual name="pizza_box__pizza_box__base_link_visual">
-      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-      <geometry>
-        <mesh filename="package://cob_gazebo_objects/Media/models/pizza_box.dae" scale="1.0 1.0 1.0"/>
-      </geometry>
-    </visual>
-  </link>
   <joint name="basmati_rice__basmati_rice__base_link_joint" type="fixed">
     <origin xyz="-2.85 0.5 0.8" rpy="0.0 0.0 0.0"/>
     <parent link="world"/>

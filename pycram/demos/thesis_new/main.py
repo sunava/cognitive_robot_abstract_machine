@@ -23,7 +23,7 @@ if __name__ == "__main__":
             run_thesis_demo(
                 "cut",
                 robot_name=robot,
-                environment_name="apartment",
+                environment_name="isr",
             )
 
             run_thesis_demo(

@@ -81,10 +81,20 @@ from pycram.robot_plans.actions.composite.utils.demo_utils import (
 from semantic_digital_twin.world_description.geometry import Color
 
 HANDPICKED_PICKUP_POSES = {
-    "apartment": (1.70, 2.74, 0.0, 0.0),
-    "apartment_without_walls": (1.95, 2.15, 0.0, 0.0),
-    "kitchen": (2.10, 2.20, 0.0, 0.0),
-    "isr": (1.40, 1.10, 0.0, 0.0),
+    "g1": {
+        "apartment": (1.70, 2.74, 0.0, 0.0),
+        "apartment_without_walls": (1.95, 2.15, 0.0, 0.0),
+        "kitchen": (-0.4, 0.74, 0.99, np.pi),
+        "isr": (1, 0, 0.0, 0.0),
+    },
+}
+HANDPICKED_SPAWN_POSES = {
+    "g1": {
+        "apartment": (2.48, 2.11, 0.99, -np.pi / 2),
+        "apartment_without_walls": (1.95, 2.15, 0.0, 0.0),
+        "kitchen": (-0.8, 0.74, 0.90, np.pi / 2),
+        "isr": (1.58, -0.12, 0.99, -np.pi / 2),
+    },
 }
 CUTTING_BOARD_COLOR = Color(R=0.80, G=0.66, B=0.49)
 
@@ -179,8 +189,17 @@ def _spawn_single_object(
     return object_name, _pose_xyz(world_pose)
 
 
+def _supported_handpicked_pose_targets(pose_map):
+    targets = []
+    for robot_name, environment_poses in sorted(pose_map.items()):
+        if isinstance(environment_poses, dict):
+            environments = ", ".join(sorted(environment_poses))
+            targets.append(f"{robot_name}: {environments}")
+    return "; ".join(targets)
+
+
 def _resolve_pickup_pose(
-    world, environment_name, pickup_position=None, pickup_yaw=None
+    world, robot_name, environment_name, pickup_position=None, pickup_yaw=None
 ):
     if pickup_position is not None:
         x, y, z = [float(value) for value in pickup_position]
@@ -193,16 +212,19 @@ def _resolve_pickup_pose(
             reference_frame=world.root,
         )
 
+    normalized_robot = resolve_robot_name(robot_name)
     normalized_environment = resolve_environment_name(environment_name)
-    if normalized_environment not in HANDPICKED_PICKUP_POSES:
-        supported = ", ".join(sorted(HANDPICKED_PICKUP_POSES))
+    robot_pose_map = HANDPICKED_PICKUP_POSES.get(normalized_robot)
+    if robot_pose_map is None or normalized_environment not in robot_pose_map:
+        supported = _supported_handpicked_pose_targets(HANDPICKED_PICKUP_POSES)
         raise ValueError(
             "No handpicked pickup pose configured for "
+            f"robot '{normalized_robot}' in environment "
             f"'{normalized_environment}'. Supported: {supported}. "
             "Set PICKUP_POSITION and PICKUP_YAW in main.py for this environment."
         )
 
-    x, y, z, yaw = HANDPICKED_PICKUP_POSES[normalized_environment]
+    x, y, z, yaw = robot_pose_map[normalized_environment]
     return HomogeneousTransformationMatrix.from_xyz_rpy(
         x=float(x),
         y=float(y),
@@ -210,6 +232,39 @@ def _resolve_pickup_pose(
         yaw=float(yaw),
         reference_frame=world.root,
     )
+
+
+def _resolve_spawn_pose(
+    world, robot_name, environment_name, spawn_position=None, spawn_yaw=None
+):
+    if spawn_position is not None:
+        x, y, z = [float(value) for value in spawn_position]
+        yaw = 0.0 if spawn_yaw is None else float(spawn_yaw)
+        return (x, y, z), yaw
+
+    normalized_robot = resolve_robot_name(robot_name)
+    normalized_environment = resolve_environment_name(environment_name)
+    robot_pose_map = HANDPICKED_SPAWN_POSES.get(normalized_robot)
+    if robot_pose_map is None or normalized_environment not in robot_pose_map:
+        supported = _supported_handpicked_pose_targets(HANDPICKED_SPAWN_POSES)
+        raise ValueError(
+            "No handpicked spawn pose configured for "
+            f"robot '{normalized_robot}' in environment "
+            f"'{normalized_environment}'. Supported: {supported}. "
+            "Set SPAWN_POSITION and SPAWN_YAW in main.py for this environment."
+        )
+
+    pose = robot_pose_map[normalized_environment]
+    if len(pose) == 4:
+        x, y, z, yaw = pose
+        if spawn_yaw is not None:
+            yaw = float(spawn_yaw)
+    else:
+        raise ValueError(
+            f"Invalid handpicked spawn pose for '{normalized_environment}': {pose}"
+        )
+
+    return (float(x), float(y), float(z)), float(yaw)
 
 
 def _spawn_cutting_board_under_object(
@@ -262,8 +317,8 @@ def run_single_object_cut_demo(
     robot_name=None,
     environment_name=None,
     object_kind="bread",
-    spawn_position=(2.48, 2.11, 0.99),
-    spawn_yaw=-np.pi / 2,
+    spawn_position=None,
+    spawn_yaw=None,
     spawn_scale=1.0,
     pickup_position=None,
     pickup_yaw=None,
@@ -277,6 +332,13 @@ def run_single_object_cut_demo(
             robot_name=robot_name,
             environment_name=environment_name,
         )
+    spawn_position, spawn_yaw = _resolve_spawn_pose(
+        world,
+        robot_name,
+        environment_name,
+        spawn_position=spawn_position,
+        spawn_yaw=spawn_yaw,
+    )
     board_xyz = _spawn_cutting_board_under_object(
         world=world,
         object_kind=object_kind,
@@ -340,6 +402,7 @@ def run_single_object_cut_demo(
 
         pickup_pose = _resolve_pickup_pose(
             world,
+            robot_name,
             environment_name,
             pickup_position=pickup_position,
             pickup_yaw=pickup_yaw,
