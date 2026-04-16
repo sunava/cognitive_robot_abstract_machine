@@ -218,6 +218,7 @@ def _try_cut(
                     arm=arm,
                     tool=tool,
                     technique=cutting_technique,
+                    clear_viz=True,
                     pointer_stride=CUTTING_POINTER_STRIDE,
                     num_cuts_x=num_cuts_x,
                     slice_thickness=CUTTING_SLICE_THICKNESS_M,

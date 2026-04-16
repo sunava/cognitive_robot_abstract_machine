@@ -269,6 +269,7 @@ def _try_mix(context, bowl, pickup_pose, arm, tool, *, environment_name=None):
                     container=bowl,
                     arm=arm,
                     tool=tool,
+                    clear_viz=True,
                     pointer_stride=POINTER_STRIDE,
                     mix_duration_s=MIX_DURATION_S,
                 ),

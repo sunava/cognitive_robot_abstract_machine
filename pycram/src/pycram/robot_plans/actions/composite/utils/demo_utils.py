@@ -1,6 +1,10 @@
+import time
+
 import rclpy
+from rclpy.qos import DurabilityPolicy, QoSProfile
 
 from visualization_msgs.msg import Marker
+from visualization_msgs.msg import MarkerArray
 
 from krrood.ormatic.data_access_objects.helper import to_dao
 from pycram.datastructures.enums import Arms
@@ -23,6 +27,14 @@ from pycram.robot_plans.actions.composite.utils.rviz import CostmapHeatmapRviz
 
 KITCHEN_NAVIGATION_X_MAX = 1.5
 KITCHEN_ORIGIN_EXCLUSION_RADIUS_M = 0.75
+RVIZ_MARKER_TOPICS = (
+    "/semworld/viz_marker",
+    "/point_sequence",
+    "/pycram/wipe_targets",
+    "/debug/costmap/occupancy",
+    "/debug/costmap/ring",
+    "/debug/costmap/final",
+)
 
 
 def _load_thesis_world_setup():
@@ -57,7 +69,28 @@ def setup_experiment_runtime(world, node_name):
     return node
 
 
+def _clear_rviz_marker_topics(node):
+    clear_array = MarkerArray()
+    clear_marker = Marker()
+    clear_marker.action = Marker.DELETEALL
+    clear_array.markers.append(clear_marker)
+
+    transient_local_qos = QoSProfile(
+        depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL
+    )
+    publishers = [
+        node.create_publisher(MarkerArray, topic, transient_local_qos)
+        for topic in RVIZ_MARKER_TOPICS
+    ]
+    for publisher in publishers:
+        publisher.publish(clear_array)
+
+    # Give ROS a brief chance to flush the clear messages before the node is destroyed.
+    time.sleep(0.2)
+
+
 def shutdown_experiment_runtime(node):
+    _clear_rviz_marker_topics(node)
     node.destroy_node()
     rclpy.shutdown()
 
