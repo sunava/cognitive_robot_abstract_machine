@@ -155,6 +155,13 @@ HANDPICKED_SPAWN_POSES = {
     "test-kitchen-chat": (-0.8, 0.74, 0.885, np.pi / 2),
     "isr": (1.48, -0.12, 0.80, -np.pi / 2),
 }
+HANDPICKED_CAMERA_POSES = {
+    "apartment": (2.83, 2.11, 0.99, np.pi),
+    "apartment_without_walls": (2.83, 2.11, 0.99, np.pi),
+    "kitchen": (-1.6, 0.74, 1, np.pi),
+    "test-kitchen-chat": (-0.8, 1.09, 0.885, np.pi / 2),
+    "isr": (1.88, -0.47, 0.99, 0),
+}
 CUTTING_BOARD_COLOR = Color(R=0.80, G=0.66, B=0.49)
 MIXING_BOWL_COLOR = Color(R=0.78, G=0.80, B=0.86)
 
@@ -388,19 +395,19 @@ def _resolve_spawn_pose(
     return (float(x), float(y), float(z)), float(yaw)
 
 
-def _resolve_camera_pose(world, environment_name, offset_m=0.35):
+def _resolve_camera_pose(world, environment_name):
     normalized_environment = resolve_environment_name(environment_name)
-    if normalized_environment not in HANDPICKED_SPAWN_POSES:
-        supported = ", ".join(sorted(HANDPICKED_SPAWN_POSES))
+    if normalized_environment not in HANDPICKED_CAMERA_POSES:
+        supported = ", ".join(sorted(HANDPICKED_CAMERA_POSES))
         raise ValueError(
             "No handpicked camera pose configured for "
             f"'{normalized_environment}'. Supported: {supported}."
         )
 
-    x, y, z, yaw = HANDPICKED_SPAWN_POSES[normalized_environment]
+    x, y, z, yaw = HANDPICKED_CAMERA_POSES[normalized_environment]
     return HomogeneousTransformationMatrix.from_xyz_rpy(
-        x=float(x) + float(np.cos(float(yaw)) * offset_m),
-        y=float(y) + float(np.sin(float(yaw)) * offset_m),
+        x=float(x),
+        y=float(y),
         z=float(z),
         yaw=float(yaw),
         reference_frame=world.root,
