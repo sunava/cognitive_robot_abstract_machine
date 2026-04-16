@@ -1,10 +1,13 @@
 import time
 
+import numpy as np
 import rclpy
 from rclpy.qos import DurabilityPolicy, QoSProfile
 
+from geometry_msgs.msg import TransformStamped
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
+from tf2_msgs.msg import TFMessage
 
 from krrood.ormatic.data_access_objects.helper import to_dao
 from pycram.datastructures.enums import Arms
@@ -24,6 +27,7 @@ from semantic_digital_twin.world_description.connections import FixedConnection
 
 from pycram.robot_plans.actions.composite.utils.experiment_logging import body_name
 from pycram.robot_plans.actions.composite.utils.rviz import CostmapHeatmapRviz
+from pycram.tf_transformations import quaternion_from_euler
 
 KITCHEN_NAVIGATION_X_MAX = 1.5
 KITCHEN_ORIGIN_EXCLUSION_RADIUS_M = 0.75
@@ -35,6 +39,7 @@ RVIZ_MARKER_TOPICS = (
     "/debug/costmap/ring",
     "/debug/costmap/final",
 )
+DEMO_CAMERA_TARGET_FRAME = "demo_camera_target"
 
 
 def _load_thesis_world_setup():
@@ -87,6 +92,47 @@ def _clear_rviz_marker_topics(node):
 
     # Give ROS a brief chance to flush the clear messages before the node is destroyed.
     time.sleep(0.2)
+
+
+def publish_demo_camera_target(
+    node, world, target_pose_fn, *, frame_name=DEMO_CAMERA_TARGET_FRAME
+):
+    robot = get_primary_robot(world)
+    tf_pub = node.create_publisher(TFMessage, "tf", 10)
+
+    if not hasattr(node, "_demo_camera_tf_handles"):
+        node._demo_camera_tf_handles = []
+
+    def _publish_camera_target():
+        target_pose = target_pose_fn()
+        target_xyz = np.asarray(target_pose.to_position().to_np(), dtype=float).reshape(
+            -1
+        )[:3]
+        robot_xyz = np.asarray(
+            robot.root.global_pose.to_position().to_np(), dtype=float
+        ).reshape(-1)[:3]
+        yaw = float(
+            np.arctan2(robot_xyz[1] - target_xyz[1], robot_xyz[0] - target_xyz[0])
+        )
+        quat = quaternion_from_euler(0.0, 0.0, yaw)
+
+        transform = TransformStamped()
+        transform.header.stamp = node.get_clock().now().to_msg()
+        transform.header.frame_id = str(world.root.name)
+        transform.child_frame_id = frame_name
+        transform.transform.translation.x = float(target_xyz[0])
+        transform.transform.translation.y = float(target_xyz[1])
+        transform.transform.translation.z = float(target_xyz[2] + 0.12)
+        transform.transform.rotation.x = float(quat[0])
+        transform.transform.rotation.y = float(quat[1])
+        transform.transform.rotation.z = float(quat[2])
+        transform.transform.rotation.w = float(quat[3])
+        tf_pub.publish(TFMessage(transforms=[transform]))
+
+    _publish_camera_target()
+    timer = node.create_timer(0.2, _publish_camera_target)
+    node._demo_camera_tf_handles.append((tf_pub, timer))
+    return frame_name
 
 
 def shutdown_experiment_runtime(node):

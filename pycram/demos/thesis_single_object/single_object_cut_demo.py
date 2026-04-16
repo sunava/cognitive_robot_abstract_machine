@@ -91,6 +91,7 @@ from pycram.robot_plans.actions.composite.utils.demo_utils import (
     attach_available_tools,
     collect_named_targets,
     get_park_arms_argument,
+    publish_demo_camera_target,
     setup_experiment_runtime,
     shutdown_experiment_runtime,
 )
@@ -500,6 +501,7 @@ def run_single_object_cut_demo(
         )
 
         target = targets[0]
+        publish_demo_camera_target(node, world, lambda: target.global_pose)
         cut_cfg = _cut_object_execution_config(object_kind)
         context = Context.from_world(world)
         context.ros_node = node
@@ -602,6 +604,7 @@ def run_single_object_mix_demo(
         )
         targets = collect_named_targets(world, "bowl_")
         target = targets[0]
+        publish_demo_camera_target(node, world, lambda: target.global_pose)
         context = Context.from_world(world)
         context.ros_node = node
 
@@ -680,6 +683,7 @@ def run_single_object_wipe_demo(
     try:
         target_marker_pub = _create_target_pose_marker_publisher(node)
         _publish_target_pose_markers(node, target_marker_pub, world, [target_data])
+        publish_demo_camera_target(node, world, lambda: target_data["world_pose"])
         arm_tools = _attach_sponges_for_available_arms(world)
         context = Context.from_world(world)
         context.ros_node = node
