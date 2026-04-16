@@ -12,7 +12,7 @@ from demos.thesis_single_object.single_object_cut_demo import run_single_object_
 # actions = "cut,mix,wipe"
 ROBOT = "g1"
 ACTION = "cut"
-ENVIRONMENT = "test-kitchen-chat"
+ENVIRONMENT = "isr"
 OBJECT_KIND = "apple"
 SPAWN_POSITION = None
 SPAWN_YAW = None

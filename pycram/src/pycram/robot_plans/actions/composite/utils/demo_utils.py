@@ -96,26 +96,35 @@ def _clear_rviz_marker_topics(node):
 
 
 def publish_demo_camera_target(
-    node, world, target_pose_fn, *, frame_name=DEMO_CAMERA_TARGET_FRAME
+    node,
+    world,
+    target_pose_fn,
+    *,
+    camera_pose_fn=None,
+    frame_name=DEMO_CAMERA_TARGET_FRAME,
 ):
-    robot = get_primary_robot(world)
     tf_pub = node.create_publisher(TFMessage, "tf", 10)
 
     if not hasattr(node, "_demo_camera_tf_handles"):
         node._demo_camera_tf_handles = []
 
     def _publish_camera_target():
-        target_pose = target_pose_fn()
-        target_xyz = np.asarray(target_pose.to_position().to_np(), dtype=float).reshape(
-            -1
-        )[:3]
-        robot_xyz = np.asarray(
-            robot.root.global_pose.to_position().to_np(), dtype=float
-        ).reshape(-1)[:3]
-        yaw = float(
-            np.arctan2(robot_xyz[1] - target_xyz[1], robot_xyz[0] - target_xyz[0])
-        )
-        quat = quaternion_from_euler(0.0, 0.0, yaw)
+        if camera_pose_fn is not None:
+            camera_pose = camera_pose_fn()
+            target_xyz = np.asarray(
+                camera_pose.to_position().to_np(), dtype=float
+            ).reshape(-1)[:3]
+            quat = np.asarray(camera_pose.to_quaternion().to_np(), dtype=float).reshape(
+                -1
+            )[:4]
+        else:
+            target_pose = target_pose_fn()
+            target_xyz = np.asarray(
+                target_pose.to_position().to_np(), dtype=float
+            ).reshape(-1)[:3]
+            quat = np.asarray(
+                quaternion_from_euler(0.0, 0.0, 0.0), dtype=float
+            ).reshape(-1)[:4]
 
         transform = TransformStamped()
         transform.header.stamp = node.get_clock().now().to_msg()
@@ -123,7 +132,7 @@ def publish_demo_camera_target(
         transform.child_frame_id = frame_name
         transform.transform.translation.x = float(target_xyz[0])
         transform.transform.translation.y = float(target_xyz[1])
-        transform.transform.translation.z = float(target_xyz[2] + 0.12)
+        transform.transform.translation.z = float(target_xyz[2])
         transform.transform.rotation.x = float(quat[0])
         transform.transform.rotation.y = float(quat[1])
         transform.transform.rotation.z = float(quat[2])

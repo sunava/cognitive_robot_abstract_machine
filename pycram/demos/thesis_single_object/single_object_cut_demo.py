@@ -388,6 +388,25 @@ def _resolve_spawn_pose(
     return (float(x), float(y), float(z)), float(yaw)
 
 
+def _resolve_camera_pose(world, environment_name, offset_m=0.35):
+    normalized_environment = resolve_environment_name(environment_name)
+    if normalized_environment not in HANDPICKED_SPAWN_POSES:
+        supported = ", ".join(sorted(HANDPICKED_SPAWN_POSES))
+        raise ValueError(
+            "No handpicked camera pose configured for "
+            f"'{normalized_environment}'. Supported: {supported}."
+        )
+
+    x, y, z, yaw = HANDPICKED_SPAWN_POSES[normalized_environment]
+    return HomogeneousTransformationMatrix.from_xyz_rpy(
+        x=float(x) + float(np.cos(float(yaw)) * offset_m),
+        y=float(y) + float(np.sin(float(yaw)) * offset_m),
+        z=float(z),
+        yaw=float(yaw),
+        reference_frame=world.root,
+    )
+
+
 def _spawn_cutting_board_under_object(
     *,
     world,
@@ -501,7 +520,12 @@ def run_single_object_cut_demo(
         )
 
         target = targets[0]
-        publish_demo_camera_target(node, world, lambda: target.global_pose)
+        publish_demo_camera_target(
+            node,
+            world,
+            lambda: target.global_pose,
+            camera_pose_fn=lambda: _resolve_camera_pose(world, environment_name),
+        )
         cut_cfg = _cut_object_execution_config(object_kind)
         context = Context.from_world(world)
         context.ros_node = node
@@ -604,7 +628,12 @@ def run_single_object_mix_demo(
         )
         targets = collect_named_targets(world, "bowl_")
         target = targets[0]
-        publish_demo_camera_target(node, world, lambda: target.global_pose)
+        publish_demo_camera_target(
+            node,
+            world,
+            lambda: target.global_pose,
+            camera_pose_fn=lambda: _resolve_camera_pose(world, environment_name),
+        )
         context = Context.from_world(world)
         context.ros_node = node
 
@@ -683,7 +712,12 @@ def run_single_object_wipe_demo(
     try:
         target_marker_pub = _create_target_pose_marker_publisher(node)
         _publish_target_pose_markers(node, target_marker_pub, world, [target_data])
-        publish_demo_camera_target(node, world, lambda: target_data["world_pose"])
+        publish_demo_camera_target(
+            node,
+            world,
+            lambda: target_data["world_pose"],
+            camera_pose_fn=lambda: _resolve_camera_pose(world, environment_name),
+        )
         arm_tools = _attach_sponges_for_available_arms(world)
         context = Context.from_world(world)
         context.ros_node = node
