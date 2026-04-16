@@ -333,7 +333,10 @@ def _pose_xyz(spatial_pose):
 
 
 def _is_excluded_kitchen_spawn_pose(spatial_pose, *, environment_name=None):
-    if resolve_environment_name(environment_name) != "kitchen":
+    if resolve_environment_name(environment_name) not in {
+        "kitchen",
+        "test-kitchen-chat",
+    }:
         return False
     x, y, _ = _pose_xyz(spatial_pose)
     return float(np.hypot(x, y)) < 0.75

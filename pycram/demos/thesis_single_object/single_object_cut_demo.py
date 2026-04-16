@@ -82,19 +82,61 @@ from semantic_digital_twin.world_description.geometry import Color
 
 HANDPICKED_PICKUP_POSES = {
     "g1": {
-        "apartment": (1.70, 2.74, 0.0, 0.0),
-        "apartment_without_walls": (1.95, 2.15, 0.0, 0.0),
+        "apartment": (1.7, 2.11, 0.99, 0),
+        "apartment_without_walls": (1.7, 2.11, 0.99, 0),
         "kitchen": (-0.4, 0.74, 0.99, np.pi),
+        "test-kitchen-chat": (-0.4, 0.74, 0.99, np.pi),
+        "isr": (1, 0, 0.0, 0.0),
+    },
+    "stretch": {
+        "apartment": (1.7, 2.11, 0.99, -np.pi / 2),
+        "apartment_without_walls": (1.7, 2.11, 0.99, -np.pi / 2),
+        "kitchen": (-0.4, 0.34, 0.99, np.pi),
+        "test-kitchen-chat": (-0.4, 0.34, 0.99, np.pi),
+        "isr": (1, 0, 0.0, 0.0),
+    },
+    "tiago": {
+        "apartment": (1.7, 2.11, 0.99, 0),
+        "apartment_without_walls": (1.7, 2.11, 0.99, 0),
+        "kitchen": (-0.2, 0.34, 0.99, np.pi),
+        "test-kitchen-chat": (-0.2, 0.34, 0.99, np.pi),
+        "isr": (1, 0, 0.0, 0.0),
+    },
+    "armar7": {
+        "apartment": (1.6, 2.3, 0.99, -np.pi / 2),
+        "apartment_without_walls": (1.6, 2.3, 0.99, -np.pi / 2),
+        "kitchen": (-0.2, 0.34, 0.99, np.pi / 2),
+        "test-kitchen-chat": (-0.2, 0.34, 0.99, np.pi / 2),
+        "isr": (0.8, 0, 0.0, -np.pi / 2),
+    },
+    "hsrb": {
+        "apartment": (1.7, 2.11, 0.99, 0),
+        "apartment_without_walls": (1.7, 2.11, 0.99, 0),
+        "kitchen": (-0.4, 0.74, 0.99, np.pi),
+        "test-kitchen-chat": (-0.4, 0.74, 0.99, np.pi),
+        "isr": (1, 0, 0.0, 0.0),
+    },
+    "justin": {
+        "apartment": (1.5, 2.11, 0.99, -np.pi / 2),
+        "apartment_without_walls": (1.5, 2.11, 0.99, -np.pi / 2),
+        "kitchen": (-0.2, 0.34, 0.99, np.pi),
+        "test-kitchen-chat": (-0.2, 0.34, 0.99, np.pi),
+        "isr": (0.4, 0, 0.0, 0.0),
+    },
+    "pr2": {
+        "apartment": (2.3, 2.11, 0.99),
+        "apartment_without_walls": (2.3, 2.11, 0.99),
+        "kitchen": (-0.2, 0.34, 0.99, np.pi),
+        "test-kitchen-chat": (-0.2, 0.34, 0.99, np.pi),
         "isr": (1, 0, 0.0, 0.0),
     },
 }
 HANDPICKED_SPAWN_POSES = {
-    "g1": {
-        "apartment": (2.48, 2.11, 0.99, -np.pi / 2),
-        "apartment_without_walls": (1.95, 2.15, 0.0, 0.0),
-        "kitchen": (-0.8, 0.74, 0.90, np.pi / 2),
-        "isr": (1.58, -0.12, 0.99, -np.pi / 2),
-    },
+    "apartment": (2.48, 2.11, 0.99, -np.pi / 2),
+    "apartment_without_walls": (2.48, 2.11, 0.99, -np.pi / 2),
+    "kitchen": (-0.8, 0.74, 0.885, np.pi / 2),
+    "test-kitchen-chat": (-0.8, 0.74, 0.885, np.pi / 2),
+    "isr": (1.48, -0.12, 0.80, -np.pi / 2),
 }
 CUTTING_BOARD_COLOR = Color(R=0.80, G=0.66, B=0.49)
 
@@ -242,19 +284,16 @@ def _resolve_spawn_pose(
         yaw = 0.0 if spawn_yaw is None else float(spawn_yaw)
         return (x, y, z), yaw
 
-    normalized_robot = resolve_robot_name(robot_name)
     normalized_environment = resolve_environment_name(environment_name)
-    robot_pose_map = HANDPICKED_SPAWN_POSES.get(normalized_robot)
-    if robot_pose_map is None or normalized_environment not in robot_pose_map:
-        supported = _supported_handpicked_pose_targets(HANDPICKED_SPAWN_POSES)
+    if normalized_environment not in HANDPICKED_SPAWN_POSES:
+        supported = ", ".join(sorted(HANDPICKED_SPAWN_POSES))
         raise ValueError(
             "No handpicked spawn pose configured for "
-            f"robot '{normalized_robot}' in environment "
             f"'{normalized_environment}'. Supported: {supported}. "
             "Set SPAWN_POSITION and SPAWN_YAW in main.py for this environment."
         )
 
-    pose = robot_pose_map[normalized_environment]
+    pose = HANDPICKED_SPAWN_POSES[normalized_environment]
     if len(pose) == 4:
         x, y, z, yaw = pose
         if spawn_yaw is not None:
@@ -378,10 +417,6 @@ def run_single_object_cut_demo(
         targets = collect_named_targets(
             world, f"{get_cut_object_config(object_kind)['object_name_prefix']}_"
         )
-        if len(targets) != 1:
-            raise RuntimeError(
-                f"Expected exactly one spawned target, got {len(targets)}"
-            )
 
         target = targets[0]
         cut_cfg = _cut_object_execution_config(object_kind)
@@ -394,12 +429,6 @@ def run_single_object_cut_demo(
                 context,
             ).perform()
 
-        print(f"[setup] robot={resolved_robot_name} environment={environment_name}")
-        print(
-            f"[setup] spawned {object_name} at "
-            f"({world_xyz[0]:.3f}, {world_xyz[1]:.3f}, {world_xyz[2]:.3f})"
-        )
-
         pickup_pose = _resolve_pickup_pose(
             world,
             robot_name,
@@ -408,14 +437,9 @@ def run_single_object_cut_demo(
             pickup_yaw=pickup_yaw,
         )
         pickup_xyz = _pose_xyz(pickup_pose)
-        print(
-            f"[setup] pickup pose at "
-            f"({pickup_xyz[0]:.3f}, {pickup_xyz[1]:.3f}, {pickup_xyz[2]:.3f})"
-        )
 
         last_error = None
         for arm, tool in arm_tools:
-            print(f"[cut] trying {_body_name(target)} with {arm.name} arm")
             try:
                 _try_cut(
                     context,
@@ -426,11 +450,10 @@ def run_single_object_cut_demo(
                     cutting_technique=cut_cfg.get("technique", CUTTING_TECHNIQUE),
                     num_cuts_x=cut_cfg.get("num_cuts_x", CUTTING_NUM_CUTS_X),
                 )
-                print(f"[ok] {_body_name(target)} cut with {arm.name} arm")
                 return
             except Exception as exc:
                 last_error = exc
-                print(f"[retry] {arm.name} arm failed: {type(exc).__name__}: {exc}")
+                print(f"The given robot is not suitable for this environment")
 
         if last_error is not None:
             raise last_error

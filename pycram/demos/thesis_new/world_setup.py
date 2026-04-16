@@ -76,12 +76,14 @@ THESIS_NEW_ENVIRONMENT_ENV = "THESIS_NEW_ENVIRONMENT"
 DEFAULT_ENVIRONMENT_START_POSE = HomogeneousTransformationMatrix.from_xyz_rpy(
     1.5, 2.0, 0.0
 )
+KITCHEN_LIKE_ENVIRONMENTS = {"kitchen", "test-kitchen-chat"}
 ENVIRONMENT_START_POSES = {
     "apartment": HomogeneousTransformationMatrix.from_xyz_rpy(1.5, 2.0, 0.0),
     "apartment_without_walls": HomogeneousTransformationMatrix.from_xyz_rpy(
         1.5, 2.0, 0.0
     ),
     "kitchen": HomogeneousTransformationMatrix.from_xyz_rpy(0, 0, 0.0),
+    "test-kitchen-chat": HomogeneousTransformationMatrix.from_xyz_rpy(0, 0, 0.0),
     "robocup": HomogeneousTransformationMatrix.from_xyz_rpy(0, 0, 0.0),
     "suturo": HomogeneousTransformationMatrix.from_xyz_rpy(0, 0, 0.0),
     "isr": HomogeneousTransformationMatrix.from_xyz_rpy(0, 0, 0.0),

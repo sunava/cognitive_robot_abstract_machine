@@ -179,16 +179,16 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
         "cut": {
             Arms.RIGHT: {
                 "x": 0.0,
-                "y": -0.15,
-                "z": 0.03,
+                "y": -0.13,
+                "z": 0.0,
                 "roll": -np.pi,
                 "pitch": 0,
                 "yaw": -np.pi / 2,
             },
             Arms.LEFT: {
                 "x": 0.0,
-                "y": -0.15,
-                "z": 0.03,
+                "y": -0.13,
+                "z": 0.0,
                 "roll": np.pi,
                 "pitch": 0,
                 "yaw": -np.pi / 2,
@@ -197,7 +197,7 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
         "mix": {
             Arms.RIGHT: {
                 "x": 0.0,
-                "y": 0.15,
+                "y": 0,
                 "z": 0.0,
                 "roll": 0.0,
                 "pitch": 0,
@@ -205,7 +205,7 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
             },
             Arms.LEFT: {
                 "x": 0.0,
-                "y": 0.15,
+                "y": 0,
                 "z": 0.0,
                 "roll": 0,
                 "pitch": 0,

@@ -50,6 +50,11 @@ git clone -b humble-devel --single-branch https://github.com/pal-robotics/pal_gr
                pal_gripper/pal_gripper_simulation \
                pal_gripper/pal_parallel_gripper_wrapper
 
+# Upstream package layouts can shift; keep hardware-only Robotiq drivers out of
+# this description workspace even if the repo structure changes.
+find "$OVERLAY_WS/src" -type f -name package.xml -path '*/robotiq_driver/package.xml' \
+    -execdir touch COLCON_IGNORE \;
+
 # ── Build the workspace ───────────────────────────────────────────────────────
 source /opt/ros/jazzy/setup.bash
 cd "$OVERLAY_WS"

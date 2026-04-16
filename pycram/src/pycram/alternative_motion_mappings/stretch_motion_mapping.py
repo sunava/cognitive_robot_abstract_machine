@@ -68,7 +68,7 @@ class StretchMoveSim(MoveMotion, AlternativeMotion[Stretch]):
     def _motion_chart(self):
         if self.teleport:
             return SetOdometry(
-                base_pose=self.target.to_homogeneous_matrix(),
+                base_pose=self.target,
                 odom_connection=self.robot.drive,
             )
 

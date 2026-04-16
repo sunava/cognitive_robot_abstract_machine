@@ -185,7 +185,10 @@ def resolve_navigation_target(location_designator, *, description):
 
 def is_excluded_kitchen_pose(pose, *, environment_name=None):
     resolve_environment_name, _ = _load_thesis_world_setup()
-    if resolve_environment_name(environment_name) != "kitchen":
+    if resolve_environment_name(environment_name) not in {
+        "kitchen",
+        "test-kitchen-chat",
+    }:
         return False
     position = pose.to_position()
     x = float(position.x)
