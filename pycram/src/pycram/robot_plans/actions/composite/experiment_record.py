@@ -30,7 +30,8 @@ class ExperimentRecord:
         )
         tool_name = (
             str(action.tool.root.name)
-            if action.tool is not None and getattr(action.tool, "root", None) is not None
+            if action.tool is not None
+            and getattr(action.tool, "root", None) is not None
             else None
         )
         container_pose = (
@@ -87,9 +88,9 @@ class ExperimentRecord:
         self.data["geometric_failed_checks"] = [
             key for key, value in geometric_checks.items() if not value
         ]
-        self.data["overall_success"] = bool(self.data.get("action_success", False)) and (
-            self.data["geometric_success"] is not False
-        )
+        self.data["overall_success"] = bool(
+            self.data.get("action_success", False)
+        ) and (self.data["geometric_success"] is not False)
         return self
 
     def to_dict(self) -> Dict[str, Any]:

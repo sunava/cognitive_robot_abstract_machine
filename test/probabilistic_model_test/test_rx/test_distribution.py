@@ -29,12 +29,16 @@ class ContinuousDistributionTestCase(unittest.TestCase):
 
     def setUp(self):
         self.leaf = leaf(
-            UniformDistribution(variable=self.variable, interval=closed(0, 1).simple_sets[0]),
+            UniformDistribution(
+                variable=self.variable, interval=closed(0, 1).simple_sets[0]
+            ),
             probabilistic_circuit=ProbabilisticCircuit(),
         )
 
     def test_conditional_from_simple_event(self):
-        event = SimpleEvent.from_data({self.variable: closed(0.5, 2)}).as_composite_set()
+        event = SimpleEvent.from_data(
+            {self.variable: closed(0.5, 2)}
+        ).as_composite_set()
         conditional, probability = self.leaf.probabilistic_circuit.truncated(event)
         self.assertEqual(len(list(conditional.nodes())), 1)
         self.assertEqual(probability, 0.5)
@@ -43,7 +47,9 @@ class ContinuousDistributionTestCase(unittest.TestCase):
         )
 
     def test_conditional_from_singleton_event(self):
-        event = SimpleEvent.from_data({self.variable: singleton(0.3)}).as_composite_set()
+        event = SimpleEvent.from_data(
+            {self.variable: singleton(0.3)}
+        ).as_composite_set()
         conditional, probability = self.leaf.probabilistic_circuit.truncated(event)
         self.assertIsNone(conditional)
 
@@ -85,12 +91,16 @@ class DiscreteDistributionTestCase(unittest.TestCase):
             {hash(Animal.CAT): 0.1, hash(Animal.DOG): 0.2, hash(Animal.FISH): 0.7},
         )
         self.symbolic_distribution = leaf(
-            SymbolicDistribution(variable=self.symbol, probabilities=symbolic_probabilities),
+            SymbolicDistribution(
+                variable=self.symbol, probabilities=symbolic_probabilities
+            ),
             ProbabilisticCircuit(),
         ).probabilistic_circuit
         integer_probabilities = MissingDict(float, {0: 0.1, 1: 0.2, 2: 0.7})
         self.integer_distribution = leaf(
-            IntegerDistribution(variable=self.integer, probabilities=integer_probabilities),
+            IntegerDistribution(
+                variable=self.integer, probabilities=integer_probabilities
+            ),
             ProbabilisticCircuit(),
         ).probabilistic_circuit
 

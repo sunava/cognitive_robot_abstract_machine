@@ -38,10 +38,14 @@ class IntegerDistributionTestCase(unittest.TestCase):
     def test_mode(self):
         mode, likelihood = self.model.mode()
         self.assertAlmostEqual(likelihood, 11 / 20)
-        self.assertEqual(mode, SimpleEvent.from_data({self.x: singleton(4)}).as_composite_set())
+        self.assertEqual(
+            mode, SimpleEvent.from_data({self.x: singleton(4)}).as_composite_set()
+        )
 
     def test_conditional(self):
-        event = SimpleEvent.from_data({self.x: closed(0, 1) | closed(3, 4)}).as_composite_set()
+        event = SimpleEvent.from_data(
+            {self.x: closed(0, 1) | closed(3, 4)}
+        ).as_composite_set()
         conditional, probability = self.model.truncated(event)
         self.assertEqual(probability, 15 / 20)
         self.assertAlmostEqual(conditional.probabilities[1], 4 / 15)
@@ -76,7 +80,9 @@ class IntegerDistributionTestCase(unittest.TestCase):
         self.assertEqual(support, singleton(1) | singleton(2) | singleton(4))
 
     def test_domain_if_weights_are_zero(self):
-        distribution = IntegerDistribution(variable=self.x, probabilities=MissingDict(float))
+        distribution = IntegerDistribution(
+            variable=self.x, probabilities=MissingDict(float)
+        )
         self.assertTrue(distribution.univariate_support.is_empty())
 
     def test_plot(self):
@@ -90,7 +96,9 @@ class IntegerDistributionTestCase(unittest.TestCase):
         self.assertEqual(deserialized, self.model)
 
     def test_cdf(self):
-        cdf = self.model.cumulative_distribution_function(np.array([0, 1, 2, 3, 4]).reshape(-1, 1))
+        cdf = self.model.cumulative_distribution_function(
+            np.array([0, 1, 2, 3, 4]).reshape(-1, 1)
+        )
         self.assertAlmostEqual(cdf[0], 0)
         self.assertAlmostEqual(cdf[1], 4 / 20)
         self.assertAlmostEqual(cdf[2], 9 / 20)
@@ -116,14 +124,18 @@ class SymbolicDistributionTestCase(unittest.TestCase):
     def test_mode(self):
         mode, likelihood = self.model.mode()
         self.assertEqual(likelihood, 13 / 20)
-        self.assertEqual(mode, SimpleEvent.from_data({self.x: TestEnum.B}).as_composite_set())
+        self.assertEqual(
+            mode, SimpleEvent.from_data({self.x: TestEnum.B}).as_composite_set()
+        )
 
     def test_plot(self):
         fig = go.Figure(self.model.plot(), self.model.plotly_layout())
         # fig.show()
 
     def test_probability(self):
-        event = SimpleEvent.from_data({self.x: (TestEnum.A, TestEnum.C)}).as_composite_set()
+        event = SimpleEvent.from_data(
+            {self.x: (TestEnum.A, TestEnum.C)}
+        ).as_composite_set()
         self.assertEqual(self.model.probability(event), 7 / 20)
 
     def test_support(self):
@@ -131,8 +143,14 @@ class SymbolicDistributionTestCase(unittest.TestCase):
         self.assertEqual(
             support,
             Set.from_simple_sets(
-                *[SetElement.from_data(TestEnum.A, self.x.domain.simple_sets[0].all_elements),
-                SetElement.from_data(TestEnum.B, self.x.domain.simple_sets[0].all_elements)]
+                *[
+                    SetElement.from_data(
+                        TestEnum.A, self.x.domain.simple_sets[0].all_elements
+                    ),
+                    SetElement.from_data(
+                        TestEnum.B, self.x.domain.simple_sets[0].all_elements
+                    ),
+                ]
             ),
         )
 
@@ -165,13 +183,17 @@ class DiracDeltaDistributionTestCase(unittest.TestCase):
         self.assertEqual(pdf[1], 0)
 
     def test_cdf(self):
-        cdf = self.model.cumulative_distribution_function(np.array([-1, 0, 1]).reshape(-1, 1))
+        cdf = self.model.cumulative_distribution_function(
+            np.array([-1, 0, 1]).reshape(-1, 1)
+        )
         self.assertEqual(cdf[0], 0)
         self.assertEqual(cdf[1], 1)
         self.assertEqual(cdf[2], 1)
 
     def test_probability(self):
-        event = SimpleEvent.from_data({self.x: closed(0, 1) | closed(1.5, 2)}).as_composite_set()
+        event = SimpleEvent.from_data(
+            {self.x: closed(0, 1) | closed(1.5, 2)}
+        ).as_composite_set()
         self.assertEqual(self.model.probability(event), 1)
 
     def test_probability_0(self):
@@ -181,13 +203,17 @@ class DiracDeltaDistributionTestCase(unittest.TestCase):
         self.assertEqual(self.model.probability(event), 0.0)
 
     def test_conditional(self):
-        event = SimpleEvent.from_data({self.model.variable: closed(-1, 2)}).as_composite_set()
+        event = SimpleEvent.from_data(
+            {self.model.variable: closed(-1, 2)}
+        ).as_composite_set()
         conditional, probability = self.model.truncated(event)
         self.assertEqual(conditional, self.model)
         self.assertEqual(probability, 1)
 
     def test_conditional_impossible(self):
-        event = SimpleEvent.from_data({self.model.variable: closed(1, 2)}).as_composite_set()
+        event = SimpleEvent.from_data(
+            {self.model.variable: closed(1, 2)}
+        ).as_composite_set()
         conditional, probability = self.model.truncated(event)
         self.assertIsNone(conditional)
         self.assertEqual(0, probability)

@@ -130,6 +130,7 @@ class SimulatorCallback:
             simulator.renderer.sync()
         return result
 
+
 @dataclass
 class BaseSimulator:
     """
@@ -166,7 +167,9 @@ class BaseSimulator:
     class_level_callbacks: ClassVar[List[SimulatorCallback]] = []
     """Class level callback functions"""
 
-    instance_level_callbacks: List[SimulatorCallback] = field(init=False, default_factory=list)
+    instance_level_callbacks: List[SimulatorCallback] = field(
+        init=False, default_factory=list
+    )
     """Instance level callback functions"""
 
     _current_number_of_steps: int = field(init=False, default=0, repr=False)
@@ -181,7 +184,9 @@ class BaseSimulator:
     _state: SimulatorState = field(init=False, repr=False)
     """Current state of the simulator"""
 
-    _stop_reason: Optional[SimulatorStopReason] = field(init=False, default=None, repr=False)
+    _stop_reason: Optional[SimulatorStopReason] = field(
+        init=False, default=None, repr=False
+    )
     """Reason for stopping the simulator"""
 
     _renderer: SimulatorRenderer = field(init=False, repr=False)
@@ -243,6 +248,7 @@ class BaseSimulator:
             self.simulation_thread = Thread(target=self.run, args=(constraints,))
             self.simulation_thread.start()
         if not self.headless and render_in_thread:
+
             def render():
                 with self.renderer:
                     while self.renderer.is_running():

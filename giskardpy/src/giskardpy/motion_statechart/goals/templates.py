@@ -7,7 +7,11 @@ from typing_extensions import Optional
 
 from krrood.symbolic_math.symbolic_math import sum
 from giskardpy.motion_statechart.context import MotionStatechartContext
-from giskardpy.motion_statechart.graph_node import Goal, MotionStatechartNode, NodeArtifacts
+from giskardpy.motion_statechart.graph_node import (
+    Goal,
+    MotionStatechartNode,
+    NodeArtifacts,
+)
 
 
 @dataclass(repr=False, eq=False)

@@ -138,7 +138,9 @@ def test_query_helpers_use_fallbacks_when_bindings_are_empty(
     assert result == fallback
 
 
-def test_get_cutting_knowledge_aggregates_prerequisites_and_peeling_tool(cutting_module):
+def test_get_cutting_knowledge_aggregates_prerequisites_and_peeling_tool(
+    cutting_module,
+):
     fake_sparql = FakeSPARQLClient(
         responses=[
             {"boolean": True},
@@ -198,9 +200,7 @@ def test_get_cutting_knowledge_skips_peel_tool_when_not_needed(cutting_module):
 def test_safe_get_cutting_knowledge_returns_structured_error(cutting_module):
     cutting_module.sparql = FakeSPARQLClient(error=RuntimeError("network down"))
 
-    result = cutting_module.safe_get_cutting_knowledge(
-        "cut:Slicing", "FOODON_00003523"
-    )
+    result = cutting_module.safe_get_cutting_knowledge("cut:Slicing", "FOODON_00003523")
 
     assert result["query_success"] is False
     assert result["query_error"] == "RuntimeError: network down"

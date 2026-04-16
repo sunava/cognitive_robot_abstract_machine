@@ -8,9 +8,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.axes_grid1 import make_axes_locatable, axes_size
 
-from giskardpy.motion_statechart.plotters.styles import LiftCycleStateToColor, ObservationStateToColor
+from giskardpy.motion_statechart.plotters.styles import (
+    LiftCycleStateToColor,
+    ObservationStateToColor,
+)
 from giskardpy.motion_statechart.context import MotionStatechartContext
-from giskardpy.motion_statechart.data_types import LifeCycleValues, ObservationStateValues
+from giskardpy.motion_statechart.data_types import (
+    LifeCycleValues,
+    ObservationStateValues,
+)
 from giskardpy.motion_statechart.graph_node import Goal, MotionStatechartNode
 from giskardpy.utils.utils import create_path
 

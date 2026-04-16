@@ -119,16 +119,28 @@ def test_scoring_distinguishes_full_partial_and_out_of_scope():
 def test_scraper_deduplicates_and_filters_large_batches():
     articles = [
         models_mod.WikiHowArticle(
-            title="How to Cut Carrots", categories=[], steps=[], url="https://example/cut-carrots"
+            title="How to Cut Carrots",
+            categories=[],
+            steps=[],
+            url="https://example/cut-carrots",
         ),
         models_mod.WikiHowArticle(
-            title="How to Cut Carrots", categories=[], steps=[], url="https://example/cut-carrots"
+            title="How to Cut Carrots",
+            categories=[],
+            steps=[],
+            url="https://example/cut-carrots",
         ),
         models_mod.WikiHowArticle(
-            title="How to Mix Batter", categories=[], steps=[], url="https://example/mix-batter"
+            title="How to Mix Batter",
+            categories=[],
+            steps=[],
+            url="https://example/mix-batter",
         ),
         models_mod.WikiHowArticle(
-            title="How to Knit Socks", categories=[], steps=[], url="https://example/knit-socks"
+            title="How to Knit Socks",
+            categories=[],
+            steps=[],
+            url="https://example/knit-socks",
         ),
     ]
 

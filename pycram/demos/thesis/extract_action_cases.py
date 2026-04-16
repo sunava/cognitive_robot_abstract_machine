@@ -12,7 +12,9 @@ from wikihow_eval.models import ActionCase, WikiHowArticle
 
 
 TITLE_PATTERNS: Sequence[re.Pattern[str]] = (
-    re.compile(r"^How to (?P<verb>\w+)\s+(?:(?:a|an|the)\b\s*)?(?P<object>.+)$", re.IGNORECASE),
+    re.compile(
+        r"^How to (?P<verb>\w+)\s+(?:(?:a|an|the)\b\s*)?(?P<object>.+)$", re.IGNORECASE
+    ),
     re.compile(r"^How to (?P<verb>\w+)\s+Down\s+(?P<object>.+)$", re.IGNORECASE),
     re.compile(
         r"^.+?:\s*How to (?P<verb>\w+)\s+(?:(?:a|an|the)\b\s*)?(?P<object>.+)$",
@@ -68,8 +70,12 @@ def _normalize_object_text(text: str) -> str:
     object_text = re.sub(r"\s*\([^)]*\)", "", object_text)
     object_text = re.sub(r"\s*[-:]\s*.*$", "", object_text)
     object_text = re.sub(r"^(and|or)\s+use\s+it$", "", object_text, flags=re.IGNORECASE)
-    object_text = re.sub(r"\s+(and|or)\s+use\s+it$", "", object_text, flags=re.IGNORECASE)
-    object_text = re.sub(r"\s+(properly|easily|safely|quickly)$", "", object_text, flags=re.IGNORECASE)
+    object_text = re.sub(
+        r"\s+(and|or)\s+use\s+it$", "", object_text, flags=re.IGNORECASE
+    )
+    object_text = re.sub(
+        r"\s+(properly|easily|safely|quickly)$", "", object_text, flags=re.IGNORECASE
+    )
     return object_text.strip().lower()
 
 
@@ -82,7 +88,9 @@ def _extract_from_title(title: str) -> tuple[str, str]:
             object_text = _normalize_object_text(match.group("object"))
             if not object_text and ":" in title:
                 prefix = title.split(":", 1)[0]
-                prefix = re.sub(r"\bexplained\b$", "", prefix, flags=re.IGNORECASE).strip()
+                prefix = re.sub(
+                    r"\bexplained\b$", "", prefix, flags=re.IGNORECASE
+                ).strip()
                 object_text = _normalize_object_text(prefix)
             if object_text:
                 return verb, object_text

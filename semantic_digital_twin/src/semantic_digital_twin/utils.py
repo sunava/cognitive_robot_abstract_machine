@@ -104,7 +104,15 @@ def robot_name_from_urdf_string(urdf_string: str) -> str:
     :param urdf_string: URDF string
     :return: Extracted name
     """
-    return urdf_string.split('robot name="')[1].split('"')[0]
+    root = ET.fromstring(urdf_string)
+    if root.tag != "robot":
+        raise ValueError(f"Expected URDF root tag 'robot', got '{root.tag}'")
+
+    robot_name = root.attrib.get("name")
+    if not robot_name:
+        raise ValueError("URDF root tag is missing a 'name' attribute")
+
+    return robot_name
 
 
 def copy_lru_cache(maxsize=None, typed=False):

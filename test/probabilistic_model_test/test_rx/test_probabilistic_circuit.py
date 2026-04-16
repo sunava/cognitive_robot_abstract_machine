@@ -48,19 +48,27 @@ class SmallCircuitTestCast(unittest.TestCase):
         prod2.add_subcircuit(sum5)
 
         d_x1 = leaf(
-            UniformDistribution(variable=self.x, interval=SimpleInterval.from_data(0, 1)),
+            UniformDistribution(
+                variable=self.x, interval=SimpleInterval.from_data(0, 1)
+            ),
             probabilistic_circuit=model,
         )
         d_x2 = leaf(
-            UniformDistribution(variable=self.x, interval=SimpleInterval.from_data(2, 3)),
+            UniformDistribution(
+                variable=self.x, interval=SimpleInterval.from_data(2, 3)
+            ),
             probabilistic_circuit=model,
         )
         d_y1 = leaf(
-            UniformDistribution(variable=self.y, interval=SimpleInterval.from_data(0, 1)),
+            UniformDistribution(
+                variable=self.y, interval=SimpleInterval.from_data(0, 1)
+            ),
             probabilistic_circuit=model,
         )
         d_y2 = leaf(
-            UniformDistribution(variable=self.y, interval=SimpleInterval.from_data(3, 4)),
+            UniformDistribution(
+                variable=self.y, interval=SimpleInterval.from_data(3, 4)
+            ),
             probabilistic_circuit=model,
         )
 
@@ -134,7 +142,9 @@ class SymbolicPlottingTestCase(unittest.TestCase):
         probabilities[int(SymbolEnum.A)] = 7 / 20
         probabilities[int(SymbolEnum.B)] = 13 / 20
         cls.model = ProbabilisticCircuit()
-        l1 = UnivariateDiscreteLeaf(SymbolicDistribution(variable=cls.x, probabilities=probabilities))
+        l1 = UnivariateDiscreteLeaf(
+            SymbolicDistribution(variable=cls.x, probabilities=probabilities)
+        )
         cls.model.add_node(l1)
 
     def test_plot(self):
@@ -178,11 +188,20 @@ class DiracMixtureConditioningTestCase(unittest.TestCase):
         cls.model = ProbabilisticCircuit()
         root = SumUnit(probabilistic_circuit=cls.model)
         root.add_subcircuit(
-            leaf(UniformDistribution(variable=cls.x, interval=SimpleInterval.from_data(0, 1.0)), cls.model),
+            leaf(
+                UniformDistribution(
+                    variable=cls.x, interval=SimpleInterval.from_data(0, 1.0)
+                ),
+                cls.model,
+            ),
             np.log(0.5),
         )
         root.add_subcircuit(
-            leaf(DiracDeltaDistribution(variable=cls.x, location=0.5, density_cap=2.0), cls.model), np.log(0.5)
+            leaf(
+                DiracDeltaDistribution(variable=cls.x, location=0.5, density_cap=2.0),
+                cls.model,
+            ),
+            np.log(0.5),
         )
 
     def test_conditioning(self):
@@ -240,10 +259,30 @@ class ConditioningTestCase(unittest.TestCase):
         p1 = ProductUnit(probabilistic_circuit=model)
         p2 = ProductUnit(probabilistic_circuit=model)
 
-        u1 = leaf(UniformDistribution(variable=cls.x, interval=SimpleInterval.from_data(0, 1.0)), model)
-        u2 = leaf(UniformDistribution(variable=cls.x, interval=SimpleInterval.from_data(0.0, 2)), model)
-        u3 = leaf(UniformDistribution(variable=cls.y, interval=SimpleInterval.from_data(0, 1)), model)
-        u4 = leaf(UniformDistribution(variable=cls.y, interval=SimpleInterval.from_data(0.0, 2)), model)
+        u1 = leaf(
+            UniformDistribution(
+                variable=cls.x, interval=SimpleInterval.from_data(0, 1.0)
+            ),
+            model,
+        )
+        u2 = leaf(
+            UniformDistribution(
+                variable=cls.x, interval=SimpleInterval.from_data(0.0, 2)
+            ),
+            model,
+        )
+        u3 = leaf(
+            UniformDistribution(
+                variable=cls.y, interval=SimpleInterval.from_data(0, 1)
+            ),
+            model,
+        )
+        u4 = leaf(
+            UniformDistribution(
+                variable=cls.y, interval=SimpleInterval.from_data(0.0, 2)
+            ),
+            model,
+        )
 
         s1.add_subcircuit(p1, np.log(0.5))
         s1.add_subcircuit(p2, np.log(0.5))
@@ -265,7 +304,9 @@ class ConditioningTestCase(unittest.TestCase):
 
         conditioned_marginal = model.marginal([self.y])
 
-        probability_event = SimpleEvent.from_data({self.y: closed(0.0, 1.0)}).as_composite_set()
+        probability_event = SimpleEvent.from_data(
+            {self.y: closed(0.0, 1.0)}
+        ).as_composite_set()
 
         p_marginal = marginal.probability(probability_event)
         p_conditioned_marginal = conditioned_marginal.probability(probability_event)

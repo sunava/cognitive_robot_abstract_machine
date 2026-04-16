@@ -1,6 +1,8 @@
 from SPARQLWrapper import SPARQLWrapper, JSON
 
-sparql = SPARQLWrapper("https://knowledgedb.informatik.uni-bremen.de/mealprepDB/MealPreparation/query")
+sparql = SPARQLWrapper(
+    "https://knowledgedb.informatik.uni-bremen.de/mealprepDB/MealPreparation/query"
+)
 sparql.setReturnFormat(JSON)
 
 prefix = """
@@ -20,11 +22,18 @@ def get_motion(task):
   cut:%s rdfs:subClassOf ?restriction .
   ?restriction owl:onProperty cut:requiresMotion.
   ?restriction owl:someValuesFrom ?motion .
-} """ % (task)
-    full_query = (prefix + query)
+} """ % (
+        task
+    )
+    full_query = prefix + query
     sparql.setQuery(full_query)
     results = sparql.queryAndConvert()
-    return results["results"]["bindings"][0]["motion"]["value"] if results["results"]["bindings"] else None
+    return (
+        results["results"]["bindings"][0]["motion"]["value"]
+        if results["results"]["bindings"]
+        else None
+    )
+
 
 def get_mixing_tool(task):
     query = """
@@ -32,11 +41,17 @@ def get_mixing_tool(task):
       cut:%s rdfs:subClassOf ?restriction .
       ?restriction owl:onProperty soma:affordsTrigger.
       ?restriction owl:someValuesFrom ?tool .
-    } """ % (task)
-    full_query = (prefix + query)
+    } """ % (
+        task
+    )
+    full_query = prefix + query
     sparql.setQuery(full_query)
     results = sparql.queryAndConvert()
-    return results["results"]["bindings"][0]["tool"]["value"] if results["results"]["bindings"] else None
+    return (
+        results["results"]["bindings"][0]["tool"]["value"]
+        if results["results"]["bindings"]
+        else None
+    )
 
 
 def get_mixing_knowledge(task):

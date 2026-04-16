@@ -55,7 +55,6 @@ class MujocoSimulator(BaseSimulator):
     Path to the XML file of the scene (for initialization)
     """
 
-
     def __post_init__(self, file_path: str = ""):
         super().__post_init__()
         self._file_path = file_path
@@ -65,7 +64,9 @@ class MujocoSimulator(BaseSimulator):
         self._mj_spec.option.integrator = getattr(
             mujoco.mjtIntegrator, f"mjINT_{self.config.get('integrator', 'RK4')}"
         )
-        self._mj_spec.option.noslip_iterations = int(self.config.get("noslip_iterations", 0))
+        self._mj_spec.option.noslip_iterations = int(
+            self.config.get("noslip_iterations", 0)
+        )
         self._mj_spec.option.noslip_tolerance = float(
             self.config.get("noslip_tolerance", 1e-6)
         )
@@ -1605,6 +1606,7 @@ class MujocoSimulator(BaseSimulator):
                 self._renderer._sim().load(self._mj_model, self._mj_data, "")
                 if self.simulation_thread is None:
                     mujoco.mj_step1(self._mj_model, self._mj_data)
+
         if self.state == SimulatorState.RUNNING:
             self.pause()
             do_spawn()

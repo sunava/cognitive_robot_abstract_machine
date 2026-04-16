@@ -25,7 +25,7 @@ from semantic_digital_twin.datastructures.definitions import (
     StaticJointState,
 )
 from semantic_digital_twin.datastructures.definitions import TorsoState
-from semantic_digital_twin.semantic_annotations.semantic_annotations import Knife
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Knife, Whisk
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 
 try:
@@ -38,6 +38,14 @@ try:
         _cut_object_execution_config,
         _parse_stl,
     )
+    from ..thesis_new.demo_mix_all_bowls_retry import _try_mix
+    from ..thesis_new.demo_wipe_all_spaces_retry import (
+        _attach_sponges_for_available_arms,
+        _create_target_pose_marker_publisher,
+        _publish_target_pose_markers,
+        _try_wipe,
+    )
+    from ..thesis_new.spawn_random_bowls import _parse_stl as _parse_bowl_stl
     from ..thesis_new.spawn_random_breads import (
         _pose_xyz,
         _set_uniform_scale,
@@ -59,6 +67,14 @@ except ImportError:
         _cut_object_execution_config,
         _parse_stl,
     )
+    from thesis_new.demo_mix_all_bowls_retry import _try_mix
+    from thesis_new.demo_wipe_all_spaces_retry import (
+        _attach_sponges_for_available_arms,
+        _create_target_pose_marker_publisher,
+        _publish_target_pose_markers,
+        _try_wipe,
+    )
+    from thesis_new.spawn_random_bowls import _parse_stl as _parse_bowl_stl
     from thesis_new.spawn_random_breads import (
         _pose_xyz,
         _set_uniform_scale,
@@ -124,8 +140,8 @@ HANDPICKED_PICKUP_POSES = {
         "isr": (0.4, 0, 0.0, 0.0),
     },
     "pr2": {
-        "apartment": (2.3, 2.11, 0.99),
-        "apartment_without_walls": (2.3, 2.11, 0.99),
+        "apartment": (1.5, 2.11, 0.99, 0),
+        "apartment_without_walls": (1.5, 2.11, 0.99, 0),
         "kitchen": (-0.2, 0.34, 0.99, np.pi),
         "test-kitchen-chat": (-0.2, 0.34, 0.99, np.pi),
         "isr": (1, 0, 0.0, 0.0),
@@ -139,6 +155,7 @@ HANDPICKED_SPAWN_POSES = {
     "isr": (1.48, -0.12, 0.80, -np.pi / 2),
 }
 CUTTING_BOARD_COLOR = Color(R=0.80, G=0.66, B=0.49)
+MIXING_BOWL_COLOR = Color(R=0.78, G=0.80, B=0.86)
 
 
 def _suppress_demo_noise():
@@ -229,6 +246,59 @@ def _spawn_single_object(
     world.merge_world_at_pose(spawned, world_pose)
     world.update_forward_kinematics()
     return object_name, _pose_xyz(world_pose)
+
+
+def _spawn_single_mixing_container(
+    *,
+    world,
+    object_kind,
+    spawn_position,
+    spawn_yaw,
+    spawn_scale,
+):
+    container_kind = str(object_kind).strip().lower()
+    mesh_parts = (
+        ("pycram_object_gap_demo", "pot_1.stl")
+        if container_kind == "pot"
+        else ("objects", "bowl.stl")
+    )
+    object_name = "bowl_0001"
+    x_world, y_world, z_world = [float(value) for value in spawn_position]
+    spawned = _parse_bowl_stl(*mesh_parts)
+    spawned.root.name.name = object_name
+    _set_uniform_scale(
+        spawned,
+        (float(spawn_scale), float(spawn_scale), float(spawn_scale)),
+        color=MIXING_BOWL_COLOR,
+    )
+    world_pose = HomogeneousTransformationMatrix.from_xyz_rpy(
+        x=x_world,
+        y=y_world,
+        z=z_world,
+        yaw=float(spawn_yaw),
+        reference_frame=world.root,
+    )
+    world.merge_world_at_pose(spawned, world_pose)
+    world.update_forward_kinematics()
+    return object_name, _pose_xyz(world_pose)
+
+
+def _single_wipe_target_data(world, spawn_position, spawn_yaw):
+    x_world, y_world, z_world = [float(value) for value in spawn_position]
+    world_pose = HomogeneousTransformationMatrix.from_xyz_rpy(
+        x=x_world,
+        y=y_world,
+        z=z_world,
+        yaw=float(spawn_yaw) + -np.pi / 2,
+        reference_frame=world.root,
+    )
+    return {
+        "bowl_name": "wipe_target_0001",
+        "surface_name": "single_target",
+        "scale": 1.0,
+        "pose_xyz": _pose_xyz(world_pose),
+        "world_pose": world_pose,
+    }
 
 
 def _supported_handpicked_pose_targets(pose_map):
@@ -459,3 +529,190 @@ def run_single_object_cut_demo(
             raise last_error
     finally:
         shutdown_experiment_runtime(node)
+
+
+def run_single_object_mix_demo(
+    *,
+    robot_name=None,
+    environment_name=None,
+    object_kind="bowl",
+    spawn_position=None,
+    spawn_yaw=None,
+    spawn_scale=1.0,
+    pickup_position=None,
+    pickup_yaw=None,
+    quiet_logs=True,
+):
+    if quiet_logs:
+        _suppress_demo_noise()
+    parse_output = io.StringIO()
+    with redirect_stdout(parse_output), redirect_stderr(parse_output):
+        world = setup_thesis_world(
+            robot_name=robot_name,
+            environment_name=environment_name,
+        )
+    spawn_position, spawn_yaw = _resolve_spawn_pose(
+        world,
+        robot_name,
+        environment_name,
+        spawn_position=spawn_position,
+        spawn_yaw=spawn_yaw,
+    )
+    object_name, world_xyz = _spawn_single_mixing_container(
+        world=world,
+        object_kind=object_kind,
+        spawn_position=spawn_position,
+        spawn_yaw=spawn_yaw,
+        spawn_scale=spawn_scale,
+    )
+
+    node = setup_experiment_runtime(
+        world=world,
+        node_name="pycram_single_object_mix_demo",
+    )
+
+    try:
+        resolved_robot_name = resolve_robot_name(robot_name)
+        arm_tools = attach_available_tools(
+            world,
+            _parse_stl,
+            mesh_parts=("pycram_object_gap_demo", "whisk.stl"),
+            right_name="whisk_right",
+            left_name="whisk_left",
+            right_pose_kwargs=get_tool_mount_pose_kwargs(
+                "mix", resolved_robot_name, Arms.RIGHT
+            ),
+            left_pose_kwargs=get_tool_mount_pose_kwargs(
+                "mix", resolved_robot_name, Arms.LEFT
+            ),
+            tool_cls=Whisk,
+        )
+        targets = collect_named_targets(world, "bowl_")
+        target = targets[0]
+        context = Context.from_world(world)
+        context.ros_node = node
+
+        with simulated_robot_without_collision:
+            sequential(
+                [SetGripperAction(Arms.BOTH, GripperState.CLOSE)],
+                context,
+            ).perform()
+
+        pickup_pose = _resolve_pickup_pose(
+            world,
+            robot_name,
+            environment_name,
+            pickup_position=pickup_position,
+            pickup_yaw=pickup_yaw,
+        )
+
+        last_error = None
+        for arm, tool in arm_tools:
+            try:
+                _try_mix(
+                    context,
+                    target,
+                    pickup_pose,
+                    arm,
+                    tool,
+                    environment_name=environment_name,
+                )
+                return
+            except Exception as exc:
+                last_error = exc
+                print("The given robot is not suitable for this environment")
+
+        if last_error is not None:
+            raise last_error
+    finally:
+        shutdown_experiment_runtime(node)
+
+
+def run_single_object_wipe_demo(
+    *,
+    robot_name=None,
+    environment_name=None,
+    object_kind="wipe",
+    spawn_position=None,
+    spawn_yaw=None,
+    spawn_scale=1.0,
+    pickup_position=None,
+    pickup_yaw=None,
+    quiet_logs=True,
+):
+    if quiet_logs:
+        _suppress_demo_noise()
+    parse_output = io.StringIO()
+    with redirect_stdout(parse_output), redirect_stderr(parse_output):
+        world = setup_thesis_world(
+            robot_name=robot_name,
+            environment_name=environment_name,
+        )
+    spawn_position, spawn_yaw = _resolve_spawn_pose(
+        world,
+        robot_name,
+        environment_name,
+        spawn_position=spawn_position,
+        spawn_yaw=spawn_yaw,
+    )
+    target_data = _single_wipe_target_data(world, spawn_position, spawn_yaw)
+
+    node = setup_experiment_runtime(
+        world=world,
+        node_name="pycram_single_object_wipe_demo",
+    )
+
+    try:
+        target_marker_pub = _create_target_pose_marker_publisher(node)
+        _publish_target_pose_markers(node, target_marker_pub, world, [target_data])
+        arm_tools = _attach_sponges_for_available_arms(world)
+        context = Context.from_world(world)
+        context.ros_node = node
+
+        with simulated_robot_without_collision:
+            sequential(
+                [SetGripperAction(Arms.BOTH, GripperState.CLOSE)],
+                context,
+            ).perform()
+
+        pickup_pose = _resolve_pickup_pose(
+            world,
+            robot_name,
+            environment_name,
+            pickup_position=pickup_position,
+            pickup_yaw=pickup_yaw,
+        )
+
+        last_error = None
+        for arm, tool in arm_tools:
+            try:
+                _try_wipe(
+                    context,
+                    target_data["world_pose"],
+                    pickup_pose,
+                    arm,
+                    tool,
+                    environment_name=environment_name,
+                )
+                return
+            except Exception as exc:
+                last_error = exc
+                print("The given robot is not suitable for this environment")
+
+        if last_error is not None:
+            raise last_error
+    finally:
+        shutdown_experiment_runtime(node)
+
+
+def run_single_object_demo(*, action="cut", **kwargs):
+    normalized_action = str(action).strip().lower()
+    if normalized_action == "cut":
+        return run_single_object_cut_demo(**kwargs)
+    if normalized_action == "mix":
+        return run_single_object_mix_demo(**kwargs)
+    if normalized_action == "wipe":
+        return run_single_object_wipe_demo(**kwargs)
+    raise ValueError(
+        f"Unsupported single-object action '{action}'. Supported: cut, mix, wipe"
+    )

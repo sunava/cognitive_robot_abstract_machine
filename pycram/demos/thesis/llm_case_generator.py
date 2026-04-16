@@ -95,7 +95,10 @@ def chunked(values: Sequence[str], chunk_size: int) -> List[List[str]]:
     """Split a sequence into fixed-size chunks."""
     if chunk_size <= 0:
         raise ValueError("chunk_size must be positive")
-    return [list(values[idx : idx + chunk_size]) for idx in range(0, len(values), chunk_size)]
+    return [
+        list(values[idx : idx + chunk_size])
+        for idx in range(0, len(values), chunk_size)
+    ]
 
 
 def build_prompt(
@@ -263,7 +266,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--templates", nargs="+", default=["cutting", "mixing", "pouring", "wiping"]
     )
-    parser.add_argument("--model", default=os.environ.get("OPENAI_MODEL", DEFAULT_MODEL))
+    parser.add_argument(
+        "--model", default=os.environ.get("OPENAI_MODEL", DEFAULT_MODEL)
+    )
     parser.add_argument(
         "--api-base", default=os.environ.get("OPENAI_API_BASE", DEFAULT_API_BASE)
     )
@@ -292,7 +297,9 @@ def main() -> None:
 
     api_key = os.environ.get(args.api_key_env)
     if not api_key:
-        raise RuntimeError(f"Missing API key in environment variable {args.api_key_env}")
+        raise RuntimeError(
+            f"Missing API key in environment variable {args.api_key_env}"
+        )
 
     config = LLMConfig(api_key=api_key, model=args.model, api_base=args.api_base)
     prompts: List[str] = []

@@ -153,17 +153,24 @@ class URDFParser:
         prefix: Optional[str] = None,
         path_resolver: Optional[PathResolver] = None,
     ) -> URDFParser:
-        if file_path.endswith(".xacro"):
-            return cls.from_xacro(file_path, prefix)
-
         path_resolver = path_resolver or CompositePathResolver()
 
         file_path = path_resolver.resolve(file_path)
-        if file_path is not None:
-            with open(file_path, "r") as file:
-                # Since parsing URDF causes a lot of warning messages which can't be deactivated, we suppress them
-                with suppress_stdout_stderr():
-                    urdf = file.read()
+        if file_path is None:
+            raise FileNotFoundError("Could not resolve URDF/Xacro path")
+
+        if file_path.endswith(".xacro"):
+            return cls.from_xacro(file_path, prefix)
+
+        with open(file_path, "r") as file:
+            # Since parsing URDF causes a lot of warning messages which can't be deactivated, we suppress them
+            with suppress_stdout_stderr():
+                urdf = file.read()
+
+        # Some world files are stored with a .urdf extension even though they still
+        # contain xacro macros and need expansion before URDF parsing.
+        if "xacro:" in urdf:
+            return cls.from_xacro(file_path, prefix)
         urdf_parser = URDFParser(urdf=urdf, prefix=prefix)
         urdf_parser.path_resolver = path_resolver
         return urdf_parser

@@ -264,7 +264,11 @@ class ArticlePageParser(HTMLParser):
             or data_test in {"step", "steps"}
         ):
             self._collect_step = True
-        if "/Category:" in href or "cat_" in class_attr.lower() or "breadcrumb" in class_attr.lower():
+        if (
+            "/Category:" in href
+            or "cat_" in class_attr.lower()
+            or "breadcrumb" in class_attr.lower()
+        ):
             self._collect_category = True
 
     def handle_endtag(self, tag: str) -> None:
@@ -424,7 +428,10 @@ def build_search_url(base_url: str, query: str, page: int) -> str:
         path = DEFAULT_SEARCH_PATH.format(query=quote_plus(query))
     else:
         start_offset = (page - 1) * DEFAULT_SEARCH_PAGE_SIZE
-        path = DEFAULT_SEARCH_PATH.format(query=quote_plus(query)) + f"&start={start_offset}"
+        path = (
+            DEFAULT_SEARCH_PATH.format(query=quote_plus(query))
+            + f"&start={start_offset}"
+        )
     return urljoin(base_url, path)
 
 
@@ -495,7 +502,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-articles-per-verb", type=int, default=25)
     parser.add_argument("--sleep-seconds", type=float, default=1.5)
     parser.add_argument("--timeout", type=float, default=20.0)
-    parser.add_argument("--user-agent", default="Mozilla/5.0 (compatible; thesis-bot/0.1)")
+    parser.add_argument(
+        "--user-agent", default="Mozilla/5.0 (compatible; thesis-bot/0.1)"
+    )
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--error-output", type=Path)
@@ -523,14 +532,18 @@ def main() -> None:
         f"output={args.output}"
     )
     if args.resume:
-        print(f"Resume enabled: loaded {len(seen_urls)} existing URL(s) from {args.output}")
+        print(
+            f"Resume enabled: loaded {len(seen_urls)} existing URL(s) from {args.output}"
+        )
 
     for verb in args.verbs:
         per_verb_count = 0
         print(f"[verb={verb}] starting")
         for page in range(1, args.pages_per_verb + 1):
             search_url = build_search_url(args.base_url, verb, page)
-            print(f"[verb={verb}] fetching search page {page}/{args.pages_per_verb}: {search_url}")
+            print(
+                f"[verb={verb}] fetching search page {page}/{args.pages_per_verb}: {search_url}"
+            )
             try:
                 search_html = fetch_html(
                     search_url, timeout=args.timeout, user_agent=args.user_agent
@@ -621,7 +634,9 @@ def main() -> None:
                     break
             if per_verb_count >= args.max_articles_per_verb:
                 break
-            print(f"[verb={verb}] sleeping {args.sleep_seconds:.1f}s before next search page")
+            print(
+                f"[verb={verb}] sleeping {args.sleep_seconds:.1f}s before next search page"
+            )
             time.sleep(args.sleep_seconds)
         print(f"[verb={verb}] done, wrote {per_verb_count} article(s)")
 

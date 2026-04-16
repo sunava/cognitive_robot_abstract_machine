@@ -91,10 +91,7 @@ class SimpleEvent(AbstractSimpleSet, VariableMap):
 
     def _update_cpp_object(self):
         self.cpp_object = rl.SimpleEvent(
-            {
-                variable.cpp_object: value.cpp_object
-                for variable, value in self.items()
-            }
+            {variable.cpp_object: value.cpp_object for variable, value in self.items()}
         )
 
     def _setitem_without_cpp(self, key: VariableMapKey, value: Any):

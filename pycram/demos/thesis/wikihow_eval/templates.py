@@ -133,7 +133,9 @@ def score_case_against_template(
         template.forbidden_object_classes,
     )
     tool_score = _score_membership(case.tool_class, template.tool_classes, set(), set())
-    domain_score = _score_domain(case.domain, template.domains, template.partial_domains)
+    domain_score = _score_domain(
+        case.domain, template.domains, template.partial_domains
+    )
     function_score = _score_required_tags(case.functional_tags, template.required_tags)
     score = round(
         WEIGHTS["object"] * object_score
@@ -184,7 +186,9 @@ def score_case(case: OntologyCase) -> List[TemplateFitResult]:
     ]
 
 
-def summarize_results(results: Iterable[TemplateFitResult]) -> Dict[str, Dict[str, int]]:
+def summarize_results(
+    results: Iterable[TemplateFitResult],
+) -> Dict[str, Dict[str, int]]:
     """Aggregate fit labels per template for quick coverage inspection."""
     summary: Dict[str, Dict[str, int]] = {}
     for result in results:

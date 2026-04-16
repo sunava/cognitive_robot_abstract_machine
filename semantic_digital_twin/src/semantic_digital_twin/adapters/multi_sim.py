@@ -1287,7 +1287,11 @@ class MujocoCameraConverter(CameraConverter, ABC):
     ) -> Dict[str, Any]:
         camera_props["mode"] = entity.mode
         if mujoco.mj_version() >= 3005000:
-            camera_props["proj"] = mujoco.mjtProjection.mjPROJ_ORTHOGRAPHIC if entity.orthographic else mujoco.mjtProjection.mjPROJ_PERSPECTIVE
+            camera_props["proj"] = (
+                mujoco.mjtProjection.mjPROJ_ORTHOGRAPHIC
+                if entity.orthographic
+                else mujoco.mjtProjection.mjPROJ_PERSPECTIVE
+            )
         else:
             camera_props["orthographic"] = entity.orthographic
         camera_props["fovy"] = entity.fovy

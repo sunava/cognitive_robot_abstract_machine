@@ -56,11 +56,11 @@ class AnnotatedVariable:
 
 
 def infer_variables_from_dataframe(
-        data: pd.DataFrame,
-        minimal_distance: float = 1.0,
-        min_likelihood_improvement: float = 0.1,
-        min_samples_per_quantile: int = 10,
-        min_impurity_improvement: float = 0,
+    data: pd.DataFrame,
+    minimal_distance: float = 1.0,
+    min_likelihood_improvement: float = 0.1,
+    min_samples_per_quantile: int = 10,
+    min_impurity_improvement: float = 0,
 ) -> List[AnnotatedVariable]:
     """
     Infer the variables from a dataframe.
@@ -99,14 +99,15 @@ def infer_variables_from_dataframe(
 
         domain = domain or get_default_value(variable_class, "domain")
         variable = variable_class(name=column, domain=domain)
-        annotated_variable = AnnotatedVariable(variable=variable,
-                                               mean=mean,
-                                               standard_deviation=standard_deviation,
-                                               minimal_distance=minimal_distance,
-                                               min_likelihood_improvement=min_likelihood_improvement,
-                                               min_samples_per_quantile=min_samples_per_quantile,
-                                               min_impurity_improvement=min_impurity_improvement, )
+        annotated_variable = AnnotatedVariable(
+            variable=variable,
+            mean=mean,
+            standard_deviation=standard_deviation,
+            minimal_distance=minimal_distance,
+            min_likelihood_improvement=min_likelihood_improvement,
+            min_samples_per_quantile=min_samples_per_quantile,
+            min_impurity_improvement=min_impurity_improvement,
+        )
 
         result.append(annotated_variable)
     return result
-

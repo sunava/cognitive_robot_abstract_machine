@@ -20,7 +20,10 @@ from wikihow_eval.models import WikiHowArticle
 
 DEFAULT_VERBS = ("cut", "mix", "pour", "wipe")
 DEFAULT_SEED_FILE = (
-    Path(__file__).resolve().parent / "wikihow_eval" / "data" / "seed_wikihow_articles.json"
+    Path(__file__).resolve().parent
+    / "wikihow_eval"
+    / "data"
+    / "seed_wikihow_articles.json"
 )
 KITCHEN_CATEGORY_KEYWORDS = (
     "food and entertaining",
@@ -109,7 +112,9 @@ WIKIHOW_ARTICLE_FIELDS = {"title", "categories", "steps", "url"}
 
 def _coerce_article_record(record: dict) -> WikiHowArticle:
     """Drop downloader-only metadata and build a normalized article object."""
-    normalized = {key: value for key, value in record.items() if key in WIKIHOW_ARTICLE_FIELDS}
+    normalized = {
+        key: value for key, value in record.items() if key in WIKIHOW_ARTICLE_FIELDS
+    }
     return WikiHowArticle(**normalized)
 
 
@@ -239,7 +244,9 @@ def main() -> None:
     )
     for path in input_paths:
         all_articles.extend(load_articles(path))
-    articles = filter_articles(deduplicate_articles(all_articles, args.dedupe_by), args.verbs)
+    articles = filter_articles(
+        deduplicate_articles(all_articles, args.dedupe_by), args.verbs
+    )
     if args.kitchen_only:
         articles = filter_kitchen_articles(articles)
     if args.limit is not None:

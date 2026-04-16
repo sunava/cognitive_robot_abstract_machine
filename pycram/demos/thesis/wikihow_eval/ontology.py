@@ -8,24 +8,74 @@ from .models import ActionCase, OntologyCase
 
 
 OBJECT_CLASS_RULES: Sequence[Tuple[Set[str], str, str, Set[str]]] = (
-    ({"carrot", "mango", "bread", "cucumber", "potato", "apple"}, "FoodItem", "FoodMaterial", {"separable", "cuttable", "mixable_if_processed"}),
-    ({"batter", "salad", "dough"}, "FoodMixture", "FoodMaterial", {"mixable", "container_compatible"}),
-    ({"cement", "concrete", "paint"}, "ConstructionMaterial", "ConstructionMaterial", {"mixable"}),
-    ({"water", "juice", "milk", "soup"}, "PourableLiquid", "Liquid", {"pourable", "mixable"}),
-    ({"counter", "counters", "countertop", "window", "floor", "table"}, "Surface", "RigidSurface", {"wipe_target", "surface_contact"}),
-    ({"hair", "beard", "nails"}, "BodyPart", "LivingTissue", {"animate_part", "cuttable"}),
-    ({"hedge", "grass", "bush"}, "PlantPart", "PlantMaterial", {"animate_part", "cuttable"}),
+    (
+        {"carrot", "mango", "bread", "cucumber", "potato", "apple"},
+        "FoodItem",
+        "FoodMaterial",
+        {"separable", "cuttable", "mixable_if_processed"},
+    ),
+    (
+        {"batter", "salad", "dough"},
+        "FoodMixture",
+        "FoodMaterial",
+        {"mixable", "container_compatible"},
+    ),
+    (
+        {"cement", "concrete", "paint"},
+        "ConstructionMaterial",
+        "ConstructionMaterial",
+        {"mixable"},
+    ),
+    (
+        {"water", "juice", "milk", "soup"},
+        "PourableLiquid",
+        "Liquid",
+        {"pourable", "mixable"},
+    ),
+    (
+        {"counter", "counters", "countertop", "window", "floor", "table"},
+        "Surface",
+        "RigidSurface",
+        {"wipe_target", "surface_contact"},
+    ),
+    (
+        {"hair", "beard", "nails"},
+        "BodyPart",
+        "LivingTissue",
+        {"animate_part", "cuttable"},
+    ),
+    (
+        {"hedge", "grass", "bush"},
+        "PlantPart",
+        "PlantMaterial",
+        {"animate_part", "cuttable"},
+    ),
 )
 
 TOOL_CLASS_RULES: Sequence[Tuple[Set[str], str, Set[str]]] = (
-    ({"knife", "chef's knife", "paring knife", "bread knife", "scissors"}, "CuttingTool", {"sharp_edge"}),
+    (
+        {"knife", "chef's knife", "paring knife", "bread knife", "scissors"},
+        "CuttingTool",
+        {"sharp_edge"},
+    ),
     ({"spoon", "whisk", "spatula"}, "MixingTool", {"agitates"}),
-    ({"cup", "jug", "pitcher", "bottle", "measuring cup"}, "PouringTool", {"dispenses"}),
-    ({"cloth", "sponge", "rag", "paper towel", "mop"}, "CleaningTool", {"absorbs", "surface_contact"}),
+    (
+        {"cup", "jug", "pitcher", "bottle", "measuring cup"},
+        "PouringTool",
+        {"dispenses"},
+    ),
+    (
+        {"cloth", "sponge", "rag", "paper towel", "mop"},
+        "CleaningTool",
+        {"absorbs", "surface_contact"},
+    ),
 )
 
 DOMAIN_RULES: Sequence[Tuple[Set[str], str]] = (
-    ({"food and entertaining", "food", "cooking", "baking", "vegetables"}, "food_preparation"),
+    (
+        {"food and entertaining", "food", "cooking", "baking", "vegetables"},
+        "food_preparation",
+    ),
     ({"cleaning", "housekeeping", "home and garden"}, "cleaning"),
     ({"personal care and style", "hair care", "beauty"}, "grooming"),
     ({"crafts", "office"}, "crafting"),
@@ -50,7 +100,9 @@ def _normalize(text: Optional[str]) -> str:
     return (text or "").strip().lower()
 
 
-def _first_match_label(tokens: Iterable[str], rules: Sequence[Tuple[Set[str], str]]) -> Optional[str]:
+def _first_match_label(
+    tokens: Iterable[str], rules: Sequence[Tuple[Set[str], str]]
+) -> Optional[str]:
     token_set = {_normalize(token) for token in tokens if token}
     for candidates, label in rules:
         if token_set & candidates:
@@ -95,7 +147,9 @@ def classify_object(object_text: str) -> Tuple[str, str, Set[str], List[str]]:
     return "UnknownObject", "UnknownMaterial", set(), notes
 
 
-def classify_tool(tool_text: Optional[str], steps: Sequence[str]) -> Tuple[str, List[str]]:
+def classify_tool(
+    tool_text: Optional[str], steps: Sequence[str]
+) -> Tuple[str, List[str]]:
     """Infer tool class from explicit tool hints or step text."""
     notes: List[str] = []
     candidates: List[str] = []
@@ -145,4 +199,3 @@ def map_case_to_ontology(action_case: ActionCase) -> OntologyCase:
         url=action_case.url,
         mapping_notes=object_notes + tool_notes + domain_notes,
     )
-

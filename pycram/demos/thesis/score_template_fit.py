@@ -30,7 +30,9 @@ def build_markdown_table(results: List[dict]) -> str:
     return "\n".join(lines)
 
 
-def build_coverage_report(cases: List[OntologyCase], results: List[dict]) -> Dict[str, object]:
+def build_coverage_report(
+    cases: List[OntologyCase], results: List[dict]
+) -> Dict[str, object]:
     """Aggregate coverage and out-of-scope clusters for larger evaluations."""
     by_template = summarize_results(_dict_to_result_like(results))
     by_verb = Counter(case.verb for case in cases)
@@ -66,14 +68,21 @@ def build_coverage_report(cases: List[OntologyCase], results: List[dict]) -> Dic
             **counts,
             "total": total,
             "full_fit_rate": round(counts["full_fit"] / total, 3) if total else 0.0,
-            "partial_fit_rate": round(counts["partial_fit"] / total, 3) if total else 0.0,
-            "out_of_scope_rate": round(counts["out_of_scope"] / total, 3) if total else 0.0,
-            "mean_score": round(
-                sum(fit_by_template_scores[template]) / len(fit_by_template_scores[template]),
-                3,
-            )
-            if fit_by_template_scores[template]
-            else 0.0,
+            "partial_fit_rate": (
+                round(counts["partial_fit"] / total, 3) if total else 0.0
+            ),
+            "out_of_scope_rate": (
+                round(counts["out_of_scope"] / total, 3) if total else 0.0
+            ),
+            "mean_score": (
+                round(
+                    sum(fit_by_template_scores[template])
+                    / len(fit_by_template_scores[template]),
+                    3,
+                )
+                if fit_by_template_scores[template]
+                else 0.0
+            ),
         }
 
     return {

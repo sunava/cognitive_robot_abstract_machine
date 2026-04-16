@@ -11,7 +11,8 @@ from ..dataset.example_classes import (
     KRROODOrientation,
     KRROODPose,
     KRROODPositions,
-    KRROODPositionTypeWrapper, GenericClassAssociation,
+    KRROODPositionTypeWrapper,
+    GenericClassAssociation,
 )
 
 
@@ -77,17 +78,31 @@ def test_is_type_type():
     )
     assert wrapped_field.is_type_type
 
+
 def test_is_specialized_generic():
     wrapped_class = WrappedClass(clazz=GenericClassAssociation)
-    associated_value = WrappedField(wrapped_class, get_field_by_name(GenericClassAssociation, "associated_value"))
+    associated_value = WrappedField(
+        wrapped_class, get_field_by_name(GenericClassAssociation, "associated_value")
+    )
     assert associated_value.is_instantiation_of_generic_class
-    associated_value_not_parametrized = WrappedField(wrapped_class, get_field_by_name(GenericClassAssociation, "associated_value_not_parametrized"))
+    associated_value_not_parametrized = WrappedField(
+        wrapped_class,
+        get_field_by_name(GenericClassAssociation, "associated_value_not_parametrized"),
+    )
     assert not associated_value_not_parametrized.is_instantiation_of_generic_class
 
-    associated_value_list = WrappedField(wrapped_class, get_field_by_name(GenericClassAssociation, "associated_value_list"))
+    associated_value_list = WrappedField(
+        wrapped_class,
+        get_field_by_name(GenericClassAssociation, "associated_value_list"),
+    )
     assert associated_value_list.is_container
     assert associated_value_list.is_instantiation_of_generic_class
 
-    associated_value_not_parametrized_list = WrappedField(wrapped_class, get_field_by_name(GenericClassAssociation, "associated_value_not_parametrized_list"))
+    associated_value_not_parametrized_list = WrappedField(
+        wrapped_class,
+        get_field_by_name(
+            GenericClassAssociation, "associated_value_not_parametrized_list"
+        ),
+    )
     assert associated_value_not_parametrized_list.is_container
     assert not associated_value_not_parametrized_list.is_instantiation_of_generic_class

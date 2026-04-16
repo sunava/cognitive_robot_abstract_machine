@@ -20,7 +20,9 @@ DEFAULT_MODEL = "gpt-4o-mini"
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", default=os.environ.get("OPENAI_MODEL", DEFAULT_MODEL))
+    parser.add_argument(
+        "--model", default=os.environ.get("OPENAI_MODEL", DEFAULT_MODEL)
+    )
     parser.add_argument(
         "--api-base", default=os.environ.get("OPENAI_API_BASE", DEFAULT_API_BASE)
     )
@@ -32,7 +34,9 @@ def main() -> None:
     args = build_arg_parser().parse_args()
     api_key = os.environ.get(args.api_key_env)
     if not api_key:
-        raise RuntimeError(f"Missing API key in environment variable {args.api_key_env}")
+        raise RuntimeError(
+            f"Missing API key in environment variable {args.api_key_env}"
+        )
 
     payload = {
         "model": args.model,

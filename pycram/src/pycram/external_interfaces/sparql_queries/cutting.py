@@ -54,7 +54,9 @@ def get_prior_task(verb):
 						?sub owl:someValuesFrom ?priortask.
 						BIND(REPLACE(STR(?priortask), "^.*[#/]", "") AS ?res).
 					}
-					""" % (verb)
+					""" % (
+        verb
+    )
     full_query = prefix + query
     sparql.setQuery(prefix + query)
     results = sparql.queryAndConvert()
@@ -81,7 +83,9 @@ def get_cutting_tool(foodobject):
 							?trigger_tool owl:allValuesFrom ?tool.
 							BIND(REPLACE(STR(?tool), "^.*[#/]", "") AS ?res).
 						}
-    """ % (foodobject)
+    """ % (
+        foodobject
+    )
     full_query = prefix + query
     sparql.setQuery(prefix + query)
     results = sparql.queryAndConvert()
@@ -100,7 +104,9 @@ def get_cutting_position(verb):
 						?pos_node owl:someValuesFrom ?pos.
 						BIND(REPLACE(STR(?pos), "^.*[#/]", "") AS ?res).
 					}
-    """ % (verb)
+    """ % (
+        verb
+    )
     full_query = prefix + query
     sparql.setQuery(prefix + query)
     results = sparql.queryAndConvert()
@@ -162,7 +168,9 @@ def get_peel_tool(foodobject):
 						?trigger_tool owl:allValuesFrom ?tool.
 						BIND(REPLACE(STR(?tool), "^.*[#/]", "") AS ?res).
 					}
-    """ % (foodobject)
+    """ % (
+        foodobject
+    )
     full_query = prefix + query
     sparql.setQuery(prefix + query)
     results = sparql.queryAndConvert()

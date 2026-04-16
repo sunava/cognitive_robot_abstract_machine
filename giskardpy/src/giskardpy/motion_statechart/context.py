@@ -11,7 +11,10 @@ from semantic_digital_twin.collision_checking.collision_variable_managers import
     SelfCollisionVariableManager,
     ExternalCollisionVariableManager,
 )
-from giskardpy.motion_statechart.exceptions import MissingContextExtensionError, DuplicateContextExtensionError
+from giskardpy.motion_statechart.exceptions import (
+    MissingContextExtensionError,
+    DuplicateContextExtensionError,
+)
 from giskardpy.qp.qp_controller_config import QPControllerConfig
 
 if TYPE_CHECKING:

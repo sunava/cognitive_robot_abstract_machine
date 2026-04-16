@@ -89,6 +89,7 @@ class TaskStatus(int, Enum):
     INTERRUPTED = 4
     PAUSE = 5
 
+
 class JointType(Enum):
     """
     Enum for readable joint types.

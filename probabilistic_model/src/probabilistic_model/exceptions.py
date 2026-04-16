@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, TYPE_CHECKING
 from krrood.utils import DataclassException
+
 if TYPE_CHECKING:
     from probabilistic_model.probabilistic_model import ProbabilisticModel
 
@@ -30,6 +31,7 @@ class UndefinedOperationError(DataclassException):
 
     def __post_init__(self):
         self.message = f"Operation is not defined for {self.model}."
+
 
 @dataclass
 class ShapeMismatchError(DataclassException, ValueError):

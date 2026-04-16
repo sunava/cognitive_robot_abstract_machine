@@ -52,8 +52,9 @@ def tracy_world():
         apartment_world.merge_world_at_pose(
             world_with_tracy,
             HomogeneousTransformationMatrix.from_xyz_quaternion(
-            7.4, 3.2, 0, reference_frame=apartment_world.root
-            ))
+                7.4, 3.2, 0, reference_frame=apartment_world.root
+            ),
+        )
     return apartment_world
 
 
@@ -95,14 +96,14 @@ def main():
     target_pose = PoseStamped.from_spatial_type(target_T)
 
     def make_sine_scan_poses(
-            anchor: PoseStamped,
-            lanes: int = 12,
-            lane_spacing: float = 0.06,  # distance between vertical strokes
-            y_span: float = 0.35,  # stroke length
-            amplitude: float = 0.01,  # sine wiggle left/right
-            wiggles: float = 1.0,  # sine cycles per stroke
-            points_per_lane: int = 60,
-            lane_axis: str = "x",  # "x" or "z"
+        anchor: PoseStamped,
+        lanes: int = 12,
+        lane_spacing: float = 0.06,  # distance between vertical strokes
+        y_span: float = 0.35,  # stroke length
+        amplitude: float = 0.01,  # sine wiggle left/right
+        wiggles: float = 1.0,  # sine cycles per stroke
+        points_per_lane: int = 60,
+        lane_axis: str = "x",  # "x" or "z"
     ) -> list[PoseStamped]:
         x0 = anchor.pose.position.x
         y0 = anchor.pose.position.y
@@ -148,8 +149,8 @@ def main():
     # poses = make_tool_wrist_poses(P_container, world, tip_offset, tool_cfg)
     plan = SequentialPlan(
         context,
-        SimpleMoveTCPActionDescription(target_locations=sin_list_poses, arm=Arms.RIGHT)
-       # MoveTorsoActionDescription(TorsoState.HIGH)
+        SimpleMoveTCPActionDescription(target_locations=sin_list_poses, arm=Arms.RIGHT),
+        # MoveTorsoActionDescription(TorsoState.HIGH)
     )
     with simulated_robot:
         plan.perform()

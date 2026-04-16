@@ -81,7 +81,8 @@ def build_report(
     raw_fit_results: List[dict] = []
 
     source_query_by_url = {
-        record.get("url"): record.get("source_query", "unknown") for record in raw_records
+        record.get("url"): record.get("source_query", "unknown")
+        for record in raw_records
     }
     for article in deduped_articles:
         by_query[source_query_by_url.get(article.url, "unknown")] += 1
@@ -108,14 +109,18 @@ def build_report(
 
     object_counter = Counter(case.object_class for case in ontology_cases)
     domain_counter = Counter(case.domain for case in ontology_cases)
-    fit_counter_by_template = defaultdict(lambda: {"full_fit": 0, "partial_fit": 0, "out_of_scope": 0})
+    fit_counter_by_template = defaultdict(
+        lambda: {"full_fit": 0, "partial_fit": 0, "out_of_scope": 0}
+    )
     for result in raw_fit_results:
         fit_counter_by_template[result["template"]][result["fit"]] += 1
 
     articles_with_unknown_objects = sum(
         1 for case in ontology_cases if case.object_class == "UnknownObject"
     )
-    articles_with_generic_domain = sum(1 for case in ontology_cases if case.domain == "generic")
+    articles_with_generic_domain = sum(
+        1 for case in ontology_cases if case.domain == "generic"
+    )
     non_instructional_articles = by_title_pattern["non_instructional"]
 
     report = {
@@ -127,31 +132,35 @@ def build_report(
         "title_pattern_counts": dict(by_title_pattern),
         "kitchen_article_count": len(kitchen_articles),
         "non_kitchen_article_count": len(deduped_articles) - len(kitchen_articles),
-        "kitchen_fraction": round(len(kitchen_articles) / len(deduped_articles), 3)
-        if deduped_articles
-        else 0.0,
+        "kitchen_fraction": (
+            round(len(kitchen_articles) / len(deduped_articles), 3)
+            if deduped_articles
+            else 0.0
+        ),
         "parse_success_count": len(parsed_cases),
         "parse_failure_count": len(parse_failures),
-        "parse_success_fraction": round(len(parsed_cases) / len(deduped_articles), 3)
-        if deduped_articles
-        else 0.0,
+        "parse_success_fraction": (
+            round(len(parsed_cases) / len(deduped_articles), 3)
+            if deduped_articles
+            else 0.0
+        ),
         "unknown_object_count": articles_with_unknown_objects,
-        "unknown_object_fraction": round(
-            articles_with_unknown_objects / len(ontology_cases), 3
-        )
-        if ontology_cases
-        else 0.0,
+        "unknown_object_fraction": (
+            round(articles_with_unknown_objects / len(ontology_cases), 3)
+            if ontology_cases
+            else 0.0
+        ),
         "generic_domain_count": articles_with_generic_domain,
-        "generic_domain_fraction": round(
-            articles_with_generic_domain / len(ontology_cases), 3
-        )
-        if ontology_cases
-        else 0.0,
-        "non_instructional_fraction": round(
-            non_instructional_articles / len(deduped_articles), 3
-        )
-        if deduped_articles
-        else 0.0,
+        "generic_domain_fraction": (
+            round(articles_with_generic_domain / len(ontology_cases), 3)
+            if ontology_cases
+            else 0.0
+        ),
+        "non_instructional_fraction": (
+            round(non_instructional_articles / len(deduped_articles), 3)
+            if deduped_articles
+            else 0.0
+        ),
         "top_object_classes": object_counter.most_common(10),
         "top_domains": domain_counter.most_common(10),
         "template_fit_counts": dict(fit_counter_by_template),
