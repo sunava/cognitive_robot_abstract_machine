@@ -156,10 +156,10 @@ HANDPICKED_SPAWN_POSES = {
     "isr": (1.48, -0.12, 0.80, -np.pi / 2),
 }
 HANDPICKED_CAMERA_POSES = {
-    "apartment": (2.83, 2.11, 0.99, np.pi),
-    "apartment_without_walls": (2.83, 2.11, 0.99, np.pi),
+    "apartment": (2.83, 2.11, 0.99, 0),
+    "apartment_without_walls": (2.83, 2.11, 0.99, 0),
     "kitchen": (-1.6, 0.74, 1, np.pi),
-    "test-kitchen-chat": (-0.8, 1.09, 0.885, np.pi / 2),
+    "test-kitchen-chat": (-0.8, 1.09, 0.885, 0),
     "isr": (1.88, -0.47, 0.99, 0),
 }
 CUTTING_BOARD_COLOR = Color(R=0.80, G=0.66, B=0.49)
