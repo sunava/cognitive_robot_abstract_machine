@@ -29,9 +29,8 @@ from .thesis_math.motion_presets import (
 )
 from .thesis_math.motion_profiles import planar_spiral_xy
 from .thesis_math.world_utils import body_local_aabb
-from ...motions.gripper import (
-    MoveTCPWaypointsAlignedMotion,
-)
+from ... import MoveTCPWaypointsAlignedMotion, MoveTCPWaypointsAlignedMotionw
+
 from ....datastructures.enums import (
     Arms,
 )
@@ -249,7 +248,7 @@ class GeneralizedActionPlan(ActionDescription):
                         #     alignment_pairs=alignment_pairs,
                         #     tip=tip,
                         # ),
-                        MoveTCPWaypointsAlignedMotion(
+                        MoveTCPWaypointsAlignedMotionw(
                             pointery,
                             self.arm,
                             allow_gripper_collision=True,

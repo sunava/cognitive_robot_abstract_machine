@@ -13,7 +13,7 @@ from demos.thesis_single_object.single_object_cut_demo import run_single_object_
 ROBOT = "g1"
 ACTION = "cut"
 ENVIRONMENT = "test-kitchen-chat"
-OBJECT_KIND = "bread"
+OBJECT_KIND = "apple"
 SPAWN_POSITION = None
 SPAWN_YAW = None
 SPAWN_SCALE = 1.0
