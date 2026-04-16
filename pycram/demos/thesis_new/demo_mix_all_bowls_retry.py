@@ -32,13 +32,23 @@ from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix,
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.geometry import Color
 
-from demos.thesis_new.spawn_random_bowls import (
-    _parse_stl,
-    setup_random_bowl_world,
-    setup_random_mixing_container_world,
-)
+try:
+    from demos.thesis_new.spawn_random_bowls import (
+        _parse_stl,
+        setup_random_bowl_world,
+        setup_random_mixing_container_world,
+    )
+    from demos.thesis_new.tool_mounts import get_tool_mount_pose_kwargs
+    from demos.thesis_new.world_setup import resolve_robot_name
+except ModuleNotFoundError:
+    from thesis_new.spawn_random_bowls import (
+        _parse_stl,
+        setup_random_bowl_world,
+        setup_random_mixing_container_world,
+    )
+    from thesis_new.tool_mounts import get_tool_mount_pose_kwargs
+    from thesis_new.world_setup import resolve_robot_name
 from pycram.robot_plans.actions.composite.thesis_math import body_local_aabb
-from demos.thesis_new.tool_mounts import get_tool_mount_pose_kwargs
 from pycram.robot_plans.actions.composite.utils.demo_utils import (
     attach_available_tools,
     collect_named_targets,
@@ -66,7 +76,6 @@ from pycram.robot_plans.actions.composite.utils.experiment_logging import (
     robot_name as _robot_name,
     tool_name as _tool_name,
 )
-from demos.thesis_new.world_setup import resolve_robot_name
 
 DEFAULT_BOWL_COLOR = Color(R=0.78, G=0.80, B=0.86)
 ACTIVE_BOWL_COLOR = Color(R=0.52, G=0.82, B=0.98)

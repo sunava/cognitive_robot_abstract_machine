@@ -7,9 +7,14 @@ from rclpy.duration import Duration as RclpyDuration
 from rclpy.qos import DurabilityPolicy, QoSProfile
 from visualization_msgs.msg import Marker, MarkerArray
 
-from demos.thesis.simulation_setup import BoxSpec, add_box
-from demos.thesis_new.spawn_random_bowls import sample_random_bowl_poses
-from demos.thesis_new.tool_mounts import get_tool_mount_pose_kwargs
+try:
+    from demos.thesis.simulation_setup import BoxSpec, add_box
+    from demos.thesis_new.spawn_random_bowls import sample_random_bowl_poses
+    from demos.thesis_new.tool_mounts import get_tool_mount_pose_kwargs
+except ModuleNotFoundError:
+    from thesis.simulation_setup import BoxSpec, add_box
+    from thesis_new.spawn_random_bowls import sample_random_bowl_poses
+    from thesis_new.tool_mounts import get_tool_mount_pose_kwargs
 from pycram.robot_plans.actions.composite.utils.demo_utils import (
     build_navigation_costmaps,
     commit_plan_to_db,
