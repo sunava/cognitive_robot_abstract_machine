@@ -59,6 +59,7 @@ def _load_thesis_world_setup():
 def setup_experiment_runtime(world, node_name):
     rclpy.init()
     node = rclpy.create_node(node_name)
+    _clear_rviz_marker_topics(node)
     tf_wrapper = TFWrapper(node=node)
     TFPublisher(node=node, _world=world)
     VizMarkerPublisher(
@@ -136,7 +137,6 @@ def publish_demo_camera_target(
 
 
 def shutdown_experiment_runtime(node):
-    _clear_rviz_marker_topics(node)
     node.destroy_node()
     rclpy.shutdown()
 
