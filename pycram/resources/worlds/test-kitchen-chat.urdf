@@ -82,33 +82,44 @@
     </joint>
   </xacro:macro>
 
-     <xacro:macro name="bar_chair" params="name parent x y z yaw">
-      <link name="${name}">
-        <visual>
-          <origin xyz="0 0 0" rpy="0 0 0"/>
-          <geometry>
-            <mesh filename="package://cob_gazebo_objects/Media/models/chair_ikea_borje.dae"
-                  scale="0.6 0.6 0.6"/>
-          </geometry>
-        </visual>
-        <collision>
-          <origin xyz="0 0 0.4" rpy="0 0 0"/>
-          <geometry>
-            <box size="0.5 0.5 0.8"/>
-          </geometry>
-        </collision>
-        <inertial>
-          <origin xyz="0 0 0.4" rpy="0 0 0"/>
-          <mass value="8.0"/>
-          <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
-        </inertial>
-      </link>
+  <xacro:macro name="bar_chair" params="name parent x y z yaw">
+    <link name="${name}_seat">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.46 0.42 0.08"/>
+        </geometry>
+        <material name="quartz"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.46 0.42 0.08"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="3.0"/>
+        <inertia ixx="0.05" ixy="0.0" ixz="0.0" iyy="0.05" iyz="0.0" izz="0.05"/>
+      </inertial>
+    </link>
+    <joint name="${name}_seat_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_seat"/>
+      <origin xyz="${x} ${y} ${z}" rpy="0 0 ${yaw}"/>
+    </joint>
 
-      <joint name="${name}_joint" type="fixed">
-        <parent link="${parent}"/>
-        <child link="${name}"/>
-        <origin xyz="${x} ${y} ${z}" rpy="0 0 ${yaw}"/>
-      </joint>
+    <xacro:fixed_box name="${name}_back" parent="${name}_seat" x="0.0" y="-0.17" z="0.21" sx="0.40" sy="0.05" sz="0.34" mat="quartz"/>
+
+    <xacro:fixed_cylinder name="${name}_leg_fl" parent="${name}_seat" x="0.17" y="0.14" z="-0.34" radius="0.03" length="0.68" r="0" p="0" yaw="0" mat="oak"/>
+    <xacro:fixed_cylinder name="${name}_leg_fr" parent="${name}_seat" x="0.17" y="-0.14" z="-0.34" radius="0.03" length="0.68" r="0" p="0" yaw="0" mat="oak"/>
+    <xacro:fixed_cylinder name="${name}_leg_rl" parent="${name}_seat" x="-0.17" y="0.14" z="-0.34" radius="0.03" length="0.68" r="0" p="0" yaw="0" mat="oak"/>
+    <xacro:fixed_cylinder name="${name}_leg_rr" parent="${name}_seat" x="-0.17" y="-0.14" z="-0.34" radius="0.03" length="0.68" r="0" p="0" yaw="0" mat="oak"/>
+
+    <xacro:fixed_box name="${name}_footrest_front" parent="${name}_seat" x="0.0" y="0.14" z="-0.52" sx="0.32" sy="0.03" sz="0.03" mat="oak"/>
+    <xacro:fixed_box name="${name}_footrest_back" parent="${name}_seat" x="0.0" y="-0.14" z="-0.52" sx="0.32" sy="0.03" sz="0.03" mat="oak"/>
+    <xacro:fixed_box name="${name}_footrest_left" parent="${name}_seat" x="-0.17" y="0.0" z="-0.52" sx="0.03" sy="0.28" sz="0.03" mat="oak"/>
+    <xacro:fixed_box name="${name}_footrest_right" parent="${name}_seat" x="0.17" y="0.0" z="-0.52" sx="0.03" sy="0.28" sz="0.03" mat="oak"/>
   </xacro:macro>
 
   <xacro:fixed_box name="floor" parent="world" x="0.0" y="0.0" z="-0.025" sx="7.0" sy="5.5" sz="0.05" mat="floor_wood"/>

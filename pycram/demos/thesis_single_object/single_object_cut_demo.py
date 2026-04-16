@@ -164,6 +164,16 @@ def _suppress_demo_noise():
     motion_executor_module.DEBUG_PROFILE_MOTION_EXECUTOR = False
 
 
+def _perform_attempt_quietly(fn):
+    logger = logging.getLogger("motion_executor.py")
+    previous_level = logger.level
+    logger.setLevel(logging.CRITICAL)
+    try:
+        return fn()
+    finally:
+        logger.setLevel(previous_level)
+
+
 def _try_cut(
     context,
     target,
@@ -511,14 +521,16 @@ def run_single_object_cut_demo(
         last_error = None
         for arm, tool in arm_tools:
             try:
-                _try_cut(
-                    context,
-                    target,
-                    pickup_pose,
-                    arm,
-                    tool,
-                    cutting_technique=cut_cfg.get("technique", CUTTING_TECHNIQUE),
-                    num_cuts_x=cut_cfg.get("num_cuts_x", CUTTING_NUM_CUTS_X),
+                _perform_attempt_quietly(
+                    lambda: _try_cut(
+                        context,
+                        target,
+                        pickup_pose,
+                        arm,
+                        tool,
+                        cutting_technique=cut_cfg.get("technique", CUTTING_TECHNIQUE),
+                        num_cuts_x=cut_cfg.get("num_cuts_x", CUTTING_NUM_CUTS_X),
+                    )
                 )
                 return
             except Exception as exc:
@@ -609,13 +621,15 @@ def run_single_object_mix_demo(
         last_error = None
         for arm, tool in arm_tools:
             try:
-                _try_mix(
-                    context,
-                    target,
-                    pickup_pose,
-                    arm,
-                    tool,
-                    environment_name=environment_name,
+                _perform_attempt_quietly(
+                    lambda: _try_mix(
+                        context,
+                        target,
+                        pickup_pose,
+                        arm,
+                        tool,
+                        environment_name=environment_name,
+                    )
                 )
                 return
             except Exception as exc:
@@ -686,13 +700,15 @@ def run_single_object_wipe_demo(
         last_error = None
         for arm, tool in arm_tools:
             try:
-                _try_wipe(
-                    context,
-                    target_data["world_pose"],
-                    pickup_pose,
-                    arm,
-                    tool,
-                    environment_name=environment_name,
+                _perform_attempt_quietly(
+                    lambda: _try_wipe(
+                        context,
+                        target_data["world_pose"],
+                        pickup_pose,
+                        arm,
+                        tool,
+                        environment_name=environment_name,
+                    )
                 )
                 return
             except Exception as exc:
