@@ -241,15 +241,15 @@ class GeneralizedActionPlan(ActionDescription):
             self.add_subplan(
                 sequential(
                     [
-                        # MoveTCPToPointAlignedMotion(
-                        #     aligned_point,
-                        #     self.arm,
-                        #     allow_gripper_collision=False,
-                        #     alignment_pairs=alignment_pairs,
-                        #     tip=tip,
-                        # ),
+                        MoveTCPWaypointsAlignedMotionw(
+                            pointery[:3],
+                            self.arm,
+                            allow_gripper_collision=True,
+                            alignment_pairs=alignment_pairs,
+                            tip=tip,
+                        ),
                         MoveTCPWaypointsAlignedMotion(
-                            pointery,
+                            pointery[3:],
                             self.arm,
                             allow_gripper_collision=True,
                             alignment_pairs=alignment_pairs,
