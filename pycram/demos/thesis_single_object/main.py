@@ -12,8 +12,8 @@ from demos.thesis_single_object.single_object_cut_demo import run_single_object_
 # actions = "cut,mix,wipe"
 ROBOT = "g1"
 ACTION = "cut"
-ENVIRONMENT = "test-kitchen-chat"
-OBJECT_KIND = "apple"
+ENVIRONMENT = "apartment"
+OBJECT_KIND = "bread"
 SPAWN_POSITION = None
 SPAWN_YAW = None
 SPAWN_SCALE = 1.0
