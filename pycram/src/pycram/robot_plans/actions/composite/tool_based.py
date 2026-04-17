@@ -248,7 +248,7 @@ class GeneralizedActionPlan(ActionDescription):
                         #     alignment_pairs=alignment_pairs,
                         #     tip=tip,
                         # ),
-                        MoveTCPWaypointsAlignedMotion(
+                        MoveTCPWaypointsAlignedMotionw(
                             pointery,
                             self.arm,
                             allow_gripper_collision=True,
