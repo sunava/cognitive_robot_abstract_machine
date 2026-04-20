@@ -10,8 +10,8 @@ from demos.thesis_single_object.single_object_cut_demo import run_single_object_
 
 # robots = ("hsrb", "stretch", "tiago", "g1", "justin", "armar7", "pr2")
 # actions = "cut,mix,wipe"
-ROBOT = "g1"
-ACTION = "cut"
+ROBOT = "pr2"
+ACTION = "spread"
 ENVIRONMENT = "apartment"
 OBJECT_KIND = "bread"
 SPAWN_POSITION = None

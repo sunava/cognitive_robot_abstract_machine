@@ -27,7 +27,7 @@ from .thesis_math.motion_presets import (
     build_surface_sequence,
     build_cutting_sequence,
 )
-from .thesis_math.motion_profiles import planar_spiral_xy
+from .thesis_math.motion_profiles import planar_spiral_xy, planar_sweep_x
 from .thesis_math.world_utils import body_local_aabb
 from ... import MoveTCPWaypointsAlignedMotion, MoveTCPWaypointsAlignedMotionw
 
@@ -41,12 +41,6 @@ from ....view_manager import ViewManager
 
 logger = logging.getLogger(__name__)
 DEFAULT_SAMPLE_DT = 0.01
-
-
-@dataclass(frozen=True)
-class SurfaceAlignmentTarget:
-    reference_frame: Body
-    goal_normal: Vector3
 
 
 def _logging_helper_apply_fields(action: Any, fields: dict) -> None:
@@ -357,6 +351,10 @@ class WipingAction(GeneralizedActionPlan):
     """
     Center pose for the wiping patch.
     """
+    technique: str = "wipe"
+    """
+    Surface-contact technique variant.
+    """
     length: float = 0.20
     """
     Sweep length for the wiping motion.
@@ -367,7 +365,7 @@ class WipingAction(GeneralizedActionPlan):
     Number of sweep cycles.
     """
     _resolved_surface_body: Optional[Body] = field(default=None, init=False, repr=False)
-    _resolved_alignment_target: Optional[SurfaceAlignmentTarget | Body | Pose] = field(
+    _resolved_alignment_target: Optional[Body | Pose] = field(
         default=None, init=False, repr=False
     )
 
@@ -380,6 +378,15 @@ class WipingAction(GeneralizedActionPlan):
             )
             self.target_pose.frame_id = self.world.root
         return self.target_pose
+
+    def _resolved_technique(self) -> str:
+        return str(self.technique).lower().strip()
+
+    def _surface_pattern(self) -> str:
+        technique = self._resolved_technique()
+        if technique == "spread":
+            return "raster"
+        return "raster"
 
     def _resolve_surface_body(self) -> Body:
         if self._resolved_surface_body is not None:
@@ -406,7 +413,7 @@ class WipingAction(GeneralizedActionPlan):
 
     def _resolve_pose_alignment_target(self):
         target_point_world = self.target_pose.to_position()
-        robot_bodies = set(getattr(self.robot, "bodies", []))
+        robot_bodies = list(getattr(self.robot, "bodies", []))
         tool_root = getattr(getattr(self, "tool", None), "root", None)
 
         best_body = None
@@ -414,7 +421,10 @@ class WipingAction(GeneralizedActionPlan):
         best_distance = float("inf")
 
         for body in getattr(self.world, "bodies", []):
-            if body in robot_bodies or body is tool_root:
+            if (
+                any(body is robot_body for robot_body in robot_bodies)
+                or body is tool_root
+            ):
                 continue
             try:
                 point_body = self.world.transform(target_point_world, body)
@@ -435,22 +445,7 @@ class WipingAction(GeneralizedActionPlan):
         if best_body is None or best_point_body is None:
             return self.target_pose
 
-        mins, maxs = body_local_aabb(
-            best_body, use_visual=False, apply_shape_scale=True
-        )
-        face_distances = [
-            (abs(best_point_body[0] - mins[0]), np.array([-1.0, 0.0, 0.0])),
-            (abs(best_point_body[0] - maxs[0]), np.array([1.0, 0.0, 0.0])),
-            (abs(best_point_body[1] - mins[1]), np.array([0.0, -1.0, 0.0])),
-            (abs(best_point_body[1] - maxs[1]), np.array([0.0, 1.0, 0.0])),
-            (abs(best_point_body[2] - mins[2]), np.array([0.0, 0.0, -1.0])),
-            (abs(best_point_body[2] - maxs[2]), np.array([0.0, 0.0, 1.0])),
-        ]
-        _, normal_local = min(face_distances, key=lambda item: item[0])
-        return SurfaceAlignmentTarget(
-            reference_frame=best_body,
-            goal_normal=Vector3.from_iterable(normal_local, reference_frame=best_body),
-        )
+        return best_body
 
     def _sample_points(self):
         if self.container is not None:
@@ -458,7 +453,7 @@ class WipingAction(GeneralizedActionPlan):
                 self.container,
                 use_visual_aabb=True,
                 apply_shape_scale=True,
-                pattern="raster",
+                pattern=self._surface_pattern(),
             )
             return seq.sample(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
 
@@ -468,13 +463,37 @@ class WipingAction(GeneralizedActionPlan):
             )
 
         t_pose = self._target_pose_to_spatial()
-        segment = MotionSegment(
-            name="raster",
-            duration_s=2.0,
-            local_curve=lambda tau: planar_spiral_xy(tau, r0=0.00, r1=0.12, cycles=2.5),
-        )
+        technique = self._resolved_technique()
+        if technique == "spread":
+            segment = MotionSegment(
+                name="spread_patch",
+                duration_s=2.0,
+                local_curve=lambda tau: planar_sweep_x(
+                    tau, length=float(self.length), cycles=max(1.0, float(self.cycles))
+                ),
+            )
+        else:
+            segment = MotionSegment(
+                name="wipe_patch",
+                duration_s=2.0,
+                local_curve=lambda tau: planar_spiral_xy(
+                    tau, r0=0.00, r1=0.12, cycles=2.5
+                ),
+            )
         seq = MotionSequence([segment])
         return seq.sample(frame=t_pose, dt=DEFAULT_SAMPLE_DT)
+
+    def validate_precondition(self):
+        technique = self._resolved_technique()
+        if technique not in {"wipe", "spread"}:
+            raise OAAMApplicabilityFailure(
+                self.__class__.__name__,
+                f"unknown wiping technique '{self.technique}'",
+            )
+        if self.container is None and self.target_pose is None:
+            raise OAAMApplicabilityFailure(
+                self.__class__.__name__, "requires either container or target_pose"
+            )
 
 
 @dataclass
