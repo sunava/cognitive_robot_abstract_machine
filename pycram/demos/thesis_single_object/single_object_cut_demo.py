@@ -162,7 +162,7 @@ HANDPICKED_CAMERA_POSES = {
     "test-kitchen-chat": (-0.8, 1.09, 0.885, 0),
     "isr": (1.88, -0.47, 0.99, 0),
 }
-CUTTING_BOARD_COLOR = Color(R=0.80, G=0.66, B=0.49)
+CUTTING_BOARD_COLOR = Color(R=0.50, G=0.36, B=0.22)
 MIXING_BOWL_COLOR = Color(R=0.78, G=0.80, B=0.86)
 
 
@@ -245,6 +245,7 @@ def _try_surface_contact(
     tool,
     *,
     technique,
+    target_container=None,
 ):
     with simulated_robot_without_collision:
         sequential(
@@ -265,6 +266,7 @@ def _try_surface_contact(
         sequential(
             [
                 WipingAction(
+                    container=target_container,
                     target_pose=target_pose,
                     arm=arm,
                     tool=tool,
@@ -727,6 +729,7 @@ def run_single_object_wipe_demo(
     robot_name=None,
     environment_name=None,
     object_kind="wipe",
+    technique="wipe",
     spawn_position=None,
     spawn_yaw=None,
     spawn_scale=1.0,
@@ -757,15 +760,92 @@ def run_single_object_wipe_demo(
     )
 
     try:
-        target_marker_pub = _create_target_pose_marker_publisher(node)
-        _publish_target_pose_markers(node, target_marker_pub, world, [target_data])
-        publish_demo_camera_target(
-            node,
-            world,
-            lambda: target_data["world_pose"],
-            camera_pose_fn=lambda: _resolve_camera_pose(world, environment_name),
-        )
-        arm_tools = _attach_sponges_for_available_arms(world)
+        resolved_technique = str(technique).strip().lower()
+        if resolved_technique == "spread":
+            resolved_robot_name = resolve_robot_name(robot_name)
+            slice_preview = _parse_stl("pycram_object_gap_demo", "slice_of_bread.stl")
+            _set_uniform_scale(
+                slice_preview,
+                (float(spawn_scale), float(spawn_scale), float(spawn_scale)),
+                color=Color(R=0.76, G=0.60, B=0.42),
+            )
+            slice_mins, _ = body_local_aabb(
+                slice_preview.root, use_visual=False, apply_shape_scale=True
+            )
+
+            board = _parse_stl("pycram_object_gap_demo", "board.stl")
+            board.root.name.name = "cutting_board_0001"
+            _set_uniform_scale(
+                board,
+                (1.0, 1.0, 1.0),
+                color=CUTTING_BOARD_COLOR,
+            )
+            _, board_maxs = body_local_aabb(
+                board.root, use_visual=False, apply_shape_scale=True
+            )
+
+            x_world, y_world, z_world = [float(value) for value in spawn_position]
+            board_z = z_world + float(slice_mins[2]) - float(board_maxs[2]) - 0.002
+            board_pose = HomogeneousTransformationMatrix.from_xyz_rpy(
+                x=x_world,
+                y=y_world,
+                z=board_z,
+                yaw=float(spawn_yaw),
+                reference_frame=world.root,
+            )
+            world.merge_world_at_pose(board, board_pose)
+            world.update_forward_kinematics()
+
+            slice_world = _parse_stl("pycram_object_gap_demo", "slice_of_bread.stl")
+            slice_world.root.name.name = "slice_of_bread_0001"
+            _set_uniform_scale(
+                slice_world,
+                (float(spawn_scale), float(spawn_scale), float(spawn_scale)),
+                color=Color(R=0.76, G=0.60, B=0.42),
+            )
+            slice_pose = HomogeneousTransformationMatrix.from_xyz_rpy(
+                x=x_world,
+                y=y_world,
+                z=z_world,
+                yaw=float(spawn_yaw),
+                reference_frame=world.root,
+            )
+            world.merge_world_at_pose(slice_world, slice_pose)
+            world.update_forward_kinematics()
+
+            arm_tools = attach_available_tools(
+                world,
+                _parse_stl,
+                mesh_parts=("pycram_object_gap_demo", "butter_knife.stl"),
+                right_name="knife_right",
+                left_name="knife_left",
+                right_pose_kwargs=get_tool_mount_pose_kwargs(
+                    "cut", resolved_robot_name, Arms.RIGHT
+                ),
+                left_pose_kwargs=get_tool_mount_pose_kwargs(
+                    "cut", resolved_robot_name, Arms.LEFT
+                ),
+                tool_cls=Knife,
+            )
+            target_container = world.get_body_by_name("slice_of_bread_0001")
+            right_tool = next(tool for arm, tool in arm_tools if arm == Arms.RIGHT)
+            publish_demo_camera_target(
+                node,
+                world,
+                lambda: target_container.global_pose,
+                camera_pose_fn=lambda: _resolve_camera_pose(world, environment_name),
+            )
+        else:
+            target_marker_pub = _create_target_pose_marker_publisher(node)
+            _publish_target_pose_markers(node, target_marker_pub, world, [target_data])
+            publish_demo_camera_target(
+                node,
+                world,
+                lambda: target_data["world_pose"],
+                camera_pose_fn=lambda: _resolve_camera_pose(world, environment_name),
+            )
+            arm_tools = _attach_sponges_for_available_arms(world)
+            target_container = None
         context = Context.from_world(world)
         context.ros_node = node
 
@@ -782,6 +862,20 @@ def run_single_object_wipe_demo(
             pickup_position=pickup_position,
             pickup_yaw=pickup_yaw,
         )
+
+        if resolved_technique == "spread":
+            _perform_attempt_quietly(
+                lambda: _try_surface_contact(
+                    context,
+                    None,
+                    pickup_pose,
+                    Arms.RIGHT,
+                    right_tool,
+                    technique="spread",
+                    target_container=target_container,
+                )
+            )
+            return
 
         last_error = None
         for arm, tool in arm_tools:
@@ -808,112 +902,28 @@ def run_single_object_wipe_demo(
 
 
 def run_single_object_spread_demo(
-    *,
-    robot_name=None,
-    environment_name=None,
-    object_kind="spread",
-    spawn_position=None,
-    spawn_yaw=None,
-    spawn_scale=1.0,
-    pickup_position=None,
-    pickup_yaw=None,
-    quiet_logs=True,
+    **kwargs,
 ):
-    if quiet_logs:
-        _suppress_demo_noise()
-    parse_output = io.StringIO()
-    with redirect_stdout(parse_output), redirect_stderr(parse_output):
-        world = setup_thesis_world(
-            robot_name=robot_name,
-            environment_name=environment_name,
-        )
-    spawn_position, spawn_yaw = _resolve_spawn_pose(
-        world,
-        robot_name,
-        environment_name,
-        spawn_position=spawn_position,
-        spawn_yaw=spawn_yaw,
-    )
-    target_data = _single_wipe_target_data(world, spawn_position, spawn_yaw)
-
-    node = setup_experiment_runtime(
-        world=world,
-        node_name="pycram_single_object_spread_demo",
+    return run_single_object_wipe_demo(
+        technique="spread",
+        object_kind="bread",
+        **kwargs,
     )
 
-    try:
-        resolved_robot_name = resolve_robot_name(robot_name)
-        publish_demo_camera_target(
-            node,
-            world,
-            lambda: target_data["world_pose"],
-            camera_pose_fn=lambda: _resolve_camera_pose(world, environment_name),
-        )
-        arm_tools = attach_available_tools(
-            world,
-            _parse_stl,
-            mesh_parts=("pycram_object_gap_demo", "butter_knife.stl"),
-            right_name="knife_right",
-            left_name="knife_left",
-            right_pose_kwargs=get_tool_mount_pose_kwargs(
-                "cut", resolved_robot_name, Arms.RIGHT
-            ),
-            left_pose_kwargs=get_tool_mount_pose_kwargs(
-                "cut", resolved_robot_name, Arms.LEFT
-            ),
-            tool_cls=Knife,
-        )
-        context = Context.from_world(world)
-        context.ros_node = node
 
-        with simulated_robot_without_collision:
-            sequential(
-                [SetGripperAction(Arms.BOTH, GripperState.CLOSE)],
-                context,
-            ).perform()
-
-        pickup_pose = _resolve_pickup_pose(
-            world,
-            robot_name,
-            environment_name,
-            pickup_position=pickup_position,
-            pickup_yaw=pickup_yaw,
-        )
-
-        last_error = None
-        for arm, tool in arm_tools:
-            try:
-                _perform_attempt_quietly(
-                    lambda: _try_surface_contact(
-                        context,
-                        target_data["world_pose"],
-                        pickup_pose,
-                        arm,
-                        tool,
-                        technique="spread",
-                    )
-                )
-                return
-            except Exception as exc:
-                last_error = exc
-                print("The given robot is not suitable for this environment")
-
-        if last_error is not None:
-            raise last_error
-    finally:
-        shutdown_experiment_runtime(node)
-
-
-def run_single_object_demo(*, action="cut", **kwargs):
+def run_single_object_demo(*, action="cut", technique=None, **kwargs):
     normalized_action = str(action).strip().lower()
     if normalized_action == "cut":
         return run_single_object_cut_demo(**kwargs)
     if normalized_action == "mix":
         return run_single_object_mix_demo(**kwargs)
     if normalized_action == "wipe":
-        return run_single_object_wipe_demo(**kwargs)
+        return run_single_object_wipe_demo(
+            technique="wipe" if technique is None else technique,
+            **kwargs,
+        )
     if normalized_action == "spread":
-        return run_single_object_spread_demo(**kwargs)
+        return run_single_object_wipe_demo(technique="spread", **kwargs)
     raise ValueError(
         f"Unsupported single-object action '{action}'. Supported: cut, mix, wipe, spread"
     )

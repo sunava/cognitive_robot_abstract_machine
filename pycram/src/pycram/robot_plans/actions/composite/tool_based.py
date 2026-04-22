@@ -242,7 +242,7 @@ class GeneralizedActionPlan(ActionDescription):
                         #     alignment_pairs=alignment_pairs,
                         #     tip=tip,
                         # ),
-                        MoveTCPWaypointsAlignedMotion(
+                        MoveTCPWaypointsAlignedMotionw(
                             pointery,
                             self.arm,
                             allow_gripper_collision=True,
@@ -382,12 +382,6 @@ class WipingAction(GeneralizedActionPlan):
     def _resolved_technique(self) -> str:
         return str(self.technique).lower().strip()
 
-    def _surface_pattern(self) -> str:
-        technique = self._resolved_technique()
-        if technique == "spread":
-            return "raster"
-        return "raster"
-
     def _resolve_surface_body(self) -> Body:
         if self._resolved_surface_body is not None:
             return self._resolved_surface_body
@@ -453,7 +447,7 @@ class WipingAction(GeneralizedActionPlan):
                 self.container,
                 use_visual_aabb=True,
                 apply_shape_scale=True,
-                pattern=self._surface_pattern(),
+                technique=self._resolved_technique(),
             )
             return seq.sample(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
 

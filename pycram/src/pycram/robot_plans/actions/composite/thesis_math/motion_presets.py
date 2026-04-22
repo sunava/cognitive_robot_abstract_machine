@@ -49,10 +49,18 @@ def build_default_sequence():
 
 
 def _duration_scale_from_body(
-    body, reference_size=0.10, debug=False, apply_shape_scale=False
+    body,
+    reference_size=0.10,
+    debug=False,
+    use_visual_aabb=False,
+    apply_shape_scale=False,
 ):
     """Compute a scaling factor from the body's AABB size."""
-    mins, maxs = body_local_aabb(body, apply_shape_scale=apply_shape_scale)
+    mins, maxs = body_local_aabb(
+        body,
+        use_visual=use_visual_aabb,
+        apply_shape_scale=apply_shape_scale,
+    )
     extents = maxs - mins
     diag = float(np.linalg.norm(extents))
     ref = float(reference_size)
@@ -158,10 +166,15 @@ def build_surface_sequence(
     debug=False,
     use_visual_aabb=True,
     apply_shape_scale=True,
-    pattern="spiral",
+    technique="wipe",
+    pattern=None,
 ):
     """Build a planar sequence on a surface or object (e.g., countertop, cutting)."""
-    mins, maxs = body_local_aabb(surface_body, apply_shape_scale=apply_shape_scale)
+    mins, maxs = body_local_aabb(
+        surface_body,
+        use_visual=use_visual_aabb,
+        apply_shape_scale=apply_shape_scale,
+    )
     size_x = maxs[0] - mins[0]
     size_y = maxs[1] - mins[1]
     size_z = maxs[2] - mins[2]
@@ -182,6 +195,7 @@ def build_surface_sequence(
         surface_body,
         reference_size=reference_size,
         debug=debug,
+        use_visual_aabb=use_visual_aabb,
         apply_shape_scale=apply_shape_scale,
     )
     spiral_r1 = 0.9 * radius_xy
@@ -189,7 +203,8 @@ def build_surface_sequence(
     depth_max = 0.8 * size_z
     raster_width = 0.9 * size_x
     raster_height = 0.9 * size_y
-    raster_lanes = max(2, int(np.ceil(raster_height / max(reference_size, 1e-6))))
+    lane_spacing = max(0.02, 0.25 * float(reference_size))
+    raster_lanes = max(4, int(np.ceil(raster_height / max(lane_spacing, 1e-6))))
     if debug:
         print(
             "[motion_presets] surface params "
@@ -231,15 +246,17 @@ def build_surface_sequence(
         + start_offset,
     )
 
-    pattern = str(pattern).lower()
-    if pattern in ("spiral", "planar_spiral"):
+    mode = technique if technique is not None else pattern
+    mode = str(mode).lower()
+
+    if mode in ("wipe", "spiral", "planar_spiral"):
         return MotionSequence([phase_spiral_surface])
-    if pattern in ("shear", "oscillatory_shear", "shear_amp"):
+    if mode in ("shear", "oscillatory_shear", "shear_amp"):
         return MotionSequence([phase_shear_surface])
-    if pattern in ("raster", "planar_raster", "surface_cover"):
+    if mode in ("spread", "raster", "planar_raster", "surface_cover"):
         return MotionSequence([phase_raster_surface])
 
-    raise ValueError(f"Unknown pattern '{pattern}'")
+    raise ValueError(f"Unknown surface technique '{mode}'")
 
 
 def build_cutting_sequence(

@@ -11,7 +11,8 @@ from demos.thesis_single_object.single_object_cut_demo import run_single_object_
 # robots = ("hsrb", "stretch", "tiago", "g1", "justin", "armar7", "pr2")
 # actions = "cut,mix,wipe"
 ROBOT = "pr2"
-ACTION = "spread"
+ACTION = "wipe"
+TECHNIQUE = "spread"
 ENVIRONMENT = "apartment"
 OBJECT_KIND = "bread"
 SPAWN_POSITION = None
@@ -22,6 +23,7 @@ SPAWN_SCALE = 1.0
 if __name__ == "__main__":
     run_single_object_demo(
         action=ACTION,
+        technique=TECHNIQUE,
         robot_name=ROBOT,
         environment_name=ENVIRONMENT,
         object_kind=OBJECT_KIND,
