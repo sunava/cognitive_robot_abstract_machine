@@ -40,6 +40,24 @@ DEFAULT_TOOL_MOUNTS = {
             "yaw": 0.0,
         },
     },
+    "pour": {
+        Arms.RIGHT: {
+            "x": 0.0,
+            "y": 0.0,
+            "z": -0.08,
+            "roll": 0.0,
+            "pitch": np.pi / 2,
+            "yaw": 0.0,
+        },
+        Arms.LEFT: {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.08,
+            "roll": 0.0,
+            "pitch": -np.pi / 2,
+            "yaw": 0.0,
+        },
+    },
     "wipe": {
         Arms.RIGHT: {
             "x": 0.0,
@@ -100,6 +118,24 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
                 "yaw": 0.0,
             },
         },
+        "pour": {
+            Arms.RIGHT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": -0.08,
+                "roll": 0.0,
+                "pitch": np.pi / 2,
+                "yaw": 0.0,
+            },
+            Arms.LEFT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.08,
+                "roll": 0.0,
+                "pitch": -np.pi / 2,
+                "yaw": 0.0,
+            },
+        },
         "wipe": {
             Arms.RIGHT: {
                 "x": 0.0,
@@ -156,6 +192,24 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
                 "yaw": 0.0,
             },
         },
+        "pour": {
+            Arms.RIGHT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": -0.08,
+                "roll": 0.0,
+                "pitch": np.pi / 2,
+                "yaw": 0.0,
+            },
+            Arms.LEFT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": -0.08,
+                "roll": 0.0,
+                "pitch": np.pi / 2,
+                "yaw": 0.0,
+            },
+        },
         "wipe": {
             Arms.RIGHT: {
                 "x": 0.0,
@@ -195,6 +249,24 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
             },
         },
         "mix": {
+            Arms.RIGHT: {
+                "x": 0.0,
+                "y": 0,
+                "z": 0.0,
+                "roll": 0.0,
+                "pitch": 0,
+                "yaw": np.pi / 2,
+            },
+            Arms.LEFT: {
+                "x": 0.0,
+                "y": 0,
+                "z": 0.0,
+                "roll": 0,
+                "pitch": 0,
+                "yaw": np.pi / 2,
+            },
+        },
+        "pour": {
             Arms.RIGHT: {
                 "x": 0.0,
                 "y": 0,

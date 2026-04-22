@@ -227,6 +227,62 @@ def test_motion_sequence_concatenates_without_duplicate_boundary(thesis_math_mod
     assert np.array_equal(phase_ids, np.array([0, 0, 0, 1, 1]))
 
 
+def test_motion_segment_and_sequence_pose_sampling(thesis_math_modules):
+    profiles, models, _ = thesis_math_modules
+
+    segment = models.MotionSegment(
+        name="tilt_line",
+        duration_s=1.0,
+        local_curve=lambda tau: np.array([tau, 0.0, 0.0], dtype=float),
+        local_orientation_curve=profiles.tilt_about_local_y(
+            max_angle=np.pi / 2, ramp_in=0.5, hold_until=0.5
+        ),
+    )
+    frame = DummyFrame(np.eye(4))
+
+    times, positions, rotations = segment.sample_poses(frame.to_np(), dt=0.5, t0=0.0)
+    assert times == pytest.approx(np.array([0.0, 0.5, 1.0]))
+    assert positions == pytest.approx(
+        np.array([[0.0, 0.0, 0.0], [0.5, 0.0, 0.0], [1.0, 0.0, 0.0]])
+    )
+    assert rotations[0] == pytest.approx(np.eye(3))
+    assert rotations[1] == pytest.approx(profiles.rot_y(np.pi / 2))
+    assert rotations[2] == pytest.approx(np.eye(3))
+
+    seq = models.MotionSequence(
+        [
+            models.MotionSegment(
+                name="first",
+                duration_s=1.0,
+                local_curve=lambda tau: np.array([tau, 0.0, 0.0], dtype=float),
+                local_orientation_curve=profiles.fixed_rpy(yaw=np.pi / 2),
+            ),
+            models.MotionSegment(
+                name="second",
+                duration_s=1.0,
+                local_curve=lambda tau: np.array([1.0, tau, 0.0], dtype=float),
+            ),
+        ]
+    )
+
+    sampled = seq.sample_poses(DummyFrame(np.eye(4)), dt=0.5, t0=2.0)
+    assert sampled.times == pytest.approx(np.array([2.0, 2.5, 3.0, 3.5, 4.0]))
+    assert sampled.positions == pytest.approx(
+        np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [0.5, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 0.5, 0.0],
+                [1.0, 1.0, 0.0],
+            ]
+        )
+    )
+    assert sampled.rotations[0] == pytest.approx(profiles.rot_z(np.pi / 2))
+    assert sampled.rotations[-1] == pytest.approx(np.eye(3))
+    assert np.array_equal(sampled.phase_ids, np.array([0, 0, 0, 1, 1]))
+
+
 def test_duration_scale_uses_aabb_diagonal_and_validates_reference(thesis_math_modules):
     _, _, presets = thesis_math_modules
     body = DummyBody(mins=[0.0, 0.0, 0.0], maxs=[3.0, 4.0, 0.0])
@@ -345,3 +401,47 @@ def test_build_cutting_sequence_covers_slice_saw_and_halving(thesis_math_modules
 
     with pytest.raises(ValueError, match="Unknown cutting technique"):
         presets.build_cutting_sequence(food, technique="dice")
+
+
+def test_build_pouring_sequence_generates_pose_aware_phases(thesis_math_modules):
+    profiles, _, presets = thesis_math_modules
+    source = DummyBody(mins=[-0.05, -0.03, 0.0], maxs=[0.05, 0.03, 0.12])
+    target = DummyBody(mins=[0.20, -0.04, 0.0], maxs=[0.32, 0.04, 0.10])
+
+    seq = presets.build_pouring_sequence(
+        source,
+        target_body=target,
+        pour_height=0.08,
+        approach_distance=0.06,
+        retreat_distance=0.10,
+        max_tilt=np.pi / 3,
+    )
+
+    assert [phase.name for phase in seq.phases] == [
+        "pour_approach",
+        "pour_tilt_in",
+        "pour_hold",
+        "pour_tilt_out_retreat",
+    ]
+
+    anchor = np.array([0.26, 0.0, 0.18])
+    approach = np.array([0.20, 0.0, 0.18])
+    retreat = np.array([0.16, 0.0, 0.18])
+
+    assert seq.phases[0].local_curve(0.0) == pytest.approx(approach)
+    assert seq.phases[0].local_curve(1.0) == pytest.approx(anchor)
+    assert seq.phases[1].local_curve(0.5) == pytest.approx(anchor)
+    assert seq.phases[2].local_curve(0.5) == pytest.approx(anchor)
+    assert seq.phases[3].local_curve(1.0) == pytest.approx(retreat)
+
+    sampled = seq.sample_poses(DummyFrame(np.eye(4)), dt=1.0)
+    assert sampled.positions[0] == pytest.approx(approach)
+    assert sampled.positions[-1] == pytest.approx(retreat)
+    assert sampled.rotations[0] == pytest.approx(np.eye(3))
+    assert np.any(
+        np.all(np.isclose(sampled.rotations, profiles.rot_y(np.pi / 3)), axis=(1, 2))
+    )
+    assert sampled.rotations[-1] == pytest.approx(np.eye(3))
+
+    with pytest.raises(ValueError, match="Unsupported pouring tilt axis"):
+        presets.build_pouring_sequence(source, tilt_axis="x")

@@ -8,16 +8,126 @@ from pycram.robot_plans.actions.composite.thesis_math.motion_profiles import (
     ShearProfile,
     ShearXYProfile,
     clamp_to_cylinder_xy,
+    fixed_rpy,
     make_constrained_curve,
     oscillatory_shear_local_profiled,
     oscillatory_shear_xy_profiled,
     planar_raster_xy,
     planar_spiral_xy,
     planar_sweep_x,
+    rot_y,
 )
 from pycram.robot_plans.actions.composite.thesis_math.world_utils import body_local_aabb
 
 APPROACH_Z_EXTRA_CLEARANCE_M = 0.02
+
+
+def _cross_2d(o, a, b):
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+
+def _convex_hull_xy(points_xy: np.ndarray) -> np.ndarray:
+    pts = np.asarray(points_xy, dtype=float).reshape(-1, 2)
+    if len(pts) <= 1:
+        return pts
+    pts = np.unique(np.round(pts, decimals=8), axis=0)
+    if len(pts) <= 2:
+        return pts
+    pts = pts[np.lexsort((pts[:, 1], pts[:, 0]))]
+
+    lower = []
+    for p in pts:
+        while len(lower) >= 2 and _cross_2d(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+
+    upper = []
+    for p in pts[::-1]:
+        while len(upper) >= 2 and _cross_2d(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+
+    return np.asarray(lower[:-1] + upper[:-1], dtype=float)
+
+
+def _point_in_convex_polygon_xy(point_xy: np.ndarray, hull_xy: np.ndarray) -> bool:
+    hull = np.asarray(hull_xy, dtype=float).reshape(-1, 2)
+    point = np.asarray(point_xy, dtype=float).reshape(2)
+    if len(hull) < 3:
+        return True
+    eps = 1e-9
+    prev_sign = 0.0
+    for i in range(len(hull)):
+        a = hull[i]
+        b = hull[(i + 1) % len(hull)]
+        cross = _cross_2d(a, b, point)
+        if abs(cross) <= eps:
+            continue
+        sign = np.sign(cross)
+        if prev_sign == 0.0:
+            prev_sign = sign
+        elif sign != prev_sign:
+            return False
+    return True
+
+
+def _project_point_to_segment_xy(
+    point_xy: np.ndarray, a_xy: np.ndarray, b_xy: np.ndarray
+) -> np.ndarray:
+    p = np.asarray(point_xy, dtype=float).reshape(2)
+    a = np.asarray(a_xy, dtype=float).reshape(2)
+    b = np.asarray(b_xy, dtype=float).reshape(2)
+    ab = b - a
+    denom = float(np.dot(ab, ab))
+    if denom <= 1e-12:
+        return a.copy()
+    t = float(np.dot(p - a, ab) / denom)
+    t = np.clip(t, 0.0, 1.0)
+    return a + t * ab
+
+
+def _constrain_to_convex_hull_xy(
+    q_local: np.ndarray, hull_xy: np.ndarray
+) -> np.ndarray:
+    q = np.asarray(q_local, dtype=float).reshape(3)
+    if len(hull_xy) < 3 or _point_in_convex_polygon_xy(q[:2], hull_xy):
+        return q
+
+    best_xy = None
+    best_dist = float("inf")
+    for i in range(len(hull_xy)):
+        a = hull_xy[i]
+        b = hull_xy[(i + 1) % len(hull_xy)]
+        candidate_xy = _project_point_to_segment_xy(q[:2], a, b)
+        dist = float(np.linalg.norm(q[:2] - candidate_xy))
+        if dist < best_dist:
+            best_dist = dist
+            best_xy = candidate_xy
+
+    return np.array([best_xy[0], best_xy[1], q[2]], dtype=float)
+
+
+def _top_surface_hull_xy(surface_body, upward_threshold=0.6):
+    mesh = getattr(surface_body, "combined_mesh", None)
+    if mesh is None or getattr(mesh, "is_empty", True):
+        return None
+
+    normals = np.asarray(mesh.face_normals, dtype=float)
+    faces = np.asarray(mesh.faces, dtype=int)
+    vertices = np.asarray(mesh.vertices, dtype=float)
+    if len(normals) == 0 or len(faces) == 0 or len(vertices) == 0:
+        return None
+
+    upward_mask = normals[:, 2] > float(upward_threshold)
+    if not upward_mask.any():
+        return None
+
+    upward_faces = faces[upward_mask]
+    top_vertices = vertices[np.unique(upward_faces.reshape(-1))]
+    if len(top_vertices) < 3:
+        return None
+
+    return _convex_hull_xy(top_vertices[:, :2])
 
 
 def build_default_sequence():
@@ -214,39 +324,54 @@ def build_surface_sequence(
             f"raster_lanes={raster_lanes}"
         )
 
+    hull_xy = _top_surface_hull_xy(surface_body)
+    if debug and hull_xy is not None:
+        print(f"[motion_presets] top_surface_hull_vertices={len(hull_xy)}")
+
+    def _with_hull_constraint(curve):
+        if hull_xy is None:
+            return lambda tau: curve(tau) + start_offset
+        return make_constrained_curve(
+            lambda tau: curve(tau) + start_offset,
+            lambda q_local: _constrain_to_convex_hull_xy(q_local, hull_xy),
+        )
+
     phase_spiral_surface = MotionSegment(
         name="planar_spiral_surface",
         duration_s=2.0 * duration_scale,
-        local_curve=lambda tau: planar_spiral_xy(tau, r0=0.00, r1=spiral_r1, cycles=2.0)
-        + start_offset,
+        local_curve=_with_hull_constraint(
+            lambda tau: planar_spiral_xy(tau, r0=0.00, r1=spiral_r1, cycles=2.0)
+        ),
     )
 
     phase_shear_surface = MotionSegment(
         name="oscillatory_shear_surface",
         duration_s=1.5 * duration_scale,
-        local_curve=lambda tau: oscillatory_shear_xy_profiled(
-            tau,
-            ShearXYProfile(
-                shear_amp=shear_amp,
-                shear_cycles=5.0,
-            ),
-        )
-        + start_offset,
+        local_curve=_with_hull_constraint(
+            lambda tau: oscillatory_shear_xy_profiled(
+                tau,
+                ShearXYProfile(
+                    shear_amp=shear_amp,
+                    shear_cycles=5.0,
+                ),
+            )
+        ),
     )
 
     phase_raster_surface = MotionSegment(
         name="planar_raster_surface",
         duration_s=2.0 * duration_scale,
-        local_curve=lambda tau: planar_raster_xy(
-            tau,
-            width=raster_width,
-            height=raster_height,
-            lanes=raster_lanes,
-        )
-        + start_offset,
+        local_curve=_with_hull_constraint(
+            lambda tau: planar_raster_xy(
+                tau,
+                width=raster_width,
+                height=raster_height,
+                lanes=raster_lanes,
+            )
+        ),
     )
 
-    mode = technique if technique is not None else pattern
+    mode = pattern if pattern is not None else technique
     mode = str(mode).lower()
 
     if mode in ("wipe", "spiral", "planar_spiral"):
@@ -256,6 +381,8 @@ def build_surface_sequence(
     if mode in ("spread", "raster", "planar_raster", "surface_cover"):
         return MotionSequence([phase_raster_surface])
 
+    if pattern is not None:
+        raise ValueError(f"Unknown pattern '{mode}'")
     raise ValueError(f"Unknown surface technique '{mode}'")
 
 
@@ -428,3 +555,100 @@ def build_cutting_sequence(
         raise ValueError(f"Unknown cutting technique '{technique}'")
 
     return MotionSequence(phases)
+
+
+def build_pouring_sequence(
+    source_body,
+    *,
+    target_body=None,
+    reference_size=0.10,
+    debug=False,
+    use_visual_aabb=True,
+    apply_shape_scale=True,
+    pour_height=0.10,
+    pour_offset_xy=(0.0, 0.0),
+    approach_distance=0.08,
+    retreat_distance=0.08,
+    max_tilt=np.deg2rad(65.0),
+    tilt_axis="y",
+    approach_duration_s=1.2,
+    tilt_in_duration_s=1.0,
+    hold_duration_s=1.5,
+    retreat_duration_s=1.2,
+):
+    """Build a simple pose-aware pouring sequence."""
+    mins, maxs = body_local_aabb(
+        source_body,
+        use_visual=use_visual_aabb,
+        apply_shape_scale=apply_shape_scale,
+    )
+    center_x = float(0.5 * (mins[0] + maxs[0]))
+    center_y = float(0.5 * (mins[1] + maxs[1]))
+    top_z = float(maxs[2])
+
+    if target_body is not None:
+        t_mins, t_maxs = body_local_aabb(
+            target_body,
+            use_visual=use_visual_aabb,
+            apply_shape_scale=apply_shape_scale,
+        )
+        anchor_x = float(0.5 * (t_mins[0] + t_maxs[0])) + float(pour_offset_xy[0])
+        anchor_y = float(0.5 * (t_mins[1] + t_maxs[1])) + float(pour_offset_xy[1])
+        anchor_z = float(t_maxs[2]) + float(pour_height)
+    else:
+        anchor_x = center_x + float(pour_offset_xy[0])
+        anchor_y = center_y + float(pour_offset_xy[1])
+        anchor_z = top_z + float(pour_height)
+
+    duration_scale = _duration_scale_from_body(
+        source_body,
+        reference_size=reference_size,
+        debug=debug,
+        use_visual_aabb=use_visual_aabb,
+        apply_shape_scale=apply_shape_scale,
+    )
+
+    anchor_point = np.array([anchor_x, anchor_y, anchor_z], dtype=float)
+    approach_point = np.array(
+        [anchor_x - float(approach_distance), anchor_y, anchor_z], dtype=float
+    )
+    retreat_point = np.array(
+        [anchor_x - float(retreat_distance), anchor_y, anchor_z], dtype=float
+    )
+
+    axis = str(tilt_axis).lower().strip()
+    if axis != "y":
+        raise ValueError(f"Unsupported pouring tilt axis '{tilt_axis}'")
+
+    return MotionSequence(
+        [
+            MotionSegment(
+                name="pour_approach",
+                duration_s=float(approach_duration_s) * duration_scale,
+                local_curve=lambda tau: approach_point
+                + float(tau) * (anchor_point - approach_point),
+                local_orientation_curve=fixed_rpy(),
+            ),
+            MotionSegment(
+                name="pour_tilt_in",
+                duration_s=float(tilt_in_duration_s) * duration_scale,
+                local_curve=lambda tau: anchor_point,
+                local_orientation_curve=lambda tau: rot_y(float(max_tilt) * float(tau)),
+            ),
+            MotionSegment(
+                name="pour_hold",
+                duration_s=float(hold_duration_s) * duration_scale,
+                local_curve=lambda tau: anchor_point,
+                local_orientation_curve=lambda tau: rot_y(float(max_tilt)),
+            ),
+            MotionSegment(
+                name="pour_tilt_out_retreat",
+                duration_s=float(retreat_duration_s) * duration_scale,
+                local_curve=lambda tau: anchor_point
+                + float(tau) * (retreat_point - anchor_point),
+                local_orientation_curve=lambda tau: rot_y(
+                    float(max_tilt) * (1.0 - float(tau))
+                ),
+            ),
+        ]
+    )

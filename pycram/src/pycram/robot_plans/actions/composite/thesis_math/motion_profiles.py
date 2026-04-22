@@ -3,6 +3,57 @@ from dataclasses import dataclass
 import numpy as np
 
 
+def rot_x(angle):
+    c = float(np.cos(angle))
+    s = float(np.sin(angle))
+    return np.array([[1.0, 0.0, 0.0], [0.0, c, -s], [0.0, s, c]], dtype=float)
+
+
+def rot_y(angle):
+    c = float(np.cos(angle))
+    s = float(np.sin(angle))
+    return np.array([[c, 0.0, s], [0.0, 1.0, 0.0], [-s, 0.0, c]], dtype=float)
+
+
+def rot_z(angle):
+    c = float(np.cos(angle))
+    s = float(np.sin(angle))
+    return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]], dtype=float)
+
+
+def rpy_matrix(roll=0.0, pitch=0.0, yaw=0.0):
+    return rot_z(yaw) @ rot_y(pitch) @ rot_x(roll)
+
+
+def constant_orientation():
+    return lambda tau: np.eye(3, dtype=float)
+
+
+def fixed_rpy(roll=0.0, pitch=0.0, yaw=0.0):
+    R = rpy_matrix(roll=roll, pitch=pitch, yaw=yaw)
+    return lambda tau: R
+
+
+def tilt_about_local_y(max_angle, ramp_in=0.3, hold_until=0.7):
+    max_angle = float(max_angle)
+    ramp_in = float(ramp_in)
+    hold_until = float(hold_until)
+
+    def profile(tau):
+        tau = float(np.clip(tau, 0.0, 1.0))
+        if tau <= ramp_in:
+            angle = max_angle * (tau / max(ramp_in, 1e-6))
+        elif tau <= hold_until:
+            angle = max_angle
+        else:
+            angle = max_angle * max(
+                0.0, 1.0 - (tau - hold_until) / max(1.0 - hold_until, 1e-6)
+            )
+        return rot_y(angle)
+
+    return profile
+
+
 def ramp(tau, tau_end, d_max):
     """Linear ramp from 0 to d_max over tau_end."""
     if tau <= 0.0:

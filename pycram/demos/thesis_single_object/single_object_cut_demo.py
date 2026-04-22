@@ -12,7 +12,12 @@ from pycram.motion_executor import (
     simulated_robot_with_collision,
 )
 from pycram.plans.factories import sequential
-from pycram.robot_plans.actions.composite.tool_based import CuttingAction, WipingAction
+from pycram.robot_plans.actions.composite.tool_based import (
+    CuttingAction,
+    PouringAction,
+    SimplePouringAction,
+    WipingAction,
+)
 from pycram.robot_plans.actions.core.navigation import NavigateAction
 from pycram.robot_plans.actions.core.robot_body import SetGripperAction
 from pycram.robot_plans.actions.core.robot_body import (
@@ -25,8 +30,14 @@ from semantic_digital_twin.datastructures.definitions import (
     StaticJointState,
 )
 from semantic_digital_twin.datastructures.definitions import TorsoState
-from semantic_digital_twin.semantic_annotations.semantic_annotations import Knife, Whisk
+from semantic_digital_twin.semantic_annotations.semantic_annotations import (
+    Bowl,
+    Cup,
+    Knife,
+    Whisk,
+)
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
+from semantic_digital_twin.world_description.connections import FixedConnection
 
 try:
     from ..thesis_new.demo_cut_all_breads_retry import (
@@ -90,6 +101,7 @@ from pycram.robot_plans.actions.composite.thesis_math import body_local_aabb
 from pycram.robot_plans.actions.composite.utils.demo_utils import (
     attach_available_tools,
     collect_named_targets,
+    get_available_arm_tool_frames,
     get_park_arms_argument,
     publish_demo_camera_target,
     setup_experiment_runtime,
@@ -279,6 +291,42 @@ def _try_surface_contact(
         ).perform()
 
 
+def _try_pour(
+    context,
+    source_container,
+    target_container,
+    pickup_pose,
+    arm,
+    tool,
+):
+    with simulated_robot_without_collision:
+        sequential(
+            [
+                ParkArmsAction(
+                    get_park_arms_argument(context.world),
+                    joint_state=StaticJointState.PARKTOOL,
+                ),
+            ],
+            context,
+        ).perform()
+        sequential([MoveTorsoAction(TorsoState.HIGH)], context).perform()
+        sequential(
+            [NavigateAction(pickup_pose, True, teleport=True)], context
+        ).perform()
+
+    with simulated_robot_with_collision:
+        sequential(
+            [
+                SimplePouringAction(
+                    object_designator=target_container,
+                    arm=arm,
+                ),
+                ParkArmsAction(get_park_arms_argument(context.world)),
+            ],
+            context,
+        ).perform()
+
+
 def _spawn_single_object(
     *,
     world,
@@ -342,6 +390,38 @@ def _spawn_single_mixing_container(
     world.merge_world_at_pose(spawned, world_pose)
     world.update_forward_kinematics()
     return object_name, _pose_xyz(world_pose)
+
+
+def _attach_single_hand_tool(
+    *,
+    world,
+    parse_stl_fn,
+    mesh_parts,
+    tool_name,
+    arm,
+    pose_kwargs,
+    tool_cls,
+):
+    available_frames = dict(get_available_arm_tool_frames(world))
+    if arm not in available_frames:
+        raise ValueError(f"Requested arm '{arm}' is not available on this robot.")
+
+    tool_world = parse_stl_fn(*mesh_parts)
+    tool_world.root.name.name = tool_name
+    tip = available_frames[arm]
+
+    with world.modify_world():
+        connection = FixedConnection(
+            parent=tip,
+            child=tool_world.root,
+            parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(
+                reference_frame=tip,
+                **pose_kwargs,
+            ),
+        )
+        world.merge_world(tool_world, connection)
+
+    return tool_cls(root=connection.child)
 
 
 def _single_wipe_target_data(world, spawn_position, spawn_yaw):
@@ -724,6 +804,98 @@ def run_single_object_mix_demo(
         shutdown_experiment_runtime(node)
 
 
+def run_single_object_pour_demo(
+    *,
+    robot_name=None,
+    environment_name=None,
+    object_kind="bowl",
+    spawn_position=None,
+    spawn_yaw=None,
+    spawn_scale=1.0,
+    pickup_position=None,
+    pickup_yaw=None,
+    quiet_logs=True,
+):
+    if quiet_logs:
+        _suppress_demo_noise()
+    parse_output = io.StringIO()
+    with redirect_stdout(parse_output), redirect_stderr(parse_output):
+        world = setup_thesis_world(
+            robot_name=robot_name,
+            environment_name=environment_name,
+        )
+    spawn_position, spawn_yaw = _resolve_spawn_pose(
+        world,
+        robot_name,
+        environment_name,
+        spawn_position=spawn_position,
+        spawn_yaw=spawn_yaw,
+    )
+    _spawn_single_mixing_container(
+        world=world,
+        object_kind=object_kind,
+        spawn_position=spawn_position,
+        spawn_yaw=spawn_yaw,
+        spawn_scale=spawn_scale,
+    )
+
+    node = setup_experiment_runtime(
+        world=world,
+        node_name="pycram_single_object_pour_demo",
+    )
+
+    try:
+        resolved_robot_name = resolve_robot_name(robot_name)
+        cup_tool = _attach_single_hand_tool(
+            world=world,
+            parse_stl_fn=_parse_bowl_stl,
+            mesh_parts=("objects", "jeroen_cup.stl"),
+            tool_name="jeroen_cup_right",
+            arm=Arms.RIGHT,
+            pose_kwargs=get_tool_mount_pose_kwargs(
+                "pour", resolved_robot_name, Arms.RIGHT
+            ),
+            tool_cls=Cup,
+        )
+        bowl_body = world.get_body_by_name("bowl_0001")
+        bowl_target = Bowl(root=bowl_body)
+        publish_demo_camera_target(
+            node,
+            world,
+            lambda: bowl_body.global_pose,
+            camera_pose_fn=lambda: _resolve_camera_pose(world, environment_name),
+        )
+        context = Context.from_world(world)
+        context.ros_node = node
+
+        with simulated_robot_without_collision:
+            sequential(
+                [SetGripperAction(Arms.BOTH, GripperState.CLOSE)],
+                context,
+            ).perform()
+
+        pickup_pose = _resolve_pickup_pose(
+            world,
+            robot_name,
+            environment_name,
+            pickup_position=pickup_position,
+            pickup_yaw=pickup_yaw,
+        )
+
+        _perform_attempt_quietly(
+            lambda: _try_pour(
+                context,
+                cup_tool.root,
+                bowl_target.root,
+                pickup_pose,
+                Arms.RIGHT,
+                cup_tool,
+            )
+        )
+    finally:
+        shutdown_experiment_runtime(node)
+
+
 def run_single_object_wipe_demo(
     *,
     robot_name=None,
@@ -917,6 +1089,8 @@ def run_single_object_demo(*, action="cut", technique=None, **kwargs):
         return run_single_object_cut_demo(**kwargs)
     if normalized_action == "mix":
         return run_single_object_mix_demo(**kwargs)
+    if normalized_action == "pour":
+        return run_single_object_pour_demo(**kwargs)
     if normalized_action == "wipe":
         return run_single_object_wipe_demo(
             technique="wipe" if technique is None else technique,
@@ -925,5 +1099,5 @@ def run_single_object_demo(*, action="cut", technique=None, **kwargs):
     if normalized_action == "spread":
         return run_single_object_wipe_demo(technique="spread", **kwargs)
     raise ValueError(
-        f"Unsupported single-object action '{action}'. Supported: cut, mix, wipe, spread"
+        f"Unsupported single-object action '{action}'. Supported: cut, mix, pour, wipe, spread"
     )

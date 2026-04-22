@@ -26,17 +26,24 @@ from .thesis_math.motion_presets import (
     build_container_sequence,
     build_surface_sequence,
     build_cutting_sequence,
+    build_pouring_sequence,
 )
 from .thesis_math.motion_profiles import planar_spiral_xy, planar_sweep_x
 from .thesis_math.world_utils import body_local_aabb
-from ... import MoveTCPWaypointsAlignedMotion, MoveTCPWaypointsAlignedMotionw
+from ... import (
+    MoveTCPWaypointsAlignedMotion,
+    MoveTCPWaypointsAlignedMotionw,
+    MoveTCPWaypointsMotion,
+)
 
 from ....datastructures.enums import (
     Arms,
+    MovementType,
 )
 from ....plans.factories import sequential
-
 from ....robot_plans.actions.base import ActionDescription
+from ....robot_plans.motions.gripper import MoveToolCenterPointMotion
+from ....tf_transformations import quaternion_from_matrix
 from ....view_manager import ViewManager
 
 logger = logging.getLogger(__name__)
@@ -190,11 +197,10 @@ class GeneralizedActionPlan(ActionDescription):
     """
 
     def execute(self) -> None:
-        _, points, ids = self._sample_points()
-        # points_world = self._points_with_tip(points)
-        P = np.asarray(points, dtype=float)
+        sampled = self._sample_motion()
+        P = self._extract_points_for_logging(sampled)
         self.logged_action_name = self.__class__.__name__
-        self.logged_technique = getattr(self, "technique", None)
+        self.logged_technique = self._logged_technique_value()
         _logging_helper_apply_fields(
             self, _logging_helper_collect_identity_fields(self)
         )
@@ -204,55 +210,20 @@ class GeneralizedActionPlan(ActionDescription):
             points=P,
             frame_id="map",
             topic="/point_sequence",
-            phase_id=ids,
+            phase_id=self._extract_phase_ids_for_logging(sampled),
             republish_hz=2.0,
             clear_existing=self.clear_viz,
         )
         self.robot.full_body_controlled = True
-        stride = max(1, int(self.pointer_stride))
-        pointery = self._to_waypoints(points, stride)
-        if self.__class__.__name__ == "CuttingAction":
-            self.db_debug_waypoint_count = float(len(pointery))
+        waypoints = self._build_waypoints(sampled)
+        self._postprocess_waypoints_for_logging(waypoints)
 
         _logging_helper_apply_fields(
             self, _logging_helper_collect_container_fields(self, P)
         )
 
-        alignment_target = self._resolve_alignment_target()
-
-        alignment_pairs = (
-            self.tool.tool_alignment(alignment_target)
-            if (self.tool is not None and alignment_target is not None)
-            else []
-        )
         try:
-            tip = self.tool.get_tool_frame()
-        except Exception:
-            tip = ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
-        aligned_point = pointery[0]
-        aligned_point.z += 0.01
-        try:
-            self.add_subplan(
-                sequential(
-                    [
-                        # MoveTCPToPointAlignedMotion(
-                        #     aligned_point,
-                        #     self.arm,
-                        #     allow_gripper_collision=False,
-                        #     alignment_pairs=alignment_pairs,
-                        #     tip=tip,
-                        # ),
-                        MoveTCPWaypointsAlignedMotionw(
-                            pointery,
-                            self.arm,
-                            allow_gripper_collision=True,
-                            alignment_pairs=alignment_pairs,
-                            tip=tip,
-                        ),
-                    ]
-                )
-            ).perform()
-
+            self.add_subplan(sequential([self._build_motion(waypoints)])).perform()
         except Exception as exc:
             collision_contacts = None
             try:
@@ -267,17 +238,62 @@ class GeneralizedActionPlan(ActionDescription):
                 "No waypoints provided to MoveTCPWaypointsAlignedMotion" in msg
                 or "No aligned waypoint tasks generated" in msg
                 or "No waypoints left after applying pointer_stride" in msg
+                or "No pose waypoints left after applying pointer_stride" in msg
             ):
                 raise ValueError(
                     "Aligned motion failed: no waypoint sequence to execute "
-                    f"(waypoints={len(pointery)}, collisions_now={collision_contacts})."
+                    f"(waypoints={len(waypoints)}, collisions_now={collision_contacts})."
                 ) from exc
 
             raise RuntimeError(
                 "Aligned motion failed during execution "
-                f"(waypoints={len(pointery)}, collisions_now={collision_contacts}): "
+                f"(waypoints={len(waypoints)}, collisions_now={collision_contacts}): "
                 f"{type(exc).__name__}: {exc}"
             ) from exc
+
+    def _sample_motion(self):
+        return self._sample_points()
+
+    def _extract_points_for_logging(self, sampled) -> np.ndarray:
+        _, points, _ = sampled
+        return np.asarray(points, dtype=float)
+
+    def _extract_phase_ids_for_logging(self, sampled) -> np.ndarray:
+        _, _, ids = sampled
+        return ids
+
+    def _logged_technique_value(self):
+        return getattr(self, "technique", None)
+
+    def _build_waypoints(self, sampled):
+        _, points, _ = sampled
+        stride = max(1, int(self.pointer_stride))
+        return self._to_waypoints(points, stride)
+
+    def _postprocess_waypoints_for_logging(self, waypoints) -> None:
+        if self.__class__.__name__ == "CuttingAction":
+            self.db_debug_waypoint_count = float(len(waypoints))
+
+    def _build_motion(self, waypoints):
+        alignment_target = self._resolve_alignment_target()
+
+        alignment_pairs = (
+            self.tool.tool_alignment(alignment_target)
+            if (self.tool is not None and alignment_target is not None)
+            else []
+        )
+        try:
+            tip = self.tool.get_tool_frame()
+        except Exception:
+            tip = ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
+
+        return MoveTCPWaypointsAlignedMotion(
+            waypoints,
+            self.arm,
+            allow_gripper_collision=True,
+            alignment_pairs=alignment_pairs,
+            tip=tip,
+        )
 
     def _sample_points(selfs):
         raise NotImplementedError
@@ -477,18 +493,6 @@ class WipingAction(GeneralizedActionPlan):
         seq = MotionSequence([segment])
         return seq.sample(frame=t_pose, dt=DEFAULT_SAMPLE_DT)
 
-    def validate_precondition(self):
-        technique = self._resolved_technique()
-        if technique not in {"wipe", "spread"}:
-            raise OAAMApplicabilityFailure(
-                self.__class__.__name__,
-                f"unknown wiping technique '{self.technique}'",
-            )
-        if self.container is None and self.target_pose is None:
-            raise OAAMApplicabilityFailure(
-                self.__class__.__name__, "requires either container or target_pose"
-            )
-
 
 @dataclass
 class CuttingAction(GeneralizedActionPlan):
@@ -535,3 +539,205 @@ class CuttingAction(GeneralizedActionPlan):
             num_cuts_x=self.num_cuts_x,
         )
         return seq.sample(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
+
+
+@dataclass
+class PouringAction(GeneralizedActionPlan):
+    """
+    Execute a simple pose-aware pouring motion around a target container or anchor.
+    """
+
+    container: Body = None
+    """
+    Source container that is being tilted.
+    """
+
+    target_container: Optional[Body] = None
+    """
+    Optional target container/body over which the pour should happen.
+    """
+
+    pour_height: float = 0.10
+    """
+    Vertical offset above the target top surface during pouring.
+    """
+
+    pour_offset_xy: tuple[float, float] = (0.0, 0.0)
+    """
+    Additional local XY offset for the pour anchor.
+    """
+
+    approach_distance: float = 0.08
+    """
+    Approach distance before the pour anchor.
+    """
+
+    retreat_distance: float = 0.08
+    """
+    Retreat distance after the pour anchor.
+    """
+
+    max_tilt: float = float(np.deg2rad(65.0))
+    """
+    Maximum tilt angle during the pouring phase.
+    """
+
+    tilt_axis: str = "y"
+    """
+    Local tilt axis for the pouring rotation profile.
+    """
+
+    def _sample_pose_sequence(self):
+        seq = build_pouring_sequence(
+            self.container,
+            target_body=self.target_container,
+            use_visual_aabb=True,
+            apply_shape_scale=True,
+            pour_height=self.pour_height,
+            pour_offset_xy=self.pour_offset_xy,
+            approach_distance=self.approach_distance,
+            retreat_distance=self.retreat_distance,
+            max_tilt=self.max_tilt,
+            tilt_axis=self.tilt_axis,
+        )
+        return seq.sample_poses(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
+
+    def _to_pose_waypoints(
+        self, positions: np.ndarray, rotations: np.ndarray, stride: int
+    ) -> list[Pose]:
+        poses = []
+        for p, r in zip(positions[::stride], rotations[::stride]):
+            rotation_matrix = np.asarray(r, dtype=float)
+            if rotation_matrix.shape == (3, 3):
+                homogeneous_rotation = np.eye(4, dtype=float)
+                homogeneous_rotation[:3, :3] = rotation_matrix
+            elif rotation_matrix.shape == (4, 4):
+                homogeneous_rotation = rotation_matrix
+            else:
+                raise ValueError(
+                    "Expected pouring waypoint rotation to have shape (3, 3) or (4, 4), "
+                    f"got {rotation_matrix.shape}."
+                )
+
+            quat = quaternion_from_matrix(homogeneous_rotation)
+            poses.append(
+                Pose.from_xyz_quaternion(
+                    float(p[0]),
+                    float(p[1]),
+                    float(p[2]),
+                    float(quat[0]),
+                    float(quat[1]),
+                    float(quat[2]),
+                    float(quat[3]),
+                    reference_frame=self.world.root,
+                )
+            )
+        if not poses:
+            raise ValueError("No pose waypoints left after applying pointer_stride.")
+        return poses
+
+    def _sample_motion(self):
+        return self._sample_pose_sequence()
+
+    def _extract_points_for_logging(self, sampled) -> np.ndarray:
+        return np.asarray(sampled.positions, dtype=float)
+
+    def _extract_phase_ids_for_logging(self, sampled) -> np.ndarray:
+        return sampled.phase_ids
+
+    def _logged_technique_value(self):
+        return "pour"
+
+    def _build_waypoints(self, sampled):
+        stride = max(1, int(self.pointer_stride))
+        return self._to_pose_waypoints(sampled.positions, sampled.rotations, stride)
+
+    def _build_motion(self, waypoints):
+        return MoveTCPWaypointsMotion(
+            waypoints,
+            self.arm,
+            allow_gripper_collision=True,
+        )
+
+
+@dataclass
+class SimplePouringAction(ActionDescription):
+    """
+    Execute a simple Cartesian pour over a target container.
+    """
+
+    object_designator: Body
+    """
+    Target container over which the held object should be poured.
+    """
+
+    arm: Arms
+    """
+    Arm that is holding the pouring object.
+    """
+
+    offset_x: float = 0.009
+    """
+    World-space X offset from the target container center.
+    """
+
+    offset_y: float = -0.125
+    """
+    World-space Y offset from the target container center.
+    """
+
+    offset_z: float = 0.17
+    """
+    World-space Z offset above the target container.
+    """
+
+    tilt_degrees: float = -110.0
+    """
+    Local roll applied after reaching the pre-pour pose.
+    """
+
+    def _approach_pose(self) -> Pose:
+        target_pose = self.object_designator.global_pose
+        tip = ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
+        tip_quat = tip.global_pose.to_quaternion().to_np()
+
+        return Pose.from_xyz_quaternion(
+            float(target_pose.x) + float(self.offset_x),
+            float(target_pose.y) + float(self.offset_y),
+            float(target_pose.z) + float(self.offset_z),
+            float(tip_quat[0]),
+            float(tip_quat[1]),
+            float(tip_quat[2]),
+            float(tip_quat[3]),
+            reference_frame=self.world.root,
+        )
+
+    def _tilted_pose(self, approach_pose: Pose) -> Pose:
+        tilt = Pose.from_xyz_rpy(
+            roll=float(np.deg2rad(self.tilt_degrees)),
+            reference_frame=self.world.root,
+        ).to_homogeneous_matrix()
+        return (approach_pose.to_homogeneous_matrix() @ tilt).to_pose()
+
+    def execute(self) -> None:
+        approach_pose = self._approach_pose()
+        tilted_pose = self._tilted_pose(approach_pose)
+
+        self.add_subplan(
+            sequential(
+                [
+                    MoveToolCenterPointMotion(
+                        approach_pose,
+                        self.arm,
+                        allow_gripper_collision=True,
+                        movement_type=MovementType.CARTESIAN,
+                    ),
+                    MoveToolCenterPointMotion(
+                        tilted_pose,
+                        self.arm,
+                        allow_gripper_collision=True,
+                        movement_type=MovementType.CARTESIAN,
+                    ),
+                ]
+            )
+        ).perform()
