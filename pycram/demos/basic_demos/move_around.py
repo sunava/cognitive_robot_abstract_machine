@@ -7,7 +7,7 @@ from pycram.robot_plans.actions.core.robot_body import ParkArmsAction
 from pycram.testing import setup_world
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
-from semantic_digital_twin.spatial_types import Point3
+from semantic_digital_twin.spatial_types import Point3, Quaternion
 from semantic_digital_twin.spatial_types.spatial_types import Pose, HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.robots.hsrb import HSRB
@@ -37,20 +37,15 @@ with world.modify_world():
             2.4, 2.2, 1, reference_frame=world.root
         ),
     )
-    connection = FixedConnection(
-        parent=world.get_body_by_name("cabinet10_drawer_top"),
-        child=spoon.root,
-        parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(
-            -0.05, -0.05, 0
-        ),
-    )
-    world.merge_world(spoon, connection)
+
 
 
 try:
     import rclpy
-
-    rclpy.init()
+    try:
+        rclpy.init()
+    except:
+        pass
     from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
         VizMarkerPublisher,
     )
@@ -70,13 +65,31 @@ with world.modify_world():
 
 context.evaluate_conditions = False
 
-plan = sequential(
+plan_drive_around = sequential(
     [
         ParkArmsAction(Arms.LEFT),
-        NavigateAction(target_location=Pose(Point3(0, 1, 3), reference_frame=world.root), keep_joint_states=True)
-    ],
+        # kitchen counter
+        NavigateAction(target_location=Pose(Point3(1.677089, -0.91819, 0), orientation=(Quaternion(z=-0.673775, w=0.7389362)),
+                                            reference_frame=world.root), keep_joint_states=True),
+        NavigateAction(
+            target_location=Pose(Point3(3.099597, -0.897218, 0), orientation=(Quaternion(z=-0.679143, w=0.734005727)),
+                                 reference_frame=world.root), keep_joint_states=True),
+
+        # high kitchen counter
+        NavigateAction(
+            target_location=Pose(Point3(3.393497, -0.3331599, 0), orientation=(Quaternion(z=0.748984068, w=0.6625880)),
+                                 reference_frame=world.root), keep_joint_states=True),
+        NavigateAction(
+            target_location=Pose(Point3(4.839765, -0.061004, 0), orientation=(Quaternion(z=0.7564081, w=0.654099959)),
+                                 reference_frame=world.root), keep_joint_states=True),
+        # pc desk
+        NavigateAction(target_location=Pose(Point3(1.0679969, 1.530962, 0), orientation=(Quaternion(z=-0.9981287, w=0.0611478)),
+                                                reference_frame=world.root), keep_joint_states=True),
+
+
+        ],
     context=context,
 ).plan
 
 with simulated_robot:
-    plan.perform()
+    plan_drive_around.perform()
