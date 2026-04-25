@@ -65,11 +65,13 @@ with world.modify_world():
 
 context.evaluate_conditions = False
 
+# get coordinates from publish point in rviz2
 plan_drive_around = sequential(
     [
         ParkArmsAction(Arms.LEFT),
         # kitchen counter
-        NavigateAction(target_location=Pose(Point3(1.677089, -0.91819, 0), orientation=(Quaternion(z=-0.673775, w=0.7389362)),
+        NavigateAction(
+            target_location=Pose(Point3(1.677089, -0.91819, 0), orientation=(Quaternion(z=-0.673775, w=0.7389362)),
                                             reference_frame=world.root), keep_joint_states=True),
         NavigateAction(
             target_location=Pose(Point3(3.099597, -0.897218, 0), orientation=(Quaternion(z=-0.679143, w=0.734005727)),
@@ -82,12 +84,42 @@ plan_drive_around = sequential(
         NavigateAction(
             target_location=Pose(Point3(4.839765, -0.061004, 0), orientation=(Quaternion(z=0.7564081, w=0.654099959)),
                                  reference_frame=world.root), keep_joint_states=True),
+
+        # transition point to not drive through counter
+        NavigateAction(
+            target_location=Pose(Point3(1.777967, -0.090250, 0), orientation=(Quaternion(z=0.900024, w=0.435840186)),
+                                 reference_frame=world.root), keep_joint_states=True),
+
         # pc desk
-        NavigateAction(target_location=Pose(Point3(1.0679969, 1.530962, 0), orientation=(Quaternion(z=-0.9981287, w=0.0611478)),
+        NavigateAction(
+            target_location=Pose(Point3(1.0679969, 1.530962, 0), orientation=(Quaternion(z=-0.9981287, w=0.0611478)),
+                                                reference_frame=world.root), keep_joint_states=True),
+        # popcorn table
+        NavigateAction(
+            target_location=Pose(Point3(1.09943246, 5.53489685, 0), orientation=(Quaternion(z=0.7474030, w=0.6643709)),
                                                 reference_frame=world.root), keep_joint_states=True),
 
+        # transition point to not drive in wall
+        NavigateAction(
+            target_location=Pose(Point3(1.7850532, 3.3190565, 0), orientation=(Quaternion(z=0.1006678, w=0.99492009)),
+                                                reference_frame=world.root), keep_joint_states=True),
 
-        ],
+        # sofa table
+        NavigateAction(
+            target_location=Pose(Point3(3.57369399, 3.0707988, 0), orientation=(Quaternion(z=0.0701156, w=0.99753887)),
+                                 reference_frame=world.root), keep_joint_states=True),
+
+        # living room table
+        NavigateAction(
+            target_location=Pose(Point3(3.2095706, 6.522722, 0), orientation=(Quaternion(z=-0.9995140, w=0.03117147)),
+                                 reference_frame=world.root), keep_joint_states=True),
+
+        # shelf
+        NavigateAction(
+            target_location=Pose(Point3(3.3593473, 5.40832, 0), orientation=(Quaternion(z=0.0721225, w=0.997395779)),
+                                 reference_frame=world.root), keep_joint_states=True),
+
+    ],
     context=context,
 ).plan
 
