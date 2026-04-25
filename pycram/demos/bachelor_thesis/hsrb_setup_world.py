@@ -49,13 +49,13 @@ def hsrb_setup_world() -> World:
 
     milk_world = STLParser(
         os.path.join(
-            os.path.dirname(__file__), "..", "resources", "objects", "milk.stl"
+            os.path.dirname(__file__), "../..", "resources", "objects", "milk.stl"
         )
     ).parse()
     cereal_world = STLParser(
         os.path.join(
             os.path.dirname(__file__),
-            "..",
+            "../..",
             "resources",
             "objects",
             "breakfast_cereal.stl",

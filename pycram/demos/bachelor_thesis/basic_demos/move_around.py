@@ -4,15 +4,13 @@ from pycram.motion_executor import simulated_robot
 from pycram.plans.factories import sequential
 from pycram.robot_plans.actions.core.navigation import NavigateAction
 from pycram.robot_plans.actions.core.robot_body import ParkArmsAction
-from pycram.testing import setup_world
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
 from semantic_digital_twin.spatial_types import Point3, Quaternion
 from semantic_digital_twin.spatial_types.spatial_types import Pose, HomogeneousTransformationMatrix
-from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.robots.hsrb import HSRB
 from pycram.datastructures.dataclasses import Context
-from demos.hsrb_setup_world import hsrb_setup_world
+from demos.bachelor_thesis.hsrb_setup_world import hsrb_setup_world
 
 
 
@@ -21,12 +19,12 @@ world = hsrb_setup_world()
 
 spoon = STLParser(
     os.path.join(
-        os.path.dirname(__file__), "..", "..", "resources", "objects", "spoon.stl"
+        os.path.dirname(__file__), "../..", "..", "resources", "objects", "spoon.stl"
     )
 ).parse()
 bowl = STLParser(
     os.path.join(
-        os.path.dirname(__file__), "..", "..", "resources", "objects", "bowl.stl"
+        os.path.dirname(__file__), "../..", "..", "resources", "objects", "bowl.stl"
     )
 ).parse()
 
