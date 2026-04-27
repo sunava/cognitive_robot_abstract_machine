@@ -54,43 +54,6 @@ from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import FixedConnection
 
 
-
-
-
-
-# class TalkingNode(Node):
-#     """
-#     ROS2 node that interfaces with a speech/NLP system.
-#
-#     Responsibilities:
-#     -----------------
-#     - Publish a trigger message to start the speech recognition/NLP pipeline.
-#     - Subscribe to the processed NLP output.
-#     - Parse NLP output into a structured Python list.
-#     - Expose a blocking `talk_nlp()` call that waits for NLP results.
-#     """
-#
-#     def __init__(self):
-#
-#         # Initialize ROS2 node with name "talking"
-#         super().__init__('nlp_interface_talking')
-#
-#         # Publisher to let Toya talk
-#         self.talk_pub = self.create_publisher(
-#             String,
-#             '/tts_text',
-#             10
-#         )
-#
-#     def pub(self, text: str, delay: int = 0):
-#         msg = String()
-#         msg.data = text
-#         self.get_logger().info(f"Publishing: {text}")
-#
-#         self.talk_pub.publish(msg)
-#         time.sleep(delay)
-
-
 bowl = STLParser(
     os.path.join(
         os.path.dirname(__file__), "../../..", "resources", "objects", "bowl.stl"
@@ -110,13 +73,10 @@ def look_at(location: Pose, robot_world: World):
     )
     return vis
 
-
-
-
-
-if __name__ == '__main__':
-    world = hsrb_setup_world()
-
+def simulate_perception(world: World):
+    """
+    returns a list of visible bodies detected using raytracing
+    """
     node = None
     executor = None
     executor_thread = None
@@ -139,7 +99,6 @@ if __name__ == '__main__':
         VizMarkerPublisher(_world=world, node=node)
     except ImportError:
         pass
-
 
     try:
         import rclpy
@@ -199,98 +158,95 @@ if __name__ == '__main__':
 
     ####################################################
 
+    visualize = look_at(
+        location=Pose(
+            Point3(2.3, 8, 1.25),
+            orientation=(Quaternion(z=-0.9995140, w=0.03117147)),
+        ),
+        robot_world=world,
+    )
 
+    print(visualize.map)
 
-
-
-    with simulated_robot:
-        execute_single(
-            ParkArmsAction(arm=Arms.LEFT),
-            context=context,
-        ).perform()
-        execute_single(
-            NavigateAction(
-                target_location=Pose(Point3(3.2095706, 6.522722, 0),
-                                     orientation=(Quaternion(z=-0.9995140, w=0.03117147)),
-                                     reference_frame=world.root), keep_joint_states=True),
-            context=context,
-
-        ).perform()
-
-        visualize = look_at(
-            location=Pose(
-                Point3(2.3, 8, 1.25),
-                orientation=(Quaternion(z=-0.9995140, w=0.03117147)),
-            ),
-            robot_world=world,
+    if node is not None:
+        camera = world.get_body_by_name("head_rgbd_sensor_link")  # we use head mount instead of default camera
+        camera_details = hsrb.get_default_camera()  # for simulation: use default stats
+        camera_pose = Pose(
+            position=Point3(x=camera.global_pose.x, y=camera.global_pose.y, z=camera.global_pose.z + 0.03),
+            orientation=camera.global_pose.to_quaternion())
+        forward_axis = np.asarray(
+            camera_details.forward_facing_axis.to_list(), dtype=float
+        ).reshape(-1)[:3]
+        alignment_quaternion = get_quaternion_between_two_vectors(
+            np.array([1.0, 0.0, 0.0], dtype=float),
+            forward_axis,
+        )
+        camera_quaternion = np.asarray(camera_pose.to_quaternion().to_list(), dtype=float)
+        aligned_quaternion = quaternion_multiply(camera_quaternion, alignment_quaternion)
+        camera_position = np.asarray(camera_pose.to_position().to_list(), dtype=float)[:3]
+        raytracer_camera_pose = Pose.from_xyz_quaternion(
+            *camera_position,
+            *aligned_quaternion,
+            reference_frame=camera_pose.reference_frame,
         )
 
-        print(visualize.map)
+        ray_tracer = RayTracer(world)
+        segmentation = ray_tracer.create_segmentation_mask(
+            raytracer_camera_pose,
+            resolution=128,
+        )
+        visible_body_ids = {int(idx) for idx in segmentation[segmentation >= 0].flatten()}
+        robot_body_ids = {body.index for body in hsrb.bodies}
+        visible_bodies = [
+            ray_tracer.index_to_body[idx]
+            for idx in sorted(visible_body_ids)
+            if idx not in robot_body_ids and idx in ray_tracer.index_to_body
+        ]
+        print("Visible bodies from default camera:")
+        visible_bodies = []
+        for body in visible_bodies:
+            visible_bodies.append(f" - {body.name}")
+            print(f" - {body.name}")
 
+
+        CameraVisiblePointsRviz(
+            world=world,
+            camera_pose=raytracer_camera_pose,
+            node=node,
+            frame_id=str(world.root.name),
+            topic="/debug/camera/visible_points",
+            resolution=128,
+            point_scale=0.01,
+            show_rays=True,
+            ray_stride=12,
+            ray_alpha=0.15,
+            origin_scale=0.04,
+            republish_hz=2.0,
+        )
+        time.sleep(3)
+        return visible_bodies
+
+    try:
+        pass
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if executor is not None:
+            executor.shutdown()
         if node is not None:
-            camera = world.get_body_by_name("head_rgbd_sensor_link") # we use head mount instead of default camera
-            camera_details = hsrb.get_default_camera() # for simulation: use default stats
-            camera_pose = Pose(position= Point3(x=camera.global_pose.x, y=camera.global_pose.y, z=camera.global_pose.z+0.03), orientation=camera.global_pose.to_quaternion())
-            forward_axis = np.asarray(
-                camera_details.forward_facing_axis.to_list(), dtype=float
-            ).reshape(-1)[:3]
-            alignment_quaternion = get_quaternion_between_two_vectors(
-                np.array([1.0, 0.0, 0.0], dtype=float),
-                forward_axis,
-            )
-            camera_quaternion = np.asarray(camera_pose.to_quaternion().to_list(), dtype=float)
-            aligned_quaternion = quaternion_multiply(camera_quaternion, alignment_quaternion)
-            camera_position = np.asarray(camera_pose.to_position().to_list(), dtype=float)[:3]
-            raytracer_camera_pose = Pose.from_xyz_quaternion(
-                *camera_position,
-                *aligned_quaternion,
-                reference_frame=camera_pose.reference_frame,
-            )
+            node.destroy_node()
+        if executor_thread is not None:
+            executor_thread.join(timeout=2.0)
+        if "rclpy" in globals() and rclpy.ok():
+            rclpy.shutdown()
 
-            ray_tracer = RayTracer(world)
-            segmentation = ray_tracer.create_segmentation_mask(
-                raytracer_camera_pose,
-                resolution=128,
-            )
-            visible_body_ids = {int(idx) for idx in segmentation[segmentation >= 0].flatten()}
-            robot_body_ids = {body.index for body in hsrb.bodies}
-            visible_bodies = [
-                ray_tracer.index_to_body[idx]
-                for idx in sorted(visible_body_ids)
-                if idx not in robot_body_ids and idx in ray_tracer.index_to_body
-            ]
-            print("Visible bodies from default camera:")
-            for body in visible_bodies:
-                print(f" - {body.name}")
 
-            CameraVisiblePointsRviz(
-                world=world,
-                camera_pose=raytracer_camera_pose,
-                node=node,
-                frame_id=str(world.root.name),
-                topic="/debug/camera/visible_points",
-                resolution=128,
-                point_scale=0.01,
-                show_rays=True,
-                ray_stride=12,
-                ray_alpha=0.15,
-                origin_scale=0.04,
-                republish_hz=2.0,
-            )
 
-        try:
-            while node is not None and rclpy.ok():
-                time.sleep(0.1)
-        except KeyboardInterrupt:
-            pass
-        finally:
-            if executor is not None:
-                executor.shutdown()
-            if node is not None:
-                node.destroy_node()
-            if executor_thread is not None:
-                executor_thread.join(timeout=2.0)
-            if "rclpy" in globals() and rclpy.ok():
-                rclpy.shutdown()
+if __name__ == '__main__':
+    this_world = hsrb_setup_world()
+
+    simulate_perception(this_world)
+
+
 
 
