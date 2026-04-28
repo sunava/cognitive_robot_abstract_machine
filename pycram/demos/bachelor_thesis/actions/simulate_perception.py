@@ -3,6 +3,7 @@ import os
 from mpmath.math2 import sqrt2
 
 from demos.bachelor_thesis.hsrb_setup_world import hsrb_setup_world
+from demos.bachelor_thesis.events.event_handler import EventDispatcher
 from pycram.locations.costmaps import VisibilityCostmap
 from rclpy.node import Node
 
@@ -73,7 +74,7 @@ def look_at(location: Pose, robot_world: World):
     )
     return vis
 
-def simulate_perception(world: World):
+def simulate_perception(world: World, dispatcher: EventDispatcher):
     """
     returns a list of visible bodies detected using raytracing
     """
@@ -224,6 +225,7 @@ def simulate_perception(world: World):
             republish_hz=2.0,
         )
         time.sleep(3)
+        dispatcher.trigger_event(visible_bodies)
         return visible_bodies
 
     try:
