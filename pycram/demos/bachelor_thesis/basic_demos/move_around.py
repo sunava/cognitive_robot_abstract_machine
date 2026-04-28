@@ -15,7 +15,7 @@ from demos.bachelor_thesis.hsrb_setup_world import hsrb_setup_world
 
 
 #------------------ standard setup -------------------------------------------------------------------------------------
-world = hsrb_setup_world()
+world = hsrb_setup_world()[0]
 
 spoon = STLParser(
     os.path.join(

@@ -3,7 +3,7 @@ import os
 from mpmath.math2 import sqrt2
 
 from demos.bachelor_thesis.hsrb_setup_world import hsrb_setup_world
-from demos.bachelor_thesis.events.event_handler import EventDispatcher
+from demos.bachelor_thesis.events.event_handler import EventDispatcher, update_perceived_objects
 from pycram.locations.costmaps import VisibilityCostmap
 from rclpy.node import Node
 
@@ -242,8 +242,7 @@ def simulate_perception(world: World, dispatcher: EventDispatcher):
 
 if __name__ == '__main__':
     this_world = hsrb_setup_world()
-
-    simulate_perception(this_world)
+    simulate_perception(this_world[0], this_world[1])
 
 
 

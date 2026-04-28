@@ -1,5 +1,7 @@
 import logging
 import os
+from typing import Tuple
+
 import rclpy
 
 from semantic_digital_twin.adapters.mesh import STLParser
@@ -14,6 +16,10 @@ from semantic_digital_twin.spatial_types.spatial_types import (
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import OmniDrive
 from semantic_digital_twin.predetermined_maps.kitchen_environment import KitchenEnvironment
+
+from demos.bachelor_thesis.events.event_handler import EventDispatcher, update_perceived_objects
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +44,14 @@ publisher.with_tf_publisher()
 
 
 
-def hsrb_setup_world() -> World:
+
+def hsrb_setup_world() -> Tuple[World, EventDispatcher]:
+    """
+    return
+    world : the world
+    dispatcher : the dispatcher for event handling
+    """
+
     logger.setLevel(logging.DEBUG)
 
     hsrb_sem_world = URDFParser.from_xacro(
@@ -88,4 +101,8 @@ def hsrb_setup_world() -> World:
     with apartment_world.modify_world():
         apartment_world.add_semantic_annotation(milk_view)
 
-    return apartment_world
+    dispatcher = EventDispatcher()
+    dispatcher.add_listener(update_perceived_objects)  # TODO: IS THIS A PROBLEM?
+
+
+    return apartment_world, dispatcher

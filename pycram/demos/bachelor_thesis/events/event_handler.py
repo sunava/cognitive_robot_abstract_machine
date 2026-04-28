@@ -1,6 +1,8 @@
 # source for base: https://medium.com/@idelossantosruiz/events-in-python-e2b3cb76ac2d
 from poetry.console.commands import self
 
+from semantic_digital_twin.world_description.world_entity import Body
+
 
 class EventDispatcher:
     def __init__(self):
@@ -30,13 +32,14 @@ class EventDispatcher:
         if listener in self._listeners:
             self._listeners.remove(listener)
 
-    def trigger_event(self, event_data=None):
+    def trigger_event(self, event_data : list[Body]):
         """Fire the event, passing event_data to every listener."""
         for listener in self._listeners:
             listener(self, event_data)
 
+
 # Usage example
-def update_perceived_objects(handler : EventDispatcher, data):
+def update_perceived_objects(handler : EventDispatcher, data : list[Body]):
     for obj in data:
         if (obj not in handler.perceived_objects) and (obj not in handler.known_furniture):
             handler.perceived_objects.append(obj)
@@ -47,6 +50,3 @@ def update_perceived_objects(handler : EventDispatcher, data):
 def trigger_task(handler: EventDispatcher, data):
     print("Nothing to see here")
 
-dispatcher = EventDispatcher()
-dispatcher.add_listener(update_perceived_objects()) # TODO: IS THIS A PROBLEM?
-dispatcher.trigger_event("Hello, World!")
