@@ -203,11 +203,7 @@ def simulate_perception(world: World, dispatcher: EventDispatcher):
             for idx in sorted(visible_body_ids)
             if idx not in robot_body_ids and idx in ray_tracer.index_to_body
         ]
-        print("Visible bodies from default camera:")
-        visible_bodies = []
-        for body in visible_bodies:
-            visible_bodies.append(f" - {body.name}")
-            print(f" - {body.name}")
+
 
 
         CameraVisiblePointsRviz(
