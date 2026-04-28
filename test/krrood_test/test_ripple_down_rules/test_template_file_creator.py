@@ -102,10 +102,10 @@ def test_load():
     func_code = "def test_func(case):\n    return case"
     source_code = f"{imports}{func_code}\n"
     source_code = dedent(source_code)
-    with open("test.py", "w") as f:
+    with open("predi.py", "w") as f:
         f.write(source_code)
-    code_lines, updates = TemplateFileCreator.load("test.py", "test_func")
+    code_lines, updates = TemplateFileCreator.load("predi.py", "test_func")
     assert code_lines == func_code.splitlines()
     assert make_set(updates.keys()) == {"test_func", "World"}
     assert updates["test_func"](world) == world
-    os.remove("test.py")
+    os.remove("predi.py")

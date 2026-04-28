@@ -208,6 +208,7 @@ def query_var(verb, foodobject):
     """
 
 
-verb = "cut:Quartering"
-foodobject = "FOODON_00003523"
-query_var(verb, foodobject)
+if __name__ == "__main__":
+    verb = "cut:Quartering"
+    foodobject = "FOODON_00003523"
+    query_var(verb, foodobject)

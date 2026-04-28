@@ -213,7 +213,7 @@ def query_var(verb, foodobject):
     )
 
 
-verb = "pour:Draining"
-foodobject = "obo:FOODON_03301304"
-
-query_var(verb, foodobject)
+if __name__ == "__main__":
+    verb = "pour:Draining"
+    foodobject = "obo:FOODON_03301304"
+    query_var(verb, foodobject)

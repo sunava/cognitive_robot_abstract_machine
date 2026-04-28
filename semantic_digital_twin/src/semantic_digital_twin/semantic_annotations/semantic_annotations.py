@@ -946,6 +946,22 @@ class SaltPepperShaker(HasRootBody):
 
 
 @dataclass(eq=False)
+class Peel(HasRootBody): ...
+
+
+@dataclass(eq=False)
+class Core(HasRootBody): ...
+
+
+@dataclass(eq=False)
+class Stem(HasRootBody): ...
+
+
+@dataclass(eq=False)
+class Shell(HasRootBody): ...
+
+
+@dataclass(eq=False)
 class Cuttlery(HasRootBody): ...
 
 
@@ -964,7 +980,15 @@ class Knife(Cuttlery):
 
 
 @dataclass(eq=False)
+class Peeler(Cuttlery): ...
+
+
+@dataclass(eq=False)
 class Spoon(Cuttlery, IsPerceivable): ...
+
+
+@dataclass(eq=False)
+class Colander(HasSupportingSurface, IsPerceivable): ...
 
 
 @dataclass(eq=False)
