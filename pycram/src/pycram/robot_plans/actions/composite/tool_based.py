@@ -29,18 +29,34 @@ from .thesis_math.motion_presets import (
 )
 from .thesis_math.motion_profiles import planar_spiral_xy
 from .thesis_math.world_utils import body_local_aabb
-from ... import MoveTCPWaypointsAlignedMotion, MoveTCPWaypointsAlignedMotionw
+from ..core.navigation import LookAtAction
+from ... import (
+    MoveTCPWaypointsAlignedMotion,
+    MoveTCPWaypointsAlignedMotionw,
+    LookingMotion,
+)
+from ....datastructures.dataclasses import AlignmentPair
 
 from ....datastructures.enums import (
     Arms,
 )
-from ....plans.factories import sequential
+from ....plans.factories import sequential, parallel, execute_single
 
 from ....robot_plans.actions.base import ActionDescription
 from ....view_manager import ViewManager
 
 logger = logging.getLogger(__name__)
 DEFAULT_SAMPLE_DT = 0.01
+
+
+def _robot_name(robot) -> str:
+    name = getattr(robot, "name", "")
+    return str(getattr(name, "name", name)).lower()
+
+
+def _should_add_looking_motion(robot) -> bool:
+    robot_name = _robot_name(robot)
+    return "unitree" not in robot_name and "g1" not in robot_name
 
 
 @dataclass(frozen=True)
@@ -237,27 +253,32 @@ class GeneralizedActionPlan(ActionDescription):
             tip = ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
         aligned_point = pointery[0]
         aligned_point.z += 0.01
+        camera = self.robot.get_default_camera()
+        motions = [
+            MoveTCPWaypointsAlignedMotionw(
+                pointery[:3],
+                self.arm,
+                allow_gripper_collision=True,
+                alignment_pairs=alignment_pairs,
+                tip=tip,
+            )
+        ]
+        if _should_add_looking_motion(self.robot):
+            motions.append(
+                LookingMotion(target=self._resolve_look_at_target(), camera=camera)
+            )
+        motions.append(
+            MoveTCPWaypointsAlignedMotion(
+                pointery[3:],
+                self.arm,
+                allow_gripper_collision=True,
+                alignment_pairs=alignment_pairs,
+                tip=tip,
+            )
+        )
+
         try:
-            self.add_subplan(
-                sequential(
-                    [
-                        MoveTCPWaypointsAlignedMotionw(
-                            pointery[:3],
-                            self.arm,
-                            allow_gripper_collision=True,
-                            alignment_pairs=alignment_pairs,
-                            tip=tip,
-                        ),
-                        MoveTCPWaypointsAlignedMotion(
-                            pointery[3:],
-                            self.arm,
-                            allow_gripper_collision=True,
-                            alignment_pairs=alignment_pairs,
-                            tip=tip,
-                        ),
-                    ]
-                )
-            ).perform()
+            self.add_subplan(sequential(motions)).perform()
 
         except Exception as exc:
             collision_contacts = None
@@ -302,6 +323,15 @@ class GeneralizedActionPlan(ActionDescription):
             return self.surface_body
         if hasattr(self, "container") and self.container is not None:
             return self.container
+        if hasattr(self, "target_pose") and self.target_pose is not None:
+            return self.target_pose
+        return None
+
+    def _resolve_look_at_target(self):
+        if hasattr(self, "surface_body") and self.surface_body is not None:
+            return self.surface_body.global_pose
+        if hasattr(self, "container") and self.container is not None:
+            return self.container.global_pose
         if hasattr(self, "target_pose") and self.target_pose is not None:
             return self.target_pose
         return None

@@ -34,6 +34,43 @@ from pycram.view_manager import ViewManager
 from pycram.utils import translate_pose_along_local_axis
 
 
+def _body_name_matches_prefix(body: Body, prefix: str) -> bool:
+    name = getattr(body, "name", "")
+    candidates = [
+        str(name),
+        str(getattr(name, "name", "")),
+        str(getattr(name, "value", "")),
+        str(getattr(name, "full_name", "")),
+    ]
+    return any(candidate.startswith(prefix) for candidate in candidates)
+
+
+def _world_has_body_name_prefix(world, prefix: str) -> bool:
+    return any(
+        _body_name_matches_prefix(body, prefix) for body in getattr(world, "bodies", [])
+    )
+
+
+def _environment_x_normal(world) -> Optional[Vector3]:
+    if _world_has_body_name_prefix(world, "apartment/") or _world_has_body_name_prefix(
+        world, "world/"
+    ):
+        return Vector3(1, 0, 0, reference_frame=world.root)
+    if _world_has_body_name_prefix(world, "kitchen/"):
+        return Vector3(-1, 0, 0, reference_frame=world.root)
+    return None
+
+
+def _robot_name(robot) -> str:
+    name = getattr(robot, "name", "")
+    return str(getattr(name, "name", name)).lower()
+
+
+def _should_add_environment_alignment(robot) -> bool:
+    robot_name = _robot_name(robot)
+    return "unitree" not in robot_name and "g1" not in robot_name
+
+
 @dataclass
 class ReachMotion(BaseMotion):
     """ """
@@ -305,6 +342,22 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
             )
             for pair in self.alignment_pairs
         )
+
+        environment_normal = _environment_x_normal(self.world)
+        if environment_normal is not None and _should_add_environment_alignment(
+            self.robot
+        ):
+            print("appending")
+            tasks.append(
+                AlignPlanes(
+                    tip_link=self.robot.root,
+                    root_link=self.world.root,
+                    tip_normal=Vector3(1, 0, 0, reference_frame=self.robot.root),
+                    goal_normal=environment_normal,
+                    weight=DefaultWeights.WEIGHT_ABOVE_CA.value,
+                )
+            )
+
         if self.robot.name.name == "rollin_justin":
             tasks.append(
                 AlignPlanes(
@@ -403,6 +456,30 @@ class MoveTCPWaypointsAlignedMotionw(BaseMotion):
                 )
                 for pair in plane_pairs
             )
+            environment_normal = _environment_x_normal(self.world)
+            if environment_normal is not None and _should_add_environment_alignment(
+                self.robot
+            ):
+                tasks.append(
+                    AlignPlanes(
+                        tip_link=self.robot.root,
+                        root_link=self.world.root,
+                        tip_normal=Vector3(1, 0, 0, reference_frame=self.robot.root),
+                        goal_normal=environment_normal,
+                        weight=DefaultWeights.WEIGHT_ABOVE_CA.value,
+                    )
+                )
+
+            if self.robot.name.name == "rollin_justin":
+                tasks.append(
+                    AlignPlanes(
+                        tip_link=self.world.get_body_by_name("torso4"),
+                        root_link=self.world.get_body_by_name("torso1"),
+                        tip_normal=Vector3.X(self.world.get_body_by_name("torso4")),
+                        goal_normal=Vector3.Z(self.world.get_body_by_name("torso1")),
+                        weight=DefaultWeights.WEIGHT_ABOVE_CA.value,
+                    )
+                )
             if len(tasks) == 1:
                 nodes.append(tasks[0])
             else:

@@ -182,6 +182,18 @@ def _perform_attempt_quietly(fn):
         logger.setLevel(previous_level)
 
 
+def _format_attempt_error(exc):
+    if isinstance(exc, TimeoutError):
+        return f"motion timeout: {exc}"
+    return f"{type(exc).__name__}: {exc}"
+
+
+def _is_handled_motion_failure(exc):
+    if isinstance(exc, TimeoutError):
+        return True
+    return type(exc) is Exception and str(exc).strip() == ":("
+
+
 def _try_cut(
     context,
     target,
@@ -567,11 +579,26 @@ def run_single_object_cut_demo(
                     )
                 )
                 return
+            except TimeoutError as exc:
+                last_error = exc
+                print(
+                    "The given robot is not suitable for this environment "
+                    f"({arm.name}: {_format_attempt_error(exc)})"
+                )
             except Exception as exc:
                 last_error = exc
-                print(f"The given robot is not suitable for this environment")
+                print(
+                    "The given robot is not suitable for this environment "
+                    f"({arm.name}: {_format_attempt_error(exc)})"
+                )
 
         if last_error is not None:
+            if _is_handled_motion_failure(last_error):
+                print(
+                    "All available arms failed while executing the motion; "
+                    "ending this demo run without raising a traceback."
+                )
+                return
             raise last_error
     finally:
         shutdown_experiment_runtime(node)
