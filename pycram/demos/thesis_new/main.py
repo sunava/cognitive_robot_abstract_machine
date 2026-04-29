@@ -4,7 +4,7 @@ from pycram.orm.ormatic_interface import Base
 from pycram.orm.utils import pycram_sessionmaker
 
 robots = ("hsrb", "stretch", "tiago", "g1", "justin", "armar7", "pr2")
-actions = "cut,mix,wipe"
+actions = ("cut", "mix", "wipe")
 # pr2,hsrb,stretch,tiago,g1,justin,armar7
 # apartment,kitchen,isr?, suturo, robocup, isr-testbed
 if __name__ == "__main__":
@@ -21,18 +21,7 @@ if __name__ == "__main__":
     for action in actions:
         for robot in robots:
             run_thesis_demo(
-                "cut",
+                action,
                 robot_name=robot,
-                environment_name="isr",
-            )
-
-            run_thesis_demo(
-                "cut",
-                robot_name=robot,
-                environment_name="isr",
-            )
-            run_thesis_demo(
-                "cut",
-                robot_name=robot,
-                environment_name="kitchen",
+                environment_name="apartment",
             )

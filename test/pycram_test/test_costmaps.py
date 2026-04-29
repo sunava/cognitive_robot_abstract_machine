@@ -1,3 +1,5 @@
+import os
+import time
 from copy import deepcopy
 from unittest.mock import Mock
 
@@ -8,11 +10,13 @@ from pycram.locations.costmaps import (
     OccupancyCostmap,
     GaussianCostmap,
     OrientationGenerator,
+    VisibilityCostmap,
 )
+from pycram.robot_plans.actions.composite.utils.rviz import CostmapHeatmapRviz
+from semantic_digital_twin.spatial_computations.raytracer import RayTracer
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.spatial_types import Vector3
 from semantic_digital_twin.spatial_types.spatial_types import Pose, Point3
-
 
 # ---- Occupancy locations tests ----
 
@@ -225,6 +229,67 @@ def test_orientation_generation(immutable_model_world):
     )
 
     assert orientation.to_list() == pytest.approx([0, 0, 0.707, 0.707], abs=0.001)
+
+
+def test_visibility_costmap_create_images_rotates_in_quarter_turns(
+    immutable_model_world, monkeypatch, rclpy_node
+):
+    world, robot_view, _ = immutable_model_world
+    camera = list(robot_view.neck.sensors)[0]
+    origin = world.get_body_by_name("milk.stl").global_pose
+    captured_poses = []
+    captured_images = []
+
+    original_create_depth_map = RayTracer.create_depth_map
+
+    def capture_depth_map(self, camera_pose, resolution):
+        captured_poses.append((camera_pose, resolution))
+        image = original_create_depth_map(self, camera_pose, resolution)
+        captured_images.append(image)
+        return image
+
+    monkeypatch.setattr(RayTracer, "create_depth_map", capture_depth_map)
+
+    costmap = VisibilityCostmap(
+        resolution=0.02,
+        width=64,
+        height=64,
+        origin=origin,
+        world=world,
+        min_height=camera.minimal_height,
+        max_height=camera.maximal_height,
+    )
+
+    if os.environ.get("PYCRAM_PUBLISH_COSTMAP") == "1":
+        CostmapHeatmapRviz(
+            costmap,
+            node=rclpy_node,
+            topic="/debug/costmap/visibility",
+            frame_id=str(world.root.name),
+            marker_ns="test_visibility_costmap",
+            z_offset=0.01,
+            z_scale=0.0,
+            cell_height=0.002,
+            republish_hz=2.0,
+        )
+        time.sleep(10.0)
+
+    assert captured_poses and len(captured_poses) == 4
+    assert [resolution for _, resolution in captured_poses] == [64, 64, 64, 64]
+    assert all(image.shape == (64, 64) for image in captured_images)
+    assert all(np.all(np.isfinite(image)) for image in captured_images)
+    assert costmap.map.shape == (64, 64)
+    assert np.all(np.isfinite(costmap.map))
+    assert np.any(costmap.map > 0)
+
+    for quarter_turn, (camera_pose, _) in enumerate(captured_poses):
+        expected_pose = (
+            HomogeneousTransformationMatrix.from_xyz_rpy(
+                yaw=quarter_turn * (np.pi / 2), reference_frame=origin.reference_frame
+            )
+            @ origin
+        )
+        assert np.allclose(camera_pose.to_np(), expected_pose.to_np())
 
 
 def test_sample_x_axis(immutable_model_world):

@@ -1158,3 +1158,19 @@ class Sponge(Tool):
 
     def debug_distance_threshold(self) -> float:
         return 0.6
+
+
+class CounterTop:
+    pass
+
+
+class TrashCan:
+    pass
+
+
+class ShelfLayer:
+    pass
+
+
+class Oven:
+    pass

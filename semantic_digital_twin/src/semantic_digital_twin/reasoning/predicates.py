@@ -11,7 +11,7 @@ from krrood.entity_query_language.predicate import (
     symbolic_function,
 )
 from random_events.interval import Interval
-from typing_extensions import List, TYPE_CHECKING, Iterable, Type
+from typing_extensions import List, TYPE_CHECKING, Iterable, Type, Any
 
 from semantic_digital_twin.collision_checking.trimesh_collision_detector import (
     FCLCollisionDetector,
@@ -74,6 +74,132 @@ def contact(
     if result is None:
         return False
     return result.distance < threshold
+
+
+def _resolve_root_body(entity: Any) -> Body:
+    if isinstance(entity, Body):
+        return entity
+    root = getattr(entity, "root", None)
+    if isinstance(root, Body):
+        return root
+    raise TypeError(f"Could not resolve body root from {entity!r}.")
+
+
+def _resolve_supporting_surface_annotation(entity: Any):
+    from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
+
+    if isinstance(entity, HasSupportingSurface):
+        return entity
+
+    root = _resolve_root_body(entity)
+    world = root._world
+    if world is None:
+        return None
+
+    for annotation in world.semantic_annotations:
+        if isinstance(annotation, HasSupportingSurface) and annotation.root == root:
+            return annotation
+    return None
+
+
+@symbolic_function
+def on_supporting_surface(
+    obj: Any,
+    support: Any,
+    xy_tolerance: float = 0.03,
+    z_tolerance: float = 0.05,
+) -> bool:
+    """
+    Check whether an object is resting on the supporting surface of another semantic entity.
+    """
+    object_root = _resolve_root_body(obj)
+    support_annotation = _resolve_supporting_surface_annotation(support)
+
+    if support_annotation is None or object_root.collision is None:
+        return False
+
+    if support_annotation.supporting_surface is None:
+        with support_annotation._world.modify_world():
+            if support_annotation.calculate_supporting_surface() is None:
+                return False
+
+    surface = support_annotation.supporting_surface
+    surface_bbox = surface.area.as_bounding_box_collection_in_frame(
+        surface
+    ).bounding_box()
+    object_bbox = object_root.collision.as_bounding_box_collection_in_frame(
+        surface
+    ).bounding_box()
+
+    object_center_x = 0.5 * (object_bbox.min_x + object_bbox.max_x)
+    object_center_y = 0.5 * (object_bbox.min_y + object_bbox.max_y)
+
+    within_surface_xy = (
+        surface_bbox.min_x - xy_tolerance
+        <= object_center_x
+        <= surface_bbox.max_x + xy_tolerance
+    ) and (
+        surface_bbox.min_y - xy_tolerance
+        <= object_center_y
+        <= surface_bbox.max_y + xy_tolerance
+    )
+
+    object_touches_surface = abs(object_bbox.min_z - surface_bbox.max_z) <= z_tolerance
+    object_intersects_surface_height = (
+        object_bbox.min_z <= surface_bbox.max_z <= object_bbox.max_z
+    )
+
+    return bool(
+        within_surface_xy
+        and (object_touches_surface or object_intersects_surface_height)
+    )
+
+
+@symbolic_function
+def movable_obstacle(entity: Any) -> bool:
+    """
+    Check whether an entity is currently treated as a movable obstacle for recovery.
+    """
+    from semantic_digital_twin.semantic_annotations.semantic_annotations import Chair
+
+    if isinstance(entity, Chair):
+        return True
+
+    try:
+        root = _resolve_root_body(entity)
+    except TypeError:
+        return False
+
+    world = root._world
+    if world is None:
+        return False
+
+    if any(
+        isinstance(annotation, Chair) and annotation.root == root
+        for annotation in world.semantic_annotations
+    ):
+        return True
+
+    root_name = str(root.name).lower()
+    return "chair" in root_name or "armchair" in root_name
+
+
+@symbolic_function
+def near(entity_a: Any, entity_b: Any, max_distance: float = 1.0) -> bool:
+    """
+    Check whether two entities are within a given Euclidean distance in the XY plane.
+    """
+    root_a = _resolve_root_body(entity_a)
+    root_b = _resolve_root_body(entity_b)
+
+    world = root_a._world
+    if world is None or world != root_b._world:
+        return False
+
+    pose_a = world.transform(root_a.global_transform, world.root)
+    pose_b = world.transform(root_b.global_transform, world.root)
+    distance_xy = math.hypot(float(pose_a.x - pose_b.x), float(pose_a.y - pose_b.y))
+    return distance_xy <= float(max_distance)
 
 
 @symbolic_function

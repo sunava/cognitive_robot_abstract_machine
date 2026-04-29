@@ -64,6 +64,29 @@ def test_create_depth_map(ray_test_world):
     assert depth_map[depth_map > 0].min() >= 2.375
 
 
+def test_create_depth_map_returns_empty_image_when_nothing_is_hit(ray_test_world):
+    world, body1, body2, body3, body4 = ray_test_world
+    rt = RayTracer(world)
+    rt.update_scene()
+
+    camera_pose = np.array(
+        [
+            [1.0, 0.0, 0.0, 50.0],
+            [0.0, 1.0, 0.0, 50.0],
+            [0.0, 0.0, 1.0, 50.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+
+    depth_map = rt.create_depth_map(
+        HomogeneousTransformationMatrix(camera_pose, reference_frame=world.root),
+        resolution=64,
+    )
+
+    assert depth_map.shape == (64, 64)
+    assert np.all(depth_map == -1)
+
+
 def test_ray_test(ray_test_world):
     world, body1, body2, body3, body4 = ray_test_world
     rt = RayTracer(world)
