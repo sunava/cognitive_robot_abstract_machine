@@ -12,6 +12,7 @@ from pycram.plans.factories import sequential, execute_single
 from pycram.robot_plans.actions.core.navigation import NavigateAction
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
+from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from semantic_digital_twin.robots.hsrb import HSRB
 from semantic_digital_twin.spatial_types.spatial_types import Pose, Point3, Quaternion, HomogeneousTransformationMatrix
 from semantic_digital_twin.world import World
@@ -55,12 +56,6 @@ from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import FixedConnection
 
 
-bowl = STLParser(
-    os.path.join(
-        os.path.dirname(__file__), "../../..", "resources", "objects", "bowl.stl"
-    )
-).parse()
-
 
 def look_at(location: Pose, robot_world: World):
     vis = VisibilityCostmap(
@@ -74,7 +69,7 @@ def look_at(location: Pose, robot_world: World):
     )
     return vis
 
-def simulate_perception(world: World, dispatcher: EventDispatcher):
+def simulate_perception(world: World, dispatcher: EventDispatcher, context:Context, hsrb : AbstractRobot):
     """
     returns a list of visible bodies detected using raytracing
     """
@@ -117,45 +112,17 @@ def simulate_perception(world: World, dispatcher: EventDispatcher):
     except ImportError:
         node = None
 
-    hsrb = HSRB.from_world(world)
-    context = Context(world=world, robot=hsrb)
+    # hsrb = HSRB.from_world(world)
+    # context = Context(world=world, robot=hsrb)
 
     with world.modify_world():
         world_reasoner = WorldReasoner(world)
         world_reasoner.reason()
 
-        world.merge_world_at_pose(
-            bowl,
-            HomogeneousTransformationMatrix.from_xyz_quaternion(
-                2.4, 2.2, 1.1, reference_frame=world.root
-            ),
-        )
+
 
     context.evaluate_conditions = False
 
-    #############################################
-    node = None
-    executor = None
-    executor_thread = None
-    try:
-        import rclpy
-        from rclpy.executors import SingleThreadedExecutor
-        from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
-            VizMarkerPublisher,
-        )
-
-        node = rclpy.create_node("pycram_bullet_world_demo")
-        executor = SingleThreadedExecutor()
-        executor.add_node(node)
-        executor_thread = threading.Thread(
-            target=executor.spin, daemon=True, name="pycram-demo-rclpy-executor"
-        )
-        executor_thread.start()
-
-        TFPublisher(_world=world, node=node)
-        VizMarkerPublisher(_world=world, node=node)
-    except ImportError:
-        pass
 
     ####################################################
 
@@ -225,7 +192,8 @@ def simulate_perception(world: World, dispatcher: EventDispatcher):
         return visible_bodies
 
     try:
-        pass
+        while node is not None and rclpy.ok():
+            time.sleep(0.1)
     except KeyboardInterrupt:
         pass
     finally:
@@ -242,7 +210,9 @@ def simulate_perception(world: World, dispatcher: EventDispatcher):
 
 if __name__ == '__main__':
     this_world = hsrb_setup_world()
-    simulate_perception(this_world[0], this_world[1])
+    hsrb = HSRB.from_world(this_world[0])
+    context = Context(world=this_world[0], robot=hsrb)
+    simulate_perception(this_world[0], this_world[1], context, hsrb)
 
 
 

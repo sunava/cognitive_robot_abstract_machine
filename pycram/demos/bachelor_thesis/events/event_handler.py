@@ -40,12 +40,11 @@ class EventDispatcher:
 
 # Usage example
 def update_perceived_objects(handler : EventDispatcher, data : list[Body]):
+    print("I saw following new objects:")
     for obj in data:
         if (obj not in handler.perceived_objects) and (obj not in handler.known_furniture):
             handler.perceived_objects.append(obj)
-    print("I saw following objects:")
-    for body in data:
-        print(f" - {body.name}")
+            print(f" - {obj.name}")
 
 def trigger_task(handler: EventDispatcher, data):
     print("Nothing to see here")
