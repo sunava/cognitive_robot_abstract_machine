@@ -796,6 +796,128 @@ class VelocityStrategy(EnforcementStrategy):
 
 
 @dataclass
+class SystemDynamicsStrategy(EnforcementStrategy):
+    """
+    The constraints produced by this class describe the discrete-time relationships between variables
+    in the prediction horizon :math:`N` using a semi-implicit euler integration method:
+
+    .. math::
+
+        v_k = v_{k-1} + a_{k} \\, \\Delta t
+
+        a_k = a_{k-1} + j_{k} \\, \\Delta t
+
+    Where v, a and j are velocity, acceleration and jerk, respectively, and k is the time step.
+    Acceleration variables are removed using substitution.
+    The first two row links the MPC to the current state:
+
+    .. math::
+
+        -v_{current} - a_{current} \\, \\Delta t = -v_0 + j_0 \\, \\Delta t^2
+
+        v_{current} = - v_1 + 2 v_0 + j_1 \\, \\Delta t^2
+
+    Row from 2 until k-2 have this form:
+
+    .. math::
+
+        0 = - v_k + 2 v_{k-1} - v_{k-2} + j_k \\, \\Delta t^2
+
+    The final two rows have this form:
+
+    .. math::
+
+        0 = 2 v_{k-1} - v_{k-2} + j_k \\, \\Delta t^2
+
+        0 = - v_{k-2} + j_k \\, \\Delta t^2
+
+    For a prediciton horizon of 5 with 1 degree of freedom, the matrix looks like this:
+
+    ::
+
+        |  equality_bounds |   |           equality constraint matrix          |   |    v_0    |
+        |------------------|   |-----------------------------------------------|   |    v_1    |
+        | - v_c - a_c * dt |   | -1  |     |     |  1  |     |     |     |     |   |    v_2    |
+        |       v_c        |   |  2  | -1  |     |     |  1  |     |     |     |   | j_0*dt**2 |
+        |        0         | = | -1  |  2  | -1  |     |     |  1  |     |     | @ | j_1*dt**2 |
+        |        0         |   |     | -1  |  2  |     |     |     |  1  |     |   | j_2*dt**2 |
+        |        0         |   |     |     | -1  |     |     |     |     |  1  |   | j_3*dt**2 |
+        |------------------|   |-----------------------------------------------|   | j_4*dt**2 |
+    """
+
+    def create_matrix(self, constraints: list[GiskardConstraint]) -> Matrix:
+        matrix = np.zeros(
+            (
+                self.number_of_jerk_columns,
+                self.number_of_velocity_columns + self.number_of_jerk_columns,
+            )
+        )
+        for k in range(self.config.prediction_horizon):
+            row_start = k * self.number_of_free_variables
+            row_end = (k + 1) * self.number_of_free_variables
+
+            # velocity at k
+            if k < self.config.prediction_horizon - 2:
+                col_start = k * self.number_of_free_variables
+                col_end = (k + 1) * self.number_of_free_variables
+                matrix[row_start:row_end, col_start:col_end] -= np.eye(
+                    self.number_of_free_variables
+                )
+
+            # velocity at k-1
+            if 0 < k < self.config.prediction_horizon - 1:
+                col_start = (k - 1) * self.number_of_free_variables
+                col_end = k * self.number_of_free_variables
+                matrix[row_start:row_end, col_start:col_end] += 2 * np.eye(
+                    self.number_of_free_variables
+                )
+
+            # velocity at k-2
+            if k > 1:
+                col_start = (k - 2) * self.number_of_free_variables
+                col_end = (k - 1) * self.number_of_free_variables
+                matrix[row_start:row_end, col_start:col_end] -= np.eye(
+                    self.number_of_free_variables
+                )
+
+            # jerk at k
+            col_start = self.number_of_velocity_columns + row_start
+            col_end = self.number_of_velocity_columns + row_end
+            matrix[row_start:row_end, col_start:col_end] += np.eye(
+                self.number_of_free_variables
+            )
+
+        return sm.Matrix(matrix)
+
+    def create_slack_matrix(self, constraints: list[GiskardConstraint]) -> Matrix:
+        return sm.Matrix.zeros(self.number_of_jerk_columns, 0)
+
+    def create_names(self, constraints: list[GiskardConstraint]) -> list[str]:
+        names = []
+        for k in range(self.config.prediction_horizon):
+            for dof in self.degrees_of_freedom:
+                names.append(f"{dof.name} k_{k} vel/jerk link")
+        return names
+
+    def create_slack_variables(
+        self, constraints: list[GiskardConstraint]
+    ) -> DirectLimits:
+        return SlackLimits()
+
+    def create_bounds(
+        self, bounds: list[Scalar], normalization_numbers: list[float]
+    ) -> Vector:
+        res = sm.Vector.zeros(self.number_of_jerk_columns)
+        res[: self.number_of_free_variables] = (
+            -self.velocity_variables - self.acceleration_variables * self.config.mpc_dt
+        )
+        res[self.number_of_free_variables : self.number_of_free_variables * 2] = (
+            self.velocity_variables
+        )
+        return res
+
+
+@dataclass
 class GiskardConstraint:
     """
     Defines a (slack-relaxed) constraint on expression for a quadratic program.

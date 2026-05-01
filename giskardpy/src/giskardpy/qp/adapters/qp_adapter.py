@@ -12,6 +12,7 @@ import krrood.symbolic_math.symbolic_math as sm
 from giskardpy.qp.constraint import (
     DirectLimits,
     DofLimits,
+    SystemDynamicsStrategy,
 )
 from giskardpy.qp.constraint_collection import ConstraintCollection
 from krrood.symbolic_math.symbolic_math import Vector, Matrix
@@ -69,109 +70,6 @@ class QPConstraintComponent(ABC):
 
 
 @dataclass
-class EqualityDerivativeLinkModel(QPConstraintComponent):
-    r"""
-    The constraints produced by this class describe the discrete-time relationships between variables
-    in the prediction horizon :math:`N` using a semi-implicit euler integration method:
-
-    .. math::
-
-        v_k = v_{k-1} + a_{k} \, \Delta t
-
-        a_k = a_{k-1} + j_{k} \, \Delta t
-
-    Where v, a and j are velocity, acceleration and jerk, respectively, and k is the time step.
-    Acceleration variables are removed using substitution.
-    The first two row links the MPC to the current state:
-
-    .. math::
-
-        -v_{current} - a_{current} \, \Delta t = -v_0 + j_0 \, \Delta t^2
-
-        v_{current} = - v_1 + 2 v_0 + j_1 \, \Delta t^2
-
-    Row from 2 until k-2 have this form:
-
-    .. math::
-
-        0 = - v_k + 2 v_{k-1} - v_{k-2} + j_k \, \Delta t^2
-
-    The final two rows have this form:
-
-    .. math::
-
-        0 = 2 v_{k-1} - v_{k-2} + j_k \, \Delta t^2
-
-        0 = - v_{k-2} + j_k \, \Delta t^2
-
-    For a prediciton horizon of 5 with 1 degree of freedom, the matrix looks like this:
-
-    ::
-
-        |  equality_bounds |   |           equality constraint matrix          |   |    v_0    |
-        |------------------|   |-----------------------------------------------|   |    v_1    |
-        | - v_c - a_c * dt |   | -1  |     |     |  1  |     |     |     |     |   |    v_2    |
-        |       v_c        |   |  2  | -1  |     |     |  1  |     |     |     |   | j_0*dt**2 |
-        |        0         | = | -1  |  2  | -1  |     |     |  1  |     |     | @ | j_1*dt**2 |
-        |        0         |   |     | -1  |  2  |     |     |     |  1  |     |   | j_2*dt**2 |
-        |        0         |   |     |     | -1  |     |     |     |     |  1  |   | j_3*dt**2 |
-        |------------------|   |-----------------------------------------------|   | j_4*dt**2 |
-    """
-
-    bounds: Vector = field(init=False)
-
-    def __post_init__(self):
-        self.create_matrix()
-        self.compute_bounds()
-        self.slack_matrix = Matrix.zeros(self.matrix.shape[0], 0)
-
-    @property
-    def constraint_names(self) -> list[str]:
-        names = []
-        for k in range(self.config.prediction_horizon):
-            for dof in self.degrees_of_freedom:
-                names.append(f"{dof.name} k_{k} vel/jerk link")
-        return names
-
-    def create_matrix(self):
-        matrix = np.zeros(
-            (
-                self.number_of_jerk_columns,
-                self.number_of_velocity_columns + self.number_of_jerk_columns,
-            )
-        )
-        identity = np.eye(self.number_of_velocity_columns)
-        velocity_at_k = -identity
-        velocity_at_k_minus1 = -identity
-        velocity_at_k_minus2 = 2 * identity
-        matrix[
-            : -self.number_of_free_variables * 2, : self.number_of_velocity_columns
-        ] += velocity_at_k
-        matrix[
-            self.number_of_free_variables : -self.number_of_free_variables,
-            : self.number_of_velocity_columns,
-        ] += velocity_at_k_minus2
-        matrix[
-            self.number_of_free_variables * 2 :, : self.number_of_velocity_columns
-        ] += velocity_at_k_minus1
-
-        matrix[:, self.number_of_velocity_columns :] = np.eye(
-            self.number_of_jerk_columns
-        )
-
-        self.matrix = sm.Matrix(matrix)
-
-    def compute_bounds(self):
-        self.bounds = sm.Vector.zeros(self.number_of_jerk_columns)
-        self.bounds[: self.number_of_free_variables] = (
-            -self.velocity_variables - self.acceleration_variables * self.config.mpc_dt
-        )
-        self.bounds[
-            self.number_of_free_variables : self.number_of_free_variables * 2
-        ] = self.velocity_variables
-
-
-@dataclass
 class QPDataSymbolic:
     """
     Takes free variables and constraints and converts them to a QP problem in the following format, depending on the
@@ -209,20 +107,30 @@ class QPDataSymbolic:
 
     def __post_init__(self):
         direct_limits = DofLimits.create(self.degrees_of_freedom, self.config)
-        mpc_model = EqualityDerivativeLinkModel(
-            degrees_of_freedom=self.degrees_of_freedom,
-            constraint_collection=self.constraint_collection,
-            config=self.config,
-        )
         quadratic_weights = [direct_limits.quadratic_weights]
         linear_weights = [direct_limits.linear_weights]
         box_lower_constraints = [direct_limits.lower_bounds]
         box_upper_constraints = [direct_limits.upper_bounds]
-        eq_matrix_dofs = [mpc_model.matrix]
-        eq_matrix_slack = [mpc_model.slack_matrix]
-        eq_bounds = [mpc_model.bounds]
-        self.eq_constraint_names = mpc_model.constraint_names
+
+        ineq_matrix_dofs = []
+        ineq_matrix_slack = []
+        lower_bounds = []
+        upper_bounds = []
+        self.neq_constraint_names = []
+
+        eq_matrix_dofs = []
+        eq_matrix_slack = []
+        eq_bounds = []
+        self.eq_constraint_names = []
         self.free_variable_names = direct_limits.names
+
+        system_dynamics_strategy = SystemDynamicsStrategy(
+            self.degrees_of_freedom, self.config
+        )
+        eq_matrix_dofs.append(system_dynamics_strategy.create_matrix([]))
+        eq_matrix_slack.append(system_dynamics_strategy.create_slack_matrix([]))
+        eq_bounds.append(system_dynamics_strategy.create_bounds([], []))
+        self.eq_constraint_names.extend(system_dynamics_strategy.create_names([]))
 
         for (
             enforcement_strategy,
@@ -247,12 +155,6 @@ class QPDataSymbolic:
             eq_bounds.append(bounds)
             self.eq_constraint_names.extend(strategy.create_names(constraints))
             self.free_variable_names.extend(slack_variables.names)
-
-        ineq_matrix_dofs = []
-        ineq_matrix_slack = []
-        lower_bounds = []
-        upper_bounds = []
-        self.neq_constraint_names = []
 
         for (
             enforcement_strategy,
@@ -291,10 +193,25 @@ class QPDataSymbolic:
         self.eq_matrix_slack = sm.diag_stack(eq_matrix_slack)
         self.eq_bounds = sm.concatenate(*eq_bounds)
 
-        self.neq_matrix_dofs = sm.vstack(ineq_matrix_dofs)
-        self.neq_matrix_slack = sm.diag_stack(ineq_matrix_slack)
-        self.neq_lower_bounds = sm.Vector(lower_bounds)
-        self.neq_upper_bounds = sm.Vector(upper_bounds)
+        if ineq_matrix_dofs:
+            self.neq_matrix_dofs = sm.vstack(ineq_matrix_dofs)
+        else:
+            self.neq_matrix_dofs = sm.Matrix()
+
+        if ineq_matrix_slack:
+            self.neq_matrix_slack = sm.diag_stack(ineq_matrix_slack)
+        else:
+            self.neq_matrix_slack = sm.Matrix()
+
+        if lower_bounds:
+            self.neq_lower_bounds = sm.concatenate(*lower_bounds)
+        else:
+            self.neq_lower_bounds = sm.Vector()
+
+        if upper_bounds:
+            self.neq_upper_bounds = sm.concatenate(*upper_bounds)
+        else:
+            self.neq_upper_bounds = sm.Vector()
 
     def __hash__(self):
         return hash(id(self))
