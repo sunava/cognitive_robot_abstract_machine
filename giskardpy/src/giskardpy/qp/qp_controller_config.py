@@ -139,6 +139,10 @@ class QPControllerConfig:
         """
         return 1 / self.target_frequency
 
+    @property
+    def control_horizon(self) -> int:
+        return self.prediction_horizon - 2
+
     @classmethod
     def create_with_simulation_defaults(cls):
         return cls(

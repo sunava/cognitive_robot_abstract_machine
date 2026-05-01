@@ -22,6 +22,7 @@ from giskardpy.qp.constraint import (
     EnforcementStrategy,
     InequalityBound,
     IntegralStrategy,
+    VelocityStrategy,
 )
 from krrood.symbolic_math.symbolic_math import Scalar
 from semantic_digital_twin.spatial_types import Point3, Vector3, RotationMatrix
@@ -418,12 +419,11 @@ class ConstraintCollection:
         :param upper_slack_limit:
         """
 
-        constraint = DerivativeInequalityConstraint(
+        constraint = GiskardConstraint(
             name=name,
-            derivative=Derivatives.velocity,
+            enforcement_strategy=VelocityStrategy,
             expression=task_expression,
-            lower_limit=lower_velocity_limit,
-            upper_limit=upper_velocity_limit,
+            bound=InequalityBound(lower_velocity_limit, upper_velocity_limit),
             quadratic_weight=quadratic_weight,
             normalization_factor=velocity_limit,
             lower_slack_limit=lower_slack_limit,

@@ -108,10 +108,6 @@ class DirectLimits:
 
 @dataclass
 class SlackLimits(DirectLimits):
-    lower_slack_limits: sm.Vector = field(init=False)
-    upper_slack_limits: sm.Vector = field(init=False)
-    names_without_slack: List[str] = field(init=False)
-    names_slack: List[str] = field(init=False)
 
     @classmethod
     def from_constraints(
@@ -690,10 +686,50 @@ class VelocityStrategy(EnforcementStrategy):
         if len(constraints) == 0:
             return sm.Matrix()
         num_slack_variables = sum(
-            self.config.prediction_horizon - 2
-            for c in constraints.velocity_inequality_constraints
+            self.config.prediction_horizon - 2 for c in constraints
         )
         return sm.Matrix.eye(num_slack_variables) * self.config.mpc_dt
+
+    def create_slack_variables(
+        self, constraints: list[GiskardConstraint]
+    ) -> DirectLimits:
+        lower_slack = []
+        upper_slack = []
+        quadratic_weights = []
+        linear_weights = []
+        names = []
+        for t in range(self.config.prediction_horizon):
+            for c in constraints:
+                if t < self.config.prediction_horizon - 2:
+                    lower_slack.append(c.lower_slack_limit)
+                    upper_slack.append(c.upper_slack_limit)
+                    quadratic_weights.append(
+                        self.normalized_weight(
+                            c.quadratic_weight, c.normalization_factor
+                        )
+                    )
+                    linear_weights.append(c.linear_weight)
+                    names.append(f"t{t:03}/{c.name}")
+        limits = SlackLimits()
+        limits.lower_bounds = sm.Vector(lower_slack)
+        limits.upper_bounds = sm.Vector(upper_slack)
+        limits.quadratic_weights = sm.Vector(quadratic_weights)
+        limits.linear_weights = sm.Vector(linear_weights)
+        return limits
+
+    def normalized_weight(
+        self, quadratic_weight: Scalar, normalization_factor
+    ) -> float:
+        return quadratic_weight * (1 / normalization_factor) ** 2
+
+    def create_bounds(
+        self, bounds: list[Scalar], normalization_numbers: list[float]
+    ) -> Vector:
+        bounds2 = []
+        for t in range(self.config.control_horizon):
+            for b in bounds:
+                bounds2.append(b * self.config.mpc_dt)
+        return Vector(bounds2)
 
 
 @dataclass
@@ -759,9 +795,6 @@ class DerivativeConstraint(GiskardConstraint):
         - a m/s limit for translation
         - a rad/s value for rotation
     """
-
-    def normalized_weight(self) -> float:
-        return self.quadratic_weight * (1 / self.normalization_factor) ** 2
 
 
 @dataclass
