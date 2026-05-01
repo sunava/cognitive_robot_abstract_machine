@@ -188,7 +188,7 @@ def simulate_perception(world: World, dispatcher: EventDispatcher, context:Conte
             republish_hz=2.0,
         )
         time.sleep(3)
-        dispatcher.trigger_event(visible_bodies)
+        dispatcher.trigger_event(visible_bodies, world)
         return visible_bodies
 
     try:
