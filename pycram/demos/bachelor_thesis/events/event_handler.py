@@ -7,8 +7,7 @@ from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.world_entity import Body
 from semantic_digital_twin.reasoning.predicates import reachable
-from demos.bachelor_thesis.actions.predicate_mock import reachable
-
+from demos.bachelor_thesis.actions.predicate_mock import reachable, misplaced
 
 
 class EventDispatcher:
@@ -36,7 +35,8 @@ class EventDispatcher:
         """
 
         self.add_listener(update_perceived_objects)
-        self.add_listener(update_reachable_objects)
+        self.add_listener(misplaced_debug_test)
+        #self.add_listener(update_reachable_objects)
 
     def add_listener(self, listener):
         """Register a new listener."""
@@ -61,14 +61,19 @@ def update_perceived_objects(handler : EventDispatcher, data : list[Body], world
             handler.perceived_objects.append(obj)
             print(f" - {obj.name}")
 
-def update_reachable_objects(handler : EventDispatcher, data : list[Body], world : World):
-    robot = world.get_body_by_name("base_footprint")
-    print("I can reach following objects:")
+def misplaced_debug_test(handler : EventDispatcher, data: list[Body], world : World):
     for obj in data:
-        if (obj not in handler.reachable_objects) and (obj not in handler.known_furniture):
-            if reachable(obj.global_pose, robot.global_pose, world):
-                handler.reachable_objects.append(obj)
-                print(f" - {obj.name}")
+        print(misplaced(obj, world))
+
+
+# def update_reachable_objects(handler : EventDispatcher, data : list[Body], world : World):
+#     robot = world.get_body_by_name("base_footprint")
+#     print("I can reach following objects:")
+#     for obj in data:
+#         if (obj not in handler.reachable_objects) and (obj not in handler.known_furniture):
+#             if reachable(obj.global_pose, robot.global_pose, world):
+#                 handler.reachable_objects.append(obj)
+#                 print(f" - {obj.name}")
 
 def trigger_task(handler: EventDispatcher, data):
     print("Nothing to see here")
