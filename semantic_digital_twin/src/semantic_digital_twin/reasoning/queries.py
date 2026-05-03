@@ -1,14 +1,14 @@
 import math
 from typing import List, Union, Optional
 from krrood.entity_query_language.factories import variable_from, entity, flat_variable, in_, the, contains, variable, \
-    an, or_, and_, distinct
+    an, or_, and_, distinct, exists, not_, concatenation
 from krrood.entity_query_language.query.query import Entity
 from krrood.entity_query_language.predicate import symbolic_function, length
 from krrood.utils import inheritance_path_length, recursive_subclasses
 
 from semantic_digital_twin.reasoning.predicates import (
     is_supported_by,
-    is_supporting, compute_euclidean_planar_distance,
+    is_supporting, compute_euclidean_planar_distance, issubclass_, type_, inheritance_path_length_,
 )
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface, IsPerceivable, HasRootBody
 from semantic_digital_twin.world import World
@@ -123,6 +123,50 @@ def goal_surface_of_object(
     for supporting_surface in supporting_surfaces:
         if is_supported_by(most_similar.bodies[0], supporting_surface.bodies[0]):
             return supporting_surface
+
+def goal_surface_of_object_eql(
+    object_of_interest: SemanticAnnotation,
+    supporting_surfaces: List[HasSupportingSurface],
+    threshold: int = 1,
+) -> Optional[HasSupportingSurface]:
+    """
+    Finds the most similar object to a given semantic annotation among a list of tables
+    based on the inheritance path length. If the similarity does not meet the provided
+    threshold, the method attempts to return the table that is not supporting any object.
+    The similarity metric leverages the class hierarchy to compute distances.
+
+    :param object_of_interest: The semantic annotation to compare.
+    :param supporting_surfaces: A list of supporting surfaces semantic annotations to search on top of them for similar objects to the object_of_interest.
+    :param threshold: The maximum acceptable inheritance path length to classify objects
+                      as similar. Defaults to 1.
+    :return: The semantic annotation of the most appropriate surface based on similarity
+             metrics or the non-supporting table when no viable candidate is found, or None if there are no supporting surfaces.
+    """
+    if not supporting_surfaces:
+        return None
+    supporting_surface = variable_from(supporting_surfaces)
+    supporting_body = supporting_surface.bodies[0]
+    non_supporting_table = entity(supporting_surface).where(exists(supporting_surface, not_(is_supporting(supporting_body))))
+
+    # Query annotations on the surfaces of the tables
+    obj = variable_from(semantic_annotations_on_surfaces(
+        supporting_surfaces, object_of_interest._world
+    ))
+    object_filtered_by_type = entity(obj).where(
+        issubclass_(type(object_of_interest), type_(obj))
+        )
+
+    inheritance_distance = lambda obj_: inheritance_path_length_(type(object_of_interest), type_(obj_))
+    most_similar = entity(eql.max(object_filtered_by_type, key=inheritance_distance))
+    most_similar_distance = inheritance_distance(most_similar)
+    most_similar = concatenation(most_similar, non_supporting_table)
+    return entity(most_similar).where(or_(and_(most_similar_distance != None,
+                                               most_similar_distance > threshold,
+                                               is_supported_by(most_similar.bodies[0], supporting_surface.bodies[0])
+                                               ),
+                                          most_similar == non_supporting_table
+                                          )
+                                      ).first()
 
 def filter_annotations_by_color(color: Color, objects: list[SemanticAnnotation]) -> Entity[SemanticAnnotation]:
     """

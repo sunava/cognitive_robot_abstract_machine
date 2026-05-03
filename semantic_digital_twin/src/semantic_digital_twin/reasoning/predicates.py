@@ -1,10 +1,12 @@
 from __future__ import annotations
 from abc import ABC
 from dataclasses import dataclass
+from typing import Optional, Any
 
 import numpy as np
 import math
 import trimesh.boolean
+from krrood.utils import inheritance_path_length
 from trimesh.collision import CollisionManager
 
 from krrood.entity_query_language.predicate import (
@@ -35,7 +37,7 @@ from semantic_digital_twin.world_description.geometry import BoundingBox
 from semantic_digital_twin.world_description.world_entity import (
     Body,
     Region,
-    KinematicStructureEntity,
+    KinematicStructureEntity, SemanticAnnotation,
 )
 
 if TYPE_CHECKING:
@@ -305,6 +307,27 @@ def is_supporting(supporting_body: Body, max_intersection_height: float = 0.1) -
             return True
 
     return False
+
+@symbolic_function
+def show_path(annotations: List[SemanticAnnotation]) -> List[List[str]]:
+    result = []
+    for annotation in annotations:
+        result.append(type(annotation).__mro__)
+    return result
+
+@symbolic_function
+def issubclass_(child: Type, parent: Type) -> bool:
+    return issubclass(child, parent)
+
+@symbolic_function
+def type_(obj: Any):
+    return type(obj)
+
+
+@symbolic_function
+def inheritance_path_length_(child_class: Type, parent_class: Type) -> Optional[int]:
+    return inheritance_path_length(child_class, parent_class)
+
 
 
 @symbolic_function
