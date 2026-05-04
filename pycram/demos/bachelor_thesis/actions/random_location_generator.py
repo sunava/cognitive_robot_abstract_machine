@@ -29,7 +29,7 @@ def random_location_list(world : World, number_locations : int):
                 max_y = surface.max_y
                 z = surface.max_z
 
-                random_location = Pose(Point3(random.uniform(min_x + 0.1, max_x - 0.1), random.uniform(min_y + 0.1, max_y - 0.1), z + 0.1))
+                random_location = Pose(Point3(random.uniform(min_x + 0.1, max_x - 0.1), random.uniform(min_y + 0.1, max_y - 0.1), z + 0.03))
 
                 if not check_too_close_to_other_object(locations, random_location):
                     locations.append(random_location)

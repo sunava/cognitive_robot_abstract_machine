@@ -11,7 +11,11 @@ from pycram.plans.factories import sequential, execute_single
 from pycram.robot_plans.actions.core.navigation import NavigateAction
 from pycram.robot_plans.actions.core.robot_body import ParkArmsAction
 from semantic_digital_twin.adapters.mesh import STLParser
+from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
+from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Spoon, Bottle, Cup, ShelfLayer, \
+    CounterTop
 from semantic_digital_twin.spatial_types import Point3, Quaternion
 from semantic_digital_twin.spatial_types.spatial_types import Pose, HomogeneousTransformationMatrix
 from semantic_digital_twin.robots.hsrb import HSRB
@@ -26,15 +30,15 @@ world, dispatcher = hsrb_setup_world()
 dispatcher.known_furniture = world.bodies
 
 
-bowl1 = STLParser(
+bowl = STLParser(
     os.path.join(
         os.path.dirname(__file__), "../..", "..", "resources", "objects", "bowl.stl"
     )
 ).parse()
 
-bowl2 = STLParser(
+spoon = STLParser(
     os.path.join(
-        os.path.dirname(__file__), "../..", "..", "resources", "objects", "bowl.stl"
+        os.path.dirname(__file__), "../..", "..", "resources", "objects", "spoon.stl"
     )
 ).parse()
 
@@ -61,11 +65,11 @@ locs = random_location_list(world, 10)
 
 with world.modify_world():
     world.merge_world_at_pose(
-        bowl1,
-        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[0], world),
+        bowl,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(Pose(Point3(x=2, y=-1.6, z=0.57)), world),
     )
     world.merge_world_at_pose(
-        bowl2,
+        spoon,
         pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[1], world),
     )
     world.merge_world_at_pose(
@@ -80,7 +84,35 @@ with world.modify_world():
         jeroen_cup,
         pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[4], world),
     )
+    world.add_semantic_annotations(
+        [
+            Bowl(root=world.get_body_by_name("bowl.stl"), name=PrefixedName("bowl.stl")),
+            Spoon(root=world.get_body_by_name("spoon.stl"), name=PrefixedName("spoon.stl")),
+            Bottle(root=world.get_body_by_name("Static_MilkPitcher.stl"), name=PrefixedName("Static_MilkPitcher.stl")),
+            Bottle(root=world.get_body_by_name("Static_CokeBottle.stl"), name=PrefixedName("Static_CokeBottle.stl")),
+            Cup(root=world.get_body_by_name("jeroen_cup.stl"), name=PrefixedName("jeroen_cup.stl")),
+        ]
+    )
+    # world.add_semantic_annotations(
+    #     [
+    #         ShelfLayer(root=world.get_body_by_name("shelf_1"), name=PrefixedName("shelf_1")),
+    #         ShelfLayer(root=world.get_body_by_name("shelf_2"), name=PrefixedName("shelf_2"))
+    #
+    #     ]
+    # )
+    supporting_surfaces = []
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("shelf_1"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("shelf_2"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("counterTop"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("table"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("lowerTable"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("desk"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("cooking_table"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("dining_table"))
 
+    for surface in supporting_surfaces:
+        if isinstance(surface, HasSupportingSurface):
+            surface.calculate_supporting_surface()
 
 
 try:

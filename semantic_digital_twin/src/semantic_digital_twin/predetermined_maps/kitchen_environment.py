@@ -1,6 +1,8 @@
+from probabilistic_model.learning.region_graph.region_graph import Region
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
 )
+from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Table,
     Sofa,
