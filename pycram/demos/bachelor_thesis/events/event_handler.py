@@ -2,6 +2,7 @@
 from poetry.console.commands import self
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from semantic_digital_twin.robots.pr2 import PR2
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.world_entity import Body
@@ -74,7 +75,7 @@ def update_perceived_objects(handler : EventDispatcher, data : list[Body], world
             handler.perceived_objects.append(obj)
             print(f" - {obj.name}")
 
-            if reachable(world.get_semantic_annotation_by_name(obj.name), world):
+            if reachable(world.get_semantic_annotation_by_name(obj.name)):
                 handler.reachable_objects.append(obj)
 
             if misplaced(obj, world):
