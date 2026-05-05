@@ -1,7 +1,5 @@
 # source for base: https://medium.com/@idelossantosruiz/events-in-python-e2b3cb76ac2d
 from poetry.console.commands import self
-
-from demos.bachelor_thesis.classes.tasks import Task
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
@@ -98,6 +96,7 @@ def trigger_task(handler: EventDispatcher, data):
     ts = tm()
     time = datetime.datetime.fromtimestamp(ts)#.strftime('%d-%m-%Y %H:%M:%S')
     if (9 < time.hour < 10 or 13 < time.hour < 14 or 19 < time.hour < 20) and not human_near():
-        handler.activated_tasks.append(TableTask)
+        pass
+        #handler.activated_tasks.append(TableTask)
 
 

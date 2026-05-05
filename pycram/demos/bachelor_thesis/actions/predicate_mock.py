@@ -66,7 +66,7 @@ def human_near():
     
 
 
-def reachable(object_to_reach: SemanticAnnotation, world: World):
+def reachable(object : SemanticAnnotation):
     # debug, WIP for later
     return True
 
