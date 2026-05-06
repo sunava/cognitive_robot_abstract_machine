@@ -351,6 +351,40 @@ class CleanTableTask(Task):
         self.duration = 30 * len(self.required_objects)
 
 
+class LoadDishwasher(Task):
+    required_objects: list[Body]
+    # TODO: continue
+
+    def __init__(self, name: str, perceived_objects : list[Body], world : World):
+        self.name = name
+        self.perceived_objects = perceived_objects
+
+        perceived_sem_annotations = []
+
+        for obj in self.perceived_objects:
+            perceived_sem_annotations.append(world.get_semantic_annotation_by_name(obj.name))
+
+        objects_on_counter = semantic_annotations_on_surfaces([world.get_semantic_annotation_by_name("counterTop")], world)
+
+        for obj in objects_on_counter:
+            if perceived_sem_annotations.__contains__(obj) and isinstance(obj, (Cuttlery, Plate, Cup, Bowl)):
+                self.required_objects.append(world.get_body_by_name(obj.name))
+
+    def update_to_current_world_state(self, world: World, perceived_objects : list[Body]):
+        self.perceived_objects = perceived_objects
+
+        perceived_sem_annotations = []
+
+        for obj in self.perceived_objects:
+            perceived_sem_annotations.append(world.get_semantic_annotation_by_name(obj.name))
+
+        objects_on_counter = semantic_annotations_on_surfaces([world.get_semantic_annotation_by_name("counterTop")],
+                                                              world)
+        self.required_objects = []
+
+        for obj in objects_on_counter:
+            if perceived_sem_annotations.__contains__(obj) and isinstance(obj, (Cuttlery, Plate, Cup, Bowl)):
+                self.required_objects.append(world.get_body_by_name(obj.name))
 
         # constraints[0] = reachable(HomogeneousTransformationMatrix.from_xyz_rpy(x = obj.global_pose.x, y=obj.global_pose.y, z=obj.global_pose.z, reference_frame=world), self.robot.left_arm.root,
         # self.robot.left_arm.manipulator.tool_frame)
