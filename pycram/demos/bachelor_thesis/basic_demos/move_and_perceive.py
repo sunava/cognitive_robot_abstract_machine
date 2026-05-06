@@ -23,7 +23,6 @@ from pycram.datastructures.dataclasses import Context
 from demos.bachelor_thesis.hsrb_setup_world import hsrb_setup_world
 
 
-print("correct file")
 #------------------ standard setup -------------------------------------------------------------------------------------
 world, dispatcher = hsrb_setup_world()
 
@@ -109,6 +108,8 @@ with world.modify_world():
     supporting_surfaces.append(world.get_semantic_annotation_by_name("desk"))
     supporting_surfaces.append(world.get_semantic_annotation_by_name("cooking_table"))
     supporting_surfaces.append(world.get_semantic_annotation_by_name("dining_table"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("dishwasher_rack"))
+
 
     for surface in supporting_surfaces:
         if isinstance(surface, HasSupportingSurface):

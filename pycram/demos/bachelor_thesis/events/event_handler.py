@@ -1,4 +1,6 @@
 # source for base: https://medium.com/@idelossantosruiz/events-in-python-e2b3cb76ac2d
+from typing import Tuple, Any
+
 from poetry.console.commands import self
 
 from demos.bachelor_thesis.classes.tasks import SetTableTask, CleanTableTask, PutAwayObjectTask
@@ -7,7 +9,7 @@ from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world import World
-from semantic_digital_twin.world_description.world_entity import Body
+from semantic_digital_twin.world_description.world_entity import Body, SemanticAnnotation
 from semantic_digital_twin.reasoning.predicates import reachable
 from demos.bachelor_thesis.actions.predicate_mock import reachable, misplaced, human_near
 import datetime
@@ -51,6 +53,10 @@ class EventDispatcher:
         objects that are used by a task
         """
 
+        ########## DEBUG ###############################################################################################
+        self.locations = []
+        self.trigger_nr = 0
+
         self.add_listener(update_perceived_objects)
         self.add_listener(trigger_task)
         #self.add_listener(update_reachable_objects)
@@ -72,17 +78,25 @@ class EventDispatcher:
 
 # Usage example
 def update_perceived_objects(handler : EventDispatcher, data : list[Body], world : World):
-    print("I saw following new objects:")
+    print("#"*110 + "\n" + "#"*110)
+    print(f"NEW UPDATE No. {handler.trigger_nr}\n \n")
+    handler.trigger_nr += 1
+    # print("I saw following new objects:")
     for obj in data:
         if (obj not in handler.perceived_objects) and (obj not in handler.known_furniture):
             handler.perceived_objects.append(obj)
-            print(f" - {obj.name}")
+            # print(f" - {obj.name}")
+
+            out_misplaced = misplaced(obj, world)
 
             if reachable(world.get_semantic_annotation_by_name(obj.name)):
                 handler.reachable_objects.append(obj)
 
-            if misplaced(obj, world)[0]:
+            if out_misplaced[0]:
                 handler.misplaced_objects.append(obj)
+
+            handler.locations.append([obj, out_misplaced[1]])
+    print_perceived_objects(handler)
 
 
 
@@ -96,7 +110,6 @@ def update_perceived_objects(handler : EventDispatcher, data : list[Body], world
 #                 print(f" - {obj.name}")
 
 def trigger_task(handler: EventDispatcher, data : list[Body], world : World):
-    print("task triggered:")
     # trigger set the table
     ts = tm()
     # time = datetime.datetime.fromtimestamp(ts)
@@ -137,9 +150,49 @@ def trigger_task(handler: EventDispatcher, data : list[Body], world : World):
 
 
 def print_tasks(handler : EventDispatcher):
+    print("\n \n")
     print("ACTIVE TASKS")
-    print("----------------------------------------------------------------------------------------------------------")
-    print(" name                         | feasibility     | Score     | Normalized Score")
-    print("----------------------------------------------------------------------------------------------------------")
+    print("-" * 110)
+
+    header = f"{'Name':<60} | {'Feasibility':<15} | {'Score':<10} | {'Normalized Score':<18}"
+    print(header)
+    print("-" * 110)
+
     for task in handler.activated_tasks:
-        print(f"{task.name}         {task.calculate_feasibility()}      {task.calculate_current_score()}         {task.calculate_current_score_normalized()}")
+        name = task.name
+        feasibility = task.calculate_feasibility()
+        score = task.calculate_current_score()
+        norm_score = task.calculate_current_score_normalized()
+
+        line = f"{name:<60} | {feasibility:<15.3f} | {score:<10.3f} | {norm_score:<18.3f}"
+        print(line)
+
+
+def print_perceived_objects(handler : EventDispatcher):
+    print("PERCEIVED OBJECTS")
+    print("-"*110)
+    print(
+        f"{'Name':<35} | "
+        f"{'Reachable':<10} | "
+        f"{'Misplaced':<10} | "
+        f"{'Belongs at Location':<30} ")
+    print("-"*110)
+    
+    for obj in handler.perceived_objects:
+        is_reachable = False
+        is_misplaced = False
+        location = None
+
+        if obj in handler.reachable_objects:
+            is_reachable = True
+        if obj in handler.misplaced_objects:
+            is_misplaced = True
+        for loc in handler.locations:
+            if loc[0]==obj:
+                location = loc[1].name.name
+
+        print(
+            f"{obj.name.name:<35} | "
+            f"{'YES' if is_reachable else 'NO':<10} | "
+            f"{'YES' if is_misplaced else 'NO':<10} | "
+            f"{str(location):<30} ")

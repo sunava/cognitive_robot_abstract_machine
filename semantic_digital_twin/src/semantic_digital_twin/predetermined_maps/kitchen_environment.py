@@ -13,7 +13,7 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Desk,
     Handle,
     ShelfLayer,
-    Hinge, Oven,
+    Hinge, Oven, Dishwasher,
 )
 from semantic_digital_twin.world import World
 import threading
@@ -234,82 +234,82 @@ class KitchenEnvironment:
             )
 
 
-            # Creating doors manually and attaching them directly to the cupboard
-            door_scale = Scale(0.02, 0.40, 1.055)
-
-            # Define limits for doors
-            # Left door opens outwards (0 to +90 degrees)
-            left_lower = DerivativeMap[float](position=0.0)
-            left_upper = DerivativeMap[float](position=np.pi / 2)
-            left_door_limits = DegreeOfFreedomLimits(lower=left_lower, upper=left_upper)
-
-            # Right door opens outwards (-90 to 0 degrees)
-            right_lower = DerivativeMap[float](position=-np.pi / 2)
-            right_upper = DerivativeMap[float](position=0.0)
-            right_door_limits = DegreeOfFreedomLimits(lower=right_lower, upper=right_upper)
-
-            # Left Door
-            left_door = Door.create_with_new_body_in_world(
-                world=world,
-                name=PrefixedName("cupboard_left_door"),
-                world_root_T_self=slam @ HomogeneousTransformationMatrix.from_xyz_rpy(
-                    x=4.325, y=4.52, z=0.5275
-                ),
-                scale=door_scale,
-            )
-
-            left_door_handle = Handle.create_with_new_body_in_world(
-                world=world,
-                name=PrefixedName("left_door_handle"),
-                world_root_T_self=slam @ HomogeneousTransformationMatrix.from_xyz_rpy(
-                    x=4.315, y=4.68, z=0.5275, yaw=np.pi
-                ),
-                scale=Scale(0.04, 0.02, 0.02),
-            )
-
-            cupboard_left_door_hinge = Hinge.create_with_new_body_in_world(
-                world=world,
-                name=PrefixedName("cupboard_left_door_hinge"),
-                world_root_T_self=slam @ HomogeneousTransformationMatrix.from_xyz_rpy(
-                    x=4.325, y=4.32, z=0.5275
-                ),
-                active_axis=Vector3.Z(),
-                connection_limits=left_door_limits,
-            )
-            left_door.add_handle(left_door_handle)
-            left_door.add_hinge(cupboard_left_door_hinge)
-
-
-            # Right Door
-            right_door = Door.create_with_new_body_in_world(
-                world=world,
-                name=PrefixedName("cupboard_right_door"),
-                world_root_T_self=slam @ HomogeneousTransformationMatrix.from_xyz_rpy(
-                    x=4.325, y=4.92, z=0.5275
-                ),
-                scale=door_scale,
-            )
-
-            right_door_handle = Handle.create_with_new_body_in_world(
-                world=world,
-                name=PrefixedName("right_door_handle"),
-                world_root_T_self=slam @ HomogeneousTransformationMatrix.from_xyz_rpy(
-                    x=4.315, y=4.76, z=0.5275, yaw=np.pi
-                ),
-                scale=Scale(0.04, 0.02, 0.02),
-            )
-
-            cupboard_right_door_hinge = Hinge.create_with_new_body_in_world(
-                world=world,
-                name=PrefixedName("cupboard_right_door_hinge"),
-                world_root_T_self=slam @ HomogeneousTransformationMatrix.from_xyz_rpy(
-                    x=4.325, y=5.12, z=0.5275
-                ),
-                active_axis=Vector3.Z(),
-                connection_limits=right_door_limits,
-            )
-            right_door.add_handle(right_door_handle)
-            right_door.add_hinge(cupboard_right_door_hinge)
+            # # Creating doors manually and attaching them directly to the cupboard
+            # door_scale = Scale(0.02, 0.40, 1.055)
+            #
+            # # Define limits for doors
+            # # Left door opens outwards (0 to +90 degrees)
+            # left_lower = DerivativeMap[float](position=0.0)
+            # left_upper = DerivativeMap[float](position=np.pi / 2)
+            # left_door_limits = DegreeOfFreedomLimits(lower=left_lower, upper=left_upper)
+            #
+            # # Right door opens outwards (-90 to 0 degrees)
+            # right_lower = DerivativeMap[float](position=-np.pi / 2)
+            # right_upper = DerivativeMap[float](position=0.0)
+            # right_door_limits = DegreeOfFreedomLimits(lower=right_lower, upper=right_upper)
+            #
+            # # Left Door
+            # left_door = Door.create_with_new_body_in_world(
+            #     world=world,
+            #     name=PrefixedName("cupboard_left_door"),
+            #     world_root_T_self=slam @ HomogeneousTransformationMatrix.from_xyz_rpy(
+            #         x=4.325, y=4.52, z=0.5275
+            #     ),
+            #     scale=door_scale,
+            # )
+            #
+            # left_door_handle = Handle.create_with_new_body_in_world(
+            #     world=world,
+            #     name=PrefixedName("left_door_handle"),
+            #     world_root_T_self=slam @ HomogeneousTransformationMatrix.from_xyz_rpy(
+            #         x=4.315, y=4.68, z=0.5275, yaw=np.pi
+            #     ),
+            #     scale=Scale(0.04, 0.02, 0.02),
+            # )
+            #
+            # cupboard_left_door_hinge = Hinge.create_with_new_body_in_world(
+            #     world=world,
+            #     name=PrefixedName("cupboard_left_door_hinge"),
+            #     world_root_T_self=slam @ HomogeneousTransformationMatrix.from_xyz_rpy(
+            #         x=4.325, y=4.32, z=0.5275
+            #     ),
+            #     active_axis=Vector3.Z(),
+            #     connection_limits=left_door_limits,
+            # )
+            # left_door.add_handle(left_door_handle)
+            # left_door.add_hinge(cupboard_left_door_hinge)
+            #
+            #
+            # # Right Door
+            # right_door = Door.create_with_new_body_in_world(
+            #     world=world,
+            #     name=PrefixedName("cupboard_right_door"),
+            #     world_root_T_self=slam @ HomogeneousTransformationMatrix.from_xyz_rpy(
+            #         x=4.325, y=4.92, z=0.5275
+            #     ),
+            #     scale=door_scale,
+            # )
+            #
+            # right_door_handle = Handle.create_with_new_body_in_world(
+            #     world=world,
+            #     name=PrefixedName("right_door_handle"),
+            #     world_root_T_self=slam @ HomogeneousTransformationMatrix.from_xyz_rpy(
+            #         x=4.315, y=4.76, z=0.5275, yaw=np.pi
+            #     ),
+            #     scale=Scale(0.04, 0.02, 0.02),
+            # )
+            #
+            # cupboard_right_door_hinge = Hinge.create_with_new_body_in_world(
+            #     world=world,
+            #     name=PrefixedName("cupboard_right_door_hinge"),
+            #     world_root_T_self=slam @ HomogeneousTransformationMatrix.from_xyz_rpy(
+            #         x=4.325, y=5.12, z=0.5275
+            #     ),
+            #     active_axis=Vector3.Z(),
+            #     connection_limits=right_door_limits,
+            # )
+            # right_door.add_handle(right_door_handle)
+            # right_door.add_hinge(cupboard_right_door_hinge)
 
 
             oven = Oven.create_with_new_body_in_world(
@@ -387,15 +387,33 @@ class KitchenEnvironment:
             for color in cooking_table.bodies[0].visual.shapes:
                 color.color = Color.BEIGE()
 
-            dinning_table = Table.create_with_new_body_in_world(
+            dining_table = Table.create_with_new_body_in_world(
                 world=world,
                 name=PrefixedName("dining_table"),
                 world_root_T_self=slam @ HomogeneousTransformationMatrix.from_xyz_rpy(x=2.59975, y=5.705,
                                                                                                      z=0.365),
                 scale=Scale(0.73, 1.18, 0.73),
             )
-            for color in dinning_table.bodies[0].visual.shapes:
+            for color in dining_table.bodies[0].visual.shapes:
                 color.color = Color.BEIGE()
+
+            dishwasher = Dishwasher.create_with_new_body_in_world(
+                world=world,
+                name=PrefixedName("dishwasher"),
+                world_root_T_self=slam @ HomogeneousTransformationMatrix.from_xyz_rpy(x=1.7, y=-2.181, z=0.2725),
+                scale=Scale(x=0.444, y=0.658, z=0.545)
+            )
+            for color in dishwasher.bodies[0].visual.shapes:
+                color.color = Color.RED()
+
+            dishwasher_rack = Table.create_with_new_body_in_world(
+                world=world,
+                name=PrefixedName("dishwasher_rack"),
+                world_root_T_self=slam @ HomogeneousTransformationMatrix.from_xyz_rpy(x=1.7, y=-1.481, z=0.07),
+                scale=Scale(x=0.444, y=0.658, z=0.14)
+            )
+            for color in dishwasher_rack.bodies[0].visual.shapes:
+                color.color = Color.RED()
 
         return world
 

@@ -134,7 +134,7 @@ def simulate_perception(world: World, dispatcher: EventDispatcher, context:Conte
         robot_world=world,
     )
 
-    print(visualize.map)
+    # print(visualize.map)
 
     if node is not None:
         camera = world.get_body_by_name("head_rgbd_sensor_link")  # we use head mount instead of default camera
