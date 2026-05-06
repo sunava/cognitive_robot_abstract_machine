@@ -23,7 +23,7 @@ from pycram.datastructures.dataclasses import Context
 from demos.bachelor_thesis.hsrb_setup_world import hsrb_setup_world
 
 
-
+print("correct file")
 #------------------ standard setup -------------------------------------------------------------------------------------
 world, dispatcher = hsrb_setup_world()
 

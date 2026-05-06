@@ -204,5 +204,5 @@ with simulated_robot:
     dispatcher.perceived_objects.append(world.get_body_by_name("spoon.stl"))
     #task = PutAwayObjectTask("put_bowl_away", [PrefixedName("bowl.stl")], world = world, handler=dispatcher)
     task1 = SetTableTask("set_table", world.get_semantic_annotation_by_name("table"), world, dispatcher)
-    task2 = CleanTableTask("clean_table", world.get_semantic_annotation_by_name("table"), world, dispatcher)
+    #task2 = CleanTableTask("clean_table", world.get_semantic_annotation_by_name("table"), world, dispatcher)
     print(task1.calculate_feasibility())

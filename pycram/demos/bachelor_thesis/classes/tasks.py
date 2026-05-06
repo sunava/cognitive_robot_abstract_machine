@@ -4,7 +4,6 @@ from typing import Any
 from hypothesis.stateful import precondition
 from scipy.constants import precision
 
-from demos.bachelor_thesis.events.event_handler import EventDispatcher
 from demos.bachelor_thesis.actions.predicate_mock import reachable, is_empty
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.reasoning.queries import semantic_annotations_on_surfaces
@@ -19,7 +18,6 @@ class Task(ABC):
     reward: float
     duration: float
     world: World
-    handler: EventDispatcher
     """
     expected time needed for the task in seconds
     """
@@ -42,15 +40,26 @@ class Task(ABC):
         pass
 
     @abstractmethod
-    def calculate_feasibility(self):
+    def calculate_feasibility(self) -> float:
         pass
+
+    def calculate_current_score(self):
+        return self.reward * self.calculate_feasibility()
+
+    def calculate_current_score_normalized(self):
+        return self.calculate_current_score()/self.duration
+
+    @abstractmethod
+    def update_to_current_world_state(self, world: World, perceived_objects : list[Body]):
+        pass
+
 
 
 
 class PutAwayObjectTask(Task):
     required_objects: list[PrefixedName]
 
-    def __init__(self, name : str, required_objects : list[PrefixedName], world: World, handler: EventDispatcher):
+    def __init__(self, name : str, required_objects : list[PrefixedName], world: World, perceived_objects : list[Body]):
         ## different for all instances of this task ##
         self.name = name
         self.required_objects = required_objects
@@ -61,13 +70,13 @@ class PutAwayObjectTask(Task):
 
         ## world stuff ##
         self.world = world
-        self.handler = handler
+        self.perceived_objects = perceived_objects
 
     def precondition(self):
         preconditions = []
         for obj in self.required_objects:
             found = False
-            for ob in self.handler.perceived_objects:
+            for ob in self.perceived_objects:
                 if ob.name == obj:
                     found = True
                     preconditions.append(True)
@@ -105,8 +114,6 @@ class PutAwayObjectTask(Task):
         all_elem = []
         all_elem.extend(self.precondition())
         all_elem.extend(self.constraints())
-        print("condition kram: ", all_elem)
-        print("weight kram: ", weight)
 
         weight_max = 0
         weight_sum = 0
@@ -121,12 +128,20 @@ class PutAwayObjectTask(Task):
 
         return weight_sum/weight_max
 
+    def update_to_current_world_state(self, world: World, perceived_objects : list[Body]):
+        self.world = world
+        self.perceived_objects = perceived_objects
+
 
 class SetTableTask(Task):
     required_objects: list[Any]
     preconditions : list[Any]
+    required_instances : list[Any]
+    reward: float
+    duration: float
+    world: World
     table : Table
-    def __init__(self, name : str, table : Table, world: World, handler: EventDispatcher):
+    def __init__(self, name : str, table : Table, world: World, perceived_objects : list[Body]):
         ## different for all instances of this task ##
         self.name = name
         self.table = table
@@ -138,8 +153,10 @@ class SetTableTask(Task):
 
         ## world stuff ##
         self.world = world
-        self.handler = handler
-        self.preconditions = self.precondition()[0]
+        self.perceived_objects = perceived_objects
+        out = self.precondition()
+        self.preconditions = out[0]
+        self.required_instances = out[1]
 
     def precondition(self):
         preconditions = []
@@ -147,16 +164,14 @@ class SetTableTask(Task):
 
         perceived_objects_as_annotations = []
 
-        for obj in self.handler.perceived_objects:
-            print(self.handler.perceived_objects)
-            print(obj)
+        for obj in self.perceived_objects:
             perceived_objects_as_annotations.append(self.world.get_semantic_annotation_by_name(obj.name))
         # TODO: check if empty works
         preconditions.append(is_empty(self.table, perceived_objects_as_annotations, self.world))
 
         for obj in self.required_objects:
             found = False
-            for ob in self.handler.perceived_objects:
+            for ob in self.perceived_objects:
                 obi = self.world.get_semantic_annotation_by_name(ob.name)
                 if isinstance(obi, obj):
                     found = True
@@ -170,7 +185,7 @@ class SetTableTask(Task):
 
     def constraints(self):
         constraints = []
-        required_objects = self.precondition()[1]
+        required_objects = self.required_instances
 
         for obj in required_objects:
             if obj is None:
@@ -203,8 +218,6 @@ class SetTableTask(Task):
         all_elem = []
         all_elem.extend(self.preconditions)
         all_elem.extend(self.constraints())
-        print("condition kram: ", all_elem)
-        print("weight kram: ", weight)
 
         weight_max = 0
         weight_sum = 0
@@ -219,26 +232,31 @@ class SetTableTask(Task):
 
         return weight_sum / weight_max
 
+    def update_to_current_world_state(self, world: World, perceived_objects : list[Body]):
+        self.world = world
+        self.perceived_objects = perceived_objects
+        out = self.precondition()
+        self.preconditions = out[0]
+        self.required_instances = out[1]
+
 class CleanTableTask(Task):
     required_objects: list[Body]
+    table: Table
 
-    def __init__(self, name: str, table : Table, world: World, handler: EventDispatcher):
+    def __init__(self, name: str, table : Table, world: World, perceived_objects : list[Body]):
         ## different for all instances of this task ##
         self.name = name
 
         ## world stuff ##
         self.world = world
-        self.handler = handler
+        self.perceived_objects = perceived_objects
         self.required_objects = []
+        self.table = table
 
         ## set for all instances of this task ##
-        print("table: ", table)
-        print("table_pos: ", world.get_body_by_name(table.name).global_pose.to_position())
         objects_on_table = semantic_annotations_on_surfaces([table], world)
-        print(objects_on_table)
         for obj in objects_on_table:
-            if self.handler.perceived_objects.__contains__(world.get_body_by_name(obj.name)):
-                print("EEEEEEHEEEEHEHHEHEHEEHEH")
+            if self.perceived_objects.__contains__(world.get_body_by_name(obj.name)):
                 self.required_objects.append(world.get_body_by_name(obj.name))
 
         cutlery = []
@@ -289,8 +307,6 @@ class CleanTableTask(Task):
         all_elem = []
         all_elem.extend(self.precondition())
         all_elem.extend(self.constraints())
-        print("condition kram: ", all_elem)
-        print("weight kram: ", weight)
 
         weight_max = 0
         weight_sum = 0
@@ -309,6 +325,32 @@ class CleanTableTask(Task):
         else:
             result = weight_sum / weight_max
         return result
+
+    def update_to_current_world_state(self, world: World, perceived_objects : list[Body]):
+        self.world = world
+        self.perceived_objects = perceived_objects
+        self.required_objects = []
+
+        ## set for all instances of this task ##
+        objects_on_table = semantic_annotations_on_surfaces([self.table], world)
+        for obj in objects_on_table:
+            if self.perceived_objects.__contains__(world.get_body_by_name(obj.name)):
+                if not self.required_objects.__contains__(world.get_body_by_name(obj.name)):
+                    self.required_objects.append(world.get_body_by_name(obj.name))
+
+        cutlery = []
+        plates = []
+        for obj in self.required_objects:
+            obi = world.get_semantic_annotation_by_name(obj.name)
+            if isinstance(obi, Cuttlery):
+                cutlery.append(obi)
+            if isinstance(obi, Plate):
+                plates.append(obi)
+        self.reward = 200 * len(self.required_objects) + len(cutlery) * 50 + len(
+            plates) * 100 + 15  # 50 for each thing of cutlery and 100 for plate
+        self.duration = 30 * len(self.required_objects)
+
+
 
         # constraints[0] = reachable(HomogeneousTransformationMatrix.from_xyz_rpy(x = obj.global_pose.x, y=obj.global_pose.y, z=obj.global_pose.z, reference_frame=world), self.robot.left_arm.root,
         # self.robot.left_arm.manipulator.tool_frame)

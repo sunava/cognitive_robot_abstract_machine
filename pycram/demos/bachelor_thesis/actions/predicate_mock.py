@@ -30,16 +30,21 @@ def misplaced(obj: Body, world: World):
     """
 
     sem_annotation = world.get_semantic_annotation_by_name(obj.name)
+    print("misplaced? sem annotation: ", sem_annotation)
 
     if isinstance(sem_annotation, (Food, Bottle)):
         correct_location = world.get_semantic_annotations_by_name("cooking_table")[0]
+        print("correct: cooking_table")
     elif isinstance(sem_annotation, (Cuttlery, Plate, Bowl, Cup)):
+        print("correct: counterTop")
         correct_location = world.get_semantic_annotations_by_name("counterTop")[0]
     else:
+        print("correct: table")
         correct_location = world.get_semantic_annotations_by_name("table")[0]
 
 
     if isinstance(correct_location, (CounterTop, Table, ShelfLayer)):
+        print("on correct surface: ", semantic_annotations_on_surfaces([correct_location], world))
         if semantic_annotations_on_surfaces([correct_location], world).__contains__(sem_annotation):
             return False, correct_location
         else:
