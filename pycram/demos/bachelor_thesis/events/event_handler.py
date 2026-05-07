@@ -3,10 +3,12 @@ from typing import Tuple, Any
 
 from poetry.console.commands import self
 
-from demos.bachelor_thesis.classes.tasks import SetTableTask, CleanTableTask, PutAwayObjectTask
+from demos.bachelor_thesis.classes.tasks import SetTableTask, CleanTableTask, PutAwayObjectTask, LoadDishwasherTask, \
+    UnloadDishwasherTask
+from semantic_digital_twin.reasoning.queries import semantic_annotations_on_surfaces
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from semantic_digital_twin.robots.pr2 import PR2
-from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Cuttlery, Plate, Cup
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.world_entity import Body, SemanticAnnotation
@@ -136,6 +138,7 @@ def trigger_task(handler: EventDispatcher, data : list[Body], world : World):
         if not exists:
             handler.activated_tasks.append(CleanTableTask("clean_table_task_"+table_name, table=world.get_semantic_annotation_by_name("table"), world=world, perceived_objects=handler.perceived_objects))
 
+    # trigger put away object
     for obj in handler.misplaced_objects:
         task_name = "put_away_object_task_" + obj.name.name
         exists = False
@@ -145,6 +148,41 @@ def trigger_task(handler: EventDispatcher, data : list[Body], world : World):
                 task.update_to_current_world_state(world, handler.perceived_objects)
         if not exists:
             handler.activated_tasks.append(PutAwayObjectTask(task_name, required_objects=[obj.name], world=world, perceived_objects=handler.perceived_objects))
+
+    # trigger load dishwasher task
+    objs_on_counter = semantic_annotations_on_surfaces([world.get_semantic_annotation_by_name("counterTop")], world)
+    load_dishwasher_task = None
+    for obj in objs_on_counter:
+        obj_body = world.get_body_by_name(obj.name)
+        if isinstance(obj, (Cuttlery, Plate, Bowl, Cup)) and handler.perceived_objects.__contains__(obj_body) and not human_near():
+            load_dishwasher_task = "load_dishwasher_task"
+
+    if load_dishwasher_task is not None:
+        exists = False
+        for task in handler.activated_tasks:
+            if task.name == load_dishwasher_task:
+                exists = True
+                task.update_to_current_world_state(world, handler.perceived_objects)
+        if not exists:
+            handler.activated_tasks.append(LoadDishwasherTask(load_dishwasher_task, handler.perceived_objects, world))
+
+    # trigger unload dishwasher task
+    objs_on_dishwasher_rack = semantic_annotations_on_surfaces([world.get_semantic_annotation_by_name("dishwasher_rack")], world)
+    unload_dishwasher_task = None
+    for obj in objs_on_dishwasher_rack:
+        obj_body = world.get_body_by_name(obj.name)
+        if isinstance(obj, (Cuttlery, Plate, Bowl, Cup)) and handler.perceived_objects.__contains__(obj_body) and not human_near():
+            unload_dishwasher_task = "unload_dishwasher_task"
+
+    if unload_dishwasher_task is not None:
+        exists = False
+        for task in handler.activated_tasks:
+            if task.name == unload_dishwasher_task:
+                exists = True
+                task.update_to_current_world_state(world, handler.perceived_objects)
+        if not exists:
+            handler.activated_tasks.append(
+                UnloadDishwasherTask(unload_dishwasher_task, handler.perceived_objects, world))
 
     print_tasks(handler)
 

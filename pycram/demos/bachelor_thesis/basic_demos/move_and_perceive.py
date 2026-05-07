@@ -1,5 +1,7 @@
 import os
 
+from docutils.nodes import reference
+
 from demos.bachelor_thesis.actions.random_location_generator import random_location_list, \
     pose_to_homogeneous_transformation_matrix_from_xyz_quaternion
 from demos.bachelor_thesis.actions.simulate_perception import simulate_perception
@@ -81,7 +83,7 @@ with world.modify_world():
     )
     world.merge_world_at_pose(
         jeroen_cup,
-        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[4], world),
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(Pose(Point3(x=2, y=-1, z=0.14)), world),
     )
     world.add_semantic_annotations(
         [
@@ -143,6 +145,10 @@ context.evaluate_conditions = False
 
 # get coordinates from publish point in rviz2
 plan_driving = [execute_single(ParkArmsAction(Arms.LEFT), context).plan,
+        # dishwasher
+        execute_single(NavigateAction(
+            target_location=Pose(Point3(1.2266756, -0.2182769775390625, 0.0), orientation=(Quaternion(z=-0.316469, w=0.948602)),
+                                reference_frame=world.root), keep_joint_states=True), context).plan,
 
         # kitchen counter
         execute_single(NavigateAction(

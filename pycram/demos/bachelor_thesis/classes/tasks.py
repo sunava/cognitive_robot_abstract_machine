@@ -351,13 +351,16 @@ class CleanTableTask(Task):
         self.duration = 30 * len(self.required_objects)
 
 
-class LoadDishwasher(Task):
+class LoadDishwasherTask(Task):
     required_objects: list[Body]
+    world : World
     # TODO: continue
 
     def __init__(self, name: str, perceived_objects : list[Body], world : World):
         self.name = name
         self.perceived_objects = perceived_objects
+        self.required_objects = []
+        self.world = world
 
         perceived_sem_annotations = []
 
@@ -370,8 +373,80 @@ class LoadDishwasher(Task):
             if perceived_sem_annotations.__contains__(obj) and isinstance(obj, (Cuttlery, Plate, Cup, Bowl)):
                 self.required_objects.append(world.get_body_by_name(obj.name))
 
+        self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 160 + 100 + 200
+        self.duration = 30 * len(self.required_objects) + 60 # extra time for opening/closing dishwasher
+
+
+
+    def precondition(self):
+        # because required objects are the perceived objects
+        preconditions = []
+
+        perceived_sem_annotations = []
+        for obj in self.perceived_objects:
+            perceived_sem_annotations.append(self.world.get_semantic_annotation_by_name(obj.name))
+
+        # dishwasher rack has to be empty
+        preconditions.append(is_empty(self.world.get_semantic_annotation_by_name("dishwasher_rack"), perceived_sem_annotations, self.world))
+
+        for obj in self.required_objects:
+            preconditions.append(True)
+        return preconditions
+
+    def constraints(self):
+        constraints = []
+        for obj in self.required_objects:
+            if reachable(self.world.get_semantic_annotation_by_name(obj.name)):
+                constraints.append(True)
+            else:
+                constraints.append(False)
+        return constraints
+
+    def effect(self):
+        # TODO
+        pass
+
+    def calculate_feasibility(self):
+        """
+        weight: 3 for precondition dishwasher empty
+        weight: 1 for each precondition object exists
+        weight: 0.5 for object constraints
+        """
+        weight = []
+        weight.append(float(3))
+
+        for i in range(len(self.precondition())):
+            weight.append(float(1))
+        for j in range(len(self.constraints())):
+            weight.append(float(0.5))
+
+        all_elem = []
+        all_elem.extend(self.precondition())
+        all_elem.extend(self.constraints())
+
+        weight_max = 0
+        weight_sum = 0
+        index = 0
+        for elem in all_elem:
+            weight_max += weight[index]
+            if elem == True:
+                weight_sum += weight[index]
+            else:
+                pass
+            index += 1
+
+        result = 0
+        if weight_max == 0:
+            result = 0
+        else:
+            result = weight_sum / weight_max
+        return result
+
+
     def update_to_current_world_state(self, world: World, perceived_objects : list[Body]):
         self.perceived_objects = perceived_objects
+        self.required_objects = []
+        self.world = world
 
         perceived_sem_annotations = []
 
@@ -385,6 +460,116 @@ class LoadDishwasher(Task):
         for obj in objects_on_counter:
             if perceived_sem_annotations.__contains__(obj) and isinstance(obj, (Cuttlery, Plate, Cup, Bowl)):
                 self.required_objects.append(world.get_body_by_name(obj.name))
+
+        self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 160 + 100 + 200
+        self.duration = 30 * len(self.required_objects) + 60 # extra time for opening/closing dishwasher
+
+
+
+
+class UnloadDishwasherTask(Task):
+    required_objects: list[Body]
+    world : World
+
+    # TODO: continue
+
+    def __init__(self, name: str, perceived_objects: list[Body], world: World):
+        self.name = name
+        self.perceived_objects = perceived_objects
+        self.required_objects = []
+        self.world = world
+
+        perceived_sem_annotations = []
+
+        for obj in self.perceived_objects:
+            perceived_sem_annotations.append(world.get_semantic_annotation_by_name(obj.name))
+
+        objects_in_dishwasher = semantic_annotations_on_surfaces(
+            [world.get_semantic_annotation_by_name("dishwasher_rack")], world)
+
+        for obj in objects_in_dishwasher:
+            self.required_objects.append(world.get_body_by_name(obj.name))
+
+        self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 200
+        self.duration = 30 * len(self.required_objects) + 60 # extra time for opening/closing dishwasher
+
+
+    def precondition(self):
+        # because required objects are the perceived objects
+        preconditions = []
+
+        for obj in self.required_objects:
+            preconditions.append(True)
+        return preconditions
+
+    def constraints(self):
+        constraints = []
+        for obj in self.required_objects:
+            if reachable(self.world.get_semantic_annotation_by_name(obj.name)):
+                constraints.append(True)
+            else:
+                constraints.append(False)
+        return constraints
+
+    def effect(self):
+        # TODO
+        pass
+
+    def calculate_feasibility(self):
+        """
+        weight: 1 for each precondition object exists
+        weight: 0.5 for object constraints
+        """
+        weight = []
+
+        for i in range(len(self.precondition())):
+            weight.append(float(1))
+        for j in range(len(self.constraints())):
+            weight.append(float(0.5))
+
+        all_elem = []
+        all_elem.extend(self.precondition())
+        all_elem.extend(self.constraints())
+
+        weight_max = 0
+        weight_sum = 0
+        index = 0
+        for elem in all_elem:
+            weight_max += weight[index]
+            if elem == True:
+                weight_sum += weight[index]
+            else:
+                pass
+            index += 1
+
+        result = 0
+        if weight_max == 0:
+            result = 0
+        else:
+            result = weight_sum / weight_max
+        return result
+
+    def update_to_current_world_state(self, world: World, perceived_objects: list[Body]):
+        self.perceived_objects = perceived_objects
+        self.required_objects = []
+        self.world = world
+
+        perceived_sem_annotations = []
+
+        for obj in self.perceived_objects:
+            perceived_sem_annotations.append(world.get_semantic_annotation_by_name(obj.name))
+
+        objects_on_counter = semantic_annotations_on_surfaces(
+            [world.get_semantic_annotation_by_name("dishwasher_rack")], world)
+        self.required_objects = []
+
+        for obj in objects_on_counter:
+            self.required_objects.append(world.get_body_by_name(obj.name))
+
+        self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 200
+        self.duration = 30 * len(self.required_objects) + 60 # extra time for opening/closing dishwasher
+
+
 
         # constraints[0] = reachable(HomogeneousTransformationMatrix.from_xyz_rpy(x = obj.global_pose.x, y=obj.global_pose.y, z=obj.global_pose.z, reference_frame=world), self.robot.left_arm.root,
         # self.robot.left_arm.manipulator.tool_frame)
