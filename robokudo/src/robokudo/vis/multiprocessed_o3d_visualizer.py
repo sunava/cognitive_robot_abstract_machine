@@ -1049,7 +1049,6 @@ class MultiprocessedViewer3DClient(object):
             cmd = self.cmd_conn.recv()
             if isinstance(cmd, MemoryMapTransport):
                 self.rk_logger.debug(f"Received memory map: {cmd}")
-                self.cmd_conn.send(True)
 
                 if self.tick_return.is_set():
                     break
@@ -1156,7 +1155,7 @@ class MultiprocessedViewer3D(object):
         """The manager for the shared memory that is currently writeable."""
         return self.memory_manager[self.buffer_write_cursor]
 
-    def _swap(self) -> Tuple[int, int]:
+    def _swap_buffers(self) -> Tuple[int, int]:
         """Rotate the read and write buffers.
 
         :return: The indices of the new buffers in format (read_buffer, write_buffer)
@@ -1186,6 +1185,8 @@ class MultiprocessedViewer3D(object):
             The dict format follows Open3D's draw() convention. See:
             https://github.com/isl-org/Open3D/blob/master/examples/python/visualization/draw.py
         """
+        if not self.visualizer_process.is_alive() or self.tick_return.is_set():
+            return
         if geometries is None:
             return
         if isinstance(geometries, list) and len(geometries) == 0:
@@ -1235,9 +1236,8 @@ class MultiprocessedViewer3D(object):
 
         if self.visualizer_process.is_alive() and not self.tick_return.is_set():
             self.parent_cmd_conn.send(transport)
-            self.parent_cmd_conn.recv()
 
-        self._swap()  # Swap buffers
+        self._swap_buffers()
 
     def close(self) -> None:
         """Clean up shared memory and process resources."""
