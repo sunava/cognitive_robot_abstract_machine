@@ -14,8 +14,8 @@ from __future__ import annotations
 
 import atexit
 import logging
+import multiprocessing
 import time
-from collections import defaultdict
 from dataclasses import dataclass, field
 from multiprocessing import Pipe, Process, Queue, shared_memory
 from multiprocessing.connection import Connection
@@ -304,6 +304,8 @@ class Geometry3DMemoryMap(MemoryMap):
         """Create an open3d geometry dict from the memory map.
 
         :param shm: The shared memory to read from.
+        :param read_idx: The byte index to start reading from.
+        :return: The geometry dictionary and the byte index after reading.
         """
         geometry, read_idx = self.to_geometry(shm, read_idx)
 
@@ -323,13 +325,21 @@ class Geometry3DMemoryMap(MemoryMap):
 
         return geometry_dict, read_idx
 
+    @staticmethod
     def _write_attribute(
-        self,
         write_buf: memoryview,
         write_idx: int,
         attribute_map: Any,
         geometry_attribute: Any,
     ) -> int:
+        """Write the given geometry attribute to the given buffer using the attribute memory map.
+
+        :param write_buf: The buffer to write to.
+        :param write_idx: The byte index to start writing at.
+        :param attribute_map: The memory map of the attribute.
+        :param geometry_attribute: The attribute to write.
+        :return: The byte index after writing.
+        """
         if isinstance(attribute_map, ObjectMemoryMap):
             return attribute_map.write_object(write_buf, write_idx, geometry_attribute)
         else:
@@ -952,7 +962,9 @@ class SharedMemoryManager(object):
 class MultiprocessedViewer3DClient(object):
     """A client for the MultiprocessedViewer3D server."""
 
-    def __init__(self, title: str, cmd_conn: Connection) -> None:
+    def __init__(
+        self, title: str, cmd_conn: Connection, tick_return: multiprocessing.Event
+    ) -> None:
         self.rk_logger: logging.Logger = logging.getLogger(PACKAGE_NAME)
         """Logger instance"""
 
@@ -962,9 +974,10 @@ class MultiprocessedViewer3DClient(object):
         self.cmd_conn = cmd_conn
         """Communication connection for sending and receiving commands from the main process."""
 
-        self.name_to_shm_manager: Dict[str, SharedMemoryManager] = defaultdict(
-            SharedMemoryManager
-        )
+        self.tick_return = tick_return
+        """Event indicating that the o3d visualizer shut down."""
+
+        self.name_to_shm_manager: Dict[str, SharedMemoryManager] = {}
         """Mapping of shared memory names to shared memory instances."""
 
         self.visualized_geometries: List[str] = []
@@ -1000,19 +1013,26 @@ class MultiprocessedViewer3DClient(object):
                 # Force a proper redraw
                 self.viewer3d.main_vis.remove_geometry("dummy")
                 self.viewer3d.main_vis.add_geometry("dummy", coordinate_frame)
-                self.viewer3d.tick()
+                tick_return = self.viewer3d.tick()
+                if not tick_return:
+                    self.rk_logger.debug("Visualizer indicates shutdown.")
+                    self.tick_return.set()
+                    break
                 time.sleep(1.0 / 60.0)
         except KeyboardInterrupt:
-            self.rk_logger.info("Keyboard interrupt received, shutting down...")
+            self.rk_logger.debug("Keyboard interrupt received.")
+        finally:
             self.close()
 
     def close(self) -> None:
         """Close the visualization client and clean up resources."""
+        self.rk_logger.debug("Shutting down...")
         if self.receiver_thread.is_alive():
             self.receiver_thread.join(timeout=1.0 / 10.0)
         for manager in self.name_to_shm_manager.values():
-            self.rk_logger.info(f"Closing shared memory {manager.name}")
+            self.rk_logger.debug(f"Closing shared memory {manager.name}")
             manager.close()
+        self.rk_logger.debug("Shutdown complete.")
 
     def update_geometry(self) -> None:
         """Update the geometry in the viewer."""
@@ -1025,10 +1045,15 @@ class MultiprocessedViewer3DClient(object):
 
     def listen(self) -> None:
         """Listen for commands from the main process and handle them accordingly."""
-        while True:
+        while not self.tick_return.is_set():
             cmd = self.cmd_conn.recv()
             if isinstance(cmd, MemoryMapTransport):
                 self.rk_logger.debug(f"Received memory map: {cmd}")
+                self.cmd_conn.send(True)
+
+                if self.tick_return.is_set():
+                    break
+
                 start_t = time.perf_counter()
 
                 # Load into memory manager
@@ -1049,7 +1074,6 @@ class MultiprocessedViewer3DClient(object):
                 self.rk_logger.debug(
                     f"Processed memory map in {time.perf_counter() - start_t:.4f}s"
                 )
-                self.cmd_conn.send(True)
 
 
 class MultiprocessedViewer3D(object):
@@ -1059,6 +1083,7 @@ class MultiprocessedViewer3D(object):
         """Initialize the 3D viewer.
 
         :param title: Window title for the viewer
+        :param shm_size: Size of the shared memory to use for communication
         """
 
         self.rk_logger: logging.Logger = logging.getLogger(PACKAGE_NAME)
@@ -1076,6 +1101,9 @@ class MultiprocessedViewer3D(object):
         self.buffer_read_cursor = 1
         """Index of the memory manager to use for reading."""
 
+        self.tick_return = multiprocessing.Event()
+        """Event indicating that the o3d visualizer shut down."""
+
         self.memory_manager = [
             SharedMemoryManager.with_shm(shm_size) for _ in range(self.buffer_count)
         ]
@@ -1091,7 +1119,7 @@ class MultiprocessedViewer3D(object):
 
         self.visualizer_process: Process = Process(
             target=self.run_visualizer,
-            args=(title, self.child_cmd_conn),
+            args=(title, self.child_cmd_conn, self.tick_return),
             name="robokudo_visualizer",
             daemon=True,
         )
@@ -1106,13 +1134,16 @@ class MultiprocessedViewer3D(object):
         )
 
     @staticmethod
-    def run_visualizer(title: str, cmd_conn: Connection) -> None:
+    def run_visualizer(
+        title: str, cmd_conn: Connection, tick_return: multiprocessing.Event
+    ) -> None:
         """Run the viewer3d instance in a separate process.
 
         :param title: Window title for the viewer.
         :param cmd_conn: Connection for sending and receiving commands from the main process.
+        :param tick_return: Event indicating that the o3d visualizer shut down to the main process.
         """
-        client = MultiprocessedViewer3DClient(title, cmd_conn)
+        client = MultiprocessedViewer3DClient(title, cmd_conn, tick_return)
         client.run()
 
     @property
@@ -1135,11 +1166,11 @@ class MultiprocessedViewer3D(object):
         return self.buffer_read_cursor, self.buffer_write_cursor
 
     def tick(self) -> bool:
-        """Dummy tick method.
+        """Dummy tick method indicating whether the visualizer has shut down.
 
-        :returns: True
+        :returns: True if the visualizer has shut down, False otherwise.
         """
-        return True
+        return not self.tick_return.is_set()
 
     def update_cloud(
         self, geometries: Optional[Union[o3d.geometry.Geometry, Dict, List]]
@@ -1162,6 +1193,8 @@ class MultiprocessedViewer3D(object):
         if isinstance(geometries, dict) and len(geometries) == 0:
             return
 
+        write_manager = self._write_manager
+
         # local method to add a single geometry. either based on the geometry being fully
         # defined with a dict or being a plain geometry object
         def add(
@@ -1183,9 +1216,9 @@ class MultiprocessedViewer3D(object):
                 self.rk_logger.warning(f"Could not create a memory map for {g}: {e}")
                 return
 
-            self._write_manager.write_geometry(geometry, memory_map)
+            write_manager.write_geometry(geometry, memory_map)
 
-        self._write_manager.reset()
+        write_manager.reset()
 
         n = 1
         if isinstance(geometries, list):
@@ -1196,14 +1229,15 @@ class MultiprocessedViewer3D(object):
             add(geometries, n)
 
         transport = MemoryMapTransport(
-            shm_name=self._write_manager.name,
-            memory_maps=self._write_manager.memory_maps,
+            shm_name=write_manager.name,
+            memory_maps=write_manager.memory_maps,
         )
 
-        self._swap()  # Swap buffers
+        if self.visualizer_process.is_alive() and not self.tick_return.is_set():
+            self.parent_cmd_conn.send(transport)
+            self.parent_cmd_conn.recv()
 
-        self.parent_cmd_conn.send(transport)
-        self.parent_cmd_conn.recv()
+        self._swap()  # Swap buffers
 
     def close(self) -> None:
         """Clean up shared memory and process resources."""
