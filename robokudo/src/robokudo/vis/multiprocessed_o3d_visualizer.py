@@ -30,7 +30,6 @@ from typing_extensions import (
     Iterator,
     List,
     Optional,
-    Sequence,
     Tuple,
     Type,
     Union,
@@ -212,17 +211,22 @@ class Geometry3DMemoryMap(MemoryMap):
     """Name of the underlying geometry."""
 
     type: Type
+    """Type of the underlying geometry."""
 
     # TODO: Handle this
     material: Optional[o3d.visualization.rendering.MaterialRecord] = None
+    """Material property of the o3d geometry."""
 
     group: Optional[str] = None
+    """Group property of the o3d geometry."""
 
     time: Optional[float] = None
+    """Time property of the o3d geometry."""
 
     is_visible: Optional[bool] = None
+    """IsVisible property of the o3d geometry."""
 
-    mapped_attributes = []
+    mapped_attributes = []  # Class attribute (no type hint)
     """A list of (attribute name, attribute type) for the open3d attributes mapped by the memory map."""
 
     @classmethod
@@ -235,13 +239,26 @@ class Geometry3DMemoryMap(MemoryMap):
         time: Optional[float] = None,
         is_visible: Optional[bool] = None,
     ) -> "Geometry3DMemoryMap":
-        """Create a new memory memory map for the given geometry."""
+        """Create a new memory memory map for the given geometry.
+
+        :param name: The o3d name of the geometry.
+        :param geometry: The o3d geometry to create a memory map for.
+        :param material: The o3d material property of the geometry.
+        :param group: The o3d group property of the geometry.
+        :param time: The o3d time property of the geometry.
+        :param is_visible: The o3d is_visible property of the geometry.
+        """
         size = 0
         attribute_dict: Dict[
             str, Union[ArrayMemoryMap, List[ArrayMemoryMap], List[ObjectMemoryMap]]
         ] = {}
 
         def get_memory_map(obj: Any) -> Union[ArrayMemoryMap, ObjectMemoryMap]:
+            """Get the memory map for the given object.
+
+            :param obj: The object to get the memory map for.
+            :return: The object or array memory map.
+            """
             if isinstance(obj, set):
                 return ArrayMemoryMap.from_numpy_array(np.asarray(list(obj)))
             elif isinstance(obj, np.ndarray):
@@ -273,14 +290,21 @@ class Geometry3DMemoryMap(MemoryMap):
 
     @classmethod
     def from_geometry_dict(cls, geometry: Dict) -> "Geometry3DMemoryMap":
-        """Create a new memory map from a geometry dictionary."""
+        """Create a new memory map from a geometry dictionary.
+
+        :param geometry: The geometry dictionary to create a memory map from.
+        :return: The memory map created from the geometry dictionary.
+        """
         instance = cls.from_geometry(**geometry)
         return instance
 
     def as_geometry_dict(
         self, shm: shared_memory.SharedMemory, read_idx: int
     ) -> Tuple[Dict, int]:
-        """Create an open3d geometry dict from the memory map."""
+        """Create an open3d geometry dict from the memory map.
+
+        :param shm: The shared memory to read from.
+        """
         geometry, read_idx = self.to_geometry(shm, read_idx)
 
         geometry_dict: Dict[str, Any] = {
@@ -328,7 +352,13 @@ class Geometry3DMemoryMap(MemoryMap):
         write_idx: int,
         geometry: o3d.geometry.Geometry3D,
     ) -> int:
-        """Write the given geometry to the shared memory using the memory map."""
+        """Write the given geometry to the shared memory using the memory map.
+
+        :param shm: The shared memory to write to.
+        :param write_idx: The byte index to start writing at.
+        :param geometry: The geometry to write.
+        :return: The byte index after writing.
+        """
         write_buf = shm.buf
         if write_buf is None:
             raise RuntimeError("Shared memory buffer is None")
@@ -355,7 +385,12 @@ class Geometry3DMemoryMap(MemoryMap):
     def to_geometry(
         self, shm: shared_memory.SharedMemory, read_idx: int
     ) -> Tuple[o3d.geometry.PointCloud, int]:
-        """Read the geometry from the shared memory using the memory map."""
+        """Read the geometry from the shared memory using the memory map.
+
+        :param shm: The shared memory to read from.
+        :param read_idx: The byte index to start reading from.
+        :return: The geometry read from the shared memory and the byte index after reading.
+        """
         read_buf = shm.buf
         if read_buf is None:
             raise RuntimeError("Shared memory buffer is None")
@@ -583,6 +618,11 @@ class HalfEdgeMemoryMap(ObjectMemoryMap):
 
     @classmethod
     def from_object(cls, obj: o3d.geometry.HalfEdge) -> "HalfEdgeMemoryMap":
+        """Create a HalfEdgeMemoryMap from a HalfEdge object.
+
+        :param obj: The HalfEdge object to create a HalfEdgeMemoryMap from.
+        :return: The HalfEdgeMemoryMap created from the HalfEdge object.
+        """
         data_list = [obj.next, obj.triangle_index, obj.twin]
         data_list.extend(obj.vertex_indices.tolist())
 
@@ -601,6 +641,13 @@ class HalfEdgeMemoryMap(ObjectMemoryMap):
         write_idx: int,
         obj: o3d.geometry.HalfEdge,
     ) -> int:
+        """Write the given HalfEdge object to the given buffer using the memory map.
+
+        :param write_buf: The buffer to write to.
+        :param write_idx: The byte index to start writing at.
+        :param obj: The HalfEdge object to write.
+        :return: The byte index after writing.
+        """
         buf = np.ndarray(
             self.data.shape,
             dtype=self.data.dtype,
@@ -619,6 +666,12 @@ class HalfEdgeMemoryMap(ObjectMemoryMap):
         read_buf: memoryview,
         read_idx: int,
     ) -> Tuple[o3d.geometry.HalfEdge, int]:
+        """Read the given buffer from the given byte index as a HalfEdge object using the memory map.
+
+        :param read_buf: The buffer to read from.
+        :param read_idx: The byte index to start reading from.
+        :return: The HalfEdge object read from the buffer and the byte index after reading.
+        """
         buf = np.ndarray(
             self.data.shape,
             dtype=self.data.dtype,
@@ -712,11 +765,20 @@ class ObjectMemoryMapFactory:
 
     @classmethod
     def has_proxy(cls, obj: Any) -> bool:
+        """Check whether the factory has a proxy for the given object class.
+
+        :param obj: The object to check.
+        :return: True if there is a proxy available for the given object class, False otherwise.
+        """
         return type(obj) in cls.proxies
 
     @classmethod
     def from_object(cls, obj: Any) -> ObjectMemoryMap:
-        """Create a geometry proxy from a geometry3d object."""
+        """Create a geometry proxy from a Geometry3D object.
+
+        :param obj: The object to create a proxy for.
+        :raises KeyError: If the factory has no proxy for the geometry type.
+        """
         return cls.proxies[type(obj)].from_object(obj)
 
 
@@ -737,18 +799,33 @@ class Geometry3DMemoryMapFactory:
 
     @classmethod
     def has_proxy(cls, obj: Any) -> bool:
+        """Check whether the factory has a proxy for the given object class.
+
+        :param obj: The object to check.
+        :return: True if there is a proxy available for the given object class, False otherwise.
+        """
         return type(obj) in cls.proxies
 
     @classmethod
     def from_geometry(
         cls, name: str, geometry: o3d.geometry.Geometry3D
     ) -> Geometry3DMemoryMap:
-        """Create a geometry proxy from a geometry3d object."""
+        """Create a geometry proxy from a Geometry3D object.
+
+        :param name: The name of the geometry used to add the geometry to the O3DVisualizer.
+        :param geometry: The geometry object to create a proxy for.
+        :raises KeyError: If the factory has no proxy for the geometry type.
+        """
         return cls.proxies[type(geometry)].from_geometry(name, geometry)
 
     @classmethod
     def from_geometry_dict(cls, geometry: Dict) -> Geometry3DMemoryMap:
-        """Create a geometry proxy from a geometry3d object."""
+        """Create a geometry proxy from a Geometry3D object.
+
+        :param geometry: The geometry dictionary to create a proxy for.
+        :return: The geometry proxy created from the geometry dictionary.
+        :raises KeyError: If the factory has no proxy for the geometry type.
+        """
         return cls.proxies[type(geometry["geometry"])].from_geometry(**geometry)
 
 
@@ -767,8 +844,14 @@ class MemoryMapTransport(object):
 class SharedMemoryManager(object):
     """A manager for geometries in shared memory."""
 
+    _shm: shared_memory.SharedMemory
+    """The shared memory managed by the instance."""
+
     memory_maps: List[Geometry3DMemoryMap] = field(default_factory=list)
     """A list of all memory maps managed by this object."""
+
+    memory_maps_size: int = 0
+    """The total size of all memory maps managed by this object."""
 
     write_cursor: int = 0
     """The current end byte index of the shared memory (sum of all memory map sizes)."""
@@ -776,45 +859,99 @@ class SharedMemoryManager(object):
     read_cursor: int = 0
     """The current start byte index of the shared memory (sum of all memory map sizes)."""
 
-    def append(self, memory_map: Geometry3DMemoryMap) -> int:
+    @classmethod
+    def with_shm(cls, size: int) -> SharedMemoryManager:
+        """Create a SharedMemoryManager with a newly created shared memory of the given size.
+
+        :param size: The size of the shared memory to create.
+        :return: A SharedMemoryManager instance with the newly created shared memory.
+        """
+        return cls(_shm=shared_memory.SharedMemory(create=True, size=size))
+
+    @classmethod
+    def for_shm(cls, name: str) -> SharedMemoryManager:
+        """Create a SharedMemoryManager for an existing shared memory with the given name.
+
+        :param name: The name of the shared memory to use.
+        :return: A SharedMemoryManager instance for the existing shared memory.
+        """
+        return cls(_shm=shared_memory.SharedMemory(name=name))
+
+    @property
+    def name(self) -> str:
+        """The name of the shared memory managed by the instance."""
+        return self._shm.name
+
+    def append(self, memory_map: Geometry3DMemoryMap) -> None:
         """Add a memory map to the shared memory manager.
 
         :param memory_map: MemoryMap to add to the shared memory manager.
         :return: The byte index to start writing to for the appended memory map
         """
         self.memory_maps.append(memory_map)
+        self.memory_maps_size += memory_map.byte_size
+        if self.memory_maps_size > self._shm.size:
+            raise RuntimeError(
+                "The shared memory is too small to store all memory maps."
+            )
 
-        write_cursor = self.write_cursor
-        self.write_cursor += memory_map.byte_size
-        return write_cursor
-
-    def extend(self, memory_maps: List[Geometry3DMemoryMap]) -> List[int]:
+    def extend(self, memory_maps: List[Geometry3DMemoryMap]) -> None:
         """Add a list of memory maps to the shared memory manager.
 
         :return: The byte indices to start writing to for each of the appended memory maps
         """
         self.memory_maps.extend(memory_maps)
 
-        write_cursors = []
         for memory_map in memory_maps:
-            write_cursors.append(self.write_cursor)
-            self.write_cursor += memory_map.byte_size
-        return write_cursors
+            self.memory_maps_size += memory_map.byte_size
+        if self.memory_maps_size > self._shm.size:
+            raise RuntimeError(
+                "The shared memory is too small to store all memory maps."
+            )
 
-    def read(self) -> Iterator[Tuple[int, Geometry3DMemoryMap]]:
-        """Read all memory maps from the shared memory manager."""
+    def write_geometry(
+        self, geometry: o3d.geometry.Geometry, memory_map: Geometry3DMemoryMap
+    ) -> None:
+        """Write a geometry to the shared memory using the given memory map.
+
+        :param memory_map: The memory map to use for writing the geometry.
+        :param geometry: The geometry to write to the shared memory.
+        """
+        if memory_map not in self.memory_maps:
+            self.append(memory_map)
+        memory_map.write_geometry(self._shm, self.write_cursor, geometry)
+        self.write_cursor += memory_map.byte_size
+
+    def read_geometries(self) -> Iterator[Dict]:
+        """Read all memory maps from the shared memory manager.
+
+        :return: An iterator over the geometries read from the shared memory.
+        """
         for memory_map in self.memory_maps:
-            yield self.read_cursor, memory_map
+            geometry, _ = memory_map.as_geometry_dict(self._shm, self.read_cursor)
+            yield geometry
             self.read_cursor += memory_map.byte_size
 
     def reset(self) -> None:
         """Reset the shared memory manager to its initial state."""
         self.write_cursor = 0
         self.read_cursor = 0
+        self.memory_maps_size = 0
         self.memory_maps.clear()
+
+    def close(self) -> None:
+        """Close the underlying shared memory."""
+        self._shm.close()
+
+    def unlink_and_close(self) -> None:
+        """Unlink and close the underlying shared memory."""
+        self._shm.unlink()
+        self.close()
 
 
 class MultiprocessedViewer3DClient(object):
+    """A client for the MultiprocessedViewer3D server."""
+
     def __init__(self, title: str, cmd_conn: Connection) -> None:
         self.rk_logger: logging.Logger = logging.getLogger(PACKAGE_NAME)
         """Logger instance"""
@@ -824,9 +961,6 @@ class MultiprocessedViewer3DClient(object):
 
         self.cmd_conn = cmd_conn
         """Communication connection for sending and receiving commands from the main process."""
-
-        self.name_to_shm: Dict[str, shared_memory.SharedMemory] = {}
-        """Mapping of shared memory names to shared memory instances."""
 
         self.name_to_shm_manager: Dict[str, SharedMemoryManager] = defaultdict(
             SharedMemoryManager
@@ -845,30 +979,25 @@ class MultiprocessedViewer3DClient(object):
         self.receiver_thread = Thread(target=self.listen, daemon=True)
         """A thread for listening to commands from the main process."""
 
-    def get_shm(self, shm_name: str) -> shared_memory.SharedMemory:
-        """Get the shared memory instance for the given shared memory name.
-
-        :param shm_name: The name of the shared memory to get.
-        """
-        if shm_name not in self.name_to_shm:
-            self.name_to_shm[shm_name] = shared_memory.SharedMemory(name=shm_name)
-        return self.name_to_shm[shm_name]
-
     def get_shm_manager(self, shm_name: str) -> SharedMemoryManager:
         """Get the current shared memory manager.
 
         :param shm_name: The name of the shared memory to get the manager for.
         :return: The shared memory manager for the given shared memory name.
         """
+        if shm_name not in self.name_to_shm_manager:
+            self.name_to_shm_manager[shm_name] = SharedMemoryManager.for_shm(shm_name)
         return self.name_to_shm_manager[shm_name]
 
     def run(self) -> None:
         """Run the visualization client."""
         self.receiver_thread.start()
+
         coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.01)
         self.viewer3d.main_vis.add_geometry("dummy", coordinate_frame)
         try:
             while True:
+                # Force a proper redraw
                 self.viewer3d.main_vis.remove_geometry("dummy")
                 self.viewer3d.main_vis.add_geometry("dummy", coordinate_frame)
                 self.viewer3d.tick()
@@ -881,21 +1010,20 @@ class MultiprocessedViewer3DClient(object):
         """Close the visualization client and clean up resources."""
         if self.receiver_thread.is_alive():
             self.receiver_thread.join(timeout=1.0 / 10.0)
-        for shm in self.name_to_shm.values():
-            self.rk_logger.info(f"Closing shared memory {shm.name}")
-            shm.close()
+        for manager in self.name_to_shm_manager.values():
+            self.rk_logger.info(f"Closing shared memory {manager.name}")
+            manager.close()
 
     def update_geometry(self) -> None:
         """Update the geometry in the viewer."""
         start_t = time.perf_counter()
         with self.geometries_lock:
             self.viewer3d.update_cloud(self.geometries)
-            # self.viewer3d.tick()
         self.rk_logger.debug(
             f"Updated geometry in {time.perf_counter() - start_t:.4f}s"
         )
 
-    def listen(self):
+    def listen(self) -> None:
         """Listen for commands from the main process and handle them accordingly."""
         while True:
             cmd = self.cmd_conn.recv()
@@ -903,19 +1031,16 @@ class MultiprocessedViewer3DClient(object):
                 self.rk_logger.debug(f"Received memory map: {cmd}")
                 start_t = time.perf_counter()
 
-                shm = self.get_shm(cmd.shm_name)
+                # Load into memory manager
                 shm_manager = self.get_shm_manager(cmd.shm_name)
                 shm_manager.reset()
-
-                # Load into memory manager
                 shm_manager.extend(cmd.memory_maps)
 
                 # Reconstruct geometries
                 with self.geometries_lock:
-                    self.geometries = []
-                    for read_idx, memory_map in shm_manager.read():
-                        geometry, read_idx = memory_map.as_geometry_dict(shm, read_idx)
-                        self.geometries.append(geometry)
+                    self.geometries = [
+                        geometry for geometry in shm_manager.read_geometries()
+                    ]
 
                 o3d.visualization.gui.Application.instance.post_to_main_thread(
                     self.viewer3d.main_vis, self.update_geometry
@@ -946,22 +1071,15 @@ class MultiprocessedViewer3D(object):
         """Number of buffers to use for communication."""
 
         self.buffer_write_cursor = 0
-        """Index of the shm to write to."""
+        """Index of the memory manager to use for writing."""
 
         self.buffer_read_cursor = 1
-        """Index of the shm to read to."""
+        """Index of the memory manager to use for reading."""
 
-        self.shms = [
-            shared_memory.SharedMemory(create=True, size=shm_size)
-            for _ in range(self.buffer_count)
+        self.memory_manager = [
+            SharedMemoryManager.with_shm(shm_size) for _ in range(self.buffer_count)
         ]
-        """Shared memory instances for communicating with the viewer process."""
-
-        self.shm_names = [shm.name for shm in self.shms]
-        """Names of the shared memory instances."""
-
-        self.memory_manager = [SharedMemoryManager() for _ in self.shms]
-        """A manager for underlying data in shared memory."""
+        """Manager instances for shared memory handling."""
 
         parent_cmd_conn, child_cmd_conn = Pipe()
 
@@ -998,16 +1116,6 @@ class MultiprocessedViewer3D(object):
         client.run()
 
     @property
-    def _read_shm(self) -> shared_memory.SharedMemory:
-        """The shared memory that is currently readable."""
-        return self.shms[self.buffer_read_cursor]
-
-    @property
-    def _write_shm(self) -> shared_memory.SharedMemory:
-        """The shared memory that is currently writeable."""
-        return self.shms[self.buffer_write_cursor]
-
-    @property
     def _read_manager(self) -> SharedMemoryManager:
         """The manager for the shared memory that is currently readable."""
         return self.memory_manager[self.buffer_read_cursor]
@@ -1026,14 +1134,11 @@ class MultiprocessedViewer3D(object):
         self.buffer_write_cursor = (self.buffer_write_cursor + 1) % self.buffer_count
         return self.buffer_read_cursor, self.buffer_write_cursor
 
-    def tick(self) -> Any:
-        """Update the viewer display.
+    def tick(self) -> bool:
+        """Dummy tick method.
 
-        :returns: False if visualization should terminate, True otherwise
+        :returns: True
         """
-        # self.parent_cmd_conn.send("tick")
-        # tick_return = self.parent_cmd_conn.recv()
-        # return tick_return
         return True
 
     def update_cloud(
@@ -1078,8 +1183,7 @@ class MultiprocessedViewer3D(object):
                 self.rk_logger.warning(f"Could not create a memory map for {g}: {e}")
                 return
 
-            write_idx = self._write_manager.append(memory_map)
-            memory_map.write_geometry(self._write_shm, write_idx, geometry)
+            self._write_manager.write_geometry(geometry, memory_map)
 
         self._write_manager.reset()
 
@@ -1092,7 +1196,7 @@ class MultiprocessedViewer3D(object):
             add(geometries, n)
 
         transport = MemoryMapTransport(
-            shm_name=self._write_shm.name,
+            shm_name=self._write_manager.name,
             memory_maps=self._write_manager.memory_maps,
         )
 
@@ -1108,16 +1212,8 @@ class MultiprocessedViewer3D(object):
             if self.visualizer_process.is_alive():
                 self.visualizer_process.terminate()
 
-        for shm in self.shms:
-            shm.unlink()
-            shm.close()
+        for manager in self.memory_manager:
+            manager.unlink_and_close()
 
-        try:
-            self.parent_cmd_conn.close()
-        except Exception:
-            pass
-
-        try:
-            self.child_cmd_conn.close()
-        except Exception:
-            pass
+        self.parent_cmd_conn.close()
+        self.child_cmd_conn.close()
