@@ -23,7 +23,7 @@ from demos.bachelor_thesis.actions.predicate_mock import (
     is_supported_by_surface_cached,
 )
 import datetime
-from time import time as tm
+from time import sleep, time as tm
 
 
 def perf_print(message: str):
@@ -95,44 +95,50 @@ class EventDispatcher:
     def trigger_event(self, event_data : list[Body], world : World):
         """Fire the event, passing event_data to every listener."""
         with perf_step(f"trigger_event with {len(event_data)} visible bodies and {len(self._listeners)} listeners"):
+            sem_annotations = []
+            for data in event_data:
+                if not data in self.known_furniture:
+                    sem_annotations.append(world.get_semantic_annotation_by_name(data.name))
+
             for listener in self._listeners:
                 listener_name = getattr(listener, "__name__", str(listener))
                 with perf_step(f"listener: {listener_name}"):
-                    listener(self, event_data, world)
+                    listener(self, sem_annotations, world)
 
 
 # Usage example
-def update_perceived_objects(handler : EventDispatcher, data : list[Body], world : World):
+def update_perceived_objects(handler : EventDispatcher, data : list[SemanticAnnotation], world : World):
     with perf_step("update_perceived_objects"):
         print("#"*110 + "\n" + "#"*110)
         print(f"NEW UPDATE No. {handler.trigger_nr}\n \n")
         handler.trigger_nr += 1
         new_objects = 0
-        # print("I saw following new objects:")
+
         for obj in data:
-            if (obj not in handler.perceived_objects) and (obj not in handler.known_furniture):
+            if obj not in handler.perceived_objects: # furniture already filtered out
                 new_objects += 1
-                handler.perceived_objects.append(obj)
-                # print(f" - {obj.name}")
+                obj_sem_annotation = world.get_semantic_annotation_by_name(obj.name)
+
+                handler.perceived_objects.append(obj_sem_annotation)
 
                 with perf_step(f"misplaced({obj.name})"):
                     out_misplaced = misplaced(
-                        obj,
+                        obj_sem_annotation,
                         world,
                         handler.surface_annotation_cache,
                         handler.support_relation_cache,
                     )
 
                 with perf_step(f"reachable({obj.name})"):
-                    is_reachable = reachable(world.get_semantic_annotation_by_name(obj.name))
+                    is_reachable = reachable(obj_sem_annotation)
 
                 if is_reachable:
-                    handler.reachable_objects.append(obj)
+                    handler.reachable_objects.append(obj_sem_annotation)
 
                 if out_misplaced[0]:
-                    handler.misplaced_objects.append(obj)
+                    handler.misplaced_objects.append(obj_sem_annotation)
 
-                handler.locations.append([obj, out_misplaced[1]])
+                handler.locations.append([obj_sem_annotation, out_misplaced[1]])
         handler.perceived_objects_changed = new_objects > 0
         perf_print(f"new objects processed: {new_objects}")
         with perf_step("print perceived objects"):
@@ -140,7 +146,7 @@ def update_perceived_objects(handler : EventDispatcher, data : list[Body], world
 
 
 
-# def update_reachable_objects(handler : EventDispatcher, data : list[Body], world : World):
+# def update_reachable_objects(handler : EventDispatcher, data : list[SemanticAnnotation], world : World):
 #     robot = world.get_body_by_name("base_footprint")
 #     print("I can reach following objects:")
 #     for obj in data:
@@ -149,7 +155,7 @@ def update_perceived_objects(handler : EventDispatcher, data : list[Body], world
 #                 handler.reachable_objects.append(obj)
 #                 print(f" - {obj.name}")
 
-def trigger_task(handler: EventDispatcher, data : list[Body], world : World):
+def trigger_task(handler: EventDispatcher, data : list[SemanticAnnotation], world : World):
     with perf_step("trigger_task"):
         # trigger set the table
         ts = tm()
@@ -216,7 +222,7 @@ def trigger_task(handler: EventDispatcher, data : list[Body], world : World):
                             perf_print(f"skip update task {task.name}: perceived objects unchanged")
                 if not exists:
                     with perf_step(f"create task: {task_name}"):
-                        handler.activated_tasks.append(PutAwayObjectTask(task_name, required_objects=[obj.name], world=world, perceived_objects=handler.perceived_objects))
+                        handler.activated_tasks.append(PutAwayObjectTask(task_name, required_objects=[obj], world=world, perceived_objects=handler.perceived_objects))
 
         with perf_step(f"scan {len(handler.perceived_objects)} perceived objects for dishware"):
             perceived_dishware = []

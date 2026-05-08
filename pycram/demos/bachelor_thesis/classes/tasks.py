@@ -66,16 +66,16 @@ class Task(ABC):
         return self.calculate_current_score()/self.duration
 
     @abstractmethod
-    def update_to_current_world_state(self, world: World, perceived_objects : list[Body]):
+    def update_to_current_world_state(self, world: World, perceived_objects : list[SemanticAnnotation]):
         pass
 
 
 
 
 class PutAwayObjectTask(Task):
-    required_objects: list[PrefixedName]
+    required_objects: list[SemanticAnnotation]
 
-    def __init__(self, name : str, required_objects : list[PrefixedName], world: World, perceived_objects : list[Body]):
+    def __init__(self, name : str, required_objects : list[SemanticAnnotation], world: World, perceived_objects : list[SemanticAnnotation]):
         ## different for all instances of this task ##
         self.name = name
         self.required_objects = required_objects
@@ -92,10 +92,9 @@ class PutAwayObjectTask(Task):
         preconditions = []
         for obj in self.required_objects:
             found = False
-            for ob in self.perceived_objects:
-                if ob.name == obj:
-                    found = True
-                    preconditions.append(True)
+            if self.perceived_objects.__contains__(obj):
+                found = True
+                preconditions.append(True)
             if not found:
                 preconditions.append(False)
 
@@ -105,7 +104,7 @@ class PutAwayObjectTask(Task):
         constraints = []
 
         for obj in self.required_objects:
-            if reachable(self.world.get_semantic_annotation_by_name(obj)):
+            if reachable(obj):
                 constraints.append(True)
             else:
                 constraints.append(False)
@@ -149,7 +148,7 @@ class PutAwayObjectTask(Task):
 
         return weight_sum/weight_max
 
-    def update_to_current_world_state(self, world: World, perceived_objects : list[Body]):
+    def update_to_current_world_state(self, world: World, perceived_objects : list[SemanticAnnotation]):
         self.world = world
         self.perceived_objects = perceived_objects
 
@@ -167,7 +166,7 @@ class SetTableTask(Task):
         name: str,
         table: Table,
         world: World,
-        perceived_objects: list[Body],
+        perceived_objects: list[SemanticAnnotation],
         surface_cache: dict | None = None,
     ):
         with perf_step(f"{name}.__init__"):
@@ -193,17 +192,12 @@ class SetTableTask(Task):
         preconditions = []
         required_instances = []
 
-        perceived_objects_as_annotations = []
-
-        with perf_step(f"{self.name}.precondition convert {len(self.perceived_objects)} perceived objects"):
-            for obj in self.perceived_objects:
-                perceived_objects_as_annotations.append(self.world.get_semantic_annotation_by_name(obj.name))
         # TODO: check if empty works
         with perf_step(f"{self.name}.precondition table empty check"):
             preconditions.append(
                 is_empty(
                     self.table,
-                    perceived_objects_as_annotations,
+                    self.perceived_objects,
                     self.world,
                     self.surface_cache,
                 )
@@ -213,8 +207,7 @@ class SetTableTask(Task):
             for obj in self.required_objects:
                 found = False
                 for ob in self.perceived_objects:
-                    obi = self.world.get_semantic_annotation_by_name(ob.name)
-                    if isinstance(obi, obj):
+                    if isinstance(ob, obj):
                         found = True
                         preconditions.append(True)
                         required_instances.append(ob)
@@ -232,7 +225,7 @@ class SetTableTask(Task):
             for obj in required_objects:
                 if obj is None:
                     constraints.append(False)
-                elif reachable(self.world.get_semantic_annotation_by_name(obj.name)):
+                elif reachable(obj):
                     constraints.append(True)
                 else:
                     constraints.append(False)
@@ -280,7 +273,7 @@ class SetTableTask(Task):
     def update_to_current_world_state(
         self,
         world: World,
-        perceived_objects: list[Body],
+        perceived_objects: list[SemanticAnnotation],
         surface_cache: dict | None = None,
     ):
         with perf_step(f"{self.name}.update_to_current_world_state"):
@@ -292,7 +285,7 @@ class SetTableTask(Task):
             self.required_instances = out[1]
 
 class CleanTableTask(Task):
-    required_objects: list[Body]
+    required_objects: list[SemanticAnnotation]
     table: Table
 
     def __init__(
@@ -300,7 +293,7 @@ class CleanTableTask(Task):
         name: str,
         table: Table,
         world: World,
-        perceived_objects: list[Body],
+        perceived_objects: list[SemanticAnnotation],
         surface_cache: dict | None = None,
     ):
         ## different for all instances of this task ##
@@ -316,17 +309,16 @@ class CleanTableTask(Task):
         ## set for all instances of this task ##
         objects_on_table = semantic_annotations_on_surface_cached(table, world, self.surface_cache)
         for obj in objects_on_table:
-            if self.perceived_objects.__contains__(world.get_body_by_name(obj.name)):
-                self.required_objects.append(world.get_body_by_name(obj.name))
+            if self.perceived_objects.__contains__(obj):
+                self.required_objects.append(obj)
 
         cutlery = []
         plates = []
         for obj in self.required_objects:
-            obi = world.get_semantic_annotation_by_name(obj.name)
-            if isinstance(obi, Cuttlery):
-                cutlery.append(obi)
-            if isinstance(obi, Plate):
-                plates.append(obi)
+            if isinstance(obj, Cuttlery):
+                cutlery.append(obj)
+            if isinstance(obj, Plate):
+                plates.append(obj)
         self.reward = 200 * len(self.required_objects) + len(cutlery) * 50 + len(plates) * 100 + 15  # 50 for each thing of cutlery and 100 for plate
         self.duration = 30 * len(self.required_objects)
 
@@ -343,7 +335,7 @@ class CleanTableTask(Task):
         for obj in self.required_objects:
             if obj is None:
                 constraints.append(False)
-            elif reachable(self.world.get_semantic_annotation_by_name(obj.name)):
+            elif reachable(obj):
                 constraints.append(True)
             else:
                 constraints.append(False)
@@ -389,7 +381,7 @@ class CleanTableTask(Task):
     def update_to_current_world_state(
         self,
         world: World,
-        perceived_objects: list[Body],
+        perceived_objects: list[SemanticAnnotation],
         surface_cache: dict | None = None,
     ):
         self.world = world
@@ -400,36 +392,35 @@ class CleanTableTask(Task):
         ## set for all instances of this task ##
         objects_on_table = semantic_annotations_on_surface_cached(self.table, world, self.surface_cache)
         for obj in objects_on_table:
-            if self.perceived_objects.__contains__(world.get_body_by_name(obj.name)):
-                if not self.required_objects.__contains__(world.get_body_by_name(obj.name)):
-                    self.required_objects.append(world.get_body_by_name(obj.name))
+            if self.perceived_objects.__contains__(obj):
+                if not self.required_objects.__contains__(obj):
+                    self.required_objects.append(obj)
 
         cutlery = []
         plates = []
         for obj in self.required_objects:
-            obi = world.get_semantic_annotation_by_name(obj.name)
-            if isinstance(obi, Cuttlery):
-                cutlery.append(obi)
-            if isinstance(obi, Plate):
-                plates.append(obi)
+            if isinstance(obj, Cuttlery):
+                cutlery.append(obj)
+            if isinstance(obj, Plate):
+                plates.append(obj)
         self.reward = 200 * len(self.required_objects) + len(cutlery) * 50 + len(
             plates) * 100 + 15  # 50 for each thing of cutlery and 100 for plate
         self.duration = 30 * len(self.required_objects)
 
 
 class LoadDishwasherTask(Task):
-    required_objects: list[Body]
+    required_objects: list[SemanticAnnotation]
     world : World
     # TODO: continue
 
     def __init__(
         self,
         name: str,
-        perceived_objects: list[Body],
+        perceived_objects: list[SemanticAnnotation],
         world: World,
         surface_cache: dict | None = None,
         support_cache: dict | None = None,
-        required_objects: list[Body] | None = None,
+        required_objects: list[SemanticAnnotation] | None = None,
     ):
         self.name = name
         self.perceived_objects = perceived_objects
@@ -439,10 +430,6 @@ class LoadDishwasherTask(Task):
         self.support_cache = support_cache
 
         if required_objects is None:
-            perceived_sem_annotations = []
-
-            for obj in self.perceived_objects:
-                perceived_sem_annotations.append(world.get_semantic_annotation_by_name(obj.name))
 
             objects_on_counter = semantic_annotations_on_surface_cached(
                 world.get_semantic_annotation_by_name("counterTop"),
@@ -451,8 +438,8 @@ class LoadDishwasherTask(Task):
             )
 
             for obj in objects_on_counter:
-                if perceived_sem_annotations.__contains__(obj) and isinstance(obj, (Cuttlery, Plate, Cup, Bowl)):
-                    self.required_objects.append(world.get_body_by_name(obj.name))
+                if self.perceived_objects.__contains__(obj) and isinstance(obj, (Cuttlery, Plate, Cup, Bowl)):
+                    self.required_objects.append(obj)
 
         self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 160 + 100 + 200
         self.duration = 30 * len(self.required_objects) + 60 # extra time for opening/closing dishwasher
@@ -463,14 +450,10 @@ class LoadDishwasherTask(Task):
         # because required objects are the perceived objects
         preconditions = []
 
-        perceived_sem_annotations = []
-        for obj in self.perceived_objects:
-            perceived_sem_annotations.append(self.world.get_semantic_annotation_by_name(obj.name))
-
         # Dishwasher rack has to be empty with respect to already perceived objects.
         dishwasher_rack = self.world.get_semantic_annotation_by_name("dishwasher_rack")
         dishwasher_rack_empty = True
-        for annotation in perceived_sem_annotations:
+        for annotation in self.perceived_objects:
             if is_supported_by_surface_cached(
                 annotation,
                 dishwasher_rack,
@@ -487,7 +470,7 @@ class LoadDishwasherTask(Task):
     def constraints(self):
         constraints = []
         for obj in self.required_objects:
-            if reachable(self.world.get_semantic_annotation_by_name(obj.name)):
+            if reachable(obj):
                 constraints.append(True)
             else:
                 constraints.append(False)
@@ -504,9 +487,10 @@ class LoadDishwasherTask(Task):
         weight: 0.5 for object constraints
         """
         weight = []
-        weight.append(float(3))
 
         for i in range(len(self.precondition())):
+            if i == 0:
+                weight.append(float(3))
             weight.append(float(1))
         for j in range(len(self.constraints())):
             weight.append(float(0.5))
@@ -514,6 +498,10 @@ class LoadDishwasherTask(Task):
         all_elem = []
         all_elem.extend(self.precondition())
         all_elem.extend(self.constraints())
+        print("weight:", weight)
+        print("precondition:", self.precondition())
+        print("constraints:", self.constraints())
+        print("all_elem:", all_elem)
 
         weight_max = 0
         weight_sum = 0
@@ -537,10 +525,10 @@ class LoadDishwasherTask(Task):
     def update_to_current_world_state(
         self,
         world: World,
-        perceived_objects: list[Body],
+        perceived_objects: list[SemanticAnnotation],
         surface_cache: dict | None = None,
         support_cache: dict | None = None,
-        required_objects: list[Body] | None = None,
+        required_objects: list[SemanticAnnotation] | None = None,
     ):
         self.perceived_objects = perceived_objects
         self.required_objects = []
@@ -554,11 +542,6 @@ class LoadDishwasherTask(Task):
             self.duration = 30 * len(self.required_objects) + 60 # extra time for opening/closing dishwasher
             return
 
-        perceived_sem_annotations = []
-
-        for obj in self.perceived_objects:
-            perceived_sem_annotations.append(world.get_semantic_annotation_by_name(obj.name))
-
         objects_on_counter = semantic_annotations_on_surface_cached(
             world.get_semantic_annotation_by_name("counterTop"),
             world,
@@ -567,8 +550,8 @@ class LoadDishwasherTask(Task):
         self.required_objects = []
 
         for obj in objects_on_counter:
-            if perceived_sem_annotations.__contains__(obj) and isinstance(obj, (Cuttlery, Plate, Cup, Bowl)):
-                self.required_objects.append(world.get_body_by_name(obj.name))
+            if self.perceived_objects.__contains__(obj) and isinstance(obj, (Cuttlery, Plate, Cup, Bowl)):
+                self.required_objects.append(obj)
 
         self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 160 + 100 + 200
         self.duration = 30 * len(self.required_objects) + 60 # extra time for opening/closing dishwasher
@@ -577,7 +560,7 @@ class LoadDishwasherTask(Task):
 
 
 class UnloadDishwasherTask(Task):
-    required_objects: list[Body]
+    required_objects: list[SemanticAnnotation]
     world : World
 
     # TODO: continue
@@ -585,10 +568,10 @@ class UnloadDishwasherTask(Task):
     def __init__(
         self,
         name: str,
-        perceived_objects: list[Body],
+        perceived_objects: list[SemanticAnnotation],
         world: World,
         surface_cache: dict | None = None,
-        required_objects: list[Body] | None = None,
+        required_objects: list[SemanticAnnotation] | None = None,
     ):
         self.name = name
         self.perceived_objects = perceived_objects
@@ -604,7 +587,7 @@ class UnloadDishwasherTask(Task):
             )
 
             for obj in objects_in_dishwasher:
-                self.required_objects.append(world.get_body_by_name(obj.name))
+                self.required_objects.append(obj)
 
         self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 200
         self.duration = 30 * len(self.required_objects) + 60 # extra time for opening/closing dishwasher
@@ -621,7 +604,7 @@ class UnloadDishwasherTask(Task):
     def constraints(self):
         constraints = []
         for obj in self.required_objects:
-            if reachable(self.world.get_semantic_annotation_by_name(obj.name)):
+            if reachable(obj):
                 constraints.append(True)
             else:
                 constraints.append(False)
@@ -668,9 +651,9 @@ class UnloadDishwasherTask(Task):
     def update_to_current_world_state(
         self,
         world: World,
-        perceived_objects: list[Body],
+        perceived_objects: list[SemanticAnnotation],
         surface_cache: dict | None = None,
-        required_objects: list[Body] | None = None,
+        required_objects: list[SemanticAnnotation] | None = None,
     ):
         self.perceived_objects = perceived_objects
         self.required_objects = []
@@ -691,7 +674,7 @@ class UnloadDishwasherTask(Task):
         self.required_objects = []
 
         for obj in objects_on_counter:
-            self.required_objects.append(world.get_body_by_name(obj.name))
+            self.required_objects.append(obj)
 
         self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 200
         self.duration = 30 * len(self.required_objects) + 60 # extra time for opening/closing dishwasher

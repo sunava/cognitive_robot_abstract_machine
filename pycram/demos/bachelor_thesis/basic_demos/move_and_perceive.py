@@ -57,6 +57,7 @@ with perf_step("store known furniture"):
     dispatcher.known_furniture = world.bodies
 
 
+
 bowl = timed_parse_stl("bowl", "bowl.stl")
 
 spoon = timed_parse_stl("spoon", "spoon.stl")

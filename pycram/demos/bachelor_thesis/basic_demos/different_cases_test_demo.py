@@ -26,7 +26,6 @@ from demos.bachelor_thesis.hsrb_setup_world import hsrb_setup_world
 #------------------ standard setup -------------------------------------------------------------------------------------
 world, dispatcher = hsrb_setup_world()
 
-dispatcher.known_furniture = world.bodies
 
 
 bowl = STLParser(

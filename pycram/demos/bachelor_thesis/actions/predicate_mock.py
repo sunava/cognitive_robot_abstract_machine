@@ -73,9 +73,8 @@ def is_supported_by_surface_cached(
     return result
 
 
-# TODO: Work in progress - How do I get from body to Semantic annotation
 def misplaced(
-    obj: Body,
+    obj: SemanticAnnotation,
     world: World,
     surface_cache: dict | None = None,
     support_cache: dict | None = None,
@@ -84,13 +83,10 @@ def misplaced(
     returns true if object is misplaced and false if it is already at the correct location
     """
 
-    with perf_step(f"misplaced get semantic annotation: {obj.name}"):
-        sem_annotation = world.get_semantic_annotation_by_name(obj.name)
-
     with perf_step(f"misplaced determine correct location: {obj.name}"):
-        if isinstance(sem_annotation, (Food, Bottle)):
+        if isinstance(obj, (Food, Bottle)):
             correct_location = world.get_semantic_annotations_by_name("cooking_table")[0]
-        elif isinstance(sem_annotation, (Cuttlery, Plate, Bowl, Cup)):
+        elif isinstance(obj, (Cuttlery, Plate, Bowl, Cup)):
             correct_location = world.get_semantic_annotations_by_name("counterTop")[0]
         else:
             correct_location = world.get_semantic_annotations_by_name("table")[0]
@@ -99,7 +95,7 @@ def misplaced(
     if isinstance(correct_location, (CounterTop, Table, ShelfLayer)):
         with perf_step(f"misplaced direct support check: {obj.name} on {correct_location.name}"):
             is_on_correct_location = is_supported_by_surface_cached(
-                sem_annotation,
+                obj,
                 correct_location,
                 support_cache,
             )

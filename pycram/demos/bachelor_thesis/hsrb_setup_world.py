@@ -6,6 +6,7 @@ import rclpy
 
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.adapters.urdf import URDFParser
+from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Milk,
 )
@@ -59,6 +60,7 @@ def hsrb_setup_world() -> Tuple[World, EventDispatcher]:
     ).parse()
 
     apartment_world = KitchenEnvironment().get_world()
+
 
     # milk_world = STLParser(
     #     os.path.join(
