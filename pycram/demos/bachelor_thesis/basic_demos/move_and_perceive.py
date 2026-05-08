@@ -17,6 +17,7 @@ from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
+from semantic_digital_twin.world_description.geometry import Color
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Spoon, Bottle, Cup, ShelfLayer, \
     CounterTop
 from semantic_digital_twin.spatial_types import Point3, Quaternion
@@ -106,6 +107,9 @@ with perf_step("modify world: place objects and supporting surfaces"):
                     Cup(root=world.get_body_by_name("jeroen_cup.stl"), name=PrefixedName("jeroen_cup.stl")),
                 ]
             )
+            # TODO: not many object stls so stuff like banana: yellow spoon, carrot: orange spoon, ...
+            for color in bowl.bodies[0].visual.shapes:
+                color.color = Color.RED()
         # world.add_semantic_annotations(
         #     [
         #         ShelfLayer(root=world.get_body_by_name("shelf_1"), name=PrefixedName("shelf_1")),
