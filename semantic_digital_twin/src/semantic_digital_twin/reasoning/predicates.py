@@ -253,6 +253,8 @@ def is_supported_by(
     If the intersection is higher than this value, the check returns False due to unhandled clipping.
     :return: True if the second object is supported by the first object, False otherwise
     """
+    if supported_body.id == supporting_body.id:
+        return False
     if Below(
         supported_body.center_of_mass,
         supporting_body.center_of_mass,
