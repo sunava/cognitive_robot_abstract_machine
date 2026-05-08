@@ -498,10 +498,6 @@ class LoadDishwasherTask(Task):
         all_elem = []
         all_elem.extend(self.precondition())
         all_elem.extend(self.constraints())
-        print("weight:", weight)
-        print("precondition:", self.precondition())
-        print("constraints:", self.constraints())
-        print("all_elem:", all_elem)
 
         weight_max = 0
         weight_sum = 0
