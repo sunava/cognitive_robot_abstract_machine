@@ -459,6 +459,7 @@ class CameraVisiblePointsRviz:
         ray_alpha=0.2,
         origin_scale=0.03,
         republish_hz=2.0,
+        clear_existing=False,
     ):
         """
         Publish visible raytracer hit points from a camera pose as an RViz POINTS marker.
@@ -487,6 +488,7 @@ class CameraVisiblePointsRviz:
         self.ray_stride = max(int(ray_stride), 1)
         self.ray_alpha = float(ray_alpha)
         self.origin_scale = float(origin_scale)
+        self.clear_existing = bool(clear_existing)
         self.pub = self.node.create_publisher(MarkerArray, self.topic, 10)
         self.ray_tracer = RayTracer(world)
 
@@ -541,6 +543,11 @@ class CameraVisiblePointsRviz:
         now = self.node.get_clock().now().to_msg()
         points_np, colors, hit_origins = self._visible_points_and_colors()
         arr = MarkerArray()
+
+        if self.clear_existing:
+            clear_marker = Marker()
+            clear_marker.action = Marker.DELETEALL
+            arr.markers.append(clear_marker)
 
         points_marker = Marker()
         points_marker.header.frame_id = self.frame_id
