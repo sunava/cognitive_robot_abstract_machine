@@ -832,18 +832,38 @@ def translate_free_space_to_where_condition(
     return chained_logic(OR, *simple_event_conditions)
 
 
-def create_virtual_body_at_z_position_with_only_yaw_from_body(
-    body: Body, z_P_body: float = 0.0
-) -> Body:
+def create_reference_frame_with_only_yaw_from_body(body: Body) -> Body:
     """
-    Create a new body in the world as a child of `body.parent` that is at the same x,y but different `z` position.
-    This new body is like a keypoint that ignores the roll and pitch but keeps the yaw.
+    Create a reference frame (new body without visual and collision) in the world.
+    This reference frame is a body that ignores the roll and pitch but keeps the yaw and position.
 
-    :param body: The body to create the virtual body from.
-    :param z_P_body: The z position of the virtual body, w. r. t. the body.
-    :return: The newly created virtual body.
+    :param body: The body to create the reference frame from.
+    :return: The newly created reference frame.
     """
-    parent = body.parent_connection.parent
-    if parent is None:
-        raise ValueError("The body to create the virtual body from must have a parent.")
-    new_body = Body(name=PrefixedName(prefix=str(body.name), name="base_with_yaw"))
+
+    world = body._world
+    reference_frame = Body(
+        name=PrefixedName(prefix=str(body.name), name="base_with_yaw")
+    )
+
+    body_T_world = world.transform(body.global_pose, world.root)
+    reference_frame_T_world = HomogeneousTransformationMatrix.from_xyz_rpy(
+        x=body_T_world.x,
+        y=body_T_world.y,
+        z=body_T_world.z,
+        roll=0.0,
+        pitch=0.0,
+        yaw=body_T_world.yaw,
+        reference_frame=world.root,
+    )
+
+    with world.modify_world():
+        world.add_body(reference_frame)
+        reference_frame_C_world = FixedConnection(
+            world.root,
+            child=reference_frame,
+            parent_T_connection_expression=reference_frame_T_world,
+        )
+        world.add_connection(reference_frame_C_world)
+
+    return reference_frame
