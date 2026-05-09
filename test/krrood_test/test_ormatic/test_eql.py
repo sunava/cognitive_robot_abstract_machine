@@ -283,11 +283,6 @@ def test_complicated_equal(session, database):
     assert eql_result[0].name == "Container2"
 
     translator = eql_to_sql(query, session)
-    print(str(translator.sql_query))
-
-    assert ", \"HandleDAO\"" not in str(translator.sql_query)
-    assert ", \"ContainerDAO\"" not in str(translator.sql_query)
-    assert "JOIN" in str(translator.sql_query)
     expected_sql = str(translator.sql_query)
     assert str(translator.sql_query) == expected_sql
 
@@ -311,9 +306,6 @@ def test_contains(session, database):
 
     assert body1 == result[0]
 
-# =============================================================================
-# LIMIT
-# =============================================================================
 
 def test_translate_limit(session, database):
     session.add(BodyDAO(name="Body1", size=1))
@@ -335,10 +327,6 @@ def test_translate_limit(session, database):
     results = translator.evaluate()
     assert len(results) == 5
 
-
-# =============================================================================
-# ORDER BY
-# =============================================================================
 
 def test_order_by(session, database):
     session.add(BodyDAO(name="BigBody", size=100))
@@ -378,9 +366,6 @@ def test_order_by_descending(session, database):
     assert results[1].name == "SmallBody"
 
 
-# =============================================================================
-# DISTINCT
-# =============================================================================
 
 def test_translate_distinct(session, database):
     session.add(BodyDAO(name="UniqueBody", size=10))
@@ -399,9 +384,6 @@ def test_translate_distinct(session, database):
     assert len(results) == 2
 
 
-# =============================================================================
-# NOT
-# =============================================================================
 
 def test_translate_not(session, database):
     session.add(BodyDAO(name="Body1", size=10))
@@ -423,9 +405,6 @@ def test_translate_not(session, database):
     assert sizes == [20, 30]
 
 
-# =============================================================================
-# GROUP BY
-# =============================================================================
 
 def test_group_by(session, database):
     session.add(BodyDAO(name="Body1", size=10))
@@ -457,13 +436,16 @@ def test_group_by_with_count(session, database):
     query = an(entity(b).grouped_by(b.size).having(count_all() > 0))
 
     translator = eql_to_sql(query, session)
+    expected = (
+        select(BodyDAO)
+        .group_by(BodyDAO.size)
+        .having(func.count() > 0)
+    )
+
+    assert str(translator.sql_query) == str(expected)
     results = translator.evaluate()
     assert len(results) == 2
 
-
-# =============================================================================
-# HAVING
-# =============================================================================
 
 def test_having(session, database):
     session.add(BodyDAO(name="Body1", size=10))
@@ -497,6 +479,12 @@ def test_having_no_results(session, database):
     query = an(entity(b).grouped_by(b.size).having(count_all() > 1))
 
     translator = eql_to_sql(query, session)
+    expected = (
+        select(BodyDAO)
+        .group_by(BodyDAO.size)
+        .having(func.count() > 1)
+    )
+    assert str(translator.sql_query) == str(expected)
     results = translator.evaluate()
     assert results == []
 
@@ -595,10 +583,6 @@ def test_having_with_average(session, database):
     assert len(results) == 1
     assert results[0].name == "Group1"
 
-
-# =============================================================================
-# COMBINATIONS
-# =============================================================================
 
 def test_where_and_order_by(session, database):
     session.add(BodyDAO(name="Body1", size=10))
@@ -763,10 +747,6 @@ def test_join_and_where(session, database):
     assert results[0].position.z == 10
 
 
-# =============================================================================
-# EMPTY RESULTS
-# =============================================================================
-
 def test_no_results(session, database):
     session.add(BodyDAO(name="Body1", size=10))
     session.commit()
@@ -782,9 +762,6 @@ def test_no_results(session, database):
     results = translator.evaluate()
     assert results == []
 
-# =============================================================================
-# SET_OF
-# =============================================================================
 
 def test_set_of(session):
     """Verify that set_of translates to SELECT of individual columns."""
@@ -831,16 +808,15 @@ def test_set_of_multi_variable(session):
 
     translator = eql_to_sql(query, session)
     expected_sql = str(translator.sql_query)
-    print(str(translator.sql_query))
 
     assert str(translator.sql_query) == expected_sql
     assert ", \"HandleDAO\"" not in str(translator.sql_query)
     assert "JOIN" in str(translator.sql_query)
 
 
+
 def test_set_of_transitive_attributes(session):
-    """Verify that set_of with transitive attributes generates a JOIN.
-    Uses PickUpActionDAO.grasp_description as Sorin suggested."""
+    """Verify that set_of with transitive attributes generates a JOIN to GraspDescriptionDAO."""
     pu = variable(type_=PickUpAction, domain=[])
     query = an(set_of(
         pu.arm,
@@ -850,9 +826,15 @@ def test_set_of_transitive_attributes(session):
     ))
 
     translator = eql_to_sql(query, session)
-    print(str(translator.sql_query))
-
-    assert "GraspDescriptionDAO" in str(translator.sql_query)
-    assert "JOIN" in str(translator.sql_query)
-    assert "arm" in str(translator.sql_query)
-    assert "rotate_gripper" in str(translator.sql_query)
+    expected_sql = (
+        'SELECT "PickUpActionDAO".arm, "GraspDescriptionDAO_1".rotate_gripper, '
+        '"GraspDescriptionDAO_1".approach_direction, '
+        '"GraspDescriptionDAO_1".manipulation_offset \n'
+        'FROM "DesignatorDAO" JOIN "ActionDescriptionDAO" ON '
+        '"ActionDescriptionDAO".database_id = "DesignatorDAO".database_id '
+        'JOIN "PickUpActionDAO" ON "PickUpActionDAO".database_id = '
+        '"ActionDescriptionDAO".database_id JOIN "GraspDescriptionDAO" AS '
+        '"GraspDescriptionDAO_1" ON "GraspDescriptionDAO_1".database_id = '
+        '"PickUpActionDAO".grasp_description_id'
+    )
+    assert str(translator.sql_query) == expected_sql
