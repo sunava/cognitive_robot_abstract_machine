@@ -1,5 +1,6 @@
 # source for base: https://medium.com/@idelossantosruiz/events-in-python-e2b3cb76ac2d
 import os
+from enum import Enum
 from typing import Tuple, Any
 from contextlib import contextmanager
 
@@ -10,6 +11,7 @@ from demos.bachelor_thesis.classes.tasks import SetTableTask, CleanTableTask, Pu
 from semantic_digital_twin.reasoning.queries import semantic_annotations_on_surfaces
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from semantic_digital_twin.robots.pr2 import PR2
+from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Cuttlery, Plate, Cup
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world import World
@@ -44,6 +46,8 @@ class EventDispatcher:
         self.correct_location_food = None
         self.correct_location_drinks = None
         self.correct_location_all_other_items = None
+
+        self.dining_table = None
 
         ##### replaces direct use of predicate functions for faster runtime ############################################
         self.perceived_objects = []
@@ -114,6 +118,23 @@ class EventDispatcher:
 
 # Usage example
 def update_perceived_objects(handler : EventDispatcher, data : list[SemanticAnnotation], world : World):
+    with perf_step(f"check if correct location for object types are set and of type HasSupportingSurface"):
+        is_none = []
+        if (handler.correct_location_drinks is None) or not isinstance(handler.correct_location_drinks, HasSupportingSurface):
+            is_none.append("handler.correct_location_drinks")
+        if (handler.correct_location_food is None)  or not isinstance(handler.correct_location_food, HasSupportingSurface):
+            is_none.append("handler.correct_location_food")
+        if (handler.correct_location_tableware is None)  or not isinstance(handler.correct_location_tableware, HasSupportingSurface):
+            is_none.append("handler.correct_location_food")
+        if (handler.correct_location_all_other_items is None)  or not isinstance(handler.correct_location_all_other_items, HasSupportingSurface):
+            is_none.append("handler.correct_location_all_other_items")
+        if (handler.dining_table is None) or not isinstance(handler.dining_table, HasSupportingSurface):
+            is_none.append("handler.dining_table")
+
+        if is_none:
+            Exception(f"{is_none} is not set or is not a supporting surface.")
+
+
     with perf_step("update_perceived_objects"):
         print("#"*110 + "\n" + "#"*110)
         print(f"NEW UPDATE No. {handler.trigger_nr}\n \n")
@@ -131,6 +152,10 @@ def update_perceived_objects(handler : EventDispatcher, data : list[SemanticAnno
                     out_misplaced = misplaced(
                         obj_sem_annotation,
                         world,
+                        handler.correct_location_tableware,
+                        handler.correct_location_food,
+                        handler.correct_location_drinks,
+                        handler.correct_location_all_other_items,
                         handler.surface_annotation_cache,
                         handler.support_relation_cache,
                     )
@@ -169,7 +194,7 @@ def trigger_task(handler: EventDispatcher, data : list[SemanticAnnotation], worl
         time = datetime.datetime(year=2026, month=5, day=6, hour=9, minute=10) # for testing
         with perf_step("trigger set table task"):
             if (time.hour == 9 or time.hour == 13 or time.hour == 19) and not human_near():
-                table_name = "table"
+                table_name = handler.dining_table.name.name
                 exists = False
                 for task in handler.activated_tasks:
                     if task.name == ("set_table_task_" + table_name):
@@ -188,7 +213,7 @@ def trigger_task(handler: EventDispatcher, data : list[SemanticAnnotation], worl
                         handler.activated_tasks.append(
                             SetTableTask(
                                 "set_table_task_"+table_name,
-                                table=world.get_semantic_annotation_by_name("table"),
+                                handler.dining_table,
                                 world=world,
                                 perceived_objects=handler.perceived_objects,
                                 surface_cache=handler.surface_annotation_cache,
@@ -272,6 +297,7 @@ def trigger_task(handler: EventDispatcher, data : list[SemanticAnnotation], worl
                             LoadDishwasherTask(
                                 load_dishwasher_task,
                                 handler.perceived_objects,
+                                handler.correct_location_tableware,
                                 world,
                                 surface_cache=handler.surface_annotation_cache,
                                 support_cache=handler.support_relation_cache,

@@ -8,7 +8,7 @@ from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
-    Milk,
+    Milk, CounterTop,
 )
 from semantic_digital_twin.spatial_types.spatial_types import (
     HomogeneousTransformationMatrix,
@@ -19,8 +19,8 @@ from semantic_digital_twin.world_description.connections import OmniDrive
 from semantic_digital_twin.predetermined_maps.kitchen_environment import KitchenEnvironment
 
 from demos.bachelor_thesis.events.event_handler import EventDispatcher, update_perceived_objects
-
-
+from demos.bachelor_thesis.classes.HelperClasses import Environment
+from semantic_digital_twin.world_description.world_entity import Body
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +34,7 @@ except ImportError:
     )
 
 ## apartment lab #######################################################################################################
-rclpy.init()
-node = rclpy.create_node("kitchen_environment")
-publisher = VizMarkerPublisher(_world=KitchenEnvironment().get_world(), node=node)
-publisher.with_tf_publisher()
+
 
 
 ########################################################################################################################
@@ -46,7 +43,7 @@ publisher.with_tf_publisher()
 
 
 
-def hsrb_setup_world() -> Tuple[World, EventDispatcher]:
+def hsrb_setup_world(environment: Environment) -> Tuple[World, EventDispatcher]:
     """
     return
     world : the world
@@ -59,8 +56,29 @@ def hsrb_setup_world() -> Tuple[World, EventDispatcher]:
         "package://hsr_description/robots/hsrb4s.urdf.xacro"
     ).parse()
 
-    apartment_world = KitchenEnvironment().get_world()
+    if environment == Environment.SuturoApartmentLab:
 
+        rclpy.init()
+        node = rclpy.create_node("kitchen_environment")
+        publisher = VizMarkerPublisher(_world=KitchenEnvironment().get_world(), node=node)
+        publisher.with_tf_publisher()
+
+        apartment_world = KitchenEnvironment().get_world()
+    elif environment == Environment.Pr2ApartmentLab:
+        root = Body(name=PrefixedName("map"))
+        apartment_world = apartment_world = URDFParser.from_file(
+            os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "..",
+                "resources",
+                "worlds",
+                "apartment.urdf",
+            )
+        ).parse()
+
+    else:
+        apartment_world = KitchenEnvironment().get_world()
 
     # milk_world = STLParser(
     #     os.path.join(

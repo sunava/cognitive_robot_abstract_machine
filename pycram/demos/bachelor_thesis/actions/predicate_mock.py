@@ -15,7 +15,7 @@ from krrood.symbolic_math.symbolic_math import Scalar
 from semantic_digital_twin.reasoning.queries import semantic_annotations_on_surfaces
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Food, Fruit, Cuttlery, Plate, Cup, Bowl, \
-    Bottle, CounterTop, Table, ShelfLayer
+    Bottle, CounterTop, Table, ShelfLayer, DrinkingContainer
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world import World
 from semantic_digital_twin.reasoning.predicates import is_supported_by
@@ -76,6 +76,10 @@ def is_supported_by_surface_cached(
 def misplaced(
     obj: SemanticAnnotation,
     world: World,
+    correct_location_tableware: SemanticAnnotation,
+    correct_location_food: SemanticAnnotation,
+    correct_location_drinks: SemanticAnnotation,
+    correct_location_all_other_items: SemanticAnnotation,
     surface_cache: dict | None = None,
     support_cache: dict | None = None,
 ):
@@ -84,12 +88,14 @@ def misplaced(
     """
 
     with perf_step(f"misplaced determine correct location: {obj.name}"):
-        if isinstance(obj, (Food, Bottle)):
-            correct_location = world.get_semantic_annotations_by_name("cooking_table")[0]
+        if isinstance(obj, Food):
+            correct_location = correct_location_food
+        elif isinstance(obj, Bottle):
+            correct_location = correct_location_drinks
         elif isinstance(obj, (Cuttlery, Plate, Bowl, Cup)):
-            correct_location = world.get_semantic_annotations_by_name("counterTop")[0]
+            correct_location = correct_location_tableware
         else:
-            correct_location = world.get_semantic_annotations_by_name("table")[0]
+            correct_location = correct_location_all_other_items
 
 
     if isinstance(correct_location, (CounterTop, Table, ShelfLayer)):

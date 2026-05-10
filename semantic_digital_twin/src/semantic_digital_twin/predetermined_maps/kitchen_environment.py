@@ -52,7 +52,7 @@ class KitchenEnvironment:
         :return: A new world instance with the initialized environment.
         """
         world = World()
-        root = Body(name=PrefixedName("map")) # instead of root, so it will show in rviz together with SLAM map
+        root = Body(name=PrefixedName("root")) # before:map # instead of root, so it will show in rviz together with SLAM map
         with world.modify_world():
             world.add_body(root)
 

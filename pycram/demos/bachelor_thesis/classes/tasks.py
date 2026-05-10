@@ -13,7 +13,9 @@ from demos.bachelor_thesis.actions.predicate_mock import (
     is_supported_by_surface_cached,
 )
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
+from semantic_digital_twin.exceptions import SemanticAnnotationNotInWorldError
 from semantic_digital_twin.reasoning.queries import semantic_annotations_on_surfaces
+from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Plate, Spoon, Knife, Cup, Milk, \
     Banana, Bread, Cuttlery, Table
 from semantic_digital_twin.world import World
@@ -417,11 +419,13 @@ class LoadDishwasherTask(Task):
         self,
         name: str,
         perceived_objects: list[SemanticAnnotation],
+        location_dishes: HasSupportingSurface,
         world: World,
         surface_cache: dict | None = None,
         support_cache: dict | None = None,
         required_objects: list[SemanticAnnotation] | None = None,
     ):
+        self.location_dishes = location_dishes      # where the dishes are that are supposed to be put away (e.g. kitchen counter)
         self.name = name
         self.perceived_objects = perceived_objects
         self.required_objects = [] if required_objects is None else list(required_objects)
@@ -432,7 +436,7 @@ class LoadDishwasherTask(Task):
         if required_objects is None:
 
             objects_on_counter = semantic_annotations_on_surface_cached(
-                world.get_semantic_annotation_by_name("counterTop"),
+                location_dishes,
                 world,
                 self.surface_cache,
             )
@@ -491,7 +495,8 @@ class LoadDishwasherTask(Task):
         for i in range(len(self.precondition())):
             if i == 0:
                 weight.append(float(3))
-            weight.append(float(1))
+            else:
+                weight.append(float(1))
         for j in range(len(self.constraints())):
             weight.append(float(0.5))
 
@@ -539,7 +544,7 @@ class LoadDishwasherTask(Task):
             return
 
         objects_on_counter = semantic_annotations_on_surface_cached(
-            world.get_semantic_annotation_by_name("counterTop"),
+            self.location_dishes,
             world,
             self.surface_cache,
         )
@@ -574,10 +579,20 @@ class UnloadDishwasherTask(Task):
         self.required_objects = [] if required_objects is None else list(required_objects)
         self.world = world
         self.surface_cache = surface_cache
+        self.dishwasher_rack = None
+
+        try:
+            self.dishwasher_rack = world.get_semantic_annotation_by_name("dishwasher_rack")
+            if not isinstance(self.dishwasher_rack, HasSupportingSurface):
+                Exception("dishwasher_rack needs to be of type HasSupportingSurface")
+        except SemanticAnnotationNotInWorldError:
+            Exception("no semantic annotation named dishwasher_rack")
+        finally:
+            Exception("no semantic annotation named dishwasher_rack, please add annotation")
 
         if required_objects is None:
             objects_in_dishwasher = semantic_annotations_on_surface_cached(
-                world.get_semantic_annotation_by_name("dishwasher_rack"),
+                self.dishwasher_rack,
                 world,
                 self.surface_cache,
             )
@@ -663,7 +678,7 @@ class UnloadDishwasherTask(Task):
             return
 
         objects_on_counter = semantic_annotations_on_surface_cached(
-            world.get_semantic_annotation_by_name("dishwasher_rack"),
+            self.dishwasher_rack,
             world,
             self.surface_cache,
         )

@@ -1,5 +1,6 @@
 import os
 from contextlib import contextmanager
+from enum import Enum
 
 from docutils.nodes import reference
 
@@ -19,12 +20,13 @@ from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
 from semantic_digital_twin.world_description.geometry import Color
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Spoon, Bottle, Cup, ShelfLayer, \
-    CounterTop
+    CounterTop, Table
 from semantic_digital_twin.spatial_types import Point3, Quaternion
 from semantic_digital_twin.spatial_types.spatial_types import Pose, HomogeneousTransformationMatrix
 from semantic_digital_twin.robots.hsrb import HSRB
 from pycram.datastructures.dataclasses import Context
 from demos.bachelor_thesis.hsrb_setup_world import hsrb_setup_world
+from demos.bachelor_thesis.classes.HelperClasses import Environment
 
 
 def perf_print(message: str):
@@ -50,19 +52,39 @@ def timed_plan(label: str, action):
         return execute_single(action, context).plan
 
 
+
+environment = Environment.SuturoApartmentLab
+
 #------------------ standard setup -------------------------------------------------------------------------------------
 with perf_step("hsrb_setup_world"):
-    world, dispatcher = hsrb_setup_world()
+    world, dispatcher = hsrb_setup_world(environment=environment)
 
 with perf_step("store known furniture"):
     dispatcher.known_furniture = world.bodies
 
+if environment == Environment.Pr2ApartmentLab:
+    for elem in world.bodies:
+        print(elem.name)
+    with world.modify_world():
+        world.add_semantic_annotations(
+            [
+                CounterTop(root=world.get_body_by_name("countertop"), name=PrefixedName("counter")),
+                Table(root=world.get_body_by_name("coffee_table"), name=PrefixedName("coffee_table")),
+            ]
+        )
+
 
 #-----------------------------------------------------------------------------------------------------------------------
-dispatcher.correct_location_tableware = world.get_semantic_annotation_by_name("counterTop")
-dispatcher.correct_location_food = world.get_semantic_annotation_by_name("table")
-dispatcher.correct_location_drinks = world.get_semantic_annotation_by_name("desk")
-dispatcher.correct_location_all_other_items = world.get_semantic_annotation_by_name("shelf_1")
+if environment == Environment.SuturoApartmentLab:
+    dispatcher.correct_location_tableware = world.get_semantic_annotation_by_name("counterTop")
+    dispatcher.correct_location_food = world.get_semantic_annotation_by_name("table")
+    dispatcher.correct_location_drinks = world.get_semantic_annotation_by_name("desk")
+    dispatcher.correct_location_all_other_items = world.get_semantic_annotation_by_name("shelf_1")
+
+    dispatcher.dining_table = world.get_semantic_annotation_by_name("dining_table")
+if environment == Environment.Pr2ApartmentLab:
+    dispatcher.dining_table = world.get_semantic_annotation_by_name("coffee_table")
+
 
 #-----------------------------------------------------------------------------------------------------------------------
 
@@ -77,6 +99,8 @@ pitcher = timed_parse_stl("pitcher", "Static_MilkPitcher.stl")
 coke = timed_parse_stl("coke", "Static_CokeBottle.stl")
 
 jeroen_cup = timed_parse_stl("jeroen cup", "jeroen_cup.stl")
+
+
 
 with perf_step("generate random object locations"):
     locs = random_location_list(world, 10)
@@ -126,21 +150,29 @@ with perf_step("modify world: place objects and supporting surfaces"):
         #     ]
         # )
         with perf_step("collect supporting surface annotations"):
-            supporting_surfaces = []
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("shelf_1"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("shelf_2"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("counterTop"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("table"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("lowerTable"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("desk"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("cooking_table"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("dining_table"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("dishwasher_rack"))
+            if environment == Environment.SuturoApartmentLab:
+                supporting_surfaces = []
+                supporting_surfaces.append(world.get_semantic_annotation_by_name("shelf_1"))
+                supporting_surfaces.append(world.get_semantic_annotation_by_name("shelf_2"))
+                supporting_surfaces.append(world.get_semantic_annotation_by_name("counterTop"))
+                supporting_surfaces.append(world.get_semantic_annotation_by_name("table"))
+                supporting_surfaces.append(world.get_semantic_annotation_by_name("lowerTable"))
+                supporting_surfaces.append(world.get_semantic_annotation_by_name("desk"))
+                supporting_surfaces.append(world.get_semantic_annotation_by_name("cooking_table"))
+                supporting_surfaces.append(world.get_semantic_annotation_by_name("dining_table"))
+                supporting_surfaces.append(world.get_semantic_annotation_by_name("dishwasher_rack"))
+            if environment == Environment.Pr2ApartmentLab:
+                supporting_surfaces = []
+                supporting_surfaces.append(world.get_semantic_annotation_by_name("counter"))
+
+
+
 
         for surface in supporting_surfaces:
             if isinstance(surface, HasSupportingSurface):
                 with perf_step(f"calculate supporting surface: {surface.name}"):
                     surface.calculate_supporting_surface()
+
 
 with perf_step("setup ROS visualization marker"):
     try:
