@@ -39,6 +39,12 @@ class EventDispatcher:
     def __init__(self):
         self._listeners = []
 
+        #----- correct locations for items -----------------------------------------------------------------------------
+        self.correct_location_tableware = None
+        self.correct_location_food = None
+        self.correct_location_drinks = None
+        self.correct_location_all_other_items = None
+
         ##### replaces direct use of predicate functions for faster runtime ############################################
         self.perceived_objects = []
         """

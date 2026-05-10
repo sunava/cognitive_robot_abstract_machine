@@ -58,6 +58,15 @@ with perf_step("store known furniture"):
     dispatcher.known_furniture = world.bodies
 
 
+#-----------------------------------------------------------------------------------------------------------------------
+dispatcher.correct_location_tableware = world.get_semantic_annotation_by_name("counterTop")
+dispatcher.correct_location_food = world.get_semantic_annotation_by_name("table")
+dispatcher.correct_location_drinks = world.get_semantic_annotation_by_name("desk")
+dispatcher.correct_location_all_other_items = world.get_semantic_annotation_by_name("shelf_1")
+
+#-----------------------------------------------------------------------------------------------------------------------
+
+
 
 bowl = timed_parse_stl("bowl", "bowl.stl")
 
@@ -108,8 +117,7 @@ with perf_step("modify world: place objects and supporting surfaces"):
                 ]
             )
             # TODO: not many object stls so stuff like banana: yellow spoon, carrot: orange spoon, ...
-            for color in bowl.bodies[0].visual.shapes:
-                color.color = Color.RED()
+
         # world.add_semantic_annotations(
         #     [
         #         ShelfLayer(root=world.get_body_by_name("shelf_1"), name=PrefixedName("shelf_1")),
