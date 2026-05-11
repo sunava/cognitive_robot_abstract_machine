@@ -1,5 +1,5 @@
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
-from semantic_digital_twin.semantic_annotations.semantic_annotations import Table, CounterTop, ShelfLayer
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Table, CounterTop, ShelfLayer, Cabinet
 from semantic_digital_twin.spatial_types.spatial_types import Pose, Point3, HomogeneousTransformationMatrix
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.shape_collection import BoundingBoxCollection
@@ -15,14 +15,12 @@ def random_location_list(world : World, number_locations : int):
     locations = []
 
     for fur in furniture:
-        print("weep", fur.name)
-        if isinstance(fur, (Table, CounterTop, ShelfLayer)):
+        if isinstance(fur, (Table, CounterTop, ShelfLayer, Cabinet)):
             print(fur.name)
             surfaces.append(fur.as_bounding_box_collection_in_frame(world.root).shapes[0]) # coordinates of the bounding box
 
     while number_locations > 0:
         for surface in surfaces:
-            print("woop")
             some_more_randomness = random.random() # use this to skip surfaces randomly, so there aren't only objects on the same surfaces, because a surface is only chosen at a possibility of 70 percent
             if number_locations > 0 and some_more_randomness < 0.7:
                 min_x = surface.min_x

@@ -940,7 +940,7 @@
       <geometry>
         <mesh filename="package://iai_apartment/meshes/cabinet07/IAIKitchenCabinet7W60.dae"/>
       </geometry>
-      <material name="cabinet_surface"/>
+      <material name="oven_gray"/>
     </visual>
     <collision>
       <geometry>
@@ -962,6 +962,7 @@
       <geometry>
         <mesh filename="package://iai_apartment/meshes/cabinet07/dishwasher_drawer_middle.dae"/>
       </geometry>
+      <material name="oven_gray" />
     </visual>
     <collision>
       <origin rpy="0 0 3.14"/>
