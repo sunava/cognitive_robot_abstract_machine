@@ -2,7 +2,7 @@ import os
 
 from demos.bachelor_thesis.actions.random_location_generator import random_location_list, \
     pose_to_homogeneous_transformation_matrix_from_xyz_quaternion
-from demos.bachelor_thesis.classes.tasks import PutAwayObjectTask, SetTableTask, CleanTableTask
+from demos.bachelor_thesis.classes_and_methods.tasks import PutAwayObjectTask, SetTableTask, CleanTableTask
 from pycram import plans
 from pycram.datastructures.enums import Arms
 from pycram.motion_executor import simulated_robot

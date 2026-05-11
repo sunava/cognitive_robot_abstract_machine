@@ -20,19 +20,20 @@ from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
 from semantic_digital_twin.world_description.geometry import Color
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Spoon, Bottle, Cup, ShelfLayer, \
-    CounterTop, Table
+    CounterTop, Table, Wardrobe
 from semantic_digital_twin.spatial_types import Point3, Quaternion
 from semantic_digital_twin.spatial_types.spatial_types import Pose, HomogeneousTransformationMatrix
 from semantic_digital_twin.robots.hsrb import HSRB
 from pycram.datastructures.dataclasses import Context
 from demos.bachelor_thesis.hsrb_setup_world import hsrb_setup_world
+from time import sleep
 
 from demos.bachelor_thesis.classes_and_methods.helper_classes_and_methods import Environment, perf_step, perf_print, \
     timed_plan, timed_parse_stl
 
 
 
-environment = Environment.SuturoApartmentLab
+environment = Environment.Pr2ApartmentLab
 
 #------------------ standard setup -------------------------------------------------------------------------------------
 with perf_step("hsrb_setup_world"):
@@ -41,12 +42,21 @@ with perf_step("hsrb_setup_world"):
 with perf_step("store known furniture"):
     dispatcher.known_furniture = world.bodies
 
+for fur in dispatcher.known_furniture:
+    print(fur.name)
+print("#"*110)
+
+for ann in world.semantic_annotations:
+    print(ann.name)
+print("#"*110)
+
 if environment == Environment.Pr2ApartmentLab:
     for elem in world.bodies:
         print(elem.name)
     with world.modify_world():
         world.add_semantic_annotations(
             [
+                Wardrobe(root=world.get_body_by_name("wardrobe"), name=PrefixedName("wardrobe")),
                 CounterTop(root=world.get_body_by_name("countertop"), name=PrefixedName("counter")),
                 Table(root=world.get_body_by_name("coffee_table"), name=PrefixedName("coffee_table")),
             ]
@@ -54,13 +64,6 @@ if environment == Environment.Pr2ApartmentLab:
 
 
 #-----------------------------------------------------------------------------------------------------------------------
-if environment == Environment.SuturoApartmentLab:
-    dispatcher.correct_location_tableware = world.get_semantic_annotation_by_name("counterTop")
-    dispatcher.correct_location_food = world.get_semantic_annotation_by_name("table")
-    dispatcher.correct_location_drinks = world.get_semantic_annotation_by_name("desk")
-    dispatcher.correct_location_all_other_items = world.get_semantic_annotation_by_name("shelf_1")
-
-    dispatcher.dining_table = world.get_semantic_annotation_by_name("dining_table")
 if environment == Environment.Pr2ApartmentLab:
     dispatcher.dining_table = world.get_semantic_annotation_by_name("coffee_table")
 
@@ -84,13 +87,18 @@ jeroen_cup = timed_parse_stl("jeroen cup", "jeroen_cup.stl")
 with perf_step("generate random object locations"):
     locs = random_location_list(world, 10)
 
+print("generated_locations: ")
+i=0
+for loc in locs:
+    print(f"loc[{i}]: x={loc.x}, y={loc.y}, z={loc.z}")
+    i += 1
 
 with perf_step("modify world: place objects and supporting surfaces"):
     with world.modify_world():
         with perf_step("merge object meshes into world"):
             world.merge_world_at_pose(
                 bowl,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(Pose(Point3(x=2, y=-1.6, z=0.57)), world),
+                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[0], world),
             )
             world.merge_world_at_pose(
                 spoon,
@@ -106,7 +114,7 @@ with perf_step("modify world: place objects and supporting surfaces"):
             )
             world.merge_world_at_pose(
                 jeroen_cup,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(Pose(Point3(x=2, y=-1, z=0.14)), world),
+                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[4], world),
             )
 
         with perf_step("add object semantic annotations"):
@@ -201,7 +209,7 @@ plan_labels = [
 ]
 
 plan_driving = [
-        timed_plan("park left arm", ParkArmsAction(Arms.LEFT), context),
+        timed_plan("park left arm", ParkArmsAction(Arms.LEFT)),
 
         # dishwasher
         timed_plan("navigate dishwasher", NavigateAction(

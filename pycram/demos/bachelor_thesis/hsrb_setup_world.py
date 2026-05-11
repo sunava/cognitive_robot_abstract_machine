@@ -19,7 +19,7 @@ from semantic_digital_twin.world_description.connections import OmniDrive
 from semantic_digital_twin.predetermined_maps.kitchen_environment import KitchenEnvironment
 
 from demos.bachelor_thesis.events.event_handler import EventDispatcher, update_perceived_objects
-from demos.bachelor_thesis.classes.HelperClasses import Environment
+from demos.bachelor_thesis.classes_and_methods.helper_classes_and_methods import Environment
 from semantic_digital_twin.world_description.world_entity import Body
 
 logger = logging.getLogger(__name__)
@@ -69,11 +69,8 @@ def hsrb_setup_world(environment: Environment) -> Tuple[World, EventDispatcher]:
         apartment_world = apartment_world = URDFParser.from_file(
             os.path.join(
                 os.path.dirname(__file__),
-                "..",
-                "..",
-                "resources",
-                "worlds",
-                "apartment.urdf",
+                "own_environments",
+                "modified_apartment.urdf",
             )
         ).parse()
 

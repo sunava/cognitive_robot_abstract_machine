@@ -6,7 +6,7 @@ from contextlib import contextmanager
 
 from poetry.console.commands import self
 
-from demos.bachelor_thesis.classes.tasks import SetTableTask, CleanTableTask, PutAwayObjectTask, LoadDishwasherTask, \
+from demos.bachelor_thesis.classes_and_methods.tasks import SetTableTask, CleanTableTask, PutAwayObjectTask, LoadDishwasherTask, \
     UnloadDishwasherTask
 from semantic_digital_twin.reasoning.queries import semantic_annotations_on_surfaces
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot

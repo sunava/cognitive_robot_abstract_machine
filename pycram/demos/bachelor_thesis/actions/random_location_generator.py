@@ -15,12 +15,14 @@ def random_location_list(world : World, number_locations : int):
     locations = []
 
     for fur in furniture:
+        print("weep", fur.name)
         if isinstance(fur, (Table, CounterTop, ShelfLayer)):
             print(fur.name)
             surfaces.append(fur.as_bounding_box_collection_in_frame(world.root).shapes[0]) # coordinates of the bounding box
 
     while number_locations > 0:
         for surface in surfaces:
+            print("woop")
             some_more_randomness = random.random() # use this to skip surfaces randomly, so there aren't only objects on the same surfaces, because a surface is only chosen at a possibility of 70 percent
             if number_locations > 0 and some_more_randomness < 0.7:
                 min_x = surface.min_x
