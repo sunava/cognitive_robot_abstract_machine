@@ -10,7 +10,7 @@ Things to note:
 * Use UV instead of poetry. Make sure to `workon cram-env` before calling uv.
 * After dependencies are installed with uv,
     - Make sure that `source /opt/ros/jazzy/setup,bash` is in your .bashrc and 
-    - Set up your workspace according to the `setup_ros_workspace.sh` script mentioned in the CRAM README.
+    - Set up your workspace according to the `setup_ros_workspace.sh` script ([link](/.github/docker/setup_ros_workspace.sh)) mentioned in the CRAM README.
 * After that, follow the step where a symlink for the ROS2 packages is created in your ROS2 workspace
 
 ### PyCharm setup
