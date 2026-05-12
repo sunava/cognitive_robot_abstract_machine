@@ -366,7 +366,7 @@ def print_tasks(handler : EventDispatcher):
     for task in handler.activated_tasks:
         name = task.name
         with perf_step(f"calculate feasibility: {name}"):
-            feasibility = task.calculate_feasibility_custom()
+            feasibility = task.calculate_feasibility()
         score = task.reward * feasibility
         norm_score = score / task.duration
 

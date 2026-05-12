@@ -1,10 +1,7 @@
 from abc import ABC, abstractmethod
-import os
 from typing import Any
 from contextlib import contextmanager
 
-from hypothesis.stateful import precondition
-from scipy.constants import precision
 
 from demos.bachelor_thesis.actions.predicate_mock import (
     reachable,
@@ -12,14 +9,12 @@ from demos.bachelor_thesis.actions.predicate_mock import (
     semantic_annotations_on_surface_cached,
     is_supported_by_surface_cached,
 )
-from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.exceptions import SemanticAnnotationNotInWorldError
-from semantic_digital_twin.reasoning.queries import semantic_annotations_on_surfaces
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Plate, Spoon, Knife, Cup, Milk, \
     Banana, Bread, Cuttlery, Table
 from semantic_digital_twin.world import World
-from semantic_digital_twin.world_description.world_entity import SemanticAnnotation, Body
+from semantic_digital_twin.world_description.world_entity import SemanticAnnotation
 
 
 def perf_print(message: str):
@@ -54,7 +49,7 @@ class Task(ABC):
         preconditions = []
         for obj in self.required_objects:
             found = False
-            if self.perceived_objects.__contains__(obj):
+            if obj in self.perceived_objects:
                 found = True
                 preconditions.append(True)
             if not found:
@@ -83,10 +78,10 @@ class Task(ABC):
         return constraints
 
     @abstractmethod
-    def calculate_feasibility_custom(self) -> float:
+    def calculate_feasibility(self) -> float:
         pass
 
-    def calculate_feasibility(self, weight_list_preconditions: list, weight_list_constraints) -> float:
+    def calculate_feasibility_helper(self, weight_list_preconditions: list, weight_list_constraints) -> float:
         weight = []
         weight.extend(weight_list_preconditions)
         weight.extend(weight_list_constraints)
@@ -113,7 +108,7 @@ class Task(ABC):
         return res
 
     def calculate_current_score(self):
-        return self.reward * self.calculate_feasibility_custom()
+        return self.reward * self.calculate_feasibility()
 
     def calculate_current_score_normalized(self):
         return self.calculate_current_score()/self.duration
@@ -150,7 +145,7 @@ class PutAwayObjectTask(Task):
         # TODO
         pass
 
-    def calculate_feasibility_custom(self):
+    def calculate_feasibility(self):
         """
         weight: 1 for each precondition
         weight: 0.5 for object constraints
@@ -167,7 +162,7 @@ class PutAwayObjectTask(Task):
         for j in range(len(constraints)):
             weight_constraints.append(float(0.5))
 
-        return self.calculate_feasibility(weight_preconditions, weight_constraints)
+        return self.calculate_feasibility_helper(weight_preconditions, weight_constraints)
 
 
     def update_to_current_world_state(self, world: World, perceived_objects : list[SemanticAnnotation]):
@@ -249,7 +244,7 @@ class SetTableTask(Task):
         # TODO
         pass
 
-    def calculate_feasibility_custom(self):
+    def calculate_feasibility(self):
         """
         weight: 3 for each precondition - table empty
         weight: 1 for each precondition - object exists
@@ -268,7 +263,7 @@ class SetTableTask(Task):
         for j in range(len(constraints)):
             weight_constraints.append(float(0.5))
 
-        return self.calculate_feasibility(weight_preconditions, weight_constraints)
+        return self.calculate_feasibility_helper(weight_preconditions, weight_constraints)
 
     def update_to_current_world_state(
         self,
@@ -306,7 +301,7 @@ class CleanTableTask(Task):
         ## set for all instances of this task ##
         objects_on_table = semantic_annotations_on_surface_cached(table, world, self.surface_cache)
         for obj in objects_on_table:
-            if self.perceived_objects.__contains__(obj):
+            if obj in self.perceived_objects:
                 self.required_objects.append(obj)
 
         cutlery = []
@@ -330,7 +325,7 @@ class CleanTableTask(Task):
         # TODO
         pass
 
-    def calculate_feasibility_custom(self):
+    def calculate_feasibility(self):
         """
         weight: 1 for each precondition
         weight: 0.5 for object constraints
@@ -343,7 +338,7 @@ class CleanTableTask(Task):
         for j in range(len(self.constraints())):
             weight_constraints.append(float(0.5))
 
-        return self.calculate_feasibility(weight_preconditions, weight_constraints)
+        return self.calculate_feasibility_helper(weight_preconditions, weight_constraints)
 
 
     def update_to_current_world_state(
@@ -360,8 +355,8 @@ class CleanTableTask(Task):
         ## set for all instances of this task ##
         objects_on_table = semantic_annotations_on_surface_cached(self.table, world, self.surface_cache)
         for obj in objects_on_table:
-            if self.perceived_objects.__contains__(obj):
-                if not self.required_objects.__contains__(obj):
+            if obj in self.perceived_objects:
+                if not (obj in self.required_objects):
                     self.required_objects.append(obj)
 
         cutlery = []
@@ -405,7 +400,7 @@ class LoadDishwasherTask(Task):
             )
 
             for obj in objects_on_counter:
-                if self.perceived_objects.__contains__(obj) and isinstance(obj, (Cuttlery, Plate, Cup, Bowl)):
+                if (obj in self.perceived_objects) and isinstance(obj, (Cuttlery, Plate, Cup, Bowl)):
                     self.required_objects.append(obj)
 
         self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 160 + 100 + 200
@@ -441,7 +436,7 @@ class LoadDishwasherTask(Task):
         # TODO
         pass
 
-    def calculate_feasibility_custom(self):
+    def calculate_feasibility(self):
         """
         weight: 3 for precondition dishwasher empty
         weight: 1 for each precondition object exists
@@ -458,7 +453,7 @@ class LoadDishwasherTask(Task):
         for j in range(len(self.constraints())):
             weight_constraints.append(float(0.5))
 
-        return self.calculate_feasibility(weight_preconditions, weight_constraints)
+        return self.calculate_feasibility_helper(weight_preconditions, weight_constraints)
 
 
     def update_to_current_world_state(
@@ -489,7 +484,7 @@ class LoadDishwasherTask(Task):
         self.required_objects = []
 
         for obj in objects_on_counter:
-            if self.perceived_objects.__contains__(obj) and isinstance(obj, (Cuttlery, Plate, Cup, Bowl)):
+            if (obj in self.perceived_objects) and isinstance(obj, (Cuttlery, Plate, Cup, Bowl)):
                 self.required_objects.append(obj)
 
         self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 160 + 100 + 200
@@ -500,8 +495,6 @@ class LoadDishwasherTask(Task):
 
 class UnloadDishwasherTask(Task):
     world : World
-
-    # TODO: continue
 
     def __init__(
         self,
@@ -549,7 +542,7 @@ class UnloadDishwasherTask(Task):
         # TODO
         pass
 
-    def calculate_feasibility_custom(self):
+    def calculate_feasibility(self):
         """
         weight: 1 for each precondition object exists
         weight: 0.5 for object constraints
@@ -562,7 +555,7 @@ class UnloadDishwasherTask(Task):
         for j in range(len(self.constraints())):
             weight_constraints.append(float(0.5))
 
-        return self.calculate_feasibility(weight_preconditions, weight_constraints)
+        return self.calculate_feasibility_helper(weight_preconditions, weight_constraints)
 
     def update_to_current_world_state(
         self,
