@@ -1,5 +1,6 @@
 import os
 
+from demos.bachelor_thesis.actions.predicate_mock import misplaced
 from demos.bachelor_thesis.actions.random_location_generator import random_location_list, \
     pose_to_homogeneous_transformation_matrix_from_xyz_quaternion
 from demos.bachelor_thesis.classes_and_methods.tasks import PutAwayObjectTask, SetTableTask, CleanTableTask
@@ -20,11 +21,12 @@ from semantic_digital_twin.spatial_types.spatial_types import Pose, HomogeneousT
 from semantic_digital_twin.robots.hsrb import HSRB
 from pycram.datastructures.dataclasses import Context
 from demos.bachelor_thesis.hsrb_setup_world import hsrb_setup_world
+from demos.bachelor_thesis.classes_and_methods.helper_classes_and_methods import Environment
 
 
 
 #------------------ standard setup -------------------------------------------------------------------------------------
-world, dispatcher = hsrb_setup_world()
+world, dispatcher = hsrb_setup_world(Environment.SuturoApartmentLab)
 
 
 
@@ -196,12 +198,27 @@ plan_driving = [execute_single(ParkArmsAction(Arms.LEFT), context).plan,
 
 
 with simulated_robot:
+    test_task = "set_table_task_dining_table"
+
+    dispatcher.correct_location_tableware = world.get_semantic_annotation_by_name("counterTop")
+    dispatcher.correct_location_food = world.get_semantic_annotation_by_name("table")
+    dispatcher.correct_location_drinks = world.get_semantic_annotation_by_name("desk")
+    dispatcher.correct_location_all_other_items = world.get_semantic_annotation_by_name("shelf_1")
+
+    dispatcher.dining_table = world.get_semantic_annotation_by_name("dining_table")
+
+    surface_cache = {}
     # for plan in plan_driving:
     #     plan.perform()
     #     simulate_perception(world, dispatcher, context, hsrb)
-    dispatcher.perceived_objects.append(world.get_body_by_name("bowl.stl"))
-    dispatcher.perceived_objects.append(world.get_body_by_name("spoon.stl"))
-    #task = PutAwayObjectTask("put_bowl_away", [PrefixedName("bowl.stl")], world = world, handler=dispatcher)
-    task1 = SetTableTask("set_table", world.get_semantic_annotation_by_name("table"), world, dispatcher)
-    #task2 = CleanTableTask("clean_table", world.get_semantic_annotation_by_name("table"), world, dispatcher)
+    dispatcher.trigger_event([world.get_body_by_name("bowl.stl"), world.get_body_by_name("spoon.stl")], world)
+    task1 = None
+
+    for task in dispatcher.activated_tasks:
+        if task.name == test_task:
+            task1=task
+
+    print(task1.required_objects)
+    print(task1.precondition())
+    print(task1.constraints())
     print(task1.calculate_feasibility())
