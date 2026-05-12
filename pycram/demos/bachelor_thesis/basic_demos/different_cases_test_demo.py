@@ -221,4 +221,4 @@ with simulated_robot:
     print(task1.required_objects)
     print(task1.precondition())
     print(task1.constraints())
-    print(task1.calculate_feasibility())
+    print(task1.calculate_feasibility_custom())

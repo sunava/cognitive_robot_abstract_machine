@@ -58,11 +58,37 @@ class Task(ABC):
         pass
 
     @abstractmethod
-    def calculate_feasibility(self) -> float:
+    def calculate_feasibility_custom(self) -> float:
         pass
 
+    def calculate_feasibility(self, weight_list_preconditions: list, weight_list_constraints) -> float:
+        weight = []
+        weight.extend(weight_list_preconditions)
+        weight.extend(weight_list_constraints)
+
+        all_elem = []
+        all_elem.extend(self.precondition())
+        all_elem.extend(self.constraints())
+
+        weight_max = 0
+        weight_sum = 0
+        index = 0
+        for elem in all_elem:
+            weight_max += weight[index]
+            if elem:
+                weight_sum += weight[index]
+            else:
+                pass
+            index += 1
+
+        if weight_max == 0:
+            res = 0
+        else:
+            res = weight_sum / weight_max
+        return res
+
     def calculate_current_score(self):
-        return self.reward * self.calculate_feasibility()
+        return self.reward * self.calculate_feasibility_custom()
 
     def calculate_current_score_normalized(self):
         return self.calculate_current_score()/self.duration
@@ -117,7 +143,7 @@ class PutAwayObjectTask(Task):
         # TODO
         pass
 
-    def calculate_feasibility(self):
+    def calculate_feasibility_custom(self):
         """
         weight: 1 for each precondition
         weight: 0.5 for object constraints
@@ -127,28 +153,15 @@ class PutAwayObjectTask(Task):
         with perf_step(f"{self.name}.constraints for feasibility"):
             constraints = self.constraints()
 
-        weight = []
+        weight_preconditions = []
+        weight_constraints = []
         for i in range(len(preconditions)):
-            weight.append(float(1))
+            weight_preconditions.append(float(1))
         for j in range(len(constraints)):
-            weight.append(float(0.5))
+            weight_constraints.append(float(0.5))
 
-        all_elem = []
-        all_elem.extend(preconditions)
-        all_elem.extend(constraints)
+        return self.calculate_feasibility(weight_preconditions, weight_constraints)
 
-        weight_max = 0
-        weight_sum = 0
-        index = 0
-        for elem in all_elem:
-            weight_max += weight[index]
-            if elem == True:
-                weight_sum += weight[index]
-            else:
-                pass
-            index += 1
-
-        return weight_sum/weight_max
 
     def update_to_current_world_state(self, world: World, perceived_objects : list[SemanticAnnotation]):
         self.world = world
@@ -186,13 +199,10 @@ class SetTableTask(Task):
             self.perceived_objects = perceived_objects
             self.surface_cache = surface_cache
             with perf_step(f"{name} initial precondition"):
-                out = self.precondition()
-            self.preconditions = out[0]
-            self.required_instances = out[1]
+                self.preconditions = self.precondition()
 
     def precondition(self):
         preconditions = []
-        required_instances = []
 
         # TODO: check if empty works
         with perf_step(f"{self.name}.precondition table empty check"):
@@ -212,32 +222,33 @@ class SetTableTask(Task):
                     if isinstance(ob, obj):
                         found = True
                         preconditions.append(True)
-                        required_instances.append(ob)
+                        break
                 if not found:
-                    required_instances.append(None)
                     preconditions.append(False)
 
-        return preconditions, required_instances
+        return preconditions
 
     def constraints(self):
         constraints = []
-        required_objects = self.required_instances
 
-        with perf_step(f"{self.name}.constraints check {len(required_objects)} required instances"):
-            for obj in required_objects:
-                if obj is None:
+        with perf_step(f"{self.name}.constraints match required objects"):
+            for obj in self.required_objects:
+                found = False
+                for ob in self.perceived_objects:
+                    if isinstance(ob, obj):
+                        found = True
+                        constraints.append(reachable(ob))
+                        break
+                if not found:
                     constraints.append(False)
-                elif reachable(obj):
-                    constraints.append(True)
-                else:
-                    constraints.append(False)
+
         return constraints
 
     def effect(self):
         # TODO
         pass
 
-    def calculate_feasibility(self):
+    def calculate_feasibility_custom(self):
         """
         weight: 3 for each precondition - table empty
         weight: 1 for each precondition - object exists
@@ -246,31 +257,17 @@ class SetTableTask(Task):
         with perf_step(f"{self.name}.constraints for feasibility"):
             constraints = self.constraints()
 
-        weight = []
-        for i in range(len(self.required_instances) + 1):
+        weight_preconditions = []
+        weight_constraints = []
+        for i in range(len(self.precondition())):
             if i == 0:
-                weight.append(3)
+                weight_preconditions.append(3)
             else:
-                weight.append(float(1))
+                weight_preconditions.append(float(1))
         for j in range(len(constraints)):
-            weight.append(float(0.5))
+            weight_constraints.append(float(0.5))
 
-        all_elem = []
-        all_elem.extend(self.preconditions)
-        all_elem.extend(constraints)
-
-        weight_max = 0
-        weight_sum = 0
-        index = 0
-        for elem in all_elem:
-            weight_max += weight[index]
-            if elem == True:
-                weight_sum += weight[index]
-            else:
-                pass
-            index += 1
-
-        return weight_sum / weight_max
+        return self.calculate_feasibility(weight_preconditions, weight_constraints)
 
     def update_to_current_world_state(
         self,
@@ -282,9 +279,7 @@ class SetTableTask(Task):
             self.world = world
             self.perceived_objects = perceived_objects
             self.surface_cache = surface_cache
-            out = self.precondition()
-            self.preconditions = out[0]
-            self.required_instances = out[1]
+            self.preconditions = self.precondition()
 
 class CleanTableTask(Task):
     required_objects: list[SemanticAnnotation]
@@ -347,38 +342,21 @@ class CleanTableTask(Task):
         # TODO
         pass
 
-    def calculate_feasibility(self):
+    def calculate_feasibility_custom(self):
         """
         weight: 1 for each precondition
         weight: 0.5 for object constraints
         """
-        weight = []
+        weight_preconditions = []
+        weight_constraints = []
+
         for i in range(len(self.precondition())):
-            weight.append(float(1))
+            weight_preconditions.append(float(1))
         for j in range(len(self.constraints())):
-            weight.append(float(0.5))
+            weight_constraints.append(float(0.5))
 
-        all_elem = []
-        all_elem.extend(self.precondition())
-        all_elem.extend(self.constraints())
+        return self.calculate_feasibility(weight_preconditions, weight_constraints)
 
-        weight_max = 0
-        weight_sum = 0
-        index = 0
-        for elem in all_elem:
-            weight_max += weight[index]
-            if elem == True:
-                weight_sum += weight[index]
-            else:
-                pass
-            index += 1
-
-        result = 0
-        if weight_max == 0:
-            result = 0
-        else:
-            result = weight_sum / weight_max
-        return result
 
     def update_to_current_world_state(
         self,
@@ -484,43 +462,24 @@ class LoadDishwasherTask(Task):
         # TODO
         pass
 
-    def calculate_feasibility(self):
+    def calculate_feasibility_custom(self):
         """
         weight: 3 for precondition dishwasher empty
         weight: 1 for each precondition object exists
         weight: 0.5 for object constraints
         """
-        weight = []
+        weight_preconditions = []
+        weight_constraints = []
 
         for i in range(len(self.precondition())):
             if i == 0:
-                weight.append(float(3))
+                weight_preconditions.append(float(3))
             else:
-                weight.append(float(1))
+                weight_preconditions.append(float(1))
         for j in range(len(self.constraints())):
-            weight.append(float(0.5))
+            weight_constraints.append(float(0.5))
 
-        all_elem = []
-        all_elem.extend(self.precondition())
-        all_elem.extend(self.constraints())
-
-        weight_max = 0
-        weight_sum = 0
-        index = 0
-        for elem in all_elem:
-            weight_max += weight[index]
-            if elem == True:
-                weight_sum += weight[index]
-            else:
-                pass
-            index += 1
-
-        result = 0
-        if weight_max == 0:
-            result = 0
-        else:
-            result = weight_sum / weight_max
-        return result
+        return self.calculate_feasibility(weight_preconditions, weight_constraints)
 
 
     def update_to_current_world_state(
@@ -625,39 +584,20 @@ class UnloadDishwasherTask(Task):
         # TODO
         pass
 
-    def calculate_feasibility(self):
+    def calculate_feasibility_custom(self):
         """
         weight: 1 for each precondition object exists
         weight: 0.5 for object constraints
         """
-        weight = []
+        weight_preconditions = []
+        weight_constraints = []
 
         for i in range(len(self.precondition())):
-            weight.append(float(1))
+            weight_preconditions.append(float(1))
         for j in range(len(self.constraints())):
-            weight.append(float(0.5))
+            weight_constraints.append(float(0.5))
 
-        all_elem = []
-        all_elem.extend(self.precondition())
-        all_elem.extend(self.constraints())
-
-        weight_max = 0
-        weight_sum = 0
-        index = 0
-        for elem in all_elem:
-            weight_max += weight[index]
-            if elem == True:
-                weight_sum += weight[index]
-            else:
-                pass
-            index += 1
-
-        result = 0
-        if weight_max == 0:
-            result = 0
-        else:
-            result = weight_sum / weight_max
-        return result
+        return self.calculate_feasibility(weight_preconditions, weight_constraints)
 
     def update_to_current_world_state(
         self,
