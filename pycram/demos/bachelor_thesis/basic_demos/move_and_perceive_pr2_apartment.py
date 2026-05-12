@@ -29,7 +29,7 @@ from demos.bachelor_thesis.hsrb_setup_world import hsrb_setup_world
 from time import sleep
 
 from demos.bachelor_thesis.classes_and_methods.helper_classes_and_methods import Environment, perf_step, perf_print, \
-    timed_plan, timed_parse_stl
+    timed_plan, timed_parse_stl, debug_task_list_for_demo
 
 
 
@@ -240,5 +240,7 @@ with perf_step("execute all plans with simulated robot"):
                 )
                 visible_count = len(visible_bodies) if visible_bodies is not None else 0
                 perf_print(f"visible bodies after {step_label}: {visible_count}")
+
+    debug_task_list_for_demo(dispatcher)
 
 perf_print("done")

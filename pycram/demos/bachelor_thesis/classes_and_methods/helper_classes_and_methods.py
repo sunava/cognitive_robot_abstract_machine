@@ -4,6 +4,7 @@ import os
 from contextlib import contextmanager
 from enum import Enum
 
+from demos.bachelor_thesis.events.event_handler import EventDispatcher
 from pycram.datastructures.dataclasses import Context
 from pycram.plans.factories import execute_single
 from semantic_digital_twin.adapters.mesh import STLParser
@@ -38,3 +39,13 @@ def timed_parse_stl(label: str, filename: str):
 def timed_plan(label: str, action, context: Context):
     with perf_step(f"build plan: {label}"):
         return execute_single(action, context).plan
+
+def debug_task_list_for_demo(dispatcher: EventDispatcher):
+    print("\n \n", "DEBUG")
+
+    for task in dispatcher.activated_tasks:
+        print("." * 110)
+        print(task.name)
+        print(task.required_objects)
+        print(task.precondition())
+        print(task.constraints())

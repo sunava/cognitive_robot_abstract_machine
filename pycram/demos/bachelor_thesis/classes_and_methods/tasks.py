@@ -33,6 +33,7 @@ def perf_step(label: str):
 
 class Task(ABC):
     name : str
+    required_objects : list
     reward: float
     duration: float
     world: World
@@ -56,6 +57,17 @@ class Task(ABC):
     @abstractmethod
     def constraints(self):
         pass
+
+    def constraints_helper(self):
+        constraints = []
+
+        for obj in self.required_objects:
+            if reachable(obj):
+                constraints.append(True)
+            else:
+                constraints.append(False)
+
+        return constraints
 
     @abstractmethod
     def calculate_feasibility_custom(self) -> float:
@@ -101,7 +113,6 @@ class Task(ABC):
 
 
 class PutAwayObjectTask(Task):
-    required_objects: list[SemanticAnnotation]
 
     def __init__(self, name : str, required_objects : list[SemanticAnnotation], world: World, perceived_objects : list[SemanticAnnotation]):
         ## different for all instances of this task ##
@@ -129,15 +140,7 @@ class PutAwayObjectTask(Task):
         return preconditions
 
     def constraints(self):
-        constraints = []
-
-        for obj in self.required_objects:
-            if reachable(obj):
-                constraints.append(True)
-            else:
-                constraints.append(False)
-
-        return constraints
+        return self.constraints_helper()
 
     def effect(self):
         # TODO
@@ -169,7 +172,6 @@ class PutAwayObjectTask(Task):
 
 
 class SetTableTask(Task):
-    required_objects: list[Any]
     preconditions : list[Any]
     required_instances : list[Any]
     reward: float
@@ -282,7 +284,6 @@ class SetTableTask(Task):
             self.preconditions = self.precondition()
 
 class CleanTableTask(Task):
-    required_objects: list[SemanticAnnotation]
     table: Table
 
     def __init__(
@@ -328,15 +329,7 @@ class CleanTableTask(Task):
         return preconditions
 
     def constraints(self):
-        constraints = []
-        for obj in self.required_objects:
-            if obj is None:
-                constraints.append(False)
-            elif reachable(obj):
-                constraints.append(True)
-            else:
-                constraints.append(False)
-        return constraints
+        return self.constraints_helper()
 
     def effect(self):
         # TODO
@@ -389,7 +382,6 @@ class CleanTableTask(Task):
 
 
 class LoadDishwasherTask(Task):
-    required_objects: list[SemanticAnnotation]
     world : World
     # TODO: continue
 
@@ -450,13 +442,7 @@ class LoadDishwasherTask(Task):
         return preconditions
 
     def constraints(self):
-        constraints = []
-        for obj in self.required_objects:
-            if reachable(obj):
-                constraints.append(True)
-            else:
-                constraints.append(False)
-        return constraints
+        return self.constraints_helper()
 
     def effect(self):
         # TODO
@@ -520,7 +506,6 @@ class LoadDishwasherTask(Task):
 
 
 class UnloadDishwasherTask(Task):
-    required_objects: list[SemanticAnnotation]
     world : World
 
     # TODO: continue
@@ -543,11 +528,9 @@ class UnloadDishwasherTask(Task):
         try:
             self.dishwasher_rack = world.get_semantic_annotation_by_name("dishwasher_rack")
             if not isinstance(self.dishwasher_rack, HasSupportingSurface):
-                Exception("dishwasher_rack needs to be of type HasSupportingSurface")
+                raise Exception("dishwasher_rack needs to be of type HasSupportingSurface")
         except SemanticAnnotationNotInWorldError:
-            Exception("no semantic annotation named dishwasher_rack")
-        finally:
-            Exception("no semantic annotation named dishwasher_rack, please add annotation")
+            raise Exception("no semantic annotation named dishwasher_rack")
 
         if required_objects is None:
             objects_in_dishwasher = semantic_annotations_on_surface_cached(
@@ -572,13 +555,7 @@ class UnloadDishwasherTask(Task):
         return preconditions
 
     def constraints(self):
-        constraints = []
-        for obj in self.required_objects:
-            if reachable(obj):
-                constraints.append(True)
-            else:
-                constraints.append(False)
-        return constraints
+        return self.constraints_helper()
 
     def effect(self):
         # TODO

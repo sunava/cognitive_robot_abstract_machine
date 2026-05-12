@@ -132,7 +132,7 @@ def update_perceived_objects(handler : EventDispatcher, data : list[SemanticAnno
             is_none.append("handler.dining_table")
 
         if is_none:
-            Exception(f"{is_none} is not set or is not a supporting surface.")
+            raise Exception(f"{is_none} is not set or is not a supporting surface.")
 
 
     with perf_step("update_perceived_objects"):
