@@ -41,28 +41,14 @@ with perf_step("hsrb_setup_world"):
 with perf_step("store known furniture"):
     dispatcher.known_furniture = world.bodies
 
-if environment == Environment.Pr2ApartmentLab:
-    for elem in world.bodies:
-        print(elem.name)
-    with world.modify_world():
-        world.add_semantic_annotations(
-            [
-                CounterTop(root=world.get_body_by_name("countertop"), name=PrefixedName("counter")),
-                Table(root=world.get_body_by_name("coffee_table"), name=PrefixedName("coffee_table")),
-            ]
-        )
-
 
 #-----------------------------------------------------------------------------------------------------------------------
-if environment == Environment.SuturoApartmentLab:
-    dispatcher.correct_location_tableware = world.get_semantic_annotation_by_name("counterTop")
-    dispatcher.correct_location_food = world.get_semantic_annotation_by_name("table")
-    dispatcher.correct_location_drinks = world.get_semantic_annotation_by_name("desk")
-    dispatcher.correct_location_all_other_items = world.get_semantic_annotation_by_name("shelf_1")
+dispatcher.correct_location_tableware = world.get_semantic_annotation_by_name("counterTop")
+dispatcher.correct_location_food = world.get_semantic_annotation_by_name("table")
+dispatcher.correct_location_drinks = world.get_semantic_annotation_by_name("desk")
+dispatcher.correct_location_all_other_items = world.get_semantic_annotation_by_name("shelf_1")
 
-    dispatcher.dining_table = world.get_semantic_annotation_by_name("dining_table")
-if environment == Environment.Pr2ApartmentLab:
-    dispatcher.dining_table = world.get_semantic_annotation_by_name("coffee_table")
+dispatcher.dining_table = world.get_semantic_annotation_by_name("dining_table")
 
 
 #-----------------------------------------------------------------------------------------------------------------------
@@ -129,20 +115,16 @@ with perf_step("modify world: place objects and supporting surfaces"):
         #     ]
         # )
         with perf_step("collect supporting surface annotations"):
-            if environment == Environment.SuturoApartmentLab:
-                supporting_surfaces = []
-                supporting_surfaces.append(world.get_semantic_annotation_by_name("shelf_1"))
-                supporting_surfaces.append(world.get_semantic_annotation_by_name("shelf_2"))
-                supporting_surfaces.append(world.get_semantic_annotation_by_name("counterTop"))
-                supporting_surfaces.append(world.get_semantic_annotation_by_name("table"))
-                supporting_surfaces.append(world.get_semantic_annotation_by_name("lowerTable"))
-                supporting_surfaces.append(world.get_semantic_annotation_by_name("desk"))
-                supporting_surfaces.append(world.get_semantic_annotation_by_name("cooking_table"))
-                supporting_surfaces.append(world.get_semantic_annotation_by_name("dining_table"))
-                supporting_surfaces.append(world.get_semantic_annotation_by_name("dishwasher_rack"))
-            if environment == Environment.Pr2ApartmentLab:
-                supporting_surfaces = []
-                supporting_surfaces.append(world.get_semantic_annotation_by_name("counter"))
+            supporting_surfaces = []
+            supporting_surfaces.append(world.get_semantic_annotation_by_name("shelf_1"))
+            supporting_surfaces.append(world.get_semantic_annotation_by_name("shelf_2"))
+            supporting_surfaces.append(world.get_semantic_annotation_by_name("counterTop"))
+            supporting_surfaces.append(world.get_semantic_annotation_by_name("table"))
+            supporting_surfaces.append(world.get_semantic_annotation_by_name("lowerTable"))
+            supporting_surfaces.append(world.get_semantic_annotation_by_name("desk"))
+            supporting_surfaces.append(world.get_semantic_annotation_by_name("cooking_table"))
+            supporting_surfaces.append(world.get_semantic_annotation_by_name("dining_table"))
+            supporting_surfaces.append(world.get_semantic_annotation_by_name("dishwasher_rack"))
 
 
 
