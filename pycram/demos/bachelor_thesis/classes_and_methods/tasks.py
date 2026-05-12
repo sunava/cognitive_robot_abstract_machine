@@ -32,8 +32,9 @@ def perf_step(label: str):
 
 
 class Task(ABC):
-    name : str
-    required_objects : list
+    name: str
+    required_objects: list
+    perceived_objects: list
     reward: float
     duration: float
     world: World
@@ -48,6 +49,18 @@ class Task(ABC):
         list [bool of precond1, bool of precond2, bool of precond3, ...]
         """
         pass
+
+    def preconditions_helper(self):
+        preconditions = []
+        for obj in self.required_objects:
+            found = False
+            if self.perceived_objects.__contains__(obj):
+                found = True
+                preconditions.append(True)
+            if not found:
+                preconditions.append(False)
+
+        return preconditions
 
     @abstractmethod
     def effect(self):
@@ -128,16 +141,7 @@ class PutAwayObjectTask(Task):
         self.perceived_objects = perceived_objects
 
     def precondition(self):
-        preconditions = []
-        for obj in self.required_objects:
-            found = False
-            if self.perceived_objects.__contains__(obj):
-                found = True
-                preconditions.append(True)
-            if not found:
-                preconditions.append(False)
-
-        return preconditions
+        return self.preconditions_helper()
 
     def constraints(self):
         return self.constraints_helper()
@@ -173,10 +177,6 @@ class PutAwayObjectTask(Task):
 
 class SetTableTask(Task):
     preconditions : list[Any]
-    required_instances : list[Any]
-    reward: float
-    duration: float
-    world: World
     table : Table
     def __init__(
         self,
@@ -206,7 +206,6 @@ class SetTableTask(Task):
     def precondition(self):
         preconditions = []
 
-        # TODO: check if empty works
         with perf_step(f"{self.name}.precondition table empty check"):
             preconditions.append(
                 is_empty(
@@ -322,11 +321,7 @@ class CleanTableTask(Task):
 
 
     def precondition(self):
-        # because required objects are the perceived objects
-        preconditions = []
-        for obj in self.required_objects:
-            preconditions.append(True)
-        return preconditions
+        return self.preconditions_helper()
 
     def constraints(self):
         return self.constraints_helper()
@@ -382,8 +377,6 @@ class CleanTableTask(Task):
 
 
 class LoadDishwasherTask(Task):
-    world : World
-    # TODO: continue
 
     def __init__(
         self,
@@ -547,12 +540,7 @@ class UnloadDishwasherTask(Task):
 
 
     def precondition(self):
-        # because required objects are the perceived objects
-        preconditions = []
-
-        for obj in self.required_objects:
-            preconditions.append(True)
-        return preconditions
+        return self.preconditions_helper()
 
     def constraints(self):
         return self.constraints_helper()
