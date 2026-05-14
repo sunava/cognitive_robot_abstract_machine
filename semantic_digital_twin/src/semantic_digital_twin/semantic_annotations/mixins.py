@@ -6,13 +6,6 @@ from typing import Tuple
 
 import numpy as np
 import trimesh
-from krrood.entity_query_language.factories import variable_from, entity, variable, an
-from polytope import bounding_box
-from probabilistic_model.distributions.gaussian import GaussianDistribution
-from random_events.product_algebra import Event
-from random_events.set import Set
-from random_events.variable import Symbolic
-from semantic_digital_twin.reasoning.predicates import is_supported_by
 from typing_extensions import (
     TYPE_CHECKING,
     List,
@@ -20,9 +13,13 @@ from typing_extensions import (
     Self,
     Iterable,
     Type,
+    TypeVar,
 )
 
+from krrood.entity_query_language.factories import variable_from, entity, variable, an
 from krrood.ormatic.utils import classproperty
+from krrood.patterns.subclass_safe_generic import SubClassSafeGeneric
+from probabilistic_model.distributions.gaussian import GaussianDistribution
 from probabilistic_model.distributions.helper import make_dirac
 from probabilistic_model.probabilistic_circuit.rx.helper import (
     uniform_measure_of_event,
@@ -33,11 +30,15 @@ from probabilistic_model.probabilistic_circuit.rx.probabilistic_circuit import (
     SumUnit,
     leaf,
 )
+from random_events.product_algebra import Event
+from random_events.set import Set as RandomEventsSets
+from random_events.variable import Symbolic
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.datastructures.variables import SpatialVariables
 from semantic_digital_twin.exceptions import (
     MismatchingWorld,
 )
+from semantic_digital_twin.reasoning.predicates import is_supported_by
 from semantic_digital_twin.spatial_types import (
     Point3,
     HomogeneousTransformationMatrix,
@@ -130,7 +131,7 @@ class HasRootKinematicStructureEntity(SemanticAnnotation, ABC):
         active_axis: Optional[Vector3] = None,
         connection_multiplier: float = 1.0,
         connection_offset: float = 0.0,
-    ):
+    ) -> Self:
         """
         Create a new instance and connect its root entity to the world's root.
 
@@ -749,9 +750,13 @@ class HasSupportingSurface(HasStorageSpace, ABC):
                 supporting_body=self.root,
             )
         )
-        objects = an(entity(
-            semantic_annotation := variable(HasRootBody, domain=self._world.semantic_annotations)
-        ).where(semantic_annotation.root == body)).evaluate()
+        objects = an(
+            entity(
+                semantic_annotation := variable(
+                    HasRootBody, domain=self._world.semantic_annotations
+                )
+            ).where(semantic_annotation.root == body)
+        ).evaluate()
         for obj in objects:
             if obj in self.objects:
                 continue
@@ -912,7 +917,8 @@ class HasSupportingSurface(HasStorageSpace, ABC):
         surface_circuit_root = SumUnit(probabilistic_circuit=surface_circuit)
 
         objects_of_interest_variable = Symbolic(
-            name="objects_of_interest", domain=Set.from_iterable(objects_of_interest)
+            name="objects_of_interest",
+            domain=RandomEventsSets.from_iterable(objects_of_interest),
         )
 
         for object_of_interest in objects_of_interest:

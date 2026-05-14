@@ -5,6 +5,7 @@ from numpy.ma.testutils import (
 )  # You could replace this with numpy's regular assert for better compatibility
 
 from krrood.entity_query_language.factories import entity, variable, in_, inference, an
+from krrood.patterns.role.predicates import has_role, isinstance_or_role
 from semantic_digital_twin.adapters.world_entity_kwargs_tracker import (
     WorldEntityWithIDKwargsTracker,
 )
@@ -12,6 +13,12 @@ from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from semantic_digital_twin.robots.minimal_robot import MinimalRobot
 from semantic_digital_twin.semantic_annotations.semantic_annotations import *
+from semantic_digital_twin.semantic_annotations.semantic_annotations import (
+    Handle,
+    Drawer,
+    Wardrobe,
+    Door,
+)
 from semantic_digital_twin.testing import *
 from semantic_digital_twin.world_description.world_entity import (
     KinematicStructureEntity,
@@ -148,18 +155,24 @@ def test_handle_semantic_annotation_eql(apartment_world_setup):
 
 
 @pytest.mark.parametrize(
-    "semantic_annotation_type, update_existing_semantic_annotations, scenario",
+    "semantic_annotation_type, update_existing_semantic_annotations, scenario, expected_number",
     [
-        (Handle, False, None),
-        (Drawer, False, None),
-        (Wardrobe, False, None),
-        (Door, False, None),
+        (Handle, False, None, 29),
+        (Drawer, False, None, 19),
+        (Wardrobe, False, None, 8),
+        (
+            Door,
+            False,
+            None,
+            8,
+        ),  # Should be 11 as there are prismatically connected doors.
     ],
 )
 def test_infer_apartment_semantic_annotation(
     semantic_annotation_type,
     update_existing_semantic_annotations,
     scenario,
+    expected_number,
     apartment_world_setup,
 ):
     fit_rules_and_assert_semantic_annotations(
@@ -167,6 +180,7 @@ def test_infer_apartment_semantic_annotation(
         semantic_annotation_type,
         update_existing_semantic_annotations,
         scenario,
+        expected_number,
     )
 
 
@@ -180,7 +194,7 @@ def test_generated_semantic_annotations(kitchen_world):
         for v in found_semantic_annotations
         if isinstance(v, HasCaseAsRootBody)
     ]
-    assert len(drawer_container_names) == 19
+    assert len(drawer_container_names) == 18
 
 
 @pytest.mark.order("second_to_last")
@@ -202,7 +216,11 @@ def test_apartment_semantic_annotations(apartment_world_setup):
 
 
 def fit_rules_and_assert_semantic_annotations(
-    world, semantic_annotation_type, update_existing_semantic_annotations, scenario
+    world,
+    semantic_annotation_type,
+    update_existing_semantic_annotations,
+    scenario,
+    expected_number: int,
 ):
     world_reasoner = WorldReasoner(world)
     world_reasoner.fit_semantic_annotations(
@@ -213,8 +231,15 @@ def fit_rules_and_assert_semantic_annotations(
     )
 
     found_semantic_annotations = world_reasoner.infer_semantic_annotations()
-    assert any(
-        isinstance(v, semantic_annotation_type) for v in found_semantic_annotations
+    assert (
+        len(
+            [
+                v
+                for v in found_semantic_annotations
+                if isinstance(v, semantic_annotation_type)
+            ]
+        )
+        == expected_number
     )
 
 
@@ -259,3 +284,27 @@ def test_minimal_robot_annotation(pr2_world_state_reset):
     pr2 = pr2_world_state_reset.get_semantic_annotations_by_type(AbstractRobot)[0]
     assert len(robot.bodies) == len(pr2.bodies)
     assert len(robot.connections) == len(pr2.connections)
+
+
+def test_room_roles():
+    room = Room(floor=Floor(root=Body(name=PrefixedName("room_floor"))))
+    kitchen = Kitchen(room=room)
+
+    # Test ability to access Room properties
+    assert room.floor is kitchen.floor
+
+    # Test correct caching of roles
+    assert Kitchen in room.roles
+    assert room.roles[Kitchen] == kitchen
+    assert has_role(room, Kitchen)
+    assert not isinstance_or_role(room, Kitchen)
+    assert isinstance_or_role(kitchen, Room)
+
+    # Test correct caching of roles
+    living_room = LivingRoom(room=room)
+    assert LivingRoom in room.roles
+    assert room.roles[LivingRoom] == living_room
+    assert len(room.roles) == 2
+    assert has_role(room, LivingRoom)
+    assert not isinstance_or_role(room, LivingRoom)
+    assert isinstance_or_role(living_room, Room)

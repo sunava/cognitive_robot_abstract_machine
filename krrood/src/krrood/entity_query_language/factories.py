@@ -62,6 +62,7 @@ from krrood.entity_query_language.rules.conclusion_selector import (
 )
 from krrood.entity_query_language.utils import is_iterable
 from krrood.symbol_graph.symbol_graph import Symbol, SymbolGraph
+from krrood.patterns.role.predicates import *  # type: ignore
 
 ConditionType = Union[SymbolicExpression, bool, Predicate, TruthValueOperator]
 """
@@ -185,7 +186,9 @@ def deduced_variable(
     return ExternallySetVariable(_type_=type_, _domain_source_=DomainSource.DEDUCTION)
 
 
-def variable_from(domain: Union[Iterable[T], Selectable[T]]) -> Union[T, Selectable[T]]:
+def variable_from(
+    domain: Union[Iterable[T], Selectable[T], T],
+) -> Union[T, Selectable[T]]:
     """
     Create a variable from a given domain.
 
@@ -259,7 +262,7 @@ def and_(*conditions: ConditionType) -> ConditionType:
     return chained_logic(AND, *conditions)
 
 
-def or_(*conditions) -> ConditionType:
+def or_(*conditions: ConditionType) -> ConditionType:
     """
     Logical disjunction of conditions.
 
