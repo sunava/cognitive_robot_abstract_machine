@@ -65,11 +65,11 @@ with world.modify_world():
 
 
 #-----------------------------------------------------------------------------------------------------------------------
-if environment == Environment.Pr2ApartmentLab:
-    dispatcher.dining_table = world.get_semantic_annotation_by_name("coffee_table")
-    dispatcher.correct_location_food = world.get_semantic_annotation_by_name("counter")
-    dispatcher.correct_location_drinks = world.get_semantic_annotation_by_name("cooktop")
-    dispatcher.correct_location_tableware = world.get_semantic_annotation_by_name("bedside_table")
+dispatcher.dining_table = world.get_semantic_annotation_by_name("coffee_table")
+dispatcher.correct_location_food = world.get_semantic_annotation_by_name("counter")
+dispatcher.correct_location_drinks = world.get_semantic_annotation_by_name("cooktop")
+dispatcher.correct_location_tableware = world.get_semantic_annotation_by_name("bedside_table")
+dispatcher.correct_location_all_other_items = world.get_semantic_annotation_by_name("counter")
 
 
 #-----------------------------------------------------------------------------------------------------------------------

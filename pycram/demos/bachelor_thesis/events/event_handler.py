@@ -4,7 +4,6 @@ from enum import Enum
 from typing import Tuple, Any
 from contextlib import contextmanager
 
-from poetry.console.commands import self
 
 from demos.bachelor_thesis.classes_and_methods.tasks import SetTableTask, CleanTableTask, PutAwayObjectTask, LoadDishwasherTask, \
     UnloadDishwasherTask
@@ -16,7 +15,6 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.world_entity import Body, SemanticAnnotation
-from semantic_digital_twin.reasoning.predicates import reachable
 from demos.bachelor_thesis.actions.predicate_mock import (
     reachable,
     misplaced,
@@ -144,13 +142,12 @@ def update_perceived_objects(handler : EventDispatcher, data : list[SemanticAnno
         for obj in data:
             if obj not in handler.perceived_objects: # furniture already filtered out
                 new_objects += 1
-                obj_sem_annotation = world.get_semantic_annotation_by_name(obj.name)
 
-                handler.perceived_objects.append(obj_sem_annotation)
+                handler.perceived_objects.append(obj)
 
                 with perf_step(f"misplaced({obj.name})"):
                     out_misplaced = misplaced(
-                        obj_sem_annotation,
+                        obj,
                         world,
                         handler.correct_location_tableware,
                         handler.correct_location_food,
@@ -161,30 +158,20 @@ def update_perceived_objects(handler : EventDispatcher, data : list[SemanticAnno
                     )
 
                 with perf_step(f"reachable({obj.name})"):
-                    is_reachable = reachable(obj_sem_annotation)
+                    is_reachable = reachable(obj)
 
                 if is_reachable:
-                    handler.reachable_objects.append(obj_sem_annotation)
+                    handler.reachable_objects.append(obj)
 
                 if out_misplaced[0]:
-                    handler.misplaced_objects.append(obj_sem_annotation)
+                    handler.misplaced_objects.append(obj)
 
-                handler.locations.append([obj_sem_annotation, out_misplaced[1]])
+                handler.locations.append([obj, out_misplaced[1]])
         handler.perceived_objects_changed = new_objects > 0
         perf_print(f"new objects processed: {new_objects}")
         with perf_step("print perceived objects"):
             print_perceived_objects(handler)
 
-
-
-# def update_reachable_objects(handler : EventDispatcher, data : list[SemanticAnnotation], world : World):
-#     robot = world.get_body_by_name("base_footprint")
-#     print("I can reach following objects:")
-#     for obj in data:
-#         if (obj not in handler.reachable_objects) and (obj not in handler.known_furniture):
-#             if reachable(obj.global_pose, robot.global_pose, world):
-#                 handler.reachable_objects.append(obj)
-#                 print(f" - {obj.name}")
 
 def trigger_task(handler: EventDispatcher, data : list[SemanticAnnotation], world : World):
     with perf_step("trigger_task"):
@@ -224,7 +211,7 @@ def trigger_task(handler: EventDispatcher, data : list[SemanticAnnotation], worl
         # trigger clean the table
         with perf_step("trigger clean table task"):
             if (time.hour != 9 and time.hour != 13 and time.hour != 19) and not human_near():
-                table_name = "table"
+                table_name = handler.dining_table
                 exists = False
                 for task in handler.activated_tasks:
                     if task.name == ("clean_table_task_" + table_name):
@@ -236,7 +223,7 @@ def trigger_task(handler: EventDispatcher, data : list[SemanticAnnotation], worl
                             perf_print(f"skip update task {task.name}: perceived objects unchanged")
                 if not exists:
                     with perf_step("create task: clean_table_task_table"):
-                        handler.activated_tasks.append(CleanTableTask("clean_table_task_"+table_name, table=world.get_semantic_annotation_by_name("table"), world=world, perceived_objects=handler.perceived_objects))
+                        handler.activated_tasks.append(CleanTableTask("clean_table_task_"+table_name, handler.dining_table, world=world, perceived_objects=handler.perceived_objects))
 
         # trigger put away object
         with perf_step(f"trigger put away object tasks for {len(handler.misplaced_objects)} misplaced objects"):

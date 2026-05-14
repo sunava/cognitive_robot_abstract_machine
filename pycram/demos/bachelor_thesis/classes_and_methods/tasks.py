@@ -114,7 +114,7 @@ class Task(ABC):
         return self.calculate_current_score()/self.duration
 
     @abstractmethod
-    def update_to_current_world_state(self, world: World, perceived_objects : list[SemanticAnnotation]):
+    def update_to_current_world_state(self, **kwargs):
         pass
 
 
@@ -195,8 +195,6 @@ class SetTableTask(Task):
             self.world = world
             self.perceived_objects = perceived_objects
             self.surface_cache = surface_cache
-            with perf_step(f"{name} initial precondition"):
-                self.preconditions = self.precondition()
 
     def precondition(self):
         preconditions = []
@@ -275,7 +273,6 @@ class SetTableTask(Task):
             self.world = world
             self.perceived_objects = perceived_objects
             self.surface_cache = surface_cache
-            self.preconditions = self.precondition()
 
 class CleanTableTask(Task):
     table: Table
@@ -588,7 +585,3 @@ class UnloadDishwasherTask(Task):
         self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 200
         self.duration = 30 * len(self.required_objects) + 60 # extra time for opening/closing dishwasher
 
-
-
-        # constraints[0] = reachable(HomogeneousTransformationMatrix.from_xyz_rpy(x = obj.global_pose.x, y=obj.global_pose.y, z=obj.global_pose.z, reference_frame=world), self.robot.left_arm.root,
-        # self.robot.left_arm.manipulator.tool_frame)
