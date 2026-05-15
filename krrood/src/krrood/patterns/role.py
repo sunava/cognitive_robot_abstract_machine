@@ -23,6 +23,7 @@ from krrood.class_diagrams.utils import (
 )
 from krrood.class_diagrams.wrapped_field import WrappedField
 from krrood.entity_query_language.core.mapped_variable import Attribute
+from krrood.entity_query_language.utils import merge_args_and_kwargs
 from krrood.patterns.subclass_safe_generic import SubClassSafeGeneric
 from krrood.symbol_graph.symbol_graph import Symbol, PredicateClassRelation, SymbolGraph
 from krrood.utils import get_generic_type_param
@@ -63,13 +64,21 @@ class Role(Symbol, SubClassSafeGeneric[T], ABC):
               to their default values if available, otherwise raises a ValueError.
             """
             role_taker_name = self.__class__.role_taker_attribute_name()
+            init_kwargs = merge_args_and_kwargs(
+                self.__class__.__init__, args, init_kwargs, ignore_first=True
+            )
             if role_taker_name not in init_kwargs:
                 # Assumes that you want to create a new role taker instance as well, if the role taker is not provided
                 # in the kwargs.
+                role_taker_init_kwargs = {
+                    k: v
+                    for k, v in init_kwargs.items()
+                    if k in self.role_taker_field_names
+                }
                 setattr(
                     self,
                     role_taker_name,
-                    self.get_role_taker_type()(*args, **init_kwargs),
+                    self.get_role_taker_type()(*args, **role_taker_init_kwargs),
                 )
                 return
             setattr(self, role_taker_name, init_kwargs.pop(role_taker_name))
