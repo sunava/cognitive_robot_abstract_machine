@@ -422,19 +422,19 @@ def test_callback_pausing(rclpy_node):
 
 
 def test_ChangeDifHasHardwareInterface(rclpy_node):
-    n = 0
-    while n < 10:
-        w1 = World(name="w1")
-        w2 = World(name="w2")
+    w1 = World(name="w1")
+    w2 = World(name="w2")
 
-        synchronizer_1 = ModelSynchronizer(
-            node=rclpy_node,
-            _world=w1,
-        )
-        synchronizer_2 = ModelSynchronizer(
-            node=rclpy_node,
-            _world=w2,
-        )
+    synchronizer_1 = ModelSynchronizer(
+        node=rclpy_node,
+        _world=w1,
+    )
+    synchronizer_2 = ModelSynchronizer(
+        node=rclpy_node,
+        _world=w2,
+    )
+
+    try:
 
         with w1.modify_world():
             body1 = Body(name=PrefixedName("b1"))
@@ -447,6 +447,9 @@ def test_ChangeDifHasHardwareInterface(rclpy_node):
                 dof_id=dof.id, parent=body1, child=body2, axis=Vector3(1, 1, 1)
             )
             w1.add_connection(connection)
+
+        w1_ids, w2_ids = wait_for_sync_kse_and_return_ids(w1, w2)
+
         assert len(w1.kinematic_structure_entities) == 2
         assert len(w1.connections) == 1
 
@@ -466,10 +469,9 @@ def test_ChangeDifHasHardwareInterface(rclpy_node):
         assert w1.connections[0].dof.has_hardware_interface
         assert w2.connections[0].dof.has_hardware_interface
 
+    finally:
         synchronizer_1.close()
         synchronizer_2.close()
-
-        n += 1
 
 
 def test_semantic_annotation_modifications(rclpy_node):
