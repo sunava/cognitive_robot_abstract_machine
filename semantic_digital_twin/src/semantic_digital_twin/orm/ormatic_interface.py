@@ -728,6 +728,104 @@ class WorldEntityWithSimulatorPropertiesDAO_simulator_additional_properties_asso
     )
 
 
+class HasStorageSpaceDAO_objects_association(Base, AssociationDataAccessObject):
+
+    __tablename__ = "_25874083443521766617770704172931011793368795308247254903290268"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_hasstoragespacedao_id: Mapped[int] = mapped_column(
+        ForeignKey("HasStorageSpaceDAO.database_id")
+    )
+    target_hasrootbodydao_id: Mapped[int] = mapped_column(
+        ForeignKey("HasRootBodyDAO.database_id")
+    )
+
+    target: Mapped[HasRootBodyDAO] = relationship(
+        "HasRootBodyDAO", foreign_keys=[target_hasrootbodydao_id]
+    )
+
+
+class CounterTopDAO_objects_association(Base, AssociationDataAccessObject):
+
+    __tablename__ = "_96811263818468319328907277137732176623714510442205184055803083"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_countertopdao_id: Mapped[int] = mapped_column(
+        ForeignKey("CounterTopDAO.database_id")
+    )
+    target_hasrootbodydao_id: Mapped[int] = mapped_column(
+        ForeignKey("HasRootBodyDAO.database_id")
+    )
+
+    target: Mapped[HasRootBodyDAO] = relationship(
+        "HasRootBodyDAO", foreign_keys=[target_hasrootbodydao_id]
+    )
+
+
+class CabinetDAO_objects_association(Base, AssociationDataAccessObject):
+
+    __tablename__ = "_10336047020298164765592793407188592894195369769859711739454463"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_cabinetdao_id: Mapped[int] = mapped_column(
+        ForeignKey("CabinetDAO.database_id")
+    )
+    target_hasrootbodydao_id: Mapped[int] = mapped_column(
+        ForeignKey("HasRootBodyDAO.database_id")
+    )
+
+    target: Mapped[HasRootBodyDAO] = relationship(
+        "HasRootBodyDAO", foreign_keys=[target_hasrootbodydao_id]
+    )
+
+
+class SofaDAO_objects_association(Base, AssociationDataAccessObject):
+
+    __tablename__ = "_94393988479730442605207881991662733321301694888106448637684645"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_sofadao_id: Mapped[int] = mapped_column(ForeignKey("SofaDAO.database_id"))
+    target_hasrootbodydao_id: Mapped[int] = mapped_column(
+        ForeignKey("HasRootBodyDAO.database_id")
+    )
+
+    target: Mapped[HasRootBodyDAO] = relationship(
+        "HasRootBodyDAO", foreign_keys=[target_hasrootbodydao_id]
+    )
+
+
+class TableDAO_objects_association(Base, AssociationDataAccessObject):
+
+    __tablename__ = "_31838534710353540730159230236956687286764949961489382044173039"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_tabledao_id: Mapped[int] = mapped_column(ForeignKey("TableDAO.database_id"))
+    target_hasrootbodydao_id: Mapped[int] = mapped_column(
+        ForeignKey("HasRootBodyDAO.database_id")
+    )
+
+    target: Mapped[HasRootBodyDAO] = relationship(
+        "HasRootBodyDAO", foreign_keys=[target_hasrootbodydao_id]
+    )
+
+
+class DrawerDAO_objects_association(Base, AssociationDataAccessObject):
+
+    __tablename__ = "_14390906673593893944701256723746792577165710662206346614138882"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_drawerdao_id: Mapped[int] = mapped_column(
+        ForeignKey("DrawerDAO.database_id")
+    )
+    target_hasrootbodydao_id: Mapped[int] = mapped_column(
+        ForeignKey("HasRootBodyDAO.database_id")
+    )
+
+    target: Mapped[HasRootBodyDAO] = relationship(
+        "HasRootBodyDAO", foreign_keys=[target_hasrootbodydao_id]
+    )
+
+
 class AbstractRobotDAO_manipulators_association(Base, AssociationDataAccessObject):
 
     __tablename__ = "_52106895998347648170461778904010683448969600053998871081561893"
@@ -6473,6 +6571,19 @@ class HasRootKinematicStructureEntityDAO(
         use_existing_column=True,
     )
 
+    root_id: Mapped[int] = mapped_column(
+        ForeignKey("KinematicStructureEntityDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
+
+    root: Mapped[KinematicStructureEntityDAO] = relationship(
+        "KinematicStructureEntityDAO",
+        uselist=False,
+        foreign_keys=[root_id],
+        post_update=True,
+    )
+
     __mapper_args__ = {
         "polymorphic_identity": "HasRootKinematicStructureEntityDAO",
         "inherit_condition": database_id == SemanticAnnotationDAO.database_id,
@@ -7497,6 +7608,15 @@ class HasStorageSpaceDAO(
         use_existing_column=True,
     )
 
+    objects: Mapped[builtins.list[HasStorageSpaceDAO_objects_association]] = (
+        relationship(
+            "HasStorageSpaceDAO_objects_association",
+            collection_class=builtins.list,
+            cascade="all, delete-orphan",
+            foreign_keys="[HasStorageSpaceDAO_objects_association.source_hasstoragespacedao_id]",
+        )
+    )
+
     __mapper_args__ = {
         "polymorphic_identity": "HasStorageSpaceDAO",
         "inherit_condition": database_id == HasRootBodyDAO.database_id,
@@ -7642,12 +7762,26 @@ class CounterTopDAO(
         ForeignKey(FurnitureDAO.database_id), primary_key=True, use_existing_column=True
     )
 
+    root_id: Mapped[int] = mapped_column(
+        ForeignKey("BodyDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
     supporting_surface_id: Mapped[int] = mapped_column(
         ForeignKey("RegionDAO.database_id", use_alter=True),
         nullable=True,
         use_existing_column=True,
     )
 
+    root: Mapped[BodyDAO] = relationship(
+        "BodyDAO", uselist=False, foreign_keys=[root_id], post_update=True
+    )
+    objects: Mapped[builtins.list[CounterTopDAO_objects_association]] = relationship(
+        "CounterTopDAO_objects_association",
+        collection_class=builtins.list,
+        cascade="all, delete-orphan",
+        foreign_keys="[CounterTopDAO_objects_association.source_countertopdao_id]",
+    )
     supporting_surface: Mapped[RegionDAO] = relationship(
         "RegionDAO",
         uselist=False,
@@ -7794,12 +7928,26 @@ class CabinetDAO(
         ForeignKey(FurnitureDAO.database_id), primary_key=True, use_existing_column=True
     )
 
+    root_id: Mapped[int] = mapped_column(
+        ForeignKey("BodyDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
     supporting_surface_id: Mapped[int] = mapped_column(
         ForeignKey("RegionDAO.database_id", use_alter=True),
         nullable=True,
         use_existing_column=True,
     )
 
+    root: Mapped[BodyDAO] = relationship(
+        "BodyDAO", uselist=False, foreign_keys=[root_id], post_update=True
+    )
+    objects: Mapped[builtins.list[CabinetDAO_objects_association]] = relationship(
+        "CabinetDAO_objects_association",
+        collection_class=builtins.list,
+        cascade="all, delete-orphan",
+        foreign_keys="[CabinetDAO_objects_association.source_cabinetdao_id]",
+    )
     supporting_surface: Mapped[RegionDAO] = relationship(
         "RegionDAO",
         uselist=False,
@@ -7965,12 +8113,26 @@ class SofaDAO(
         ForeignKey(FurnitureDAO.database_id), primary_key=True, use_existing_column=True
     )
 
+    root_id: Mapped[int] = mapped_column(
+        ForeignKey("BodyDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
     supporting_surface_id: Mapped[int] = mapped_column(
         ForeignKey("RegionDAO.database_id", use_alter=True),
         nullable=True,
         use_existing_column=True,
     )
 
+    root: Mapped[BodyDAO] = relationship(
+        "BodyDAO", uselist=False, foreign_keys=[root_id], post_update=True
+    )
+    objects: Mapped[builtins.list[SofaDAO_objects_association]] = relationship(
+        "SofaDAO_objects_association",
+        collection_class=builtins.list,
+        cascade="all, delete-orphan",
+        foreign_keys="[SofaDAO_objects_association.source_sofadao_id]",
+    )
     supporting_surface: Mapped[RegionDAO] = relationship(
         "RegionDAO",
         uselist=False,
@@ -7997,12 +8159,26 @@ class TableDAO(
         ForeignKey(FurnitureDAO.database_id), primary_key=True, use_existing_column=True
     )
 
+    root_id: Mapped[int] = mapped_column(
+        ForeignKey("BodyDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
     supporting_surface_id: Mapped[int] = mapped_column(
         ForeignKey("RegionDAO.database_id", use_alter=True),
         nullable=True,
         use_existing_column=True,
     )
 
+    root: Mapped[BodyDAO] = relationship(
+        "BodyDAO", uselist=False, foreign_keys=[root_id], post_update=True
+    )
+    objects: Mapped[builtins.list[TableDAO_objects_association]] = relationship(
+        "TableDAO_objects_association",
+        collection_class=builtins.list,
+        cascade="all, delete-orphan",
+        foreign_keys="[TableDAO_objects_association.source_tabledao_id]",
+    )
     supporting_surface: Mapped[RegionDAO] = relationship(
         "RegionDAO",
         uselist=False,
@@ -8643,12 +8819,26 @@ class DrawerDAO(
         ForeignKey(FurnitureDAO.database_id), primary_key=True, use_existing_column=True
     )
 
+    root_id: Mapped[int] = mapped_column(
+        ForeignKey("BodyDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
     supporting_surface_id: Mapped[int] = mapped_column(
         ForeignKey("RegionDAO.database_id", use_alter=True),
         nullable=True,
         use_existing_column=True,
     )
 
+    root: Mapped[BodyDAO] = relationship(
+        "BodyDAO", uselist=False, foreign_keys=[root_id], post_update=True
+    )
+    objects: Mapped[builtins.list[DrawerDAO_objects_association]] = relationship(
+        "DrawerDAO_objects_association",
+        collection_class=builtins.list,
+        cascade="all, delete-orphan",
+        foreign_keys="[DrawerDAO_objects_association.source_drawerdao_id]",
+    )
     supporting_surface: Mapped[RegionDAO] = relationship(
         "RegionDAO",
         uselist=False,
