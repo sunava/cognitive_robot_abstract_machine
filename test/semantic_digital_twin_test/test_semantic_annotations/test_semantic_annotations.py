@@ -157,7 +157,7 @@ def test_handle_semantic_annotation_eql(apartment_world_setup):
     "semantic_annotation_type, update_existing_semantic_annotations, scenario, expected_number",
     [
         (Handle, False, None, 29),
-        (Drawer, False, None, 18),
+        (Drawer, False, None, 19),
         (Wardrobe, False, None, 8),
         (
             Door,
@@ -193,7 +193,7 @@ def test_generated_semantic_annotations(kitchen_world):
         for v in found_semantic_annotations
         if isinstance(v, HasCaseAsRootBody)
     ]
-    assert len(drawer_container_names) == 18
+    assert len(drawer_container_names) == 19
 
 
 @pytest.mark.order("second_to_last")

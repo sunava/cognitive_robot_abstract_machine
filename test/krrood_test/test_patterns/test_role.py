@@ -5,6 +5,10 @@ from typing import Type
 
 import pytest
 
+from dataset.role_and_ontology.university_ontology_like_classes_without_descriptors import (
+    BaseWithInit,
+    RoleWithOtherBasesThatHaveTheirOwnInit,
+)
 from krrood.class_diagrams import ClassDiagram
 from krrood.class_diagrams.class_diagram import (
     HasRoleTaker,
@@ -175,6 +179,17 @@ def test_role_that_inherits_from_class_that_role_taker_inherits_from_that_has_de
     ceo = DirectDiamondShapedInheritanceWhereOneIsRole(person=person)
     assert ceo.name == person.name
     assert ceo.default_name == person.default_name
+
+
+def test_role_that_inherits_from_class_that_has_explicit_init():
+    person = PersonInRoleAndOntology(name="Bass", default_name="BassDefault")
+    role = RoleWithOtherBasesThatHaveTheirOwnInit(
+        person=person, base_attribute="blabla"
+    )
+    assert role.name == person.name
+    assert role.default_name == person.default_name
+    assert role.base_attribute == "blabla"
+    assert role.person is person
 
 
 def test_role_taker_associations():

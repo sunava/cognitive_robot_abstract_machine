@@ -91,9 +91,31 @@ class SubclassOfRoleThatUpdatesRoleTakerType(CEOAsFirstRole[TSubclassOfARoleTake
 
 @dataclass(eq=False)
 class DirectDiamondShapedInheritanceWhereOneIsRole(
-    Role[TPersonInRoleAndOntology], HasName
+    Role[TPersonInRoleAndOntology], PersonInRoleAndOntology, HasName
 ):
     person: TPersonInRoleAndOntology = field(kw_only=True)
+
+    @classmethod
+    def role_taker_attribute(cls) -> TPersonInRoleAndOntology:
+        return variable_from(cls).person
+
+
+@dataclass(init=False)
+class BaseWithInit:
+
+    def __init__(self, base_attribute: str):
+        self.base_attribute = base_attribute
+
+
+@dataclass(eq=False, init=False)
+class RoleWithOtherBasesThatHaveTheirOwnInit(
+    Role[TPersonInRoleAndOntology], PersonInRoleAndOntology, BaseWithInit
+):
+    person: TPersonInRoleAndOntology = field(kw_only=True)
+
+    def __init__(self, person: TPersonInRoleAndOntology, base_attribute: str):
+        BaseWithInit.__init__(self, base_attribute=base_attribute)
+        super().__init__(person=person)
 
     @classmethod
     def role_taker_attribute(cls) -> TPersonInRoleAndOntology:

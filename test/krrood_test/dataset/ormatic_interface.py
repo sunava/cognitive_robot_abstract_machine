@@ -382,6 +382,27 @@ class CEOAsFirstRoleDAO_member_of_association(Base, AssociationDataAccessObject)
     )
 
 
+class DirectDiamondShapedInheritanceWhereOneIsRoleDAO_member_of_association(
+    Base, AssociationDataAccessObject
+):
+
+    __tablename__ = "_34383216246820218534654847842075635880131865298369537428074746"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_directdiamondshapedinheritancewhereoneisroledao_id: Mapped[int] = (
+        mapped_column(
+            ForeignKey("DirectDiamondShapedInheritanceWhereOneIsRoleDAO.database_id")
+        )
+    )
+    target_recognizedgroupdao_id: Mapped[int] = mapped_column(
+        ForeignKey("RecognizedGroupDAO.database_id")
+    )
+
+    target: Mapped[RecognizedGroupDAO] = relationship(
+        "RecognizedGroupDAO", foreign_keys=[target_recognizedgroupdao_id]
+    )
+
+
 class InDirectDiamondShapedInheritanceWhereOneIsRoleDAO_member_of_association(
     Base, AssociationDataAccessObject
 ):
@@ -434,6 +455,25 @@ class ProfessorAsFirstRoleDAO_teacher_of_association(Base, AssociationDataAccess
 
     target: Mapped[CourseDAO] = relationship(
         "CourseDAO", foreign_keys=[target_coursedao_id]
+    )
+
+
+class RoleWithOtherBasesThatHaveTheirOwnInitDAO_member_of_association(
+    Base, AssociationDataAccessObject
+):
+
+    __tablename__ = "_10695761083726525844824155252772385949395371517963500899890149"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_rolewithotherbasesthathavetheirowninitdao_id: Mapped[int] = mapped_column(
+        ForeignKey("RoleWithOtherBasesThatHaveTheirOwnInitDAO.database_id")
+    )
+    target_recognizedgroupdao_id: Mapped[int] = mapped_column(
+        ForeignKey("RecognizedGroupDAO.database_id")
+    )
+
+    target: Mapped[RecognizedGroupDAO] = relationship(
+        "RecognizedGroupDAO", foreign_keys=[target_recognizedgroupdao_id]
     )
 
 
@@ -556,6 +596,29 @@ class BaseForRoleRecursionDAO(
     base_attr: Mapped[builtins.str] = mapped_column(
         sqlalchemy.sql.sqltypes.Text, use_existing_column=True
     )
+
+
+class BaseWithInitDAO(
+    Base,
+    DataAccessObject[
+        test.krrood_test.dataset.role_and_ontology.university_ontology_like_classes_without_descriptors.BaseWithInit
+    ],
+):
+
+    __tablename__ = "BaseWithInitDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        Integer, primary_key=True, use_existing_column=True
+    )
+
+    polymorphic_type: Mapped[str] = mapped_column(
+        String(255), nullable=False, use_existing_column=True
+    )
+
+    __mapper_args__ = {
+        "polymorphic_on": "polymorphic_type",
+        "polymorphic_identity": "BaseWithInitDAO",
+    }
 
 
 class BuildFirstMappingDAO(
@@ -2663,6 +2726,29 @@ class DirectDiamondShapedInheritanceWhereOneIsRoleDAO(
         sqlalchemy.sql.sqltypes.Text, use_existing_column=True
     )
 
+    works_for_id: Mapped[int] = mapped_column(
+        ForeignKey("RecognizedGroupDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
+
+    works_for: Mapped[RecognizedGroupDAO] = relationship(
+        "RecognizedGroupDAO",
+        uselist=False,
+        foreign_keys=[works_for_id],
+        post_update=True,
+    )
+    member_of: Mapped[
+        builtins.list[
+            DirectDiamondShapedInheritanceWhereOneIsRoleDAO_member_of_association
+        ]
+    ] = relationship(
+        "DirectDiamondShapedInheritanceWhereOneIsRoleDAO_member_of_association",
+        collection_class=builtins.list,
+        cascade="all, delete-orphan",
+        foreign_keys="[DirectDiamondShapedInheritanceWhereOneIsRoleDAO_member_of_association.source_directdiamondshapedinheritancewhereoneisroledao_id]",
+    )
+
     __mapper_args__ = {
         "polymorphic_identity": "DirectDiamondShapedInheritanceWhereOneIsRoleDAO",
         "inherit_condition": database_id == RoleDAO.database_id,
@@ -2928,6 +3014,53 @@ class RoleForTakerInAnotherModuleDAO(
     __mapper_args__ = {
         "polymorphic_identity": "RoleForTakerInAnotherModuleDAO",
         "inherit_condition": database_id == RoleTakerInAnotherModuleDAO.database_id,
+    }
+
+
+class RoleWithOtherBasesThatHaveTheirOwnInitDAO(
+    RoleDAO,
+    DataAccessObject[
+        test.krrood_test.dataset.role_and_ontology.university_ontology_like_classes_without_descriptors.RoleWithOtherBasesThatHaveTheirOwnInit
+    ],
+):
+
+    __tablename__ = "RoleWithOtherBasesThatHaveTheirOwnInitDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        ForeignKey(RoleDAO.database_id), primary_key=True, use_existing_column=True
+    )
+
+    name: Mapped[builtins.str] = mapped_column(
+        sqlalchemy.sql.sqltypes.Text, use_existing_column=True
+    )
+    default_name: Mapped[builtins.str] = mapped_column(
+        sqlalchemy.sql.sqltypes.Text, use_existing_column=True
+    )
+
+    works_for_id: Mapped[int] = mapped_column(
+        ForeignKey("RecognizedGroupDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
+
+    works_for: Mapped[RecognizedGroupDAO] = relationship(
+        "RecognizedGroupDAO",
+        uselist=False,
+        foreign_keys=[works_for_id],
+        post_update=True,
+    )
+    member_of: Mapped[
+        builtins.list[RoleWithOtherBasesThatHaveTheirOwnInitDAO_member_of_association]
+    ] = relationship(
+        "RoleWithOtherBasesThatHaveTheirOwnInitDAO_member_of_association",
+        collection_class=builtins.list,
+        cascade="all, delete-orphan",
+        foreign_keys="[RoleWithOtherBasesThatHaveTheirOwnInitDAO_member_of_association.source_rolewithotherbasesthathavetheirowninitdao_id]",
+    )
+
+    __mapper_args__ = {
+        "polymorphic_identity": "RoleWithOtherBasesThatHaveTheirOwnInitDAO",
+        "inherit_condition": database_id == RoleDAO.database_id,
     }
 
 

@@ -18,7 +18,7 @@ except ModuleNotFoundError:
 
 try:
     from pycram.orm.ormatic_interface import Base
-except ModuleNotFoundError:
+except ImportError:
     pass
 try:
     from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
