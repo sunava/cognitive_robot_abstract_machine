@@ -31,10 +31,10 @@ def test_reproduce_attribute_error_on_uninitialized_role():
     assert isinstance(MyRole.root, property)
 
     instance = MyRole.__new__(MyRole)
-    # accessing 'root' should NOT trigger AttributeError after fix
-    # instead it should probably return None or something safe
     with pytest.raises(AttributeError):
         val = instance.root
+    instance = MyRole(role_taker_attr=RoleTaker())
+    assert instance.root == "default_root"
     assert "root" in [f.name for f in fields(MyRole)]
     assert "root" in [f.name for f in fields(BaseEntity)]
     root_field = next(f for f in fields(MyRole) if f.name == "root")

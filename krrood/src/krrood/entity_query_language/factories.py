@@ -188,7 +188,7 @@ def deduced_variable(
 
 def variable_from(
     domain: Union[Iterable[T], Selectable[T], T],
-) -> Union[T, Selectable[T]]:
+) -> Union[T, Variable[T]]:
     """
     Create a variable from a given domain.
 
