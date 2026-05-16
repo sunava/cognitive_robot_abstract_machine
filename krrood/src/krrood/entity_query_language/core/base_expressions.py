@@ -297,8 +297,6 @@ class SymbolicExpression(ABC):
                 sources = OperationResult({})  # empty sentinel for _evaluate__()
             if self._id_ in bindings:
                 result = OperationResult(bindings, self._is_false_, self, previous_result)
-                if previous_result is not None:
-                    result.source_operation_result = previous_result
                 evaluation_context.on_result_yielded(expression=self, result=result)
                 yield result
             else:
@@ -306,8 +304,6 @@ class SymbolicExpression(ABC):
                     self._evaluate_conclusions_and_update_bindings_,
                     self._evaluate__(sources),
                 ):
-                    if previous_result is not None:
-                        result.source_operation_result = previous_result
                     evaluation_context.on_result_yielded(expression=self, result=result)
                     yield result
         finally:
@@ -687,20 +683,12 @@ class OperationResult:
     this result. Populated by the EvaluationTracker observer. Unlike satisfied_condition_ids, this
     includes all evaluated expressions regardless of truth value.
     """
-    source_operation_result: Optional[OperationResult] = None
-    """
-    The OperationResult that was passed as input to the _evaluate_() call that produced this result.
-    Set whenever _evaluate_() receives an OperationResult as sources, preserving the evaluation
-    boundary in the chain. Distinct from previous_operation_result, which tracks the child
-    sub-expression chain; this tracks the external stage that fed into this evaluation.
-    """
 
     @property
     def all_bindings(self) -> Bindings:
         """
         :return: All the bindings from all the evaluated operations until this one, including this one.
-        Traverses the full previous_operation_result chain AND source_operation_result at each node
-        (graph traversal with cycle detection).
+        Traverses the full previous_operation_result chain (linear traversal with cycle detection).
         """
         combined: Bindings = {}
         seen: set = set()
@@ -710,7 +698,6 @@ class OperationResult:
                 return
             seen.add(id(node))
             collect(node.previous_operation_result)
-            collect(node.source_operation_result)
             combined.update(node.bindings)  # shallower nodes (closer to self) win
 
         collect(self)

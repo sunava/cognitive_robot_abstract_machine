@@ -11,6 +11,7 @@ from uuid import UUID
 from ordered_set import OrderedSet
 from typing_extensions import TYPE_CHECKING
 
+from krrood.entity_query_language.operators.comparator import Comparator
 from krrood.entity_query_language.operators.core_logical_operators import LogicalOperator
 
 if TYPE_CHECKING:
@@ -136,7 +137,10 @@ class ConditionAndBindings:
         return self.__repr__()
 
     def __repr__(self):
-        return f"{self.condition} ({','.join(str(child) for child in self.condition._children_)})"
+        if isinstance(self.condition, Comparator):
+            return f"({self.condition.left} {self.condition} {self.condition.right})"
+        else:
+            return f"{self.condition} ({','.join(str(child) for child in self.condition._children_)})"
 
 
 @dataclass

@@ -221,18 +221,18 @@ def test_explain_inferred_semantic_annotations(apartment_world_setup):
         assert condition.operation is operator.eq
         if i == 0:
             assert isinstance(condition.left, Attribute)
-            assert condition.left._attribute_name_ == "child"
-            assert condition.left._child_._type_ is FixedConnection
-            assert isinstance(explanation.operation_result.all_bindings[condition.left._child_._id_], FixedConnection)
-        else:
-            assert isinstance(condition.left, Attribute)
             assert condition.left._attribute_name_ == "parent"
             assert condition.left._child_._type_ is FixedConnection
             assert condition.right._child_._type_ is PrismaticConnection
-            assert isinstance(explanation.operation_result.all_bindings[condition.right._child_._id_], PrismaticConnection)
+            assert isinstance(bindings[condition.right._child_._id_], PrismaticConnection)
+        else:
+            assert isinstance(condition.left, Attribute)
+            assert condition.left._attribute_name_ == "child"
+            assert condition.left._child_._type_ is FixedConnection
+            assert isinstance(bindings[condition.left._child_._id_], FixedConnection)
     assert explanation.get_satisfied_conditions_as_string() == (
-                '== (FixedConnection.child,Handle.root)'
-                '\nAND == (FixedConnection.parent,PrismaticConnection.child)')
+                '(FixedConnection.parent == PrismaticConnection.child)'
+                '\nAND (FixedConnection.child == Handle.root)')
     explanation.condition_graph().visualize(filename="drawer_explanation.pdf")
 
 

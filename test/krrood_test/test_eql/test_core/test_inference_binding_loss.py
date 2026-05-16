@@ -63,8 +63,8 @@ def test_inner_var_reachable_without_intermediate_query():
 
 def test_inner_var_reachable_through_query_wrapper_after_fix():
     """
-    After fixing all_bindings to traverse the full previous_operation_result chain
-    AND source_operation_result at each node, val._id_ and inner_expr._id_ are now
+    After fixing Variable to link sources as previous_operation_result and all_bindings
+    to traverse the full previous chain, val._id_ and inner_expr._id_ are now
     reachable even when an intermediate Query (with slim bindings) sits between them
     and the outer result.
 
@@ -100,14 +100,14 @@ def test_inner_var_reachable_through_query_wrapper_after_fix():
 
 def test_slim_query_binding_and_deep_binding_after_fix():
     """
-    After fixing all_bindings to do full graph traversal, all bindings are now reachable
-    via all_bindings even when an intermediate Query (with slim bindings) sits in the chain.
+    After fixing Variable to link sources as previous_operation_result, all bindings are now
+    reachable via all_bindings even when an intermediate Query (with slim bindings) sits in the chain.
 
     Previously: all_bindings = previous_operation_result.bindings | self.bindings
     (only one level back, so val._id_ was lost when Query produced slim bindings)
 
-    Now: all_bindings traverses the full previous_operation_result chain AND
-    source_operation_result at each node, so val._id_ is always accessible.
+    Now: all_bindings traverses the full previous_operation_result chain linearly,
+    so val._id_ is always accessible.
     """
     val = variable_from([5])
     inner_expr = inference(Inner)(value=val)  # InstantiatedVariable
@@ -142,9 +142,7 @@ def test_slim_query_binding_and_deep_binding_after_fix():
 def test_deep_all_bindings_now_works():
     """
     After the fix, all_bindings traverses the entire previous_operation_result chain
-    AND source_operation_result at each node (full graph traversal with cycle detection).
-
-    val._id_ is now directly accessible via result.all_bindings.
+    linearly, so val._id_ is now directly accessible via result.all_bindings.
     """
     val = variable_from([7])
     inner_expr = inference(Inner)(value=val)  # InstantiatedVariable

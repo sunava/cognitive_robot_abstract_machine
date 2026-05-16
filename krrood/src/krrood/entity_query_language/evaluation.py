@@ -139,7 +139,7 @@ class EvaluationTracker(EvaluationObserver):
         ctx = get_evaluation_context()
         if ctx is None:
             return
-        evaluated = ctx.data.setdefault(EvaluationContextKey.EVALUATED_IDS_KEY, set())
+        evaluated = ctx.data.setdefault(EvaluationContextKey.EVALUATED_IDS_KEY, OrderedSet())
         evaluated.add(expression._id_)
 
         if isinstance(sources, OperationResult) and sources.evaluated_expression_ids:
@@ -206,7 +206,7 @@ class SatisfiedConditionTracker(EvaluationObserver):
         )
 
         # Collect candidates: evaluated, condition participant, and truthier/not-false
-        satisfied = set()
+        satisfied = OrderedSet()
         for expr_id in evaluated:
             try:
                 expr = expression._get_expression_by_id_(expr_id)

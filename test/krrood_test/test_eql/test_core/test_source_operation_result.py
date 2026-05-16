@@ -1,3 +1,16 @@
+"""
+Tests for previous_operation_result chain behavior.
+
+Each expression links its incoming sources
+directly as its own previous_operation_result, making the chain purely linear.
+
+Key invariants:
+- Variable._evaluate__(sources) links sources as previous_operation_result.
+- Query._evaluate__(sources) links the internal child_result as previous_operation_result;
+  sources is embedded deeper in the chain (child_result.previous = ... = sources).
+- all_bindings traverses the full previous_operation_result chain.
+"""
+
 from dataclasses import dataclass
 
 import pytest
@@ -31,65 +44,61 @@ def _all_results(expr, sources=None):
 
 
 # ---------------------------------------------------------------------------
-# source_operation_result is None when no OperationResult is passed as input
+# Variable: sources becomes previous_operation_result
 # ---------------------------------------------------------------------------
 
 
-def test_source_none_on_top_level_evaluate():
-    """Top-level evaluate() produces results with source_operation_result=None."""
+def test_variable_previous_is_none_on_top_level_evaluate():
+    """Top-level Variable evaluation: previous chain has no real bindings from another stage."""
     var = variable_from([1, 2])
-    query = entity(var)
-    query.build()
-    for result in query._evaluate_():
-        assert result.source_operation_result is None
+    for result in var._evaluate_():
+        # previous_operation_result may be the empty sentinel; no external stage bindings appear
+        assert result.bindings[var._id_] in {1, 2}
+        # all_bindings does not include bindings from a prior stage
+        other_var = variable_from([99])
+        assert other_var._id_ not in result.all_bindings
 
 
-def test_source_set_when_empty_operation_result_passed():
-    """source_operation_result is set to the input OperationResult even when empty.
-    Passing a plain dict is no longer valid; an OperationResult must be used."""
-    var = variable_from([1, 2])
-    sentinel = OperationResult({})
-    for result in _all_results(var, sentinel):
-        assert result.source_operation_result is sentinel
-
-
-def test_source_none_when_no_sources():
-    """source_operation_result is None when _evaluate_() is called without sources."""
-    var = variable_from([1, 2, 3])
-    for result in _all_results(var):
-        assert result.source_operation_result is None
-
-
-# ---------------------------------------------------------------------------
-# source_operation_result is set when an OperationResult is passed as input
-# ---------------------------------------------------------------------------
-
-
-def test_source_set_on_variable():
-    """Variable results carry source_operation_result when an OperationResult is input."""
+def test_variable_previous_is_sources_when_operation_result_passed():
+    """Variable links incoming OperationResult as its previous_operation_result."""
     source_var = variable_from([99])
     incoming = _first_result(source_var)
 
     target_var = variable_from([1, 2, 3])
     for result in _all_results(target_var, incoming):
-        assert result.source_operation_result is incoming
+        assert result.previous_operation_result is incoming
 
 
-def test_source_set_on_query():
-    """Query results carry source_operation_result when an OperationResult is input."""
-    source_var = variable_from([0])
+def test_variable_previous_is_sources_when_empty_operation_result_passed():
+    """Variable links an empty OperationResult as previous (sentinel case is still OperationResult)."""
+    var = variable_from([1, 2])
+    sentinel = OperationResult({})
+    for result in _all_results(var, sentinel):
+        assert result.previous_operation_result is sentinel
+
+
+# ---------------------------------------------------------------------------
+# Query: sources is embedded deeper in the chain
+# ---------------------------------------------------------------------------
+
+
+def test_query_sources_reachable_via_all_bindings():
+    """Query results: incoming sources are reachable via all_bindings even though
+    the query's previous_operation_result points at the internal child_result."""
+    source_var = variable_from([99])
     incoming = _first_result(source_var)
 
     val = variable_from([10, 20])
     query = entity(val)
     query.build()
     for result in _all_results(query, incoming):
-        assert result.source_operation_result is incoming
+        assert source_var._id_ in result.all_bindings
+        assert result.all_bindings[source_var._id_] == 99
 
 
-def test_source_set_on_query_with_where():
-    """Query+where results carry source_operation_result regardless of filter depth."""
-    source_var = variable_from([0])
+def test_query_with_where_sources_reachable_via_all_bindings():
+    """Query+where results: incoming sources propagate into all_bindings."""
+    source_var = variable_from([99])
     incoming = _first_result(source_var)
 
     val = variable_from([1, 6, 11])
@@ -98,36 +107,24 @@ def test_source_set_on_query_with_where():
     true_results = [r for r in _all_results(query, incoming) if r.is_true]
     assert len(true_results) == 2
     for result in true_results:
-        assert result.source_operation_result is incoming
-
-
-def test_source_set_on_and_expression():
-    """AND expression results carry source_operation_result when OperationResult is input."""
-    source_var = variable_from([0])
-    incoming = _first_result(source_var)
-
-    val = variable_from([6])
-    and_expr = and_(val > 5, val < 10)
-    for result in _all_results(and_expr, incoming):
-        assert result.source_operation_result is incoming
+        assert source_var._id_ in result.all_bindings
+        assert result.all_bindings[source_var._id_] == 99
 
 
 # ---------------------------------------------------------------------------
-# Short-circuit path: expression ID already in incoming bindings
+# Short-circuit path: previous_operation_result is the incoming result
 # ---------------------------------------------------------------------------
 
 
-def test_source_set_on_short_circuit_path():
-    """Short-circuit path (ID already in bindings) also sets source_operation_result."""
+def test_short_circuit_previous_is_incoming():
+    """Short-circuit path (ID already in bindings) links incoming as previous."""
     var = variable_from([42])
-    # Evaluate once to get a result where var._id_ is already in bindings.
     incoming = _first_result(var)
     assert var._id_ in incoming.bindings
 
-    # Calling _evaluate_() again with that result hits the short-circuit branch.
     results = _all_results(var, incoming)
     assert len(results) == 1
-    assert results[0].source_operation_result is incoming
+    assert results[0].previous_operation_result is incoming
 
 
 # ---------------------------------------------------------------------------
@@ -135,42 +132,54 @@ def test_source_set_on_short_circuit_path():
 # ---------------------------------------------------------------------------
 
 
-def test_source_chain_is_traversable():
-    """source_operation_result forms a traversable chain across evaluation stages."""
-    stage1_var = variable_from([1])
-    stage1_result = _first_result(stage1_var)
-    assert stage1_result.source_operation_result is None
+def test_variable_chain_is_traversable():
+    """previous_operation_result forms a traversable chain across evaluation stages."""
+    v1 = variable_from([1])
+    r1 = _first_result(v1)
 
-    stage2_var = variable_from([10, 20])
-    stage2_results = _all_results(stage2_var, stage1_result)
-    assert len(stage2_results) == 2
-    for r in stage2_results:
-        assert r.source_operation_result is stage1_result
-        assert r.source_operation_result.source_operation_result is None
+    v2 = variable_from([10, 20])
+    r2_list = _all_results(v2, r1)
+    assert len(r2_list) == 2
+    for r2 in r2_list:
+        assert r2.previous_operation_result is r1
 
 
-def test_source_chain_two_hops():
-    """Three-stage pipeline: each result points back one hop correctly."""
+def test_chain_two_hops():
+    """Three-stage Variable pipeline: each result links to previous stage."""
     v1 = variable_from([1])
     r1 = _first_result(v1)
 
     v2 = variable_from([10])
     r2 = _first_result(v2, r1)
-    assert r2.source_operation_result is r1
+    assert r2.previous_operation_result is r1
 
     v3 = variable_from([100])
     r3 = _first_result(v3, r2)
-    assert r3.source_operation_result is r2
-    assert r3.source_operation_result.source_operation_result is r1
+    assert r3.previous_operation_result is r2
+    assert r3.previous_operation_result.previous_operation_result is r1
 
 
 # ---------------------------------------------------------------------------
-# source_operation_result does not affect bindings or truth value
+# all_bindings traverses the full chain
 # ---------------------------------------------------------------------------
 
 
-def test_source_does_not_affect_bindings():
-    """Passing an OperationResult as source does not change binding values."""
+def test_all_bindings_reaches_upstream_variable():
+    """all_bindings traverses the full previous chain to expose upstream variable values."""
+    source_var = variable_from([99])
+    incoming = _first_result(source_var)
+
+    var = variable_from([7])
+    result = _first_result(var, incoming)
+
+    assert var._id_ in result.all_bindings
+    assert source_var._id_ in result.all_bindings
+    assert result.all_bindings[var._id_] == 7
+    assert result.all_bindings[source_var._id_] == 99
+
+
+def test_all_bindings_does_not_affect_own_bindings():
+    """Passing an OperationResult as sources does not change own binding values."""
     source_var = variable_from([99])
     incoming = _first_result(source_var)
 
@@ -182,28 +191,26 @@ def test_source_does_not_affect_bindings():
     assert result_with_source.is_true == result_without_source.is_true
 
 
-def test_source_does_not_affect_eq():
-    """__eq__ ignores source_operation_result: two results identical in content compare equal
-    even when their source_operation_result differs."""
+# ---------------------------------------------------------------------------
+# __eq__ does not include source_operation_result (field removed)
+# ---------------------------------------------------------------------------
+
+
+def test_results_with_same_content_are_equal_regardless_of_chain():
+    """Two Variable results from the same domain with the same previous chain are equal."""
     var = variable_from([7])
     r1 = _first_result(var)
     r2 = _first_result(var)
-
-    # Assign different source results to each
-    r1.source_operation_result = _first_result(variable_from([1]))
-    r2.source_operation_result = _first_result(variable_from([2]))
-
-    # Content (bindings, truth value, operand, previous chain) is identical → equal
     assert r1 == r2
 
 
 # ---------------------------------------------------------------------------
-# source_operation_result with inference (InstantiatedVariable)
+# Inference (InstantiatedVariable) sources propagate via chain
 # ---------------------------------------------------------------------------
 
 
-def test_source_set_on_inference_results():
-    """InstantiatedVariable results also carry source_operation_result."""
+def test_inference_sources_reachable_via_all_bindings():
+    """InstantiatedVariable results: incoming sources reachable via all_bindings."""
     source_var = variable_from([0])
     incoming = _first_result(source_var)
 
@@ -214,4 +221,5 @@ def test_source_set_on_inference_results():
     results = [r for r in _all_results(query, incoming) if r.is_true]
     assert len(results) == 2
     for r in results:
-        assert r.source_operation_result is incoming
+        assert source_var._id_ in r.all_bindings
+        assert r.all_bindings[source_var._id_] == 0
