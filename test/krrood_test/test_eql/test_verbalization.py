@@ -167,6 +167,68 @@ def test_verbalize_index_access_merged_into_attribute():
     assert "[0]" in text
 
 
+def test_verbalize_bool_attribute_predicative():
+    @dataclass
+    class _RobotActive:
+        active: bool
+
+    r = variable(_RobotActive, [])
+    text = _v(r.active)
+    assert "_RobotActive" in text or "Robot" in text
+    assert "is" in text
+    assert "active" in text
+    assert "of" not in text
+
+
+def test_verbalize_bool_attribute_negated():
+    @dataclass
+    class _RobotActive:
+        active: bool
+
+    r = variable(_RobotActive, [])
+    text = _v(not_(r.active))
+    assert "is not" in text
+    assert "active" in text
+
+
+def test_verbalize_indexed_bool_attribute_predicative():
+    r = variable(_Robot, [])
+    text = _v(r.tasks[0].completed)
+    assert "first" in text
+    assert "tasks" in text
+    assert "is" in text
+    assert "completed" in text
+    # must NOT be "completed of tasks[0] of …"
+    assert "completed of" not in text
+
+
+def test_verbalize_indexed_bool_attribute_negated():
+    r = variable(_Robot, [])
+    text = _v(not_(r.tasks[0].completed))
+    assert "first" in text
+    assert "tasks" in text
+    assert "is not" in text
+    assert "completed" in text
+
+
+def test_verbalize_second_index_ordinal():
+    r = variable(_Robot, [])
+    text = _v(r.tasks[1].completed)
+    assert "second" in text
+    assert "tasks" in text
+    assert "is" in text
+    assert "completed" in text
+
+
+def test_verbalize_non_bool_indexed_attribute_possession():
+    r = variable(_Robot, [])
+    text = _v(r.tasks[0].name)
+    # name is a str — should use possession/of form, NOT "is"
+    assert "tasks" in text
+    assert "name" in text
+    assert " is " not in text
+
+
 def test_verbalize_flat_variable_delegates_to_child():
     cab = variable(Cabinet, [])
     drawer_var = flat_variable(cab.drawers)
@@ -239,8 +301,30 @@ def test_verbalize_or_chain():
 def test_verbalize_not():
     x = variable(int, [])
     text = _v(not_(x > 5))
-    assert "not" in text
-    assert "greater than" in text
+    assert "is not greater than" in text
+
+
+def test_verbalize_not_comparator_gt():
+    x = variable(int, [])
+    assert "is not greater than" in _v(not_(x > 50))
+    assert "50" in _v(not_(x > 50))
+
+
+def test_verbalize_not_comparator_eq():
+    x = variable(int, [])
+    assert "does not equal" in _v(not_(x == 5))
+
+
+def test_verbalize_not_comparator_le():
+    x = variable(int, [])
+    assert "is not at most" in _v(not_(x <= 100))
+
+
+def test_verbalize_not_complex_fallback():
+    x = variable(int, [])
+    text = _v(not_(or_(x > 50, x < 10)))
+    assert text.startswith("not (")
+    assert "either" in text
 
 
 # ── Unit tests: aggregators ────────────────────────────────────────────────────
@@ -285,10 +369,11 @@ def test_verbalize_presentation_example():
     assert "Find" in text
     assert "Robot" in text
     assert "battery" in text
-    assert "greater than" in text
+    assert "is greater than" in text
     assert "50" in text
-    assert "not" in text
-    assert "completed" in text
+    assert "first" in text
+    assert "tasks" in text
+    assert "is not completed" in text
 
 
 def test_verbalize_for_all(handles_and_containers_world):

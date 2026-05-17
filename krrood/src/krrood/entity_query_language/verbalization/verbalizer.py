@@ -50,6 +50,23 @@ _OP_WORDS = {
     not_contains: "does not contain",
 }
 
+_NEGATED_OP_WORDS = {
+    operator.gt: "is not greater than",
+    operator.lt: "is not less than",
+    operator.ge: "is not at least",
+    operator.le: "is not at most",
+    operator.eq: "does not equal",
+    operator.ne: "equals",
+    operator.contains: "does not contain",
+    not_contains: "contains",
+}
+
+_ORDINALS = {0: "first", 1: "second", 2: "third", 3: "fourth", 4: "fifth"}
+
+
+def _ordinal(n: int) -> str:
+    return _ORDINALS.get(n, f"{n + 1}th")
+
 
 class EQLVerbalizer:
     """
@@ -102,14 +119,17 @@ class EQLVerbalizer:
     def _v_FlatVariable_(self, expr: FlatVariable, ctx: VerbalizationContext) -> str:
         return self.verbalize(expr._child_, ctx)
 
-    def _verbalize_mapped_chain_(self, expr: MappedVariable, ctx: VerbalizationContext) -> str:
+    def _verbalize_mapped_chain_(self, expr: MappedVariable, ctx: VerbalizationContext,
+                                 negated: bool = False) -> str:
         """
         Natural-language path for a MappedVariable chain.
 
-        * Single-hop ``Attribute`` directly on a root: possessive —
+        * Boolean terminal ``Attribute``: predicative —
+          ``"Robot's battery is [not] active"``.
+        * Single-hop non-boolean ``Attribute`` on a root: possessive —
           ``"Robot's battery"``.
         * Longer or mixed chains: ``"of"`` form —
-          ``"completed of tasks[0] of the Robot"``.
+          ``"name of tasks[0] of the Robot"``.
         """
         chain: list[MappedVariable] = []
         current = expr
@@ -119,11 +139,42 @@ class EQLVerbalizer:
         root_text = self.verbalize(current, ctx)
         chain.reverse()  # root-side first
 
-        path_parts = self._build_path_parts_(chain)
+        terminal = chain[-1]
+        if isinstance(terminal, Attribute) and terminal._type_ is bool:
+            nav_text = self._verbalize_navigation_chain_(chain[:-1], root_text)
+            verb = "is not" if negated else "is"
+            return f"{nav_text} {verb} {terminal._attribute_name_}"
 
+        path_parts = self._build_path_parts_(chain)
         if len(path_parts) == 1 and isinstance(expr, Attribute):
             return f"{root_text}'s {path_parts[0]}"
-        # Multi-hop: "leaf of ... of root"
+        return " of ".join(reversed(path_parts)) + f" of {root_text}"
+
+    def _verbalize_navigation_chain_(self, nav_chain: list, root_text: str) -> str:
+        """
+        Verbalize the navigation portion of a chain (everything before a boolean terminal).
+
+        An integer ``Index`` at the end of the chain is converted to an ordinal:
+        ``[Attribute("tasks"), Index(0)]`` → ``"the first of the Robot's tasks"``.
+        """
+        if not nav_chain:
+            return root_text
+
+        if isinstance(nav_chain[-1], Index) and isinstance(nav_chain[-1]._key_, int):
+            ordinal = _ordinal(nav_chain[-1]._key_)
+            pre_parts = self._build_path_parts_(nav_chain[:-1])
+            if pre_parts:
+                if len(pre_parts) == 1:
+                    pre_text = f"{root_text}'s {pre_parts[0]}"
+                else:
+                    pre_text = " of ".join(reversed(pre_parts)) + f" of {root_text}"
+            else:
+                pre_text = root_text
+            return f"the {ordinal} of {pre_text}"
+
+        path_parts = self._build_path_parts_(nav_chain)
+        if len(path_parts) == 1:
+            return f"{root_text}'s {path_parts[0]}"
         return " of ".join(reversed(path_parts)) + f" of {root_text}"
 
     def _build_path_parts_(self, chain: list) -> list[str]:
@@ -189,7 +240,31 @@ class EQLVerbalizer:
         return "either " + ", ".join(parts[:-1]) + f", or {parts[-1]}"
 
     def _v_Not_(self, expr: Not, ctx: VerbalizationContext) -> str:
-        return f"not ({self.verbalize(expr._child_, ctx)})"
+        child = expr._child_
+        # Case 1: negate a comparator — inline the negated verb word.
+        if isinstance(child, Comparator):
+            left = self.verbalize(child.left, ctx)
+            right = self.verbalize(child.right, ctx)
+            op_word = _NEGATED_OP_WORDS.get(child.operation,
+                                             f"not {_OP_WORDS.get(child.operation, child._name_)}")
+            return f"{left} {op_word} {right}"
+        # Case 2: negate a boolean attribute chain — inline "is not".
+        if isinstance(child, MappedVariable):
+            # Walk to the terminal to check if it's a boolean Attribute.
+            node = child
+            while isinstance(node, MappedVariable):
+                node = node._child_
+            # node is now root; walk chain list to find terminal
+            chain = []
+            cur = child
+            while isinstance(cur, MappedVariable):
+                chain.append(cur)
+                cur = cur._child_
+            chain.reverse()
+            if isinstance(chain[-1], Attribute) and chain[-1]._type_ is bool:
+                return self._verbalize_mapped_chain_(child, ctx, negated=True)
+        # Case 3: fallback — wrap with "not (…)".
+        return f"not ({self.verbalize(child, ctx)})"
 
     # ── Quantifiers ────────────────────────────────────────────────────────────
 
