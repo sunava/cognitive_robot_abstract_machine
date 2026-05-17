@@ -583,6 +583,85 @@ def test_verbalize_predicate_no_template_no_args_fallback():
     assert "IsActive" in text
 
 
+# ── Aggregator coreference & HAVING compact form ──────────────────────────────
+
+
+def test_aggregator_coreference_second_mention_is_the(departments_and_employees_fixture):
+    """Same aggregator expression in set_of and having → second mention prefixed with 'the'."""
+    _, _ = departments_and_employees_fixture
+    emp = variable(Employee, domain=None)
+    avg_salary = eql.average(emp.salary)
+    query = a(set_of(avg_salary).grouped_by(emp.department).having(avg_salary > 30000))
+    text = _vq(query)
+
+    # First mention (in set_of): "average of …"
+    # Second mention (in having): "the average of …"
+    assert "the average of" in text
+
+
+def test_having_comparator_omits_is_copula(departments_and_employees_fixture):
+    """HAVING condition should use compact comparator form without the 'is' copula."""
+    _, _ = departments_and_employees_fixture
+    emp = variable(Employee, domain=None)
+    avg_salary = eql.average(emp.salary)
+    query = a(
+        set_of(emp.department, avg_salary).grouped_by(emp.department).having(avg_salary > 30000)
+    )
+    text = _vq(query)
+
+    having_part = text[text.index("having"):]
+    assert "is greater than" not in having_part
+    assert "greater than" in having_part
+
+
+def test_where_keeps_is_copula(departments_and_employees_fixture):
+    """WHERE condition must still use the full 'is greater than' form."""
+    _, _ = departments_and_employees_fixture
+    emp = variable(Employee, domain=None)
+    query = a(entity(emp).where(emp.salary > 30000))
+    text = _vq(query)
+
+    where_part = text[text.index("such that"):]
+    assert "is greater than" in where_part
+
+
+def test_having_compound_condition_all_compact(departments_and_employees_fixture):
+    """AND/OR inside HAVING: every comparator should use compact form."""
+    _, _ = departments_and_employees_fixture
+    emp = variable(Employee, domain=None)
+    avg_salary = eql.average(emp.salary)
+    count_emp = eql.count(emp)
+    query = a(
+        set_of(emp.department, avg_salary)
+        .grouped_by(emp.department)
+        .having(and_(avg_salary > 30000, count_emp >= 2))
+    )
+    text = _vq(query)
+
+    having_part = text[text.index("having"):]
+    assert "is greater than" not in having_part
+    assert "is at least" not in having_part
+    assert "greater than" in having_part
+    assert "at least" in having_part
+
+
+def test_having_negated_comparator_compact(departments_and_employees_fixture):
+    """NOT over a comparator inside HAVING should also omit 'is'."""
+    _, _ = departments_and_employees_fixture
+    emp = variable(Employee, domain=None)
+    avg_salary = eql.average(emp.salary)
+    query = a(
+        set_of(emp.department, avg_salary)
+        .grouped_by(emp.department)
+        .having(not_(avg_salary > 30000))
+    )
+    text = _vq(query)
+
+    having_part = text[text.index("having"):]
+    assert "is not greater than" not in having_part
+    assert "not greater than" in having_part
+
+
 # ── Fixture ────────────────────────────────────────────────────────────────────
 
 

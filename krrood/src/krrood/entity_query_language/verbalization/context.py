@@ -22,6 +22,10 @@ class VerbalizationContext:
     seen: dict = field(default_factory=dict)
     """Maps expression UUID → type-name string for every expression already verbalized."""
 
+    compact_predicates: bool = False
+    """When True, comparators omit the copula "is" (e.g. "greater than" not "is greater than").
+    Set by the verbalizer while rendering HAVING conditions."""
+
     def noun_for(self, var) -> str:
         """
         Return the article + type-name noun phrase for *var*.

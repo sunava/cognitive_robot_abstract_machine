@@ -50,11 +50,33 @@ _OP_WORDS = {
     not_contains: "does not contain",
 }
 
+_OP_WORDS_COMPACT = {
+    operator.eq: "equals",
+    operator.ne: "does not equal",
+    operator.lt: "less than",
+    operator.le: "at most",
+    operator.gt: "greater than",
+    operator.ge: "at least",
+    operator.contains: "contains",
+    not_contains: "does not contain",
+}
+
 _NEGATED_OP_WORDS = {
     operator.gt: "is not greater than",
     operator.lt: "is not less than",
     operator.ge: "is not at least",
     operator.le: "is not at most",
+    operator.eq: "does not equal",
+    operator.ne: "equals",
+    operator.contains: "does not contain",
+    not_contains: "contains",
+}
+
+_NEGATED_OP_WORDS_COMPACT = {
+    operator.gt: "not greater than",
+    operator.lt: "not less than",
+    operator.ge: "not at least",
+    operator.le: "not at most",
     operator.eq: "does not equal",
     operator.ne: "equals",
     operator.contains: "does not contain",
@@ -245,8 +267,11 @@ class EQLVerbalizer:
         if isinstance(child, Comparator):
             left = self.verbalize(child.left, ctx)
             right = self.verbalize(child.right, ctx)
-            op_word = _NEGATED_OP_WORDS.get(child.operation,
-                                             f"not {_OP_WORDS.get(child.operation, child._name_)}")
+            neg_table = _NEGATED_OP_WORDS_COMPACT if ctx.compact_predicates else _NEGATED_OP_WORDS
+            fallback_table = _OP_WORDS_COMPACT if ctx.compact_predicates else _OP_WORDS
+            op_word = neg_table.get(
+                child.operation, f"not {fallback_table.get(child.operation, child._name_)}"
+            )
             return f"{left} {op_word} {right}"
         # Case 2: negate a boolean attribute chain — inline "is not".
         if isinstance(child, MappedVariable):
@@ -283,34 +308,47 @@ class EQLVerbalizer:
     def _v_Comparator_(self, expr: Comparator, ctx: VerbalizationContext) -> str:
         left = self.verbalize(expr.left, ctx)
         right = self.verbalize(expr.right, ctx)
-        op_word = _OP_WORDS.get(expr.operation, expr._name_)
+        table = _OP_WORDS_COMPACT if ctx.compact_predicates else _OP_WORDS
+        op_word = table.get(expr.operation, expr._name_)
         return f"{left} {op_word} {right}"
 
     # ── Aggregators ────────────────────────────────────────────────────────────
 
     def _v_Count_(self, expr: Count, ctx: VerbalizationContext) -> str:
-        return f"count of {self.verbalize(expr._child_, ctx)}"
+        return self._verbalize_aggregator_(expr, ctx, "count of {}")
 
     def _v_CountAll_(self, expr: CountAll, ctx: VerbalizationContext) -> str:
         return "count of all"
 
     def _v_Sum_(self, expr: Sum, ctx: VerbalizationContext) -> str:
-        return f"sum of {self.verbalize(expr._child_, ctx)}"
+        return self._verbalize_aggregator_(expr, ctx, "sum of {}")
 
     def _v_Average_(self, expr: Average, ctx: VerbalizationContext) -> str:
-        return f"average of {self.verbalize(expr._child_, ctx)}"
+        return self._verbalize_aggregator_(expr, ctx, "average of {}")
 
     def _v_Max_(self, expr: Max, ctx: VerbalizationContext) -> str:
-        return f"maximum {self.verbalize(expr._child_, ctx)}"
+        return self._verbalize_aggregator_(expr, ctx, "maximum {}")
 
     def _v_Min_(self, expr: Min, ctx: VerbalizationContext) -> str:
-        return f"minimum {self.verbalize(expr._child_, ctx)}"
+        return self._verbalize_aggregator_(expr, ctx, "minimum {}")
 
     def _v_Mode_(self, expr: Mode, ctx: VerbalizationContext) -> str:
-        return f"mode of {self.verbalize(expr._child_, ctx)}"
+        return self._verbalize_aggregator_(expr, ctx, "mode of {}")
 
     def _v_MultiMode_(self, expr: MultiMode, ctx: VerbalizationContext) -> str:
-        return f"all modes of {self.verbalize(expr._child_, ctx)}"
+        return self._verbalize_aggregator_(expr, ctx, "all modes of {}")
+
+    def _verbalize_aggregator_(self, expr, ctx: VerbalizationContext, template: str) -> str:
+        """
+        Verbalize an aggregator with coreference: first mention returns the plain phrase;
+        any subsequent mention of the same expression prefixes it with "the".
+        """
+        child_text = self.verbalize(expr._child_, ctx)
+        phrase = template.format(child_text)
+        if expr._id_ in ctx.seen:
+            return f"the {phrase}"
+        ctx.seen[expr._id_] = phrase
+        return phrase
 
     # ── Query: Entity and SetOf ────────────────────────────────────────────────
 
@@ -397,7 +435,10 @@ class EQLVerbalizer:
             parts.append(f"grouped by {', '.join(groups)}")
 
         if having_expr is not None:
-            parts.append(f"having {self.verbalize(having_expr.condition, ctx)}")
+            ctx.compact_predicates = True
+            having_text = self.verbalize(having_expr.condition, ctx)
+            ctx.compact_predicates = False
+            parts.append(f"having {having_text}")
 
         ob = expr._ordered_by_builder_
         if ob is not None:
