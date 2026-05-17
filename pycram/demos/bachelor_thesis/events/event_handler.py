@@ -46,6 +46,7 @@ class EventDispatcher:
         self.correct_location_all_other_items = None
 
         self.dining_table = None
+        self.dishwasher_exists = True
 
         ##### replaces direct use of predicate functions for faster runtime ############################################
         self.perceived_objects = []
@@ -261,7 +262,7 @@ def trigger_task(handler: EventDispatcher, data : list[SemanticAnnotation], worl
         else:
             perf_print("skip counterTop query: no perceived dishware/cutlery")
 
-        if load_dishwasher_task is not None:
+        if load_dishwasher_task is not None and handler.dishwasher_exists:
             with perf_step("trigger load dishwasher task"):
                 exists = False
                 for task in handler.activated_tasks:
@@ -309,7 +310,7 @@ def trigger_task(handler: EventDispatcher, data : list[SemanticAnnotation], worl
         else:
             perf_print("skip dishwasher_rack query: no perceived dishware/cutlery")
 
-        if unload_dishwasher_task is not None:
+        if unload_dishwasher_task is not None and handler.dishwasher_exists:
             with perf_step("trigger unload dishwasher task"):
                 exists = False
                 for task in handler.activated_tasks:

@@ -16,8 +16,10 @@ from time import sleep
 import threading
 
 from semantic_digital_twin.adapters.urdf import URDFParser
+from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.robots.hsrb import HSRB
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Table, Dishwasher
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import OmniDrive
 from semantic_digital_twin.world_description.world_entity import SemanticAnnotation
@@ -78,6 +80,43 @@ for ann in  world.semantic_annotations:
 
 #-----------------------------------------------------------------------------------------------------------------------
 context.evaluate_conditions = False
+
+# set all dispatcher location variables
+iterator = 0
+surfaces = []
+surfaces_complete = False
+dishwasher = None
+while iterator < 4:
+    if not surfaces:
+        array = world.semantic_annotations
+    else:
+        array = surfaces
+    for ann in array:
+        if isinstance(ann, HasSupportingSurface):
+            if not surfaces_complete:
+                surfaces.append(ann)
+            if iterator == 0:
+                dispatcher.correct_location_food = ann
+            elif iterator == 1:
+                dispatcher.correct_location_drinks = ann
+            elif iterator == 2:
+                dispatcher.correct_location_tableware = ann
+            elif iterator == 3:
+                dispatcher.correct_location_all_other_items = ann
+            elif iterator == 4 and isinstance(ann, Table):
+                dispatcher.dining_table = ann
+
+            iterator = iterator + 1
+        if isinstance(ann, Dishwasher):
+            ann.name = PrefixedName("dishwasher_rack")
+            dishwasher = ann
+    surfaces_complete = True
+
+if dishwasher is not None:
+    dispatcher.dishwasher_exists=True
+else:
+    dispatcher.dishwasher_exists=False
+
 
 table_pose = None
 for bod in world.bodies:
