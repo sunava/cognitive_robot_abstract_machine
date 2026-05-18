@@ -10,14 +10,16 @@ from demos.thesis_single_object.single_object_cut_demo import run_single_object_
 
 # robots = ("hsrb", "stretch", "tiago", "g1", "justin", "armar7", "pr2")
 # actions = "cut,mix,wipe"
-ROBOT = "pr2"
-ACTION = "cut"
+ROBOT = "garmi"
+ACTION = "mix"
 TECHNIQUE = None
 ENVIRONMENT = "apartment"
 OBJECT_KIND = "bread"
 SPAWN_POSITION = None
 SPAWN_YAW = None
 SPAWN_SCALE = 1.0
+PICKUP_POSITION = (1.5, 2.11, 0.99)
+PICKUP_YAW = 0.0
 
 
 if __name__ == "__main__":
@@ -30,4 +32,6 @@ if __name__ == "__main__":
         spawn_position=SPAWN_POSITION,
         spawn_yaw=SPAWN_YAW,
         spawn_scale=SPAWN_SCALE,
+        pickup_position=PICKUP_POSITION,
+        pickup_yaw=PICKUP_YAW,
     )

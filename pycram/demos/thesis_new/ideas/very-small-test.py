@@ -7,7 +7,7 @@ from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
 from semantic_digital_twin.adapters.urdf import URDFParser
 
 RESOURCES_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "resources")
+    os.path.join(os.path.dirname(__file__), "../..", "..", "resources")
 )
 DEFAULT_ENVIRONMENT_PATH = os.path.join(
     "/home/vee/workspace/ros/src/robocane_manual/urdf/robocane.urdf",

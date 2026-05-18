@@ -10,6 +10,7 @@ from semantic_digital_twin.pipeline.pipeline import (
 )
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from semantic_digital_twin.robots.armar7 import Armar7
+from semantic_digital_twin.robots.garmi import Garmi
 from semantic_digital_twin.robots.hsrb import HSRB
 from semantic_digital_twin.robots.justin import Justin
 from semantic_digital_twin.robots.pr2 import PR2
@@ -90,7 +91,7 @@ ENVIRONMENT_START_POSES = {
     "isr-testbed": HomogeneousTransformationMatrix.from_xyz_rpy(0, 0, 0.0),
 }
 RESOURCES_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "resources")
+    os.path.join(os.path.dirname(__file__), "../..", "..", "resources")
 )
 WORLDS_DIR = os.path.join(RESOURCES_DIR, "worlds")
 EXTERNAL_ENVIRONMENT_SPECS = {
@@ -128,6 +129,12 @@ ROBOT_SPECS = {
         OmniDrive,
         HomogeneousTransformationMatrix(),
     ),
+    "garmi": (
+        "package://garmi_description/urdf/garmi.urdf",
+        Garmi,
+        OmniDrive,
+        HomogeneousTransformationMatrix(),
+    ),
     "justin": (
         "package://iai_dlr_rollin_justin/urdf/rollin_justin.urdf",
         Justin,
@@ -147,6 +154,10 @@ ROBOT_SPECS = {
     #     HomogeneousTransformationMatrix.from_xyz_rpy(z=0.8),
     # ),
 }
+ROBOT_NAME_ALIASES = {
+    "rollin_justin": "justin",
+    "unitree_g1": "g1",
+}
 
 
 def resolve_robot_name(robot_name=None):
@@ -154,8 +165,9 @@ def resolve_robot_name(robot_name=None):
         THESIS_NEW_ROBOT_ENV, THESIS_NEW_DEFAULT_ROBOT
     )
     normalized = str(selected).strip().lower()
+    normalized = ROBOT_NAME_ALIASES.get(normalized, normalized)
     if normalized not in ROBOT_SPECS:
-        supported = ", ".join(sorted(ROBOT_SPECS))
+        supported = ", ".join(sorted([*ROBOT_SPECS, *ROBOT_NAME_ALIASES]))
         raise ValueError(
             f"Unsupported thesis_new robot '{selected}'. Supported: {supported}"
         )

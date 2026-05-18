@@ -1,42 +1,63 @@
+import os
 import time
 
+import numpy as np
+
+from pycram.datastructures.dataclasses import Context
+from pycram.datastructures.enums import Arms
+from pycram.external_interfaces.sparql_queries.mixing import safe_get_mixing_knowledge
 from pycram.locations.locations import CostmapLocation
 from pycram.motion_executor import (
-    simulated_robot_without_collision,
     simulated_robot_with_collision,
+    simulated_robot_without_collision,
 )
-
-from pycram.external_interfaces.sparql_queries.cutting import safe_get_cutting_knowledge
+from pycram.orm.ormatic_interface import Base
+from pycram.orm.utils import pycram_sessionmaker
 from pycram.plans.factories import sequential
-from pycram.robot_plans.actions.composite.tool_based import CuttingAction
+from pycram.robot_plans.actions.composite.tool_based import MixingAction
 from pycram.robot_plans.actions.core.navigation import NavigateAction
 from pycram.robot_plans.actions.core.robot_body import (
-    ParkArmsAction,
     MoveTorsoAction,
+    ParkArmsAction,
     SetGripperAction,
 )
-from pycram.tf_transformations import quaternion_from_euler, quaternion_multiply
-from pycram.tf_transformations import euler_from_quaternion, quaternion_matrix
-
-
-from .spawn_random_breads import (
-    get_cut_object_config,
-    setup_random_bread_world,
+from pycram.tf_transformations import (
+    euler_from_quaternion,
 )
-from .spawn_random_breads import build_cutting_reachability_costmaps
+from semantic_digital_twin.datastructures.definitions import GripperState, TorsoState
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Whisk
+from semantic_digital_twin.spatial_types import Point3
+from semantic_digital_twin.spatial_types.spatial_types import Pose
+from semantic_digital_twin.world_description.geometry import Color
+
+try:
+    from thesis_new.src.spawn_random_bowls import (
+        _parse_stl,
+        setup_random_bowl_world,
+        setup_random_mixing_container_world,
+    )
+    from thesis_new.src.tool_mounts import get_tool_mount_pose_kwargs
+    from thesis_new.src.world_setup import resolve_robot_name
+except ModuleNotFoundError:
+    from thesis_new.src.spawn_random_bowls import (
+        _parse_stl,
+        setup_random_bowl_world,
+        setup_random_mixing_container_world,
+    )
+    from thesis_new.src.tool_mounts import get_tool_mount_pose_kwargs
+    from thesis_new.src.world_setup import resolve_robot_name
 from pycram.robot_plans.actions.composite.thesis_math import body_local_aabb
-from .tool_mounts import get_tool_mount_pose_kwargs
-from .world_setup import resolve_robot_name
 from pycram.robot_plans.actions.composite.utils.demo_utils import (
     attach_available_tools,
-    update_navigation_costmap_debug_publishers,
     collect_named_targets,
-    commit_plan_to_db,
     get_park_arms_argument,
     highlight_current_target,
     resolve_navigation_target_for_environment,
     setup_experiment_runtime,
     shutdown_experiment_runtime,
+    update_navigation_costmap_debug_publishers,
+    build_navigation_costmaps,
+    commit_plan_to_db,
 )
 from pycram.robot_plans.actions.composite.utils.experiment_logging import (
     BASE_RESULT_FIELDNAMES,
@@ -53,81 +74,35 @@ from pycram.robot_plans.actions.composite.utils.experiment_logging import (
     robot_name as _robot_name,
     tool_name as _tool_name,
 )
-import os
-import numpy as np
-from pycram.datastructures.dataclasses import Context
-from pycram.datastructures.enums import Arms
-from pycram.orm.ormatic_interface import Base
-from pycram.orm.utils import pycram_sessionmaker
 
-
-from semantic_digital_twin.adapters.mesh import STLParser
-
-from semantic_digital_twin.datastructures.definitions import TorsoState, GripperState
-from semantic_digital_twin.semantic_annotations.semantic_annotations import Knife
-from semantic_digital_twin.spatial_types import (
-    HomogeneousTransformationMatrix,
-    Point3,
-)
-from semantic_digital_twin.spatial_types.spatial_types import Pose
-from semantic_digital_twin.world_description.geometry import Color
-
-RESOURCES_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "resources")
-)
-DEFAULT_BREAD_COLOR = Color(R=0.76, G=0.60, B=0.42)
-DEFAULT_APPLE_COLOR = Color(R=0.55, G=0.08, B=0.08)
-DEFAULT_CUCUMBER_COLOR = Color(R=0.12, G=0.38, B=0.14)
-ACTIVE_BREAD_COLOR = Color(R=0.52, G=0.82, B=0.98)
-FAILED_BREAD_COLOR = Color(R=0.95, G=0.20, B=0.20)
-SUCCESS_BREAD_COLOR = Color(R=0.62, G=0.92, B=0.62)
-RECORDS_DIR = os.path.join(os.path.dirname(__file__), "records")
-RESULTS_CSV_PATH = os.path.join(RECORDS_DIR, "cut_all_breads_results.csv")
+DEFAULT_BOWL_COLOR = Color(R=0.78, G=0.80, B=0.86)
+ACTIVE_BOWL_COLOR = Color(R=0.52, G=0.82, B=0.98)
+FAILED_BOWL_COLOR = Color(R=0.95, G=0.20, B=0.20)
+SUCCESS_BOWL_COLOR = Color(R=0.62, G=0.92, B=0.62)
+RECORDS_DIR = os.path.join(os.path.dirname(__file__), "../records")
+RESULTS_CSV_PATH = os.path.join(RECORDS_DIR, "mix_all_bowls_results.csv")
 EXPERIMENT_CONDITION = "full_system"
-BASELINE_NAME = "base_system"
-TASK_NAME = "bread_cutting"
-CUTTING_QUERY_VERB = "cut:Slicing"
-CUTTING_QUERY_FOODON = "FOODON_00003523"
+BASELINE_NAME = "task_knowledge+htn+constraint_planning"
+TASK_NAME = "bowl_mixing"
+MIX_DURATION_S = 2.0
+POINTER_STRIDE = 0
+MIXING_QUERY_TASK = "Whisking"
+DEBUG_PROFILE_MIXING = True
 session = None
-CUTTING_RING_DISTANCE = 0.55
-CUTTING_RING_STD = 12.0
-CUTTING_COSTMAP_WIDTH = 140
-CUTTING_COSTMAP_HEIGHT = 140
-CUTTING_COSTMAP_RESOLUTION = 0.03
-DEBUG_PROFILE_CUTTING = True
-CUTTING_TECHNIQUE = "saw"
-CUTTING_POINTER_STRIDE = 13
-CUTTING_NUM_CUTS_X = 4
-CUTTING_SLICE_THICKNESS_M = 0.03
-
-
-def _cutting_obstacle_clearance(robot):
-    base_bb = robot.base.bounding_box
-    base_depth = float(getattr(base_bb, "depth", float("nan")))
-    base_width = float(getattr(base_bb, "width", float("nan")))
-    obstacle_clearance = 0.25 * (base_depth + base_width)
-    if (not np.isfinite(obstacle_clearance)) or obstacle_clearance <= 0.0:
-        obstacle_clearance = 0.20
-    return obstacle_clearance
 
 
 def _timed(label, fn):
     start = time.perf_counter()
     result = fn()
     elapsed = time.perf_counter() - start
-    if DEBUG_PROFILE_CUTTING:
+    if DEBUG_PROFILE_MIXING:
         print(f"[profile] {label}: {elapsed:.3f}s")
     return result, elapsed
 
 
-def _parse_stl(*relative_path_parts):
-    return STLParser(os.path.join(RESOURCES_DIR, *relative_path_parts)).parse()
-
-
-def _update_costmap_debug_publishers(node, robot, world, bread, publishers):
-    target_pose = bread.global_pose
-    occupancy, ring, final_map = build_cutting_reachability_costmaps(
-        robot, world, target_pose
+def _update_costmap_debug_publishers(node, robot, world, bowl, publishers):
+    occupancy, ring, final_map = build_navigation_costmaps(
+        robot, world, bowl.global_pose
     )
     return update_navigation_costmap_debug_publishers(
         node,
@@ -136,43 +111,13 @@ def _update_costmap_debug_publishers(node, robot, world, bread, publishers):
         occupancy,
         ring,
         final_map,
-        namespace_prefix="cutting",
+        namespace_prefix="mixing",
     )
 
 
-def _cut_object_default_color(object_kind):
-    normalized = str(object_kind).lower()
-    if normalized == "apple":
-        return DEFAULT_APPLE_COLOR
-    if normalized == "cucumber":
-        return DEFAULT_CUCUMBER_COLOR
-    return DEFAULT_BREAD_COLOR
-
-
-def _cut_object_execution_config(object_kind):
-    normalized = str(object_kind).lower()
-    if normalized == "apple":
-        return {
-            "query_verb": "cut:Halving",
-            "technique": "halving",
-            "num_cuts_x": 1,
-        }
-    if normalized == "cucumber":
-        return {
-            "query_verb": "cut:Slicing",
-            "technique": "slice",
-            "num_cuts_x": CUTTING_NUM_CUTS_X,
-        }
-    return {
-        "query_verb": CUTTING_QUERY_VERB,
-        "technique": CUTTING_TECHNIQUE,
-        "num_cuts_x": CUTTING_NUM_CUTS_X,
-    }
-
-
-def _record_bread_result(
+def _record_bowl_result(
     results,
-    bread_name,
+    bowl_name,
     robot_name,
     outcome,
     succeeded_arm,
@@ -180,6 +125,8 @@ def _record_bread_result(
     phase,
     failures,
     *,
+    knowledge_motion,
+    knowledge_mixing_tool,
     task_instance_id,
     experiment_condition,
     baseline_name,
@@ -224,10 +171,12 @@ def _record_bread_result(
         tool_name,
         phase,
         failures,
+        bowl_name=bowl_name,
+        knowledge_motion=knowledge_motion,
+        knowledge_mixing_tool=knowledge_mixing_tool,
         task_name=task_name,
         run_id=run_id,
         task_instance_id=task_instance_id,
-        bread_name=bread_name,
         seed=seed if seed is not None else "",
         world_name=world_name,
         experiment_condition=experiment_condition,
@@ -264,23 +213,18 @@ def _record_bread_result(
 
 
 def _results_csv_fieldnames():
-    return ["bread_name", *BASE_RESULT_FIELDNAMES]
+    return [
+        "bowl_name",
+        "knowledge_motion",
+        "knowledge_mixing_tool",
+        *BASE_RESULT_FIELDNAMES,
+    ]
 
 
-def _try_cut(
-    context,
-    bread,
-    pickup_pose,
-    arm,
-    tool,
-    *,
-    cutting_technique,
-    num_cuts_x,
-    environment_name=None,
-):
+def _try_mix(context, bowl, pickup_pose, arm, tool, *, environment_name=None):
     with simulated_robot_without_collision:
         _, _ = _timed(
-            "cut/reset_pose",
+            "mix/reset_pose",
             lambda: sequential(
                 [
                     ParkArmsAction(get_park_arms_argument(context.world)),
@@ -298,103 +242,61 @@ def _try_cut(
 
     with simulated_robot_without_collision:
         _, _ = _timed(
-            "cut/park_arms",
+            "mix/park_arms",
             lambda: sequential(
                 [ParkArmsAction(get_park_arms_argument(context.world))],
                 context,
             ).perform(),
         )
         _, _ = _timed(
-            "cut/move_torso",
+            "mix/move_torso",
             lambda: sequential([MoveTorsoAction(TorsoState.HIGH)], context).perform(),
         )
         _, _ = _timed(
-            "cut/navigate_action",
+            "mix/navigate_action",
             lambda: sequential(
                 [NavigateAction(pickup_pose, True, teleport=True)],
                 context,
             ).perform(),
         )
 
-    with simulated_robot_with_collision:
-
-        current_plan = sequential(
-            [
-                CuttingAction(
-                    container=bread,
-                    arm=arm,
-                    tool=tool,
-                    technique=cutting_technique,
-                    pointer_stride=CUTTING_POINTER_STRIDE,
-                    num_cuts_x=num_cuts_x,
-                    slice_thickness=CUTTING_SLICE_THICKNESS_M,
-                ),
-            ],
-            context,
-        )
-        _, _ = _timed("cut/action_plan_perform", current_plan.perform)
-
-    _, _ = _timed("cut/db_commit", lambda: commit_plan_to_db(session, current_plan))
-
-
-def _rotate_bread_180deg_z(world, bread):
-    print("rotating bread")
-    pose = bread.global_pose
-    pos = np.asarray(pose.to_position().to_np(), dtype=float).reshape(-1)[:3]
-    quat = np.asarray(pose.to_quaternion().to_np(), dtype=float).reshape(-1)[:4]
-    rot_quat = quaternion_from_euler(0.0, 0.0, np.pi)
-    new_quat = quaternion_multiply(rot_quat, quat)
-
-    rotated_pose = HomogeneousTransformationMatrix.from_xyz_quaternion(
-        pos_x=float(pos[0]),
-        pos_y=float(pos[1]),
-        pos_z=float(pos[2]),
-        quat_x=float(new_quat[0]),
-        quat_y=float(new_quat[1]),
-        quat_z=float(new_quat[2]),
-        quat_w=float(new_quat[3]),
-        reference_frame=world.root,
-    )
-    print(f"rotated object")
-    with world.modify_world():
-        bread.parent_connection.origin = rotated_pose
+    current_plan = None
+    try:
+        with simulated_robot_with_collision:
+            current_plan = sequential(
+                [
+                    MixingAction(
+                        container=bowl,
+                        arm=arm,
+                        tool=tool,
+                        clear_viz=True,
+                        pointer_stride=POINTER_STRIDE,
+                        mix_duration_s=MIX_DURATION_S,
+                    ),
+                ],
+                context,
+            )
+            _, _ = _timed("mix/action_plan_perform", current_plan.perform)
+    finally:
+        if current_plan is not None:
+            _, _ = _timed(
+                "mix/db_commit", lambda: commit_plan_to_db(session, current_plan)
+            )
 
 
-def _build_cut_geometry_binding(bread, *, cutting_technique, num_cuts_x):
+def _build_mixing_geometry_binding(bowl):
     mins, maxs = body_local_aabb(
-        bread,
+        bowl,
         use_visual=True,
         apply_shape_scale=True,
     )
     size = maxs - mins
-    margin_x = min(0.01, 0.15 * size[0])
-    margin_y = min(0.01, 0.10 * size[1])
-    requested_thickness = max(float(CUTTING_SLICE_THICKNESS_M), 1e-4)
-    usable_x = max(0.0, size[0] - 2.0 * margin_x)
-    anchor_local_x = mins[0] + margin_x + min(0.5 * requested_thickness, 0.5 * usable_x)
-    anchor_local_y = 0.5 * (mins[1] + maxs[1])
-    anchor_local_z = mins[2] + max(0.003, 0.05 * size[2])
-
-    pose = bread.global_pose
+    pose = bowl.global_pose
     pos = np.asarray(pose.to_position().to_np(), dtype=float).reshape(-1)[:3]
     quat = np.asarray(pose.to_quaternion().to_np(), dtype=float).reshape(-1)[:4]
     roll, pitch, yaw = euler_from_quaternion(quat)
-    rotation = quaternion_matrix(quat)[:3, :3]
-    cut_normal_local = np.array([1.0, 0.0, 0.0], dtype=float)
-    cut_normal_world = rotation @ cut_normal_local
-    cut_normal_world_yaw = float(np.arctan2(cut_normal_world[1], cut_normal_world[0]))
 
-    eps = 1e-9
-    anchor_norm = np.array(
-        [
-            (anchor_local_x - mins[0]) / max(size[0], eps),
-            (anchor_local_y - mins[1]) / max(size[1], eps),
-            (anchor_local_z - mins[2]) / max(size[2], eps),
-        ],
-        dtype=float,
-    )
-
-    support = getattr(getattr(bread, "parent_connection", None), "parent", None)
+    support = getattr(getattr(bowl, "parent_connection", None), "parent", None)
     support_name = _body_name(support) if support is not None else ""
     support_pos = np.full(3, np.nan, dtype=float)
     support_yaw = float("nan")
@@ -464,91 +366,68 @@ def _build_cut_geometry_binding(bread, *, cutting_technique, num_cuts_x):
         "object_roll_rad": round(float(roll), 6),
         "object_pitch_rad": round(float(pitch), 6),
         "object_yaw_rad": round(float(yaw), 6),
-        "anchor_local_x": round(float(anchor_local_x), 6),
-        "anchor_local_y": round(float(anchor_local_y), 6),
-        "anchor_local_z": round(float(anchor_local_z), 6),
-        "anchor_norm_x": round(float(anchor_norm[0]), 6),
-        "anchor_norm_y": round(float(anchor_norm[1]), 6),
-        "anchor_norm_z": round(float(anchor_norm[2]), 6),
-        "cut_normal_local_x": round(float(cut_normal_local[0]), 6),
-        "cut_normal_local_y": round(float(cut_normal_local[1]), 6),
-        "cut_normal_local_z": round(float(cut_normal_local[2]), 6),
-        "cut_normal_world_x": round(float(cut_normal_world[0]), 6),
-        "cut_normal_world_y": round(float(cut_normal_world[1]), 6),
-        "cut_normal_world_z": round(float(cut_normal_world[2]), 6),
-        "cut_normal_world_yaw_rad": round(cut_normal_world_yaw, 6),
-        "technique_name": cutting_technique,
-        "slice_thickness_m": round(float(CUTTING_SLICE_THICKNESS_M), 6),
-        "num_cuts_x": int(num_cuts_x),
-        "pointer_stride": int(CUTTING_POINTER_STRIDE),
+        "technique_name": MIXING_QUERY_TASK,
+        "pointer_stride": int(POINTER_STRIDE),
     }
 
 
-def main_cutting(
-    seed=None,
-    robot_name=None,
-    environment_name=None,
-    object_kind="bread",
-    object_name=None,
-    container_kind=None,
-    container_name=None,
+def main_mixing(
+    seed=None, robot_name=None, environment_name=None, container_kind="bowl"
 ):
     global session
     if session is None:
         session = pycram_sessionmaker()()
         Base.metadata.create_all(session.bind)
-        session.commit()
-    if object_name is not None:
-        object_kind = object_name
-    if container_name is not None:
-        object_kind = container_name
-    if container_kind is not None:
-        object_kind = container_kind
-    object_cfg = get_cut_object_config(object_kind)
-    default_object_color = _cut_object_default_color(object_kind)
-    cut_cfg = _cut_object_execution_config(object_kind)
+        # session.commit()
+
     effective_seed = (
         int(seed)
         if seed is not None
         else int(np.random.SeedSequence().generate_state(1, dtype=np.uint32)[0])
     )
-    world, _, surface_plan = setup_random_bread_world(
-        seed=effective_seed,
-        robot_name=robot_name,
-        environment_name=environment_name,
-        object_kind=object_kind,
-    )
+    if str(container_kind).lower() == "pot":
+        world, _, surface_plan = setup_random_mixing_container_world(
+            seed=effective_seed,
+            robot_name=robot_name,
+            environment_name=environment_name,
+            container_kind="pot",
+        )
+    else:
+        world, _, surface_plan = setup_random_bowl_world(
+            seed=effective_seed,
+            robot_name=robot_name,
+            environment_name=environment_name,
+        )
 
     node = setup_experiment_runtime(
         world=world,
-        node_name="pycram_cut_all_breads_retry",
+        node_name="pycram_mix_all_bowls_retry",
     )
 
     resolved_robot_name = resolve_robot_name(robot_name)
     arm_tools = attach_available_tools(
         world,
         _parse_stl,
-        mesh_parts=("pycram_object_gap_demo", "big-knife.stl"),
-        right_name="knife_right",
-        left_name="knife_left",
+        mesh_parts=("pycram_object_gap_demo", "whisk.stl"),
+        right_name="whisk_right",
+        left_name="whisk_left",
         right_pose_kwargs=get_tool_mount_pose_kwargs(
-            "cut", resolved_robot_name, Arms.RIGHT
+            "mix", resolved_robot_name, Arms.RIGHT
         ),
         left_pose_kwargs=get_tool_mount_pose_kwargs(
-            "cut", resolved_robot_name, Arms.LEFT
+            "mix", resolved_robot_name, Arms.LEFT
         ),
-        tool_cls=Knife,
+        tool_cls=Whisk,
     )
-    breads = collect_named_targets(world, f"{object_cfg['object_name_prefix']}_")
+    bowls = collect_named_targets(world, "bowl_")
 
     context = Context.from_world(world)
     context.ros_node = node
     robot_name = _robot_name(context.robot)
     world_name = environment_name
     run_id = new_run_id()
-    cutting_knowledge = safe_get_cutting_knowledge(
-        cut_cfg["query_verb"], CUTTING_QUERY_FOODON
-    )
+    mixing_knowledge = safe_get_mixing_knowledge(MIXING_QUERY_TASK)
+
     with simulated_robot_without_collision:
         sequential(
             [SetGripperAction(Arms.BOTH, GripperState.CLOSE)],
@@ -561,106 +440,114 @@ def main_cutting(
         print(
             f"  - {surface_name}: area={area_m2:.3f}m^2 target={target_count} placed={placed_count}"
         )
-    print(f"[setup] {object_cfg['object_label']}s to cut: {len(breads)}")
+    print(f"[setup] bowls to mix: {len(bowls)}")
 
     success_primary = 0
     success_fallback = 0
-    success_rotated_right = 0
-    success_rotated_left = 0
     failed = 0
-    failed_breads = set()
-    successful_breads = set()
-    bread_results = []
+    failed_bowls = set()
+    successful_bowls = set()
+    bowl_results = []
     initialize_csv(RESULTS_CSV_PATH, _results_csv_fieldnames())
     debug_costmap_publishers = {}
+    time.sleep(50)
+    with simulated_robot_without_collision:
+        sequential(
+            [
+                ParkArmsAction(get_park_arms_argument(world)),
+                MoveTorsoAction(TorsoState.HIGH),
+            ],
+            context,
+        ).perform()
 
-    for bread in breads:
-        bread_name = _body_name(bread)
-        bread_start_time = time.perf_counter()
-        attempt_failures = []
-        attempt_count = 0
-        collision_failure_count = 0
-        perturbation_applied = False
-        perturbation_type = ""
+    total_bowls = len(bowls)
+    for bowl_index, bowl in enumerate(bowls, start=1):
+        bowl_name = _body_name(bowl)
+        mixed_count = success_primary + success_fallback
+        print(
+            f"[Demo time] {mixed_count}/{total_bowls} mixed bowls "
+            f"(next {bowl_index}/{total_bowls}: {bowl_name})"
+        )
         debug_costmap_publishers, preview_elapsed = _timed(
-            f"bread/{bread_name}/costmap_preview",
+            f"bowl/{bowl_name}/costmap_preview",
             lambda: _update_costmap_debug_publishers(
-                node, context.robot, world, bread, debug_costmap_publishers
+                node, context.robot, world, bowl, debug_costmap_publishers
             ),
         )
         pickup_loc, _ = _timed(
-            f"bread/{bread_name}/pickup_loc_build",
+            f"bowl/{bowl_name}/pickup_loc_build",
             lambda: CostmapLocation(
-                target=bread.global_pose,
+                target=bowl.global_pose,
                 reachable=True,
                 reachable_arm=arm_tools[0][0] if arm_tools else None,
                 validate_reachability=False,
                 samples=1000,
-                costmap_width=CUTTING_COSTMAP_WIDTH,
-                costmap_height=CUTTING_COSTMAP_HEIGHT,
-                costmap_resolution=CUTTING_COSTMAP_RESOLUTION,
-                ring_std=CUTTING_RING_STD,
-                ring_distance=CUTTING_RING_DISTANCE,
-                obstacle_clearance=_cutting_obstacle_clearance(context.robot),
                 context=context,
             ),
         )
+        attempt_failures = []
+        attempt_count = 0
+        collision_failure_count = 0
+        bowl_start_time = time.perf_counter()
+        perturbation_applied = False
+        perturbation_type = ""
         _, highlight_elapsed = _timed(
-            f"bread/{bread_name}/highlight",
+            f"bowl/{bowl_name}/highlight",
             lambda: highlight_current_target(
                 world,
-                breads,
-                bread,
-                default_color=default_object_color,
-                active_color=ACTIVE_BREAD_COLOR,
-                failed_color=FAILED_BREAD_COLOR,
-                success_color=SUCCESS_BREAD_COLOR,
-                failed_targets=failed_breads,
-                successful_targets=successful_breads,
+                bowls,
+                bowl,
+                default_color=DEFAULT_BOWL_COLOR,
+                active_color=ACTIVE_BOWL_COLOR,
+                failed_color=FAILED_BOWL_COLOR,
+                success_color=SUCCESS_BOWL_COLOR,
+                failed_targets=failed_bowls,
+                successful_targets=successful_bowls,
             ),
         )
         common_result_kwargs = {
-            "task_instance_id": bread_name,
+            "knowledge_motion": mixing_knowledge.get("motion") or "",
+            "knowledge_mixing_tool": mixing_knowledge.get("mixing_tool") or "",
+            "task_instance_id": bowl_name,
             "experiment_condition": EXPERIMENT_CONDITION,
             "baseline_name": BASELINE_NAME,
             "task_name": TASK_NAME,
             "seed": effective_seed,
             "world_name": world_name,
             "run_id": run_id,
-            "knowledge_query_success": cutting_knowledge.get("query_success", False),
-            "knowledge_query_error": cutting_knowledge.get("query_error", ""),
-            "knowledge_prior_task": cutting_knowledge.get("prior_task") or "",
-            "knowledge_cutting_tool": cutting_knowledge.get("cutting_tool") or "",
-            "knowledge_cutting_position": cutting_knowledge.get("cutting_position")
-            or "",
-            "knowledge_repetition": cutting_knowledge.get("repetition") or "",
-            "required_prerequisite": required_prerequisite_text(cutting_knowledge),
-            "prerequisite_source": knowledge_source(cutting_knowledge),
+            "knowledge_query_success": mixing_knowledge.get("query_success", False),
+            "knowledge_query_error": mixing_knowledge.get("query_error", ""),
+            "knowledge_prior_task": "",
+            "knowledge_cutting_tool": "",
+            "knowledge_cutting_position": "",
+            "knowledge_repetition": "",
+            "required_prerequisite": required_prerequisite_text(mixing_knowledge),
+            "prerequisite_source": knowledge_source(mixing_knowledge),
             "prerequisite_satisfied_initially": not bool(
-                cutting_knowledge.get("required_prerequisites")
+                mixing_knowledge.get("required_prerequisites")
             ),
             "autonomous_execution_feasible": not bool(
-                cutting_knowledge.get("required_prerequisites")
+                mixing_knowledge.get("required_prerequisites")
             ),
-            "assistance_type": assistance_type_from_knowledge(cutting_knowledge),
+            "assistance_type": assistance_type_from_knowledge(mixing_knowledge),
         }
         try:
             pickup_pose, pickup_resolve_elapsed = _timed(
-                f"bread/{bread_name}/pickup_loc_resolve",
+                f"bowl/{bowl_name}/pickup_loc_resolve",
                 lambda: resolve_navigation_target_for_environment(
                     pickup_loc,
-                    description=f"cutting {bread.name}",
+                    description=f"mixing {bowl.name}",
                     environment_name=environment_name,
                 )[0],
             )
         except Exception as exc:
             failed += 1
-            failed_breads.add(bread)
+            failed_bowls.add(bowl)
             attempt_failures.append(f"navigation setup -> {_format_attempt_error(exc)}")
             fallback_tool = arm_tools[-1][1] if arm_tools else None
-            result_row = _record_bread_result(
-                bread_results,
-                bread_name,
+            result_row = _record_bowl_result(
+                bowl_results,
+                bowl_name,
                 robot_name,
                 "failed",
                 "",
@@ -683,78 +570,55 @@ def main_cutting(
                 recovery_success=False,
                 perturbation_applied=perturbation_applied,
                 perturbation_type=perturbation_type,
-                execution_time_s=time.perf_counter() - bread_start_time,
-                geometry_binding=_build_cut_geometry_binding(
-                    bread,
-                    cutting_technique=cut_cfg["technique"],
-                    num_cuts_x=cut_cfg["num_cuts_x"],
-                ),
+                execution_time_s=time.perf_counter() - bowl_start_time,
+                geometry_binding=_build_mixing_geometry_binding(bowl),
             )
             append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
             print(
-                f"[skip] {bread_name}: pickup pose resolution failed "
+                f"[skip] {bowl_name}: pickup pose resolution failed "
                 f"({type(exc).__name__}: {exc})"
             )
-            if DEBUG_PROFILE_CUTTING:
+            if DEBUG_PROFILE_MIXING:
                 print(
-                    f"[profile] bread/{bread_name}/setup_failed_total: "
-                    f"{time.perf_counter() - bread_start_time:.3f}s"
+                    f"[profile] bowl/{bowl_name}/setup_failed_total: "
+                    f"{time.perf_counter() - bowl_start_time:.3f}s"
                 )
             continue
-        arm_attempt_groups = [
-            ("primary", arm_tools),
-            ("after_rotation", arm_tools),
-        ]
+        arm_attempt_groups = [("primary", arm_tools)]
         attempt_succeeded = False
 
         for group_index, (phase_name, current_arm_tools) in enumerate(
             arm_attempt_groups
         ):
-            if group_index == 1:
-                print(f"[retry] {bread_name}: rotate 180deg around Z and try again")
-                perturbation_applied = True
-                perturbation_type = "z_rotation_180"
-                _rotate_bread_180deg_z(world, bread)
-
             for attempt_index, (arm, tool) in enumerate(current_arm_tools):
                 is_primary_phase = group_index == 0 and attempt_index == 0
                 is_fallback_phase = group_index == 0 and attempt_index > 0
-                if group_index == 0:
-                    decision = "cut" if attempt_index == 0 else "retry_with_left_arm"
-                    decision_reason = (
-                        "primary_success" if attempt_index == 0 else "right_arm_failed"
-                    )
-                else:
-                    decision = "rotate_object_and_retry"
-                    decision_reason = "both_arms_failed_before_rotation"
-                print(
-                    f"[cut] {bread_name}: try {arm.name} arm"
-                    + (" after rotation" if group_index == 1 else "")
+                decision = "mix" if attempt_index == 0 else "retry_with_left_arm"
+                decision_reason = (
+                    "primary_success" if attempt_index == 0 else "right_arm_failed"
                 )
+                print(f"[mix] {bowl_name}: try {arm.name} arm")
+
                 try:
                     attempt_count += 1
-                    _try_cut(
+                    _try_mix(
                         context,
-                        bread,
+                        bowl,
                         pickup_pose,
                         arm,
                         tool,
-                        cutting_technique=cut_cfg["technique"],
-                        num_cuts_x=cut_cfg["num_cuts_x"],
                         environment_name=environment_name,
                     )
                     if is_primary_phase:
                         success_primary += 1
                     elif is_fallback_phase:
                         success_fallback += 1
-                    elif attempt_index == 0:
-                        success_rotated_right += 1
-                    else:
-                        success_rotated_left += 1
-                    successful_breads.add(bread)
-                    result_row = _record_bread_result(
-                        bread_results,
-                        bread_name,
+                    mixed_count = success_primary + success_fallback
+                    print(f"[Demo time] {mixed_count}/{total_bowls} mixed bowls")
+                    successful_bowls.add(bowl)
+                    result_row = _record_bowl_result(
+                        bowl_results,
+                        bowl_name,
                         robot_name,
                         "success",
                         arm.name,
@@ -777,29 +641,21 @@ def main_cutting(
                         recovery_success=attempt_count > 1,
                         perturbation_applied=perturbation_applied,
                         perturbation_type=perturbation_type,
-                        execution_time_s=time.perf_counter() - bread_start_time,
-                        geometry_binding=_build_cut_geometry_binding(
-                            bread,
-                            cutting_technique=cut_cfg["technique"],
-                            num_cuts_x=cut_cfg["num_cuts_x"],
-                        ),
+                        execution_time_s=time.perf_counter() - bowl_start_time,
+                        geometry_binding=_build_mixing_geometry_binding(bowl),
                     )
                     append_csv_row(
                         RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row
                     )
-                    suffix = (
-                        " after rotation"
-                        if group_index == 1
-                        else (" (fallback)" if attempt_index > 0 else "")
-                    )
-                    print(f"[ok] {bread_name}: cut with {arm.name} arm{suffix}")
-                    if DEBUG_PROFILE_CUTTING:
+                    suffix = " (fallback)" if attempt_index > 0 else ""
+                    print(f"[ok] {bowl_name}: mixed with {arm.name} arm{suffix}")
+                    if DEBUG_PROFILE_MIXING:
                         print(
-                            f"[profile] bread/{bread_name}/summary: "
+                            f"[profile] bowl/{bowl_name}/summary: "
                             f"preview={preview_elapsed:.3f}s "
                             f"pickup_resolve={pickup_resolve_elapsed:.3f}s "
                             f"highlight={highlight_elapsed:.3f}s "
-                            f"total={time.perf_counter() - bread_start_time:.3f}s"
+                            f"total={time.perf_counter() - bowl_start_time:.3f}s"
                         )
                     attempt_succeeded = True
                     break
@@ -810,8 +666,7 @@ def main_cutting(
                     )
                     print(
                         f"[{'retry' if not (group_index == len(arm_attempt_groups) - 1 and attempt_index == len(current_arm_tools) - 1) else 'fail'}] "
-                        f"{bread_name}: {arm.name}"
-                        + (" after rotation" if group_index == 1 else "")
+                        f"{bowl_name}: {arm.name}"
                         + f" timed out ({type(exc).__name__}: {exc})"
                     )
                 except Exception as exc:
@@ -822,8 +677,7 @@ def main_cutting(
                     )
                     print(
                         f"[{'retry' if not (group_index == len(arm_attempt_groups) - 1 and attempt_index == len(current_arm_tools) - 1) else 'fail'}] "
-                        f"{bread_name}: {arm.name}"
-                        + (" after rotation" if group_index == 1 else "")
+                        f"{bowl_name}: {arm.name}"
                         + f" failed ({type(exc).__name__}: {exc})"
                     )
             if attempt_succeeded:
@@ -832,19 +686,17 @@ def main_cutting(
         if attempt_succeeded:
             continue
 
-        perturbation_applied = True
-        perturbation_type = "z_rotation_180"
         failed += 1
-        failed_breads.add(bread)
+        failed_bowls.add(bowl)
         last_tool = arm_tools[-1][1]
-        result_row = _record_bread_result(
-            bread_results,
-            bread_name,
+        result_row = _record_bowl_result(
+            bowl_results,
+            bowl_name,
             robot_name,
             "failed",
             "",
             _tool_name(last_tool),
-            "after_rotation",
+            "primary",
             attempt_failures,
             **common_result_kwargs,
             feasibility_reason=(
@@ -860,7 +712,7 @@ def main_cutting(
             decision_reason=(
                 "knowledge_base_prerequisite_detected"
                 if common_result_kwargs["required_prerequisite"]
-                else "all_cut_attempts_failed"
+                else "all_mix_attempts_failed"
             ),
             assistance_requested=bool(common_result_kwargs["required_prerequisite"]),
             assistance_completed=False,
@@ -876,38 +728,32 @@ def main_cutting(
             recovery_success=False,
             perturbation_applied=perturbation_applied,
             perturbation_type=perturbation_type,
-            execution_time_s=time.perf_counter() - bread_start_time,
-            geometry_binding=_build_cut_geometry_binding(
-                bread,
-                cutting_technique=cut_cfg["technique"],
-                num_cuts_x=cut_cfg["num_cuts_x"],
-            ),
+            execution_time_s=time.perf_counter() - bowl_start_time,
+            geometry_binding=_build_mixing_geometry_binding(bowl),
         )
         append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
-        if DEBUG_PROFILE_CUTTING:
+        if DEBUG_PROFILE_MIXING:
             print(
-                f"[profile] bread/{bread_name}/failed_total: "
-                f"{time.perf_counter() - bread_start_time:.3f}s"
+                f"[profile] bowl/{bowl_name}/failed_total: "
+                f"{time.perf_counter() - bowl_start_time:.3f}s"
             )
 
     highlight_current_target(
         world,
-        breads,
+        bowls,
         None,
-        default_color=default_object_color,
-        active_color=ACTIVE_BREAD_COLOR,
-        failed_color=FAILED_BREAD_COLOR,
-        success_color=SUCCESS_BREAD_COLOR,
-        failed_targets=failed_breads,
-        successful_targets=successful_breads,
+        default_color=DEFAULT_BOWL_COLOR,
+        active_color=ACTIVE_BOWL_COLOR,
+        failed_color=FAILED_BOWL_COLOR,
+        success_color=SUCCESS_BOWL_COLOR,
+        failed_targets=failed_bowls,
+        successful_targets=successful_bowls,
     )
 
     print("[summary]")
-    print(f"  total breads: {len(breads)}")
+    print(f"  total bowls: {len(bowls)}")
     print(f"  success primary (RIGHT): {success_primary}")
     print(f"  success fallback (LEFT): {success_fallback}")
-    print(f"  success after rotation (RIGHT): {success_rotated_right}")
-    print(f"  success after rotation (LEFT): {success_rotated_left}")
     print(f"  failed both arms: {failed}")
     print(f"  results csv: {RESULTS_CSV_PATH}")
 
@@ -916,8 +762,7 @@ def main_cutting(
 
 # if __name__ == "__main__":
 #     session = pycram_sessionmaker()()
-#     # drop_database(session.bind)
 #     Base.metadata.create_all(session.bind)
 #     session.commit()
 #
-#     main_cutting()
+#     main_mixing()

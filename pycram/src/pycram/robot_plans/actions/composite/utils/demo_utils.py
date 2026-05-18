@@ -12,7 +12,6 @@ from tf2_msgs.msg import TFMessage
 from krrood.ormatic.data_access_objects.helper import to_dao
 from pycram.datastructures.enums import Arms
 from pycram.locations.costmaps import OccupancyCostmap, RingCostmap
-from pycram.plans.failures import NavigationGoalNotReachedError
 from semantic_digital_twin.adapters.ros.tf_publisher import TFPublisher
 from semantic_digital_twin.adapters.ros.tfwrapper import TFWrapper
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
@@ -44,12 +43,12 @@ DEMO_CAMERA_TARGET_FRAME = "demo_camera_target"
 
 def _load_thesis_world_setup():
     try:
-        from demos.thesis_new.world_setup import (
+        from thesis_new.src.world_setup import (
             resolve_environment_name,
             resolve_robot_name_from_annotation,
         )
     except ImportError:
-        from thesis_new.world_setup import (
+        from thesis_new.src.world_setup import (
             resolve_environment_name,
             resolve_robot_name_from_annotation,
         )
@@ -275,9 +274,7 @@ def resolve_navigation_target(location_designator, *, description):
         first_candidate = None
     if first_candidate is not None:
         return [first_candidate]
-    raise NavigationGoalNotReachedError(
-        f"No collision-free navigation pose found for {description}."
-    )
+    raise RuntimeError(f"No collision-free navigation pose found for {description}.")
 
 
 def is_excluded_kitchen_pose(pose, *, environment_name=None):
@@ -311,12 +308,10 @@ def resolve_navigation_target_for_environment(
             raise
 
     if saw_candidate:
-        raise NavigationGoalNotReachedError(
+        raise RuntimeError(
             f"No collision-free navigation pose found for {description} after environment filtering."
         )
-    raise NavigationGoalNotReachedError(
-        f"No collision-free navigation pose found for {description}."
-    )
+    raise RuntimeError(f"No collision-free navigation pose found for {description}.")
 
 
 def collect_named_targets(world, prefix):
@@ -522,10 +517,9 @@ def get_bimanual_tool_frames(world):
 
 
 def commit_plan_to_db(session, current_plan):
-
-    dao = to_dao(current_plan)
-    session.add(dao)
     try:
+        dao = to_dao(current_plan)
+        session.add(dao)
         session.commit()
         print("commited")
     except Exception as exc:

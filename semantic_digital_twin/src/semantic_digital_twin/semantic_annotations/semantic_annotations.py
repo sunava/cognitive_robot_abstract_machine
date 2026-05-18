@@ -4,6 +4,8 @@ from abc import ABC
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, Self, Tuple
 
+import numpy as np
+
 from pycram.datastructures.dataclasses import AlignmentPair
 from random_events.interval import closed
 from random_events.product_algebra import SimpleEvent
@@ -1129,21 +1131,27 @@ class Sponge(Tool):
                 ),
             ]
 
-        goal_reference_frame = getattr(body_to_act_on, "frame_id", None) or self.root
-        goal_normal = Vector3(1, 0, 0, reference_frame=goal_reference_frame)
+        goal_reference_frame = (
+            getattr(body_to_act_on, "reference_frame", None)
+            or getattr(body_to_act_on, "frame_id", None)
+            or self.root
+        )
+        goal_normal = Vector3(0, 0, -1, reference_frame=goal_reference_frame)
 
+        pose = body_to_act_on
         if hasattr(body_to_act_on, "to_spatial_type"):
             try:
                 pose = body_to_act_on.to_spatial_type()
+            except Exception:
+                pose = body_to_act_on
+
+        if hasattr(pose, "to_rotation_matrix"):
+            try:
                 if getattr(pose, "reference_frame", None) is not None:
                     goal_reference_frame = pose.reference_frame
                 rotation = pose.to_rotation_matrix().to_np()[:3, :3]
-                if np.allclose(rotation, np.eye(3), atol=1e-6):
-                    rotated_normal = np.array([0.0, 0.0, -1.0], dtype=float)
-                else:
-                    rotated_normal = rotation @ np.array([0.0, 0.0, 1.0], dtype=float)
                 goal_normal = Vector3.from_iterable(
-                    rotated_normal,
+                    rotation @ np.array([0.0, 0.0, 1.0], dtype=float),
                     reference_frame=goal_reference_frame,
                 )
             except Exception:
@@ -1151,7 +1159,7 @@ class Sponge(Tool):
 
         return [
             AlignmentPair(
-                tip_normal=Vector3(0, 0, 1, reference_frame=self.root),
+                tip_normal=Vector3(0, 0, -1, reference_frame=self.root),
                 goal_normal=goal_normal,
             ),
         ]

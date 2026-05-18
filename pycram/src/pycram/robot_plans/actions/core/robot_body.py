@@ -144,6 +144,8 @@ class ParkArmsAction(ActionDescription):
     Park the arms of the robot.
     """
 
+    motion_timeout_ticks = 2000
+
     arm: Arms
     """
     Entry from the enum for which arm should be parked.

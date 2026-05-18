@@ -20,7 +20,7 @@ def _bread_extra_summary_row(row):
 
 
 def main():
-    records_dir = os.path.join(os.path.dirname(__file__), "records")
+    records_dir = os.path.join(os.path.dirname(__file__), "")
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--input",

@@ -2,21 +2,17 @@ import os
 from pathlib import Path
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
-from pycram.designators.location_designator import CostmapLocation
-from pycram.language import SequentialPlan
-from pycram.motion_executor import simulated_robot
-from pycram.robot_plans import (
-    ParkArmsActionDescription,
-    NavigateActionDescription,
-    PickUpActionDescription,
-    PlaceActionDescription,
-)
+from pycram.motion_executor import simulated_robot, simulated_robot_without_collision
+from pycram.plans.factories import sequential
+from pycram.robot_plans.actions.core.navigation import NavigateAction
+from pycram.robot_plans.actions.core.robot_body import ParkArmsAction
+
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
 )
 from semantic_digital_twin.adapters.urdf import URDFParser
-from semantic_digital_twin.robots.armar7 import Armar7
+from semantic_digital_twin.robots.garmi import Garmi
 from semantic_digital_twin.spatial_types import (
     HomogeneousTransformationMatrix,
     Point3,
@@ -33,21 +29,19 @@ import pycram
 environment_path = os.path.join("package://iai_apartment/urdf/apartment.urdf")
 # environment_path = os.path.join("package://iai_kit_mobile_lab/urdf/mobile_kitchen.urdf")
 # environment_path = os.path.join("package://iai_kit_mobile_lab/urdf/R007.urdf")
-world = URDFParser.from_file(environment_path).parse()
+environment_world = URDFParser.from_file(environment_path).parse()
 
 # %% Robot Setup
-robot_path = os.path.join("package://iai_kit_armar7/urdf/Armar7.urdf")
+robot_path = os.path.join("package://garmi_description/urdf/garmi.urdf")
 robot_starting_pose = HomogeneousTransformationMatrix.from_xyz_rpy(
     3.8,
     8.40,
     0,
 )
-robot_world = world_with_urdf_factory(
-    robot_path, Armar7, OmniDrive, robot_starting_pose
-)
+robot_world = world_with_urdf_factory(robot_path, Garmi, OmniDrive, robot_starting_pose)
 
-with world.modify_world():
-    world.merge_world(robot_world)
+robot_world.merge_world(environment_world)
+world = robot_world
 
 # %% Spawn Objects
 project_root = get_path_to_project_root(Path(pycram.__file__).resolve())
@@ -89,40 +83,11 @@ except ImportError:
 
 # %% Demo
 context = Context.from_world(world)
-armar7 = world.get_semantic_annotations_by_type(Armar7)[0]
+garmi = world.get_semantic_annotations_by_type(Garmi)[0]
 milk_place_pose = Pose(Point3(x=2.2, y=7.6, z=0.865), reference_frame=world.root)
 
-with simulated_robot:
-    SequentialPlan(
+with simulated_robot_without_collision:
+    sequential(
+        [ParkArmsAction(arm=Arms.BOTH)],
         context,
-        ParkArmsActionDescription(Arms.BOTH),
-        NavigateActionDescription(
-            pickup_loc := CostmapLocation(
-                target=world.get_body_by_name("milk.stl").global_pose,
-                reachable_arm=Arms.LEFT,
-                reachable_for=armar7,
-            ),
-            teleport=False,
-        ),
-        PickUpActionDescription(
-            world.get_body_by_name("milk.stl"),
-            pickup_loc.last_result_arm,
-            pickup_loc.last_result_grasp,
-        ),
-        ParkArmsActionDescription(Arms.BOTH),
-        NavigateActionDescription(
-            place_loc := CostmapLocation(
-                target=milk_place_pose,
-                reachable_arm=pickup_loc.last_result_arm,
-                reachable_for=armar7,
-                grasp_descriptions=pickup_loc.last_result_grasp,
-            ),
-            teleport=False,
-        ),
-        PlaceActionDescription(
-            world.get_body_by_name("milk.stl"),
-            milk_place_pose,
-            place_loc.last_result_arm,
-        ),
-        ParkArmsActionDescription(Arms.BOTH),
     ).perform()

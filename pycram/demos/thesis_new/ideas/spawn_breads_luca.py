@@ -1,19 +1,12 @@
-from time import sleep
-
 import numpy as np
-import rclpy
 
 from demos.thesis_new import setup_thesis_world
-from demos.thesis_new.spawn_random_breads import (
+from thesis_new.src.spawn_random_breads import (
     _collect_surface_bodies,
     _tint_surfaces_light_brown,
     _spawn_bread_at_local_pose,
     _parse_stl,
     _set_uniform_scale,
-)
-from semantic_digital_twin.adapters.ros.tfwrapper import TFWrapper
-from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
-    VizMarkerPublisher,
 )
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bread, Table
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix

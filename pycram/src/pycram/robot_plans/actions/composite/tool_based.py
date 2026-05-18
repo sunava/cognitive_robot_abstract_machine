@@ -216,6 +216,7 @@ class GeneralizedActionPlan(ActionDescription):
         )
         self.robot.full_body_controlled = True
         waypoints = self._build_waypoints(sampled)
+        self._last_waypoints = waypoints
         self._postprocess_waypoints_for_logging(waypoints)
 
         _logging_helper_apply_fields(
@@ -225,6 +226,9 @@ class GeneralizedActionPlan(ActionDescription):
         try:
             self.add_subplan(sequential([self._build_motion(waypoints)])).perform()
         except Exception as exc:
+            if self._accept_execution_failure_as_success(waypoints, exc):
+                return
+
             collision_contacts = None
             try:
                 collision_contacts = len(
@@ -250,6 +254,9 @@ class GeneralizedActionPlan(ActionDescription):
                 f"(waypoints={len(waypoints)}, collisions_now={collision_contacts}): "
                 f"{type(exc).__name__}: {exc}"
             ) from exc
+
+    def _accept_execution_failure_as_success(self, waypoints, exc: Exception) -> bool:
+        return False
 
     def _sample_motion(self):
         return self._sample_points()
@@ -323,6 +330,8 @@ class MixingAction(GeneralizedActionPlan):
     Execute a mixing motion sequence around a container.
     """
 
+    motion_timeout_ticks = 300
+
     container: Body = None
     """
     The container (e.g., bowl) to operate in.
@@ -359,6 +368,13 @@ class WipingAction(GeneralizedActionPlan):
     Execute a planar wiping motion around a target pose.
     """
 
+    motion_timeout_ticks = 300
+
+    final_waypoint_success_tolerance_m: float = 0.08
+    """
+    Accept a timeout as successful if the tool is already this close to the final wipe waypoint.
+    """
+
     container: Optional[Body] = None
     """
     Optional alias for surface_body (backward compatibility).
@@ -376,7 +392,7 @@ class WipingAction(GeneralizedActionPlan):
     Sweep length for the wiping motion.
     """
 
-    cycles: float = 2.0
+    cycles: float = 1.0
     """
     Number of sweep cycles.
     """
@@ -422,40 +438,7 @@ class WipingAction(GeneralizedActionPlan):
         return self._resolve_surface_body()
 
     def _resolve_pose_alignment_target(self):
-        target_point_world = self.target_pose.to_position()
-        robot_bodies = list(getattr(self.robot, "bodies", []))
-        tool_root = getattr(getattr(self, "tool", None), "root", None)
-
-        best_body = None
-        best_point_body = None
-        best_distance = float("inf")
-
-        for body in getattr(self.world, "bodies", []):
-            if (
-                any(body is robot_body for robot_body in robot_bodies)
-                or body is tool_root
-            ):
-                continue
-            try:
-                point_body = self.world.transform(target_point_world, body)
-                point_xyz = np.asarray(point_body.to_np(), dtype=float).reshape(-1)[:3]
-                mins, maxs = body_local_aabb(
-                    body, use_visual=False, apply_shape_scale=True
-                )
-            except Exception:
-                continue
-
-            clamped = np.minimum(np.maximum(point_xyz, mins), maxs)
-            distance = float(np.linalg.norm(point_xyz - clamped))
-            if distance < best_distance:
-                best_distance = distance
-                best_body = body
-                best_point_body = point_xyz
-
-        if best_body is None or best_point_body is None:
-            return self.target_pose
-
-        return best_body
+        return self.target_pose
 
     def _sample_points(self):
         if self.container is not None:
@@ -493,12 +476,94 @@ class WipingAction(GeneralizedActionPlan):
         seq = MotionSequence([segment])
         return seq.sample(frame=t_pose, dt=DEFAULT_SAMPLE_DT)
 
+    def _accept_execution_failure_as_success(self, waypoints, exc: Exception) -> bool:
+        if not self._is_timeout_failure(exc) or not waypoints:
+            return False
+
+        sponge = getattr(getattr(self, "tool", None), "root", None)
+        if sponge is None:
+            print("[wipe timeout check] no sponge root on WipingAction.tool")
+            return False
+
+        try:
+            raw_last_xyz = np.asarray(waypoints[-1].to_np(), dtype=float).reshape(-1)[
+                :3
+            ]
+            raw_sponge_xyz = np.asarray(
+                sponge.global_pose.to_position().to_np(), dtype=float
+            ).reshape(-1)[:3]
+            print(
+                "[wipe timeout check] raw last_point_xyz="
+                f"{np.round(raw_last_xyz, 4).tolist()} "
+                f"sponge_global_xyz={np.round(raw_sponge_xyz, 4).tolist()}"
+            )
+            tip_point = self.world.transform(
+                sponge.global_pose.to_position(), self.world.root
+            )
+            tip_xyz = np.asarray(tip_point.to_np(), dtype=float).reshape(-1)[:3]
+            goal_point = self.world.transform(waypoints[-1], self.world.root)
+            goal_xyz = np.asarray(goal_point.to_np(), dtype=float).reshape(-1)[:3]
+            distance = float(np.linalg.norm(tip_xyz - goal_xyz))
+        except Exception as transform_exc:
+            print(
+                "[wipe timeout check] failed to compare sponge and last point: "
+                f"{type(transform_exc).__name__}: {transform_exc}"
+            )
+            return False
+
+        print(
+            "[wipe timeout check] transformed last_point_xyz="
+            f"{np.round(goal_xyz, 4).tolist()} "
+            f"sponge_xyz={np.round(tip_xyz, 4).tolist()} "
+            f"distance={distance:.3f}m "
+            f"tolerance={float(self.final_waypoint_success_tolerance_m):.3f}m"
+        )
+        logger.warning(
+            "WipingAction timeout check: last_point_xyz=%s sponge_xyz=%s distance=%.3fm",
+            np.round(goal_xyz, 4).tolist(),
+            np.round(tip_xyz, 4).tolist(),
+            distance,
+        )
+
+        if distance > float(self.final_waypoint_success_tolerance_m):
+            return False
+
+        logger.warning(
+            "Accepting WipingAction timeout as success because sponge reached final waypoint "
+            "(distance=%.3fm, tolerance=%.3fm).",
+            distance,
+            self.final_waypoint_success_tolerance_m,
+        )
+        return True
+
+    def _accept_motion_timeout_as_success(self, exc: Exception) -> bool:
+        waypoints = getattr(self, "_last_waypoints", [])
+        return self._accept_execution_failure_as_success(waypoints, exc)
+
+    @staticmethod
+    def _is_timeout_failure(exc: Exception) -> bool:
+        current = exc
+        while current is not None:
+            if isinstance(current, TimeoutError):
+                return True
+            msg = str(current)
+            if (
+                "Timeout reached while waiting for end of motion" in msg
+                or "Motion stalled while waiting for end of motion" in msg
+                or "Hard timeout reached while waiting for end of motion" in msg
+            ):
+                return True
+            current = current.__cause__ or current.__context__
+        return False
+
 
 @dataclass
 class CuttingAction(GeneralizedActionPlan):
     """
     Execute a cutting motion sequence on a food object.
     """
+
+    motion_timeout_ticks = 100
 
     container: Body = None
     """

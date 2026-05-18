@@ -15,11 +15,11 @@ from pycram.robot_plans.actions.core.robot_body import (
 from pycram.tf_transformations import quaternion_from_euler, quaternion_multiply
 
 # from demos.thesis_new.spawn_random_breads import setup_random_bread_world
-from demos.thesis_new.spawn_breads_luca import setup_random_bread_world
+from thesis_new.ideas.spawn_breads_luca import setup_random_bread_world
 
-from demos.thesis_new.spawn_random_breads import build_cutting_reachability_costmaps
-from demos.thesis_new.tool_mounts import get_tool_mount_pose_kwargs
-from demos.thesis_new.world_setup import resolve_robot_name
+from thesis_new.src.spawn_random_breads import build_cutting_reachability_costmaps
+from thesis_new.src.tool_mounts import get_tool_mount_pose_kwargs
+from thesis_new.src.world_setup import resolve_robot_name
 from pycram.robot_plans.actions.composite.utils.demo_utils import (
     attach_available_tools,
     update_navigation_costmap_debug_publishers,
@@ -52,7 +52,7 @@ from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.geometry import Color
 
 RESOURCES_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "resources")
+    os.path.join(os.path.dirname(__file__), "../..", "..", "resources")
 )
 DEFAULT_BREAD_COLOR = Color(R=0.76, G=0.60, B=0.42)
 ACTIVE_BREAD_COLOR = Color(R=0.52, G=0.82, B=0.98)
@@ -158,7 +158,7 @@ def main_cutting(seed=None, robot_name=None, environment_name=None):
         drop_database(session.bind)
         Base.metadata.create_all(session.bind)
         session.commit()
-        print("commited")
+        # print("commited")
     effective_seed = (
         int(seed)
         if seed is not None

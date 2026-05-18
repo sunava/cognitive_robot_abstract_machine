@@ -21,7 +21,7 @@ from pycram.robot_plans.actions.composite.thesis_math import body_local_aabb
 from .world_setup import resolve_environment_name, setup_thesis_world
 
 RESOURCES_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "resources")
+    os.path.join(os.path.dirname(__file__), "../..", "..", "resources")
 )
 
 GENERIC_SUPPORT_EXCLUDE_KEYWORDS = ()

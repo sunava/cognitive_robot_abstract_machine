@@ -35,6 +35,26 @@ DEBUG_PROFILE_MOTION_EXECUTOR = True
 
 @dataclass
 class MotionExecutor:
+    DEFAULT_SIMULATION_TIMEOUT_TICKS: ClassVar[int] = 2000
+    """
+    Default number of simulation ticks before stagnation checks may abort a motion.
+    Individual actions may override this via ActionDescription.motion_timeout_ticks.
+    """
+
+    STAGNATION_CHECK_INTERVAL_TICKS: ClassVar[int] = 25
+    STAGNATION_DISTANCE_EPSILON_M: ClassVar[float] = 0.002
+    STAGNATION_CHECKS_BEFORE_ABORT: ClassVar[int] = 4
+    WIGGLE_DISTANCE_EPSILON_M: ClassVar[float] = 0.025
+    ROBOT_WIGGLE_DISTANCE_EPSILON_M: ClassVar[dict[str, float]] = {
+        "Justin": 0.07,
+    }
+    ACTION_WIGGLE_DISTANCE_EPSILON_M: ClassVar[dict[str, float]] = {
+        "MixingAction": 0.06,
+        "WipingAction": 0.05,
+    }
+    WIGGLE_CHECKS_BEFORE_ABORT: ClassVar[int] = 8
+    HARD_TIMEOUT_FACTOR: ClassVar[int] = 10
+
     motions: List[MotionStatechartNode]
     """
     The motions to execute
@@ -62,6 +82,81 @@ class MotionExecutor:
     """
 
     execution_type: ClassVar[ExecutionType] = None
+
+    @property
+    def simulation_timeout_ticks(self) -> int:
+        timeout_ticks = getattr(self.plan_node.action, "motion_timeout_ticks", None)
+        if timeout_ticks is None:
+            return self.DEFAULT_SIMULATION_TIMEOUT_TICKS
+        return int(timeout_ticks)
+
+    @property
+    def simulation_hard_timeout_ticks(self) -> int:
+        hard_timeout_ticks = getattr(
+            self.plan_node.action, "motion_hard_timeout_ticks", None
+        )
+        if hard_timeout_ticks is not None:
+            return int(hard_timeout_ticks)
+        return self.simulation_timeout_ticks * self.HARD_TIMEOUT_FACTOR
+
+    def _progress_robot(self):
+        try:
+            return self.world.get_semantic_annotations_by_type(AbstractRobot)[0]
+        except Exception:
+            return None
+
+    def _progress_bodies(self, robot):
+        if robot is None:
+            return []
+
+        bodies = []
+        for chain in getattr(robot, "manipulator_chains", []) or []:
+            bodies.extend(getattr(chain, "bodies", []) or [])
+
+        unique_bodies = []
+        seen = set()
+        for body in bodies:
+            body_id = id(body)
+            if body_id in seen:
+                continue
+            seen.add(body_id)
+            unique_bodies.append(body)
+        return unique_bodies
+
+    def _wiggle_distance_epsilon(self, robot) -> float:
+        if robot is None:
+            return self.WIGGLE_DISTANCE_EPSILON_M
+        return self.ROBOT_WIGGLE_DISTANCE_EPSILON_M.get(
+            robot.__class__.__name__,
+            self.WIGGLE_DISTANCE_EPSILON_M,
+        )
+
+    def _body_position_snapshot(self, bodies):
+        snapshot = {}
+        for body in bodies:
+            try:
+                position = body.global_pose.to_position().to_np()
+                snapshot[id(body)] = tuple(float(v) for v in position[:3])
+            except Exception:
+                continue
+        return snapshot
+
+    @staticmethod
+    def _max_snapshot_displacement(previous_snapshot, current_snapshot) -> float:
+        max_displacement = 0.0
+        for body_id, current_position in current_snapshot.items():
+            previous_position = previous_snapshot.get(body_id)
+            if previous_position is None:
+                continue
+            displacement = (
+                sum(
+                    (current_position[idx] - previous_position[idx]) ** 2
+                    for idx in range(3)
+                )
+                ** 0.5
+            )
+            max_displacement = max(max_displacement, displacement)
+        return max_displacement
 
     def construct_msc(self):
         self.motion_state_chart = MotionStatechart()
@@ -144,8 +239,23 @@ class MotionExecutor:
         try:
             # execute the motion state chart until it is done
             counter = 0
+            timeout_ticks = self.simulation_timeout_ticks
+            hard_timeout_ticks = self.simulation_hard_timeout_ticks
+            progress_robot = self._progress_robot()
+            progress_bodies = self._progress_bodies(progress_robot)
+            wiggle_distance_epsilon = self._wiggle_distance_epsilon(progress_robot)
+            wiggle_distance_epsilon = max(
+                wiggle_distance_epsilon,
+                self.ACTION_WIGGLE_DISTANCE_EPSILON_M.get(
+                    self.plan_node.action.__class__.__name__,
+                    wiggle_distance_epsilon,
+                ),
+            )
+            previous_progress_snapshot = self._body_position_snapshot(progress_bodies)
+            stagnant_checks = 0
+            wiggle_checks = 0
             tick_start = time.time()
-            while counter < 2000:
+            while counter < hard_timeout_ticks:
                 if self.plan_node.is_interrupted:
                     return
                 elif self.plan_node.is_paused:
@@ -156,8 +266,62 @@ class MotionExecutor:
                 counter += 1
                 if executor.motion_statechart.is_end_motion():
                     break
+
+                if (
+                    counter >= timeout_ticks
+                    and counter % self.STAGNATION_CHECK_INTERVAL_TICKS == 0
+                ):
+                    current_progress_snapshot = self._body_position_snapshot(
+                        progress_bodies
+                    )
+                    max_displacement = self._max_snapshot_displacement(
+                        previous_progress_snapshot,
+                        current_progress_snapshot,
+                    )
+                    previous_progress_snapshot = current_progress_snapshot
+
+                    if max_displacement < self.STAGNATION_DISTANCE_EPSILON_M:
+                        stagnant_checks += 1
+                        wiggle_checks += 1
+                        progress_status = "stagnant"
+                    elif max_displacement < wiggle_distance_epsilon:
+                        stagnant_checks = 0
+                        wiggle_checks += 1
+                        progress_status = "wiggle"
+                    else:
+                        stagnant_checks = 0
+                        wiggle_checks = 0
+                        progress_status = "moving"
+
+                    logger.warning(
+                        "MotionExecutor progress check: action=%s ticks=%s manipulator_links=%s status=%s max_link_displacement=%.5fm wiggle_epsilon=%.5fm stagnant_checks=%s/%s wiggle_checks=%s/%s",
+                        self.plan_node.action.__class__.__name__,
+                        counter,
+                        len(progress_bodies),
+                        progress_status,
+                        max_displacement,
+                        wiggle_distance_epsilon,
+                        stagnant_checks,
+                        self.STAGNATION_CHECKS_BEFORE_ABORT,
+                        wiggle_checks,
+                        self.WIGGLE_CHECKS_BEFORE_ABORT,
+                    )
+
+                    if (
+                        stagnant_checks >= self.STAGNATION_CHECKS_BEFORE_ABORT
+                        or wiggle_checks >= self.WIGGLE_CHECKS_BEFORE_ABORT
+                    ):
+                        raise TimeoutError(
+                            "Motion stalled while waiting for end of motion "
+                            f"after {counter} ticks in {self.plan_node.action.__class__.__name__} "
+                            f"(status={progress_status}, max link displacement "
+                            f"{max_displacement:.5f}m over {self.STAGNATION_CHECK_INTERVAL_TICKS} ticks)."
+                        )
             else:
-                raise TimeoutError("Timeout reached while waiting for end of motion.")
+                raise TimeoutError(
+                    "Hard timeout reached while waiting for end of motion "
+                    f"after {hard_timeout_ticks} ticks in {self.plan_node.action.__class__.__name__}."
+                )
             if DEBUG_PROFILE_MOTION_EXECUTOR:
                 logger.warning(
                     "MotionExecutor profile: motions=%s ticks=%s tick_total=%.3fs world_bodies=%s",
@@ -168,6 +332,12 @@ class MotionExecutor:
                 )
 
         except TimeoutError as e:
+            accept_timeout = getattr(
+                self.plan_node.action, "_accept_motion_timeout_as_success", None
+            )
+            if accept_timeout is not None and accept_timeout(e):
+                return
+
             failed_nodes = [
                 (
                     node

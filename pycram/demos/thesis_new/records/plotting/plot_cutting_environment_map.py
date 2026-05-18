@@ -10,38 +10,50 @@ from pathlib import Path
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 
 PYCRAM_ROOT = Path(__file__).resolve().parents[2]
-if str(PYCRAM_ROOT) not in sys.path:
-    sys.path.insert(0, str(PYCRAM_ROOT))
+WORKSPACE_ROOT = PYCRAM_ROOT.parent
+for source_root in [
+    PYCRAM_ROOT,
+    PYCRAM_ROOT / "src",
+    WORKSPACE_ROOT / "krrood" / "src",
+    WORKSPACE_ROOT / "semantic_digital_twin" / "src",
+]:
+    if str(source_root) not in sys.path:
+        sys.path.insert(0, str(source_root))
 
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
 
-from demos.thesis_new.world_setup import setup_thesis_world
 
-
-def parse_args() -> argparse.Namespace:
-    records_dir = Path(__file__).resolve().parent / "records"
+def parse_args(
+    *,
+    default_input_name: str = "cut_all_breads_results.csv",
+    default_output_dir_name: str = "environment_maps",
+    default_environment_name: str = "",
+    task_label: str = "Cutting",
+) -> argparse.Namespace:
+    records_dir = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(
         description=(
-            "Create top-down environment maps for cutting experiment success/failure."
+            f"Create top-down environment maps for {task_label.lower()} experiment "
+            "success/failure."
         )
     )
     parser.add_argument(
         "--input",
         type=Path,
-        default=records_dir / "cut_all_breads_results.csv",
+        default=records_dir / default_input_name,
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=records_dir / "environment_maps",
+        default=records_dir / default_output_dir_name,
     )
     parser.add_argument(
         "--environment-name",
-        default="",
+        default=default_environment_name,
         help="Optional thesis environment name. Defaults to inference from CSV/world_name.",
     )
     parser.add_argument(
@@ -74,6 +86,7 @@ REQUIRED_FIELDS = [
     "support_size_x",
     "support_size_y",
 ]
+INPUT_TEMPLATE_FIELDS = ["world_name", "robot_name", *REQUIRED_FIELDS]
 
 FIXED_PLOT_BOUNDS_BY_ENVIRONMENT = {
     "isr": (-6.0, 5.0, -5.0, 6.0),
@@ -82,6 +95,12 @@ FIXED_PLOT_BOUNDS_BY_ENVIRONMENT = {
 
 
 def load_rows(path: Path) -> list[dict[str, str]]:
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(",".join(INPUT_TEMPLATE_FIELDS) + "\n", encoding="utf-8")
+        print(f"Created missing input CSV template: {path}")
+        return []
+
     with path.open("r", newline="", encoding="utf-8") as handle:
         return list(csv.DictReader(handle))
 
@@ -113,7 +132,7 @@ def ensure_required_fields(rows: list[dict[str, str]]) -> None:
     if missing:
         raise RuntimeError(
             "CSV is missing environment-map fields. "
-            "Rerun the updated cutting experiment first. Missing: " + ", ".join(missing)
+            "Rerun the updated experiment first. Missing: " + ", ".join(missing)
         )
 
 
@@ -285,6 +304,8 @@ def is_world_background_body(name: str, robot_name: str = "") -> bool:
 def inspect_world_background(
     rows: list[dict[str, str]], environment_name: str, robot_name: str
 ) -> tuple[list[tuple[str, np.ndarray]], list[dict[str, str]]]:
+    from world_setup import setup_thesis_world
+
     world = setup_thesis_world(robot_name=robot_name, environment_name=environment_name)
     bodies = list(getattr(world, "bodies", []))
     reference_frame = getattr(world, "root", None)
@@ -563,21 +584,28 @@ def plot_environment_success_map(
         handles,
         labels,
         loc="upper center",
-        bbox_to_anchor=(0.5, -0.30),
+        bbox_to_anchor=(0.5, -0.18),
         borderaxespad=0.0,
-        ncol=1,
+        ncol=3,
         frameon=True,
         facecolor="white",
         framealpha=0.95,
         edgecolor="0.5",
         fontsize=9,
     )
-    fig.subplots_adjust(left=0.10, right=0.98, top=0.90, bottom=0.34)
-    fig.savefig(output_dir / "environment_success_map.png", dpi=180)
+    fig.subplots_adjust(left=0.09, right=0.99, top=0.92, bottom=0.27)
+    fig.savefig(
+        output_dir / "environment_success_map.png",
+        dpi=180,
+        bbox_inches="tight",
+        pad_inches=0.03,
+    )
     plt.close(fig)
 
 
-def write_environment_summary(rows: list[dict[str, str]], output_dir: Path) -> None:
+def write_environment_summary(
+    rows: list[dict[str, str]], output_dir: Path, task_label: str
+) -> None:
     total = len(rows)
     success_count = sum(1 for row in rows if row.get("outcome", "") == "success")
     recovery_success_count = sum(
@@ -590,7 +618,7 @@ def write_environment_summary(rows: list[dict[str, str]], output_dir: Path) -> N
         {(row.get("world_name") or "").strip() or "unknown_world" for row in rows}
     )
     lines = [
-        "Cutting environment-map summary",
+        f"{task_label} environment-map summary",
         "",
         f"worlds: {', '.join(world_names)}",
         f"total trials: {total}",
@@ -638,21 +666,37 @@ def render_environment_map_set(
     output_dir: Path,
     environment_name: str,
     robot_name: str,
+    task_label: str,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     world_polygons, background_report = inspect_world_background(
         rows, environment_name, robot_name
     )
     plot_environment_success_map(environment_name, rows, output_dir, world_polygons)
-    write_environment_summary(rows, output_dir)
+    write_environment_summary(rows, output_dir, task_label)
     write_background_debug_report(
         output_dir, environment_name, robot_name, background_report
     )
 
 
-def main() -> None:
-    args = parse_args()
+def main(
+    *,
+    default_input_name: str = "cut_all_breads_results.csv",
+    default_output_dir_name: str = "environment_maps",
+    default_environment_name: str = "",
+    task_label: str = "Cutting",
+) -> None:
+    args = parse_args(
+        default_input_name=default_input_name,
+        default_output_dir_name=default_output_dir_name,
+        default_environment_name=default_environment_name,
+        task_label=task_label,
+    )
     rows = load_rows(args.input)
+    if not rows:
+        print(f"No rows to plot yet: {args.input}")
+        return
+
     ensure_required_fields(rows)
     grouped_rows = group_rows_by_world_and_robot(rows)
     split_by_world = args.split_by_world_name or len(grouped_rows) > 1
@@ -668,6 +712,7 @@ def main() -> None:
                 output_dir,
                 environment_name,
                 robot_name,
+                task_label,
             )
             written_dirs.append(output_dir)
         written = ", ".join(str(path) for path in written_dirs)
@@ -681,6 +726,7 @@ def main() -> None:
         args.output_dir,
         environment_name,
         robot_name,
+        task_label,
     )
     print(f"Wrote environment maps to {args.output_dir}")
 

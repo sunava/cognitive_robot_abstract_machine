@@ -4,7 +4,7 @@ import abc
 import logging
 from dataclasses import dataclass
 
-from typing_extensions import Any, Optional
+from typing_extensions import Any, ClassVar, Optional
 
 from pycram.exceptions import ContextIsUnavailable
 from pycram.plans.failures import PlanFailure
@@ -23,6 +23,12 @@ class ActionDescription(Designator):
     Actions are like builders for plans.
     An action has a set of parameters (its fields) from which it builds a symbolic plan and hence can be viewed as
     an easy abstraction of concrete low-level behavior that makes sense in certain contexts.
+    """
+
+    motion_timeout_ticks: ClassVar[Optional[int]] = None
+    """
+    Optional simulation timeout for the motion state chart created by this action.
+    If unset, MotionExecutor uses its default timeout.
     """
 
     @property

@@ -391,6 +391,62 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
             },
         },
     },
+    "garmi": {
+        "cut": {
+            Arms.LEFT: {
+                "x": 0.08,
+                "y": 0.0,
+                "z": 0.0,
+                "roll": 0.0,
+                "pitch": np.pi,
+                "yaw": np.pi,
+            },
+            Arms.RIGHT: {
+                "x": 0.08,
+                "y": 0.0,
+                "z": 0.0,
+                "roll": 0.0,
+                "pitch": np.pi,
+                "yaw": np.pi,
+            },
+        },
+        "mix": {
+            Arms.LEFT: {
+                "x": -0.08,
+                "y": 0.0,
+                "z": 0.0,
+                "roll": 0.0,
+                "pitch": -np.pi,
+                "yaw": 0.0,
+            },
+            Arms.RIGHT: {
+                "x": -0.08,
+                "y": 0.0,
+                "z": 0.0,
+                "roll": 0.0,
+                "pitch": -np.pi,
+                "yaw": 0.0,
+            },
+        },
+        "wipe": {
+            Arms.LEFT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0,
+                "roll": 0.0,
+                "pitch": 0.0,
+                "yaw": 0.0,
+            },
+            Arms.RIGHT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0,
+                "roll": 0.0,
+                "pitch": 0.0,
+                "yaw": 0.0,
+            },
+        },
+    },
     "stretch": {},
 }
 
