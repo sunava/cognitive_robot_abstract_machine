@@ -1,0 +1,430 @@
+"""
+Tests for the fragment model, colorizers, renderers, and VerbalizationPipeline.
+
+Coverage:
+- Fragment tree structure: SemanticRole tagging for variables, aggregations, keywords, operators
+- PlainColorizer: identity pass-through
+- ANSIColorizer: wraps text in ANSI escape sequences; plain for PLAIN role
+- MarkdownColorizer: wraps text in <span> tags; plain for PLAIN role
+- ParagraphRenderer: flattens block structure to prose
+- HierarchicalRenderer: indents block items as bullet points
+- VerbalizationPipeline: end-to-end with each factory
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from typing import Any, List
+
+import pytest
+
+import krrood.entity_query_language.factories as eql
+from krrood.entity_query_language.factories import (
+    an,
+    a,
+    entity,
+    variable,
+    flat_variable,
+    inference,
+    not_,
+    and_,
+    match_variable,
+)
+from krrood.entity_query_language.verbalization.fragments.base import (
+    BlockFragment,
+    PhraseFragment,
+    RoleFragment,
+    VerbFragment,
+    WordFragment,
+)
+from krrood.entity_query_language.verbalization.fragments.roles import SemanticRole, ROLE_COLORS
+from krrood.entity_query_language.verbalization.pipeline import VerbalizationPipeline
+from krrood.entity_query_language.verbalization.rendering.colorizer import (
+    ANSIColorizer,
+    MarkdownColorizer,
+    PlainColorizer,
+)
+from krrood.entity_query_language.verbalization.rendering.renderer import (
+    HierarchicalRenderer,
+    ParagraphRenderer,
+)
+from krrood.entity_query_language.verbalization.verbalizer import EQLVerbalizer, _str
+
+from ..dataset.semantic_world_like_classes import (
+    Drawer,
+    FixedConnection,
+    Handle,
+    PrismaticConnection,
+)
+from ..dataset.department_and_employee import Employee
+
+
+@dataclass
+class _Robot:
+    battery: int
+    name: str
+
+
+@dataclass
+class _Task:
+    completed: bool
+
+
+# ── Fragment helpers ───────────────────────────────────────────────────────────
+
+
+def _collect_roles(fragment: VerbFragment) -> list[SemanticRole]:
+    """Recursively collect all SemanticRole values from a fragment tree."""
+    match fragment:
+        case RoleFragment(role=role):
+            return [role]
+        case PhraseFragment(parts=parts):
+            return [r for p in parts for r in _collect_roles(p)]
+        case BlockFragment(header=header, items=items):
+            result = _collect_roles(header) if header else []
+            return result + [r for item in items for r in _collect_roles(item)]
+        case _:
+            return []
+
+
+def _collect_role_texts(fragment: VerbFragment, role: SemanticRole) -> list[str]:
+    """Return all text values in the tree that carry *role*."""
+    match fragment:
+        case RoleFragment(text=text, role=r) if r == role:
+            return [text]
+        case PhraseFragment(parts=parts):
+            return [t for p in parts for t in _collect_role_texts(p, role)]
+        case BlockFragment(header=header, items=items):
+            result = _collect_role_texts(header, role) if header else []
+            return result + [t for item in items for t in _collect_role_texts(item, role)]
+        case _:
+            return []
+
+
+# ── Fragment structure tests ───────────────────────────────────────────────────
+
+
+def test_variable_fragment_carries_variable_role():
+    x = variable(_Robot, [])
+    frag = EQLVerbalizer().build(x)
+    assert SemanticRole.VARIABLE in _collect_roles(frag)
+
+
+def test_aggregation_fragment_carries_aggregation_role():
+    x = variable(_Robot, [])
+    frag = EQLVerbalizer().build(eql.count(x))
+    assert SemanticRole.AGGREGATION in _collect_roles(frag)
+
+
+def test_aggregation_role_text_is_keyword_phrase():
+    x = variable(_Robot, [])
+    frag = EQLVerbalizer().build(eql.sum(x))
+    agg_texts = _collect_role_texts(frag, SemanticRole.AGGREGATION)
+    assert any("sum" in t for t in agg_texts)
+
+
+def test_comparator_fragment_carries_operator_role():
+    x = variable(_Robot, [])
+    frag = EQLVerbalizer().build(x.battery > 50)
+    assert SemanticRole.OPERATOR in _collect_roles(frag)
+
+
+def test_query_find_carries_keyword_role():
+    r = variable(_Robot, [])
+    frag = EQLVerbalizer().build(an(entity(r)))
+    keyword_texts = _collect_role_texts(frag, SemanticRole.KEYWORD)
+    assert any("Find" in t for t in keyword_texts)
+
+
+def test_query_where_carries_keyword_role():
+    r = variable(_Robot, [])
+    frag = EQLVerbalizer().build(an(entity(r).where(r.battery > 50)))
+    keyword_texts = _collect_role_texts(frag, SemanticRole.KEYWORD)
+    assert any("such that" in t for t in keyword_texts)
+
+
+def test_rule_if_then_carry_keyword_role(doors_and_drawers_world):
+    world = doors_and_drawers_world
+    handle = variable(Handle, world.bodies)
+    pc = variable(PrismaticConnection, world.connections)
+    fc = match_variable(FixedConnection, world.connections)(parent=pc.child, child=handle)
+    drawer_var = inference(Drawer)(container=fc.parent, handle=fc.child)
+    frag = EQLVerbalizer().build(entity(drawer_var))
+    keyword_texts = _collect_role_texts(frag, SemanticRole.KEYWORD)
+    assert any("If" in t for t in keyword_texts)
+    assert any("then" in t for t in keyword_texts)
+
+
+def test_logical_for_all_carries_logical_role():
+    x = variable(_Robot, [])
+    frag = EQLVerbalizer().build(eql.for_all(x, x.battery > 0))
+    assert SemanticRole.LOGICAL in _collect_roles(frag)
+
+
+def test_literal_carries_literal_role():
+    from krrood.entity_query_language.core.variable import Literal
+    lit = Literal(_value_=42)
+    frag = EQLVerbalizer().build(lit)
+    assert SemanticRole.LITERAL in _collect_roles(frag)
+
+
+def test_query_is_block_fragment():
+    r = variable(_Robot, [])
+    frag = EQLVerbalizer().build(an(entity(r).where(r.battery > 50)))
+    assert isinstance(frag, BlockFragment)
+
+
+def test_rule_is_block_fragment(doors_and_drawers_world):
+    world = doors_and_drawers_world
+    handle = variable(Handle, world.bodies)
+    pc = variable(PrismaticConnection, world.connections)
+    fc = match_variable(FixedConnection, world.connections)(parent=pc.child, child=handle)
+    drawer_var = inference(Drawer)(container=fc.parent, handle=fc.child)
+    frag = EQLVerbalizer().build(entity(drawer_var))
+    assert isinstance(frag, BlockFragment)
+
+
+# ── PlainColorizer ─────────────────────────────────────────────────────────────
+
+
+def test_plain_colorizer_returns_text_unchanged():
+    c = PlainColorizer()
+    assert c.colorize("hello", SemanticRole.KEYWORD) == "hello"
+    assert c.colorize("hello", SemanticRole.AGGREGATION) == "hello"
+    assert c.colorize("hello", SemanticRole.PLAIN) == "hello"
+
+
+# ── ANSIColorizer ──────────────────────────────────────────────────────────────
+
+
+def test_ansi_colorizer_wraps_keyword():
+    c = ANSIColorizer()
+    result = c.colorize("If", SemanticRole.KEYWORD)
+    assert result.startswith("\033[38;2;")
+    assert "If" in result
+    assert result.endswith("\033[0m")
+
+
+def test_ansi_colorizer_plain_role_no_escape():
+    c = ANSIColorizer()
+    result = c.colorize("the", SemanticRole.PLAIN)
+    assert result == "the"
+
+
+def test_ansi_colorizer_aggregation_uses_red_orange():
+    c = ANSIColorizer()
+    result = c.colorize("sum of", SemanticRole.AGGREGATION)
+    # #F54927 → R=245, G=73, B=39
+    assert "245;73;39" in result
+
+
+def test_ansi_colorizer_variable_uses_cornflowerblue():
+    c = ANSIColorizer()
+    result = c.colorize("Robot", SemanticRole.VARIABLE)
+    # cornflowerblue → R=100, G=149, B=237
+    assert "100;149;237" in result
+
+
+# ── MarkdownColorizer ──────────────────────────────────────────────────────────
+
+
+def test_markdown_colorizer_wraps_keyword_in_span():
+    c = MarkdownColorizer()
+    result = c.colorize("If", SemanticRole.KEYWORD)
+    assert result == '<span style="color:#eded18">If</span>'
+
+
+def test_markdown_colorizer_plain_role_no_span():
+    c = MarkdownColorizer()
+    result = c.colorize("the", SemanticRole.PLAIN)
+    assert result == "the"
+
+
+def test_markdown_colorizer_aggregation():
+    c = MarkdownColorizer()
+    result = c.colorize("number of", SemanticRole.AGGREGATION)
+    assert "#F54927" in result
+    assert "number of" in result
+
+
+def test_markdown_colorizer_variable():
+    c = MarkdownColorizer()
+    result = c.colorize("Robot", SemanticRole.VARIABLE)
+    assert "cornflowerblue" in result
+    assert "Robot" in result
+
+
+# ── ParagraphRenderer ──────────────────────────────────────────────────────────
+
+
+def test_paragraph_renderer_word():
+    r = ParagraphRenderer()
+    assert r.render(WordFragment("hello")) == "hello"
+
+
+def test_paragraph_renderer_role_fragment_plain():
+    r = ParagraphRenderer(PlainColorizer())
+    assert r.render(RoleFragment("Robot", SemanticRole.VARIABLE)) == "Robot"
+
+
+def test_paragraph_renderer_phrase():
+    r = ParagraphRenderer()
+    frag = PhraseFragment([WordFragment("a"), WordFragment("Robot")])
+    assert r.render(frag) == "a Robot"
+
+
+def test_paragraph_renderer_block_flattens_to_prose():
+    r = ParagraphRenderer(PlainColorizer())
+    block = BlockFragment(
+        header=RoleFragment("Find", SemanticRole.KEYWORD),
+        items=[
+            PhraseFragment([RoleFragment("such that", SemanticRole.KEYWORD), WordFragment("x > 5")]),
+        ],
+    )
+    result = r.render(block)
+    assert "Find" in result
+    assert "such that" in result
+    assert "x > 5" in result
+
+
+def test_paragraph_renderer_block_no_header():
+    r = ParagraphRenderer()
+    block = BlockFragment(header=None, items=[WordFragment("a"), WordFragment("b")])
+    result = r.render(block)
+    assert "a" in result and "b" in result
+
+
+# ── HierarchicalRenderer ───────────────────────────────────────────────────────
+
+
+def test_hierarchical_renderer_block_has_header_line():
+    r = HierarchicalRenderer(PlainColorizer())
+    block = BlockFragment(
+        header=RoleFragment("If", SemanticRole.KEYWORD),
+        items=[WordFragment("there's a Handle")],
+    )
+    result = r.render(block)
+    lines = result.splitlines()
+    assert lines[0] == "If"
+    assert any("Handle" in line for line in lines[1:])
+
+
+def test_hierarchical_renderer_items_are_indented():
+    r = HierarchicalRenderer(PlainColorizer(), indent="  ", bullet="- ")
+    block = BlockFragment(
+        header=RoleFragment("Find", SemanticRole.KEYWORD),
+        items=[WordFragment("a Robot"), WordFragment("b Something")],
+    )
+    result = r.render(block)
+    lines = result.splitlines()
+    item_lines = [l for l in lines if "Robot" in l or "Something" in l]
+    for line in item_lines:
+        assert line.startswith("  - ")
+
+
+def test_hierarchical_renderer_nested_block_deepens_indent():
+    r = HierarchicalRenderer(PlainColorizer(), indent="  ", bullet="- ")
+    inner = BlockFragment(
+        header=RoleFragment("such that", SemanticRole.KEYWORD),
+        items=[WordFragment("battery > 50")],
+    )
+    outer = BlockFragment(
+        header=RoleFragment("Find", SemanticRole.KEYWORD),
+        items=[WordFragment("a Robot"), inner],
+    )
+    result = r.render(outer)
+    lines = result.splitlines()
+    battery_line = next(l for l in lines if "battery" in l)
+    # Inner block items are at depth 2 → "    - battery > 50"
+    assert battery_line.startswith("    ")
+
+
+def test_hierarchical_renderer_custom_bullet():
+    r = HierarchicalRenderer(PlainColorizer(), bullet="• ")
+    block = BlockFragment(
+        header=None,
+        items=[WordFragment("item one"), WordFragment("item two")],
+    )
+    result = r.render(block)
+    assert "• item one" in result
+    assert "• item two" in result
+
+
+# ── ParagraphRenderer with MarkdownColorizer ───────────────────────────────────
+
+
+def test_paragraph_markdown_query_contains_find_span():
+    r = variable(_Robot, [])
+    text = VerbalizationPipeline.markdown().verbalize(an(entity(r).where(r.battery > 50)))
+    assert '<span style="color' in text
+    assert "Find" in text
+
+
+def test_paragraph_markdown_aggregation_is_colored():
+    r = variable(_Robot, [])
+    text = VerbalizationPipeline.markdown().verbalize(an(entity(eql.count(r))))
+    assert "#F54927" in text
+
+
+# ── HierarchicalRenderer end-to-end ───────────────────────────────────────────
+
+
+def test_hierarchical_plain_query_structure():
+    r = variable(_Robot, [])
+    text = VerbalizationPipeline(HierarchicalRenderer(PlainColorizer())).verbalize(
+        an(entity(r).where(r.battery > 50))
+    )
+    lines = text.splitlines()
+    assert any("Find" in l for l in lines)
+    assert any("such that" in l for l in lines)
+    assert any("battery" in l for l in lines)
+    # where clause must be indented relative to Find
+    find_line = next(l for l in lines if "Find" in l)
+    where_line = next(l for l in lines if "such that" in l)
+    assert len(where_line) - len(where_line.lstrip()) > len(find_line) - len(find_line.lstrip())
+
+
+def test_hierarchical_plain_rule_structure(doors_and_drawers_world):
+    world = doors_and_drawers_world
+    handle = variable(Handle, world.bodies)
+    pc = variable(PrismaticConnection, world.connections)
+    fc = match_variable(FixedConnection, world.connections)(parent=pc.child, child=handle)
+    drawer_var = inference(Drawer)(container=fc.parent, handle=fc.child)
+
+    text = VerbalizationPipeline(HierarchicalRenderer(PlainColorizer())).verbalize(entity(drawer_var))
+    lines = text.splitlines()
+    assert any("If" in l for l in lines)
+    assert any("then" in l for l in lines)
+    assert any("Handle" in l for l in lines)
+    assert any("Drawer" in l for l in lines)
+
+
+# ── VerbalizationPipeline factories ───────────────────────────────────────────
+
+
+def test_pipeline_plain_matches_verbalize_expression():
+    from krrood.entity_query_language.verbalization.verbalizer import verbalize_expression
+    r = variable(_Robot, [])
+    q = an(entity(r).where(r.battery > 50))
+    assert VerbalizationPipeline.plain().verbalize(q) == verbalize_expression(q)
+
+
+def test_pipeline_ansi_contains_escape_codes():
+    r = variable(_Robot, [])
+    text = VerbalizationPipeline.ansi().verbalize(an(entity(r)))
+    assert "\033[" in text
+
+
+def test_pipeline_markdown_contains_span():
+    r = variable(_Robot, [])
+    text = VerbalizationPipeline.markdown().verbalize(an(entity(r)))
+    assert "<span" in text
+
+
+def test_pipeline_markdown_hierarchical_has_newlines():
+    r = variable(_Robot, [])
+    text = VerbalizationPipeline.markdown(hierarchical=True).verbalize(
+        an(entity(r).where(r.battery > 50))
+    )
+    assert "\n" in text

@@ -1,9 +1,13 @@
 """
 Natural-language verbalization for EQL expression trees.
 
-Public API mirrors ``explain_inference()``::
+Plain-text API (backward-compatible)::
 
-    from krrood.entity_query_language.verbalization import verbalize_expression
-
+    from krrood.entity_query_language.verbalization.verbalizer import verbalize_expression
     text = verbalize_expression(expression)
+
+Coloured / formatted API::
+
+    from krrood.entity_query_language.verbalization.pipeline import VerbalizationPipeline
+    text = VerbalizationPipeline.markdown(hierarchical=True).verbalize(expression)
 """
