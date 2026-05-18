@@ -625,12 +625,12 @@ def evaluate_condition(condition: ConditionType) -> bool:
 
 
 @symbolic_function
-def issubclass_(child: Type, parent: Type) -> bool:
+def issubclass_(child: type, parent: Union[type, Tuple[type, ...]]) -> bool:
     """
-    Check if a class is a subclass of another class.
+    Check if a class is a subclass of another class or a tuple of classes.
 
     :param child: The class to be checked.
-    :param parent: The class to compare against.
+    :param parent: The class or tuple of classes to compare against.
     :return: True if `child` is a subclass of `parent`, False otherwise.
     """
     return issubclass(child, parent)

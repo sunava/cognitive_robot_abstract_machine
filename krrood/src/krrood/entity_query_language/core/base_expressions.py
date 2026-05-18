@@ -109,7 +109,7 @@ class SymbolicExpression(ABC):
     def __post_init__(self):
         self._expression_ = self
 
-    @lru_cache
+    @memoize
     def _get_expression_by_id_(self, id_: uuid.UUID) -> SymbolicExpression:
         try:
             return next(
