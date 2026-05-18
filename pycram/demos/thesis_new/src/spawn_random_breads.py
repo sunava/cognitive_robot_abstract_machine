@@ -167,10 +167,13 @@ def _surface_geometry_is_usable(body):
 
 def _collect_surfaces_by_geometry(world, seen):
     surfaces = []
+    robot_body_ids, robot_body_names = _robot_body_identity_sets(world)
     for body in getattr(world, "bodies", []):
         name = _body_name(body)
         basename = (_body_basename(name) or "").lower()
         if not name or name in seen or not basename:
+            continue
+        if _is_robot_body(body, name, robot_body_ids, robot_body_names):
             continue
         if any(skip in basename for skip in GENERIC_SUPPORT_EXCLUDE_KEYWORDS):
             continue
@@ -181,15 +184,47 @@ def _collect_surfaces_by_geometry(world, seen):
     return surfaces
 
 
+def _robot_body_identity_sets(world):
+    try:
+        robot = Context.from_world(world).robot
+    except Exception:
+        return set(), set()
+
+    robot_entities = [robot.root]
+    try:
+        robot_entities.extend(
+            world.compute_descendent_child_kinematic_structure_entities(robot.root)
+        )
+    except Exception:
+        pass
+
+    robot_ids = set()
+    robot_names = set()
+    for entity in robot_entities:
+        robot_ids.add(getattr(entity, "id", None))
+        entity_name = _body_name(entity)
+        if entity_name:
+            robot_names.add(entity_name)
+    robot_ids.discard(None)
+    return robot_ids, robot_names
+
+
+def _is_robot_body(body, name, robot_body_ids, robot_body_names):
+    return getattr(body, "id", None) in robot_body_ids or name in robot_body_names
+
+
 def _collect_surface_bodies(world):
     surfaces = []
     seen = set()
+    robot_body_ids, robot_body_names = _robot_body_identity_sets(world)
 
     preferred_basenames = {name.lower() for name in PREFERRED_SURFACE_NAMES}
     for body in getattr(world, "bodies", []):
         name = _body_name(body)
         basename = (_body_basename(name) or "").lower()
         if not name or not basename or basename not in preferred_basenames:
+            continue
+        if _is_robot_body(body, name, robot_body_ids, robot_body_names):
             continue
         if name in seen:
             continue
@@ -206,6 +241,8 @@ def _collect_surface_bodies(world):
         if not name or name in seen:
             continue
 
+        if _is_robot_body(body, name, robot_body_ids, robot_body_names):
+            continue
         if not _surface_like_name(name):
             continue
         if not _surface_geometry_is_usable(body):
