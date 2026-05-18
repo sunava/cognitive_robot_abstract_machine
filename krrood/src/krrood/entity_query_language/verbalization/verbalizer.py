@@ -143,12 +143,6 @@ def _ensure_plural(word: str) -> str:
     return word if _engine.singular_noun(word) else _engine.plural(word)
 
 
-def _plural_possessive(word: str) -> str:
-    """Return the plural-possessive form: 'Cabinets'' or 'Children's'."""
-    plural = _engine.plural(word)
-    return plural + "'" if plural.endswith("s") else plural + "'s"
-
-
 def _apply_binding_aliases(text: str, alias_map: dict[str, str]) -> str:
     """Replace each verbalized binding value in *text* with its established field reference.
 
@@ -242,85 +236,73 @@ class EQLVerbalizer:
                 type_name = root._type_.__name__
                 label = ctx.disambiguation_map.get(root._id_, type_name)
                 ctx.seen[root._id_] = label
-                if label != type_name:
-                    root_possessive = f"{label}'s"
-                else:
-                    root_possessive = _plural_possessive(type_name)
+                root_plural = label if label != type_name else _engine.plural(type_name)
                 attr_plural = _ensure_plural(chain[0]._attribute_name_)
-                return f"{root_possessive} {attr_plural}"
+                return f"{attr_plural} of {root_plural}"
 
         return self.verbalize(expr, ctx)
+
+    @staticmethod
+    def _walk_chain_(expr: MappedVariable) -> tuple:
+        """Walk a MappedVariable chain and return (root-first list, leaf node)."""
+        chain: list[MappedVariable] = []
+        current = expr
+        while isinstance(current, MappedVariable):
+            chain.append(current)
+            current = current._child_
+        chain.reverse()  # root-side first
+        return chain, current
+
+    @staticmethod
+    def _render_path_(parts: list, root_text: str) -> str:
+        """Render an attribute path as ``"a of b of root"``."""
+        if not parts:
+            return root_text
+        return " of ".join(reversed(parts)) + f" of {root_text}"
+
+    def _verbalize_chain_root_(self, leaf, ctx: VerbalizationContext) -> str:
+        """Resolve the root text for a chain leaf, unwrapping any ResultQuantifier to find an Entity."""
+        # _update_children_ replaces a freshly-built Entity with its An/The wrapper;
+        # unwrap to recover the underlying Entity and defer its where-conditions.
+        inner = leaf
+        while isinstance(inner, ResultQuantifier):
+            inner = inner._child_
+        if isinstance(inner, Entity):
+            return self._verbalize_entity_as_inline_noun_(inner, ctx)
+        return self.verbalize(leaf, ctx)
 
     def _verbalize_mapped_chain_(self, expr: MappedVariable, ctx: VerbalizationContext,
                                  negated: bool = False) -> str:
         """
         Natural-language path for a MappedVariable chain.
 
-        * Boolean terminal ``Attribute``: predicative —
-          ``"Robot's battery is [not] active"``.
-        * Single-hop non-boolean ``Attribute`` on a root: possessive —
-          ``"Robot's battery"``.
-        * Longer or mixed chains: ``"of"`` form —
+        * Boolean terminal ``Attribute``: predicative — ``"nav is [not] active"``.
+        * All other chains: ``"of"`` form — ``"battery of Robot"``,
           ``"name of tasks[0] of the Robot"``.
-
-        When the chain root is an ``Entity`` (a sub-query), it is rendered as a
-        bare noun phrase (``"a FixedConnection"``) and its where-conditions are
-        deferred to the current constraint frame so the enclosing
-        ``InstantiatedVariable`` can emit them as a ``"such that …"`` clause.
         """
-        chain: list[MappedVariable] = []
-        current = expr
-        while isinstance(current, MappedVariable):
-            chain.append(current)
-            current = current._child_
-        # _update_children_ replaces a freshly-built Entity with its An/The wrapper;
-        # unwrap any ResultQuantifier layers to recover the underlying Entity.
-        inner = current
-        while isinstance(inner, ResultQuantifier):
-            inner = inner._child_
-        if isinstance(inner, Entity):
-            root_text = self._verbalize_entity_as_inline_noun_(inner, ctx)
-        else:
-            root_text = self.verbalize(current, ctx)
-        chain.reverse()  # root-side first
-
+        chain, leaf = self._walk_chain_(expr)
+        root_text = self._verbalize_chain_root_(leaf, ctx)
         terminal = chain[-1]
         if isinstance(terminal, Attribute) and terminal._type_ is bool:
             nav_text = self._verbalize_navigation_chain_(chain[:-1], root_text)
             verb = "is not" if negated else "is"
             return f"{nav_text} {verb} {terminal._attribute_name_}"
-
-        path_parts = self._build_path_parts_(chain)
-        if len(path_parts) == 1 and isinstance(expr, Attribute):
-            return f"{root_text}'s {path_parts[0]}"
-        return " of ".join(reversed(path_parts)) + f" of {root_text}"
+        return self._render_path_(self._build_path_parts_(chain), root_text)
 
     def _verbalize_navigation_chain_(self, nav_chain: list, root_text: str) -> str:
         """
         Verbalize the navigation portion of a chain (everything before a boolean terminal).
 
         An integer ``Index`` at the end of the chain is converted to an ordinal:
-        ``[Attribute("tasks"), Index(0)]`` → ``"the first of the Robot's tasks"``.
+        ``[Attribute("tasks"), Index(0)]`` → ``"the first of tasks of the Robot"``.
         """
         if not nav_chain:
             return root_text
-
         if isinstance(nav_chain[-1], Index) and isinstance(nav_chain[-1]._key_, int):
             ordinal = _ordinal(nav_chain[-1]._key_)
-            pre_parts = self._build_path_parts_(nav_chain[:-1])
-            if pre_parts:
-                if len(pre_parts) == 1:
-                    pre_text = f"{root_text}'s {pre_parts[0]}"
-                else:
-                    pre_text = " of ".join(reversed(pre_parts)) + f" of {root_text}"
-            else:
-                pre_text = root_text
+            pre_text = self._render_path_(self._build_path_parts_(nav_chain[:-1]), root_text)
             return f"the {ordinal} of {pre_text}"
-
-        path_parts = self._build_path_parts_(nav_chain)
-        if len(path_parts) == 1:
-            return f"{root_text}'s {path_parts[0]}"
-        return " of ".join(reversed(path_parts)) + f" of {root_text}"
+        return self._render_path_(self._build_path_parts_(nav_chain), root_text)
 
     def _build_path_parts_(self, chain: list) -> list[str]:
         """Build readable string fragments for a root-to-leaf MappedVariable chain."""
@@ -402,7 +384,7 @@ class EQLVerbalizer:
         binding_parts: list[str] = []
         binding_alias_map: dict[str, str] = {}
         for field_name, child_expr in expr._child_vars_.items():
-            field_ref = f"the {type_name}'s {field_name}"
+            field_ref = f"the {field_name} of the {type_name}"
             if _engine.singular_noun(field_name):
                 plural_value = self._verbalize_plural_(child_expr, ctx)
                 binding_parts.append(f"{field_ref} are {plural_value}")
@@ -416,8 +398,11 @@ class EQLVerbalizer:
                 # Map the definite form of the value → the field reference so that
                 # deferred constraints (which re-mention the value with "the") are
                 # rewritten to use the already-established binding name instead.
-                definite_value = re.sub(r"^(a|an) ", "the ", value_text)
-                if definite_value.startswith("the ") and definite_value not in binding_alias_map:
+                # Replace any indefinite article before a PascalCase word to get
+                # the definite form (handles "a Foo", "attr of a Foo", and
+                # already-definite "attr of the Foo").
+                definite_value = re.sub(r"\b(a|an) ([A-Z])", r"the \2", value_text)
+                if re.search(r"\bthe [A-Z]", definite_value) and definite_value not in binding_alias_map:
                     binding_alias_map[definite_value] = field_ref
 
         constraints = ctx.pop_constraint_frame()
@@ -466,17 +451,7 @@ class EQLVerbalizer:
             return f"{left} {op_word} {right}"
         # Case 2: negate a boolean attribute chain — inline "is not".
         if isinstance(child, MappedVariable):
-            # Walk to the terminal to check if it's a boolean Attribute.
-            node = child
-            while isinstance(node, MappedVariable):
-                node = node._child_
-            # node is now root; walk chain list to find terminal
-            chain = []
-            cur = child
-            while isinstance(cur, MappedVariable):
-                chain.append(cur)
-                cur = cur._child_
-            chain.reverse()
+            chain, _ = self._walk_chain_(child)
             if isinstance(chain[-1], Attribute) and chain[-1]._type_ is bool:
                 return self._verbalize_mapped_chain_(child, ctx, negated=True)
         # Case 3: fallback — wrap with "not (…)".

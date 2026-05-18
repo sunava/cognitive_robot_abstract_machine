@@ -128,29 +128,27 @@ def test_verbalize_literal_tuple_of_types():
 # ── Unit tests: MappedVariable chain ──────────────────────────────────────────
 
 
-def test_verbalize_attribute_single_hop_is_possessive():
+def test_verbalize_attribute_uses_of_form():
     emp = variable(Employee, [])
     text = verbalize_expression(emp.salary)
     assert "Employee" in text
     assert "salary" in text
-    assert "'s" in text
+    assert " of " in text
 
 
-def test_verbalize_attribute_multi_hop_uses_of_form():
-    # cabinet.container is one hop → possessive
+def test_verbalize_attribute_uses_of_form_all_hops():
+    # single-hop also uses "of" form
     cab = variable(Cabinet, [])
     one_hop = verbalize_expression(cab.container)
-    assert "'s" in one_hop
+    assert " of " in one_hop
 
-    # Simulate a two-hop chain via attribute access
+    # Two-hop chain: Employee → department → name
     emp = variable(Employee, [])
-    dept = emp.department
-    dept_name = dept.name  # two hops: Employee → department → name
+    dept_name = emp.department.name
     text = verbalize_expression(dept_name)
     assert "Employee" in text
     assert "department" in text
     assert "name" in text
-    # Multi-hop should NOT use possessive at the root
     assert " of " in text
 
 
@@ -390,7 +388,7 @@ def test_verbalize_for_all(handles_and_containers_world):
     text = verbalize_expression(query)
 
     assert "for all" in text
-    assert "Cabinets'" in text
+    assert "Cabinets" in text
     assert "containers" in text
     assert "Container" in text
     assert "is" in text
@@ -398,7 +396,7 @@ def test_verbalize_for_all(handles_and_containers_world):
     assert "for all a " not in text
     assert "for all an " not in text
     # bound variable reused in condition must use definite article
-    assert "the Cabinet's container" in text
+    assert "container of the Cabinet" in text
 
 
 def test_verbalize_order_by_aggregation(handles_and_containers_world):
@@ -416,7 +414,7 @@ def test_verbalize_order_by_aggregation(handles_and_containers_world):
     assert "grouped by" in text
     assert "ordered by" in text
     assert "number" in text
-    assert "Cabinets'" in text
+    assert "Cabinets" in text
     assert "drawers" in text
     assert "descending" in text
 
@@ -431,7 +429,7 @@ def test_verbalize_complex_having(departments_and_employees_fixture):
     )
     text = verbalize_expression(query)
 
-    assert "Employees'" in text
+    assert "Employees" in text
     assert "department" in text
     assert "average" in text
     assert "salaries" in text
@@ -457,16 +455,16 @@ def test_verbalize_nested_rule(doors_and_drawers_world):
     # Binding section uses "where"
     assert "where" in text
     # First mention of FixedConnection uses indefinite article
-    assert "a FixedConnection's parent" in text
+    assert "parent of a FixedConnection" in text
     # Second mention uses definite article (same entity, different field)
-    assert "the FixedConnection's child" in text
+    assert "child of the FixedConnection" in text
     # Sub-query constraints reuse established binding names, not raw structural paths
     assert "such that" in text
-    assert "the Drawer's container is a PrismaticConnection's child" in text
-    assert "the Drawer's handle is a Handle" in text
+    assert "the container of the Drawer is child of a PrismaticConnection" in text
+    assert "the handle of the Drawer is a Handle" in text
     # Raw structural paths must not appear in the constraints
-    assert "the FixedConnection's parent" not in text.split("such that")[1]
-    assert "the FixedConnection's child" not in text.split("such that")[1]
+    assert "parent of the FixedConnection" not in text.split("such that")[1]
+    assert "child of the FixedConnection" not in text.split("such that")[1]
     # Original bugs must be absent
     assert "Handle's parent" not in text
     assert "container=Find" not in text
@@ -794,7 +792,7 @@ def test_verbalize_double_nested_constraint_stack(doors_and_drawers_world):
     # The "such that" clause belongs to the Drawer level, not leaked to Wrapper
     assert text.count("such that") == 1
     # Wrapper's binding references the full Drawer description inline
-    assert "the Wrapper's drawer is a Drawer" in text
+    assert "the drawer of the Wrapper is a Drawer" in text
     # Drawer's constraints are present
     assert "FixedConnection" in text
     assert "PrismaticConnection" in text
@@ -982,14 +980,14 @@ def test_cabinet_rule_verbalization(handles_and_containers_world):
     text = verbalize_expression(query)
     assert "Cabinet" in text, f"Expected 'Cabinet' in: {text!r}"
     # plural field must use "are Drawers", not "is a Drawer"
-    assert "drawers are Drawers" in text, f"Expected 'drawers are Drawers' in: {text!r}"
+    assert "drawers of the Cabinet are Drawers" in text, f"Expected 'drawers of the Cabinet are Drawers' in: {text!r}"
     assert "drawers is" not in text, f"Did not expect 'drawers is' in: {text!r}"
     # grouped-by must name what is being grouped and by what
     assert "Drawers are grouped by" in text, f"Expected 'Drawers are grouped by' in: {text!r}"
     # group key must use the established binding name, not the raw structural path
-    assert "grouped by the Cabinet's container" in text, f"Expected 'grouped by the Cabinet's container' in: {text!r}"
+    assert "grouped by the container of the Cabinet" in text, f"Expected 'grouped by the container of the Cabinet' in: {text!r}"
     # binding clause still names the structural origin
-    assert "PrismaticConnection's parent" in text, f"Expected binding definition in: {text!r}"
+    assert "parent of a PrismaticConnection" in text, f"Expected binding definition in: {text!r}"
 
 
 def test_plural_field_binding_uses_are(handles_and_containers_world):
@@ -997,7 +995,7 @@ def test_plural_field_binding_uses_are(handles_and_containers_world):
     drawer = variable(Drawer, handles_and_containers_world.views)
     cabinet = inference(Cabinet)(drawers=drawer)
     text = verbalize_expression(cabinet)
-    assert "drawers are Drawers" in text, f"Expected 'drawers are Drawers' in: {text!r}"
+    assert "drawers of the Cabinet are Drawers" in text, f"Expected 'drawers of the Cabinet are Drawers' in: {text!r}"
     assert "drawers is" not in text, f"Did not expect 'drawers is' in: {text!r}"
 
 
