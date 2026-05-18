@@ -160,3 +160,76 @@ def body_name_contains_keyword(body: Body, keyword: str):
         if keyword in body.name.prefix:
             return True
     return False
+
+
+def compare_robot_world_with_real(dispatcher: EventDispatcher, world: World):
+    real_world_dispatcher = EventDispatcher()
+    real_world_dispatcher.correct_location_tableware = dispatcher.correct_location_tableware
+    real_world_dispatcher.correct_location_food = dispatcher.correct_location_food
+    real_world_dispatcher.correct_location_drinks = dispatcher.correct_location_drinks
+    real_world_dispatcher.correct_location_all_other_items = dispatcher.correct_location_all_other_items
+
+    real_world_dispatcher.dining_table = dispatcher.dining_table
+    real_world_dispatcher.dishwasher_exists = dispatcher.dishwasher_exists
+
+    real_world_dispatcher.known_furniture = dispatcher.known_furniture
+
+    # dispatcher gets all semantically annotated objects in the world -> same case as if robot has found all objects
+    real_world_dispatcher.trigger_event(world.bodies, world)
+
+    result = _print_task_comparison_robot_real(dispatcher, real_world_dispatcher)
+    return result
+
+def _print_task_comparison_robot_real(handler_robot : EventDispatcher, handler_world : EventDispatcher):
+    print("\n \n")
+    print("COMPARE ROBOT WORLD VS REAL WORLD")
+    print("-" * 110)
+
+    header = f"{'Name':<60} | {'Feasibility':<15} | {'Score':<10} | {'Normalized Score':<18}"
+    print(header)
+    print("-" * 110)
+
+    eval_array = []
+
+    for task in handler_world.activated_tasks:
+        # find task in robot handler
+        robot_task = None
+        for elem in handler_robot.activated_tasks:
+            if elem.name == task.name:
+                robot_task = elem
+
+
+
+        if robot_task is None:
+            print(f"{task.name: <60} not detected by robot")
+            eval_array.append([None, None, None])
+        else:
+            name = task.name
+            with perf_step(f"calculate feasibility: {name}"):
+                feasibility = task.calculate_feasibility()
+            score = task.reward * feasibility
+            norm_score = score / task.duration
+
+            name_robot = robot_task.name
+            feasibility_robot = robot_task.calculate_feasibility()
+            score_robot = robot_task.reward * feasibility_robot
+            norm_score_robot = score_robot / robot_task.duration
+
+            line_robot = f"ROBOT:\n{name_robot:<60} | {feasibility_robot:<15.3f} | {score_robot:<10.3f} | {norm_score_robot:<18.3f}"
+            print(line_robot)
+            print("."*110)
+
+            line_world = f"WORLD:\n{name:<60} | {feasibility:<15.3f} | {score:<10.3f} | {norm_score:<18.3f}"
+            print(line_world)
+            print("."*110)
+
+            line = f"ROBOT FOUND in percent:\n{name:<60} | {feasibility_robot/feasibility*100 :<15.3f} | {score_robot/score*100:<10.3f}% | {norm_score_robot/norm_score*100:<18.3f}%"
+            print(line)
+            print(":"*110)
+
+            # duration and reward are compared through score and normalized score, required objects and preconditions and constraints through feasibility
+            eval_array.append([feasibility_robot/feasibility, score_robot/score, norm_score_robot/norm_score])
+
+
+    return eval_array
+

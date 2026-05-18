@@ -28,7 +28,8 @@ from pycram.datastructures.dataclasses import Context
 from demos.bachelor_thesis.hsrb_setup_world import hsrb_setup_world
 
 from demos.bachelor_thesis.classes_and_methods.helper_classes_and_methods import Environment, perf_step, perf_print, \
-    timed_plan, timed_parse_stl, debug_task_list_for_demo, print_sorted_task_list, sort_tasks
+    timed_plan, timed_parse_stl, debug_task_list_for_demo, print_sorted_task_list, sort_tasks, \
+    compare_robot_world_with_real
 
 environment = Environment.SuturoApartmentLab
 
@@ -264,3 +265,6 @@ with perf_step("execute all plans with simulated robot"):
 
 perf_print("done")
 print_sorted_task_list(sort_tasks(dispatcher.activated_tasks, 300), 300)
+
+res = compare_robot_world_with_real(dispatcher, world)
+print(res)

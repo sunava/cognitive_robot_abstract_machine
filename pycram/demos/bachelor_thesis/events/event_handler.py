@@ -7,6 +7,7 @@ from contextlib import contextmanager
 
 from demos.bachelor_thesis.classes_and_methods.tasks import SetTableTask, CleanTableTask, PutAwayObjectTask, LoadDishwasherTask, \
     UnloadDishwasherTask
+from semantic_digital_twin.exceptions import WorldEntityNotFoundError
 from semantic_digital_twin.reasoning.queries import semantic_annotations_on_surfaces
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from semantic_digital_twin.robots.pr2 import PR2
@@ -107,7 +108,11 @@ class EventDispatcher:
             sem_annotations = []
             for data in event_data:
                 if not data in self.known_furniture:
-                    sem_annotations.append(world.get_semantic_annotation_by_name(data.name))
+                    try:
+                        annotation = world.get_semantic_annotation_by_name(data.name)
+                        sem_annotations.append(annotation)
+                    except WorldEntityNotFoundError:
+                        print(f"Couldn't find Semantic Annotation for {data.name}")
 
             for listener in self._listeners:
                 listener_name = getattr(listener, "__name__", str(listener))
