@@ -1,5 +1,7 @@
 import os
 from pathlib import Path
+
+from krrood.entity_query_language.factories import entity, an, variable, count
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
 from pycram.motion_executor import simulated_robot, simulated_robot_without_collision
@@ -12,6 +14,7 @@ from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
 )
 from semantic_digital_twin.adapters.urdf import URDFParser
+from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from semantic_digital_twin.robots.garmi import Garmi
 from semantic_digital_twin.spatial_types import (
     HomogeneousTransformationMatrix,
@@ -86,6 +89,10 @@ context = Context.from_world(world)
 garmi = world.get_semantic_annotations_by_type(Garmi)[0]
 milk_place_pose = Pose(Point3(x=2.2, y=7.6, z=0.865), reference_frame=world.root)
 
+robot = variable(AbstractRobot, [garmi])
+number_of_arms = an(entity(count(robot.manipulators))).tolist()
+
+print(number_of_arms)
 with simulated_robot_without_collision:
     sequential(
         [ParkArmsAction(arm=Arms.BOTH)],
