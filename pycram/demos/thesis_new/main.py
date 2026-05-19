@@ -15,7 +15,7 @@ robots = (
     "armar7",
     "g1",
 )
-robots = ("garmi",)
+# robots = ("garmi",)
 actions = ("mix", "wipe", "cut")
 # pr2,hsrb,stretch,tiago,g1,justin,armar7
 # apartment,kitchen,isr?, suturo, robocup, isr-testbed

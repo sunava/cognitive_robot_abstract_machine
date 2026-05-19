@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 import rclpy
 
@@ -55,10 +56,10 @@ BREAD_RADIUS_SAFETY_FACTOR = 1.08
 # Optional per-surface overrides (set value to force exact count).
 SURFACE_COUNT_OVERRIDES = {}
 COUNTERTOP_TINT = Color(R=0.82, G=0.70, B=0.55)
-DEBUG_SPAWN_FRAMES = True
+DEBUG_SPAWN_FRAMES = False
 DEBUG_FORCE_SPAWN_ALL_TARGETS = False
 DEBUG_DISABLE_REACHABILITY = True
-DEBUG_SPAWN_ACTUAL_POSES = True
+DEBUG_SPAWN_ACTUAL_POSES = False
 
 CUT_OBJECT_CONFIGS = {
     "bread": {
@@ -722,9 +723,17 @@ def _is_pose_reachable_for_cutting(robot, world, target_pose, cache=None):
 def setup_random_bread_world(
     seed=None, robot_name=None, environment_name=None, object_kind="bread"
 ):
+    setup_start = time.perf_counter()
     object_cfg = get_cut_object_config(object_kind)
+    world_start = time.perf_counter()
     world = setup_thesis_world(robot_name=robot_name, environment_name=environment_name)
-    return _sample_random_surface_layout(
+    print(
+        "[profile] spawn_breads/setup_world: "
+        f"{time.perf_counter() - world_start:.3f}s "
+        f"robot={robot_name or ''} environment={environment_name or ''}"
+    )
+    sample_start = time.perf_counter()
+    result = _sample_random_surface_layout(
         world=world,
         seed=seed,
         environment_name=environment_name,
@@ -732,17 +741,23 @@ def setup_random_bread_world(
         object_name_prefix=object_cfg["object_name_prefix"],
         mesh_parts=object_cfg["mesh_parts"],
         object_color=object_cfg["object_color"],
-        scale_choices=np.array([0.8, 1.0, 1.2, 1.4, 1.6], dtype=float),
+        scale_choices=np.array([0.75, 0.85, 0.95, 1.05, 1.15], dtype=float),
         base_radius=_base_xy_radius_for_mesh(*object_cfg["mesh_parts"]),
         radius_safety_factor=BREAD_RADIUS_SAFETY_FACTOR,
         min_clearance_m=MIN_BREAD_CLEARANCE_M,
         strict_clean_mode=STRICT_CLEAN_MODE,
-        z_offset=0.02,
+        z_offset=0.005,
         reachability_fn=_is_pose_reachable_for_cutting,
         debug_disable_reachability=DEBUG_DISABLE_REACHABILITY,
         debug_force_spawn_all_targets=DEBUG_FORCE_SPAWN_ALL_TARGETS,
         debug_spawn_actual_poses=DEBUG_SPAWN_ACTUAL_POSES,
     )
+    print(
+        "[profile] spawn_breads/sample_layout: "
+        f"{time.perf_counter() - sample_start:.3f}s"
+    )
+    print("[profile] spawn_breads/total: " f"{time.perf_counter() - setup_start:.3f}s")
+    return result
 
 
 def main(seed=None):

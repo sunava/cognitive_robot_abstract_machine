@@ -2,14 +2,28 @@ from __future__ import annotations
 
 from collections import defaultdict
 from textwrap import fill
+
 from typing_extensions import Optional, List, Dict, Tuple, TYPE_CHECKING, Any
 
-import igraph as ig
-import matplotlib as mpl
-import numpy as np
-from matplotlib import pyplot as plt
-from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
-from matplotlib.path import Path
+try:
+    import matplotlib as mpl
+
+    # Ensure a non-interactive backend for headless environments
+    # Needs to be done before importing pyplot
+    try:
+        mpl.use("Agg")
+    except Exception:
+        pass
+    from matplotlib import pyplot as plt
+    from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
+    from matplotlib.path import Path
+except ModuleNotFoundError:
+    mpl = None
+
+try:
+    import numpy as np
+except ModuleNotFoundError:
+    np = None
 
 from krrood.rustworkx_utils.utils import ColorLegend
 
@@ -82,17 +96,18 @@ class GraphVisualizer:
         self._style_and_save(fig, ax)
         return fig, ax
 
-    # ---- Steps ----
-    def _check_dependencies(self):
-        if not ig or not mpl or not fill:
-            raise RuntimeError(
-                "igraph, matplotlib, textwrap must be installed to visualize the graph."
+    @classmethod
+    def _check_dependencies(cls):
+        if mpl is None:
+            raise ModuleNotFoundError(
+                "matplotlib must be installed to visualize the graph. (pip install matplotlib)",
+                name="matplotlib",
             )
-        # Ensure a non-interactive backend for headless environments
-        try:
-            mpl.use("Agg")
-        except Exception:
-            pass
+        elif np is None:
+            raise ModuleNotFoundError(
+                "numpy must be installed to visualize the graph. (pip install numpy)",
+                name="numpy",
+            )
 
     def _build_rooted_subgraph(self):
         root = self.node.root

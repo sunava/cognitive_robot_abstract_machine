@@ -913,6 +913,7 @@ class Point3(sm.SymbolicMathType, SpatialType, SubclassJSONSerializer):
             z=z,
             reference_frame=None,
         )
+        result._free_variable_refs = (x, y, z)
         if resolver is not None:
             x.resolve = lambda: resolver()[0]
             y.resolve = lambda: resolver()[1]
@@ -1222,6 +1223,7 @@ class Vector3(sm.SymbolicMathType, SpatialType, SubclassJSONSerializer):
             z=z,
             reference_frame=None,
         )
+        result._free_variable_refs = (x, y, z)
         if resolver is not None:
             x.resolve = lambda: resolver()[0]
             y.resolve = lambda: resolver()[1]

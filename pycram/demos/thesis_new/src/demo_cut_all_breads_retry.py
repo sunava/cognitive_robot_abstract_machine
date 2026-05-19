@@ -1,4 +1,5 @@
 import time
+import traceback
 
 from pycram.locations.locations import CostmapLocation
 from pycram.motion_executor import (
@@ -46,6 +47,7 @@ from pycram.robot_plans.actions.composite.utils.experiment_logging import (
     initialize_csv,
     is_collision_like_failure as _is_collision_like_failure,
     new_run_id,
+    robot_base_pose_row,
     robot_name as _robot_name,
     tool_name as _tool_name,
 )
@@ -75,7 +77,10 @@ ACTIVE_BREAD_COLOR = Color(R=0.52, G=0.82, B=0.98)
 FAILED_BREAD_COLOR = Color(R=0.95, G=0.20, B=0.20)
 SUCCESS_BREAD_COLOR = Color(R=0.62, G=0.92, B=0.62)
 RECORDS_DIR = os.path.join(os.path.dirname(__file__), "../records")
-RESULTS_CSV_PATH = os.path.join(RECORDS_DIR, "cut_all_breads_results.csv")
+RESULTS_CSV_PATH = os.environ.get(
+    "THESIS_CUT_RESULTS_CSV_PATH",
+    os.path.join(RECORDS_DIR, "cut_all_breads_results.csv"),
+)
 EXPERIMENT_CONDITION = "full_system"
 BASELINE_NAME = "base_system"
 TASK_NAME = "bread_cutting"
@@ -92,6 +97,17 @@ CUTTING_TECHNIQUE = "saw"
 CUTTING_POINTER_STRIDE = 13
 CUTTING_NUM_CUTS_X = 4
 CUTTING_SLICE_THICKNESS_M = 0.03
+CUTTING_OMIT_EMPTY_FIELDNAMES = {
+    "knowledge_query_error",
+    "knowledge_prior_task",
+    "required_prerequisite",
+    "prerequisite_source",
+    "assistance_type",
+    "perturbation_type",
+    "support_size_x",
+    "support_size_y",
+    "support_size_z",
+}
 
 
 def _cutting_obstacle_clearance(robot):
@@ -257,7 +273,21 @@ def _record_bread_result(
 
 
 def _results_csv_fieldnames():
-    return ["bread_name", *BASE_RESULT_FIELDNAMES]
+    return [
+        "bread_name",
+        *[
+            field
+            for field in BASE_RESULT_FIELDNAMES
+            if field not in CUTTING_OMIT_EMPTY_FIELDNAMES
+        ],
+    ]
+
+
+def _with_robot_base_pose(context, geometry_binding):
+    return {
+        **geometry_binding,
+        **getattr(context, "_pre_action_robot_base_pose_row", {}),
+    }
 
 
 def _try_cut(
@@ -308,6 +338,7 @@ def _try_cut(
                 context,
             ).perform(),
         )
+        context._pre_action_robot_base_pose_row = robot_base_pose_row(context)
 
     current_plan = None
     try:
@@ -549,6 +580,7 @@ def main_cutting(
 
     total_breads = len(breads)
     for bread_index, bread in enumerate(breads, start=1):
+        context._pre_action_robot_base_pose_row = {}
         bread_name = _body_name(bread)
         cut_count = success_primary + success_fallback
         print(
@@ -659,10 +691,13 @@ def main_cutting(
                 perturbation_applied=perturbation_applied,
                 perturbation_type=perturbation_type,
                 execution_time_s=time.perf_counter() - bread_start_time,
-                geometry_binding=_build_cut_geometry_binding(
-                    bread,
-                    cutting_technique=cut_cfg["technique"],
-                    num_cuts_x=cut_cfg["num_cuts_x"],
+                geometry_binding=_with_robot_base_pose(
+                    context,
+                    _build_cut_geometry_binding(
+                        bread,
+                        cutting_technique=cut_cfg["technique"],
+                        num_cuts_x=cut_cfg["num_cuts_x"],
+                    ),
                 ),
             )
             append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
@@ -735,10 +770,13 @@ def main_cutting(
                         perturbation_applied=perturbation_applied,
                         perturbation_type=perturbation_type,
                         execution_time_s=time.perf_counter() - bread_start_time,
-                        geometry_binding=_build_cut_geometry_binding(
-                            bread,
-                            cutting_technique=cut_cfg["technique"],
-                            num_cuts_x=cut_cfg["num_cuts_x"],
+                        geometry_binding=_with_robot_base_pose(
+                            context,
+                            _build_cut_geometry_binding(
+                                bread,
+                                cutting_technique=cut_cfg["technique"],
+                                num_cuts_x=cut_cfg["num_cuts_x"],
+                            ),
                         ),
                     )
                     append_csv_row(
@@ -772,6 +810,7 @@ def main_cutting(
                     attempt_failures.append(
                         f"{arm.name} {phase_name} -> {_format_attempt_error(exc)}"
                     )
+                    traceback.print_exc()
                     print(
                         f"[{'retry' if not (group_index == len(arm_attempt_groups) - 1 and attempt_index == len(current_arm_tools) - 1) else 'fail'}] "
                         f"{bread_name}: {arm.name}"
@@ -812,10 +851,13 @@ def main_cutting(
             perturbation_applied=perturbation_applied,
             perturbation_type=perturbation_type,
             execution_time_s=time.perf_counter() - bread_start_time,
-            geometry_binding=_build_cut_geometry_binding(
-                bread,
-                cutting_technique=cut_cfg["technique"],
-                num_cuts_x=cut_cfg["num_cuts_x"],
+            geometry_binding=_with_robot_base_pose(
+                context,
+                _build_cut_geometry_binding(
+                    bread,
+                    cutting_technique=cut_cfg["technique"],
+                    num_cuts_x=cut_cfg["num_cuts_x"],
+                ),
             ),
         )
         append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)

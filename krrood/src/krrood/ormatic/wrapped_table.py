@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 from dataclasses import dataclass, field
 from functools import cached_property, lru_cache
@@ -14,9 +15,9 @@ from krrood.class_diagrams.class_diagram import (
     WrappedClass,
     Inheritance,
 )
-from krrood.class_diagrams.failures import ClassIsUnMappedInClassDiagram
+from krrood.class_diagrams.exceptions import ClassIsUnMappedInClassDiagram
 from krrood.class_diagrams.wrapped_field import WrappedField
-from krrood.utils import module_and_class_name
+from krrood.utils import module_and_class_name, memoize
 
 if TYPE_CHECKING:
     from krrood.ormatic.ormatic import ORMatic
@@ -113,8 +114,15 @@ class AssociationObject:
     """
 
     @property
-    def table_name(self) -> str:
-        return str(hash(self.name))
+    def table_name(self):
+        """
+        :return: The table name encoded as a hash that is stable across different python processes.
+        This needs to happen this way as it is very likely that association table names will get too long for common SQL
+        dialects.
+        """
+        number = int(hashlib.sha256(str(self.name).encode("utf-8")).hexdigest(), 16)
+        short_number = str(number)[:62]
+        return f"_{short_number}"
 
 
 @dataclass
@@ -280,7 +288,7 @@ class WrappedTable:
                     self.wrapped_clazz.index
                 )
             )
-            for parent_wrapped in inheritance_parents:
+            for parent_wrapped in inheritance_parents[::-1]:
                 # Check if this parent has a wrapped table and if the relation is Inheritance
                 # We need to check the actual relation object
                 edge_data = (
@@ -484,7 +492,7 @@ class WrappedTable:
 
         return result
 
-    @lru_cache(maxsize=None)
+    @memoize
     def parse_fields(self):
 
         for f in self.fields:
@@ -518,6 +526,8 @@ class WrappedTable:
             such as its data type, whether it represents a built-in or user-defined type, or if it has
             specific ORM container properties.
         """
+
+        # check underspecified generic fields
         if (
             wrapped_field.is_underspecified_generic
             and isclass(wrapped_field.type_endpoint)
@@ -740,6 +750,7 @@ class WrappedTable:
         :param wrapped_field: The field to extract the information from.
         """
         self.ormatic.imported_modules.add("typing_extensions")
+        self.ormatic.imported_modules.add(wrapped_field.type_endpoint.__module__)
         column_name = wrapped_field.field.name
         container = Set if issubclass(wrapped_field.container_type, set) else List
         column_type = f"Mapped[{module_and_class_name(container)}[{module_and_class_name(wrapped_field.type_endpoint)}]]"

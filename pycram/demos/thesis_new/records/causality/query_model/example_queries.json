@@ -1,0 +1,94 @@
+{
+  "higher_object_world_z": {
+    "high": {
+      "baseline_success_probability": 0.4956967034719816,
+      "effect": 0.020780828762062775,
+      "estimator": "random_forest_g_computation",
+      "intervened_success_probability": 0.5164775322340444,
+      "intervention": {
+        "object_world_z": 0.966814
+      },
+      "population_filter": null,
+      "query_type": "do",
+      "rows_used": 2371
+    },
+    "high_minus_low": 0.022329483588829246,
+    "low": {
+      "baseline_success_probability": 0.4956967034719816,
+      "effect": -0.0015486548267664713,
+      "estimator": "random_forest_g_computation",
+      "intervened_success_probability": 0.4941480486452151,
+      "intervention": {
+        "object_world_z": 0.81
+      },
+      "population_filter": null,
+      "query_type": "do",
+      "rows_used": 2371
+    }
+  },
+  "hsrb_to_pr2": {
+    "common_support_weight": 0.9999999999999998,
+    "jpt_effect": 0.4283275340425851,
+    "jpt_source_scene_success_probability": 0.30563636267983224,
+    "jpt_strata": 20,
+    "jpt_target_on_source_scene_success_probability": 0.7339638967224174,
+    "query_type": "robot_substitution",
+    "rf_effect": 0.28181417329239294,
+    "rf_source_scene_success_probability": 0.3574766064208455,
+    "rf_target_on_source_scene_success_probability": 0.6392907797132384,
+    "rows_used": 693,
+    "source_robot": "hsrb",
+    "source_rows": 341,
+    "target_robot": "pr2",
+    "target_rows": 352
+  },
+  "larger_object_size_z": {
+    "high": {
+      "baseline_success_probability": 0.4956967034719816,
+      "effect": -0.007576373928612268,
+      "estimator": "random_forest_g_computation",
+      "intervened_success_probability": 0.4881203295433693,
+      "intervention": {
+        "object_size_z": 0.078038
+      },
+      "population_filter": null,
+      "query_type": "do",
+      "rows_used": 2371
+    },
+    "high_minus_low": -0.014881265451955616,
+    "low": {
+      "baseline_success_probability": 0.4956967034719816,
+      "effect": 0.007304891523343349,
+      "estimator": "random_forest_g_computation",
+      "intervened_success_probability": 0.5030015949953249,
+      "intervention": {
+        "object_size_z": 0.065031
+      },
+      "population_filter": null,
+      "query_type": "do",
+      "rows_used": 2371
+    }
+  },
+  "model_metrics": {
+    "accuracy": 0.730185497470489,
+    "features": 42.0,
+    "roc_auc": 0.811230177689805,
+    "rows": 2371.0
+  },
+  "pr2_to_hsrb": {
+    "common_support_weight": 1.0,
+    "jpt_effect": -0.4234912899846629,
+    "jpt_source_scene_success_probability": 0.732128769044387,
+    "jpt_strata": 20,
+    "jpt_target_on_source_scene_success_probability": 0.30863747905972405,
+    "query_type": "robot_substitution",
+    "rf_effect": -0.277357824540008,
+    "rf_source_scene_success_probability": 0.6710298204362967,
+    "rf_target_on_source_scene_success_probability": 0.39367199589628865,
+    "rows_used": 693,
+    "source_robot": "pr2",
+    "source_rows": 352,
+    "target_robot": "hsrb",
+    "target_rows": 341
+  }
+}

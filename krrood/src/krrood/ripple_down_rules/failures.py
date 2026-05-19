@@ -1,2 +1,0 @@
-class RDRLoadError(Exception):
-    pass

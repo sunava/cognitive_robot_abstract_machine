@@ -49,10 +49,14 @@ class MotionExecutor:
         "Justin": 0.07,
     }
     ACTION_WIGGLE_DISTANCE_EPSILON_M: ClassVar[dict[str, float]] = {
+        "CuttingAction": 0.008,
         "MixingAction": 0.06,
         "WipingAction": 0.05,
     }
     WIGGLE_CHECKS_BEFORE_ABORT: ClassVar[int] = 8
+    ACTION_WIGGLE_CHECKS_BEFORE_ABORT: ClassVar[dict[str, int]] = {
+        "CuttingAction": 24,
+    }
     HARD_TIMEOUT_FACTOR: ClassVar[int] = 10
 
     motions: List[MotionStatechartNode]
@@ -251,6 +255,10 @@ class MotionExecutor:
                     wiggle_distance_epsilon,
                 ),
             )
+            wiggle_checks_before_abort = self.ACTION_WIGGLE_CHECKS_BEFORE_ABORT.get(
+                self.plan_node.action.__class__.__name__,
+                self.WIGGLE_CHECKS_BEFORE_ABORT,
+            )
             previous_progress_snapshot = self._body_position_snapshot(progress_bodies)
             stagnant_checks = 0
             wiggle_checks = 0
@@ -304,12 +312,12 @@ class MotionExecutor:
                         stagnant_checks,
                         self.STAGNATION_CHECKS_BEFORE_ABORT,
                         wiggle_checks,
-                        self.WIGGLE_CHECKS_BEFORE_ABORT,
+                        wiggle_checks_before_abort,
                     )
 
                     if (
                         stagnant_checks >= self.STAGNATION_CHECKS_BEFORE_ABORT
-                        or wiggle_checks >= self.WIGGLE_CHECKS_BEFORE_ABORT
+                        or wiggle_checks >= wiggle_checks_before_abort
                     ):
                         raise TimeoutError(
                             "Motion stalled while waiting for end of motion "

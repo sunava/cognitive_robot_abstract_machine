@@ -18,7 +18,7 @@ from typing_extensions import (
     ClassVar,
 )
 
-
+from krrood import logger
 from krrood.class_diagrams import ClassDiagram
 from krrood.class_diagrams.wrapped_field import WrappedField
 from krrood.ontomatic.property_descriptor.attribute_introspector import (

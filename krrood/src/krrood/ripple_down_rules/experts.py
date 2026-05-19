@@ -18,24 +18,28 @@ from krrood.ripple_down_rules.datastructures.callable_expression import (
 from krrood.ripple_down_rules.datastructures.case import show_current_and_corner_cases
 from krrood.ripple_down_rules.datastructures.dataclasses import CaseQuery
 from krrood.ripple_down_rules.datastructures.enums import PromptFor
+from krrood.ripple_down_rules.exceptions import (
+    NoSavePathFoundForExpertAnswers,
+    NoLoadPathFoundForExpertAnswers,
+)
 from krrood.ripple_down_rules.user_interface.template_file_creator import (
     TemplateFileCreator,
 )
 from krrood.ripple_down_rules.utils import (
-    extract_imports,
     extract_function_or_class_file,
     get_imports_from_scope,
     get_class_file_path,
 )
+from krrood.utils import get_scope_from_imports
 
 try:
-    from .user_interface.gui import RDRCaseViewer
+    from krrood.ripple_down_rules.user_interface.gui import RDRCaseViewer
 except ImportError as e:
     RDRCaseViewer = None
 from krrood.ripple_down_rules.user_interface.prompt import UserPrompt
 
 if TYPE_CHECKING:
-    from .rdr import Rule
+    from krrood.ripple_down_rules.rdr import Rule
 
 
 class Expert(ABC):
@@ -127,10 +131,7 @@ class Expert(ABC):
         if not any(expert_answers):
             return
         if path is None and self.answers_save_path is None:
-            raise ValueError(
-                "No path provided to save expert answers, either provide a path or set the "
-                "answers_save_path attribute."
-            )
+            raise NoSavePathFoundForExpertAnswers(self)
         if path is None:
             path = self.answers_save_path
         self._save_to_python(path, expert_answers=expert_answers)
@@ -190,10 +191,7 @@ class Expert(ABC):
         :param path: The path to load the answers from.
         """
         if path is None and self.answers_save_path is None:
-            raise ValueError(
-                "No path provided to load expert answers from, either provide a path or set the "
-                "answers_save_path attribute."
-            )
+            raise NoLoadPathFoundForExpertAnswers(self)
         if path is None:
             path = self.answers_save_path
         if os.path.exists(path + ".py"):
@@ -228,7 +226,7 @@ class Expert(ABC):
             if "def " not in answer and "pass" in answer:
                 self.all_expert_answers.append(({}, None))
                 continue
-            scope = extract_imports(tree=ast.parse(answer))
+            scope = get_scope_from_imports(tree=ast.parse(answer))
             func_name = all_function_sources[i].split("def ")[1].split("(")[0]
             function_source = all_function_sources[i].replace(
                 func_name, CallableExpression.encapsulating_function_name
@@ -403,6 +401,15 @@ class Human(Expert):
         callable_expression: CallableExpression,
         prompt_for: PromptFor,
     ):
+        """
+        Convert a JSON answer to a Python answer and save it. This is used for backward compatibility for answers that
+        were saved as JSON but need to be converted to Python code.
+
+        :param case_query: The case query containing the case to classify.
+        :param user_input: The user input to convert.
+        :param callable_expression: The callable expression to use for the answer.
+        :param prompt_for: The prompt for the expert.
+        """
         tfc = TemplateFileCreator(case_query, prompt_for=prompt_for)
         code = tfc.build_boilerplate_code()
         if user_input.startswith("def"):

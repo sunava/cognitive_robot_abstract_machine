@@ -37,6 +37,7 @@ from pycram.robot_plans.actions.composite.utils.experiment_logging import (
     initialize_csv,
     is_collision_like_failure as _is_collision_like_failure,
     new_run_id,
+    robot_base_pose_row,
     robot_name as _robot_name,
     tool_name as _tool_name,
 )
@@ -121,6 +122,7 @@ def _record_space_result(
     task_name,
     seed,
     world_name,
+    environment_name,
     run_id,
     knowledge_query_success,
     knowledge_query_error,
@@ -166,6 +168,7 @@ def _record_space_result(
         task_instance_id=task_instance_id,
         seed=seed if seed is not None else "",
         world_name=world_name,
+        environment_name=environment_name,
         experiment_condition=experiment_condition,
         baseline_name=baseline_name,
         knowledge_query_success=knowledge_query_success,
@@ -200,7 +203,19 @@ def _record_space_result(
 
 
 def _results_csv_fieldnames():
-    return ["target_name", "spawn_pose_xyz", *BASE_RESULT_FIELDNAMES]
+    return [
+        "target_name",
+        "spawn_pose_xyz",
+        "environment_name",
+        *BASE_RESULT_FIELDNAMES,
+    ]
+
+
+def _with_robot_base_pose(context, geometry_binding):
+    return {
+        **geometry_binding,
+        **getattr(context, "_pre_action_robot_base_pose_row", {}),
+    }
 
 
 def _create_target_pose_marker_publisher(node):
@@ -437,6 +452,7 @@ def _try_wipe(context, target_pose, pickup_pose, arm, tool, *, environment_name=
                 context,
             ).perform(),
         )
+        context._pre_action_robot_base_pose_row = robot_base_pose_row(context)
     print(context.world.name)
     current_plan = None
     try:
@@ -567,6 +583,7 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
 
     total_targets = len(sampled_targets)
     for target_index, target_data in enumerate(sampled_targets, start=1):
+        context._pre_action_robot_base_pose_row = {}
         target_name = target_data["bowl_name"]
         target_pose = target_data["world_pose"]
         wiped_count = success_primary + success_fallback
@@ -586,6 +603,7 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
             "task_name": TASK_NAME,
             "seed": effective_seed,
             "world_name": world_name,
+            "environment_name": environment_name or "",
             "run_id": run_id,
             "knowledge_query_success": True,
             "knowledge_query_error": "",
@@ -653,7 +671,10 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
                 perturbation_applied=False,
                 perturbation_type="",
                 execution_time_s=time.perf_counter() - target_start_time,
-                geometry_binding=_build_wipe_geometry_binding(target_data, target_pose),
+                geometry_binding=_with_robot_base_pose(
+                    context,
+                    _build_wipe_geometry_binding(target_data, target_pose),
+                ),
             )
             append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
             continue
@@ -735,7 +756,10 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
                 perturbation_applied=False,
                 perturbation_type="",
                 execution_time_s=time.perf_counter() - target_start_time,
-                geometry_binding=_build_wipe_geometry_binding(target_data, target_pose),
+                geometry_binding=_with_robot_base_pose(
+                    context,
+                    _build_wipe_geometry_binding(target_data, target_pose),
+                ),
             )
             append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
             continue
@@ -750,6 +774,7 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
             "task_name": TASK_NAME,
             "seed": effective_seed,
             "world_name": world_name,
+            "environment_name": environment_name or "",
             "run_id": run_id,
             "knowledge_query_success": True,
             "knowledge_query_error": "",
@@ -829,8 +854,9 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
                     perturbation_applied=result_perturbation_applied,
                     perturbation_type=result_perturbation_type,
                     execution_time_s=time.perf_counter() - target_start_time,
-                    geometry_binding=_build_wipe_geometry_binding(
-                        target_data, target_pose
+                    geometry_binding=_with_robot_base_pose(
+                        context,
+                        _build_wipe_geometry_binding(target_data, target_pose),
                     ),
                 )
                 append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
@@ -908,7 +934,10 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
             perturbation_applied=False,
             perturbation_type="",
             execution_time_s=time.perf_counter() - target_start_time,
-            geometry_binding=_build_wipe_geometry_binding(target_data, target_pose),
+            geometry_binding=_with_robot_base_pose(
+                context,
+                _build_wipe_geometry_binding(target_data, target_pose),
+            ),
         )
         append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
         if DEBUG_PROFILE_WIPING:

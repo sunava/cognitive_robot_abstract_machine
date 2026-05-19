@@ -213,6 +213,14 @@ class CartesianPositionTrajectory(CartesianTask):
         self._goal_points_np = np.array(
             [point.to_np()[:-1] for point in self.goal_points]
         )
+        if len(self._goal_points_np) == 0:
+            raise NodeInitializationError(
+                self,
+                "CartesianPositionTrajectory requires at least one goal point.",
+            )
+        self.current_index = int(
+            np.clip(int(self.current_index), 0, len(self._goal_points_np) - 1)
+        )
 
     def build(self, context: MotionStatechartContext) -> NodeArtifacts:
         self._goal_points_to_np()
@@ -274,18 +282,27 @@ class CartesianPositionTrajectory(CartesianTask):
         Search for the closest point in the trajectory to the current position, without going backwards.
         :param goal_reference_frame_P_tip_np: the current position in the goal reference frame as a 3d numpy array.
         """
+        self.current_index = int(
+            np.clip(int(self.current_index), 0, len(self._goal_points_np) - 1)
+        )
         if self.maximum_skip_ahead is None:
             remaining_points = self._goal_points_np[self.current_index :]
         else:
+            skip_ahead = max(1, int(self.maximum_skip_ahead))
             remaining_points = self._goal_points_np[
-                self.current_index : self.current_index + self.maximum_skip_ahead
+                self.current_index : self.current_index + skip_ahead
             ]
+        if len(remaining_points) == 0:
+            self.current_index = len(self._goal_points_np) - 1
+            return
         distances = np.linalg.norm(
             remaining_points - goal_reference_frame_P_tip_np, axis=1
         )
         local_closest_index = np.argmin(distances)
         self.current_index += local_closest_index
-        self.current_index = int(self.current_index)
+        self.current_index = int(
+            np.clip(int(self.current_index), 0, len(self._goal_points_np) - 1)
+        )
 
     def _compute_target_point(
         self, goal_reference_frame_P_tip_np: np.ndarray
@@ -295,6 +312,9 @@ class CartesianPositionTrajectory(CartesianTask):
         This ensures a constant velocity and pulls the tip onto the trajectory.
         :param goal_reference_frame_P_tip_np: the current position in the goal reference frame as a 3d numpy array.
         """
+        self.current_index = int(
+            np.clip(int(self.current_index), 0, len(self._goal_points_np) - 1)
+        )
         if self.current_index >= len(self._goal_points_np) - 1:
             # If we've reached the end of the trajectory, return the last point
             return self._goal_points_np[-1]
@@ -357,6 +377,9 @@ class CartesianPositionTrajectory(CartesianTask):
         )
         self.goal_reference_frame_P_current_target_point.reference_frame = (
             self.goal_reference_frame
+        )
+        self.current_index = int(
+            np.clip(int(self.current_index), 0, len(self.goal_points) - 1)
         )
         float_variable_data.register_expression(
             self.goal_reference_frame_P_current_target_point

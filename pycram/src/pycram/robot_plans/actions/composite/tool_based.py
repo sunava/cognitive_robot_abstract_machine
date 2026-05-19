@@ -226,7 +226,11 @@ class GeneralizedActionPlan(ActionDescription):
         try:
             self.add_subplan(sequential([self._build_motion(waypoints)])).perform()
         except Exception as exc:
+            self._log_tool_frame_distance_to_last_waypoint(waypoints, outcome="failed")
             if self._accept_execution_failure_as_success(waypoints, exc):
+                self._log_tool_frame_distance_to_last_waypoint(
+                    waypoints, outcome="accepted_timeout"
+                )
                 return
 
             collision_contacts = None
@@ -254,8 +258,96 @@ class GeneralizedActionPlan(ActionDescription):
                 f"(waypoints={len(waypoints)}, collisions_now={collision_contacts}): "
                 f"{type(exc).__name__}: {exc}"
             ) from exc
+        else:
+            self._log_tool_frame_distance_to_last_waypoint(waypoints, outcome="done")
 
     def _accept_execution_failure_as_success(self, waypoints, exc: Exception) -> bool:
+        return False
+
+    def _accept_motion_timeout_as_success(self, exc: Exception) -> bool:
+        waypoints = getattr(self, "_last_waypoints", [])
+        self._log_tool_frame_distance_to_last_waypoint(
+            waypoints, outcome="motion_timeout"
+        )
+        accepted = self._accept_execution_failure_as_success(waypoints, exc)
+        if accepted:
+            self._log_tool_frame_distance_to_last_waypoint(
+                waypoints, outcome="accepted_timeout"
+            )
+        return accepted
+
+    def _log_tool_frame_distance_to_last_waypoint(
+        self, waypoints, *, outcome: str
+    ) -> Optional[float]:
+        if not waypoints:
+            return None
+        try:
+            tip_body = self._resolve_tool_frame_for_distance_logging()
+            if tip_body is None:
+                logger.warning(
+                    "%s tool-frame distance: no tool frame available.",
+                    self.__class__.__name__,
+                )
+                return None
+
+            tip_point = self.world.transform(
+                tip_body.global_pose.to_position(), self.world.root
+            )
+            tip_xyz = np.asarray(tip_point.to_np(), dtype=float).reshape(-1)[:3]
+            goal_xyz = self._waypoint_xyz_in_world(waypoints[-1])
+            distance = float(np.linalg.norm(tip_xyz - goal_xyz))
+        except Exception as exc:
+            logger.warning(
+                "%s tool-frame distance logging failed: %s: %s",
+                self.__class__.__name__,
+                type(exc).__name__,
+                exc,
+            )
+            return None
+
+        tolerance = getattr(self, "final_waypoint_success_tolerance_m", None)
+        logger.warning(
+            "%s tool-frame distance to final waypoint: outcome=%s distance=%.3fm "
+            "tolerance=%s tip_xyz=%s last_point_xyz=%s",
+            self.__class__.__name__,
+            outcome,
+            distance,
+            f"{float(tolerance):.3f}m" if tolerance is not None else "n/a",
+            np.round(tip_xyz, 4).tolist(),
+            np.round(goal_xyz, 4).tolist(),
+        )
+        return distance
+
+    def _resolve_tool_frame_for_distance_logging(self):
+        try:
+            if self.tool is not None:
+                return self.tool.get_tool_frame()
+        except Exception:
+            pass
+        if self.tool is not None:
+            return getattr(self.tool, "root", None)
+        return ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
+
+    def _waypoint_xyz_in_world(self, waypoint) -> np.ndarray:
+        if hasattr(waypoint, "to_position"):
+            waypoint = waypoint.to_position()
+        point = self.world.transform(waypoint, self.world.root)
+        return np.asarray(point.to_np(), dtype=float).reshape(-1)[:3]
+
+    @staticmethod
+    def _is_timeout_failure(exc: Exception) -> bool:
+        current = exc
+        while current is not None:
+            if isinstance(current, TimeoutError):
+                return True
+            msg = str(current)
+            if (
+                "Timeout reached while waiting for end of motion" in msg
+                or "Motion stalled while waiting for end of motion" in msg
+                or "Hard timeout reached while waiting for end of motion" in msg
+            ):
+                return True
+            current = current.__cause__ or current.__context__
         return False
 
     def _sample_motion(self):
@@ -306,12 +398,35 @@ class GeneralizedActionPlan(ActionDescription):
         raise NotImplementedError
 
     def _to_waypoints(self, points: np.ndarray, stride: int) -> list[Point3]:
+        points = np.asarray(points, dtype=float)
+        if points.ndim != 2 or points.shape[1] < 3:
+            raise ValueError(
+                "Expected sampled waypoints to have shape (N, 3), "
+                f"got {points.shape}."
+            )
+        if len(points) == 0:
+            raise ValueError("No sampled points available for waypoint generation.")
+
+        stride = max(1, int(stride))
+        indices = list(range(0, len(points), stride))
+        if indices[-1] != len(points) - 1:
+            indices.append(len(points) - 1)
+        indices = [int(np.clip(index, 0, len(points) - 1)) for index in indices]
+
         waypoints = [
             Point3(x=p[0], y=p[1], z=p[2], reference_frame=self.world.root)
-            for p in points
-        ][::stride]
+            for p in points[indices]
+        ]
         if not waypoints:
             raise ValueError("No waypoints left after applying pointer_stride.")
+        if self.__class__.__name__ == "CuttingAction":
+            logger.info(
+                "CuttingAction waypoints: sampled_points=%s stride=%s waypoints=%s last_index=%s",
+                len(points),
+                stride,
+                len(waypoints),
+                indices[-1],
+            )
         return waypoints
 
     def _resolve_alignment_target(self):
@@ -537,24 +652,7 @@ class WipingAction(GeneralizedActionPlan):
         return True
 
     def _accept_motion_timeout_as_success(self, exc: Exception) -> bool:
-        waypoints = getattr(self, "_last_waypoints", [])
-        return self._accept_execution_failure_as_success(waypoints, exc)
-
-    @staticmethod
-    def _is_timeout_failure(exc: Exception) -> bool:
-        current = exc
-        while current is not None:
-            if isinstance(current, TimeoutError):
-                return True
-            msg = str(current)
-            if (
-                "Timeout reached while waiting for end of motion" in msg
-                or "Motion stalled while waiting for end of motion" in msg
-                or "Hard timeout reached while waiting for end of motion" in msg
-            ):
-                return True
-            current = current.__cause__ or current.__context__
-        return False
+        return super()._accept_motion_timeout_as_success(exc)
 
 
 @dataclass
@@ -564,6 +662,11 @@ class CuttingAction(GeneralizedActionPlan):
     """
 
     motion_timeout_ticks = 100
+
+    final_waypoint_success_tolerance_m: float = 0.12
+    """
+    Accept a timeout as successful if the cutting tool is already this close to the final waypoint.
+    """
 
     container: Body = None
     """
@@ -604,6 +707,52 @@ class CuttingAction(GeneralizedActionPlan):
             num_cuts_x=self.num_cuts_x,
         )
         return seq.sample(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
+
+    def _accept_execution_failure_as_success(self, waypoints, exc: Exception) -> bool:
+        if not self._is_timeout_failure(exc) or not waypoints:
+            return False
+
+        try:
+            try:
+                tip_body = self.tool.get_tool_frame()
+            except Exception:
+                tip_body = getattr(getattr(self, "tool", None), "root", None)
+            if tip_body is None:
+                logger.warning("CuttingAction timeout check: no tool frame available.")
+                return False
+
+            tip_point = self.world.transform(
+                tip_body.global_pose.to_position(), self.world.root
+            )
+            tip_xyz = np.asarray(tip_point.to_np(), dtype=float).reshape(-1)[:3]
+            goal_point = self.world.transform(waypoints[-1], self.world.root)
+            goal_xyz = np.asarray(goal_point.to_np(), dtype=float).reshape(-1)[:3]
+            distance = float(np.linalg.norm(tip_xyz - goal_xyz))
+        except Exception as transform_exc:
+            logger.warning(
+                "CuttingAction timeout check failed: %s: %s",
+                type(transform_exc).__name__,
+                transform_exc,
+            )
+            return False
+
+        logger.warning(
+            "CuttingAction timeout check: last_point_xyz=%s tip_xyz=%s distance=%.3fm tolerance=%.3fm",
+            np.round(goal_xyz, 4).tolist(),
+            np.round(tip_xyz, 4).tolist(),
+            distance,
+            self.final_waypoint_success_tolerance_m,
+        )
+        if distance > float(self.final_waypoint_success_tolerance_m):
+            return False
+
+        logger.warning(
+            "Accepting CuttingAction timeout as success because the tool reached the final waypoint "
+            "(distance=%.3fm, tolerance=%.3fm).",
+            distance,
+            self.final_waypoint_success_tolerance_m,
+        )
+        return True
 
 
 @dataclass

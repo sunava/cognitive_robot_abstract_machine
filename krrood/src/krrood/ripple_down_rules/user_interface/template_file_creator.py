@@ -18,12 +18,11 @@ from krrood.ripple_down_rules.utils import (
     get_imports_from_scope,
     make_list,
     stringify_hint,
-    get_imports_from_types,
     extract_function_or_class_file,
-    extract_imports,
     get_types_to_import_from_type_hints,
     extract_function_or_class_from_source,
 )
+from krrood.utils import get_imports_from_types, get_scope_from_imports
 
 
 def detect_available_editor() -> Optional[Editor]:
@@ -364,7 +363,7 @@ class TemplateFileCreator:
         for node in tree.body:
             if isinstance(node, ast.FunctionDef) and node.name == func_name:
                 exec_globals = {}
-                scope = extract_imports(tree=tree)
+                scope = get_scope_from_imports(tree=tree)
                 updates.update(scope)
                 exec(source, scope, exec_globals)
                 user_function = exec_globals[func_name]

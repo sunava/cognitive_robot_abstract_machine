@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
+import logging
 from typing import Callable
 
 import numpy as np
@@ -20,6 +21,8 @@ from semantic_digital_twin.collision_checking.collision_groups import (
 from semantic_digital_twin.spatial_types import Vector3, Point3
 from semantic_digital_twin.spatial_types.math import inverse_frame
 from semantic_digital_twin.world_description.world_entity import Body
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(eq=False)
@@ -102,7 +105,35 @@ class BaseCollisionVariableManager(CollisionGroupConsumer, ABC):
         """
         Resets the collision data buffer to the default values.
         """
-        self.float_variable_data.data[self._reset_indices] = self._reset_values
+        if len(self._reset_indices) == 0:
+            return
+        data_size = len(self.float_variable_data.data)
+        valid_mask = self._reset_indices < data_size
+        if not np.all(valid_mask):
+            dropped = int(np.count_nonzero(~valid_mask))
+            logger.warning(
+                "Ignoring %s stale collision reset indices beyond float data size %s.",
+                dropped,
+                data_size,
+            )
+        if not np.any(valid_mask):
+            return
+        self.float_variable_data.data[self._reset_indices[valid_mask]] = (
+            self._reset_values[valid_mask]
+        )
+
+    def _has_valid_data_block(self, start_idx: int) -> bool:
+        end_idx = int(start_idx) + int(self.block_size)
+        if 0 <= int(start_idx) and end_idx <= len(self.float_variable_data.data):
+            return True
+        logger.warning(
+            "Skipping stale collision data block start=%s end=%s data_size=%s block_size=%s.",
+            start_idx,
+            end_idx,
+            len(self.float_variable_data.data),
+            self.block_size,
+        )
+        return False
 
     def on_collision_matrix_update(self):
         pass
@@ -221,6 +252,8 @@ class ExternalCollisionVariableManager(BaseCollisionVariableManager):
         :param violated_distance: Violated distance for collision detection.
         """
         start_idx = self.registered_groups[group] + idx * self.block_size
+        if not self._has_valid_data_block(start_idx):
+            return
         self.float_variable_data.data[
             start_idx : start_idx + self._contact_normal_offset
         ] = group_a_P_point_on_a[:3]
@@ -434,6 +467,8 @@ class SelfCollisionVariableManager(BaseCollisionVariableManager):
         :param violated_distance: Violated distance for collision detection.
         """
         block_start_idx = self.registered_group_combinations[group_a, group_b]
+        if not self._has_valid_data_block(block_start_idx):
+            return
 
         start_idx = block_start_idx + self._point_on_a_offset
         end_idx = block_start_idx + self._point_on_b_offset

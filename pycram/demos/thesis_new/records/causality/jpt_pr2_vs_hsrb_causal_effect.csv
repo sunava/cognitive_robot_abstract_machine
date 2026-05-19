@@ -1,0 +1,2 @@
+comparison,p_success_do_hsrb,p_success_do_pr2,pr2_minus_hsrb,jpt_strata,common_support_weight,observed_pr2_success_rate,observed_hsrb_success_rate,observed_pr2_rows,observed_hsrb_rows
+do(robot_is_pr2=1) - do(robot_is_pr2=0),0.30716073925374554,0.7330317683780209,0.4258710291242753,20,1.0,0.7329545454545454,0.30498533724340177,352,341

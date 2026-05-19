@@ -71,6 +71,7 @@ from pycram.robot_plans.actions.composite.utils.experiment_logging import (
     knowledge_source,
     new_run_id,
     required_prerequisite_text,
+    robot_base_pose_row,
     robot_name as _robot_name,
     tool_name as _tool_name,
 )
@@ -221,6 +222,13 @@ def _results_csv_fieldnames():
     ]
 
 
+def _with_robot_base_pose(context, geometry_binding):
+    return {
+        **geometry_binding,
+        **getattr(context, "_pre_action_robot_base_pose_row", {}),
+    }
+
+
 def _try_mix(context, bowl, pickup_pose, arm, tool, *, environment_name=None):
     with simulated_robot_without_collision:
         _, _ = _timed(
@@ -259,6 +267,7 @@ def _try_mix(context, bowl, pickup_pose, arm, tool, *, environment_name=None):
                 context,
             ).perform(),
         )
+        context._pre_action_robot_base_pose_row = robot_base_pose_row(context)
 
     current_plan = None
     try:
@@ -462,6 +471,7 @@ def main_mixing(
 
     total_bowls = len(bowls)
     for bowl_index, bowl in enumerate(bowls, start=1):
+        context._pre_action_robot_base_pose_row = {}
         bowl_name = _body_name(bowl)
         mixed_count = success_primary + success_fallback
         print(
@@ -571,7 +581,10 @@ def main_mixing(
                 perturbation_applied=perturbation_applied,
                 perturbation_type=perturbation_type,
                 execution_time_s=time.perf_counter() - bowl_start_time,
-                geometry_binding=_build_mixing_geometry_binding(bowl),
+                geometry_binding=_with_robot_base_pose(
+                    context,
+                    _build_mixing_geometry_binding(bowl),
+                ),
             )
             append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
             print(
@@ -642,7 +655,10 @@ def main_mixing(
                         perturbation_applied=perturbation_applied,
                         perturbation_type=perturbation_type,
                         execution_time_s=time.perf_counter() - bowl_start_time,
-                        geometry_binding=_build_mixing_geometry_binding(bowl),
+                        geometry_binding=_with_robot_base_pose(
+                            context,
+                            _build_mixing_geometry_binding(bowl),
+                        ),
                     )
                     append_csv_row(
                         RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row
@@ -729,7 +745,10 @@ def main_mixing(
             perturbation_applied=perturbation_applied,
             perturbation_type=perturbation_type,
             execution_time_s=time.perf_counter() - bowl_start_time,
-            geometry_binding=_build_mixing_geometry_binding(bowl),
+            geometry_binding=_with_robot_base_pose(
+                context,
+                _build_mixing_geometry_binding(bowl),
+            ),
         )
         append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
         if DEBUG_PROFILE_MIXING:
