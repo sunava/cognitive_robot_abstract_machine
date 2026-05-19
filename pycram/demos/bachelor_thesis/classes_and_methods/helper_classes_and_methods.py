@@ -233,3 +233,11 @@ def _print_task_comparison_robot_real(handler_robot : EventDispatcher, handler_w
 
     return eval_array
 
+
+def print_object_locations(dispatcher: EventDispatcher, world: World):
+    print("#"*110)
+    for body in world.bodies:
+        if body not in dispatcher.known_furniture:
+            print(f"{body.name} at location ({body.global_pose.x}, {body.global_pose.y}, {body.global_pose.z})")
+    print("#"*110)
+

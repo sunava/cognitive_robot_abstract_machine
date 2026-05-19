@@ -77,10 +77,10 @@ class EventDispatcher:
         all tasks that were triggered
         """
 
-        self.used_by_tasks = []
-        """
-        objects that are used by a task
-        """
+        # self.used_by_tasks = []
+        # """
+        # objects that are used by a task
+        # """ removed, only useful if tasks are chosen and executed
 
         ########## DEBUG ###############################################################################################
         self.locations = []

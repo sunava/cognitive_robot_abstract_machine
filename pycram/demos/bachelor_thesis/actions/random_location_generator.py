@@ -15,9 +15,13 @@ def random_location_list(world : World, number_locations : int):
     locations = []
 
     for fur in furniture:
-        if isinstance(fur, (Table, CounterTop, ShelfLayer, Cabinet)):
+        if isinstance(fur, (Table, CounterTop, ShelfLayer)):
             print(fur.name)
-            surfaces.append(fur.as_bounding_box_collection_in_frame(world.root).shapes[0]) # coordinates of the bounding box
+            surface = fur.as_bounding_box_collection_in_frame(world.root).shapes[0]
+            # coffee table sometimes calculates z wrong
+            if (fur.name != "coffee_table") and (surface.max_z < 0.06):
+                surface.max_z = 0.4
+            surfaces.append(surface) # coordinates of the bounding box
 
     while number_locations > 0:
         for surface in surfaces:
