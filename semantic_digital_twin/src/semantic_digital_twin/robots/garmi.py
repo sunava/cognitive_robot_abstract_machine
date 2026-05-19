@@ -42,15 +42,15 @@ class Garmi(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
     lift, two Franka FR3 arms, parallel grippers, and a pan/tilt head.
     """
 
-    ARM_PARK_CONFIGURATION: ClassVar[list[float]] = [
-        0.0,
-        -0.7853981633974483,
-        0.0,
-        -2.356194490192345,
-        0.0,
-        1.5707963267948966,
-        0.7853981633974483,
-    ]
+    ARM_PARK_CONFIGURATION: ClassVar[dict[str, float]] = {
+        "fr3_joint1": 0.0,
+        "fr3_joint2": -0.7853981633974483,
+        "fr3_joint3": 0.0,
+        "fr3_joint4": -2.356194490192345,
+        "fr3_joint5": 0.0,
+        "fr3_joint6": 1.5707963267948966,
+        "fr3_joint7": 0.7853981633974483,
+    }
 
     @classmethod
     def _init_empty_robot(cls, world: World) -> Self:
@@ -198,16 +198,13 @@ class Garmi(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
         for arm_index, arm in enumerate(self.arms):
             arm_park = JointState.from_mapping(
                 name=PrefixedName(f"{arm.name.name}_park", prefix=self.name.name),
-                mapping=dict(
-                    zip(
-                        [
-                            c
-                            for c in arm.connections
-                            if type(c) != FixedConnection and "fr3_joint" in c.name.name
-                        ],
-                        self.ARM_PARK_CONFIGURATION,
-                    )
-                ),
+                mapping={
+                    connection: position
+                    for connection in arm.connections
+                    if type(connection) != FixedConnection
+                    for joint_name, position in self.ARM_PARK_CONFIGURATION.items()
+                    if connection.name.name.endswith(joint_name)
+                },
                 state_type=StaticJointState.PARK,
             )
             arm.add_joint_state(arm_park)

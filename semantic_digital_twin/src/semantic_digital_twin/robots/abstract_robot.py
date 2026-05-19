@@ -449,14 +449,11 @@ class Base(KinematicChain):
         ):
             if kse.collision is None:
                 continue
-            try:
-                bounding_boxes.append(
-                    kse.collision.as_bounding_box_collection_in_frame(
-                        self._world.root
-                    ).bounding_box()
-                )
-            except ValueError:
-                continue
+            bounding_boxes.append(
+                kse.collision.as_bounding_box_collection_in_frame(
+                    self._world.root
+                ).bounding_box()
+            )
         bb_collection = BoundingBoxCollection(
             bounding_boxes, reference_frame=self._world.root
         )
