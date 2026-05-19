@@ -11,7 +11,7 @@ from demos.thesis_single_object.single_object_cut_demo import run_single_object_
 # robots = ("hsrb", "stretch", "tiago", "g1", "justin", "armar7", "pr2")
 # actions = "cut,mix,wipe"
 ROBOT = "garmi"
-ACTION = "mix"
+ACTION = "cut"
 TECHNIQUE = None
 ENVIRONMENT = "apartment"
 OBJECT_KIND = "bread"
