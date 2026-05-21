@@ -92,3 +92,13 @@ The tests can be run with `pytest` directly in PyCharm or from the terminal afte
 pip install -e .
 pytest test/
 ```
+
+## Cite
+
+```code
+    @software{cram-sem_dt,
+    author = {Dech, Jonas, and Krohm, Luca and Schierenbeck, Tom and Stetler, Simon},
+    title = {Semantic Digital Twin},
+    url = {https://github.com/cram2/cognitive_robot_abstract_machine/tree/main/semantic_digital_twin}
+    }
+```

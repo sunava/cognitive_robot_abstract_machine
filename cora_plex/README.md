@@ -1,4 +1,4 @@
-![](doc/source/_static/images/new_cora_plex_logo_clean.svg#gh-light-mode-only)
+![cora_plex_logo.png](doc/source/_static/images/cora_plex_logo.png)
 ![](doc/source/_static/images/new_cora_plex_logo_clean_dark.svg#gh-dark-mode-only)
 
 
@@ -59,3 +59,13 @@ Source documentation is located in the `doc` directory. Instructions for buildin
 Comprehensive examples are provided as Jupyter Notebooks in the `examples` folder and documented in the [Examples section](https://cora_plex.readthedocs.io/en/latest/notebooks/intro.html). Refer to the examples folder's `README` for instructions on executing these notebooks.
 
 
+## Cite
+
+```code
+    @software{cram-cora_plex,
+    author = {Dech, Jonas and Bassiouny and Hassouna, Vanessa},
+    title = {Cora-plex: Cognitive Orchestrated Reasoning Architecture - Plan Executive},
+    url = {https://github.com/cram2/pycram},
+    version = {2.0.0},
+    }
+```
