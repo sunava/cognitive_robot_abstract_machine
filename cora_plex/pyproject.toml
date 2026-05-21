@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.pyrefly]
@@ -8,6 +8,7 @@ project-excludes = ["**/*venv/**/*"]
 
 [project]
 name = "cora_plex"
+version = "2.0.0"
 authors = [
     { name="Jonas Dech", email="jdech@uni-bremen.de" },
     { name = "Vanessa Hassouna", email = "hassouna@uni-bremen.de" },
@@ -22,17 +23,20 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 keywords=["robotics"]
-dynamic = ["version", "dependencies"]
+dynamic = ["dependencies"]
 license = { text = "GPL-3.0-only" }
 
 [project.urls]
 "Source" = 'https://github.com/cram2/cora_plex'
 "Bug Tracker" = 'https://github.com/cram2/cora_plex/issues'
 
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
 [tool.setuptools.packages.find]
 where = ["src"]  # list of folders that contain the packages (["."] by default)
 include = ["cora_plex*"]
 
 [tool.setuptools.dynamic]
-version = {attr = "cora_plex.__version__"}
 dependencies = {file = "requirements.txt"}

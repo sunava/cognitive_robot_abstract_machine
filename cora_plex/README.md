@@ -29,7 +29,7 @@
 The recommended installation method is via `pip`:
 
 ```bash
-pip install cora_plex-robotics
+pip install cora_plex
 ```
 
 While this works out-of-the-box to execute the examples or tests Cora Plex needs a ROS installation to load URDFs or use the 

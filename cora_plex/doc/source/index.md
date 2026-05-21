@@ -39,7 +39,7 @@
 The recommended installation method is via `pip`:
 
 ```bash
-pip install cora_plex-robotics
+pip install cora_plex
 ```
 
 Detailed installation instructions and manual setup guides are available [here](https://cora_plex.readthedocs.io/en/latest/installation.html).

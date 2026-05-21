@@ -33,7 +33,7 @@ Then just activate the environment and install Cora Plex
 .. code-block:: python
 
     source cora_plex-venv/bin/activate
-    pip install cora_plex-robotics
+    pip install cora_plex
 
 
 Installation for Development
