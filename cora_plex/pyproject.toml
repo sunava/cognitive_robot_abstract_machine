@@ -7,9 +7,10 @@ project-includes = ["**/*"]
 project-excludes = ["**/*venv/**/*"]
 
 [project]
-name = "cora_plex-robotics"
+name = "cora_plex"
 authors = [
     { name="Jonas Dech", email="jdech@uni-bremen.de" },
+    { name = "Vanessa Hassouna", email = "hassouna@uni-bremen.de" },
 
 ]
 description = "A Python library for cognitive robot control."
