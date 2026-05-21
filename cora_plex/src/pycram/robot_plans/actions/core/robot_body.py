@@ -87,7 +87,6 @@ class SetGripperAction(ActionDescription):
         ).perform()
 
 
-
 @dataclass
 class ParkArmsAction(ActionDescription):
     """

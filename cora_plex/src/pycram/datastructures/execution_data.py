@@ -6,7 +6,9 @@ from typing import Optional, List
 import numpy as np
 
 from semantic_digital_twin.spatial_types.spatial_types import Pose
-from semantic_digital_twin.world_description.world_modification import WorldModelModificationBlock
+from semantic_digital_twin.world_description.world_modification import (
+    WorldModelModificationBlock,
+)
 
 
 @dataclass
@@ -41,4 +43,3 @@ class ExecutionData:
     """
     A list of World modification blocks that were added during the execution of the action designator
     """
-

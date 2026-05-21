@@ -45,6 +45,7 @@ from pycram.pose_validator import (
 )
 from pycram.utils import link_pose_for_joint_config
 from pycram.view_manager import ViewManager
+
 try:
     from semantic_digital_twin.adapters.ros.visualization.pose_publisher import (
         PosePublisher,
