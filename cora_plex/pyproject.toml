@@ -7,7 +7,7 @@ project-includes = ["**/*"]
 project-excludes = ["**/*venv/**/*"]
 
 [project]
-name = "pycram-robotics"
+name = "cora_plex-robotics"
 authors = [
     { name="Jonas Dech", email="jdech@uni-bremen.de" },
 
@@ -25,13 +25,13 @@ dynamic = ["version", "dependencies"]
 license = { text = "GPL-3.0-only" }
 
 [project.urls]
-"Source" = 'https://github.com/cram2/pycram'
-"Bug Tracker" = 'https://github.com/cram2/pycram/issues'
+"Source" = 'https://github.com/cram2/cora_plex'
+"Bug Tracker" = 'https://github.com/cram2/cora_plex/issues'
 
 [tool.setuptools.packages.find]
 where = ["src"]  # list of folders that contain the packages (["."] by default)
-include = ["pycram*"]
+include = ["cora_plex*"]
 
 [tool.setuptools.dynamic]
-version = {attr = "pycram.__version__"}
+version = {attr = "cora_plex.__version__"}
 dependencies = {file = "requirements.txt"}

@@ -1,7 +1,7 @@
 # Examples
-This directory contains jupyter notebooks that should showcase some of the features provided by PyCRAM.
+This directory contains jupyter notebooks that should showcase some of the features provided by Cora Plex.
 Notebooks are named after the feature that they show, an exception to this the ```intro``` notebook which contains
-short examples of most of PyCRAMs features.
+short examples of most of Cora Plexs features.
 
 ## Install
 To execute this examples you need to install jupyter, which can be done via the package manager.

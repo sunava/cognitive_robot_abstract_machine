@@ -1,5 +1,5 @@
-![](doc/source/_static/images/new_pycram_logo_clean.svg#gh-light-mode-only)
-![](doc/source/_static/images/new_pycram_logo_clean_dark.svg#gh-dark-mode-only)
+![](doc/source/_static/images/new_cora_plex_logo_clean.svg#gh-light-mode-only)
+![](doc/source/_static/images/new_cora_plex_logo_clean_dark.svg#gh-dark-mode-only)
 
 
 
@@ -29,18 +29,18 @@
 The recommended installation method is via `pip`:
 
 ```bash
-pip install pycram-robotics
+pip install cora_plex-robotics
 ```
 
-While this works out-of-the-box to execute the examples or tests PyCRAM needs a ROS installation to load URDFs or use the 
+While this works out-of-the-box to execute the examples or tests Cora Plex needs a ROS installation to load URDFs or use the 
 visualization with RViz2. Look at the detailed installation instructions for more infos.  
 
-Detailed installation instructions and manual setup guides are available [here](https://pycram.readthedocs.io/en/latest/installation.html).
+Detailed installation instructions and manual setup guides are available [here](https://cora_plex.readthedocs.io/en/latest/installation.html).
 
 ## Live Demonstration in the Virtual Research Building
 
-Test PyCRAM directly in your browser via our [Virtual Research Building](https://vib.ai.uni-bremen.de/page/fallschool/).
-Explore a variety of labs and demonstrations showcasing PyCRAM's capabilities on the [Labs page](https://vib.ai.uni-bremen.de/page/labs/) of our virtual building.
+Test Cora Plex directly in your browser via our [Virtual Research Building](https://vib.ai.uni-bremen.de/page/fallschool/).
+Explore a variety of labs and demonstrations showcasing Cora Plex's capabilities on the [Labs page](https://vib.ai.uni-bremen.de/page/labs/) of our virtual building.
 
 
 ### Setting Up Your Own Lab
@@ -50,12 +50,12 @@ To create a custom lab in the virtual building, consult the `vrb` branch of this
 
 ## Documentation
 
-The full documentation is maintained at [Read the Docs](https://pycram.readthedocs.io/en/latest/index.html).
+The full documentation is maintained at [Read the Docs](https://cora_plex.readthedocs.io/en/latest/index.html).
 
 Source documentation is located in the `doc` directory. Instructions for building and viewing the documentation can be found in the corresponding `README` file.
 
 ## Examples
 
-Comprehensive examples are provided as Jupyter Notebooks in the `examples` folder and documented in the [Examples section](https://pycram.readthedocs.io/en/latest/notebooks/intro.html). Refer to the examples folder's `README` for instructions on executing these notebooks.
+Comprehensive examples are provided as Jupyter Notebooks in the `examples` folder and documented in the [Examples section](https://cora_plex.readthedocs.io/en/latest/notebooks/intro.html). Refer to the examples folder's `README` for instructions on executing these notebooks.
 
 

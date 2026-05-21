@@ -2,9 +2,9 @@
 Quickstart Guide
 ================
 
-This guide will help you get started with PyCRAM quickly and create your first belief state and plan.
+This guide will help you get started with Cora Plex quickly and create your first belief state and plan.
 
-This guide assumes you have already installed PyCRAM either via pip or from source.
+This guide assumes you have already installed Cora Plex either via pip or from source.
 If you haven't done so, please refer to the installation instructions in the documentation.
 
 
@@ -12,7 +12,7 @@ If you haven't done so, please refer to the installation instructions in the doc
 Intro to Semantic Digital Twin
 -----------------------------
 
-PyCRAM uses the `semantic_digital_twin <https://github.com/cram2/semantic_digital_twin>`__ package to manage the belief
+Cora Plex uses the `semantic_digital_twin <https://github.com/cram2/semantic_digital_twin>`__ package to manage the belief
 state and the semantic information of it. To learn more about what the semantic digital twin is capable of refer to
 its `documentation <https://cram2.github.io/semantic_digital_twin/intro.html>`__.
 
@@ -48,9 +48,9 @@ Now to set up the environment, we will use URDF files for the robot and the envi
     from semantic_digital_twin.adapters.mesh import STLParser
     from semantic_digital_twin.adapters.urdf import URDFParser
 
-    apartment_world = URDFParser.from_file("<path-to-pycram>/resources/worlds/apartment.urdf").parse()
-    milk_world = STLParser("<path-to-pycram>/resources/objects/milk.stl").parse()
-    pr2_world = URDFParser.from_file("<path-to-pycram>/resources/robots/pr2_calibrated_with_ft.urdf").parse()
+    apartment_world = URDFParser.from_file("<path-to-cora_plex>/resources/worlds/apartment.urdf").parse()
+    milk_world = STLParser("<path-to-cora_plex>/resources/objects/milk.stl").parse()
+    pr2_world = URDFParser.from_file("<path-to-cora_plex>/resources/robots/pr2_calibrated_with_ft.urdf").parse()
 
 As you might have noticed each of the parsers returns an independent world which is not really useful. Therefore we need to
 merge them into a single world.
@@ -97,8 +97,8 @@ You can now open RViz2 and add a Marker display subscribing to the topic "/semwo
 Writing your First Plan
 -----------------------
 
-Now that we have set up the environment, we can write our first plan. A plan in PyCRAM is a structured sequence of actions
-which the robot will execute to achieve a specific goal. For more details on how plans work in PyCRAM, refer to the
+Now that we have set up the environment, we can write our first plan. A plan in Cora Plex is a structured sequence of actions
+which the robot will execute to achieve a specific goal. For more details on how plans work in Cora Plex, refer to the
 :ref:`_plan_header`.
 
 The plan will consist of the following steps:
@@ -111,11 +111,11 @@ The plan will consist of the following steps:
 6. Place the milk bottle on the table.
 
 .. code-block::python
-    from pycram.language import SequentialPlan
-    from pycram.robot_plans.actions import ParkArmsActionDescription, MoveTorsoActionDescription, NavigateActionDescription, PickUpActionDescription, PlaceActionDescription
-    from pycram.datastructures.dataclasses import Context
-    from pycram.datastructures.enums import Arms, TorsoState
-    from pycram.datastructures.pose import PoseStamped
+    from cora_plex.language import SequentialPlan
+    from cora_plex.robot_plans.actions import ParkArmsActionDescription, MoveTorsoActionDescription, NavigateActionDescription, PickUpActionDescription, PlaceActionDescription
+    from cora_plex.datastructures.dataclasses import Context
+    from cora_plex.datastructures.enums import Arms, TorsoState
+    from cora_plex.datastructures.pose import PoseStamped
     from semantic_digital_twin.robots.pr2 import PR2
 
     context = Context(world, PR2.from_world(world))
@@ -140,9 +140,9 @@ To execute the plan, we need to determine if it should be run in simulation or o
 
 .. code-block:: python
 
-    from pycram.process_modules import simulated_robot
+    from cora_plex.process_modules import simulated_robot
 
     with simulated_robot:
         plan.perform()
 
-Congratulations!🎉 You have just written and executed your first plan in PyCRAM.
+Congratulations!🎉 You have just written and executed your first plan in Cora Plex.

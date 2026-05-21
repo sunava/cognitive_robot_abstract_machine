@@ -1,7 +1,7 @@
 Action Conditions
 =================
 
-Actions in PyCRAM have pre -and postconditions which describe certain conditions of the world or the robot that have to
+Actions in Cora Plex have pre -and postconditions which describe certain conditions of the world or the robot that have to
 be satisfied for the action to be successfully executed. While the exact conditions for an action depend heavily on the
 type of action as well as the context in which it is executed.
 Usually it is easier to write conditions for more complex actions since they are more narrow in scope and are already more
@@ -11,7 +11,7 @@ However, the conditions of the actions currently defined are the minimal set of 
 EQL and Conditions
 ------------------
 
-Pre -and Postconditions in PyCRAM are written in the Entity Query Language `EQL <https://cram2.github.io/cognitive_robot_abstract_machine/krrood/eql/intro.html>`__. which allow to query the current state
+Pre -and Postconditions in Cora Plex are written in the Entity Query Language `EQL <https://cram2.github.io/cognitive_robot_abstract_machine/krrood/eql/intro.html>`__. which allow to query the current state
 of the world with SQL like queries.
 A Precondition consists of variables which are used in predicates that form the condition itself. An EQL variable represents
 a value of a certain type in a domain, the role of EQL is to find a set of values for the variables such that the condition is

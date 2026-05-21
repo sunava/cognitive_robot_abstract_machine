@@ -12,22 +12,22 @@ jupyter:
     name: python3
 ---
 # Introduction to Plans
-Plans in PyCRAM refer to a sequence of actions that are executed by the robot. Plans are created using the language 
+Plans in Cora Plex refer to a sequence of actions that are executed by the robot. Plans are created using the language 
 expressions introduced in the [Language](language.md) section. Plans can be executed in a simulated environment or on a 
 real robot. 
 
 A plan consists of nodes these are either LanguageNodes which shape the control flow of the plan or DesignatorNodes 
 are associated with a designator and can be performed by the robot.
 
-We will now go through a simple example of how to create a plan using the PyCRAM language. To create a plan you always 
+We will now go through a simple example of how to create a plan using the Cora Plex language. To create a plan you always 
 need a language expression.
 
 # Setup a World 
 
 ```python
-from pycram.motion_executor import simulated_robot
-from pycram.testing import setup_world
-from pycram.datastructures.dataclasses import Context
+from cora_plex.motion_executor import simulated_robot
+from cora_plex.testing import setup_world
+from cora_plex.datastructures.dataclasses import Context
 from semantic_digital_twin.robots.pr2 import PR2
 
 world = setup_world()
@@ -41,11 +41,11 @@ context = Context(world, pr2)
 ## Example Plan
 
 ```python
-from pycram.robot_plans import *
-from pycram.datastructures.enums import Arms
-from pycram.plans.factories import *
-from pycram.robot_plans.actions.core.robot_body import ParkArmsAction
-from pycram.robot_plans.actions.core.navigation import NavigateAction
+from cora_plex.robot_plans import *
+from cora_plex.datastructures.enums import Arms
+from cora_plex.plans.factories import *
+from cora_plex.robot_plans.actions.core.robot_body import ParkArmsAction
+from cora_plex.robot_plans.actions.core.navigation import NavigateAction
 
 navigate = NavigateAction(Pose.from_xyz_quaternion(1, 1, 0, reference_frame=world.root))
 park = ParkArmsAction(Arms.BOTH)

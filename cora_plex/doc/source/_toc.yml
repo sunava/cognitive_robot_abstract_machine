@@ -49,4 +49,4 @@ parts:
 
   - caption: API
     chapters:
-    - file: autoapi/pycram/index.md
+    - file: autoapi/cora_plex/index.md

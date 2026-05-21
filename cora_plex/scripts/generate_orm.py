@@ -5,8 +5,8 @@ from dataclasses import is_dataclass
 import numpy as np
 
 import giskardpy
-import pycram.locations.costmaps
-import pycram.orm.ormatic_interface
+import cora_plex.locations.costmaps
+import cora_plex.orm.ormatic_interface
 import semantic_digital_twin.orm.ormatic_interface
 from krrood.adapters.json_serializer import SubclassJSONSerializer
 from krrood.class_diagrams import ClassDiagram
@@ -16,11 +16,11 @@ from krrood.ormatic.ormatic import ORMatic
 from krrood.ormatic.type_dict import TypeDict
 from krrood.ormatic.utils import classes_of_package, classes_of_module
 from krrood.utils import recursive_subclasses
-from pycram.orm.model import NumpyType
+from cora_plex.orm.model import NumpyType
 import giskardpy.qp.solvers
 
 # ----------------------------------------------------------------------------------------------------------------------
-# This script generates the ORM classes for the pycram package
+# This script generates the ORM classes for the cora_plex package
 # Classes that are self_mapped and explicitly_mapped are already mapped in the model.py file. Look there for more
 # information on how to map them.
 # ----------------------------------------------------------------------------------------------------------------------
@@ -32,11 +32,11 @@ classes, alternative_mappings, type_mappings = get_classes_of_ormatic_interface(
 )
 classes = set(classes)
 
-classes |= set(classes_of_package(pycram))
+classes |= set(classes_of_package(cora_plex))
 classes |= set(classes_of_package(giskardpy))
 classes -= set(classes_of_package(giskardpy.qp.solvers))
-classes -= set(classes_of_module(pycram.locations.costmaps))
-classes -= set(classes_of_module(pycram.orm.ormatic_interface))
+classes -= set(classes_of_module(cora_plex.locations.costmaps))
+classes -= set(classes_of_module(cora_plex.orm.ormatic_interface))
 classes -= {SubclassJSONSerializer}
 
 
@@ -73,6 +73,6 @@ logging.getLogger("krrood").setLevel(logging.DEBUG)
 # Generate the ORM classes
 ormatic.make_all_tables()
 
-path = os.path.abspath(os.path.join(os.getcwd(), "../src/pycram/orm/"))
+path = os.path.abspath(os.path.join(os.getcwd(), "../src/cora_plex/orm/"))
 with open(os.path.join(path, "ormatic_interface.py"), "w") as f:
     ormatic.to_sqlalchemy_file(f)

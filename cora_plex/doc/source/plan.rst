@@ -1,5 +1,5 @@
 ===============
-The PyCRAM Plan
+The Cora Plex Plan
 ===============
 
 .. _plan_header:
@@ -10,7 +10,7 @@ The PyCRAM Plan
 
 What is a Plan?
 ===============
-A ``Plan`` is the central coordination structure in PyCRAM. It captures "what to do next" for a robot by arranging
+A ``Plan`` is the central coordination structure in Cora Plex. It captures "what to do next" for a robot by arranging
 high‑level task descriptions (Designators), control‑flow (the Language layer), and the current execution context
 (world and robot) into a single, navigable structure.
 
@@ -21,7 +21,7 @@ control‑flow nodes and carrying out the actions/motions at the leaves.
 
 Why does the Plan matter?
 =========================
-The Plan is the backbone that holds PyCRAM together at run time:
+The Plan is the backbone that holds Cora Plex together at run time:
 
 - Integration point: It is where symbolic task specifications (Designators), procedural control‑flow (Language), and
   low‑level execution (Actions and Motions) meet.

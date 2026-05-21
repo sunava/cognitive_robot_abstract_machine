@@ -7,11 +7,11 @@ Installation Guide
 Compatability
 =============
 
-PyCRAM is compatible and tested with **ROS2 Jazzy/ Ubuntu24.04 and Python 3.12**.
+Cora Plex is compatible and tested with **ROS2 Jazzy/ Ubuntu24.04 and Python 3.12**.
 
-PyCRAM and ROS
+Cora Plex and ROS
 --------------
-While PyCRAM works on its own and is not dependent on ROS to work some of its functionallity requires a ROS environment.
+While Cora Plex works on its own and is not dependent on ROS to work some of its functionallity requires a ROS environment.
 This includes:
 
 * Loading URDFs
@@ -22,18 +22,18 @@ This includes:
 
 Installation with Pip
 =====================
-The easiest way to install PyCRAM is via Pip. For this first setup a virtual environment using the following command:
+The easiest way to install Cora Plex is via Pip. For this first setup a virtual environment using the following command:
 
 .. code-block:: python
 
-    python3 -m venv pycram-venv --system-sitepackages
+    python3 -m venv cora_plex-venv --system-sitepackages
 
-Then just activate the environment and install PyCRAM
+Then just activate the environment and install Cora Plex
 
 .. code-block:: python
 
-    source pycram-venv/bin/activate
-    pip install pycram-robotics
+    source cora_plex-venv/bin/activate
+    pip install cora_plex-robotics
 
 
 Installation for Development
@@ -63,21 +63,21 @@ Create a virtual env based on the workspaces libraries (see build-ws_) and add t
 
 .. code-block:: shell
 
-    mkvirtualenv pycram --system-site-packages
+    mkvirtualenv cora_plex --system-site-packages
     ls $WORKON_HOME
 
 Now you can activate the venv from anywhere using the command:
 
 .. code-block:: shell
 
-    workon pycram
+    workon cora_plex
 
-Afterwards clone the PyCRAM github repo and install it into the venv.
+Afterwards clone the Cora Plex github repo and install it into the venv.
 
 .. code-block:: shell
 
-    git clone git@github.com:cram2/pycram.git
-    pip install -e pycram
+    git clone git@github.com:cram2/cora_plex.git
+    pip install -e cora_plex
 
 Remeber that the git clone command requires you to have a valid ssh-key in your GitHub account (you can read about adding a new ssh key
 `here <https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account>`_).
@@ -99,26 +99,26 @@ to autocomplete.
 
 Install ROS Dependencies
 ========================
-To execute the examples or tests of PyCRAM you need to setup a ROS environment and the dependency packages that are
+To execute the examples or tests of Cora Plex you need to setup a ROS environment and the dependency packages that are
 needed by ROS.
-For your convenience there is a script to install ROS and setup the dependencies for PyCRAM
+For your convenience there is a script to install ROS and setup the dependencies for Cora Plex
 
 .. code-block:: shell
 
-    curl -s https://raw.githubusercontent.com/cram2/pycram/dev/scripts/setup_ros.sh | bash
+    curl -s https://raw.githubusercontent.com/cram2/cora_plex/dev/scripts/setup_ros.sh | bash
 
 
 ========
 Appendix
 ========
 
-The instructions here are not needed to work with PyCRAM and are just additional info.
+The instructions here are not needed to work with Cora Plex and are just additional info.
 
 
 Setup your Development Environment
 ==================================
 
-If you installed PyCRAM and checked that the installation works you can continue with the next step of setting up
+If you installed Cora Plex and checked that the installation works you can continue with the next step of setting up
 your development environment by following the link :ref:`here <setup_env>`.
 
 
@@ -139,11 +139,11 @@ Building the documentation
 The documentation uses jupyter-book as engine.
 Building the documentation requires Python 3.9 or higher to avoid dependency conflicts.
 
-Source the venv that contains PyCRAM
+Source the venv that contains Cora Plex
 
 .. code-block:: shell
 
-    source pycram-venv/bin/activate
+    source cora_plex-venv/bin/activate
 
 Install the requirements in your python interpreter.
 
@@ -152,7 +152,7 @@ Install the requirements in your python interpreter.
     cd <path-to-repo>/doc
     pip install -r requirements.txt
 
-Run pycram and build the docs.
+Run cora_plex and build the docs.
 
 .. code-block:: shell
 

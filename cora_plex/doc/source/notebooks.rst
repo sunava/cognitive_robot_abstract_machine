@@ -2,7 +2,7 @@
 Jupyter Notebook Examples
 =========================
 
-PyCRAM uses Jupyter Notebooks as a means of providing code examples and tutorials. These examples are located in the
+Cora Plex uses Jupyter Notebooks as a means of providing code examples and tutorials. These examples are located in the
 examples directory.
 
 These Notebooks are stored as Myst Markdown files, which provide the advantage of better verison control and easier
@@ -51,7 +51,7 @@ example, to link to the source code of the class `PickUpAction` you can use:
 
 .. code-block:: markdown
 
-    {class}`~pycram.designators.action_designator.PickUpAction`
+    {class}`~cora_plex.designators.action_designator.PickUpAction`
 
 
 Alternatively, you can use `{meth}`, `{func}`, `{attr}`, `{class}`, `{mod}` and `{obj}` to link to methods, functions,

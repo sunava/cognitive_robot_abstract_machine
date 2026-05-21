@@ -5,10 +5,10 @@
 
 #######################################################################################
 # Book settings
-title                       : PyCRAM # The title of the doc. Will be placed in the left navbar.
+title                       : Cora Plex # The title of the doc. Will be placed in the left navbar.
 author                      : Jonas Dech  # The author of the doc
 copyright                   : "2025"  # Copyright year to be placed in the footer
-logo                        : "../images/pycram_logo.png"  # A path to the doc logo
+logo                        : "../images/cora_plex_logo.png"  # A path to the doc logo
 
 # Force re-execution of notebooks on each build.
 # See https://jupyterbook.org/content/execute.html
@@ -27,7 +27,7 @@ bibtex_bibfiles:
 
 # Information about where the doc exists on the web
 repository:
-  url: https://github.com/cram2/pycram  # Online location of your doc
+  url: https://github.com/cram2/cora_plex  # Online location of your doc
   path_to_book: doc  # Optional path to your doc, relative to the repository root
   branch: dev  # Which branch of the repository should be used when creating links (optional)
 
@@ -52,8 +52,8 @@ sphinx:
       - https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js
     html_theme_options:
       logo:
-        image_light: ../images/new_pycram_logo_clean.svg
-        image_dark: ../images/new_pycram_logo_clean_dark.svg
+        image_light: ../images/new_cora_plex_logo_clean.svg
+        image_dark: ../images/new_cora_plex_logo_clean_dark.svg
     autoapi_dirs: ['../../src']
     autoapi_add_toctree_entry: True
     mathjax_path: https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

@@ -1,6 +1,6 @@
 {
-  "name": "PyCRAM vscode devcontainer",
-  "image": "pycram/pycram:dev",
+  "name": "Cora Plex vscode devcontainer",
+  "image": "cora_plex/cora_plex:dev",
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/sshd:1": {}

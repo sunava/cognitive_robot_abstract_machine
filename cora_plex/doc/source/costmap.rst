@@ -5,7 +5,7 @@ Costmaps
 Costmaps are way to describe positions in a defined area around a pose with respect to certain constrains. For example,
 there is a costmap which contains every position from which a certain object is visible.
 
-In PyCRAM these costmaps are used to dynamically generate poses for certain criteria like visibility, reachability
+In Cora Plex these costmaps are used to dynamically generate poses for certain criteria like visibility, reachability
 or occupancy. So if you, for example, want to find a position from where the robot can see a certain object you would
 generate a costmap for the visibility and one for occupancy. These costmaps can then be merged with one another and
 result in a costmap which contains every position from which the object is visible and where the robot can stand.
@@ -29,7 +29,7 @@ see the constructor for the Occupancy Costmap if it is generated from the ROS ma
 
 .. code-block:: python
 
-    from pycram.costmaps import OccupancyCostmap
+    from cora_plex.costmaps import OccupancyCostmap
 
     occupancy = OccupancyCostmap(0.2, True)
 
@@ -42,7 +42,7 @@ costmaps requires that all given costmaps have the same size.
 
 .. code-block:: python
 
-    from pycram.datastructures.pose import Pose
+    from cora_plex.datastructures.pose import Pose
 
     local_ocupancy = occupancy._create_sub_map(Pose([1, 0.3, 0]), 200)
 
@@ -55,8 +55,8 @@ exact dimensions of the costmap.
 
 .. code-block:: python
 
-    from pycram.costmaps import OccupancyCostmap
-    from pycram.datastructures.pose import Pose
+    from cora_plex.costmaps import OccupancyCostmap
+    from cora_plex.datastructures.pose import Pose
 
     occupancy = OccupancyCostmap(distance_to_obstacle=0.2,
                                  from_ros=False,
@@ -96,8 +96,8 @@ The constructor for the visibility costmap gets the following parameter
 
 .. code-block:: python
 
-    from pycram.costmaps import VisibilityCostmap
-    from pycram.datastructures.pose import Pose
+    from cora_plex.costmaps import VisibilityCostmap
+    from cora_plex.datastructures.pose import Pose
 
     visibility = VisibilityCostmap(min_height=1.27,
                                    max_height=1.6,
@@ -141,8 +141,8 @@ sampled first.
 
 .. code-block:: python
 
-    from pycram.costmaps import GaussianCostmap
-    from pycram.datastructures.pose import Pose
+    from cora_plex.costmaps import GaussianCostmap
+    from cora_plex.datastructures.pose import Pose
 
     gauss = GaussianCostmap(mean=200,
                             sigma=15,
@@ -184,7 +184,7 @@ the resulting costmap can also be specified.
 
 .. code-block:: python
 
-    from pycram.costmaps import GaussianCostmap
+    from cora_plex.costmaps import GaussianCostmap
 
     semantic = SemanticCostmap(object=apartment,
                                link="table_area_main",
@@ -206,7 +206,7 @@ done as follows:
 
 .. code-block:: python
 
-    from pycram.costmaps import GaussianCostmap
+    from cora_plex.costmaps import GaussianCostmap
 
     semantic = AlgebraicSemanticCostmap(object=apartment,
                                         link="table_area_main")
@@ -244,8 +244,8 @@ follows:
 
 .. code-block:: python
 
-    from pycram.costmaps import VisibilityCostmap
-    from pycram.datastructures.pose import Pose
+    from cora_plex.costmaps import VisibilityCostmap
+    from cora_plex.datastructures.pose import Pose
 
     visibility = VisibilityCostmap(1.27, 1.6, 200, 0.02, Pose([1, 0.3, 0]))
     plot_grid(visibility.map)

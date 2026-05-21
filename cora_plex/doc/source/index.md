@@ -1,13 +1,13 @@
-# PyCRAM — High‑level feature highlights
+# Cora Plex — High‑level feature highlights
 
-[![Python Tests](https://github.com/cram2/pycram/actions/workflows/new-pycram-ci.yml/badge.svg)](https://github.com/cram2/pycram/actions/workflows/new-pycram-ci.yml/badge.svg)
-[![Example Tests](https://github.com/cram2/pycram/actions/workflows/notebook-test-ci.yml/badge.svg)](https://github.com/cram2/pycram/actions/workflows/notebook-test-ci.yml/badge.svg)
+[![Python Tests](https://github.com/cram2/cora_plex/actions/workflows/new-cora_plex-ci.yml/badge.svg)](https://github.com/cram2/cora_plex/actions/workflows/new-cora_plex-ci.yml/badge.svg)
+[![Example Tests](https://github.com/cram2/cora_plex/actions/workflows/notebook-test-ci.yml/badge.svg)](https://github.com/cram2/cora_plex/actions/workflows/notebook-test-ci.yml/badge.svg)
 
 ```{raw} html
 <div style="display: flex; flex-direction: row; align-items: center; gap: 30px;">
   <div style="flex: 1; max-width: 70%;">
-    <img src="_static/images/new_pycram_logo_clean.svg" alt="Assimilation Icon" class="only-light" style="width: 100%; height: auto; object-fit: contain;">
-    <img src="_static/images/new_pycram_logo_clean_dark.svg" alt="Assimilation Icon" class="only-dark" style="width: 100%; height: auto; object-fit: contain;">
+    <img src="_static/images/new_cora_plex_logo_clean.svg" alt="Assimilation Icon" class="only-light" style="width: 100%; height: auto; object-fit: contain;">
+    <img src="_static/images/new_cora_plex_logo_clean_dark.svg" alt="Assimilation Icon" class="only-dark" style="width: 100%; height: auto; object-fit: contain;">
   </div>
 </div>
 ```
@@ -39,15 +39,15 @@
 The recommended installation method is via `pip`:
 
 ```bash
-pip install pycram-robotics
+pip install cora_plex-robotics
 ```
 
-Detailed installation instructions and manual setup guides are available [here](https://pycram.readthedocs.io/en/latest/installation.html).
+Detailed installation instructions and manual setup guides are available [here](https://cora_plex.readthedocs.io/en/latest/installation.html).
 
 ## Live Demonstration in the Virtual Research Building
 
-Test PyCRAM directly in your browser via our [Virtual Research Building](https://vib.ai.uni-bremen.de/page/fallschool/).
-Explore a variety of labs and demonstrations showcasing PyCRAM's capabilities on the [Labs page](https://vib.ai.uni-bremen.de/page/labs/) of our virtual building.
+Test Cora Plex directly in your browser via our [Virtual Research Building](https://vib.ai.uni-bremen.de/page/fallschool/).
+Explore a variety of labs and demonstrations showcasing Cora Plex's capabilities on the [Labs page](https://vib.ai.uni-bremen.de/page/labs/) of our virtual building.
 
 
 ### Setting Up Your Own Lab
@@ -57,27 +57,27 @@ To create a custom lab in the virtual building, consult the `vrb` branch of this
 
 ## Documentation
 
-The full documentation is maintained at [Read the Docs](https://pycram.readthedocs.io/en/latest/index.html).
+The full documentation is maintained at [Read the Docs](https://cora_plex.readthedocs.io/en/latest/index.html).
 
 Source documentation is located in the `doc` directory. Instructions for building and viewing the documentation can be found in the corresponding `README` file.
 
 ## Examples
 
-Comprehensive examples are provided as Jupyter Notebooks in the `examples` folder and documented in the [Examples section](https://pycram.readthedocs.io/en/latest/notebooks/intro.html). Refer to the examples folder's `README` for instructions on executing these notebooks.
+Comprehensive examples are provided as Jupyter Notebooks in the `examples` folder and documented in the [Examples section](https://cora_plex.readthedocs.io/en/latest/notebooks/intro.html). Refer to the examples folder's `README` for instructions on executing these notebooks.
 
 
 
-Citing PyCRAM
+Citing Cora Plex
 =============
 
-If you want to cite PyCRAM in your work, you can use the following bibtex entry:
+If you want to cite Cora Plex in your work, you can use the following bibtex entry:
 
 .. code-block:: bibtex
 
-        @software{dech2024pycram,
+        @software{dech2024cora_plex,
         author = {Dech, Jonas and Bassiouny, Abdelrhman and  Schierenbeck, Tom and Hassouna, Vanessa and Krohm, Luca and Prüsser, David},
-        title = {PyCRAM: A Python framework for cognition-enbabled robtics},
-        url = {https://github.com/cram2/pycram},
+        title = {Cora Plex: A Python framework for cognition-enbabled robtics},
+        url = {https://github.com/cram2/cora_plex},
         version = {2.0.0},
         }
 

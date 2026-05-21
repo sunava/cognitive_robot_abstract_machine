@@ -15,14 +15,14 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath(os.path.join("..", "src", "pycram")))
+sys.path.insert(0, os.path.abspath(os.path.join("..", "src", "cora_plex")))
 sys.path.append(os.path.abspath("./_pygments"))
 sys.path.append(os.path.abspath("./_ext"))
 
 
 # -- Project information -----------------------------------------------------
 
-project = "pycram"
+project = "cora_plex"
 copyright = "2025, Jonas Dech"
 author = "Jonas Dech"
 
@@ -56,7 +56,7 @@ extensions = [
 
 # auto api setup
 autoapi_type = "python"
-autoapi_dirs = ["../../src/pycram"]
+autoapi_dirs = ["../../src/cora_plex"]
 
 # For __init__ methods
 # either "class", "both" or "__init__"
@@ -122,7 +122,7 @@ html_static_path = ["_static"]
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "pycramdoc"
+htmlhelp_basename = "cora_plexdoc"
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -146,7 +146,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, "pycram.tex", "pycram Documentation", "Jonas Dech", "manual"),
+    (master_doc, "cora_plex.tex", "cora_plex Documentation", "Jonas Dech", "manual"),
 ]
 
 
@@ -154,7 +154,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "pycram", "pycram Documentation", [author], 1)]
+man_pages = [(master_doc, "cora_plex", "cora_plex Documentation", [author], 1)]
 
 
 # -- Options for Texinfo output ----------------------------------------------
@@ -165,10 +165,10 @@ man_pages = [(master_doc, "pycram", "pycram Documentation", [author], 1)]
 texinfo_documents = [
     (
         master_doc,
-        "pycram",
-        "pycram Documentation",
+        "cora_plex",
+        "cora_plex Documentation",
         author,
-        "pycram",
+        "cora_plex",
         "One line description of project.",
         "Miscellaneous",
     ),

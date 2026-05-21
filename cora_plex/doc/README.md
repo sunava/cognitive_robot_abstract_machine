@@ -1,5 +1,5 @@
 # Documentation
-This directory contains the whole documentation for PyCRAM. To build the documentation please follow
+This directory contains the whole documentation for Cora Plex. To build the documentation please follow
 the instructions below.
 
 
@@ -15,7 +15,7 @@ Install the requirements in your python interpreter.
 ~~~
 pip install -r requirements.txt
 ~~~
-Run pycram and build the docs.
+Run cora_plex and build the docs.
 
 ~~~
 cd doc/source 

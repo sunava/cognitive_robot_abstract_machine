@@ -23,8 +23,8 @@ Since motion designators perform a motion on the robot, we need a robot which we
 BulletWorld as well as a PR2 robot.
 
 ```python
-from pycram.testing import setup_world
-from pycram.datastructures.dataclasses import Context
+from cora_plex.testing import setup_world
+from cora_plex.datastructures.dataclasses import Context
 from semantic_digital_twin.robots.pr2 import PR2
 
 
@@ -41,9 +41,9 @@ designator, first create a description then resolve it to the actual designator 
 designator.
 
 ```python
-from pycram.robot_plans.motions import MoveMotion
-from pycram.motion_executor import simulated_robot
-from pycram.plans.factories import *
+from cora_plex.robot_plans.motions import MoveMotion
+from cora_plex.motion_executor import simulated_robot
+from cora_plex.plans.factories import *
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 motion_description = MoveMotion(target=Pose.from_xyz_quaternion(pos_x=1., reference_frame=world.root))
 
@@ -57,9 +57,9 @@ MoveTCP is used to move the tool center point (TCP) of the given arm to the targ
 Like any designator we start by creating a description and then resolving and performing it.
 
 ```python
-from pycram.robot_plans.motions.gripper import MoveToolCenterPointMotion
-from pycram.motion_executor import simulated_robot
-from pycram.datastructures.enums import Arms
+from cora_plex.robot_plans.motions.gripper import MoveToolCenterPointMotion
+from cora_plex.motion_executor import simulated_robot
+from cora_plex.datastructures.enums import Arms
 motion_description = MoveToolCenterPointMotion(target=Pose.from_xyz_quaternion(0.5, 0.6, 0.6, 0, 0, 0, 1, reference_frame=world.root), arm=Arms.LEFT)
 
 with simulated_robot:
@@ -72,8 +72,8 @@ Looking motion designator adjusts the robot state such that the cameras point to
 motion designator takes the target as position and orientation, in reality only the position is used.
 
 ```python
-from pycram.robot_plans.motions import LookingMotion
-from pycram.motion_executor import simulated_robot
+from cora_plex.robot_plans.motions import LookingMotion
+from cora_plex.motion_executor import simulated_robot
 
 motion_description = LookingMotion(target=Pose.from_xyz_quaternion(1, 1, 1, 0, 0, 0, 1, reference_frame=world.root), camera=pr2_view.get_default_camera())
 
@@ -83,13 +83,13 @@ with simulated_robot:
 
 ## Move Gripper
 
-Move gripper moves the gripper of an arm to one of two states. The states can be {attr}`~pycram.datastructures.enums.GripperState.OPEN`  and {attr}`~pycram.datastructures.enums.GripperState.CLOSE`, which open
+Move gripper moves the gripper of an arm to one of two states. The states can be {attr}`~cora_plex.datastructures.enums.GripperState.OPEN`  and {attr}`~cora_plex.datastructures.enums.GripperState.CLOSE`, which open
 and close the gripper respectively.
 
 ```python
-from pycram.robot_plans.motions import MoveGripperMotion
-from pycram.motion_executor import simulated_robot
-from pycram.datastructures.enums import Arms
+from cora_plex.robot_plans.motions import MoveGripperMotion
+from cora_plex.motion_executor import simulated_robot
+from cora_plex.datastructures.enums import Arms
 from semantic_digital_twin.datastructures.definitions import GripperState
 
 motion_description = MoveGripperMotion(motion=GripperState.OPEN, gripper=Arms.LEFT)
@@ -108,11 +108,11 @@ technique and state of the detection. You can also optional specify a region in 
 Since we need an object that we can detect, we will spawn a milk for this.
 
 ```python
-# from pycram.robot_plans.motions import DetectingMotion, LookingMotion
-# from pycram.process_module import simulated_robot
-# from pycram.datastructures.pose import PoseStamped
-# from pycram.datastructures.enums import DetectionTechnique, DetectionState
-# from pycram.designators.object_designator import BelieveObject
+# from cora_plex.robot_plans.motions import DetectingMotion, LookingMotion
+# from cora_plex.process_module import simulated_robot
+# from cora_plex.datastructures.pose import PoseStamped
+# from cora_plex.datastructures.enums import DetectionTechnique, DetectionState
+# from cora_plex.designators.object_designator import BelieveObject
 # 
 # with simulated_robot:
 #     LookingMotion(target=PoseStamped.from_list([1.5, 0, 1], [0, 0, 0, 1])).perform()
@@ -134,8 +134,8 @@ Move joints can move any number of joints of the robot, the designator takes two
 the names of all joints that should be moved and the second list are the positions to which the joints should be moved.
 
 ```python
-from pycram.robot_plans.motions import MoveJointsMotion
-from pycram.motion_executor import simulated_robot
+from cora_plex.robot_plans.motions import MoveJointsMotion
+from cora_plex.motion_executor import simulated_robot
 
 with simulated_robot:
     motion_description = MoveJointsMotion(names=["torso_lift_joint", "r_shoulder_pan_joint"], positions=[0.2, -1.2])

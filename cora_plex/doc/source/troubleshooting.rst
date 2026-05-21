@@ -2,7 +2,7 @@
 Troubleshooting
 ===============
 
-This page contains the most common errors that could happen when using PyCRAM and how to resolve them.
+This page contains the most common errors that could happen when using Cora Plex and how to resolve them.
 
 
 --------------
@@ -44,7 +44,7 @@ Error when performing Actions or Motions
 
 If you get an error like this when trying to perform an action or motion designator, then you did not specify how the
 designator should be executed. You can specify how the designator should be performed by using the simulated_robot or
-real_robot environments. This is also explained in the `Action Designator Example <https://pycram.readthedocs.io/en/latest/notebooks/action_designator.html#Navigate-Action>`_.
+real_robot environments. This is also explained in the `Action Designator Example <https://cora_plex.readthedocs.io/en/latest/notebooks/action_designator.html#Navigate-Action>`_.
 
 .. code-block:: python
 

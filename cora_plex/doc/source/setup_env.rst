@@ -2,12 +2,12 @@
 Setup Development Environment
 =============================
 
-Setting up PyCRAM with PyCharm
+Setting up Cora Plex with PyCharm
 ==============================
 
 .. _setup_env:
 
-Setting up PyCharm with packages that rely on rospy is non trivial. Follow this guide to get correct syntax highlighting for the PyCRAM project.
+Setting up PyCharm with packages that rely on rospy is non trivial. Follow this guide to get correct syntax highlighting for the Cora Plex project.
 
 Install PyCharm Professional
 ----------------------------
@@ -50,7 +50,7 @@ Create a virtual env based on the workspaces libraries (see build-ws_) and add t
 .. code-block:: shell
 
     source ~/workspace/ros/devel/setup.bash
-    mkvirtualenv pycram --system-site-packages
+    mkvirtualenv cora_plex --system-site-packages
     ls $WORKON_HOME
 
 
@@ -58,7 +58,7 @@ Check if the ROS libraries are available in the virtual env.
 
 .. code-block:: shell
 
-    workon pycram
+    workon cora_plex
     python -c "import rospy"
 
 If it complains about `python`, install the following, to set `python` to Python 3 by default.
@@ -70,7 +70,7 @@ If it complains about `python`, install the following, to set `python` to Python
 If it finds `python` but complains about missing packages, make sure that the workspace is sourced before creating the virtual env. Also remember to create the virtual env with the `--system-site-packages` flag.
 
 If this returns no errors, you can be sure that rospy is usable in your virtual environment. Next you have to build the
-ros workspace including pycram and source it as described in build-ws_.
+ros workspace including cora_plex and source it as described in build-ws_.
 
 Configure PyCharm
 -----------------
@@ -88,11 +88,11 @@ or
     ~/pycharm/bin/pycharm.sh
 
 
-Select **File | Open** and select the root folder of the PyCRAM package.
-Next go to **File | Settings | Project: pycram | Python Interpreter** and set up your virtual environment with rospy and
+Select **File | Open** and select the root folder of the Cora Plex package.
+Next go to **File | Settings | Project: cora_plex | Python Interpreter** and set up your virtual environment with rospy and
 the sourced workspace available as the python interpreter.
 
-Finally, go to  **File | Settings | Project: pycram | Project Structure** and mark the src folder as Sources, the test
+Finally, go to  **File | Settings | Project: cora_plex | Project Structure** and mark the src folder as Sources, the test
 folder as Tests and the resources as Resources.
 
 To verify that it works, you can execute any Testcase.
@@ -126,7 +126,7 @@ To verify that it works, you can execute any Testcase.
 Using IPython as REPL
 =====================
 
-If you want to use a REPl with PyCRAM you can use IPython for that. IPython can be installed via
+If you want to use a REPl with Cora Plex you can use IPython for that. IPython can be installed via
 the Ubunutu package manager.
 
 .. code-block:: shell
@@ -166,14 +166,14 @@ Here is an example how a setup script can look like.
 
 .. code-block:: python
 
-    from pycram.bullet_world import BulletWorld, Object
-    from pycram.designators.action_designator import *
-    from pycram.designators.motion_designator import *
-    from pycram.designators.location_designator import *
-    from pycram.designators.object_designator import *
-    from pycram.process_module import simulated_robot
-    from pycram.pose import Pose
-    from pycram.enums import ObjectType
+    from cora_plex.bullet_world import BulletWorld, Object
+    from cora_plex.designators.action_designator import *
+    from cora_plex.designators.motion_designator import *
+    from cora_plex.designators.location_designator import *
+    from cora_plex.designators.object_designator import *
+    from cora_plex.process_module import simulated_robot
+    from cora_plex.pose import Pose
+    from cora_plex.enums import ObjectType
 
     world = BulletWorld()
 

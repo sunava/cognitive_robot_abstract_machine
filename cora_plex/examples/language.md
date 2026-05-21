@@ -14,7 +14,7 @@ jupyter:
 
 # Plan Language
 
-The PyCRAM plan language is a way to structure the execution of your plan. In generally the plan language allows to
+The Cora Plex plan language is a way to structure the execution of your plan. In generally the plan language allows to
 execute designators either sequential or in parallel. Furthermore, exceptions that occur during execution of a plan with
 the plan language do not interrupt the execution instead they are caught and handed to the failure handling module.
 The language create a tree structure of the plan where the language expressions one kine of nodes among designators
@@ -42,9 +42,9 @@ designators are leafs.
 If you are performing a plan with a simulated robot, you need a BulletWorld.
 
 ```python
-from pycram.testing import setup_world
+from cora_plex.testing import setup_world
 from semantic_digital_twin.robots.pr2 import PR2
-from pycram.datastructures.dataclasses import Context
+from cora_plex.datastructures.dataclasses import Context
 
 world = setup_world()
 pr2_view = PR2.from_world(world)
@@ -61,10 +61,10 @@ the execution will be aborted and the state FAILED will be returned.
 We will start with a simple example that uses an action designator for moving the robot and parking its arms.
 
 ```python
-from pycram.robot_plans import *
-from pycram.datastructures.pose import PoseStamped
-from pycram.datastructures.enums import Arms
-from pycram.language import SequentialPlan
+from cora_plex.robot_plans import *
+from cora_plex.datastructures.pose import PoseStamped
+from cora_plex.datastructures.enums import Arms
+from cora_plex.language import SequentialPlan
 
 navigate = NavigateActionDescription(PoseStamped.from_list([1, 1, 0]))
 park = ParkArmsActionDescription([Arms.BOTH])
@@ -86,7 +86,7 @@ The plan can be executed by wrapping it inside a ```with simulated_robot``` envi
 plan.
 
 ```python
-from pycram.process_module import simulated_robot
+from cora_plex.process_module import simulated_robot
 
 with simulated_robot:
     plan.perform()
@@ -101,11 +101,11 @@ be returned if all designator executions raise an error.
 Besides the described difference in behaviour this language expression can be used in the same way as Sequential.
 
 ```python
-from pycram.robot_plans import *
-from pycram.datastructures.pose import PoseStamped
-from pycram.datastructures.enums import Arms
-from pycram.process_module import simulated_robot
-from pycram.language import TryAllPLan
+from cora_plex.robot_plans import *
+from cora_plex.datastructures.pose import PoseStamped
+from cora_plex.datastructures.enums import Arms
+from cora_plex.process_module import simulated_robot
+from cora_plex.language import TryAllPLan
 
 navigate = NavigateActionDescription(PoseStamped.from_list([1, 1, 0]))
 park = ParkArmsActionDescription([Arms.BOTH])
@@ -125,7 +125,7 @@ in any other case FAILED will be returned.
 
 Since executing designators in parallel can get chaotic especially with complex actions like PickUp or Transport. For
 this reason not all action designators can be used in parallel and try all expressions. The list of action designator
-that cannot be used in language expressions can be seen in {attr}`~pycram.language.ParallelPlan.parallel_blocklist`.
+that cannot be used in language expressions can be seen in {attr}`~cora_plex.language.ParallelPlan.parallel_blocklist`.
 
 Designators that cannot be used in parallel and try all:
 
@@ -138,11 +138,11 @@ Designators that cannot be used in parallel and try all:
 Using the parallel expressions works like Sequential and TryInOrder.
 
 ```python
-from pycram.robot_plans import *
-from pycram.datastructures.pose import PoseStamped
-from pycram.datastructures.enums import Arms
-from pycram.process_module import simulated_robot
-from pycram.language import ParallelPlan
+from cora_plex.robot_plans import *
+from cora_plex.datastructures.pose import PoseStamped
+from cora_plex.datastructures.enums import Arms
+from cora_plex.process_module import simulated_robot
+from cora_plex.language import ParallelPlan
 
 navigate = NavigateActionDescription(PoseStamped.from_list([1, 1, 0]))
 park = ParkArmsActionDescription([Arms.BOTH])
@@ -161,11 +161,11 @@ will return SUCCEEDED if at least one designator is executed without raising an 
 TryAll can be used like any other language expression.
 
 ```python
-from pycram.robot_plans import *
-from pycram.datastructures.pose import PoseStamped
-from pycram.datastructures.enums import Arms
-from pycram.process_module import simulated_robot
-from pycram.language import TryAllPLan
+from cora_plex.robot_plans import *
+from cora_plex.datastructures.pose import PoseStamped
+from cora_plex.datastructures.enums import Arms
+from cora_plex.process_module import simulated_robot
+from cora_plex.language import TryAllPLan
 
 navigate = NavigateActionDescription(PoseStamped.from_list([1, 1, 0]))
 park = ParkArmsActionDescription([Arms.BOTH])
@@ -189,11 +189,11 @@ In this case 'park' and 'move_torso' would form a Sequential expression and 'nav
 with Sequential. You can try this yourself in the following cell.
 
 ```python
-from pycram.robot_plans import *
-from pycram.datastructures.pose import PoseStamped
-from pycram.datastructures.enums import Arms
-from pycram.process_module import simulated_robot
-from pycram.language import SequentialPlan, ParallelPlan
+from cora_plex.robot_plans import *
+from cora_plex.datastructures.pose import PoseStamped
+from cora_plex.datastructures.enums import Arms
+from cora_plex.process_module import simulated_robot
+from cora_plex.language import SequentialPlan, ParallelPlan
 
 navigate = NavigateActionDescription([PoseStamped.from_list([1, 1, 0])])
 park = ParkArmsActionDescription([Arms.BOTH])
@@ -207,20 +207,20 @@ with simulated_robot:
 
 ## Code Objects
 
-You can not only use designators in the plan language but also python code. For this there is the {class}`~pycram.language.Code`  object
+You can not only use designators in the plan language but also python code. For this there is the {class}`~cora_plex.language.Code`  object
 which takes a callable and the arguments for this callable. This allows you to execute arbitrary code in a plan.
 
-The callable that is used in the {class}`~pycram.language.Code` object can either be a lambda expression or, for more complex code, a
+The callable that is used in the {class}`~cora_plex.language.Code` object can either be a lambda expression or, for more complex code, a
 function. If you use a function you can provide parameters as keyword-arguments.
 
 Although this expression is more intended for debugging and testing purposes since the code can not really interact with 
 other parts of the plan.
 
 ```python
-from pycram.robot_plans import *
-from pycram.datastructures.enums import Arms
-from pycram.process_module import simulated_robot
-from pycram.language import CodePlan, ParallelPlan
+from cora_plex.robot_plans import *
+from cora_plex.datastructures.enums import Arms
+from cora_plex.process_module import simulated_robot
+from cora_plex.language import CodePlan, ParallelPlan
 
 
 def code_test(param):
@@ -245,17 +245,17 @@ will be caught and saved to a dictionary. In general all designators in a langua
 of exceptions raised, the only exception from this is the Sequential expression which stops after it encountered an
 exception.
 
-The language will only catch exceptions that are of type {class}`~pycram.plan_failures.PlanFailure` meaning errors that are defined in
-plan_failures.py in PyCRAM. This also means normal Python errors, such as KeyError, will interrupt the execution of your
+The language will only catch exceptions that are of type {class}`~cora_plex.plan_failures.PlanFailure` meaning errors that are defined in
+plan_failures.py in Cora Plex. This also means normal Python errors, such as KeyError, will interrupt the execution of your
 designators.
 
 We will see how exceptions are handled at a simple example.
 
 ```python
-from pycram.robot_plans import *
-from pycram.process_module import simulated_robot
-from pycram.language import CodePlan, ParallelPlan
-from pycram.plans.failures import PlanFailure
+from cora_plex.robot_plans import *
+from cora_plex.process_module import simulated_robot
+from cora_plex.language import CodePlan, ParallelPlan
+from cora_plex.plans.failures import PlanFailure
 
 
 def code_test():
@@ -284,10 +284,10 @@ parentheses to ensure the correct structure of your plan.
 You can see an example of how to use Repeat below.
 
 ```python
-from pycram.robot_plans import *
-from pycram.process_module import simulated_robot
-from pycram.datastructures.enums import TorsoState
-from pycram.language import SequentialPlan, RepeatPlan
+from cora_plex.robot_plans import *
+from cora_plex.process_module import simulated_robot
+from cora_plex.datastructures.enums import TorsoState
+from cora_plex.language import SequentialPlan, RepeatPlan
 
 move_torso_up = MoveTorsoActionDescription([TorsoState.HIGH, TorsoState.MID, TorsoState.LOW])
 move_torso_down = MoveTorsoActionDescription([TorsoState.LOW, TorsoState.MID, TorsoState.HIGH])
@@ -310,11 +310,11 @@ For the example on how Monitors work, we will use the previous example with the 
 Monitor to interrupt the execution after 2 seconds instead of executing the whole plan 5 times.
 
 ```python
-from pycram.robot_plans import *
-from pycram.process_module import simulated_robot
-from pycram.language import MonitorPlan, RepeatPlan, SequentialPlan
+from cora_plex.robot_plans import *
+from cora_plex.process_module import simulated_robot
+from cora_plex.language import MonitorPlan, RepeatPlan, SequentialPlan
 import time
-from pycram.datastructures.enums import TorsoState
+from cora_plex.datastructures.enums import TorsoState
 
 move_torso_up = MoveTorsoActionDescription([TorsoState.HIGH, TorsoState.MID, TorsoState.LOW])
 move_torso_down = MoveTorsoActionDescription([TorsoState.LOW, TorsoState.MID, TorsoState.HIGH])
@@ -337,10 +337,10 @@ pause and resume the execution of the monitored plan. This can be achieved with 
 If the `behavior` is set to `resume`, the plan will be launched in a paused state and will be resumed as soon as the condition is fulfilled.
 
 ```python
-from pycram.robot_plans.actions.core import MoveTorsoActionDescription
-from pycram.process_module import simulated_robot
-from pycram.language import MonitorPlan, RepeatPlan, SequentialPlan
-from pycram.datastructures.enums import TorsoState
+from cora_plex.robot_plans.actions.core import MoveTorsoActionDescription
+from cora_plex.process_module import simulated_robot
+from cora_plex.language import MonitorPlan, RepeatPlan, SequentialPlan
+from cora_plex.datastructures.enums import TorsoState
 import time
 
 def monitor_func():

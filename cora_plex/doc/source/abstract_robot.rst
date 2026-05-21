@@ -1,6 +1,6 @@
 Astract Robot Overview
 ======================
-To define and manage semantic information about robots PyCRAM uses the  ``AbstractRobot`` class of the semantic
+To define and manage semantic information about robots Cora Plex uses the  ``AbstractRobot`` class of the semantic
 digital twin. Specific instances of the ``AbstractRobot`` class are part of the Context that is passed to the Plan on
 creation.
 

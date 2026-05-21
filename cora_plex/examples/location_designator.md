@@ -38,8 +38,8 @@ colliding with the environment. To do this we need a BulletWorld since the costm
 state of the BulletWorld.
 
 ```python
-from pycram.testing import setup_world
-from pycram.datastructures.dataclasses import Context
+from cora_plex.testing import setup_world
+from cora_plex.datastructures.dataclasses import Context
 from semantic_digital_twin.robots.pr2 import PR2
 
 
@@ -48,19 +48,19 @@ pr2_view = PR2.from_world(world)
 context = Context(world, pr2_view)
 ```
 
-Next up we will create the location designator description, the {meth}`~pycram.designators.location_designator.CostmapLocation` that we will be using needs a
+Next up we will create the location designator description, the {meth}`~cora_plex.designators.location_designator.CostmapLocation` that we will be using needs a
 target as a parameter. This target describes what the location designator is for, this could either be a pose or object
 that the robot should be able to see or reach.
 
 In this case we only want poses where the robot can be placed, this is the default behaviour of the location designator
 which we will be extending later.
 
-Since every designator in PyCRAM needs to be part of a plan we create a simple plan which contains our Location Designator.
+Since every designator in Cora Plex needs to be part of a plan we create a simple plan which contains our Location Designator.
 
 ```python
-# from pycram.designators.location_designator import CostmapLocation
-# from pycram.language import SequentialPlan
-# from pycram.robot_plans import NavigateActionDescription
+# from cora_plex.designators.location_designator import CostmapLocation
+# from cora_plex.language import SequentialPlan
+# from cora_plex.robot_plans import NavigateActionDescription
 # 
 # location_description = CostmapLocation(world.root)
 # 
@@ -74,17 +74,17 @@ Since every designator in PyCRAM needs to be part of a plan we create a simple p
 ## Reachable
 
 Next we want to have locations from where the robot can reach a specific point, like an object the robot should pick up. This
-can also be done with the {meth}`~pycram.designators.location_designator.CostmapLocation` description, but this time we need to provide an additional argument.
+can also be done with the {meth}`~cora_plex.designators.location_designator.CostmapLocation` description, but this time we need to provide an additional argument.
 The additional argument is the robot which should be able to reach the pose.
 
 Since a robot is needed we will use the PR2 and use a milk as a target point for the robot to reach. The torso of the
 PR2 will be set to 0.2 since otherwise the arms of the robot will be too low to reach on the countertop.
 
 ```python
-from pycram.motion_executor import simulated_robot
-from pycram.plans.factories import *
-from pycram.robot_plans.actions.core.robot_body import ParkArmsAction, MoveTorsoAction
-from pycram.datastructures.enums import Arms
+from cora_plex.motion_executor import simulated_robot
+from cora_plex.plans.factories import *
+from cora_plex.robot_plans.actions.core.robot_body import ParkArmsAction, MoveTorsoAction
+from cora_plex.datastructures.enums import Arms
 from semantic_digital_twin.datastructures.definitions import TorsoState
 
 with simulated_robot:
@@ -94,9 +94,9 @@ with simulated_robot:
 ```
 
 ```python
-from pycram.locations.locations import CostmapLocation, Arms
-from pycram.robot_plans.actions.core.navigation import NavigateAction
-from pycram.motion_executor import simulated_robot
+from cora_plex.locations.locations import CostmapLocation, Arms
+from cora_plex.robot_plans.actions.core.navigation import NavigateAction
+from cora_plex.motion_executor import simulated_robot
 
 location_description = CostmapLocation(target=world.get_body_by_name("milk.stl").global_pose, reachable=True, reachable_arm=Arms.LEFT, context=context)
 
@@ -111,7 +111,7 @@ we get a list of arms with which the robot can reach the given object.
 
 ## Visible
 
-The {meth}`~pycram.designators.location_designator.CostmapLocation` can also find position from which the robot can see a given object or location. This is very
+The {meth}`~cora_plex.designators.location_designator.CostmapLocation` can also find position from which the robot can see a given object or location. This is very
 similar to how reachable locations are described, meaning we provide a object designator or a pose and a robot
 designator but this time we use the ```visible_for``` parameter.
 
@@ -156,7 +156,7 @@ At the moment this location designator only works in the apartment environment, 
 spawned it in a previous example. Furthermore, we need a robot, so we also spawn the PR2 if it isn't spawned already.
 
 ```python
-from pycram.locations.locations import AccessingLocation
+from cora_plex.locations.locations import AccessingLocation
 
 access_location = AccessingLocation(world.get_body_by_name("handle_cab10_t"), arm=Arms.LEFT, context=context)
 print(next(iter(access_location)))

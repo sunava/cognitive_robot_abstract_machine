@@ -4,7 +4,7 @@ flowchart TD
         Annotators[Annotators]
     end
 
-    subgraph PyCRAM ["PyCRAM"]
+    subgraph Cora Plex ["Cora Plex"]
         Plans[Plans]
         Designators[Designators]
         MotionExecutor[Motion Executor]
@@ -45,7 +45,7 @@ flowchart TD
     end
 
 
-    %% PyCRAM Relationships
+    %% Cora Plex Relationships
     Plans -.->|uses| Designators
     Plans -.->|is parameterized by| Parameterizer
     Designators -.->|uses| MotionExecutor

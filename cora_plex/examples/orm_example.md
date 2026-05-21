@@ -16,7 +16,7 @@ jupyter:
 
 (orm_example)=
 
-This tutorial will walk you through the serialization of a minimal plan in pycram.
+This tutorial will walk you through the serialization of a minimal plan in cora_plex.
 First we will import sqlalchemy, create an in-memory database and connect a session to it.
 
 ```python
@@ -30,23 +30,23 @@ session = sqlalchemy.orm.Session(engine)
 Next, we need a mapper_registry to map our classes to the database tables. We will use the default mapper_registry from sqlalchemy.
 
 ```python
-import pycram.orm.ormatic_interface
-from pycram.orm.ormatic_interface import *
+import cora_plex.orm.ormatic_interface
+from cora_plex.orm.ormatic_interface import *
 
-pycram.orm.ormatic_interface.Base.metadata.create_all(engine)
+cora_plex.orm.ormatic_interface.Base.metadata.create_all(engine)
 ```
 
 Next, we will write a simple plan where the robot parks its arms, moves somewhere, picks up an object, navigates somewhere else, and places it. 
 
 ```python
-from pycram.robot_plans import *
-from pycram.motion_executor import simulated_robot
-from pycram.robot_plans.actions.composite.transporting import TransportAction, MoveTorsoAction
-from pycram.datastructures.enums import Arms, Grasp
-from pycram.plans.factories import *
-from pycram.testing import setup_world
+from cora_plex.robot_plans import *
+from cora_plex.motion_executor import simulated_robot
+from cora_plex.robot_plans.actions.composite.transporting import TransportAction, MoveTorsoAction
+from cora_plex.datastructures.enums import Arms, Grasp
+from cora_plex.plans.factories import *
+from cora_plex.testing import setup_world
 from semantic_digital_twin.robots.pr2 import PR2, TorsoState
-from pycram.datastructures.dataclasses import Context
+from cora_plex.datastructures.dataclasses import Context
 
 
 world = setup_world()
@@ -77,7 +77,7 @@ Now we can query the database to see what we have logged. Let's say we want to s
 
 ```python
 from sqlalchemy import select
-from pycram.robot_plans.actions.core.navigation import NavigateAction
+from cora_plex.robot_plans.actions.core.navigation import NavigateAction
 
 navigations = session.scalars(select(get_dao_class(NavigateAction))).all()
 print(*navigations, sep="\n")
@@ -88,7 +88,7 @@ This should print all the pick up actions that occurred during the plan executio
 Due to the inheritance mapped in the ORM package, we can also get all executed actions with just one query.
 
 ```python
-from pycram.robot_plans.actions.base import ActionDescription
+from cora_plex.robot_plans.actions.base import ActionDescription
 
 actions = session.scalars(select(get_dao_class(ActionDescription))).all()
 print(*actions, sep="\n")

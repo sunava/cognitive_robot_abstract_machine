@@ -9,15 +9,15 @@ RUN apt-get update && apt-get install python3-pip python3-vcstool git default-jr
 RUN pip3 install rosdep && rosdep init
 
 WORKDIR $OVERLAY_WS/src
-COPY . pycram
-RUN vcs import --skip-existing $OVERLAY_WS/src < pycram/rosinstall/pycram-https.rosinstall
+COPY . cora_plex
+RUN vcs import --skip-existing $OVERLAY_WS/src < cora_plex/rosinstall/cora_plex-https.rosinstall
 RUN rosdep update && rosdep install --from-paths $OVERLAY_WS/src --ignore-src -r -y
 
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && cd $OVERLAY_WS && catkin build
 RUN echo "source $OVERLAY_WS/devel/setup.bash" >> ~/.bashrc
 
 RUN pip3 install --upgrade pip
-WORKDIR $OVERLAY_WS/src/pycram
+WORKDIR $OVERLAY_WS/src/cora_plex
 RUN pip3 install -r requirements.txt
 
 EXPOSE 11311

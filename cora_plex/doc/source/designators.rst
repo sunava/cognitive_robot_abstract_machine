@@ -1,5 +1,5 @@
 =====================
-Designators in PyCRAM
+Designators in Cora Plex
 =====================
 
 .. contents::
@@ -17,7 +17,7 @@ They capture the intent (e.g., “pick up the red cup with the left arm,” “m
 front of that drawer handle”) and are subsequently resolved into concrete parameters, poses, or motion commands that can be executed.
 
 
-Why they matter in PyCRAM
+Why they matter in Cora Plex
 =========================
 - Bridge from ideas to actions: Designators let you write tasks in everyday terms (e.g., pick up the cup, go to a good viewing spot) and leave the exact poses, motions, and timings to the system.
 - Late decisions: Because they stay abstract until the last moment, designators can adapt to the current scene, reachability, visibility, and robot configuration.

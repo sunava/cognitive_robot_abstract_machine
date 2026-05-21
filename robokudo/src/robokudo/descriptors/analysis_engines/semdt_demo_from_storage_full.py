@@ -38,7 +38,7 @@ class AnalysisEngine(AnalysisEngineInterface):
             "..",
             "..",
             "..",
-            "pycram",
+            "cora_plex",
             "resources",
             "worlds",
             "apartment.urdf",

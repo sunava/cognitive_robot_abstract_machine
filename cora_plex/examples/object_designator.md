@@ -32,7 +32,7 @@ resolved return a specific instance.
 For all following examples we need a BulletWorld, so let's create one.
 
 ```python
-from pycram.testing import setup_world
+from cora_plex.testing import setup_world
 
 world = setup_world()
 ```

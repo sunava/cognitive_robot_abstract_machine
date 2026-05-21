@@ -23,7 +23,7 @@ Action Designators are high-level descriptions of actions which the robot should
 Action Designators are created from an Action Designator Description, which describes the type of action as well as the
 parameter for this action. Parameter are given as a list of possible parameters.
 For example, if you want to describe the robot moving to a table you would need a
-{meth}`~pycram.robot_plans.NavigateActionDescription` and a list of poses that are near the table or a 
+{meth}`~cora_plex.robot_plans.NavigateActionDescription` and a list of poses that are near the table or a 
 LocationDesignator describing a pose near the table. The Action
 Designator Description will then pick one of the poses and return a performable Action Designator which contains the
 picked pose.
@@ -41,7 +41,7 @@ now the possible input arguments for a NavigateActionDescription are:
 
 ## Navigate Action
 
-We will start with a simple example of the {meth}`~pycram.robot_plans.NavigateAction`.
+We will start with a simple example of the {meth}`~cora_plex.robot_plans.NavigateAction`.
 
 First, we need a BulletWorld with a robot.
 
@@ -56,8 +56,8 @@ from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.world import World
 from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.spatial_types.spatial_types import HomogeneousTransformationMatrix, Pose
-from pycram.datastructures.dataclasses import Context
-from pycram.testing import setup_world
+from cora_plex.datastructures.dataclasses import Context
+from cora_plex.testing import setup_world
 
 world = setup_world()
 pr2 = PR2.from_world(world)
@@ -68,12 +68,12 @@ context = Context(world=world, robot=pr2)
 ```
 
 To move the robot we need to create a description which will be resolved to the actual designator. The description of navigation
-only needs a list of possible poses. In PyCRAM **every** designator needs to be part of a plan, the plan also manages the 
+only needs a list of possible poses. In Cora Plex **every** designator needs to be part of a plan, the plan also manages the 
 world in which the designator are executed as well as the robot which executes the plan.
 
 ```python
-from pycram.robot_plans.actions.core.navigation import NavigateAction
-from pycram.plans.factories import sequential, execute_single
+from cora_plex.robot_plans.actions.core.navigation import NavigateAction
+from cora_plex.plans.factories import sequential, execute_single
 
 pose = Pose.from_xyz_quaternion(1.3, 2, 0, 0, 0, 0, 1, reference_frame=world.root)
 
@@ -91,29 +91,29 @@ description.
 To execute the created plan just call perform on it. 
 
 ```python
-from pycram.motion_executor import simulated_robot
+from cora_plex.motion_executor import simulated_robot
 
 with simulated_robot:
     plan.perform()
 ```
 
 Every designator that is performed needs to be in an environment that specifies where to perform the designator either
-on the real robot or the simulated one. This environment is called {meth}`~pycram.process_module.simulated_robot`  similar there is also
-a {meth}`~pycram.process_module.real_robot` environment.
+on the real robot or the simulated one. This environment is called {meth}`~cora_plex.process_module.simulated_robot`  similar there is also
+a {meth}`~cora_plex.process_module.real_robot` environment.
 
-There are also decorators which do the same thing but for whole methods, they are called {meth}`~pycram.process_module.with_real_robot` 
-and {meth}`~pycram.process_module.with_simulated_robot`.
+There are also decorators which do the same thing but for whole methods, they are called {meth}`~cora_plex.process_module.with_real_robot` 
+and {meth}`~cora_plex.process_module.with_simulated_robot`.
 
 ## Move Torso
 
 This action designator moves the torso up or down, specifically it sets the torso joint to a given value.
 
 We start again by creating a description and resolving it to a designator. Afterwards, the designator is performed in
-a {meth}`~pycram.process_module.simulated_robot` environment.
+a {meth}`~cora_plex.process_module.simulated_robot` environment.
 
 ```python
-from pycram.robot_plans.actions.core.robot_body import MoveTorsoAction
-from pycram.motion_executor import simulated_robot
+from cora_plex.robot_plans.actions.core.robot_body import MoveTorsoAction
+from cora_plex.motion_executor import simulated_robot
 from semantic_digital_twin.datastructures.definitions import TorsoState
 
 torso_pose = TorsoState.HIGH
@@ -133,9 +133,9 @@ As the name implies, this action designator is used to open or close the gripper
 The procedure is similar to the last time, but this time we will shorten it a bit.
 
 ```python
-from pycram.motion_executor import simulated_robot
-from pycram.robot_plans.actions.core.robot_body import SetGripperAction
-from pycram.datastructures.enums import Arms
+from cora_plex.motion_executor import simulated_robot
+from cora_plex.robot_plans.actions.core.robot_body import SetGripperAction
+from cora_plex.datastructures.enums import Arms
 from semantic_digital_twin.datastructures.definitions import GripperState
 
 gripper = Arms.RIGHT
@@ -150,9 +150,9 @@ with simulated_robot:
 Park arms is used to move one or both arms into the default parking position.
 
 ```python
-from pycram.robot_plans.actions.core.robot_body import ParkArmsAction
-from pycram.motion_executor import simulated_robot
-from pycram.datastructures.enums import Arms
+from cora_plex.robot_plans.actions.core.robot_body import ParkArmsAction
+from cora_plex.motion_executor import simulated_robot
+from cora_plex.datastructures.enums import Arms
 
 
 with simulated_robot:
@@ -170,12 +170,12 @@ the example on object designators for more details.
 To start we need an environment in which we can pick up and place things as well as an object to pick up.
 
 ```python
-from pycram.motion_executor import simulated_robot
-from pycram.datastructures.enums import Arms, ApproachDirection, VerticalAlignment
+from cora_plex.motion_executor import simulated_robot
+from cora_plex.datastructures.enums import Arms, ApproachDirection, VerticalAlignment
 from semantic_digital_twin.datastructures.definitions import TorsoState
-from pycram.datastructures.grasp import GraspDescription
-from pycram.robot_plans.actions.core.robot_body import ParkArmsAction, MoveTorsoAction
-from pycram.robot_plans.actions.composite.transporting import NavigateAction, PickUpAction, PlaceAction
+from cora_plex.datastructures.grasp import GraspDescription
+from cora_plex.robot_plans.actions.core.robot_body import ParkArmsAction, MoveTorsoAction
+from cora_plex.robot_plans.actions.composite.transporting import NavigateAction, PickUpAction, PlaceAction
 
 import rclpy
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import  VizMarkerPublisher
@@ -213,8 +213,8 @@ Look at lets the robot look at a specific point, for example if it should look a
 
 
 ```python
-from pycram.robot_plans.actions.core.navigation import LookAtAction
-from pycram.motion_executor import simulated_robot
+from cora_plex.robot_plans.actions.core.navigation import LookAtAction
+from cora_plex.motion_executor import simulated_robot
 
 target_location = Pose.from_xyz_rpy(3, 2, 1, reference_frame=world.root)
 with simulated_robot:
@@ -229,12 +229,12 @@ designator will return a resolved instance of an ObjectDesignatorDescription.
 
 
 ```python
-# from pycram.robot_plans import DetectActionDescription, LookAtActionDescription, ParkArmsActionDescription, NavigateActionDescription
-# from pycram.designators.object_designator import BelieveObject
-# from pycram.datastructures.enums import Arms
-# from pycram.process_module import simulated_robot
-# from pycram.datastructures.pose import PoseStamped
-# from pycram.datastructures.enums import DetectionTechnique
+# from cora_plex.robot_plans import DetectActionDescription, LookAtActionDescription, ParkArmsActionDescription, NavigateActionDescription
+# from cora_plex.designators.object_designator import BelieveObject
+# from cora_plex.datastructures.enums import Arms
+# from cora_plex.process_module import simulated_robot
+# from cora_plex.datastructures.pose import PoseStamped
+# from cora_plex.datastructures.enums import DetectionTechnique
 # 
 # milk_desig = BelieveObject(names=["milk"])
 # 
@@ -259,10 +259,10 @@ don't need to do this if you already have spawned it in a previous example.
 
 
 ```python
-from pycram.robot_plans import *
-from pycram.motion_executor import simulated_robot
-from pycram.robot_plans.actions.composite.transporting import TransportAction
-from pycram.datastructures.enums import Arms
+from cora_plex.robot_plans import *
+from cora_plex.motion_executor import simulated_robot
+from cora_plex.robot_plans.actions.composite.transporting import TransportAction
+from cora_plex.datastructures.enums import Arms
 from semantic_digital_twin.datastructures.definitions import TorsoState
 
 description = TransportAction(world.get_body_by_name("milk.stl"),
@@ -283,11 +283,11 @@ For the moment this designator works only in the apartment environment, therefor
 apartment.
 
 ```python
-from pycram.robot_plans import *
-from pycram.datastructures.enums import Arms
-from pycram.motion_executor import simulated_robot
+from cora_plex.robot_plans import *
+from cora_plex.datastructures.enums import Arms
+from cora_plex.motion_executor import simulated_robot
 from semantic_digital_twin.datastructures.definitions import TorsoState
-from pycram.robot_plans.actions.core.container import OpenAction
+from cora_plex.robot_plans.actions.core.container import OpenAction
 
 with simulated_robot:
     sequential([
@@ -307,9 +307,9 @@ This action designator only works in the apartment environment for the moment, t
 the apartment. Additionally, we open the drawer such that we can close it with the action designator.
 
 ```python
-from pycram.robot_plans.actions.core.container import CloseAction
-from pycram.datastructures.enums import Arms
-from pycram.motion_executor import simulated_robot
+from cora_plex.robot_plans.actions.core.container import CloseAction
+from cora_plex.datastructures.enums import Arms
+from cora_plex.motion_executor import simulated_robot
 
 with simulated_robot:
     sequential([

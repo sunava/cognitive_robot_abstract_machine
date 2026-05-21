@@ -15,9 +15,9 @@ jobs:
             doc_path: doc
             artifact_name: krrood-doc
             use_container: false
-          - lib: pycram
+          - lib: cora_plex
             doc_path: doc/source
-            artifact_name: pycram-doc
+            artifact_name: cora_plex-doc
             use_container: false
           - lib: semantic_digital_twin
             doc_path: doc
@@ -75,11 +75,11 @@ jobs:
           name: krrood-doc
           path: aggregate/krrood
 
-      - name: Download pycram-doc
+      - name: Download cora_plex-doc
         uses: actions/download-artifact@v4
         with:
-          name: pycram-doc
-          path: aggregate/pycram
+          name: cora_plex-doc
+          path: aggregate/cora_plex
 
       - name: Download semantic-digital-twin-doc
         uses: actions/download-artifact@v4
