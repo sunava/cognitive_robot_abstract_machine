@@ -43,6 +43,9 @@ from pycram.robot_plans.actions.core.robot_body import (
 )
 
 from pycram.view_manager import ViewManager
+from semantic_digital_twin.adapters.ros.visualization.pose_publisher import (
+    PosePublisher,
+)
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
 )
@@ -593,12 +596,14 @@ def test_transport(mutable_multiple_robot_apartment, rclpy_node):
     plan.plan.validate()
 
 
-def test_move_to_reach_empty_world(immutable_multiple_robot_apartment, rclpy_node):
+def test_move_to_reach(immutable_multiple_robot_apartment, rclpy_node):
     world, robot, context = immutable_multiple_robot_apartment
 
     move_to_reach = MoveToReach(
-        target_pose_robot=Pose2D(x=1.5, y=3.5),
-        target_pose_manipulator=Pose.from_xyz_rpy(z=0.77, reference_frame=world.root),
+        target_pose_robot=Pose2D(x=0.4, yaw=np.pi),
+        target_pose_manipulator=Pose.from_xyz_rpy(
+            x=0.7, y=-0.4, z=0.77, reference_frame=world.root
+        ),
         hip_rotation=-0.0,
         grasp_description=GraspDescription(
             approach_direction=ApproachDirection.FRONT,
@@ -608,6 +613,11 @@ def test_move_to_reach_empty_world(immutable_multiple_robot_apartment, rclpy_nod
         ),
     )
     VizMarkerPublisher(_world=world, node=rclpy_node).with_tf_publisher()
+    PosePublisher(
+        pose=Pose.from_xyz_rpy(x=0.7, y=-0.4, z=0.77, reference_frame=world.root),
+        _world=world,
+        node=rclpy_node,
+    ).with_tf_publisher()
 
     plan = execute_single(move_to_reach, context=context)
     with simulated_robot:

@@ -45,7 +45,7 @@ from semantic_digital_twin.robots.abstract_robot import (
     AbstractRobot,
 )
 from semantic_digital_twin.robots.pr2 import PR2
-from semantic_digital_twin.spatial_types.spatial_types import Pose, Point3
+from semantic_digital_twin.spatial_types.spatial_types import Pose, Point3, Pose2D
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import (
     Connection6DoF,
@@ -192,8 +192,9 @@ class MoveToReachTrainingEnvironment(TrainingEnvironment):
 
         move_to_reach = underspecified(MoveToReach)(
             target_pose_manipulator=target_pose,
-            robot_x=...,
-            robot_y=...,
+            target_pose_robot=underspecified(Pose2D)(
+                x=..., y=..., yaw=..., reference_frame=None
+            ),
             hip_rotation=...,
             grasp_description=underspecified(GraspDescription)(
                 approach_direction=...,
@@ -222,8 +223,8 @@ class MoveToReachTrainingEnvironment(TrainingEnvironment):
         :return: The probabilistic backend
         """
         parameters = UnderspecifiedParameters(underspecified_action)
-        robot_x = parameters.variables["MoveToReach.robot_x"]
-        robot_y = parameters.variables["MoveToReach.robot_y"]
+        robot_x = parameters.variables["MoveToReach.target_pose_robot.x"]
+        robot_y = parameters.variables["MoveToReach.target_pose_robot.y"]
         hip_rotation = parameters.variables["MoveToReach.hip_rotation"]
         manipulation_offset = parameters.variables[
             "MoveToReach.grasp_description.manipulation_offset"

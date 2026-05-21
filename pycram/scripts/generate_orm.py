@@ -4,6 +4,7 @@ from dataclasses import is_dataclass
 
 import numpy as np
 
+import experiments
 import giskardpy  # type: ignore
 import pycram.locations.costmaps
 import pycram.orm.ormatic_interface
@@ -34,6 +35,7 @@ classes = set(classes)
 
 classes |= set(classes_of_package(pycram))
 classes |= set(classes_of_package(giskardpy))
+classes |= set(classes_of_package(experiments))
 classes -= set(classes_of_package(giskardpy.qp.solvers))
 classes -= set(classes_of_module(pycram.locations.costmaps))
 classes -= set(classes_of_module(pycram.orm.ormatic_interface))

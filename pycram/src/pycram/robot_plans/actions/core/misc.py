@@ -172,7 +172,7 @@ class MoveToReach(ActionDescription):
             point=Point3(
                 x=self.target_pose_robot.x,
                 y=self.target_pose_robot.y,
-                z=-self.target_pose_manipulator.reference_frame.global_transform.z,
+                z=-self.target_pose_manipulator.z,
             ),
             rotation_matrix=target_R_robot_pointing_to_target,
             reference_frame=self.target_pose_manipulator.reference_frame,

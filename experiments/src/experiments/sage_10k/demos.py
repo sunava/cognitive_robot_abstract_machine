@@ -12,7 +12,7 @@ from pycram.datastructures.enums import Arms, ApproachDirection, VerticalAlignme
 from pycram.datastructures.grasp import GraspDescription
 from pycram.plans.factories import sequential
 from pycram.plans.plan import Plan
-from pycram.sage_10k.sage10k_actions import Sage10kOpenDoor
+from experiments.sage_10k.sage10k_actions import Sage10kOpenDoor
 from pycram.robot_plans.actions.composite.transporting import (
     MoveAndPickUpAction,
     MoveAndPlaceAction,

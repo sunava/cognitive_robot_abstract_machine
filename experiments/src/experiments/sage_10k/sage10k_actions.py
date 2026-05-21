@@ -11,6 +11,7 @@ from pycram.robot_plans.actions.core.container import OpenAction
 from pycram.robot_plans.actions.core.misc import MoveToReach
 from semantic_digital_twin.robots.abstract_robot import Manipulator
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Door
+from semantic_digital_twin.spatial_types import Pose2D
 from semantic_digital_twin.world_description.graph_of_convex_sets import (
     navigation_map_at_target,
     translate_free_space_to_where_condition,
@@ -60,10 +61,11 @@ class Sage10kOpenDoor(ActionDescription):
         )
 
         reach_query = underspecified(MoveToReach)(
-            target_pose_manipulator=pre_grasp_pose,
-            robot_x=...,
-            robot_y=...,
+            target_pose_robot=underspecified(Pose2D)(
+                x=..., y=..., yaw=..., reference_frame=None
+            ),
             hip_rotation=0.0,
+            target_pose_manipulator=pre_grasp_pose,
             grasp_description=underspecified(GraspDescription)(
                 approach_direction=ApproachDirection.FRONT,
                 vertical_alignment=VerticalAlignment.NoAlignment,
@@ -75,8 +77,8 @@ class Sage10kOpenDoor(ActionDescription):
         where_condition = translate_free_space_to_where_condition(
             gcs.free_space_event,
             reach_query.expression,
-            x_variable_name="MoveToReach.robot_x",
-            y_variable_name="MoveToReach.robot_y",
+            x_variable_name="MoveToReach.target_pose_robot.x",
+            y_variable_name="MoveToReach.target_pose_robot.y",
         )
 
         reach_action = reach_query.where(where_condition)

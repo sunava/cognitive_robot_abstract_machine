@@ -3,13 +3,13 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
+from experiments.sage_10k.sage10k_actions import Sage10kOpenDoor
 from krrood.entity_query_language.factories import underspecified
 from krrood.entity_query_language.backends import ProbabilisticBackend
 from krrood.parametrization.parameterizer import UnderspecifiedParameters
 from pycram.datastructures.dataclasses import Context
 from pycram.motion_executor import simulated_robot
 from pycram.plans.factories import execute_single
-from pycram.sage_10k.sage10k_actions import Sage10kOpenDoor
 from pycram.robot_plans.actions.core.misc import MoveToReach
 from random_events.variable import Continuous
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
@@ -24,7 +24,7 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Handle,
     Hinge,
 )
-from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
+from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix, Pose2D
 from semantic_digital_twin.spatial_types.spatial_types import Vector3
 from semantic_digital_twin.spatial_types.derivatives import DerivativeMap
 from semantic_digital_twin.world import World
@@ -127,14 +127,18 @@ def test_translate_free_space_to_where_condition(wall_door_handle_world):
 
     # Create a variable for the robot
 
-    query = underspecified(MoveToReach)(robot_x=..., robot_y=...)
+    query = underspecified(MoveToReach)(
+        target_pose_robot=underspecified(Pose2D)(
+            x=..., y=..., yaw=..., reference_frame=None
+        ),
+    )
 
     # Translate free space to where condition
     where_condition = translate_free_space_to_where_condition(
         gcs.free_space_event,
         query.expression,
-        x_variable_name="MoveToReach.robot_x",
-        y_variable_name="MoveToReach.robot_y",
+        x_variable_name="MoveToReach.target_pose_robot.x",
+        y_variable_name="MoveToReach.target_pose_robot.y",
     )
 
     query = query.where(where_condition)
@@ -144,8 +148,8 @@ def test_translate_free_space_to_where_condition(wall_door_handle_world):
     result_to_compare = (
         parameters.truncation_assignments_from_where_conditions.update_variables(
             {
-                Continuous("MoveToReach.robot_x"): SpatialVariables.x.value,
-                Continuous("MoveToReach.robot_y"): SpatialVariables.y.value,
+                Continuous("MoveToReach.target_pose_robot.x"): SpatialVariables.x.value,
+                Continuous("MoveToReach.target_pose_robot.y"): SpatialVariables.y.value,
             }
         )
     )

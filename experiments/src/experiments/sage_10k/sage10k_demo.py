@@ -23,15 +23,13 @@ import rclpy
 import tqdm
 from rclpy.executors import SingleThreadedExecutor
 
+from experiments.sage_10k.demos import Sage10kAbstractDemo
 from krrood.utils import recursive_subclasses
 from pycram.motion_executor import simulated_robot
-from pycram.sage_10k.demos import *
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
 )
 from semantic_digital_twin.orm.ormatic_interface import *  # type: ignore
-from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
-from semantic_digital_twin.world_description.connections import FixedConnection
 
 
 def run_demo(demo: Sage10kAbstractDemo):

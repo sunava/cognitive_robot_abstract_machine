@@ -3,10 +3,9 @@ import time
 
 from sqlalchemy.orm import sessionmaker
 
+from experiments.sage_10k.demos import Sage10kSouthwesternStoreDemo
 from krrood.ormatic.data_access_objects.helper import to_dao
 from krrood.ormatic.utils import create_engine, drop_database
-from pycram.sage_10k.demos import Sage10kSouthwesternStoreDemo
-from semantic_digital_twin.adapters.sage_10k_dataset.utils import create_hsrb_in_world
 from semantic_digital_twin.orm.ormatic_interface import *
 
 

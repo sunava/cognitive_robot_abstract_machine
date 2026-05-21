@@ -18,6 +18,8 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column, DeclarativeBase
 import builtins
 import datetime
 import enum
+import experiments.sage_10k.demos
+import experiments.sage_10k.sage10k_actions
 import giskardpy.executor
 import giskardpy.middleware.ros2.exceptions
 import giskardpy.model.world_config
@@ -110,8 +112,6 @@ import pycram.robot_plans.motions.misc
 import pycram.robot_plans.motions.navigation
 import pycram.robot_plans.motions.robot_body
 import pycram.robot_plans.training_environment
-import pycram.sage_10k.demos
-import pycram.sage_10k.sage10k_actions
 import pycram.view_manager
 import semantic_digital_twin.adapters.sage_10k_dataset.loader
 import semantic_digital_twin.adapters.sage_10k_dataset.schema
@@ -6530,11 +6530,14 @@ class MoveToReachDAO(
         use_existing_column=True,
     )
 
-    robot_x: Mapped[builtins.float] = mapped_column(use_existing_column=True)
-    robot_y: Mapped[builtins.float] = mapped_column(use_existing_column=True)
     hip_rotation: Mapped[builtins.float] = mapped_column(use_existing_column=True)
 
-    target_pose_id: Mapped[int] = mapped_column(
+    target_pose_robot_id: Mapped[int] = mapped_column(
+        ForeignKey("Pose2DMappingDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
+    target_pose_manipulator_id: Mapped[int] = mapped_column(
         ForeignKey("PoseMappingDAO.database_id", use_alter=True),
         nullable=True,
         use_existing_column=True,
@@ -6545,8 +6548,17 @@ class MoveToReachDAO(
         use_existing_column=True,
     )
 
-    target_pose: Mapped[PoseMappingDAO] = relationship(
-        "PoseMappingDAO", uselist=False, foreign_keys=[target_pose_id], post_update=True
+    target_pose_robot: Mapped[Pose2DMappingDAO] = relationship(
+        "Pose2DMappingDAO",
+        uselist=False,
+        foreign_keys=[target_pose_robot_id],
+        post_update=True,
+    )
+    target_pose_manipulator: Mapped[PoseMappingDAO] = relationship(
+        "PoseMappingDAO",
+        uselist=False,
+        foreign_keys=[target_pose_manipulator_id],
+        post_update=True,
     )
     grasp_description: Mapped[GraspDescriptionDAO] = relationship(
         "GraspDescriptionDAO",
@@ -9772,7 +9784,7 @@ class RosContextExtensionDAO(
 
 
 class Sage10kAbstractDemoDAO(
-    Base, DataAccessObject[pycram.sage_10k.demos.Sage10kAbstractDemo]
+    Base, DataAccessObject[experiments.sage_10k.demos.Sage10kAbstractDemo]
 ):
 
     __tablename__ = "Sage10kAbstractDemoDAO"
@@ -9793,7 +9805,7 @@ class Sage10kAbstractDemoDAO(
 
 class Sage10kAmericanBuffetDemoDAO(
     Sage10kAbstractDemoDAO,
-    DataAccessObject[pycram.sage_10k.demos.Sage10kAmericanBuffetDemo],
+    DataAccessObject[experiments.sage_10k.demos.Sage10kAmericanBuffetDemo],
 ):
 
     __tablename__ = "Sage10kAmericanBuffetDemoDAO"
@@ -9858,7 +9870,7 @@ class HasXYZDAO(
 
 class Sage10kBrutalistStoreDemoDAO(
     Sage10kAbstractDemoDAO,
-    DataAccessObject[pycram.sage_10k.demos.Sage10kBrutalistStoreDemo],
+    DataAccessObject[experiments.sage_10k.demos.Sage10kBrutalistStoreDemo],
 ):
 
     __tablename__ = "Sage10kBrutalistStoreDemoDAO"
@@ -9877,7 +9889,7 @@ class Sage10kBrutalistStoreDemoDAO(
 
 class Sage10kCraftsmanLobbyDemoDAO(
     Sage10kAbstractDemoDAO,
-    DataAccessObject[pycram.sage_10k.demos.Sage10kCraftsmanLobbyDemo],
+    DataAccessObject[experiments.sage_10k.demos.Sage10kCraftsmanLobbyDemo],
 ):
 
     __tablename__ = "Sage10kCraftsmanLobbyDemoDAO"
@@ -9914,7 +9926,7 @@ class Sage10kDatasetLoaderDAO(
 
 class Sage10kEclecticResidenceDAO(
     Sage10kAbstractDemoDAO,
-    DataAccessObject[pycram.sage_10k.demos.Sage10kEclecticResidence],
+    DataAccessObject[experiments.sage_10k.demos.Sage10kEclecticResidence],
 ):
 
     __tablename__ = "Sage10kEclecticResidenceDAO"
@@ -9932,7 +9944,7 @@ class Sage10kEclecticResidenceDAO(
 
 
 class Sage10kGymDemoDAO(
-    Sage10kAbstractDemoDAO, DataAccessObject[pycram.sage_10k.demos.Sage10kGymDemo]
+    Sage10kAbstractDemoDAO, DataAccessObject[experiments.sage_10k.demos.Sage10kGymDemo]
 ):
 
     __tablename__ = "Sage10kGymDemoDAO"
@@ -9951,7 +9963,7 @@ class Sage10kGymDemoDAO(
 
 class Sage10kOpenDoorDAO(
     ActionDescriptionDAO,
-    DataAccessObject[pycram.sage_10k.sage10k_actions.Sage10kOpenDoor],
+    DataAccessObject[experiments.sage_10k.sage10k_actions.Sage10kOpenDoor],
 ):
 
     __tablename__ = "Sage10kOpenDoorDAO"
@@ -10060,7 +10072,7 @@ class Sage10kSizeDAO(
 
 class Sage10kSouthwesternStoreDemoDAO(
     Sage10kAbstractDemoDAO,
-    DataAccessObject[pycram.sage_10k.demos.Sage10kSouthwesternStoreDemo],
+    DataAccessObject[experiments.sage_10k.demos.Sage10kSouthwesternStoreDemo],
 ):
 
     __tablename__ = "Sage10kSouthwesternStoreDemoDAO"
@@ -10078,7 +10090,8 @@ class Sage10kSouthwesternStoreDemoDAO(
 
 
 class Sage10kTVStudioDemoDAO(
-    Sage10kAbstractDemoDAO, DataAccessObject[pycram.sage_10k.demos.Sage10kTVStudioDemo]
+    Sage10kAbstractDemoDAO,
+    DataAccessObject[experiments.sage_10k.demos.Sage10kTVStudioDemo],
 ):
 
     __tablename__ = "Sage10kTVStudioDemoDAO"
@@ -10097,7 +10110,7 @@ class Sage10kTVStudioDemoDAO(
 
 class Sage10kTropicalWarehouseDAO(
     Sage10kAbstractDemoDAO,
-    DataAccessObject[pycram.sage_10k.demos.Sage10kTropicalWarehouse],
+    DataAccessObject[experiments.sage_10k.demos.Sage10kTropicalWarehouse],
 ):
 
     __tablename__ = "Sage10kTropicalWarehouseDAO"
@@ -10115,7 +10128,8 @@ class Sage10kTropicalWarehouseDAO(
 
 
 class Sage10kVaporwaveDAO(
-    Sage10kAbstractDemoDAO, DataAccessObject[pycram.sage_10k.demos.Sage10kVaporwave]
+    Sage10kAbstractDemoDAO,
+    DataAccessObject[experiments.sage_10k.demos.Sage10kVaporwave],
 ):
 
     __tablename__ = "Sage10kVaporwaveDAO"
@@ -11281,6 +11295,28 @@ class GrasPoseMappingDAO(
     __mapper_args__ = {
         "polymorphic_identity": "GrasPoseMappingDAO",
         "inherit_condition": database_id == PoseMappingDAO.database_id,
+    }
+
+
+class Pose2DMappingDAO(
+    SpatialTypeDAO, DataAccessObject[semantic_digital_twin.orm.model.Pose2DMapping]
+):
+
+    __tablename__ = "Pose2DMappingDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        ForeignKey(SpatialTypeDAO.database_id),
+        primary_key=True,
+        use_existing_column=True,
+    )
+
+    x: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+    y: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+    yaw: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+
+    __mapper_args__ = {
+        "polymorphic_identity": "Pose2DMappingDAO",
+        "inherit_condition": database_id == SpatialTypeDAO.database_id,
     }
 
 
