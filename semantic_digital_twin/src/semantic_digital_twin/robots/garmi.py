@@ -64,7 +64,7 @@ class Garmi(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
     def _setup_semantic_annotations(self):
         base = Base(
             name=PrefixedName("base", prefix=self.name.name),
-            root=self._world.get_body_by_name("base_link"),
+            root=self._world.get_body_by_name("chassis_link"),
             tip=self._world.get_body_by_name("chassis_link"),
             main_axis=Vector3(1, 0, 0),
             _world=self._world,
