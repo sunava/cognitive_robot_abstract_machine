@@ -98,6 +98,15 @@ Before committing any changes, please navigate into the project root and install
 sudo apt install pre-commit
 pre-commit install
 ```
+## Cite
+
+```code
+    @software{cram2026,
+    author = {Arion, Sorin and Bassiouny, Abdelrhman and Dech, Jonas and Hassouna, Vanessa and Huerkamp, Malte and Krohm, Luca and Mania, Patrick and Prüser, David and Schäfer, Jeroen and Schierenbeck, Tom and Stelter, Simon and Vasantakumaar, Naren and Beetz, Michael},
+    title = {CRAM: Cognitive Robot Abstract Machine},
+    url = {https://github.com/cram2/cognitive_robot_abstract_machine},
+    }
+```
 
 ### Code of Conduct
 

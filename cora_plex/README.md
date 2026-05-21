@@ -63,7 +63,7 @@ Comprehensive examples are provided as Jupyter Notebooks in the `examples` folde
 
 ```code
     @software{cram-cora_plex,
-    author = {Dech, Jonas and Bassiouny and Hassouna, Vanessa},
+    author = {Arion, Sorin and Bassiouny, Abdelrhman and Beetz, Michael and Dech, Jonas and Hassouna, Vanessa and Huerkamp, Malte and Krohm, Luca and Mania, Patrick and Prüser, David and Schäfer, Jeroen and Schierenbeck, Tom and Stelter, Simon and Vasantakumaar, Naren},
     title = {Cora-plex: Cognitive Orchestrated Reasoning Architecture - Plan Executive},
     url = {https://github.com/cram2/pycram},
     version = {2.0.0},
