@@ -6,6 +6,64 @@ from robokudo.vis.multiprocessed_o3d_visualizer import (
 )
 
 
+def assert_mesh_equal(mesh1, mesh2) -> None:
+    """Assert that the two meshes contain the same mesh data."""
+    assert type(mesh1) == type(
+        mesh2
+    ), f"Meshes must be of the same type but are mesh1={type(mesh1)} mesh2={type(mesh2)}"
+
+    assert np.all(np.asarray(mesh2.vertices) == np.asarray(mesh1.vertices))
+    assert np.all(np.asarray(mesh2.vertex_colors) == np.asarray(mesh1.vertex_colors))
+    assert np.all(np.asarray(mesh2.vertex_normals) == np.asarray(mesh1.vertex_normals))
+
+    if isinstance(mesh1, o3d.geometry.TriangleMesh):
+        assert np.all(np.asarray(mesh2.triangles) == np.asarray(mesh1.triangles))
+        assert np.all(
+            np.asarray(mesh2.triangle_normals) == np.asarray(mesh1.triangle_normals)
+        )
+        assert np.all(np.asarray(mesh2.triangle_uvs) == np.asarray(mesh1.triangle_uvs))
+        assert np.all(
+            np.asarray(mesh2.triangle_material_ids)
+            == np.asarray(mesh1.triangle_material_ids)
+        )
+        for j in range(len(mesh1.adjacency_list)):
+            assert isinstance(mesh2.adjacency_list[j], set)
+            assert np.all(
+                np.array(list(mesh2.adjacency_list[j]))
+                == np.array(list(mesh1.adjacency_list[j]))
+            )
+        for j in range(len(mesh1.textures)):
+            assert isinstance(mesh2.textures[j], o3d.geometry.Image)
+            assert np.all(
+                np.asarray(mesh2.textures[j]) == np.asarray(mesh1.textures[j])
+            )
+    elif isinstance(mesh1, o3d.geometry.HalfEdgeTriangleMesh):
+        assert np.all(np.asarray(mesh2.triangles) == np.asarray(mesh1.triangles))
+        assert np.all(
+            np.asarray(mesh2.triangle_normals) == np.asarray(mesh1.triangle_normals)
+        )
+        for j in range(len(mesh2.ordered_half_edge_from_vertex)):
+            assert isinstance(
+                mesh2.ordered_half_edge_from_vertex[j], o3d.utility.IntVector
+            )
+            assert np.all(
+                np.asarray(mesh2.ordered_half_edge_from_vertex[j])
+                == np.asarray(mesh1.ordered_half_edge_from_vertex[j])
+            )
+        for j in range(len(mesh2.half_edges)):
+            assert isinstance(mesh2.half_edges[j], o3d.geometry.HalfEdge)
+            assert mesh2.half_edges[j].next == mesh1.half_edges[j].next
+            assert (
+                mesh2.half_edges[j].triangle_index == mesh1.half_edges[j].triangle_index
+            )
+            assert mesh2.half_edges[j].twin == mesh1.half_edges[j].twin
+            assert np.all(
+                mesh2.half_edges[j].vertex_indices == mesh1.half_edges[j].vertex_indices
+            )
+    elif isinstance(mesh1, o3d.geometry.TetraMesh):
+        assert np.all(np.asarray(mesh2.tetras) == np.asarray(mesh1.tetras))
+
+
 class TestVisGeometryMaps(object):
     def test_point_cloud_maps(self) -> None:
         """Test writing and reading point clouds with the shared memory manager."""
@@ -86,17 +144,7 @@ class TestVisGeometryMaps(object):
                 output_mesh != input_mesh
             ), "Output and input meshes should be different objects"
 
-            assert np.all(
-                np.asarray(output_mesh.vertices) == np.asarray(input_mesh.vertices)
-            )
-            assert np.all(
-                np.asarray(output_mesh.vertex_colors)
-                == np.asarray(input_mesh.vertex_colors)
-            )
-            assert np.all(
-                np.asarray(output_mesh.vertex_normals)
-                == np.asarray(input_mesh.vertex_normals)
-            )
+            assert_mesh_equal(output_mesh, input_mesh)
 
     def test_triangle_mesh_maps(self) -> None:
         """Test writing and reading triangle meshes with the shared memory manager."""
@@ -154,45 +202,7 @@ class TestVisGeometryMaps(object):
                 output_mesh != input_mesh
             ), "Output and input meshes should be different objects"
 
-            assert np.all(
-                np.asarray(output_mesh.vertices) == np.asarray(input_mesh.vertices)
-            )
-            assert np.all(
-                np.asarray(output_mesh.vertex_colors)
-                == np.asarray(input_mesh.vertex_colors)
-            )
-            assert np.all(
-                np.asarray(output_mesh.vertex_normals)
-                == np.asarray(input_mesh.vertex_normals)
-            )
-
-            assert np.all(
-                np.asarray(output_mesh.triangles) == np.asarray(input_mesh.triangles)
-            )
-            assert np.all(
-                np.asarray(output_mesh.triangle_normals)
-                == np.asarray(input_mesh.triangle_normals)
-            )
-            assert np.all(
-                np.asarray(output_mesh.triangle_uvs)
-                == np.asarray(input_mesh.triangle_uvs)
-            )
-            assert np.all(
-                np.asarray(output_mesh.triangle_material_ids)
-                == np.asarray(input_mesh.triangle_material_ids)
-            )
-            for j in range(len(input_mesh.adjacency_list)):
-                assert isinstance(output_mesh.adjacency_list[j], set)
-                assert np.all(
-                    np.array(list(output_mesh.adjacency_list[j]))
-                    == np.array(list(input_mesh.adjacency_list[j]))
-                )
-            for j in range(len(input_mesh.textures)):
-                assert isinstance(output_mesh.textures[j], o3d.geometry.Image)
-                assert np.all(
-                    np.asarray(output_mesh.textures[j])
-                    == np.asarray(input_mesh.textures[j])
-                )
+            assert_mesh_equal(output_mesh, input_mesh)
 
     def test_tetra_mesh_maps(self) -> None:
         """Test writing and reading base meshes with the shared memory manager."""
@@ -231,20 +241,7 @@ class TestVisGeometryMaps(object):
                 output_mesh != input_mesh
             ), "Output and input meshes should be different objects"
 
-            assert np.all(
-                np.asarray(output_mesh.vertices) == np.asarray(input_mesh.vertices)
-            )
-            assert np.all(
-                np.asarray(output_mesh.vertex_colors)
-                == np.asarray(input_mesh.vertex_colors)
-            )
-            assert np.all(
-                np.asarray(output_mesh.vertex_normals)
-                == np.asarray(input_mesh.vertex_normals)
-            )
-            assert np.all(
-                np.asarray(output_mesh.tetras) == np.asarray(input_mesh.tetras)
-            )
+            assert_mesh_equal(output_mesh, input_mesh)
 
     def test_half_edge_mesh_maps(self) -> None:
         """Test writing and reading triangle meshes with the shared memory manager."""
@@ -288,45 +285,7 @@ class TestVisGeometryMaps(object):
                 output_mesh != input_mesh
             ), "Output and input meshes should be different objects"
 
-            assert np.all(
-                np.asarray(output_mesh.vertices) == np.asarray(input_mesh.vertices)
-            )
-            assert np.all(
-                np.asarray(output_mesh.vertex_colors)
-                == np.asarray(input_mesh.vertex_colors)
-            )
-            assert np.all(
-                np.asarray(output_mesh.vertex_normals)
-                == np.asarray(input_mesh.vertex_normals)
-            )
-
-            assert np.all(
-                np.asarray(output_mesh.triangles) == np.asarray(input_mesh.triangles)
-            )
-            assert np.all(
-                np.asarray(output_mesh.triangle_normals)
-                == np.asarray(input_mesh.triangle_normals)
-            )
-            for j in range(len(output_mesh.ordered_half_edge_from_vertex)):
-                assert isinstance(
-                    output_mesh.ordered_half_edge_from_vertex[j], o3d.utility.IntVector
-                )
-                assert np.all(
-                    np.asarray(output_mesh.ordered_half_edge_from_vertex[j])
-                    == np.asarray(input_mesh.ordered_half_edge_from_vertex[j])
-                )
-            for j in range(len(output_mesh.half_edges)):
-                assert isinstance(output_mesh.half_edges[j], o3d.geometry.HalfEdge)
-                assert output_mesh.half_edges[j].next == input_mesh.half_edges[j].next
-                assert (
-                    output_mesh.half_edges[j].triangle_index
-                    == input_mesh.half_edges[j].triangle_index
-                )
-                assert output_mesh.half_edges[j].twin == input_mesh.half_edges[j].twin
-                assert np.all(
-                    output_mesh.half_edges[j].vertex_indices
-                    == input_mesh.half_edges[j].vertex_indices
-                )
+            assert_mesh_equal(output_mesh, input_mesh)
 
     def test_oriented_bounding_box_maps(self) -> None:
         """Test writing and reading oriented bounding boxes with the shared memory manager."""
@@ -438,3 +397,68 @@ class TestVisGeometryMaps(object):
             assert np.all(
                 np.asarray(output_lineset.lines) == np.asarray(input_lineset.lines)
             )
+
+    def test_maps_from_geometry_dict(self) -> None:
+        """Test writing and reading triangle meshes with the shared memory manager."""
+        iterations = 3
+
+        mesh_size = (
+            (np.dtype(np.float64).itemsize * (3 + 3 + 3 + 3 + 2))
+            + (np.dtype(np.int32).itemsize * (3 + 1))
+            + (np.dtype(np.int64).itemsize * (3 + 2 + 3))
+        ) * 1000 + ((np.dtype(np.uint8).itemsize * (512 * 512)) * 2)
+        write_manager = SharedMemoryManager.with_shm(mesh_size * iterations)
+
+        input_meshes = []
+        for _ in range(iterations):
+            input_mesh = o3d.geometry.TriangleMesh()
+            input_mesh.vertices = o3d.utility.Vector3dVector(np.random.rand(1000, 3))
+            input_mesh.vertex_colors = o3d.utility.Vector3dVector(
+                np.random.rand(1000, 3)
+            )
+            input_mesh.vertex_normals = o3d.utility.Vector3dVector(
+                np.random.rand(1000, 3)
+            )
+            input_mesh.triangles = o3d.utility.Vector3iVector(np.random.rand(1000, 3))
+            input_mesh.triangle_normals = o3d.utility.Vector3dVector(
+                np.random.rand(1000, 3)
+            )
+            input_mesh.triangle_uvs = o3d.utility.Vector2dVector(
+                np.random.rand(1000, 2)
+            )
+            input_mesh.triangle_material_ids = o3d.utility.IntVector(
+                np.random.randint(0, 10, size=1000, dtype=np.int32)
+            )
+            input_mesh.adjacency_list = [{3, 8, 9}, {0, 4}, {0, 2, 4}]
+            input_mesh.textures = [
+                o3d.geometry.Image(
+                    np.random.randint(0, 255, size=(512, 512), dtype=np.uint8)
+                ),
+                o3d.geometry.Image(
+                    np.random.randint(0, 255, size=(512, 512), dtype=np.uint8)
+                ),
+            ]
+
+            memory_map = Geometry3DMemoryMapFactory.from_geometry_dict(
+                {
+                    "name": "TriangleMesh",
+                    "geometry": input_mesh,
+                    "material": o3d.visualization.rendering.MaterialRecord(),
+                    "group": "TriangleMesh",
+                    "time": 1337.420,
+                    "is_visible": True,
+                }
+            )
+            write_manager.write_geometry(input_mesh, memory_map)
+
+            input_meshes.append(input_mesh)
+
+        for i, geometry_dict in enumerate(write_manager.read_geometries()):
+            input_mesh = input_meshes[i]
+            output_mesh = geometry_dict["geometry"]
+
+            assert (
+                output_mesh != input_mesh
+            ), "Output and input meshes should be different objects"
+
+            assert_mesh_equal(output_mesh, input_mesh)
