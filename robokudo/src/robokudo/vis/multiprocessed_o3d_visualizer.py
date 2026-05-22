@@ -153,6 +153,10 @@ class ObjectMemoryMap(MemoryMap):
     def get_memory_map(cls, obj: Any) -> MemoryMap:
         """Get the memory map for the given object.
 
+        This works for iterables that can be converted to numpy arrays, sets and objects that have a memory map
+        available in ObjectMemoryMapFactory. If the given object is not a set, numpy array or object for which a memory
+        map is available, the default behaviour will try to read it to a numpy array.
+
         :param obj: The object to get the memory map for.
         :return: The object or array memory map.
         """
@@ -169,6 +173,12 @@ class ObjectMemoryMap(MemoryMap):
     def create_mapped_attributes_memory_maps(
         cls, obj: Any
     ) -> Tuple[Dict[str, Union[MemoryMap, List[MemoryMap], None]], int]:
+        """Create memory maps for all mapped attributes using the values of an object.
+
+        :param obj: The object to create memory maps for.
+        :return: A map of attribute name to memory map and the total size of all memory maps.
+        :raises AttributeError: If a mapped attribute is not present in the given object.
+        """
         size = 0
         attribute_dict: Dict[
             str,
@@ -199,6 +209,8 @@ class ObjectMemoryMap(MemoryMap):
     ) -> int:
         """Write the given geometry attribute to the given buffer using the attribute memory map.
 
+        This works for object memory maps, sets and iterables that can be converted to numpy arrays.
+
         :param write_buf: The buffer to write to.
         :param write_idx: The byte index to start writing at.
         :param attribute_map: The memory map of the attribute.
@@ -224,6 +236,14 @@ class ObjectMemoryMap(MemoryMap):
     def write_mapped_attributes(
         self, input_obj: Any, write_buf: memoryview, write_idx: int
     ) -> int:
+        """Write the mapped attributes to a buffer using the data from the given object.
+
+        :param input_obj: The object to write the data from to a buffer.
+        :param write_buf: The buffer to write to.
+        :param write_idx: The byte index to start writing at.
+        :return: The new byte index to start writing new data at.
+        :raises AttributeError: If a mapped attribute is not present in the given object.
+        """
         for attribute, _ in self.mapped_attributes:
             attribute_map = getattr(self, attribute)
             if attribute_map is None:
@@ -248,6 +268,14 @@ class ObjectMemoryMap(MemoryMap):
     def read_mapped_attributes_to_object(
         self, output_obj: Any, read_buf: memoryview, read_idx: int
     ) -> int:
+        """Read the mapped attributes from a buffer into the given object.
+
+        :param output_obj: The object to read the data in.
+        :param read_buf: The buffer to read from.
+        :param read_idx: The byte index to start reading at.
+        :return: The new byte index to start reading new data at.
+        :raises AttributeError: If a mapped attribute is not present in the given object.
+        """
         for attribute, attribute_type in self.mapped_attributes:
             attribute_map = getattr(self, attribute)
             if attribute_map is None:
@@ -289,7 +317,10 @@ class ObjectMemoryMap(MemoryMap):
 
     @classmethod
     def from_object(cls, obj: Any) -> "ObjectMemoryMap":
-        """Create a new memory map for the given object."""
+        """Create a new memory map for the given object.
+
+        :param obj: The object to create the memory map from.
+        """
         ...
 
     def write_object(
@@ -675,6 +706,7 @@ class MaterialRecordMemoryMap(ObjectMemoryMap):
     clearcoat_img: Optional[ArrayMemoryMap]
     clearcoat_roughness_img: Optional[ArrayMemoryMap]
     emissive_color: ArrayMemoryMap
+    # TODO: Map these out
     # generic_imgs: dict[str, open3d.cuda.pybind.geometry.Image]
     # generic_params: dict[str, numpy.ndarray[numpy.float32[4, 1]]]
     # gradient: Gradient
