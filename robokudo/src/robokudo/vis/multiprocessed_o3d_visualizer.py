@@ -267,6 +267,36 @@ class ObjectMemoryMap(MemoryMap):
                 )
         return write_idx
 
+    @staticmethod
+    def _read_attribute(
+        attribute_map: Union[ArrayMemoryMap, ObjectMemoryMap],
+        attribute_type: Type,
+        read_buf: memoryview,
+        read_idx: int,
+    ) -> Tuple[Any, int]:
+        """Read the given attribute map from the read buffer starting from the byte index.
+
+        :param attribute_map: The memory map of the attribute to read from the buffer.
+        :param attribute_type: The type mapped out by the memory map.
+        :param read_buf: The buffer to read from.
+        :param read_idx: The byte index to start reading at.
+        :return: The data read from the buffer as an instance of `attribute_type` and the new read byte index.
+        """
+        if isinstance(attribute_map, ObjectMemoryMap):
+            attribute_value, read_idx = attribute_map.read_object(read_buf, read_idx)
+        else:
+            buf = np.ndarray(
+                attribute_map.shape,
+                dtype=attribute_map.dtype,
+                buffer=read_buf[read_idx : read_idx + attribute_map.byte_size],
+            )
+            if attribute_type == np.ndarray:
+                attribute_value = buf
+            else:
+                attribute_value = attribute_type(buf)
+            read_idx += attribute_map.byte_size
+        return attribute_value, read_idx
+
     def read_mapped_attributes_to_object(
         self, output_obj: Any, read_buf: memoryview, read_idx: int
     ) -> int:
@@ -287,34 +317,18 @@ class ObjectMemoryMap(MemoryMap):
                     continue
                 attrs = []
                 for i, attr in enumerate(attribute_map):
-                    if isinstance(attr, ObjectMemoryMap):
-                        obj, read_idx = attr.read_object(read_buf, read_idx)
-                        attrs.append(obj)
-                    else:
-                        buf = np.ndarray(
-                            attr.shape,
-                            dtype=attr.dtype,
-                            buffer=read_buf[read_idx : read_idx + attr.byte_size],
-                        )
-                        if attribute_type == np.ndarray:
-                            attrs.append(buf)
-                        else:
-                            attrs.append(attribute_type(buf))
-                        read_idx += attr.byte_size
+                    attr_val, read_idx = self._read_attribute(
+                        attr, attribute_type, read_buf, read_idx
+                    )
+                    attrs.append(attr_val)
                 setattr(output_obj, attribute, attrs)
             else:
                 if attribute_map.byte_size == 0:
                     continue
-                buf = np.ndarray(
-                    attribute_map.shape,
-                    dtype=attribute_map.dtype,
-                    buffer=read_buf[read_idx : read_idx + attribute_map.byte_size],
+                attr_val, read_idx = self._read_attribute(
+                    attribute_map, attribute_type, read_buf, read_idx
                 )
-                if attribute_type == np.ndarray:
-                    setattr(output_obj, attribute, buf)
-                else:
-                    setattr(output_obj, attribute, attribute_type(buf))
-                read_idx += attribute_map.byte_size
+                setattr(output_obj, attribute, attr_val)
         return read_idx
 
     @classmethod
@@ -422,7 +436,7 @@ class Geometry3DMemoryMap(ObjectMemoryMap):
 
         if material is not None:
             material_map = ObjectMemoryMapFactory.from_object(material)
-            size + +material_map.byte_size
+            size += material_map.byte_size
         else:
             material_map = None
 
