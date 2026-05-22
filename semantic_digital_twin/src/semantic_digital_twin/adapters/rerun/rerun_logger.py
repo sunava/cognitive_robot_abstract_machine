@@ -1,22 +1,15 @@
 from __future__ import annotations
 
-import os
-
 import rerun as rr
 import trimesh
-from typing_extensions import Callable, List, Optional
+from typing_extensions import List, Optional
 
 from semantic_digital_twin.world import World
-from semantic_digital_twin.world_description.geometry import Mesh, Shape
+from semantic_digital_twin.world_description.geometry import Shape
 from semantic_digital_twin.world_description.world_entity import Body
 
 DEFAULT_ROOT_ENTITY_PATH = "world"
 """Default Rerun entity path under which the kinematic tree is logged."""
-
-MeshFileResolver = Callable[[Body, Mesh], Optional[str]]
-"""Hook mapping a ``(body, mesh)`` to a local mesh file path, or ``None``.
-Used to recover material color when geometry was mirrored over ROS without it.
-"""
 
 
 def _entity_path(root_entity_path: str, body: Body) -> str:
@@ -29,26 +22,7 @@ def _visual_shapes(body: Body) -> List[Shape]:
     return body.visual.shapes if body.visual.shapes else body.collision.shapes
 
 
-def _colored_source_mesh(
-    shape: Shape,
-    body: Optional[Body],
-    mesh_file_resolver: Optional[MeshFileResolver],
-) -> trimesh.Trimesh:
-    """Return the shape geometry, loading a local file for color when resolved."""
-    if isinstance(shape, Mesh) and body is not None and mesh_file_resolver is not None:
-        local_path = mesh_file_resolver(body, shape)
-        if local_path is not None and os.path.exists(local_path):
-            source_mesh = trimesh.load_mesh(local_path)
-            source_mesh.apply_scale(shape.scale.to_np())
-            return source_mesh
-    return shape.mesh.copy()
-
-
-def shape_to_link_frame_mesh(
-    shape: Shape,
-    body: Optional[Body] = None,
-    mesh_file_resolver: Optional[MeshFileResolver] = None,
-) -> trimesh.Trimesh:
+def shape_to_link_frame_mesh(shape: Shape) -> trimesh.Trimesh:
     """
     Convert a shape to a trimesh expressed in its link frame.
 
@@ -56,11 +30,9 @@ def shape_to_link_frame_mesh(
     ``TextureVisuals`` are normalized to per-vertex ``ColorVisuals``.
 
     :param shape: The shape to convert.
-    :param body: The body owning the shape, required only when using a resolver.
-    :param mesh_file_resolver: Optional hook to load a local file for color.
     :return: A trimesh whose vertices are expressed in the parent link frame.
     """
-    link_frame_mesh = _colored_source_mesh(shape, body, mesh_file_resolver)
+    link_frame_mesh = shape.mesh.copy()
     link_frame_mesh.apply_transform(shape.origin.to_np())
     if hasattr(link_frame_mesh.visual, "to_color"):
         link_frame_mesh.visual = link_frame_mesh.visual.to_color()
@@ -71,7 +43,6 @@ def log_model(
     world: World,
     root_entity_path: str = DEFAULT_ROOT_ENTITY_PATH,
     *,
-    mesh_file_resolver: Optional[MeshFileResolver] = None,
     recording: Optional[rr.RecordingStream] = None,
 ) -> None:
     """
@@ -82,7 +53,6 @@ def log_model(
 
     :param world: The world whose geometry is logged.
     :param root_entity_path: Entity path under which the tree is logged.
-    :param mesh_file_resolver: Optional hook to load local files for color.
     :param recording: Target recording stream; ``None`` uses the active one.
     """
     rr.log(
@@ -94,7 +64,7 @@ def log_model(
     for body in world.bodies:
         entity_path = _entity_path(root_entity_path, body)
         for index, shape in enumerate(_visual_shapes(body)):
-            link_frame_mesh = shape_to_link_frame_mesh(shape, body, mesh_file_resolver)
+            link_frame_mesh = shape_to_link_frame_mesh(shape)
             rr.log(
                 f"{entity_path}/visual_{index}",
                 rr.Mesh3D(
@@ -143,7 +113,6 @@ def log_world(
     world: World,
     root_entity_path: str = DEFAULT_ROOT_ENTITY_PATH,
     *,
-    mesh_file_resolver: Optional[MeshFileResolver] = None,
     recording: Optional[rr.RecordingStream] = None,
 ) -> None:
     """
@@ -151,13 +120,7 @@ def log_world(
 
     :param world: The world to log.
     :param root_entity_path: Entity path under which the tree is logged.
-    :param mesh_file_resolver: Optional hook to load local files for color.
     :param recording: Target recording stream; ``None`` uses the active one.
     """
-    log_model(
-        world,
-        root_entity_path,
-        mesh_file_resolver=mesh_file_resolver,
-        recording=recording,
-    )
+    log_model(world, root_entity_path, recording=recording)
     log_state(world, root_entity_path, recording=recording)

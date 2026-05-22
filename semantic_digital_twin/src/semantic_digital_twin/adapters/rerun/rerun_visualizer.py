@@ -8,7 +8,6 @@ from typing_extensions import Optional
 
 from semantic_digital_twin.adapters.rerun.rerun_logger import (
     DEFAULT_ROOT_ENTITY_PATH,
-    MeshFileResolver,
     log_model,
     log_state,
 )
@@ -62,8 +61,6 @@ class RerunVisualizer(ModelChangeCallback):
     """gRPC URL for ``CONNECT`` or file path for ``SAVE``."""
     timeline: str = field(default="state_version", kw_only=True)
     """Name of the Rerun timeline driven by the world state version."""
-    mesh_file_resolver: Optional[MeshFileResolver] = field(default=None, kw_only=True)
-    """Optional hook to load local mesh files for color."""
     state_history: bool = field(default=False, kw_only=True)
     """Keep a scrubbable state history (bounded by ``memory_limit``); if ``False``, keep only the current state."""
     memory_limit: str = field(default="75%", kw_only=True)
@@ -96,12 +93,7 @@ class RerunVisualizer(ModelChangeCallback):
             self._recording.save(self.sink_target)
 
     def _notify(self, **kwargs) -> None:
-        log_model(
-            self._world,
-            self.root_entity_path,
-            mesh_file_resolver=self.mesh_file_resolver,
-            recording=self._recording,
-        )
+        log_model(self._world, self.root_entity_path, recording=self._recording)
 
     def log_current_state(self) -> None:
         """Re-log the current per-body transforms, advancing the timeline if history is kept."""

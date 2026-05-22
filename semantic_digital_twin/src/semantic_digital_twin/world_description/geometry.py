@@ -401,10 +401,18 @@ class Mesh(Shape):
     def to_json(self) -> Dict[str, Any]:
         # Serialize the raw (unscaled, unprocessed) mesh geometry and the scale separately
         base_mesh = trimesh.load_mesh(self.filename, process=False)
+        # Bake materials/textures down to per-vertex colors so the mesh's color
+        # survives serialization (e.g. across the ROS world synchronizer).
+        if hasattr(base_mesh.visual, "to_color"):
+            base_mesh.visual = base_mesh.visual.to_color()
+        mesh_dict = base_mesh.to_dict()
+        vertex_colors = getattr(base_mesh.visual, "vertex_colors", None)
+        if vertex_colors is not None:
+            mesh_dict["vertex_colors"] = np.asarray(vertex_colors).tolist()
         file_type = self.filename.split(".")[-1]
         return {
             **super().to_json(),
-            "mesh": base_mesh.to_dict(),
+            "mesh": mesh_dict,
             "scale": to_json(self.scale),
             "file_type": file_type,
         }
@@ -412,9 +420,11 @@ class Mesh(Shape):
     @classmethod
     def _from_json(cls, data: Dict[str, Any], **kwargs) -> Mesh:
         # Recreate the trimesh without processing to preserve exact topology
+        vertex_colors = data["mesh"].get("vertex_colors")
         mesh = trimesh.Trimesh(
             vertices=data["mesh"]["vertices"],
             faces=data["mesh"]["faces"],
+            vertex_colors=vertex_colors,
             process=False,
         )
         origin = from_json(data["origin"], **kwargs)
@@ -535,7 +545,13 @@ class Mesh(Shape):
             visual=trimesh.visual.TextureVisuals(uv=uv_unindexed, image=texture_image),
         )
 
-        return Mesh.from_trimesh(mesh=mesh, origin=origin, scale=scale, file_type="obj", texture_file_path=texture_file_path)
+        return Mesh.from_trimesh(
+            mesh=mesh,
+            origin=origin,
+            scale=scale,
+            file_type="obj",
+            texture_file_path=texture_file_path,
+        )
 
     @classmethod
     def from_trimesh(
