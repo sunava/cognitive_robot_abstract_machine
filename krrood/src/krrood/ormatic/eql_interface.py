@@ -1066,7 +1066,7 @@ def eql_to_sql(query: Query, session: Session,
         # Normal translation:
         translator = eql_to_sql(query, session)
 
-        # As CTE:
+        # As common table expression:
         large_bodies = eql_to_sql(inner_query, session, as_common_table_expression="large_bodies")
         outer_translator = eql_to_sql(outer_query, session)
         outer_translator.sql_query = (
@@ -1076,10 +1076,10 @@ def eql_to_sql(query: Query, session: Session,
 
     :param query: The EQL query
     :param session: The SQLAlchemy session
-    :param as_common_table_expression: If provided, returns a SQLAlchemy CTE with this name.
-    The name is required because SQL CTEs must have an explicit alias
+    :param as_common_table_expression: If provided, returns a SQLAlchemy common table expression with this name.
+    The name is required because SQL common table expressions must have an explicit alias
     (e.g. WITH large_bodies AS (SELECT ...))
-    :return: EQLTranslator or SQLAlchemy CTE
+    :return: EQLTranslator or SQLAlchemy common table expression
     """
     query.build()
     result = EQLTranslator(query, session)
