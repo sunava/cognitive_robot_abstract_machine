@@ -1202,7 +1202,7 @@ class MultiprocessedViewer3DClient(object):
         coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.01)
         self.viewer3d.main_vis.add_geometry("dummy", coordinate_frame)
         try:
-            while True:
+            while not self.tick_return.is_set():
                 # Force a proper redraw
                 self.viewer3d.main_vis.remove_geometry("dummy")
                 self.viewer3d.main_vis.add_geometry("dummy", coordinate_frame)
@@ -1239,7 +1239,15 @@ class MultiprocessedViewer3DClient(object):
     def listen(self) -> None:
         """Listen for commands from the main process and handle them accordingly."""
         while not self.tick_return.is_set():
-            cmd = self.cmd_conn.recv()
+            try:
+                cmd = self.cmd_conn.recv()
+            except EOFError as e:
+                self.rk_logger.error(
+                    f"Pipe closed unexpectedly, shutting down visualizer: {e}"
+                )
+                self.tick_return.set()
+                break
+
             if isinstance(cmd, MemoryMapTransport):
                 self.rk_logger.debug(f"Received memory map: {cmd}")
 
