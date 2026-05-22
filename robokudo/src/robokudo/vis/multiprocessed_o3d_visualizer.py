@@ -248,7 +248,8 @@ class ObjectMemoryMap(MemoryMap):
             attribute_map = getattr(self, attribute)
             if attribute_map is None:
                 continue
-            elif isinstance(attribute_map, list):
+
+            if isinstance(attribute_map, list):
                 if len(attribute_map) == 0:
                     continue
 
@@ -260,6 +261,7 @@ class ObjectMemoryMap(MemoryMap):
             else:
                 if attribute_map.byte_size == 0:
                     continue
+
                 write_idx = self._write_attribute(
                     write_buf, write_idx, attribute_map, getattr(input_obj, attribute)
                 )
@@ -446,15 +448,15 @@ class Geometry3DMemoryMap(ObjectMemoryMap):
         return instance
 
     def read_geometry_dict(
-        self, shm: shared_memory.SharedMemory, read_idx: int
+        self, read_buf: memoryview, read_idx: int
     ) -> Tuple[Dict, int]:
         """Create an open3d geometry dict from the memory map.
 
-        :param shm: The shared memory to read from.
+        :param read_buf: The memory buffer to read from.
         :param read_idx: The byte index to start reading from.
         :return: The geometry dictionary and the byte index after reading.
         """
-        geometry, read_idx = self.read_geometry(shm, read_idx)
+        geometry, read_idx = self.read_geometry(read_buf, read_idx)
 
         geometry_dict: Dict[str, Any] = {
             "name": self.name,
@@ -463,7 +465,7 @@ class Geometry3DMemoryMap(ObjectMemoryMap):
 
         if self.material is not None:
             geometry_dict["material"], read_idx = self.material.read_object(
-                shm.buf, read_idx
+                read_buf, read_idx
             )
         if self.group is not None:
             geometry_dict["group"] = self.group
@@ -476,35 +478,28 @@ class Geometry3DMemoryMap(ObjectMemoryMap):
 
     def write_geometry(
         self,
-        shm: shared_memory.SharedMemory,
+        write_buf: memoryview,
         write_idx: int,
         geometry: o3d.geometry.Geometry3D,
     ) -> int:
         """Write the given geometry to the shared memory using the memory map.
 
-        :param shm: The shared memory to write to.
+        :param write_buf: The shared memory to write to.
         :param write_idx: The byte index to start writing at.
         :param geometry: The geometry to write.
         :return: The byte index after writing.
         """
-        write_buf = shm.buf
-        if write_buf is None:
-            raise RuntimeError("Shared memory buffer is None")
         return self.write_mapped_attributes(geometry, write_buf, write_idx)
 
     def read_geometry(
-        self, shm: shared_memory.SharedMemory, read_idx: int
+        self, read_buf: memoryview, read_idx: int
     ) -> Tuple[o3d.geometry.PointCloud, int]:
         """Read the geometry from the shared memory using the memory map.
 
-        :param shm: The shared memory to read from.
+        :param read_buf: The shared memory to read from.
         :param read_idx: The byte index to start reading from.
         :return: The geometry read from the shared memory and the byte index after reading.
         """
-        read_buf = shm.buf
-        if read_buf is None:
-            raise RuntimeError("Shared memory buffer is None")
-
         geometry = self.type()
         read_idx = self.read_mapped_attributes_to_object(geometry, read_buf, read_idx)
         return geometry, read_idx
@@ -1108,9 +1103,12 @@ class SharedMemoryManager(object):
         :param memory_map: The memory map to use for writing the geometry.
         :param geometry: The geometry to write to the shared memory.
         """
+        write_buf = self._shm.buf
+        if write_buf is None:
+            raise RuntimeError("The shared memory buffer is None")
         if memory_map not in self.memory_maps:
             self.append(memory_map)
-        memory_map.write_geometry(self._shm, self.write_cursor, geometry)
+        memory_map.write_geometry(write_buf, self.write_cursor, geometry)
         self.write_cursor += memory_map.byte_size
 
     def read_geometries(self) -> Iterator[Dict]:
@@ -1118,8 +1116,11 @@ class SharedMemoryManager(object):
 
         :return: An iterator over the geometries read from the shared memory.
         """
+        read_buf = self._shm.buf
+        if read_buf is None:
+            raise RuntimeError("The shared memory buffer is None")
         for memory_map in self.memory_maps:
-            geometry, _ = memory_map.read_geometry_dict(self._shm, self.read_cursor)
+            geometry, _ = memory_map.read_geometry_dict(read_buf, self.read_cursor)
             yield geometry
             self.read_cursor += memory_map.byte_size
 
