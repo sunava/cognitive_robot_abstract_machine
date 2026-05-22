@@ -405,40 +405,7 @@ class EQLTranslator:
             )
 
         self.sql_query = select(dao_class)
-
-        if self.eql_query._where_expression_ is not None:
-            conditions = self.translate_query(self.eql_query._where_expression_)
-            if conditions is not None:
-                self.sql_query = self.sql_query.where(conditions)
-
-        if self.eql_query._grouped_by_builder_ is not None:
-            columns = [
-                self.translate_attribute(var)
-                for var in self.eql_query._grouped_by_builder_.variables_to_group_by
-                if isinstance(var, Attribute)
-            ]
-            if columns:
-                self.sql_query = self.sql_query.group_by(*columns)
-
-        if self.eql_query._having_builder_ is not None:
-            having = self.translate_query(
-                self.eql_query._having_builder_.conditions_expression
-            )
-            if having is not None:
-                self.sql_query = self.sql_query.having(having)
-
-        if self.eql_query._ordered_by_builder_ is not None:
-            col = self.translate_attribute(self.eql_query._ordered_by_builder_.variable)
-            if self.eql_query._ordered_by_builder_.descending:
-                col = col.desc()
-            self.sql_query = self.sql_query.order_by(col)
-
-        quantifier = self.eql_query._quantifier_expression_
-        if quantifier is not None and quantifier._limit_ is not None:
-            self.sql_query = self.sql_query.limit(quantifier._limit_)
-
-        if self.eql_query._distinct_on:
-            self.sql_query = self.sql_query.distinct()
+        self._apply_clauses()
 
     def _translate_set_of(self) -> None:
         """
@@ -493,11 +460,7 @@ class EQLTranslator:
             columns = [self._translate_comparator_operand(var) for var in selected]
             self.sql_query = self.sql_query.with_only_columns(*columns)
 
-        self._apply_where()
-        self._apply_group_by()
-        self._apply_having()
-        self._apply_order_by()
-        self._apply_limit()
+        self._apply_clauses()
 
     def _extract_dao_from_expression(self, expression: Any) -> Optional[type]:
         """
@@ -514,13 +477,13 @@ class EQLTranslator:
                 return self._extract_dao_from_expression(expression._child_)
         return None
 
-    def _apply_where(self) -> None:
+    def _apply_clauses(self) -> None:
+        """Apply WHERE, GROUP BY, HAVING, ORDER BY and LIMIT to the SQL query."""
         if self.eql_query._where_expression_ is not None:
             conditions = self.translate_query(self.eql_query._where_expression_)
             if conditions is not None:
                 self.sql_query = self.sql_query.where(conditions)
 
-    def _apply_group_by(self) -> None:
         if self.eql_query._grouped_by_builder_ is not None:
             columns = [
                 self.translate_attribute(var)
@@ -530,7 +493,6 @@ class EQLTranslator:
             if columns:
                 self.sql_query = self.sql_query.group_by(*columns)
 
-    def _apply_having(self) -> None:
         if self.eql_query._having_builder_ is not None:
             having = self.translate_query(
                 self.eql_query._having_builder_.conditions_expression
@@ -538,7 +500,6 @@ class EQLTranslator:
             if having is not None:
                 self.sql_query = self.sql_query.having(having)
 
-    def _apply_order_by(self) -> None:
         if self.eql_query._ordered_by_builder_ is not None:
             col = self.translate_attribute(
                 self.eql_query._ordered_by_builder_.variable
@@ -547,12 +508,10 @@ class EQLTranslator:
                 col = col.desc()
             self.sql_query = self.sql_query.order_by(col)
 
-    def _apply_limit(self) -> None:
         quantifier = self.eql_query._quantifier_expression_
         if quantifier is not None and quantifier._limit_ is not None:
             self.sql_query = self.sql_query.limit(quantifier._limit_)
 
-    def _apply_distinct(self) -> None:
         if self.eql_query._distinct_on:
             self.sql_query = self.sql_query.distinct()
 
@@ -1102,9 +1061,6 @@ def eql_to_sql(query: Query, session: Session,
     """
     Translate an EQL query to SQL.
 
-    If `as_common_table_expression` is provided, the query is translated to a
-    SQLAlchemy CTE instead of a full SELECT statement.
-
     .. code-block:: python
 
         # Normal translation:
@@ -1120,7 +1076,9 @@ def eql_to_sql(query: Query, session: Session,
 
     :param query: The EQL query
     :param session: The SQLAlchemy session
-    :param as_common_table_expression: If provided, returns a SQLAlchemy CTE with this name
+    :param as_common_table_expression: If provided, returns a SQLAlchemy CTE with this name.
+    The name is required because SQL CTEs must have an explicit alias
+    (e.g. WITH large_bodies AS (SELECT ...))
     :return: EQLTranslator or SQLAlchemy CTE
     """
     query.build()
