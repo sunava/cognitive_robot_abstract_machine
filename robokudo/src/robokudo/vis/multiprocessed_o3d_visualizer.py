@@ -1056,9 +1056,6 @@ class SharedMemoryManager(object):
     write_cursor: int = 0
     """The current end byte index of the shared memory (sum of all memory map sizes)."""
 
-    read_cursor: int = 0
-    """The current start byte index of the shared memory (sum of all memory map sizes)."""
-
     @classmethod
     def with_shm(cls, size: int) -> SharedMemoryManager:
         """Create a SharedMemoryManager with a newly created shared memory of the given size.
@@ -1133,15 +1130,15 @@ class SharedMemoryManager(object):
         read_buf = self._shm.buf
         if read_buf is None:
             raise RuntimeError("The shared memory buffer is None")
+        read_cursor = 0
         for memory_map in self.memory_maps:
-            geometry, _ = memory_map.read_geometry_dict(read_buf, self.read_cursor)
+            geometry, _ = memory_map.read_geometry_dict(read_buf, read_cursor)
             yield geometry
-            self.read_cursor += memory_map.byte_size
+            read_cursor += memory_map.byte_size
 
     def reset(self) -> None:
         """Reset the shared memory manager to its initial state."""
         self.write_cursor = 0
-        self.read_cursor = 0
         self.memory_maps_size = 0
         self.memory_maps.clear()
 
@@ -1283,9 +1280,6 @@ class MultiprocessedViewer3D(object):
 
         self.rk_logger: logging.Logger = logging.getLogger(PACKAGE_NAME)
         """Logger instance"""
-
-        self.draw_queue: Queue = Queue()
-        """Multiprocessing queue for triggering drawing events."""
 
         self.buffer_count = 2
         """Number of buffers to use for communication."""
