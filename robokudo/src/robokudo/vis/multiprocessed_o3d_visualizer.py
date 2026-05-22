@@ -1237,17 +1237,28 @@ class MultiprocessedViewer3DClient(object):
 
         coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.01)
         self.viewer3d.main_vis.add_geometry("dummy", coordinate_frame)
+
+        interval = 1.0 / 60.0
+        last_tick = time.monotonic()
+
         try:
             while not self.tick_return.is_set():
-                # Force a proper redraw
-                self.viewer3d.main_vis.remove_geometry("dummy")
-                self.viewer3d.main_vis.add_geometry("dummy", coordinate_frame)
-                tick_return = self.viewer3d.tick()
-                if not tick_return:
-                    self.rk_logger.debug("Visualizer indicates shutdown.")
-                    self.tick_return.set()
-                    break
-                time.sleep(1.0 / 60.0)
+                current_time = time.monotonic()
+                elapsed = current_time - last_tick
+
+                if elapsed >= interval:
+                    # Force a proper redraw
+                    self.viewer3d.main_vis.remove_geometry("dummy")
+                    self.viewer3d.main_vis.add_geometry("dummy", coordinate_frame)
+                    tick_return = self.viewer3d.tick()
+                    if not tick_return:
+                        self.rk_logger.debug("Visualizer indicates shutdown.")
+                        self.tick_return.set()
+                        break
+
+                    last_tick = current_time
+                else:
+                    time.sleep(interval - elapsed)
         except KeyboardInterrupt:
             self.rk_logger.debug("Keyboard interrupt received.")
         finally:

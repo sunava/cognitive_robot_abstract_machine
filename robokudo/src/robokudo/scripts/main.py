@@ -74,16 +74,17 @@ def run_ae(
         return True
 
     interval = 1.0 / tickrate
-    next_tick = time.monotonic()
+    last_tick = time.monotonic()
 
     while True:
         current_time = time.monotonic()
-        elapsed = current_time - next_tick
+        elapsed = current_time - last_tick
 
         if elapsed >= interval:
             if not tick_tree():
                 break
-            next_tick = current_time
+
+            last_tick = current_time
         else:
             time.sleep(interval - elapsed)
 
