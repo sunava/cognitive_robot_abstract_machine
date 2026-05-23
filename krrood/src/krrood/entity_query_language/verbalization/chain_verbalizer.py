@@ -187,7 +187,7 @@ class ChainVerbalizer:
         terminal = chain[-1]
         attr_name = terminal._attribute_name_
         owner = terminal._owner_class_
-        return _phrase(nav_frag, copula, RoleFragment.for_attribute(attr_name, owner, attr_name))
+        return _phrase(nav_frag, copula, RoleFragment.for_attribute(owner, attr_name))
 
     # ── Temporal helper (used by Comparator and Not) ───────────────────────────
 

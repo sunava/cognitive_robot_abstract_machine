@@ -5,6 +5,7 @@ from typing import Optional, TYPE_CHECKING
 
 from krrood.entity_query_language.verbalization.fragments.roles import SemanticRole
 from krrood.entity_query_language.verbalization.fragments.source_ref import SourceRef
+from krrood.entity_query_language.verbalization.utils import _ensure_plural
 
 if TYPE_CHECKING:
     from krrood.entity_query_language.core.mapped_variable import Attribute
@@ -75,18 +76,19 @@ class RoleFragment(VerbFragment):
         )
 
     @classmethod
-    def for_attribute(cls, label: str, owner, attr_name: str) -> "RoleFragment":
+    def for_attribute(cls, owner, attr_name: str, plural: bool = False) -> "RoleFragment":
         """
         Build a fragment for an attribute access, linked to its owner class.
 
-        :param label: Display text (attribute name, possibly pluralised).
-        :type label: str
         :param owner: Owner class of the attribute (used for source linking).
         :param attr_name: Canonical attribute name on *owner*.
         :type attr_name: str
+        :param plural: Whether the attribute is pluralized in the display text.
+        :type plural: bool
         :returns: :class:`RoleFragment` with :attr:`~SemanticRole.ATTRIBUTE` role.
         :rtype: RoleFragment
         """
+        label = attr_name if not plural else _ensure_plural(attr_name)
         return cls(
             text=label,
             role=SemanticRole.ATTRIBUTE,

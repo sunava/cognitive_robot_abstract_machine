@@ -1,4 +1,4 @@
----
+from krrood.entity_query_language.verbalization.vocabulary.english import Articles---
 jupytext:
   text_representation:
     extension: .md
@@ -102,16 +102,16 @@ VerbFragment (abstract base)
 
 {py:class}`~krrood.entity_query_language.verbalization.fragments.roles.SemanticRole` determines the colour applied by formatters.  Colours match the `QueryGraph.ColorLegend` palette for visual consistency with query graph visualizations.
 
-| Role | Example | Colour |
-|---|---|---|
-| `KEYWORD` | *Find*, *If*, *such that* | yellow `#eded18` |
-| `VARIABLE` | *Robot*, *Employee 1* | cornflower blue |
+| Role          | Example | Colour |
+|---------------|---|---|
+| `KEYWORD`     | *Find*, *If*, *such that* | yellow `#eded18` |
+| `VARIABLE`    | *Robot*, *Employee 1* | cornflower blue |
 | `AGGREGATION` | *sum of*, *number of* | red-orange `#F54927` |
-| `OPERATOR` | *is greater than*, *is* | orange `#ff7f0e` |
-| `LOGICAL` | *and*, *or*, *not*, *for all* | green `#2ca02c` |
-| `LITERAL` | `42`, `"hello"` | gray `#949292` |
-| `ATTRIBUTE` | *battery*, *tasks* | teal `#8FC7B8` |
-| `PLAIN` | *of*, *the*, *,* | none |
+| `OPERATOR`    | *is greater than*, *is* | orange `#ff7f0e` |
+| `LOGICAL`     | *and*, *or*, *not*, *for all* | green `#2ca02c` |
+| `LITERAL`     | `42`, `"hello"` | gray `#949292` |
+| `ATTRIBUTE`   | *battery*, *tasks* | teal `#8FC7B8` |
+| `PLAIN (Not a Role)`      | *of*, *the*, *,* | none |
 
 ### Building Fragments
 
@@ -122,14 +122,18 @@ from krrood.entity_query_language.verbalization.fragments.base import (
     WordFragment, RoleFragment, PhraseFragment, BlockFragment,
     join_with, oxford_and,
 )
+from krrood.entity_query_language.verbalization.vocabulary.english import Articles
 from krrood.entity_query_language.verbalization.fragments.roles import SemanticRole
 
-# Plain word
-word = WordFragment(text="the")
+# Plain word (`The` is a plain word)
+# can be constructed directly… 
+word = WordFragment(text="the") 
+# or via vocabulary constants (Preferred way, as it avoids typos):
+word = Articles.THE.as_fragment()
 
-# Coloured word with optional source link
+# Coloured word with source object reference (for variable, and attribute)
 role_frag = RoleFragment.for_variable("Robot", robot_var)      # VARIABLE role + source link
-attr_frag = RoleFragment.for_attribute("battery", Robot, "battery")  # ATTRIBUTE role + link
+attr_frag = RoleFragment.for_attribute("battery", Robot)  # ATTRIBUTE role + link
 op_frag   = RoleFragment.for_operator("is greater than")       # OPERATOR role, no link
 
 # Inline sequence

@@ -73,7 +73,7 @@ class RoleWord:
         return RoleFragment(text=self.text, role=self._role_)
 
 
-class KeywordWord(RoleWord):
+class KeyWord(RoleWord):
     """EQL structure keyword with :attr:`~SemanticRole.KEYWORD` role."""
 
     _role_ = SemanticRole.KEYWORD

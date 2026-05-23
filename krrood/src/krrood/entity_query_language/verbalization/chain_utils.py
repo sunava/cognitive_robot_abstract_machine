@@ -157,11 +157,10 @@ def verbalize_plural(expr, ctx: "VerbalizationContext", build_fn: Callable) -> "
             ctx.seen[root._id_] = label
             root_plural = label if label != type_name else inflect_engine.plural(type_name)
             attr_name = chain[0]._attribute_name_
-            attr_plural = _ensure_plural(attr_name)
             owner = chain[0]._owner_class_
             return PhraseFragment(
                 parts=[
-                    RoleFragment.for_attribute(attr_plural, owner, attr_name),
+                    RoleFragment.for_attribute(owner, attr_name, plural=True),
                     Prepositions.OF.as_fragment(),
                     RoleFragment.for_variable(root_plural, root),
                 ],

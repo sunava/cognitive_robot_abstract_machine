@@ -34,7 +34,7 @@ from krrood.entity_query_language.verbalization.fragments.roles import SemanticR
 from krrood.entity_query_language.verbalization.utils import _ensure_plural
 from krrood.entity_query_language.verbalization.vocabulary.words import (
     AggregationWord,
-    KeywordWord,
+    KeyWord,
     LogicalWord,
     OperatorPhrase,
     OperatorWord,
@@ -166,18 +166,18 @@ class CommonGroupKeyWord(PlainWord):
 class Keywords(VocabEnum):
     """EQL structural keywords (IF, THEN, FIND, WHERE, etc.)."""
 
-    IF           = KeywordWord("If")
-    THEN         = KeywordWord("then")
-    FIND         = KeywordWord("Find")
-    FIND_SETS_OF = KeywordWord("Find sets of")
-    SUCH_THAT    = KeywordWord("such that")
-    WHERE        = KeywordWord("where")
-    WHOSE        = KeywordWord("whose")
-    GROUPED_BY   = KeywordWord("grouped by")
-    GROUPED      = KeywordWord("grouped")
-    HAVING       = KeywordWord("having")
-    ORDERED_BY   = KeywordWord("ordered by")
-    TRUE         = KeywordWord("true")
+    IF           = KeyWord("If")
+    THEN         = KeyWord("then")
+    FIND         = KeyWord("Find")
+    FIND_SETS_OF = KeyWord("Find sets of")
+    SUCH_THAT    = KeyWord("such that")
+    WHERE        = KeyWord("where")
+    WHOSE        = KeyWord("whose")
+    GROUPED_BY   = KeyWord("grouped by")
+    GROUPED      = KeyWord("grouped")
+    HAVING       = KeyWord("having")
+    ORDERED_BY   = KeyWord("ordered by")
+    TRUE         = KeyWord("true")
 
 
 class Logicals(VocabEnum):
