@@ -318,7 +318,7 @@ class Call(MappedVariable):
 
 
 @dataclass(eq=False, repr=False)
-class FlatVariable(MappedVariable):
+class FlatVariable(MappedVariable[T]):
     """
     A variable that is created from its child through a flattening operation that
      transforms the values of the child from an iterable-of-iterables into a single iterable of items.
@@ -330,12 +330,12 @@ class FlatVariable(MappedVariable):
     """
 
     def _apply_mapping_(
-        self, value: Iterable[Any], sources: Optional[OperationResult] = None
-    ) -> Iterable[Any]:
+        self, value: Iterable[T], sources: Optional[OperationResult] = None
+    ) -> Iterable[T]:
         yield from value
 
     @cached_property
-    def _name_(self):
+    def _name_(self) -> str:
         return f"Flatten({self._child_._name_})"
 
 
