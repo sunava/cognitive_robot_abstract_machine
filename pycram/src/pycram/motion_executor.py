@@ -311,11 +311,13 @@ class MotionExecutor:
                         stagnant_checks >= self.STAGNATION_CHECKS_BEFORE_ABORT
                         or wiggle_checks >= self.WIGGLE_CHECKS_BEFORE_ABORT
                     ):
+                        wiggle_detected = progress_status == "wiggle"
                         raise TimeoutError(
                             "Motion stalled while waiting for end of motion "
                             f"after {counter} ticks in {self.plan_node.action.__class__.__name__} "
                             f"(status={progress_status}, max link displacement "
-                            f"{max_displacement:.5f}m over {self.STAGNATION_CHECK_INTERVAL_TICKS} ticks)."
+                            f"{max_displacement:.5f}m over {self.STAGNATION_CHECK_INTERVAL_TICKS} ticks, "
+                            f"wiggle={wiggle_detected})."
                         )
             else:
                 raise TimeoutError(

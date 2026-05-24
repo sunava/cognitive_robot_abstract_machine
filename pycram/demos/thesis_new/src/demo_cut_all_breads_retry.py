@@ -676,7 +676,7 @@ def main_cutting(
     seed=None,
     robot_name=None,
     environment_name=None,
-    object_kind="bread",
+    object_kind="apple",
     object_name=None,
     container_kind=None,
     container_name=None,
@@ -707,28 +707,38 @@ def main_cutting(
         object_kind=object_kind,
     )
 
-    node = setup_experiment_runtime(
-        world=world,
-        node_name="pycram_cut_all_breads_retry",
+    print("[setup] starting ROS runtime and RViz publishers", flush=True)
+    node, _ = _timed(
+        "cut/setup_runtime",
+        lambda: setup_experiment_runtime(
+            world=world,
+            node_name="pycram_cut_all_breads_retry",
+        ),
     )
 
     resolved_robot_name = resolve_robot_name(robot_name)
-    arm_tools = attach_available_tools(
-        world,
-        _parse_stl,
-        mesh_parts=("pycram_object_gap_demo", "big-knife.stl"),
-        right_name="knife_right",
-        left_name="knife_left",
-        right_pose_kwargs=get_tool_mount_pose_kwargs(
-            "cut", resolved_robot_name, Arms.RIGHT
+    print("[setup] attaching cutting tools", flush=True)
+    arm_tools, _ = _timed(
+        "cut/attach_tools",
+        lambda: attach_available_tools(
+            world,
+            _parse_stl,
+            mesh_parts=("pycram_object_gap_demo", "big-knife.stl"),
+            right_name="knife_right",
+            left_name="knife_left",
+            right_pose_kwargs=get_tool_mount_pose_kwargs(
+                "cut", resolved_robot_name, Arms.RIGHT
+            ),
+            left_pose_kwargs=get_tool_mount_pose_kwargs(
+                "cut", resolved_robot_name, Arms.LEFT
+            ),
+            tool_cls=Knife,
         ),
-        left_pose_kwargs=get_tool_mount_pose_kwargs(
-            "cut", resolved_robot_name, Arms.LEFT
-        ),
-        tool_cls=Knife,
     )
+    print("[setup] collecting cutting targets", flush=True)
     breads = collect_named_targets(world, f"{object_cfg['object_name_prefix']}_")
 
+    print("[setup] building execution context", flush=True)
     context = Context.from_world(world)
     context.ros_node = node
     robot_name = _robot_name(context.robot)
@@ -737,11 +747,15 @@ def main_cutting(
     cutting_knowledge = safe_get_cutting_knowledge(
         cut_cfg["query_verb"], CUTTING_QUERY_FOODON
     )
+    print("[setup] closing grippers", flush=True)
     with simulated_robot_without_collision:
-        sequential(
-            [SetGripperAction(Arms.BOTH, GripperState.CLOSE)],
-            context,
-        ).perform()
+        _, _ = _timed(
+            "cut/close_grippers",
+            lambda: sequential(
+                [SetGripperAction(Arms.BOTH, GripperState.CLOSE)],
+                context,
+            ).perform(),
+        )
 
     print("[setup] surface plan:")
     print(f"[setup] seed: {effective_seed}")

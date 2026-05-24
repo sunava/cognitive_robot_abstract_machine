@@ -34,6 +34,7 @@ import os
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -43,11 +44,13 @@ EXPERIMENT_DIR = RECORDS_DIR / "causal_intervention"
 RAW_INTERVENTION_RESULTS = EXPERIMENT_DIR / "raw_cutting_intervention_results2.csv"
 RAW_RESULTS_BY_TASK = {
     "cut": EXPERIMENT_DIR / "raw_cutting_intervention_results2.csv",
-    "wipe": EXPERIMENT_DIR / "raw_wiping_intervention_results.csv",
-    "mix": EXPERIMENT_DIR / "raw_mixing_intervention_results.csv",
+    "pour": EXPERIMENT_DIR / "raw_pouring_intervention_results2.csv",
+    "wipe": EXPERIMENT_DIR / "raw_wiping_intervention_results2.csv",
+    "mix": EXPERIMENT_DIR / "raw_mixing_intervention_results2.csv",
 }
 RESULTS_ENV_BY_TASK = {
     "cut": "THESIS_CUT_RESULTS_CSV_PATH",
+    "pour": "THESIS_POUR_RESULTS_CSV_PATH",
     "wipe": "THESIS_WIPE_RESULTS_CSV_PATH",
     "mix": "THESIS_MIX_RESULTS_CSV_PATH",
 }
@@ -55,6 +58,19 @@ MANIFEST_CSV = EXPERIMENT_DIR / "robot_substitution_manifest.csv"
 PAIRED_DATASET_CSV = EXPERIMENT_DIR / "paired_robot_substitution_dataset.csv"
 PAIRWISE_EFFECTS_CSV = EXPERIMENT_DIR / "paired_robot_substitution_effects.csv"
 SUMMARY_JSON = EXPERIMENT_DIR / "robot_substitution_summary.json"
+RUN_STATUS_CSV = EXPERIMENT_DIR / "robot_substitution_run_status.csv"
+DEFAULT_CHILD_RUN_TIMEOUT_S = 1800
+RUN_STATUS_COLUMNS = [
+    "timestamp_utc",
+    "status",
+    "causal_experiment_id",
+    "task_name",
+    "environment_name",
+    "seed",
+    "robot_name",
+    "returncode",
+    "message",
+]
 PAIRED_DATASET_BY_TASK = {
     task_name: EXPERIMENT_DIR / f"paired_{task_name}_robot_substitution_dataset.csv"
     for task_name in RAW_RESULTS_BY_TASK
@@ -85,6 +101,8 @@ TASK_ALIASES = {
     "cut": "cut",
     "cutting": "cut",
     "bread_cutting": "cut",
+    "pour": "pour",
+    "pouring": "pour",
     "wipe": "wipe",
     "wiping": "wipe",
     "space_wiping": "wipe",
@@ -175,20 +193,230 @@ def write_manifest(manifest: pd.DataFrame) -> None:
     print(f"Planned runs: {len(manifest)}")
 
 
-def execute_manifest(manifest: pd.DataFrame) -> None:
+def run_key(*, task_name: object, environment_name: object, seed: object, robot_name: object):
+    return (
+        normalize_task_name(task_name),
+        normalize_environment_name(environment_name),
+        int(seed),
+        normalize_robot_name(robot_name),
+    )
+
+
+def manifest_row_key(row) -> tuple[str, str, int, str]:
+    return run_key(
+        task_name=row.task_name,
+        environment_name=row.environment_name,
+        seed=row.seed,
+        robot_name=row.robot_name,
+    )
+
+
+def append_run_status(row, status: str, *, returncode: int | str = "", message: str = "") -> None:
+    EXPERIMENT_DIR.mkdir(parents=True, exist_ok=True)
+    status_row = {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "status": status,
+        "causal_experiment_id": row.causal_experiment_id,
+        "task_name": normalize_task_name(row.task_name),
+        "environment_name": normalize_environment_name(row.environment_name),
+        "seed": int(row.seed),
+        "robot_name": normalize_robot_name(row.robot_name),
+        "returncode": returncode,
+        "message": message,
+    }
+    status_df = pd.DataFrame([status_row], columns=RUN_STATUS_COLUMNS)
+    status_df.to_csv(
+        RUN_STATUS_CSV,
+        mode="a",
+        header=not RUN_STATUS_CSV.exists() or RUN_STATUS_CSV.stat().st_size == 0,
+        index=False,
+    )
+
+
+def load_run_status_events() -> pd.DataFrame:
+    if not RUN_STATUS_CSV.exists() or RUN_STATUS_CSV.stat().st_size == 0:
+        return pd.DataFrame(columns=RUN_STATUS_COLUMNS)
+    events = pd.read_csv(RUN_STATUS_CSV)
+    for column in RUN_STATUS_COLUMNS:
+        if column not in events.columns:
+            events[column] = ""
+    events["seed"] = pd.to_numeric(events["seed"], errors="coerce").astype("Int64")
+    events["task_name"] = events["task_name"].map(normalize_task_name)
+    events["environment_name"] = events["environment_name"].map(
+        normalize_environment_name
+    )
+    events["robot_name"] = events["robot_name"].map(normalize_robot_name)
+    return events
+
+
+def latest_status_by_run() -> dict[tuple[str, str, int, str], str]:
+    events = load_run_status_events()
+    latest = {}
+    for event in events.itertuples():
+        if pd.isna(event.seed):
+            continue
+        latest[
+            run_key(
+                task_name=event.task_name,
+                environment_name=event.environment_name,
+                seed=event.seed,
+                robot_name=event.robot_name,
+            )
+        ] = str(event.status)
+    return latest
+
+
+def infer_completed_run_keys_from_raw_results(
+    manifest: pd.DataFrame,
+) -> set[tuple[str, str, int, str]]:
+    inferred = set()
+    for task_name in sorted(manifest["task_name"].map(normalize_task_name).unique()):
+        raw_path = raw_results_path_for_task(task_name)
+        if not raw_path.exists() or raw_path.stat().st_size == 0:
+            continue
+        try:
+            raw = load_raw_results(raw_path)
+        except (FileNotFoundError, KeyError, ValueError):
+            continue
+        raw = raw[raw["task_name_normalized"] == task_name].copy()
+        if raw.empty or "task_instance_id" not in raw.columns:
+            continue
+        raw = raw.dropna(
+            subset=[
+                "environment_name_normalized",
+                "seed",
+                "robot_name_normalized",
+                "task_instance_id",
+            ]
+        )
+        counts = (
+            raw.groupby(
+                [
+                    "environment_name_normalized",
+                    "seed",
+                    "robot_name_normalized",
+                ]
+            )["task_instance_id"]
+            .nunique()
+            .reset_index(name="row_count")
+        )
+        block_max = counts.groupby(
+            ["environment_name_normalized", "seed"]
+        )["row_count"].transform("max")
+        block_robot_count = counts.groupby(
+            ["environment_name_normalized", "seed"]
+        )["robot_name_normalized"].transform("nunique")
+        completed = counts[
+            (counts["row_count"] > 0)
+            & (counts["row_count"] == block_max)
+            & (block_robot_count > 1)
+        ]
+        for row in completed.itertuples():
+            inferred.add(
+                run_key(
+                    task_name=task_name,
+                    environment_name=row.environment_name_normalized,
+                    seed=row.seed,
+                    robot_name=row.robot_name_normalized,
+                )
+            )
+    manifest_keys = {manifest_row_key(row) for row in manifest.itertuples()}
+    return inferred & manifest_keys
+
+
+def remove_raw_rows_for_run(row) -> int:
+    raw_path = raw_results_path_for_task(row.task_name)
+    if not raw_path.exists() or raw_path.stat().st_size == 0:
+        return 0
+    raw = pd.read_csv(raw_path)
+    if raw.empty:
+        return 0
+    seed = pd.to_numeric(raw.get("seed"), errors="coerce")
+    robot = raw.get("robot_name", pd.Series("", index=raw.index)).map(
+        normalize_robot_name
+    )
+    environment = raw.get("world_name", pd.Series("", index=raw.index)).map(
+        normalize_environment_name
+    )
+    task = raw.get("task_name", pd.Series("", index=raw.index)).map(
+        normalize_task_name
+    )
+    key = manifest_row_key(row)
+    matching = (
+        (task == key[0])
+        & (environment == key[1])
+        & (seed == key[2])
+        & (robot == key[3])
+    )
+    removed = int(matching.sum())
+    if removed:
+        raw.loc[~matching].to_csv(raw_path, index=False)
+    return removed
+
+
+def execute_manifest(manifest: pd.DataFrame, *, resume: bool = True) -> None:
+    latest_status = latest_status_by_run() if resume else {}
+    completed_keys = {
+        key for key, status in latest_status.items() if status == "completed"
+    }
+    inferred_keys = set()
+    if resume:
+        inferred_keys = infer_completed_run_keys_from_raw_results(manifest)
+        completed_keys |= inferred_keys
+        remaining = len(manifest) - len(
+            {manifest_row_key(row) for row in manifest.itertuples()} & completed_keys
+        )
+        print(
+            "[causal-resume] "
+            f"status-completed={len(completed_keys - inferred_keys)} "
+            f"raw-inferred-completed={len(inferred_keys)} "
+            f"remaining={remaining} "
+            f"status-log={RUN_STATUS_CSV}"
+        )
+
     for index, row in manifest.iterrows():
+        key = manifest_row_key(row)
+        if resume and key in completed_keys:
+            print(
+                "[causal-resume] skip completed "
+                f"{index + 1}/{len(manifest)} task={row.task_name} "
+                f"env={row.environment_name} seed={row.seed} robot={row.robot_name}"
+            )
+            continue
+        if resume:
+            removed = remove_raw_rows_for_run(row)
+            if removed:
+                print(
+                    "[causal-resume] removed incomplete raw rows "
+                    f"task={row.task_name} env={row.environment_name} "
+                    f"seed={row.seed} robot={row.robot_name} rows={removed}"
+                )
         print(
             "[causal-run] "
             f"{index + 1}/{len(manifest)} "
             f"task={row.task_name} env={row.environment_name} "
             f"seed={row.seed} robot={row.robot_name}"
         )
-        run_task_intervention_isolated(
+        append_run_status(row, "started")
+        result = run_task_intervention_isolated(
             task_name=row.task_name,
             seed=int(row.seed),
             robot_name=row.robot_name,
             environment_name=row.environment_name,
         )
+        if result.returncode:
+            removed = remove_raw_rows_for_run(row)
+            append_run_status(
+                row,
+                "failed",
+                returncode=int(result.returncode),
+                message=(
+                    "child process returned non-zero; "
+                    f"removed_raw_rows={removed}"
+                ),
+            )
+        else:
+            append_run_status(row, "completed", returncode=0)
 
 
 def run_cutting_intervention_isolated(
@@ -227,7 +455,9 @@ def run_task_intervention_isolated(
     child_python_paths = local_python_paths + existing_python_paths
     EXPERIMENT_DIR.mkdir(parents=True, exist_ok=True)
     code = (
-        "import sys; "
+        "import faulthandler, sys; "
+        "faulthandler.enable(); "
+        "faulthandler.dump_traceback_later(180, repeat=False); "
         f"sys.path[:0] = {[str(path) for path in local_python_paths]!r}; "
         "from demos.thesis_new.src.demo_runners import run_thesis_demo; "
         "run_thesis_demo("
@@ -239,11 +469,30 @@ def run_task_intervention_isolated(
     )
     env = os.environ.copy()
     env["PYTHONPATH"] = os.pathsep.join(str(path) for path in child_python_paths)
+    env["PYTHONUNBUFFERED"] = "1"
     env.setdefault("MPLCONFIGDIR", "/tmp")
     env[RESULTS_ENV_BY_TASK[normalized_task]] = str(
         raw_results_path_for_task(normalized_task)
     )
-    result = subprocess.run([sys.executable, "-c", code], env=env)
+    child_run_timeout_s = int(
+        os.environ.get("THESIS_CAUSAL_CHILD_TIMEOUT_S", DEFAULT_CHILD_RUN_TIMEOUT_S)
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            env=env,
+            timeout=child_run_timeout_s,
+        )
+    except subprocess.TimeoutExpired:
+        print(
+            "[causal-run] child wall-clock timeout; continuing "
+            f"(task={normalized_task}, seed={seed}, robot={robot_name}, "
+            f"environment={environment_name}, timeout_s={child_run_timeout_s})"
+        )
+        result = subprocess.CompletedProcess(
+            args=[sys.executable, "-c", code],
+            returncode=124,
+        )
     if result.returncode:
         print(
             "[causal-run] child failed; continuing "

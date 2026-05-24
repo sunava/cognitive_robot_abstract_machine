@@ -49,8 +49,7 @@ ENVIRONMENT_ALLOWED_SURFACE_NAME_KEYWORDS = {
 }
 MIN_SUPPORT_SURFACE_AREA_M2 = 0.025
 MIN_SUPPORT_SURFACE_SPAN_M = 0.18
-MAX_SUPPORT_SURFACE_TOP_Z_M = 1.30
-MAX_SPAWN_OBJECT_WORLD_Z_M = 1.30
+MAX_SPAWN_OBJECT_WORLD_Z_M = 1.35
 SPAWN_OBSTACLE_VERTICAL_MARGIN_M = 0.03
 SPAWN_OBSTACLE_TOP_EPSILON_M = 0.01
 
@@ -154,7 +153,7 @@ def _surface_like_name(name):
     return False
 
 
-def _surface_geometry_is_usable(body):
+def _surface_geometry_is_usable(body, world=None):
     basename = (_body_basename(body) or "").lower()
     if any(skip in basename for skip in GENERIC_SUPPORT_EXCLUDE_KEYWORDS):
         return False
@@ -170,13 +169,10 @@ def _surface_geometry_is_usable(body):
 
     span_x = float(extents[0])
     span_y = float(extents[1])
-    top_z = float(maxs[2])
     area = max(0.0, span_x) * max(0.0, span_y)
     if area < MIN_SUPPORT_SURFACE_AREA_M2:
         return False
     if min(span_x, span_y) < MIN_SUPPORT_SURFACE_SPAN_M:
-        return False
-    if top_z <= 0.2 or top_z > MAX_SUPPORT_SURFACE_TOP_Z_M:
         return False
     return True
 
@@ -193,7 +189,7 @@ def _collect_surfaces_by_geometry(world, seen):
             continue
         if any(skip in basename for skip in GENERIC_SUPPORT_EXCLUDE_KEYWORDS):
             continue
-        if not _surface_geometry_is_usable(body):
+        if not _surface_geometry_is_usable(body, world):
             continue
         surfaces.append(body)
         seen.add(name)
@@ -274,6 +270,20 @@ def _world_aabb_for_body(world, body):
     return corners.min(axis=0), corners.max(axis=0)
 
 
+def _build_spawn_obstacle_aabbs(world, robot_body_ids, robot_body_names):
+    aabbs = []
+    for body in getattr(world, "bodies", []):
+        name = _body_name(body)
+        if not name:
+            continue
+        if _is_robot_body(body, name, robot_body_ids, robot_body_names):
+            continue
+        aabb = _world_aabb_for_body(world, body)
+        if aabb is not None:
+            aabbs.append((body, name, aabb))
+    return aabbs
+
+
 def _candidate_overlaps_existing_body(
     *,
     world,
@@ -282,18 +292,14 @@ def _candidate_overlaps_existing_body(
     support_body,
     robot_body_ids,
     robot_body_names,
+    obstacle_aabbs=None,
 ):
     x, y, z = _pose_xyz(candidate_world_pose)
-    for body in getattr(world, "bodies", []):
+    obstacle_aabbs = obstacle_aabbs or _build_spawn_obstacle_aabbs(
+        world, robot_body_ids, robot_body_names
+    )
+    for body, name, aabb in obstacle_aabbs:
         if body is support_body:
-            continue
-        name = _body_name(body)
-        if not name:
-            continue
-        if _is_robot_body(body, name, robot_body_ids, robot_body_names):
-            continue
-        aabb = _world_aabb_for_body(world, body)
-        if aabb is None:
             continue
         mins, maxs = aabb
         if float(z) < float(mins[2]) - SPAWN_OBSTACLE_VERTICAL_MARGIN_M:
@@ -329,7 +335,7 @@ def _collect_surface_bodies(world):
             continue
         if name in seen:
             continue
-        if not _surface_geometry_is_usable(body):
+        if not _surface_geometry_is_usable(body, world):
             continue
         surfaces.append(body)
         seen.add(name)
@@ -351,7 +357,7 @@ def _collect_surface_bodies(world):
             continue
         if not _surface_like_name(name):
             continue
-        if not _surface_geometry_is_usable(body):
+        if not _surface_geometry_is_usable(body, world):
             continue
         surfaces.append(body)
         seen.add(name)
@@ -590,6 +596,9 @@ def _sample_random_surface_layout(
     created_idx = 0
     reachability_cache = {}
     robot_body_ids, robot_body_names = _robot_body_identity_sets(world)
+    obstacle_aabbs = _build_spawn_obstacle_aabbs(
+        world, robot_body_ids, robot_body_names
+    )
 
     with world.modify_world():
         _tint_surfaces_light_brown(world)
@@ -669,7 +678,7 @@ def _sample_random_surface_layout(
                         reject_clearance += 1
                         continue
                     candidate_position = candidate_world_pose.to_position()
-                    if float(candidate_position.z) > MAX_SPAWN_OBJECT_WORLD_Z_M:
+                    if float(candidate_position.z) >= MAX_SPAWN_OBJECT_WORLD_Z_M:
                         reject_clearance += 1
                         continue
                     overlaps_body, overlap_name = _candidate_overlaps_existing_body(
@@ -679,6 +688,7 @@ def _sample_random_surface_layout(
                         support_body=surface_body,
                         robot_body_ids=robot_body_ids,
                         robot_body_names=robot_body_names,
+                        obstacle_aabbs=obstacle_aabbs,
                     )
                     if overlaps_body:
                         reject_overlap += 1
@@ -751,7 +761,9 @@ def _sample_random_surface_layout(
                 f"overlap={reject_overlap}, "
                 f"reachability={reject_reachability})"
             )
+        print("[spawn] finalizing world model after sampled placements", flush=True)
 
+    print("[spawn] world model finalized", flush=True)
     return world, placements, surface_plan
 
 

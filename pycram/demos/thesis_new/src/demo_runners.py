@@ -8,6 +8,8 @@ from .world_setup import resolve_robot_name
 THESIS_DEMO_RUNNERS = {
     "cut": ("demo_cut_all_breads_retry", "main_cutting"),
     "cutting": ("demo_cut_all_breads_retry", "main_cutting"),
+    "pour": ("demo_pour_all_bowls_retry", "main_pouring"),
+    "pouring": ("demo_pour_all_bowls_retry", "main_pouring"),
     "mix": ("demo_mix_all_bowls_retry", "main_mixing"),
     "mixing": ("demo_mix_all_bowls_retry", "main_mixing"),
     "wipe": ("demo_wipe_all_spaces_retry", "main_wiping"),

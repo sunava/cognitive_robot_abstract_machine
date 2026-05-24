@@ -10,6 +10,7 @@ from std_msgs.msg import ColorRGBA
 from typing_extensions import Optional, Any
 from visualization_msgs.msg import MarkerArray
 
+from semantic_digital_twin.robots.abstract_robot import Manipulator, AbstractRobot
 from pycram.robot_plans.actions.composite.thesis_math.metrics import (
     points_world_to_body,
     cutting_depth_metrics,
@@ -21,10 +22,7 @@ from pycram.robot_plans.actions.composite.thesis_math.motion_models import (
 )
 
 
-from semantic_digital_twin.semantic_annotations.mixins import HasRootBody
-from semantic_digital_twin.spatial_types import Point3, Vector3
-from semantic_digital_twin.spatial_types.spatial_types import Pose
-from semantic_digital_twin.world_description.world_entity import Body
+
 from .thesis_math.motion_presets import (
     build_container_sequence,
     build_surface_sequence,
@@ -40,8 +38,9 @@ from ... import (
 
 from ....datastructures.enums import (
     Arms,
-    MovementType,
+    MovementType, ApproachDirection, VerticalAlignment,
 )
+from ....datastructures.grasp import GraspDescription
 from ....plans.factories import sequential
 from ....robot_plans.actions.base import ActionDescription
 from ....robot_plans.motions.gripper import MoveToolCenterPointMotion
@@ -1220,81 +1219,65 @@ class PouringAction(GeneralizedActionPlan):
 @dataclass
 class SimplePouringAction(ActionDescription):
     """
-    Execute a simple Cartesian pour over a target container.
+    Park the arms of the robot.
     """
 
     object_designator: Body
     """
-    Target container over which the held object should be poured.
+    The object to pick up
     """
 
     arm: Arms
     """
-    Arm that is holding the pouring object.
+    Entry from the enum for which arm should be parked.
     """
-
-    offset_x: float = 0.009
-    """
-    World-space X offset from the target container center.
-    """
-
-    offset_y: float = -0.125
-    """
-    World-space Y offset from the target container center.
-    """
-
-    offset_z: float = 0.17
-    """
-    World-space Z offset above the target container.
-    """
-
-    tilt_degrees: float = -110.0
-    """
-    Local roll applied after reaching the pre-pour pose.
-    """
-
-    def _approach_pose(self) -> Pose:
-        target_pose = self.object_designator.global_pose
-        tip = ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
-        tip_quat = tip.global_pose.to_quaternion().to_np()
-
-        return Pose.from_xyz_quaternion(
-            float(target_pose.x) + float(self.offset_x),
-            float(target_pose.y) + float(self.offset_y),
-            float(target_pose.z) + float(self.offset_z),
-            float(tip_quat[0]),
-            float(tip_quat[1]),
-            float(tip_quat[2]),
-            float(tip_quat[3]),
-            reference_frame=self.world.root,
-        )
-
-    def _tilted_pose(self, approach_pose: Pose) -> Pose:
-        tilt = Pose.from_xyz_rpy(
-            roll=float(np.deg2rad(self.tilt_degrees)),
-            reference_frame=self.world.root,
-        ).to_homogeneous_matrix()
-        return (approach_pose.to_homogeneous_matrix() @ tilt).to_pose()
 
     def execute(self) -> None:
-        approach_pose = self._approach_pose()
-        tilted_pose = self._tilted_pose(approach_pose)
+
+        grasp = (GraspDescription(
+            ApproachDirection.FRONT, VerticalAlignment.NoAlignment, False
+        ).grasp_orientation())
+
+        object_pose = self.object_designator.global_pose
+        object_pose.x += 0.009
+        object_pose.y -= 0.125
+        object_pose.z += 0.17
+
+        def approach_or_rotate(rotate: bool) -> Pose:
+            ros_pose = object_pose
+
+            if rotate:
+                q = utils.axis_angle_to_quaternion([1, 0, 0], -110)
+                ros_pose.rotate_by_quaternion(utils.quat_np_list(q))
+
+            man = next(iter(self.robot_view.manipulators))
+            tool_frame = man.tool_frame
+
+            poseTg = PoseStamped.from_spatial_type(
+                self.world.transform(ros_pose.to_spatial_type(), tool_frame)
+            )
+            poseTg.rotate_by_quaternion(grasp)
+
+            return PoseStamped.from_spatial_type(
+                self.world.transform(poseTg.to_spatial_type(), self.world.root)
+            )
+
+        pose = approach_or_rotate(False)
+        pose_rot = approach_or_rotate(True)
 
         self.add_subplan(
             sequential(
-                [
-                    MoveToolCenterPointMotion(
-                        approach_pose,
-                        self.arm,
-                        allow_gripper_collision=True,
-                        movement_type=MovementType.CARTESIAN,
-                    ),
-                    MoveToolCenterPointMotion(
-                        tilted_pose,
-                        self.arm,
-                        allow_gripper_collision=True,
-                        movement_type=MovementType.CARTESIAN,
-                    ),
-                ]
-            )
+        [
+            MoveToolCenterPointMotion(
+                pose,
+                self.arm,
+                allow_gripper_collision=True,
+                movement_type=MovementType.CARTESIAN,
+            ),
+            MoveToolCenterPointMotion(
+                pose_rot,
+                self.arm,
+                allow_gripper_collision=True,
+                movement_type=MovementType.CARTESIAN,
+            )],             self.context,
         ).perform()
