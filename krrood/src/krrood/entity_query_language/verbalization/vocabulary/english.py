@@ -34,6 +34,7 @@ from krrood.entity_query_language.verbalization.fragments.roles import SemanticR
 from krrood.entity_query_language.verbalization.utils import _ensure_plural
 from krrood.entity_query_language.verbalization.vocabulary.words import (
     AggregationWord,
+    ChildForm,
     KeyWord,
     LogicalWord,
     OperatorPhrase,
@@ -196,8 +197,8 @@ class Aggregations(VocabEnum):
     COUNT_ALL  = AggregationWord("count of all")
     SUM        = AggregationWord("sum of")
     AVERAGE    = AggregationWord("average of")
-    MAX        = AggregationWord("maximum")
-    MIN        = AggregationWord("minimum")
+    MAX        = AggregationWord("maximum",   child_form=ChildForm.SINGULAR_OF)
+    MIN        = AggregationWord("minimum",   child_form=ChildForm.SINGULAR_OF)
     MODE       = AggregationWord("mode of")
     MULTI_MODE = AggregationWord("all modes of")
 

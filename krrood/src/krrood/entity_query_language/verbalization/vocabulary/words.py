@@ -85,10 +85,34 @@ class LogicalWord(RoleWord):
     _role_ = SemanticRole.LOGICAL
 
 
+class ChildForm(Enum):
+    """
+    How an :class:`AggregationWord` verbalizes its child expression.
+
+    * ``PLURAL`` — the aggregation word already ends with *"of"* (e.g. ``"sum of"``,
+      ``"number of"``); the child is rendered in plural form:
+      *"sum of amounts of BankTransactions"*.
+    * ``SINGULAR_OF`` — the aggregation word has no trailing *"of"* (``"maximum"``,
+      ``"minimum"``); a literal *"of"* preposition is inserted and the child is
+      rendered via the regular (singular, definite-article) chain verbalization:
+      *"maximum of the amount of the amount_details of a BankTransaction"*.
+    """
+
+    PLURAL      = "plural"
+    SINGULAR_OF = "singular_of"
+
+
+@dataclass(frozen=True)
 class AggregationWord(RoleWord):
-    """Aggregation phrase with :attr:`~SemanticRole.AGGREGATION` role."""
+    """
+    Aggregation phrase with :attr:`~SemanticRole.AGGREGATION` role.
+
+    :ivar child_form: Controls how the child expression is verbalized.
+        Defaults to :attr:`ChildForm.PLURAL`.
+    """
 
     _role_ = SemanticRole.AGGREGATION
+    child_form: ChildForm = ChildForm.PLURAL
 
 
 class OperatorWord(RoleWord):

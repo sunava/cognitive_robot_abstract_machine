@@ -346,9 +346,88 @@ def test_verbalize_sum():
 
 
 def test_verbalize_max_min():
+    # MAX/MIN use SINGULAR_OF: child is verbalized via regular chain form, not plural.
     x = variable(int, [1, 2])
-    assert "maximum" in verbalize_expression(eql.max(x)) and "ints" in verbalize_expression(eql.max(x))
-    assert "minimum" in verbalize_expression(eql.min(x)) and "ints" in verbalize_expression(eql.min(x))
+    max_text = verbalize_expression(eql.max(x))
+    min_text = verbalize_expression(eql.min(x))
+    assert "the maximum" in max_text
+    assert "the minimum" in min_text
+    assert "int" in max_text
+    assert "int" in min_text
+
+
+def test_aggregation_article_count_first_mention():
+    """COUNT produces 'the number of …' even on first mention."""
+    x = variable(int, [1, 2])
+    text = verbalize_expression(eql.count(x))
+    assert text.startswith("the number of"), f"Got: {text!r}"
+
+
+def test_aggregation_article_sum_first_mention():
+    """SUM produces 'the sum of …' even on first mention."""
+    x = variable(int, [1, 2])
+    text = verbalize_expression(eql.sum(x))
+    assert text.startswith("the sum of"), f"Got: {text!r}"
+
+
+def test_aggregation_article_average_first_mention():
+    """AVERAGE produces 'the average of …' even on first mention."""
+    x = variable(int, [1, 2])
+    text = verbalize_expression(eql.average(x))
+    assert text.startswith("the average of"), f"Got: {text!r}"
+
+
+def test_aggregation_article_max_first_mention():
+    """MAX produces 'the maximum of …' even on first mention."""
+    x = variable(int, [1, 2])
+    text = verbalize_expression(eql.max(x))
+    assert text.startswith("the maximum of"), f"Got: {text!r}"
+
+
+def test_aggregation_article_min_first_mention():
+    """MIN produces 'the minimum of …' even on first mention."""
+    x = variable(int, [1, 2])
+    text = verbalize_expression(eql.min(x))
+    assert text.startswith("the minimum of"), f"Got: {text!r}"
+
+
+def test_max_single_attribute_chain():
+    """MAX on a single-level attribute: 'the maximum of the <attr> of a <Type>'."""
+    t = variable(BankTransaction, domain=None)
+    text = verbalize_expression(an(entity(eql.max(t.amount_details))))
+    assert "the maximum of the amount_details of a BankTransaction" in text, f"Got: {text!r}"
+
+
+def test_min_single_attribute_chain():
+    """MIN on a single-level attribute: 'the minimum of the <attr> of a <Type>'."""
+    t = variable(BankTransaction, domain=None)
+    text = verbalize_expression(an(entity(eql.min(t.amount_details))))
+    assert "the minimum of the amount_details of a BankTransaction" in text, f"Got: {text!r}"
+
+
+def test_max_multi_level_attribute_chain():
+    """MAX on a multi-level chain: article before agg word, 'of' separator, no leading article on child."""
+    t = variable(BankTransaction, domain=None)
+    query = an(entity(eql.max(t.amount_details.amount)))
+    text = verbalize_expression(query)
+    assert "the maximum of the amount of the amount_details of a BankTransaction" in text, f"Got: {text!r}"
+
+
+def test_min_multi_level_attribute_chain():
+    """MIN on a multi-level chain: mirrors MAX behaviour."""
+    t = variable(BankTransaction, domain=None)
+    query = an(entity(eql.min(t.amount_details.amount)))
+    text = verbalize_expression(query)
+    assert "the minimum of the amount of the amount_details of a BankTransaction" in text, f"Got: {text!r}"
+
+
+def test_max_re_mention_in_having():
+    """MAX appears in both selected variable and HAVING: both mentions use 'the maximum of …'."""
+    t = variable(BankTransaction, domain=None)
+    max_amount = eql.max(t.amount_details.amount)
+    query = a(set_of(max_amount).grouped_by(t.amount_details).having(max_amount > 100))
+    text = verbalize_expression(query)
+    assert text.count("the maximum of") >= 2, f"Expected ≥2 occurrences of 'the maximum of' in: {text!r}"
 
 
 # ── Integration: target test cases ────────────────────────────────────────────
@@ -607,15 +686,13 @@ def test_verbalize_predicate_no_template_no_args_fallback():
 
 
 def test_aggregator_coreference_second_mention_is_the(departments_and_employees_fixture):
-    """Same aggregator expression in set_of and having → second mention prefixed with 'the'."""
+    """Same aggregator expression in set_of and having → both mentions include 'the'."""
     _, _ = departments_and_employees_fixture
     emp = variable(Employee, domain=None)
     avg_salary = eql.average(emp.salary)
     query = a(set_of(avg_salary).grouped_by(emp.department).having(avg_salary > 30000))
     text = verbalize_expression(query)
 
-    # First mention (in set_of): "average of …"
-    # Second mention (in having): "the average of …"
     assert "the average of" in text
 
 

@@ -9,7 +9,8 @@ from krrood.entity_query_language.verbalization.chain_utils import verbalize_plu
 from krrood.entity_query_language.verbalization.fragments.base import PhraseFragment, VerbFragment
 from krrood.entity_query_language.verbalization.rule_engine import VerbalizationRule
 from krrood.entity_query_language.verbalization.utils import _str
-from krrood.entity_query_language.verbalization.vocabulary.english import Aggregations, Articles
+from krrood.entity_query_language.verbalization.vocabulary.english import Aggregations, Articles, Prepositions
+from krrood.entity_query_language.verbalization.vocabulary.words import ChildForm
 
 if TYPE_CHECKING:
     from krrood.entity_query_language.verbalization.context import VerbalizationContext
@@ -48,7 +49,18 @@ class AggregatorRule(VerbalizationRule):
     @classmethod
     def transform(cls, expr: "Aggregator", ctx: "VerbalizationContext", delegate: "EQLVerbalizer") -> VerbFragment:
         """
-        Build *"<aggregation> <plural_child>"*, or *"the <aggregation> <plural_child>"* on re-mention.
+        Build *"the <aggregation> <plural_child>"* or *"the <aggregation> of <child>"*.
+
+        All mentions always include the definite article *"the"* — aggregations denote a
+        specific computed value and are always definite noun phrases.
+
+        The child form depends on :attr:`~krrood.entity_query_language.verbalization.vocabulary.words.AggregationWord.child_form`:
+
+        * :attr:`~krrood.entity_query_language.verbalization.vocabulary.words.ChildForm.PLURAL` —
+          ``verbalize_plural`` produces the plural child, e.g. *"sum of amounts of Xs"*.
+        * :attr:`~krrood.entity_query_language.verbalization.vocabulary.words.ChildForm.SINGULAR_OF` —
+          the regular chain verbalization is used with an explicit *"of"* separator,
+          e.g. *"maximum of the amount of the amount_details of a X"*.
 
         :param expr: Aggregator expression.
         :param ctx: Shared verbalization state.
@@ -56,12 +68,20 @@ class AggregatorRule(VerbalizationRule):
         :returns: Aggregation phrase fragment.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
-        child_frag = verbalize_plural(expr._child_, ctx, delegate.build)
-        agg_frag = _AGGREGATION_KIND[type(expr)].as_fragment()
-        if expr._id_ in ctx.seen:
-            return _phrase(Articles.THE.as_fragment(), agg_frag, child_frag)
-        ctx.seen[expr._id_] = _str(_phrase(agg_frag, child_frag))
-        return _phrase(agg_frag, child_frag)
+        agg_kind = _AGGREGATION_KIND[type(expr)]
+        agg_word = agg_kind.value
+        agg_frag = agg_kind.as_fragment()
+
+        if agg_word.child_form == ChildForm.SINGULAR_OF:
+            child_frag = delegate.build(expr._child_, ctx)
+            phrase = _phrase(Articles.THE.as_fragment(), agg_frag, Prepositions.OF.as_fragment(), child_frag)
+        else:
+            child_frag = verbalize_plural(expr._child_, ctx, delegate.build)
+            phrase = _phrase(Articles.THE.as_fragment(), agg_frag, child_frag)
+
+        if expr._id_ not in ctx.seen:
+            ctx.seen[expr._id_] = _str(_phrase(agg_frag, child_frag))
+        return phrase
 
 
 class CountAllRule(AggregatorRule):
