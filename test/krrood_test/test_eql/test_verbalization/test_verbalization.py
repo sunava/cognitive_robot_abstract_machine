@@ -1375,6 +1375,58 @@ def test_whose_grouping_mixed_groupable_and_residual():
     ), f"Got: {text!r}"
 
 
+def test_top_level_aggregation_max_whose():
+    """A top-level max selection ends with its source variable, so its WHERE folds into 'whose'."""
+    bt = variable(BankTransaction, domain=None)
+    query = an(
+        entity(eql.max(bt, key=lambda t: t.amount_details.amount)).where(
+            bt.booking_date > datetime.datetime(2026, 5, 15)
+        )
+    )
+    assert verbalize_expression(query) == (
+        "Find the maximum of a BankTransaction whose booking_date is after May 15, 2026"
+    )
+
+
+def test_top_level_aggregation_average_between_whose():
+    """A top-level average selection folds a >=/<= subject-attribute pair into 'whose … between'."""
+    bt = variable(BankTransaction, domain=None)
+    query = an(
+        entity(eql.average(bt.amount_details.amount)).where(
+            bt.booking_date >= datetime.datetime(2026, 5, 15),
+            bt.booking_date <= datetime.datetime(2026, 5, 27),
+        )
+    )
+    assert verbalize_expression(query) == (
+        "Find the average of the amount of the amount_details of a BankTransaction "
+        "whose booking_date is between May 15, 2026, and May 27, 2026"
+    )
+
+
+def test_top_level_aggregation_mixed_groupable_and_residual():
+    """For an aggregation subject, single-hop predicates fold to 'whose'; multi-hop stay 'such that'."""
+    bt = variable(BankTransaction, domain=None)
+    query = an(
+        entity(eql.average(bt.amount_details.amount)).where(
+            bt.booking_date > datetime.datetime(2026, 5, 15),
+            bt.amount_details.amount > 100,
+        )
+    )
+    text = verbalize_expression(query)
+    assert "whose booking_date is after May 15, 2026" in text, f"Got: {text!r}"
+    assert "such that" in text, f"Got: {text!r}"
+    assert "is greater than 100" in text, f"Got: {text!r}"
+
+
+def test_second_domain_top_level_aggregation_whose():
+    """Aggregation whose-grouping generalises to a second domain (Employee)."""
+    emp = variable(Employee, domain=None)
+    query = an(entity(eql.average(emp.salary)).where(emp.starting_salary > 20000))
+    assert verbalize_expression(query) == (
+        "Find the average of salaries of Employees whose starting_salary is greater than 20000"
+    )
+
+
 def test_calc_equality_uses_is_equal_to():
     """== against a calculation reads 'is equal to'."""
     bt = variable(BankTransaction, domain=None)

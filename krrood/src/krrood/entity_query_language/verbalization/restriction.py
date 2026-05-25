@@ -33,7 +33,10 @@ from krrood.entity_query_language.verbalization.range_fold import (
     fold_range_pairs,
     RangeFold,
 )
-from krrood.entity_query_language.verbalization.subquery import is_calculation_value
+from krrood.entity_query_language.verbalization.subquery import (
+    aggregation_source_root,
+    is_calculation_value,
+)
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Conjunctions,
     Keywords,
@@ -185,6 +188,94 @@ RESTRICTION_RULES: List[type] = [
     RangeRestrictionRule,
     AttributePredicateRestrictionRule,
 ]
+
+
+# ── Restriction subject resolution ──────────────────────────────────────────────
+
+
+class RestrictionSubjectRule(ABC):
+    """
+    Declarative rule resolving **which variable** a query's selection restricts, so the
+    selection's ``WHERE`` clause can fold into a post-nominal *"whose …"* modifier on it.
+
+    Dispatched first-match-wins by registry order (mirroring :class:`RestrictionRule`).  A
+    selection matched by **no** rule has no groupable subject — its ``WHERE`` clause stays a
+    full *"such that …"* clause.
+    """
+
+    @classmethod
+    @abstractmethod
+    def applies(cls, expr, selected_var, ctx: "VerbalizationContext") -> bool:
+        """Return ``True`` when this rule can name the restriction subject of *expr*."""
+
+    @classmethod
+    @abstractmethod
+    def subject(cls, expr, selected_var, ctx: "VerbalizationContext"):
+        """Return the :class:`~krrood.entity_query_language.core.variable.Variable` the ``WHERE`` restricts."""
+
+
+class SelectedVariableSubjectRule(RestrictionSubjectRule):
+    """The selection itself is a plain :class:`~krrood.entity_query_language.core.variable.Variable` → it is its own subject."""
+
+    @classmethod
+    def applies(cls, expr, selected_var, ctx: "VerbalizationContext") -> bool:
+        from krrood.entity_query_language.core.variable import Variable
+
+        return isinstance(selected_var, Variable)
+
+    @classmethod
+    def subject(cls, expr, selected_var, ctx: "VerbalizationContext"):
+        return selected_var
+
+
+class AggregationSourceSubjectRule(RestrictionSubjectRule):
+    """
+    The selection is an aggregation over a single source variable's chain
+    (e.g. ``max(t.amount_details.amount)`` or ``max(t, key=…)``).
+
+    The aggregation selection renders its child chain root-last
+    (*"the average of the amount of the amount_details of a BankTransaction"*), and
+    :func:`~krrood.entity_query_language.verbalization.subquery.aggregation_source_root`
+    returns exactly that chain root, so the selection ends with the source variable's noun
+    and a *"whose …"* modifier attaches to it grammatically.  The ``WHERE`` therefore
+    restricts the aggregated entity.
+    """
+
+    @classmethod
+    def applies(cls, expr, selected_var, ctx: "VerbalizationContext") -> bool:
+        from krrood.entity_query_language.operators.aggregators import Aggregator
+
+        return (
+            isinstance(selected_var, Aggregator)
+            and aggregation_source_root(expr) is not None
+        )
+
+    @classmethod
+    def subject(cls, expr, selected_var, ctx: "VerbalizationContext"):
+        return aggregation_source_root(expr)
+
+
+RESTRICTION_SUBJECT_RULES: List[type] = [
+    SelectedVariableSubjectRule,
+    AggregationSourceSubjectRule,
+]
+
+
+def restriction_subject(expr, selected_var, ctx: "VerbalizationContext"):
+    """
+    Resolve the variable a selection's ``WHERE`` clause restricts (first match in
+    :data:`RESTRICTION_SUBJECT_RULES` wins), or ``None`` when nothing groups.
+
+    :param expr: The :class:`~krrood.entity_query_language.query.query.Entity` being verbalized.
+    :param selected_var: Its selected variable (a ``Variable``, ``Aggregator``, …).
+    :param ctx: Shared verbalization state.
+    :returns: The subject ``Variable`` for *"whose"* folding, or ``None``.
+    :rtype: ~krrood.entity_query_language.core.variable.Variable or None
+    """
+    for rule in RESTRICTION_SUBJECT_RULES:
+        if rule.applies(expr, selected_var, ctx):
+            return rule.subject(expr, selected_var, ctx)
+    return None
 
 
 # ── Builder ─────────────────────────────────────────────────────────────────────

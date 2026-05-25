@@ -452,20 +452,28 @@ class EntityVerbalizer:
         self, expr, var, selected: VerbFragment, ctx: "VerbalizationContext"
     ) -> "tuple[VerbFragment, object]":
         """
-        For a single plain-:class:`~krrood.entity_query_language.core.variable.Variable`
-        subject with a ``WHERE`` clause, fold single-hop attribute predicates into a
-        *"whose …"* modifier appended to *selected* and return the residual as the
-        *"such that"* item.
+        Fold a subject's single-hop attribute predicates into a *"whose …"* modifier
+        appended to *selected*, returning the residual as the *"such that"* item.
+
+        The restriction subject is resolved declaratively via
+        :func:`~krrood.entity_query_language.verbalization.restriction.restriction_subject`:
+        it is the selected variable itself when that is a plain
+        :class:`~krrood.entity_query_language.core.variable.Variable`, or the aggregation
+        source variable when the selection is an aggregation over a single source variable's
+        chain (so *"whose"* attaches to the source noun the selection ends with).
 
         Returns ``(selected, _UNSET)`` when no grouping applies, so
         :meth:`_verbalize_query_body_` computes the WHERE clause itself as before.
         """
-        from krrood.entity_query_language.core.variable import Variable
+        from krrood.entity_query_language.verbalization.restriction import (
+            restriction_subject,
+        )
 
         where_expr = expr._where_expression_
-        if where_expr is None or not isinstance(var, Variable):
+        subject = restriction_subject(expr, var, ctx)
+        if where_expr is None or subject is None:
             return selected, _UNSET
-        whose, residual = self._restrictions.build(var, where_expr.condition, ctx)
+        whose, residual = self._restrictions.build(subject, where_expr.condition, ctx)
         if whose is not None:
             selected = _phrase(selected, whose)
         where_item = (
