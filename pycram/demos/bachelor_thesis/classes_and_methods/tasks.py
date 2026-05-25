@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing_extensions import Any
 from contextlib import contextmanager
 
 
@@ -16,6 +16,25 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.world_entity import SemanticAnnotation
 
+### Rewards #########################################
+REWARD_PER_OBJECT = 200
+REWARD_CUTTLERY = 50
+REWARD_PLATE = 100
+REWARD_NAVIGATE_TO_TABLE = 15
+REWARD_PICK_DISHWASHER_TAB = 100
+REWARD_DISHWASHER_TAB_INTO_SLOT = 160
+REWARD_PULL_PUSH_DISHWASHER_RACK = 100
+REWARD_OPEN_CLOSE_DISHWASHER = 200
+
+BONUS_REWARD_PER_OBJECT_OUT_OF_OR_IN_DISHWASHER = 70
+
+### Duration ########################################
+DURATION_PER_OBJECT = 30
+DURATION_HANDLE_DISHWASHER = 60
+
+
+#####################################################
+
 
 def perf_print(message: str):
     pass
@@ -29,7 +48,7 @@ def perf_step(label: str):
 class Task(ABC):
     name: str
     required_objects: list
-    perceived_objects: list
+    perceived_objects: list[SemanticAnnotation]
     reward: float
     duration: float
     world: World
@@ -38,9 +57,9 @@ class Task(ABC):
     """
 
     @abstractmethod
-    def precondition(self):
+    def precondition(self) -> list[bool]:
         """
-        each precondition is safed as bool. E.g. preconditions: precond1(), precond2(), precond3(), ... is safed as
+        each precondition is stored as bool. E.g. preconditions: precond1(), precond2(), precond3(), ... is safed as
         list [bool of precond1, bool of precond2, bool of precond3, ...]
         """
         pass
@@ -48,11 +67,9 @@ class Task(ABC):
     def preconditions_helper(self):
         preconditions = []
         for obj in self.required_objects:
-            found = False
             if obj in self.perceived_objects:
-                found = True
                 preconditions.append(True)
-            if not found:
+            else:
                 preconditions.append(False)
 
         return preconditions
@@ -63,10 +80,10 @@ class Task(ABC):
         pass
 
     @abstractmethod
-    def constraints(self):
+    def constraints(self) -> list[bool]:
         pass
 
-    def constraints_helper(self):
+    def constraints_helper(self) -> list[bool]:
         constraints = []
 
         for obj in self.required_objects:
@@ -107,14 +124,14 @@ class Task(ABC):
             res = weight_sum / weight_max
         return res
 
-    def calculate_current_score(self):
+    def calculate_current_score(self) -> float:
         return self.reward * self.calculate_feasibility()
 
-    def calculate_current_score_normalized(self):
+    def calculate_current_score_normalized(self) -> float:
         return self.calculate_current_score()/self.duration
 
     @abstractmethod
-    def update_to_current_world_state(self, **kwargs):
+    def update_to_current_world_state(self, **kwargs) -> None:
         pass
 
 
@@ -128,8 +145,8 @@ class PutAwayObjectTask(Task):
         self.required_objects = required_objects
 
         ## set for all instances of this task ##
-        self.reward = 200
-        self.duration = 30
+        self.reward = REWARD_PER_OBJECT
+        self.duration = DURATION_PER_OBJECT
 
         ## world stuff ##
         self.world = world
@@ -188,8 +205,9 @@ class SetTableTask(Task):
 
             ## set for all instances of this task ##
             self.required_objects = [Bowl, Plate, Spoon, Knife, Cup, Milk, Banana, Bread]
-            self.reward = 200 * len(self.required_objects) + 50 + 50 + 100 + 15 # 50 for each thing of cutlery and 100 for plate
-            self.duration = 30 * len(self.required_objects)
+
+            self.reward = REWARD_PER_OBJECT * len(self.required_objects) + REWARD_CUTTLERY + REWARD_CUTTLERY + REWARD_PLATE + REWARD_NAVIGATE_TO_TABLE # 50 for each thing of cutlery and 100 for plate
+            self.duration = DURATION_PER_OBJECT * len(self.required_objects)
 
             ## world stuff ##
             self.world = world
@@ -301,16 +319,7 @@ class CleanTableTask(Task):
             if obj in self.perceived_objects:
                 self.required_objects.append(obj)
 
-        cutlery = []
-        plates = []
-        for obj in self.required_objects:
-            if isinstance(obj, Cuttlery):
-                cutlery.append(obj)
-            if isinstance(obj, Plate):
-                plates.append(obj)
-        self.reward = 200 * len(self.required_objects) + len(cutlery) * 50 + len(plates) * 100 + 15  # 50 for each thing of cutlery and 100 for plate
-        self.duration = 30 * len(self.required_objects)
-
+        self._calculate_reward_and_duration()
 
     def precondition(self):
         return self.preconditions_helper()
@@ -356,6 +365,9 @@ class CleanTableTask(Task):
                 if not (obj in self.required_objects):
                     self.required_objects.append(obj)
 
+        self._calculate_reward_and_duration()
+
+    def _calculate_reward_and_duration(self):
         cutlery = []
         plates = []
         for obj in self.required_objects:
@@ -363,9 +375,9 @@ class CleanTableTask(Task):
                 cutlery.append(obj)
             if isinstance(obj, Plate):
                 plates.append(obj)
-        self.reward = 200 * len(self.required_objects) + len(cutlery) * 50 + len(
-            plates) * 100 + 15  # 50 for each thing of cutlery and 100 for plate
-        self.duration = 30 * len(self.required_objects)
+
+        self.reward = REWARD_PER_OBJECT * len(self.required_objects) + len(cutlery) * REWARD_CUTTLERY + len(plates) * REWARD_PLATE + REWARD_NAVIGATE_TO_TABLE
+        self.duration = DURATION_PER_OBJECT * len(self.required_objects)
 
 
 class LoadDishwasherTask(Task):
@@ -400,8 +412,7 @@ class LoadDishwasherTask(Task):
                 if (obj in self.perceived_objects) and isinstance(obj, (Cuttlery, Plate, Cup, Bowl)):
                     self.required_objects.append(obj)
 
-        self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 160 + 100 + 200
-        self.duration = 30 * len(self.required_objects) + 60 # extra time for opening/closing dishwasher
+        self._calculate_reward_and_duration()
 
 
 
@@ -469,8 +480,7 @@ class LoadDishwasherTask(Task):
 
         if required_objects is not None:
             self.required_objects = list(required_objects)
-            self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 160 + 100 + 200
-            self.duration = 30 * len(self.required_objects) + 60 # extra time for opening/closing dishwasher
+            self._calculate_reward_and_duration()
             return
 
         objects_on_counter = semantic_annotations_on_surface_cached(
@@ -484,10 +494,14 @@ class LoadDishwasherTask(Task):
             if (obj in self.perceived_objects) and isinstance(obj, (Cuttlery, Plate, Cup, Bowl)):
                 self.required_objects.append(obj)
 
-        self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 160 + 100 + 200
-        self.duration = 30 * len(self.required_objects) + 60 # extra time for opening/closing dishwasher
+        self._calculate_reward_and_duration()
 
-
+    def _calculate_reward_and_duration(self):
+        self.reward = (len(self.required_objects) * REWARD_PER_OBJECT
+                       + len(self.required_objects) * BONUS_REWARD_PER_OBJECT_OUT_OF_OR_IN_DISHWASHER
+                       + REWARD_PICK_DISHWASHER_TAB + REWARD_DISHWASHER_TAB_INTO_SLOT + REWARD_PULL_PUSH_DISHWASHER_RACK
+                       + REWARD_OPEN_CLOSE_DISHWASHER)
+        self.duration = DURATION_PER_OBJECT * len(self.required_objects) + DURATION_HANDLE_DISHWASHER
 
 
 class UnloadDishwasherTask(Task):
@@ -525,9 +539,7 @@ class UnloadDishwasherTask(Task):
             for obj in objects_in_dishwasher:
                 self.required_objects.append(obj)
 
-        self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 200
-        self.duration = 30 * len(self.required_objects) + 60 # extra time for opening/closing dishwasher
-
+        self._calculate_reward_and_duration()
 
     def precondition(self):
         return self.preconditions_helper()
@@ -568,8 +580,7 @@ class UnloadDishwasherTask(Task):
 
         if required_objects is not None:
             self.required_objects = list(required_objects)
-            self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 200
-            self.duration = 30 * len(self.required_objects) + 60 # extra time for opening/closing dishwasher
+            self._calculate_reward_and_duration()
             return
 
         objects_on_counter = semantic_annotations_on_surface_cached(
@@ -582,6 +593,13 @@ class UnloadDishwasherTask(Task):
         for obj in objects_on_counter:
             self.required_objects.append(obj)
 
-        self.reward = len(self.required_objects) * 200 + len(self.required_objects) * 70 + 100 + 200
-        self.duration = 30 * len(self.required_objects) + 60 # extra time for opening/closing dishwasher
+        self._calculate_reward_and_duration()
+
+
+    def _calculate_reward_and_duration(self):
+        self.reward = (len(self.required_objects) * REWARD_PER_OBJECT
+                       + len(self.required_objects) * BONUS_REWARD_PER_OBJECT_OUT_OF_OR_IN_DISHWASHER
+                       + REWARD_PULL_PUSH_DISHWASHER_RACK + REWARD_OPEN_CLOSE_DISHWASHER)
+        self.duration = DURATION_PER_OBJECT * len(self.required_objects) + DURATION_HANDLE_DISHWASHER
+
 
