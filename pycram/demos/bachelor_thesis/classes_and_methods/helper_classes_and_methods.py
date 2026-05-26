@@ -1,23 +1,22 @@
-from enum import Enum
-import warnings
-
 import os
 from contextlib import contextmanager
 from enum import Enum
-from typing import List, Any, Tuple
 
-from demos.bachelor_thesis.classes_and_methods.tasks import Task, PutAwayObjectTask
+from docutils.parsers.rst.directives import percentage
+from typing_extensions import List
+
+from demos.bachelor_thesis.classes_and_methods.tasks import Task
 from demos.bachelor_thesis.events.event_handler import EventDispatcher
 from pycram.datastructures.dataclasses import Context
 from pycram.plans.factories import execute_single
+from pycram.plans.plan import Plan
 from semantic_digital_twin.adapters.mesh import STLParser
-from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.exceptions import WorldEntityNotFoundError
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
-from semantic_digital_twin.semantic_annotations.semantic_annotations import Table, SideTable, Wardrobe, Chair, Armchair, \
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Table, SideTable, Wardrobe, \
     Sofa, Cup, ShelfLayer
 from semantic_digital_twin.world import World
-from semantic_digital_twin.world_description.world_entity import Body, SemanticAnnotation
+from semantic_digital_twin.world_description.world_entity import Body
 
 
 class Environment(Enum):
@@ -27,7 +26,7 @@ class Environment(Enum):
 
 #-- METHODS ------------------------------------------------------------------------------------------------------------
 
-def sort_tasks(tasks: List[Task], duration: float):
+def sort_tasks(tasks: List[Task], duration: float) -> list[Task]:
     """
     returns optimal order of tasks to execute if robot has duration amount of time
     """
@@ -43,7 +42,7 @@ def sort_tasks(tasks: List[Task], duration: float):
 
     return list_return
 
-def print_sorted_task_list(tasks: List[Task], duration: float):
+def print_sorted_task_list(tasks: List[Task], duration: float) -> None:
     print(f"OPTIMAL TASK ORDER FOR {duration / 60} minutes")
     print("-" * 120)
 
@@ -70,19 +69,19 @@ def print_sorted_task_list(tasks: List[Task], duration: float):
 
 
 
-def sorted_inserting(list: List[Task], elem: Task) -> List[Task]:
+def sorted_inserting(sorted_list: List[Task], elem: Task) -> List[Task]:
     new_list = []
     found = False
-    if not list:
+    if not sorted_list:
         new_list.append(elem)
         return new_list
 
-    for i in range (len(list)):
-        if (list[i].calculate_current_score_normalized() > elem.calculate_current_score_normalized()) or found:
-            new_list.append(list[i])
+    for i in range (len(sorted_list)):
+        if (sorted_list[i].calculate_current_score_normalized() > elem.calculate_current_score_normalized()) or found:
+            new_list.append(sorted_list[i])
         else:
             new_list.append(elem)
-            new_list.append(list[i])
+            new_list.append(sorted_list[i])
             found = True
 
     if not found:
@@ -102,7 +101,7 @@ def perf_step(label: str):
     yield
 
 
-def timed_parse_stl(label: str, filename: str):
+def timed_parse_stl(label: str, filename: str) -> World:
     with perf_step(f"parse STL: {label}"):
         return STLParser(
             os.path.join(
@@ -111,11 +110,11 @@ def timed_parse_stl(label: str, filename: str):
         ).parse()
 
 
-def timed_plan(label: str, action, context: Context):
+def timed_plan(label: str, action, context: Context) -> Plan | None:
     with perf_step(f"build plan: {label}"):
         return execute_single(action, context).plan
 
-def debug_task_list_for_demo(dispatcher: EventDispatcher):
+def debug_task_list_for_demo(dispatcher: EventDispatcher) -> None:
     print("\n \n", "DEBUG")
 
     for task in dispatcher.activated_tasks:
@@ -127,7 +126,7 @@ def debug_task_list_for_demo(dispatcher: EventDispatcher):
 
 
 
-def create_annotations_for_bodies_sage10k(world: World):
+def create_annotations_for_bodies_sage10k(world: World) -> None:
     bodies = world.bodies
     with (world.modify_world()):
         for bod in bodies:
@@ -152,7 +151,7 @@ def create_annotations_for_bodies_sage10k(world: World):
                 pass
 
 
-def body_name_contains_keyword(body: Body, keyword: str):
+def body_name_contains_keyword(body: Body, keyword: str) -> bool:
     if keyword in body.name.name:
         return True
 
@@ -162,7 +161,7 @@ def body_name_contains_keyword(body: Body, keyword: str):
     return False
 
 
-def compare_robot_world_with_real(dispatcher: EventDispatcher, world: World):
+def compare_robot_world_with_real(dispatcher: EventDispatcher, world: World) -> list[list[float | None]]:
     real_world_dispatcher = EventDispatcher()
     real_world_dispatcher.correct_location_tableware = dispatcher.correct_location_tableware
     real_world_dispatcher.correct_location_food = dispatcher.correct_location_food
@@ -180,7 +179,8 @@ def compare_robot_world_with_real(dispatcher: EventDispatcher, world: World):
     result = _print_task_comparison_robot_real(dispatcher, real_world_dispatcher)
     return result
 
-def _print_task_comparison_robot_real(handler_robot : EventDispatcher, handler_world : EventDispatcher):
+def _print_task_comparison_robot_real(handler_robot : EventDispatcher, handler_world : EventDispatcher) \
+        -> list[list[float | None]]:
     print("\n \n")
     print("COMPARE ROBOT WORLD VS REAL WORLD")
     print("-" * 110)
@@ -223,7 +223,12 @@ def _print_task_comparison_robot_real(handler_robot : EventDispatcher, handler_w
             print(line_world)
             print("."*110)
 
-            line = f"ROBOT FOUND in percent:\n{name:<60} | {feasibility_robot/feasibility*100 :<15.3f} | {score_robot/score*100:<10.3f}% | {norm_score_robot/norm_score*100:<18.3f}%"
+            if feasibility == 0:
+                percentage_feasibility = 0
+            else:
+                percentage_feasibility = feasibility_robot/feasibility
+
+            line = f"ROBOT FOUND in percent:\n{name:<60} | {percentage_feasibility*100 :<15.3f} | {score_robot/score*100:<10.3f}% | {norm_score_robot/norm_score*100:<18.3f}%"
             print(line)
             print(":"*110)
 
@@ -234,7 +239,7 @@ def _print_task_comparison_robot_real(handler_robot : EventDispatcher, handler_w
     return eval_array
 
 
-def print_object_locations(dispatcher: EventDispatcher, world: World):
+def print_object_locations(dispatcher: EventDispatcher, world: World) -> None:
     print("#"*110)
     for body in world.bodies:
         if body not in dispatcher.known_furniture:
