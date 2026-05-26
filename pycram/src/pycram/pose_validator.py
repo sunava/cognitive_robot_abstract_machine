@@ -76,6 +76,18 @@ def _contact_is_allowed(contact, allowed_collision_map) -> bool:
     ) or body_a_name in allowed_collision_map.get(body_b_name, set())
 
 
+def _contact_is_floor(contact) -> bool:
+    names = (
+        _entity_name(getattr(contact, "body_a", None)),
+        _entity_name(getattr(contact, "body_b", None)),
+    )
+    return any(
+        name is not None
+        and name.lower() in {"floor", "ground", "plane", "map_floor", "world_floor"}
+        for name in names
+    )
+
+
 def visibility_validator(
     robot: AbstractRobot, object_or_pose: Union[Body, Pose], world: World
 ) -> bool:
@@ -234,5 +246,6 @@ def collision_check(
             getattr(contact, "body_a", None) in robot_branch
             or getattr(contact, "body_b", None) in robot_branch
         )
+        and not _contact_is_floor(contact)
         and not _contact_is_allowed(contact, allowed_collision_map)
     ]

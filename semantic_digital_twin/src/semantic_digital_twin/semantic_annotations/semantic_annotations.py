@@ -569,11 +569,6 @@ class MustardBottle(Bottle):
 class DrinkingContainer(HasRootBody): ...
 
 
-@dataclass(eq=False)
-class Cup(DrinkingContainer, IsPerceivable):
-    """
-    A cup.
-    """
 
 
 @dataclass(eq=False)
@@ -1110,6 +1105,19 @@ class Knife(ToolWithHandle):
     def debug_distance_threshold(self) -> float:
         return 0.6
 
+@dataclass(eq=False)
+class Cup(Tool):
+    def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]:
+        pairs = [
+            AlignmentPair(
+                tip_normal=Vector3(0, 0, 1, reference_frame=self.root),
+                goal_normal=Vector3(0, 0, 1, reference_frame=body_to_act_on),
+            )
+        ]
+        return pairs
+
+    def debug_distance_threshold(self) -> float:
+        return 0.6
 
 @dataclass(eq=False)
 class Sponge(Tool):

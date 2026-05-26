@@ -59,6 +59,7 @@ from pycram.robot_plans.actions.core.robot_body import (
     ParkArmsAction,
     SetGripperAction,
 )
+from pycram.tf_transformations import euler_from_quaternion
 from semantic_digital_twin.datastructures.definitions import GripperState, TorsoState
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Sponge
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix, Point3
@@ -71,17 +72,24 @@ FAILED_TARGET_COLOR = Color(R=0.95, G=0.20, B=0.20)
 SUCCESS_TARGET_COLOR = Color(R=0.62, G=0.92, B=0.62)
 DEFAULT_TARGET_COLOR = Color(R=0.78, G=0.80, B=0.86)
 RECORDS_DIR = os.path.join(os.path.dirname(__file__), "../records")
-RESULTS_CSV_PATH = os.path.join(RECORDS_DIR, "wipe_all_spaces_results.csv")
+RESULTS_CSV_PATH = os.environ.get(
+    "THESIS_WIPE_RESULTS_CSV_PATH",
+    os.path.join(RECORDS_DIR, "wipe_all_spaces_results.csv"),
+)
 EXPERIMENT_CONDITION = "full_system"
 BASELINE_NAME = "task_knowledge+htn+constraint_planning"
 TASK_NAME = "space_wiping"
 POINTER_STRIDE = 3
-MAX_WIPE_TARGET_HEIGHT_M = 1.80
+MAX_WIPE_TARGET_HEIGHT_M = 1.35
 TARGET_MARKER_TOPIC = "/pycram/wipe_targets"
 VERTICAL_TARGET_AXIS_LENGTH_M = 0.18
 VERTICAL_TARGET_AXIS_WIDTH_M = 0.012
 DEBUG_PROFILE_WIPING = True
 session = None
+WIPING_PROGRESS_FIELDNAMES = [
+    "wiping_phase_reached",
+    "wiping_stall_status",
+]
 
 
 def _timed(label, fn):
@@ -153,6 +161,7 @@ def _record_space_result(
     perturbation_type,
     execution_time_s,
     geometry_binding,
+    motion_progress=None,
 ):
     return build_base_result_row(
         results,
@@ -199,6 +208,7 @@ def _record_space_result(
         perturbation_applied=perturbation_applied,
         perturbation_type=perturbation_type,
         **geometry_binding,
+        **(motion_progress or _empty_wiping_progress()),
         execution_time_s=round(execution_time_s, 4),
     )
 
@@ -209,7 +219,77 @@ def _results_csv_fieldnames():
         "spawn_pose_xyz",
         "environment_name",
         *BASE_RESULT_FIELDNAMES,
+        *WIPING_PROGRESS_FIELDNAMES,
     ]
+
+
+def _empty_wiping_progress():
+    return {
+        "motion_approach_completed": False,
+        "motion_waypoint_count": "",
+        "motion_stopped_waypoint_index": "",
+        "motion_stopped_waypoint_fraction": "",
+        "motion_stopped_waypoint_x": "",
+        "motion_stopped_waypoint_y": "",
+        "motion_stopped_waypoint_z": "",
+        "motion_stopped_distance_m": "",
+        "motion_progress_note": "",
+        "wiping_phase_reached": False,
+        "wiping_stall_status": "",
+    }
+
+
+def _wiping_progress_from_action(action, *, stall_status=""):
+    if action is None:
+        progress = _empty_wiping_progress()
+        progress["wiping_stall_status"] = stall_status
+        return progress
+
+    def value(name, default=""):
+        result = getattr(action, name, default)
+        return default if result is None else result
+
+    wiping_phase_reached = value("logged_waypoint_count") != ""
+    return {
+        "motion_approach_completed": bool(wiping_phase_reached),
+        "motion_waypoint_count": value("logged_waypoint_count"),
+        "motion_stopped_waypoint_index": value("logged_stopped_waypoint_index"),
+        "motion_stopped_waypoint_fraction": value(
+            "logged_stopped_waypoint_fraction"
+        ),
+        "motion_stopped_waypoint_x": value("logged_stopped_waypoint_x"),
+        "motion_stopped_waypoint_y": value("logged_stopped_waypoint_y"),
+        "motion_stopped_waypoint_z": value("logged_stopped_waypoint_z"),
+        "motion_stopped_distance_m": value("logged_stopped_distance_m"),
+        "motion_progress_note": value("logged_motion_progress_note"),
+        "wiping_phase_reached": bool(wiping_phase_reached),
+        "wiping_stall_status": stall_status,
+    }
+
+
+def _stall_status_from_exception(exc):
+    current = exc
+    while current is not None:
+        message = str(current)
+        if "status=wiggle" in message:
+            return "wiggle"
+        if "status=stagnant" in message:
+            return "stagnant"
+        current = current.__cause__ or current.__context__
+    return ""
+
+
+def _wiping_progress_from_exception(exc):
+    progress = getattr(exc, "wiping_progress", _empty_wiping_progress())
+    if not progress.get("wiping_stall_status"):
+        progress["wiping_stall_status"] = _stall_status_from_exception(exc)
+    return progress
+
+
+def _is_partial_wipe_stalled(progress):
+    return bool(progress.get("wiping_phase_reached")) and bool(
+        progress.get("wiping_stall_status")
+    )
 
 
 def _create_target_pose_marker_publisher(node):
@@ -401,7 +481,7 @@ def _filter_wipe_targets_by_height(sampled_targets):
         except Exception:
             kept.append(target_data)
             continue
-        if z > MAX_WIPE_TARGET_HEIGHT_M:
+        if z >= MAX_WIPE_TARGET_HEIGHT_M:
             discarded.append((target_data.get("bowl_name", "unknown"), z))
             continue
         kept.append(target_data)
@@ -448,21 +528,29 @@ def _try_wipe(context, target_pose, pickup_pose, arm, tool, *, environment_name=
         )
     print(context.world.name)
     current_plan = None
+    wiping_action = None
     try:
         with simulated_robot_with_collision:
+            wiping_action = WipingAction(
+                target_pose=target_pose,
+                arm=arm,
+                tool=tool,
+                clear_viz=True,
+                pointer_stride=POINTER_STRIDE,
+            )
             current_plan = sequential(
                 [
-                    WipingAction(
-                        target_pose=target_pose,
-                        arm=arm,
-                        tool=tool,
-                        clear_viz=True,
-                        pointer_stride=POINTER_STRIDE,
-                    ),
+                    wiping_action,
                 ],
                 context,
             )
             _, _ = _timed("wipe/action_plan_perform", current_plan.perform)
+            return _wiping_progress_from_action(wiping_action)
+    except Exception as exc:
+        exc.wiping_progress = _wiping_progress_from_action(
+            wiping_action, stall_status=_stall_status_from_exception(exc)
+        )
+        raise
     finally:
         if current_plan is not None:
             _, _ = _timed(
@@ -476,10 +564,34 @@ def _is_vertical_wipe_pose(target_pose):
     return abs(float(local_z_world[2])) < 0.5
 
 
-def _build_wipe_geometry_binding(target_data, target_pose):
+def _build_wipe_geometry_binding(target_data, target_pose, *, robot=None):
     target_pose = target_pose
     pos = np.asarray(target_pose.to_position().to_np(), dtype=float).reshape(-1)[:3]
     quat = np.asarray(target_pose.to_quaternion().to_np(), dtype=float).reshape(-1)[:4]
+    roll, pitch, yaw = euler_from_quaternion(quat)
+    robot_pos = np.full(3, np.nan, dtype=float)
+    robot_quat = np.full(4, np.nan, dtype=float)
+    robot_roll = float("nan")
+    robot_pitch = float("nan")
+    robot_yaw = float("nan")
+    if robot is not None:
+        try:
+            robot_base = getattr(robot, "base", None)
+            robot_pose_owner = (
+                getattr(robot_base, "root", None)
+                or getattr(robot, "root", None)
+                or robot_base
+            )
+            robot_pose = robot_pose_owner.global_pose
+            robot_pos = np.asarray(
+                robot_pose.to_position().to_np(), dtype=float
+            ).reshape(-1)[:3]
+            robot_quat = np.asarray(
+                robot_pose.to_quaternion().to_np(), dtype=float
+            ).reshape(-1)[:4]
+            robot_roll, robot_pitch, robot_yaw = euler_from_quaternion(robot_quat)
+        except Exception:
+            pass
     return {
         "target_world_x": round(float(pos[0]), 6),
         "target_world_y": round(float(pos[1]), 6),
@@ -492,6 +604,39 @@ def _build_wipe_geometry_binding(target_data, target_pose):
         "object_quat_y": round(float(quat[1]), 6),
         "object_quat_z": round(float(quat[2]), 6),
         "object_quat_w": round(float(quat[3]), 6),
+        "object_roll_rad": round(float(roll), 6),
+        "object_pitch_rad": round(float(pitch), 6),
+        "object_yaw_rad": round(float(yaw), 6),
+        "robot_world_x": (
+            round(float(robot_pos[0]), 6) if np.isfinite(robot_pos[0]) else ""
+        ),
+        "robot_world_y": (
+            round(float(robot_pos[1]), 6) if np.isfinite(robot_pos[1]) else ""
+        ),
+        "robot_world_z": (
+            round(float(robot_pos[2]), 6) if np.isfinite(robot_pos[2]) else ""
+        ),
+        "robot_quat_x": (
+            round(float(robot_quat[0]), 6) if np.isfinite(robot_quat[0]) else ""
+        ),
+        "robot_quat_y": (
+            round(float(robot_quat[1]), 6) if np.isfinite(robot_quat[1]) else ""
+        ),
+        "robot_quat_z": (
+            round(float(robot_quat[2]), 6) if np.isfinite(robot_quat[2]) else ""
+        ),
+        "robot_quat_w": (
+            round(float(robot_quat[3]), 6) if np.isfinite(robot_quat[3]) else ""
+        ),
+        "robot_roll_rad": (
+            round(float(robot_roll), 6) if np.isfinite(robot_roll) else ""
+        ),
+        "robot_pitch_rad": (
+            round(float(robot_pitch), 6) if np.isfinite(robot_pitch) else ""
+        ),
+        "robot_yaw_rad": (
+            round(float(robot_yaw), 6) if np.isfinite(robot_yaw) else ""
+        ),
         "technique_name": "wipe",
         "pointer_stride": int(POINTER_STRIDE),
     }
@@ -529,14 +674,22 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
         if len(discarded_high_targets) > 10:
             print(f"  - ... {len(discarded_high_targets) - 10} more")
 
-    node = setup_experiment_runtime(
-        world=world,
-        node_name="pycram_wipe_all_spaces_retry",
+    print("[setup] starting ROS runtime and RViz publishers", flush=True)
+    node, _ = _timed(
+        "wipe/setup_runtime",
+        lambda: setup_experiment_runtime(
+            world=world,
+            node_name="pycram_wipe_all_spaces_retry",
+        ),
     )
+    print("[setup] creating wipe target marker publisher")
     target_marker_pub = _create_target_pose_marker_publisher(node)
+    print("[setup] attaching wiping tools", flush=True)
     arm_tools = _attach_sponges_for_available_arms(world)
+    print("[setup] publishing wipe target markers")
     _publish_target_pose_markers(node, target_marker_pub, world, sampled_targets)
 
+    print("[setup] building execution context", flush=True)
     context = Context.from_world(world)
     context.ros_node = node
     robot_name = _robot_name(context.robot)
@@ -544,11 +697,15 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
     world_name = logged_environment_name
     run_id = new_run_id()
 
+    print("[setup] closing grippers", flush=True)
     with simulated_robot_without_collision:
-        sequential(
-            [SetGripperAction(Arms.BOTH, GripperState.CLOSE)],
-            context,
-        ).perform()
+        _, _ = _timed(
+            "wipe/close_grippers",
+            lambda: sequential(
+                [SetGripperAction(Arms.BOTH, GripperState.CLOSE)],
+                context,
+            ).perform(),
+        )
 
     print("[setup] surface plan:")
     print(f"[setup] seed: {effective_seed}")
@@ -664,13 +821,16 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
                 perturbation_applied=False,
                 perturbation_type="",
                 execution_time_s=time.perf_counter() - target_start_time,
-                geometry_binding=_build_wipe_geometry_binding(target_data, target_pose),
+                geometry_binding=_build_wipe_geometry_binding(
+                    target_data, target_pose, robot=context.robot
+                ),
             )
             append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
             continue
         attempt_failures = []
         attempt_count = 0
         collision_failure_count = 0
+        last_wiping_progress = _empty_wiping_progress()
         perturbation_applied = False
         perturbation_type = ""
         _publish_target_pose_markers(
@@ -746,7 +906,9 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
                 perturbation_applied=False,
                 perturbation_type="",
                 execution_time_s=time.perf_counter() - target_start_time,
-                geometry_binding=_build_wipe_geometry_binding(target_data, target_pose),
+                geometry_binding=_build_wipe_geometry_binding(
+                    target_data, target_pose, robot=context.robot
+                ),
             )
             append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
             continue
@@ -792,7 +954,7 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
 
             try:
                 attempt_count += 1
-                _try_wipe(
+                last_wiping_progress = _try_wipe(
                     context,
                     target_pose,
                     pickup_pose,
@@ -842,8 +1004,9 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
                     perturbation_type=result_perturbation_type,
                     execution_time_s=time.perf_counter() - target_start_time,
                     geometry_binding=_build_wipe_geometry_binding(
-                        target_data, target_pose
+                        target_data, target_pose, robot=context.robot
                     ),
+                    motion_progress=last_wiping_progress,
                 )
                 append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
                 suffix = " (fallback)" if arm_index > 0 else ""
@@ -859,6 +1022,7 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
                 attempt_succeeded = True
                 break
             except TimeoutError as exc:
+                last_wiping_progress = _wiping_progress_from_exception(exc)
                 collision_failure_count += 1
                 attempt_failures.append(
                     f"{arm.name} {phase_name} -> {_format_attempt_error(exc)}"
@@ -869,6 +1033,7 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
                     + f" timed out ({type(exc).__name__}: {exc})"
                 )
             except Exception as exc:
+                last_wiping_progress = _wiping_progress_from_exception(exc)
                 if _is_collision_like_failure(exc):
                     collision_failure_count += 1
                 attempt_failures.append(
@@ -894,19 +1059,29 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
             successful_target_names=successful_target_names,
         )
         last_tool = arm_tools[-1][1]
+        partial_wipe_stalled = _is_partial_wipe_stalled(last_wiping_progress)
+        stall_status = last_wiping_progress.get("wiping_stall_status", "")
         result_row = _record_space_result(
             target_results,
             target_name,
             robot_name,
-            "failed",
+            "partial_wipe_stalled" if partial_wipe_stalled else "failed",
             "",
             _tool_name(last_tool),
             "failed",
             attempt_failures,
             **common_result_kwargs,
-            feasibility_reason="collision_or_motion_failure",
+            feasibility_reason=(
+                f"wiping_motion_{stall_status}_after_phase_reached"
+                if partial_wipe_stalled
+                else "collision_or_motion_failure"
+            ),
             robot_decision="task_failed",
-            decision_reason="all_wipe_attempts_failed",
+            decision_reason=(
+                f"partial_wipe_{stall_status}_stalled"
+                if partial_wipe_stalled
+                else "all_wipe_attempts_failed"
+            ),
             assistance_requested=False,
             assistance_completed=False,
             task_blocked_by_prerequisite=False,
@@ -920,7 +1095,10 @@ def main_wiping(seed=None, robot_name=None, environment_name=None):
             perturbation_applied=False,
             perturbation_type="",
             execution_time_s=time.perf_counter() - target_start_time,
-            geometry_binding=_build_wipe_geometry_binding(target_data, target_pose),
+            geometry_binding=_build_wipe_geometry_binding(
+                target_data, target_pose, robot=context.robot
+            ),
+            motion_progress=last_wiping_progress,
         )
         append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
         if DEBUG_PROFILE_WIPING:

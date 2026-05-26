@@ -7,10 +7,14 @@ from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.geometry import Color
 
 from .spawn_random_breads import (
+    MAX_SPAWN_OBJECT_WORLD_Z_M,
+    _build_spawn_obstacle_aabbs,
     _body_basename,
     _body_name,
+    _candidate_overlaps_existing_body,
     _is_excluded_kitchen_spawn_pose,
     _pose_xyz,
+    _robot_body_identity_sets,
     _sample_random_surface_layout,
     body_local_aabb,
 )
@@ -72,7 +76,15 @@ def _bowl_base_xy_radius():
 
 
 def _sample_vertical_wipe_targets(
-    world, rng, surface_name, count, start_idx, *, face_sign=1, environment_name=None
+    world,
+    rng,
+    surface_name,
+    count,
+    start_idx,
+    *,
+    face_sign=1,
+    environment_name=None,
+    obstacle_aabbs=None,
 ):
     if "kitchen_island" in str(surface_name).lower():
         return [], []
@@ -92,6 +104,7 @@ def _sample_vertical_wipe_targets(
 
     placements = []
     occupied_yz = []
+    robot_body_ids, robot_body_names = _robot_body_identity_sets(world)
     face_sign = 1 if float(face_sign) >= 0.0 else -1
     door_offset = 0.03
     yz_clearance = 0.18
@@ -130,6 +143,19 @@ def _sample_vertical_wipe_targets(
             if _is_excluded_kitchen_spawn_pose(
                 world_pose, environment_name=environment_name
             ):
+                continue
+            if float(world_pose.to_position().z) >= MAX_SPAWN_OBJECT_WORLD_Z_M:
+                continue
+            overlaps_body, _ = _candidate_overlaps_existing_body(
+                world=world,
+                candidate_world_pose=world_pose,
+                radius=WIPE_TARGET_RADIUS_M,
+                support_body=surface_body,
+                robot_body_ids=robot_body_ids,
+                robot_body_names=robot_body_names,
+                obstacle_aabbs=obstacle_aabbs,
+            )
+            if overlaps_body:
                 continue
             placements.append(
                 {
@@ -427,6 +453,15 @@ def sample_random_bowl_poses(seed=None, robot_name=None, environment_name=None):
         resolve_environment_name(environment_name)
         not in TABLE_ONLY_WIPE_TARGET_ENVIRONMENTS
     ):
+        robot_body_ids, robot_body_names = _robot_body_identity_sets(world)
+        print("[wipe-spawn] caching obstacle bounds for vertical targets", flush=True)
+        obstacle_aabbs = _build_spawn_obstacle_aabbs(
+            world, robot_body_ids, robot_body_names
+        )
+        print(
+            f"[wipe-spawn] sampling vertical targets from {len(obstacle_aabbs)} obstacle bounds",
+            flush=True,
+        )
         next_idx = len(renamed_placements) + 1
         for surface_name, count, face_sign in _resolve_vertical_wipe_surfaces(world):
             targets, plan_entries = _sample_vertical_wipe_targets(
@@ -437,9 +472,14 @@ def sample_random_bowl_poses(seed=None, robot_name=None, environment_name=None):
                 start_idx=next_idx,
                 face_sign=face_sign,
                 environment_name=environment_name,
+                obstacle_aabbs=obstacle_aabbs,
             )
             extra_targets.extend(targets)
             extra_surface_plan.extend(plan_entries)
             next_idx += len(targets)
+        print(
+            f"[wipe-spawn] vertical targets sampled: {len(extra_targets)}",
+            flush=True,
+        )
 
     return world, renamed_placements + extra_targets, surface_plan + extra_surface_plan

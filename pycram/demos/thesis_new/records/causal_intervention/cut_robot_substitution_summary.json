@@ -1,0 +1,38 @@
+{
+  "causal_instances": 186,
+  "complete_causal_instances": 0,
+  "environments": [
+    "apartment",
+    "isr",
+    "kitchen"
+  ],
+  "manifest_runs": 120,
+  "matched_rows": 1302,
+  "robots": [
+    "armar7",
+    "garmi",
+    "hsrb",
+    "pr2",
+    "rollin_justin",
+    "stretch",
+    "tiago",
+    "unitree_g1"
+  ],
+  "robots_per_complete_block": 8,
+  "seeds": [
+    910001,
+    910002,
+    910003,
+    910004,
+    910005
+  ],
+  "success_rate_by_robot": {
+    "armar7": 0.25268817204301075,
+    "hsrb": 0.20430107526881722,
+    "pr2": 0.5860215053763441,
+    "rollin_justin": 0.6344086021505376,
+    "stretch": 0.16666666666666666,
+    "tiago": 0.43548387096774194,
+    "unitree_g1": 0.4946236559139785
+  }
+}

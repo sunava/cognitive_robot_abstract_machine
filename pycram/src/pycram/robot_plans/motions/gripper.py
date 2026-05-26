@@ -163,23 +163,40 @@ class MoveToolCenterPointMotion(BaseMotion):
 
     @property
     def _motion_chart(self):
+
         tip = ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
-        root = self.world.root if self.robot.full_body_controlled else self.robot.root
-        task = None
+        if tip is None:
+            raise ValueError(f"No tool frame available for arm {self.arm}.")
+
+        tip_children = getattr(tip, "child_kinematic_structure_entities", []) or []
+        tip_link = next((child for child in tip_children if child is not None), tip)
+
+
+        root_link = (
+            self.world.root if self.robot.full_body_controlled else self.robot.root
+        )
+        if root_link is None:
+            root_link = self.world.root
         if self.movement_type == MovementType.TRANSLATION:
             task = CartesianPosition(
-                root_link=root,
-                tip_link=tip,
+                root_link=root_link,
+                tip_link=tip_link,
                 goal_point=self.target.to_position(),
                 name="MoveTCP",
             )
         else:
             task = CartesianPose(
-                root_link=root,
-                tip_link=tip,
-                goal_pose=self.target,
+                root_link=root_link,
+                tip_link=tip_link,
+                goal_pose=self.target.to_homogeneous_matrix(),
                 name="MoveTCP",
             )
+        if self.allow_gripper_collision:
+            motion_state_chart_nodes = self._only_allow_gripper_collision_rules(
+                self.arm
+            )
+            motion_state_chart_nodes.append(task)
+            return Parallel(motion_state_chart_nodes)
         return task
 
 

@@ -80,7 +80,10 @@ ACTIVE_BOWL_COLOR = Color(R=0.52, G=0.82, B=0.98)
 FAILED_BOWL_COLOR = Color(R=0.95, G=0.20, B=0.20)
 SUCCESS_BOWL_COLOR = Color(R=0.62, G=0.92, B=0.62)
 RECORDS_DIR = os.path.join(os.path.dirname(__file__), "../records")
-RESULTS_CSV_PATH = os.path.join(RECORDS_DIR, "mix_all_bowls_results.csv")
+RESULTS_CSV_PATH = os.environ.get(
+    "THESIS_MIX_RESULTS_CSV_PATH",
+    os.path.join(RECORDS_DIR, "mix_all_bowls_results.csv"),
+)
 EXPERIMENT_CONDITION = "full_system"
 BASELINE_NAME = "task_knowledge+htn+constraint_planning"
 TASK_NAME = "bowl_mixing"
@@ -89,6 +92,11 @@ POINTER_STRIDE = 0
 MIXING_QUERY_TASK = "Whisking"
 DEBUG_PROFILE_MIXING = True
 session = None
+MIXING_PROGRESS_FIELDNAMES = [
+    "mixing_phase_reached",
+    "mixing_planned_duration_s",
+    "mixing_estimated_completed_time_s",
+]
 
 
 def _timed(label, fn):
@@ -162,6 +170,7 @@ def _record_bowl_result(
     perturbation_type,
     execution_time_s,
     geometry_binding,
+    motion_progress=None,
 ):
     return build_base_result_row(
         results,
@@ -208,6 +217,7 @@ def _record_bowl_result(
         perturbation_applied=perturbation_applied,
         perturbation_type=perturbation_type,
         **geometry_binding,
+        **(motion_progress or _empty_mixing_progress()),
         execution_time_s=round(execution_time_s, 4),
     )
 
@@ -218,7 +228,91 @@ def _results_csv_fieldnames():
         "knowledge_motion",
         "knowledge_mixing_tool",
         *BASE_RESULT_FIELDNAMES,
+        *MIXING_PROGRESS_FIELDNAMES,
     ]
+
+
+def _empty_mixing_progress():
+    return {
+        "motion_approach_completed": False,
+        "motion_waypoint_count": "",
+        "motion_stopped_waypoint_index": "",
+        "motion_stopped_waypoint_fraction": "",
+        "motion_stopped_waypoint_x": "",
+        "motion_stopped_waypoint_y": "",
+        "motion_stopped_waypoint_z": "",
+        "motion_stopped_distance_m": "",
+        "motion_progress_note": "",
+        "mixing_phase_reached": False,
+        "mixing_planned_duration_s": float(MIX_DURATION_S),
+        "mixing_estimated_completed_time_s": "",
+    }
+
+
+def _mixing_progress_from_action(action):
+    if action is None:
+        return _empty_mixing_progress()
+
+    def value(name, default=""):
+        result = getattr(action, name, default)
+        return default if result is None else result
+
+    waypoint_fraction = value("logged_stopped_waypoint_fraction")
+    estimated_completed_time_s = ""
+    if waypoint_fraction != "":
+        try:
+            estimated_completed_time_s = round(
+                max(0.0, min(1.0, float(waypoint_fraction)))
+                * float(action.mix_duration_s),
+                4,
+            )
+        except (TypeError, ValueError):
+            pass
+
+    mixing_phase_reached = value("logged_waypoint_count") != ""
+    return {
+        "motion_approach_completed": bool(mixing_phase_reached),
+        "motion_waypoint_count": value("logged_waypoint_count"),
+        "motion_stopped_waypoint_index": value("logged_stopped_waypoint_index"),
+        "motion_stopped_waypoint_fraction": waypoint_fraction,
+        "motion_stopped_waypoint_x": value("logged_stopped_waypoint_x"),
+        "motion_stopped_waypoint_y": value("logged_stopped_waypoint_y"),
+        "motion_stopped_waypoint_z": value("logged_stopped_waypoint_z"),
+        "motion_stopped_distance_m": value("logged_stopped_distance_m"),
+        "motion_progress_note": value("logged_motion_progress_note"),
+        "mixing_phase_reached": bool(mixing_phase_reached),
+        "mixing_planned_duration_s": float(action.mix_duration_s),
+        "mixing_estimated_completed_time_s": estimated_completed_time_s,
+    }
+
+
+def _mixing_progress_from_exception(exc):
+    progress = getattr(exc, "mixing_progress", _empty_mixing_progress())
+    if progress.get("mixing_phase_reached") and _exception_text_contains_stall(exc):
+        progress["motion_progress_note"] = "failed"
+    return progress
+
+
+def _exception_text_contains_stall(exc):
+    current = exc
+    while current is not None:
+        if "Motion stalled while waiting for end of motion" in str(current):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
+def _failure_text_is_motion_stall(failures):
+    return any(
+        "Motion stalled while waiting for end of motion" in str(failure)
+        for failure in failures
+    )
+
+
+def _is_partial_mix_stalled(failures, mixing_progress):
+    return bool(mixing_progress.get("mixing_phase_reached")) and (
+        _failure_text_is_motion_stall(failures)
+    )
 
 
 def _try_mix(context, bowl, pickup_pose, arm, tool, *, environment_name=None):
@@ -261,22 +355,28 @@ def _try_mix(context, bowl, pickup_pose, arm, tool, *, environment_name=None):
         )
 
     current_plan = None
+    mixing_action = None
     try:
         with simulated_robot_with_collision:
+            mixing_action = MixingAction(
+                container=bowl,
+                arm=arm,
+                tool=tool,
+                clear_viz=True,
+                pointer_stride=POINTER_STRIDE,
+                mix_duration_s=MIX_DURATION_S,
+            )
             current_plan = sequential(
                 [
-                    MixingAction(
-                        container=bowl,
-                        arm=arm,
-                        tool=tool,
-                        clear_viz=True,
-                        pointer_stride=POINTER_STRIDE,
-                        mix_duration_s=MIX_DURATION_S,
-                    ),
+                    mixing_action,
                 ],
                 context,
             )
             _, _ = _timed("mix/action_plan_perform", current_plan.perform)
+            return _mixing_progress_from_action(mixing_action)
+    except Exception as exc:
+        exc.mixing_progress = _mixing_progress_from_action(mixing_action)
+        raise
     finally:
         if current_plan is not None:
             _, _ = _timed(
@@ -284,7 +384,7 @@ def _try_mix(context, bowl, pickup_pose, arm, tool, *, environment_name=None):
             )
 
 
-def _build_mixing_geometry_binding(bowl):
+def _build_mixing_geometry_binding(bowl, *, robot=None):
     mins, maxs = body_local_aabb(
         bowl,
         use_visual=True,
@@ -295,6 +395,29 @@ def _build_mixing_geometry_binding(bowl):
     pos = np.asarray(pose.to_position().to_np(), dtype=float).reshape(-1)[:3]
     quat = np.asarray(pose.to_quaternion().to_np(), dtype=float).reshape(-1)[:4]
     roll, pitch, yaw = euler_from_quaternion(quat)
+    robot_pos = np.full(3, np.nan, dtype=float)
+    robot_quat = np.full(4, np.nan, dtype=float)
+    robot_roll = float("nan")
+    robot_pitch = float("nan")
+    robot_yaw = float("nan")
+    if robot is not None:
+        try:
+            robot_base = getattr(robot, "base", None)
+            robot_pose_owner = (
+                getattr(robot_base, "root", None)
+                or getattr(robot, "root", None)
+                or robot_base
+            )
+            robot_pose = robot_pose_owner.global_pose
+            robot_pos = np.asarray(
+                robot_pose.to_position().to_np(), dtype=float
+            ).reshape(-1)[:3]
+            robot_quat = np.asarray(
+                robot_pose.to_quaternion().to_np(), dtype=float
+            ).reshape(-1)[:4]
+            robot_roll, robot_pitch, robot_yaw = euler_from_quaternion(robot_quat)
+        except Exception:
+            pass
 
     support = getattr(getattr(bowl, "parent_connection", None), "parent", None)
     support_name = _body_name(support) if support is not None else ""
@@ -366,6 +489,36 @@ def _build_mixing_geometry_binding(bowl):
         "object_roll_rad": round(float(roll), 6),
         "object_pitch_rad": round(float(pitch), 6),
         "object_yaw_rad": round(float(yaw), 6),
+        "robot_world_x": (
+            round(float(robot_pos[0]), 6) if np.isfinite(robot_pos[0]) else ""
+        ),
+        "robot_world_y": (
+            round(float(robot_pos[1]), 6) if np.isfinite(robot_pos[1]) else ""
+        ),
+        "robot_world_z": (
+            round(float(robot_pos[2]), 6) if np.isfinite(robot_pos[2]) else ""
+        ),
+        "robot_quat_x": (
+            round(float(robot_quat[0]), 6) if np.isfinite(robot_quat[0]) else ""
+        ),
+        "robot_quat_y": (
+            round(float(robot_quat[1]), 6) if np.isfinite(robot_quat[1]) else ""
+        ),
+        "robot_quat_z": (
+            round(float(robot_quat[2]), 6) if np.isfinite(robot_quat[2]) else ""
+        ),
+        "robot_quat_w": (
+            round(float(robot_quat[3]), 6) if np.isfinite(robot_quat[3]) else ""
+        ),
+        "robot_roll_rad": (
+            round(float(robot_roll), 6) if np.isfinite(robot_roll) else ""
+        ),
+        "robot_pitch_rad": (
+            round(float(robot_pitch), 6) if np.isfinite(robot_pitch) else ""
+        ),
+        "robot_yaw_rad": (
+            round(float(robot_yaw), 6) if np.isfinite(robot_yaw) else ""
+        ),
         "technique_name": MIXING_QUERY_TASK,
         "pointer_stride": int(POINTER_STRIDE),
     }
@@ -399,28 +552,38 @@ def main_mixing(
             environment_name=environment_name,
         )
 
-    node = setup_experiment_runtime(
-        world=world,
-        node_name="pycram_mix_all_bowls_retry",
+    print("[setup] starting ROS runtime and RViz publishers", flush=True)
+    node, _ = _timed(
+        "mix/setup_runtime",
+        lambda: setup_experiment_runtime(
+            world=world,
+            node_name="pycram_mix_all_bowls_retry",
+        ),
     )
 
     resolved_robot_name = resolve_robot_name(robot_name)
-    arm_tools = attach_available_tools(
-        world,
-        _parse_stl,
-        mesh_parts=("pycram_object_gap_demo", "whisk.stl"),
-        right_name="whisk_right",
-        left_name="whisk_left",
-        right_pose_kwargs=get_tool_mount_pose_kwargs(
-            "mix", resolved_robot_name, Arms.RIGHT
+    print("[setup] attaching mixing tools", flush=True)
+    arm_tools, _ = _timed(
+        "mix/attach_tools",
+        lambda: attach_available_tools(
+            world,
+            _parse_stl,
+            mesh_parts=("pycram_object_gap_demo", "whisk.stl"),
+            right_name="whisk_right",
+            left_name="whisk_left",
+            right_pose_kwargs=get_tool_mount_pose_kwargs(
+                "mix", resolved_robot_name, Arms.RIGHT
+            ),
+            left_pose_kwargs=get_tool_mount_pose_kwargs(
+                "mix", resolved_robot_name, Arms.LEFT
+            ),
+            tool_cls=Whisk,
         ),
-        left_pose_kwargs=get_tool_mount_pose_kwargs(
-            "mix", resolved_robot_name, Arms.LEFT
-        ),
-        tool_cls=Whisk,
     )
+    print("[setup] collecting mixing targets", flush=True)
     bowls = collect_named_targets(world, "bowl_")
 
+    print("[setup] building execution context", flush=True)
     context = Context.from_world(world)
     context.ros_node = node
     robot_name = _robot_name(context.robot)
@@ -428,11 +591,15 @@ def main_mixing(
     run_id = new_run_id()
     mixing_knowledge = safe_get_mixing_knowledge(MIXING_QUERY_TASK)
 
+    print("[setup] closing grippers", flush=True)
     with simulated_robot_without_collision:
-        sequential(
-            [SetGripperAction(Arms.BOTH, GripperState.CLOSE)],
-            context,
-        ).perform()
+        _, _ = _timed(
+            "mix/close_grippers",
+            lambda: sequential(
+                [SetGripperAction(Arms.BOTH, GripperState.CLOSE)],
+                context,
+            ).perform(),
+        )
 
     print("[setup] surface plan:")
     print(f"[setup] seed: {effective_seed}")
@@ -450,7 +617,6 @@ def main_mixing(
     bowl_results = []
     initialize_csv(RESULTS_CSV_PATH, _results_csv_fieldnames())
     debug_costmap_publishers = {}
-    time.sleep(50)
     with simulated_robot_without_collision:
         sequential(
             [
@@ -488,6 +654,7 @@ def main_mixing(
         attempt_failures = []
         attempt_count = 0
         collision_failure_count = 0
+        last_mixing_progress = _empty_mixing_progress()
         bowl_start_time = time.perf_counter()
         perturbation_applied = False
         perturbation_type = ""
@@ -571,7 +738,10 @@ def main_mixing(
                 perturbation_applied=perturbation_applied,
                 perturbation_type=perturbation_type,
                 execution_time_s=time.perf_counter() - bowl_start_time,
-                geometry_binding=_build_mixing_geometry_binding(bowl),
+                geometry_binding=_build_mixing_geometry_binding(
+                    bowl, robot=context.robot
+                ),
+                motion_progress=last_mixing_progress,
             )
             append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
             print(
@@ -601,7 +771,7 @@ def main_mixing(
 
                 try:
                     attempt_count += 1
-                    _try_mix(
+                    last_mixing_progress = _try_mix(
                         context,
                         bowl,
                         pickup_pose,
@@ -642,7 +812,10 @@ def main_mixing(
                         perturbation_applied=perturbation_applied,
                         perturbation_type=perturbation_type,
                         execution_time_s=time.perf_counter() - bowl_start_time,
-                        geometry_binding=_build_mixing_geometry_binding(bowl),
+                        geometry_binding=_build_mixing_geometry_binding(
+                            bowl, robot=context.robot
+                        ),
+                        motion_progress=last_mixing_progress,
                     )
                     append_csv_row(
                         RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row
@@ -660,6 +833,7 @@ def main_mixing(
                     attempt_succeeded = True
                     break
                 except TimeoutError as exc:
+                    last_mixing_progress = _mixing_progress_from_exception(exc)
                     collision_failure_count += 1
                     attempt_failures.append(
                         f"{arm.name} {phase_name} -> {_format_attempt_error(exc)}"
@@ -670,6 +844,7 @@ def main_mixing(
                         + f" timed out ({type(exc).__name__}: {exc})"
                     )
                 except Exception as exc:
+                    last_mixing_progress = _mixing_progress_from_exception(exc)
                     if _is_collision_like_failure(exc):
                         collision_failure_count += 1
                     attempt_failures.append(
@@ -689,11 +864,14 @@ def main_mixing(
         failed += 1
         failed_bowls.add(bowl)
         last_tool = arm_tools[-1][1]
+        partial_mix_stalled = _is_partial_mix_stalled(
+            attempt_failures, last_mixing_progress
+        )
         result_row = _record_bowl_result(
             bowl_results,
             bowl_name,
             robot_name,
-            "failed",
+            "partial_mix_stalled" if partial_mix_stalled else "failed",
             "",
             _tool_name(last_tool),
             "primary",
@@ -702,7 +880,11 @@ def main_mixing(
             feasibility_reason=(
                 "prerequisite_requires_human_assistance"
                 if common_result_kwargs["required_prerequisite"]
-                else "collision_or_motion_failure"
+                else (
+                    "mixing_motion_stalled_after_phase_reached"
+                    if partial_mix_stalled
+                    else "collision_or_motion_failure"
+                )
             ),
             robot_decision=(
                 "request_human_help"
@@ -712,7 +894,11 @@ def main_mixing(
             decision_reason=(
                 "knowledge_base_prerequisite_detected"
                 if common_result_kwargs["required_prerequisite"]
-                else "all_mix_attempts_failed"
+                else (
+                    "partial_mix_stalled"
+                    if partial_mix_stalled
+                    else "all_mix_attempts_failed"
+                )
             ),
             assistance_requested=bool(common_result_kwargs["required_prerequisite"]),
             assistance_completed=False,
@@ -729,7 +915,10 @@ def main_mixing(
             perturbation_applied=perturbation_applied,
             perturbation_type=perturbation_type,
             execution_time_s=time.perf_counter() - bowl_start_time,
-            geometry_binding=_build_mixing_geometry_binding(bowl),
+            geometry_binding=_build_mixing_geometry_binding(
+                bowl, robot=context.robot
+            ),
+            motion_progress=last_mixing_progress,
         )
         append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
         if DEBUG_PROFILE_MIXING:

@@ -332,6 +332,13 @@ class CostmapLocation(Location):
             - set(test_robot.bodies)
         )
         object_in_hand = objects_in_hand[0] if objects_in_hand else None
+        allowed_candidate_collisions = {
+            entity: test_world.bodies
+            for object_in_hand_branch_root in objects_in_hand
+            for entity in test_world.get_kinematic_structure_entities_of_branch(
+                object_in_hand_branch_root
+            )
+        }
 
         target_pose = (
             deepcopy(self.target) if isinstance(self.target, Pose) else self.target
@@ -366,6 +373,7 @@ class CostmapLocation(Location):
         collision_rejections = 0
         visibility_rejections = 0
         reachability_rejections = 0
+        logged_collision_examples = 0
 
         candidate_limit = None if self.validate_reachability else self.samples
         pose_candidates = self._iter_sorted_pose_candidates(final_map, candidate_limit)
@@ -391,9 +399,27 @@ class CostmapLocation(Location):
             collisions = collision_check(
                 robot=test_robot,
                 world=test_world,
+                allowed_collision=allowed_candidate_collisions,
             )
             if collisions:
-                logger.debug("Candidate pose in collision, skipping")
+                if logged_collision_examples < 5:
+                    collision_pairs = [
+                        (
+                            str(getattr(getattr(contact, "body_a", None), "name", "")),
+                            str(getattr(getattr(contact, "body_b", None), "name", "")),
+                            float(getattr(contact, "distance", 0.0)),
+                        )
+                        for contact in collisions[:5]
+                    ]
+                    logger.warning(
+                        "CostmapLocation collision rejection example: target=%s candidate=(%.3f, %.3f, %.3f) pairs=%s",
+                        target_desc,
+                        float(pose_candidate.x),
+                        float(pose_candidate.y),
+                        float(pose_candidate.z),
+                        collision_pairs,
+                    )
+                    logged_collision_examples += 1
                 collision_rejections += 1
                 continue
 
