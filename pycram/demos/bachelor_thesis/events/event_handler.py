@@ -217,7 +217,7 @@ def trigger_task(handler: EventDispatcher, data : list[SemanticAnnotation], worl
         # trigger clean the table
         with perf_step("trigger clean table task"):
             if (time.hour != 9 and time.hour != 13 and time.hour != 19) and not human_near():
-                table_name = handler.dining_table
+                table_name = handler.dining_table.name.name
                 exists = False
                 for task in handler.activated_tasks:
                     if task.name == ("clean_table_task_" + table_name):
@@ -251,19 +251,18 @@ def trigger_task(handler: EventDispatcher, data : list[SemanticAnnotation], worl
         with perf_step(f"scan {len(handler.perceived_objects)} perceived objects for dishware"):
             perceived_dishware = []
             for obj in handler.perceived_objects:
-                annotation = world.get_semantic_annotation_by_name(obj.name)
-                if isinstance(annotation, (Cuttlery, Plate, Bowl, Cup)):
-                    perceived_dishware.append((annotation, obj))
+                if isinstance(obj, (Cuttlery, Plate, Bowl, Cup)):
+                    perceived_dishware.append(obj)
 
         # trigger load dishwasher task
         load_dishwasher_task = None
         load_dishwasher_objects = []
         if len(perceived_dishware) > 0:
             with perf_step(f"scan {len(perceived_dishware)} perceived dishware objects for load dishwasher"):
-                for _, obj_body in perceived_dishware:
-                    if obj_body not in handler.misplaced_objects and not human_near():
+                for obj in perceived_dishware:
+                    if obj not in handler.misplaced_objects and not human_near():
                         load_dishwasher_task = "load_dishwasher_task"
-                        load_dishwasher_objects.append(obj_body)
+                        load_dishwasher_objects.append(obj)
         else:
             perf_print("skip counterTop query: no perceived dishware/cutlery")
 
@@ -304,14 +303,14 @@ def trigger_task(handler: EventDispatcher, data : list[SemanticAnnotation], worl
         if len(perceived_dishware) > 0:
             dishwasher_rack = world.get_semantic_annotation_by_name("dishwasher_rack")
             with perf_step(f"scan {len(perceived_dishware)} perceived dishware objects for unload dishwasher"):
-                for annotation, obj_body in perceived_dishware:
+                for annotation in perceived_dishware:
                     if is_supported_by_surface_cached(
                         annotation,
                         dishwasher_rack,
                         handler.support_relation_cache,
                     ) and not human_near():
                         unload_dishwasher_task = "unload_dishwasher_task"
-                        unload_dishwasher_objects.append(obj_body)
+                        unload_dishwasher_objects.append(annotation)
         else:
             perf_print("skip dishwasher_rack query: no perceived dishware/cutlery")
 
@@ -345,6 +344,9 @@ def trigger_task(handler: EventDispatcher, data : list[SemanticAnnotation], worl
 
         with perf_step("print tasks"):
             print_tasks(handler)
+
+def _trigger_set_table(handler: EventDispatcher, world: World):
+    pass
 
 
 def print_tasks(handler : EventDispatcher):
