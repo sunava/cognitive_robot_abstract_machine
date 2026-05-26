@@ -12,7 +12,7 @@ from pycram.locations.costmaps import (
     OrientationGenerator,
     VisibilityCostmap,
 )
-from demos.thesis_new.src.utils import CostmapHeatmapRviz
+
 from semantic_digital_twin.spatial_computations.raytracer import RayTracer
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.spatial_types import Vector3
@@ -259,20 +259,6 @@ def test_visibility_costmap_create_images_rotates_in_quarter_turns(
         min_height=camera.minimal_height,
         max_height=camera.maximal_height,
     )
-
-    if os.environ.get("PYCRAM_PUBLISH_COSTMAP") == "1":
-        CostmapHeatmapRviz(
-            costmap,
-            node=rclpy_node,
-            topic="/debug/costmap/visibility",
-            frame_id=str(world.root.name),
-            marker_ns="test_visibility_costmap",
-            z_offset=0.01,
-            z_scale=0.0,
-            cell_height=0.002,
-            republish_hz=2.0,
-        )
-        time.sleep(10.0)
 
     assert captured_poses and len(captured_poses) == 4
     assert [resolution for _, resolution in captured_poses] == [64, 64, 64, 64]

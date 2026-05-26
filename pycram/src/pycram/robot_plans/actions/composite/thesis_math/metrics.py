@@ -8,6 +8,7 @@ from trimesh.proximity import closest_point
 from semantic_digital_twin.spatial_types import Point3
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.world_entity import Body
+from typing import Any, Dict
 
 from .world_utils import body_local_aabb
 

@@ -121,15 +121,6 @@ context = Context.from_world(world, robot_view)
 original_state_data = deepcopy(world.state.data)
 
 
-# with world.modify_world():
-#     world_reasoner = WorldReasoner(world)
-#     world_reasoner.reason()
-#     world.add_semantic_annotations(
-#         [
-#             Cup(body=world.get_body_by_name("jeroen_cup.stl")),
-#         ]
-#     )
-
 plan = SequentialPlan(
     context,
     ParkArmsActionDescription(Arms.BOTH),

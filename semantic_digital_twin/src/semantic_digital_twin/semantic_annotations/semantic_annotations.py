@@ -569,8 +569,6 @@ class MustardBottle(Bottle):
 class DrinkingContainer(HasRootBody): ...
 
 
-
-
 @dataclass(eq=False)
 class Mug(DrinkingContainer):
     """
@@ -653,6 +651,15 @@ class Bread(Food):
         "honeybread",
         "grainbread",
     }
+
+    is_cuttable: bool = True
+    preferred_tool_type_name: str = "Knife"
+    preferred_support_type_name: str = "CuttingBoard"
+    default_cutting_technique: str = "sawing"
+    default_slice_thickness: float = 0.03
+    requires_stable_support: bool = True
+    cutting_axis_policy: str = "longest_object_axis"
+    blade_orientation_policy: str = "vertical"
 
 
 @dataclass(eq=False)
@@ -1089,6 +1096,10 @@ class Whisk(ToolWithHandle):
 
 @dataclass(eq=False)
 class Knife(ToolWithHandle):
+    can_cut: bool = True
+    tool_affordance: str = "cutting"
+    blade_orientation_policy: str = "vertical"
+
     def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]:
         pairs = [
             AlignmentPair(
@@ -1105,6 +1116,7 @@ class Knife(ToolWithHandle):
     def debug_distance_threshold(self) -> float:
         return 0.6
 
+
 @dataclass(eq=False)
 class Cup(Tool):
     def tool_alignment(self, body_to_act_on) -> List[AlignmentPair]:
@@ -1118,6 +1130,7 @@ class Cup(Tool):
 
     def debug_distance_threshold(self) -> float:
         return 0.6
+
 
 @dataclass(eq=False)
 class Sponge(Tool):
@@ -1174,6 +1187,81 @@ class Sponge(Tool):
 
     def debug_distance_threshold(self) -> float:
         return 0.6
+
+
+@dataclass(eq=False)
+class CuttingBoard(HasSupportingSurface):
+    """
+    A stable support surface intended for cutting actions.
+    """
+
+    is_stable_cutting_support: bool = True
+    support_affordance: str = "stable_cutting_surface"
+
+
+@dataclass(eq=False)
+class CuttingAffordance(SemanticAnnotation):
+    """
+    Action-level knowledge for objects that can be cut.
+    """
+
+    target: SemanticAnnotation = field(kw_only=True)
+    preferred_tool_type: Type[Tool] = field(kw_only=True)
+    preferred_support_type: Type[SemanticAnnotation] = field(kw_only=True)
+    tool_affordance: str = "cutting"
+    support_affordance: str = "stable_cutting_surface"
+    default_cutting_technique: str = "sawing"
+    default_slice_thickness: float = 0.02
+    requires_stable_support: bool = True
+    cutting_axis_policy: str = "longest_object_axis"
+    blade_orientation_policy: str = "vertical"
+
+
+@dataclass(eq=False)
+class CuttingToolAffordance(SemanticAnnotation):
+    """
+    Semantic knowledge that a tool can be used for cutting.
+    """
+
+    tool: Tool = field(kw_only=True)
+    tool_affordance: str = "cutting"
+    blade_orientation_policy: str = "vertical"
+
+
+@dataclass(eq=False)
+class ToolAttachment(SemanticAnnotation):
+    """
+    Semantic fact that a tool is currently attached to a robot arm.
+    """
+
+    arm: object = field(kw_only=True)
+    tool: Tool = field(kw_only=True)
+
+
+@dataclass(eq=False)
+class StableCuttingSupport(SemanticAnnotation):
+    """
+    Semantic knowledge that a support can safely carry cutting actions.
+    """
+
+    support: SemanticAnnotation = field(kw_only=True)
+    support_affordance: str = "stable_cutting_surface"
+
+
+def infer_implied_semantic_annotations(world: World) -> List[SemanticAnnotation]:
+    """
+    Add semantic annotations implied by annotations already present in the world.
+    """
+    inferred = []
+    with world.modify_world():
+        for annotation in list(world.semantic_annotations):
+            implied_fn = getattr(annotation, "implied_semantic_annotations", None)
+            if not callable(implied_fn):
+                continue
+            for implied_annotation in implied_fn():
+                world.add_semantic_annotation(implied_annotation)
+                inferred.append(implied_annotation)
+    return inferred
 
 
 class CounterTop:

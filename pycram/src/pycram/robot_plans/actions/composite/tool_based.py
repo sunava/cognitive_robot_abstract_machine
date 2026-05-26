@@ -24,7 +24,10 @@ from pycram.robot_plans.actions.composite.thesis_math.motion_models import (
 )
 from semantic_digital_twin.semantic_annotations.mixins import HasRootBody
 from semantic_digital_twin.spatial_types import Point3, Vector3
-from semantic_digital_twin.spatial_types.spatial_types import Pose, HomogeneousTransformationMatrix
+from semantic_digital_twin.spatial_types.spatial_types import (
+    Pose,
+    HomogeneousTransformationMatrix,
+)
 from semantic_digital_twin.world_description.world_entity import Body
 
 from .thesis_math.motion_presets import (
@@ -42,7 +45,9 @@ from ... import (
 
 from ....datastructures.enums import (
     Arms,
-    MovementType, ApproachDirection, VerticalAlignment,
+    MovementType,
+    ApproachDirection,
+    VerticalAlignment,
 )
 from ....datastructures.grasp import GraspDescription
 from ....plans.factories import sequential
@@ -367,6 +372,7 @@ class MotionSequenceRviz:
 
         self.pub.publish(arr)
 
+
 def publish_points_sequence(
     node,
     points,
@@ -602,7 +608,9 @@ def publish_pose_axes_marker(
         marker.color = color
         marker.points = [
             _point_from_xyz(position),
-            _point_from_xyz(np.asarray(position, dtype=float) + axis_length * direction),
+            _point_from_xyz(
+                np.asarray(position, dtype=float) + axis_length * direction
+            ),
         ]
         markers.append(marker)
 
@@ -739,12 +747,12 @@ class GeneralizedActionPlan(ActionDescription):
     Tool body used to estimate the tip offset.
     """
 
-    clear_viz: bool = False
+    clear_viz: Optional[bool] = True
     """
     If viz should be cleared
     """
 
-    pointer_stride: int = 1
+    pointer_stride: Optional[int] = 1
     """
     Keep every Nth waypoint for execution (testing downsampling).
     """
@@ -896,9 +904,9 @@ class GeneralizedActionPlan(ActionDescription):
             except Exception:
                 tool_frame = None
         if tool_frame is None:
-            tool_frame = ViewManager().get_end_effector_view(
-                self.arm, self.robot
-            ).tool_frame
+            tool_frame = (
+                ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
+            )
         tool_point = self.world.transform(
             tool_frame.global_pose.to_position(), self.world.root
         )
@@ -1261,7 +1269,6 @@ class CuttingAction(GeneralizedActionPlan):
         return seq.sample(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
 
 
-
 @dataclass(kw_only=True)
 class SimplePouringAction(ActionDescription):
     """
@@ -1272,7 +1279,6 @@ class SimplePouringAction(ActionDescription):
     """
     The object to pick up
     """
-
 
     source_object_designator: Body
     """
@@ -1363,9 +1369,9 @@ class SimplePouringAction(ActionDescription):
             return
 
         try:
-            tool_frame = ViewManager().get_end_effector_view(
-                self.arm, self.robot
-            ).tool_frame
+            tool_frame = (
+                ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
+            )
             tool_point = self.world.transform(
                 tool_frame.global_pose.to_position(), self.world.root
             )
@@ -1463,20 +1469,12 @@ class SimplePouringAction(ActionDescription):
         side_y = side_sign * robot_right_y
 
         side_offset = float(self.pour_side_offset_m) + (
-                0.7 * self._held_object_height_m()
+            0.7 * self._held_object_height_m()
         )
         approach_offset = float(self.pour_approach_offset_m)  # tilt_reach not in XY
 
-        target_x = (
-                bowl_x
-                + side_x * side_offset
-                - approach_x * approach_offset
-        )
-        target_y = (
-                bowl_y
-                + side_y * side_offset
-                - approach_y * approach_offset
-        )
+        target_x = bowl_x + side_x * side_offset - approach_x * approach_offset
+        target_y = bowl_y + side_y * side_offset - approach_y * approach_offset
         self.offset_x = float(target_x - bowl_x)
         self.offset_y = float(target_y - bowl_y)
         self.offset_z = float(self.pour_height_m)
@@ -1496,7 +1494,7 @@ class SimplePouringAction(ActionDescription):
 
         # Build orientation from yaw_to_bowl, not robot_quat,
         # so roll-tilt is always correct relative to the bowl regardless of robot pose
-        base_rot = R.from_euler('z', yaw_to_bowl)
+        base_rot = R.from_euler("z", yaw_to_bowl)
         qx, qy, qz, qw = base_rot.as_quat()  # scipy convention: x,y,z,w
 
         new_pose = Pose.from_xyz_quaternion(

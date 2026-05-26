@@ -4,6 +4,7 @@ from contextlib import redirect_stderr, redirect_stdout
 
 import numpy as np
 
+from krrood.entity_query_language.factories import an, entity, variable, variable_from
 import pycram.motion_executor as motion_executor_module
 from pycram.datastructures.dataclasses import Context
 from pycram.datastructures.enums import Arms
@@ -30,13 +31,29 @@ from semantic_digital_twin.datastructures.definitions import (
 )
 from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
+    Apple,
     Bowl,
+    Bread,
+    CuttingAffordance,
+    CuttingBoard,
+    CuttingToolAffordance,
     Cup,
+    Food,
     Knife,
+    StableCuttingSupport,
     Whisk,
 )
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
+from ..thesis_new.src.utils.demo_utils import (
+    attach_available_tools,
+    collect_named_targets,
+    get_available_arm_tool_frames,
+    get_park_arms_argument,
+    publish_demo_camera_target,
+    setup_experiment_runtime,
+    shutdown_experiment_runtime,
+)
 
 try:
     from thesis_new.src.demo_cut_all_breads_retry import (
@@ -97,15 +114,7 @@ except ImportError:
         setup_thesis_world,
     )
 from pycram.robot_plans.actions.composite.thesis_math import body_local_aabb
-from demos.thesis_new.src.utils import (
-    attach_available_tools,
-    collect_named_targets,
-    get_available_arm_tool_frames,
-    get_park_arms_argument,
-    publish_demo_camera_target,
-    setup_experiment_runtime,
-    shutdown_experiment_runtime,
-)
+
 from semantic_digital_twin.world_description.geometry import Color
 
 HANDPICKED_PICKUP_POSES = {
@@ -193,6 +202,134 @@ def _perform_attempt_quietly(fn):
         logger.setLevel(previous_level)
 
 
+def _eql_list(label, query):
+    result = list(query.evaluate())
+    print(f"[EQL] {label}: {len(result)} candidate(s)")
+    for index, candidate in enumerate(result, start=1):
+        print(f"      {index}. {candidate}")
+    return result
+
+
+def _cut_target_annotation_type(object_kind):
+    normalized = str(object_kind).strip().lower()
+    return {
+        "bread": Bread,
+        "apple": Apple,
+        "cucumber": Food,
+    }.get(normalized, Food)
+
+
+def _add_single_cutting_knowledge(world, *, object_kind, target, arm_tools):
+    target_annotation_type = _cut_target_annotation_type(object_kind)
+    target_annotation = target_annotation_type(root=target)
+    world.add_semantic_annotation(target_annotation)
+
+    cutting_board = CuttingBoard(root=world.get_body_by_name("cutting_board_0001"))
+    world.add_semantic_annotation(cutting_board)
+    world.add_semantic_annotation(
+        StableCuttingSupport(
+            support=cutting_board,
+            support_affordance="stable_cutting_surface",
+        )
+    )
+
+    world.add_semantic_annotation(
+        CuttingAffordance(
+            target=target_annotation,
+            preferred_tool_type=Knife,
+            preferred_support_type=CuttingBoard,
+            tool_affordance="cutting",
+            support_affordance="stable_cutting_surface",
+            default_cutting_technique="sawing",
+            default_slice_thickness=CUTTING_SLICE_THICKNESS_M,
+            requires_stable_support=True,
+            cutting_axis_policy="longest_object_axis",
+            blade_orientation_policy="vertical",
+        )
+    )
+
+    for _, tool in arm_tools:
+        world.add_semantic_annotation(tool)
+        world.add_semantic_annotation(
+            CuttingToolAffordance(
+                tool=tool,
+                tool_affordance="cutting",
+                blade_orientation_policy="vertical",
+            )
+        )
+
+
+def _resolve_cutting_knowledge_with_eql(world, arm_tools):
+    cutting_affordance = variable(
+        CuttingAffordance,
+        domain=world.get_semantic_annotations_by_type(CuttingAffordance),
+    )
+    cutting_affordances = _eql_list(
+        "cuttable target affordances",
+        an(
+            entity(cutting_affordance).where(
+                cutting_affordance.tool_affordance == "cutting"
+            )
+        ),
+    )
+    if not cutting_affordances:
+        raise RuntimeError("No CuttingAffordance annotation found.")
+    selected_cutting_affordance = cutting_affordances[0]
+
+    support = variable(
+        StableCuttingSupport,
+        domain=world.get_semantic_annotations_by_type(StableCuttingSupport),
+    )
+    supports = _eql_list(
+        "stable cutting supports",
+        an(
+            entity(support).where(
+                support.support_affordance
+                == selected_cutting_affordance.support_affordance
+            )
+        ),
+    )
+    if selected_cutting_affordance.requires_stable_support and not supports:
+        raise RuntimeError("Cutting requires a stable support, but EQL found none.")
+
+    tool_affordance = variable(
+        CuttingToolAffordance,
+        domain=world.get_semantic_annotations_by_type(CuttingToolAffordance),
+    )
+    tool_affordances = _eql_list(
+        "cutting tool affordances",
+        an(
+            entity(tool_affordance).where(
+                tool_affordance.tool_affordance
+                == selected_cutting_affordance.tool_affordance
+            )
+        ),
+    )
+    if not tool_affordances:
+        raise RuntimeError("No CuttingToolAffordance annotation found.")
+
+    cutting_tools = {item.tool for item in tool_affordances}
+    arm_tool_binding = variable_from(arm_tools)
+    arm_tool_bindings = _eql_list(
+        "available arm/tool bindings",
+        an(entity(arm_tool_binding)),
+    )
+    compatible_bindings = [
+        (arm, tool) for arm, tool in arm_tool_bindings if tool in cutting_tools
+    ]
+    print(f"[knowledge filter] compatible cutting bindings: {len(compatible_bindings)}")
+    for index, (arm, tool) in enumerate(compatible_bindings, start=1):
+        print(f"      {index}. {arm}: {tool}")
+    if not compatible_bindings:
+        raise RuntimeError("No arm/tool binding matches the cutting tool affordance.")
+
+    return (
+        selected_cutting_affordance,
+        supports[0] if supports else None,
+        compatible_bindings,
+    )
+
+
 def _try_cut(
     context,
     target,
@@ -202,6 +339,7 @@ def _try_cut(
     *,
     cutting_technique,
     num_cuts_x,
+    slice_thickness=CUTTING_SLICE_THICKNESS_M,
 ):
     with simulated_robot_without_collision:
         sequential(
@@ -240,7 +378,7 @@ def _try_cut(
                     clear_viz=True,
                     pointer_stride=CUTTING_POINTER_STRIDE,
                     num_cuts_x=num_cuts_x,
-                    slice_thickness=CUTTING_SLICE_THICKNESS_M,
+                    slice_thickness=slice_thickness,
                 ),
                 ParkArmsAction(get_park_arms_argument(context.world)),
             ],
@@ -647,7 +785,16 @@ def run_single_object_cut_demo(
             world, f"{get_cut_object_config(object_kind)['object_name_prefix']}_"
         )
 
-        target = targets[0]
+        _add_single_cutting_knowledge(
+            world,
+            object_kind=object_kind,
+            target=targets[0],
+            arm_tools=arm_tools,
+        )
+        cutting_affordance, stable_support, arm_tool_bindings = (
+            _resolve_cutting_knowledge_with_eql(world, arm_tools)
+        )
+        target = cutting_affordance.target.root
         publish_demo_camera_target(
             node,
             world,
@@ -672,9 +819,19 @@ def run_single_object_cut_demo(
             pickup_yaw=pickup_yaw,
         )
         pickup_xyz = _pose_xyz(pickup_pose)
+        print("[resolved cutting task]")
+        print(f"  target: {target}")
+        print(f"  support: {stable_support.support if stable_support else None}")
+        print(f"  technique: {cutting_affordance.default_cutting_technique}")
+        print(f"  slice thickness: {cutting_affordance.default_slice_thickness}")
+        print(f"  cutting axis policy: {cutting_affordance.cutting_axis_policy}")
+        print(
+            f"  blade orientation policy: {cutting_affordance.blade_orientation_policy}"
+        )
+        print(f"  pickup pose xyz: {pickup_xyz}")
 
         last_error = None
-        for arm, tool in arm_tools:
+        for arm, tool in arm_tool_bindings:
             try:
                 _perform_attempt_quietly(
                     lambda: _try_cut(
@@ -683,8 +840,15 @@ def run_single_object_cut_demo(
                         pickup_pose,
                         arm,
                         tool,
-                        cutting_technique=cut_cfg.get("technique", CUTTING_TECHNIQUE),
+                        cutting_technique=cut_cfg.get(
+                            "technique",
+                            cutting_affordance.default_cutting_technique,
+                        ),
                         num_cuts_x=cut_cfg.get("num_cuts_x", CUTTING_NUM_CUTS_X),
+                        slice_thickness=cut_cfg.get(
+                            "slice_thickness",
+                            cutting_affordance.default_slice_thickness,
+                        ),
                     )
                 )
                 return

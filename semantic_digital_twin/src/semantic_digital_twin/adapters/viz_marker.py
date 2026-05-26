@@ -77,7 +77,7 @@ class VizMarkerPublisher(StateChangeCallback):
         """
         Publishes the Marker Array on world changes.
         """
-        if self.world.state.version % self.throttle_state_updates != 0:
+        if self._world.state.version % self.throttle_state_updates != 0:
             return
         marker_array = self._make_marker_array()
         self.pub.publish(marker_array)

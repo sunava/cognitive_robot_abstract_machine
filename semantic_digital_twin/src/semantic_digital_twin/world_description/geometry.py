@@ -160,6 +160,10 @@ class Color:
     def GREY(cls) -> Self:
         return cls(0.5, 0.5, 0.5, 1)
 
+    @classmethod
+    def LIGHT_BLUE(cls) -> Self:
+        return cls(0.678, 0.847, 0.902, 1)
+
 
 @dataclass
 class Scale:
