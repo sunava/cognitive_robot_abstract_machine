@@ -269,7 +269,7 @@ class Tiago(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
                         for c in self.left_arm.connections
                         if type(c) != FixedConnection
                     ],
-                    [0.27, -1.07, 1.5, 1.96, -2.0, 1.2, 0.5],
+                    [0.25, -1.15, 1.35, 1.70, -1.35, 1.10, 0.0],
                 )
             ),
             state_type=StaticJointState.PARK,
@@ -286,7 +286,7 @@ class Tiago(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
                         for c in self.right_arm.connections
                         if type(c) != FixedConnection
                     ],
-                    [0.27, -1.07, 1.5, 1.96, -2.0, 1.2, 0.5],
+                    [0.25, -1.15, -1.35, 1.70,  1.35, 1.10, 0.0],
                 )
             ),
             state_type=StaticJointState.PARK,

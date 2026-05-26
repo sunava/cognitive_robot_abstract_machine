@@ -161,7 +161,7 @@ class Armar(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
                 mapping=dict(
                     zip(
                         [c for c in left_arm.connections if type(c) != FixedConnection],
-                        [-0.15, 0.0, 0.0, 1.5, 0.5, 2.0, 1.5, 0.0, 0.0],
+                        [-0.15, 0.0, 0.0, 1.5, 0.5, 2.0, 3, 0.0, 0.0],
                     )
                 ),
                 state_type=StaticJointState.PARK,
@@ -178,7 +178,7 @@ class Armar(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
                             for c in right_arm.connections
                             if type(c) != FixedConnection
                         ],
-                        [-0.15, 0.0, 0.0, 1.5, 2.64, 2.0, 1.6415, 0.0, 0.0],
+                        [-0.15, 0.0, 0.0, 1.5, 2.64, 2.0, 3, 0.0, 0.0],
                     )
                 ),
                 state_type=StaticJointState.PARK,

@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+import time
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -284,6 +285,7 @@ class BulletCollisionDetector(CollisionDetector):
     The bullet collision objects in the order they are added to the world.
     This is only a cache for performance reasons.
     """
+    _collision_debug_counter: int = field(default=0, init=False)
 
     def sync_world_model(self) -> None:
         self.reset_cache()
@@ -334,9 +336,41 @@ class BulletCollisionDetector(CollisionDetector):
     ) -> CollisionCheckingResult:
 
         query = self.collision_matrix_to_bullet_query(collision_matrix)
+        self._collision_debug_counter += 1
+        debug_enabled = os.environ.get("PYCRAM_COLLISION_DEBUG", "1") != "0"
+        debug_every = max(
+            1, int(os.environ.get("PYCRAM_COLLISION_DEBUG_EVERY", "25"))
+        )
+        should_debug = debug_enabled and (
+            self._collision_debug_counter <= 10
+            or self._collision_debug_counter % debug_every == 0
+        )
+        if should_debug:
+            sample_checks = []
+            for check in list(collision_matrix.collision_checks)[:5]:
+                body_a = getattr(getattr(check, "body_a", None), "name", None)
+                body_b = getattr(getattr(check, "body_b", None), "name", None)
+                sample_checks.append(
+                    (
+                        getattr(body_a, "name", str(body_a)),
+                        getattr(body_b, "name", str(body_b)),
+                        getattr(check, "distance", None),
+                    )
+                )
+            # print(
+            #     "[collision debug] before batch "
+            #     f"tick={self._collision_debug_counter} "
+            #     f"checks={len(collision_matrix.collision_checks)} "
+            #     f"query={len(query) if query is not None else None} "
+            #     f"sample={sample_checks}",
+            #     flush=True,
+            # )
+        start_time = time.perf_counter()
         result: List[bullet.Collision] = (
             self.kineverse_world.get_closest_filtered_map_batch(query)
         )
+        duration_s = time.perf_counter() - start_time
+      
         return CollisionCheckingResult(
             [
                 ClosestPoints(

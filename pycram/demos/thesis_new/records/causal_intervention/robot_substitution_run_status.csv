@@ -825,3 +825,730 @@ timestamp_utc,status,causal_experiment_id,task_name,environment_name,seed,robot_
 2026-05-24T09:23:59+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
 2026-05-24T09:25:36+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
 2026-05-24T09:26:03+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T10:39:10+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T10:39:12+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T10:39:12+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T10:39:13+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T10:39:13+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T10:39:14+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T10:39:14+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,,
+2026-05-24T10:39:15+00:00,failed,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T10:39:15+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,,
+2026-05-24T10:39:17+00:00,failed,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T10:39:17+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,,
+2026-05-24T10:39:18+00:00,failed,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T10:39:18+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,,
+2026-05-24T10:41:47+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T10:41:51+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T10:41:51+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T10:41:54+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T10:41:54+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T10:42:03+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T10:43:03+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T10:45:30+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T10:47:40+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T10:48:09+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T10:48:32+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T10:48:32+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T10:50:16+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T10:50:38+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T10:50:38+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T10:51:00+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T10:51:23+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T10:51:23+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T10:52:56+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T10:53:29+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T10:53:29+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T10:54:21+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T10:55:38+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T10:56:09+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:04:50+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:05:31+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:05:54+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:05:54+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T11:06:20+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:06:20+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T11:06:46+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:06:46+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,,
+2026-05-24T11:07:00+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:07:23+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:07:23+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T11:07:50+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:07:50+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T11:07:52+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:08:46+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:10:08+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:10:52+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:13:39+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:15:47+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:16:21+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:18:16+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:18:28+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:18:51+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:18:51+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T11:19:17+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:19:17+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T11:19:28+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:25:25+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:25:47+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:25:47+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T11:26:14+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:26:14+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T11:26:42+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:27:04+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:27:04+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T11:27:31+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:27:31+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T11:28:00+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:28:20+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:28:43+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:28:43+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T11:29:09+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:29:09+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T11:29:34+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:29:34+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,,
+2026-05-24T11:29:57+00:00,failed,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:29:57+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,,
+2026-05-24T11:44:20+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:44:43+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:44:43+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T11:45:10+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:45:10+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T11:45:36+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:45:36+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,,
+2026-05-24T11:45:59+00:00,failed,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:45:59+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,,
+2026-05-24T11:46:23+00:00,failed,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:46:23+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,,
+2026-05-24T11:46:48+00:00,failed,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:46:48+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,,
+2026-05-24T11:47:07+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:47:31+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:47:31+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T11:48:46+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:49:01+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:49:34+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:49:34+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T11:50:13+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:50:13+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T11:50:50+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:51:22+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:51:22+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T11:52:02+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:52:02+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T11:52:05+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:52:05+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,,
+2026-05-24T11:52:07+00:00,failed,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:52:07+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,,
+2026-05-24T11:52:09+00:00,failed,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:52:09+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,,
+2026-05-24T11:52:11+00:00,failed,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:52:11+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,,
+2026-05-24T11:52:13+00:00,failed,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:52:13+00:00,started,robot_substitution:pour:isr:910003,pour,isr,910003,pr2,,
+2026-05-24T11:52:15+00:00,failed,robot_substitution:pour:isr:910003,pour,isr,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:52:15+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,pr2,,
+2026-05-24T11:52:27+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:52:35+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:53:09+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:53:09+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T11:54:46+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:55:19+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:55:19+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T11:55:37+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:56:12+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:56:12+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T11:56:30+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:56:45+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,-6,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:56:45+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T11:57:03+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,-6,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:57:03+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T11:57:19+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,-6,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:57:19+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,,
+2026-05-24T11:57:20+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:57:54+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:57:54+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T11:58:14+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T11:58:49+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:58:49+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T11:59:27+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T11:59:27+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T12:02:52+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T12:03:25+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:03:25+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T12:04:04+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:04:04+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T12:04:41+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:04:41+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,,
+2026-05-24T12:05:15+00:00,failed,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:05:15+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,,
+2026-05-24T12:05:51+00:00,failed,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:05:51+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,,
+2026-05-24T12:06:23+00:00,failed,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:06:23+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,,
+2026-05-24T12:06:39+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T12:07:14+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:07:14+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T12:07:52+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:07:52+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T12:08:03+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T12:08:36+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:08:36+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T12:09:14+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:09:14+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T12:09:27+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-24T12:10:00+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:10:00+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-24T12:10:39+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:10:39+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-24T12:11:16+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:11:16+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,,
+2026-05-24T12:11:50+00:00,failed,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:11:50+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,,
+2026-05-24T12:12:25+00:00,failed,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:12:25+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,,
+2026-05-24T12:12:56+00:00,failed,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:12:56+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,,
+2026-05-24T12:13:28+00:00,failed,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:13:28+00:00,started,robot_substitution:pour:isr:910003,pour,isr,910003,pr2,,
+2026-05-24T12:13:58+00:00,failed,robot_substitution:pour:isr:910003,pour,isr,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:13:58+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,pr2,,
+2026-05-24T12:14:29+00:00,failed,robot_substitution:pour:isr:910004,pour,isr,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:14:29+00:00,started,robot_substitution:pour:isr:910005,pour,isr,910005,pr2,,
+2026-05-24T12:14:58+00:00,failed,robot_substitution:pour:isr:910005,pour,isr,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:14:58+00:00,started,robot_substitution:pour:kitchen:910001,pour,kitchen,910001,pr2,,
+2026-05-24T12:15:26+00:00,failed,robot_substitution:pour:kitchen:910001,pour,kitchen,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:15:26+00:00,started,robot_substitution:pour:kitchen:910002,pour,kitchen,910002,pr2,,
+2026-05-24T12:15:52+00:00,failed,robot_substitution:pour:kitchen:910002,pour,kitchen,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:15:52+00:00,started,robot_substitution:pour:kitchen:910003,pour,kitchen,910003,pr2,,
+2026-05-24T12:16:20+00:00,failed,robot_substitution:pour:kitchen:910003,pour,kitchen,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-24T12:16:20+00:00,started,robot_substitution:pour:kitchen:910004,pour,kitchen,910004,pr2,,
+2026-05-24T12:16:50+00:00,failed,robot_substitution:pour:kitchen:910004,pour,kitchen,910004,pr2,1,child process returned non-zero; removed_raw_rows=1
+2026-05-24T12:16:50+00:00,started,robot_substitution:pour:kitchen:910005,pour,kitchen,910005,pr2,,
+2026-05-24T12:17:16+00:00,failed,robot_substitution:pour:kitchen:910005,pour,kitchen,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:24:31+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T07:25:07+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:25:07+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T07:25:45+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:25:45+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-25T07:26:23+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:26:23+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,,
+2026-05-25T07:26:57+00:00,failed,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:26:57+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,,
+2026-05-25T07:27:33+00:00,failed,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:27:33+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,,
+2026-05-25T07:27:35+00:00,failed,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:27:35+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,,
+2026-05-25T07:27:37+00:00,failed,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:27:37+00:00,started,robot_substitution:pour:isr:910003,pour,isr,910003,pr2,,
+2026-05-25T07:27:39+00:00,failed,robot_substitution:pour:isr:910003,pour,isr,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:27:39+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,pr2,,
+2026-05-25T07:27:40+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T07:27:43+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:27:43+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T07:27:45+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:27:45+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-25T07:27:47+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:27:47+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,,
+2026-05-25T07:27:49+00:00,failed,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:27:49+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,,
+2026-05-25T07:27:51+00:00,failed,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:27:51+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,,
+2026-05-25T07:28:24+00:00,failed,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:28:24+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,,
+2026-05-25T07:28:40+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T07:29:13+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:29:13+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T07:29:31+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T07:30:04+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:30:04+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T07:30:42+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:30:42+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-25T07:31:19+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:31:19+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,,
+2026-05-25T07:31:53+00:00,failed,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:31:53+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,,
+2026-05-25T07:32:29+00:00,failed,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T07:32:29+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,,
+2026-05-25T07:35:26+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T07:43:02+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T07:48:01+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T07:59:48+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T08:02:27+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T08:03:46+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T08:04:46+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T08:04:48+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T08:04:48+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T08:04:50+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T08:04:50+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-25T08:04:52+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T08:04:52+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,,
+2026-05-25T08:04:55+00:00,failed,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T08:04:55+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,,
+2026-05-25T08:04:57+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T08:06:28+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T08:07:18+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T08:20:55+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T09:05:01+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T09:15:15+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T09:30:22+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T09:33:33+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T09:33:35+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:33:35+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T09:33:36+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:33:36+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-25T09:33:37+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:33:37+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,,
+2026-05-25T09:33:38+00:00,failed,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:33:38+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,,
+2026-05-25T09:33:39+00:00,failed,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:33:39+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,,
+2026-05-25T09:33:40+00:00,failed,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:33:40+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,,
+2026-05-25T09:33:42+00:00,failed,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:33:42+00:00,started,robot_substitution:pour:isr:910003,pour,isr,910003,pr2,,
+2026-05-25T09:33:43+00:00,failed,robot_substitution:pour:isr:910003,pour,isr,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:33:43+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,pr2,,
+2026-05-25T09:33:44+00:00,failed,robot_substitution:pour:isr:910004,pour,isr,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:33:44+00:00,started,robot_substitution:pour:isr:910005,pour,isr,910005,pr2,,
+2026-05-25T09:33:45+00:00,failed,robot_substitution:pour:isr:910005,pour,isr,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:33:45+00:00,started,robot_substitution:pour:kitchen:910001,pour,kitchen,910001,pr2,,
+2026-05-25T09:33:46+00:00,failed,robot_substitution:pour:kitchen:910001,pour,kitchen,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:33:46+00:00,started,robot_substitution:pour:kitchen:910002,pour,kitchen,910002,pr2,,
+2026-05-25T09:33:48+00:00,failed,robot_substitution:pour:kitchen:910002,pour,kitchen,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:33:48+00:00,started,robot_substitution:pour:kitchen:910003,pour,kitchen,910003,pr2,,
+2026-05-25T09:33:49+00:00,failed,robot_substitution:pour:kitchen:910003,pour,kitchen,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:33:49+00:00,started,robot_substitution:pour:kitchen:910004,pour,kitchen,910004,pr2,,
+2026-05-25T09:33:50+00:00,failed,robot_substitution:pour:kitchen:910004,pour,kitchen,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:33:50+00:00,started,robot_substitution:pour:kitchen:910005,pour,kitchen,910005,pr2,,
+2026-05-25T09:33:51+00:00,failed,robot_substitution:pour:kitchen:910005,pour,kitchen,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:35:22+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T09:39:44+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T09:41:07+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,,
+2026-05-25T09:42:30+00:00,completed,robot_substitution:pour:apartment:910001,pour,apartment,910001,pr2,0,
+2026-05-25T09:42:30+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T09:42:35+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T09:44:58+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T09:45:01+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:45:01+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-25T09:45:04+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:45:04+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,,
+2026-05-25T09:45:06+00:00,failed,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:45:06+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,,
+2026-05-25T09:45:09+00:00,failed,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:45:09+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,,
+2026-05-25T09:45:11+00:00,failed,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:45:11+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,,
+2026-05-25T09:45:14+00:00,failed,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:45:14+00:00,started,robot_substitution:pour:isr:910003,pour,isr,910003,pr2,,
+2026-05-25T09:45:17+00:00,failed,robot_substitution:pour:isr:910003,pour,isr,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:45:17+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,pr2,,
+2026-05-25T09:45:21+00:00,failed,robot_substitution:pour:isr:910004,pour,isr,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T09:45:21+00:00,started,robot_substitution:pour:isr:910005,pour,isr,910005,pr2,,
+2026-05-25T09:45:34+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:10:37+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:13:23+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:16:51+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:18:45+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:19:36+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:20:18+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:32:20+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:35:28+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:37:43+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:38:33+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:40:32+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:43:14+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:44:02+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:48:48+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:50:43+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:52:39+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:52:40+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T10:52:40+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-25T10:52:41+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T10:52:41+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,,
+2026-05-25T10:52:42+00:00,failed,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T10:52:42+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,,
+2026-05-25T10:52:43+00:00,failed,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T10:52:43+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,,
+2026-05-25T10:52:44+00:00,failed,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T10:52:44+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,,
+2026-05-25T10:52:45+00:00,failed,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T10:52:45+00:00,started,robot_substitution:pour:isr:910003,pour,isr,910003,pr2,,
+2026-05-25T10:52:45+00:00,failed,robot_substitution:pour:isr:910003,pour,isr,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T10:52:45+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,pr2,,
+2026-05-25T10:52:46+00:00,failed,robot_substitution:pour:isr:910004,pour,isr,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T10:52:46+00:00,started,robot_substitution:pour:isr:910005,pour,isr,910005,pr2,,
+2026-05-25T10:52:47+00:00,failed,robot_substitution:pour:isr:910005,pour,isr,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T10:52:47+00:00,started,robot_substitution:pour:kitchen:910001,pour,kitchen,910001,pr2,,
+2026-05-25T10:52:48+00:00,failed,robot_substitution:pour:kitchen:910001,pour,kitchen,910001,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T10:52:48+00:00,started,robot_substitution:pour:kitchen:910002,pour,kitchen,910002,pr2,,
+2026-05-25T10:52:49+00:00,failed,robot_substitution:pour:kitchen:910002,pour,kitchen,910002,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T10:52:49+00:00,started,robot_substitution:pour:kitchen:910003,pour,kitchen,910003,pr2,,
+2026-05-25T10:52:50+00:00,failed,robot_substitution:pour:kitchen:910003,pour,kitchen,910003,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T10:52:50+00:00,started,robot_substitution:pour:kitchen:910004,pour,kitchen,910004,pr2,,
+2026-05-25T10:52:51+00:00,failed,robot_substitution:pour:kitchen:910004,pour,kitchen,910004,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T10:52:51+00:00,started,robot_substitution:pour:kitchen:910005,pour,kitchen,910005,pr2,,
+2026-05-25T10:52:52+00:00,failed,robot_substitution:pour:kitchen:910005,pour,kitchen,910005,pr2,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T10:53:18+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T10:54:53+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T11:01:27+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T11:01:39+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T11:03:12+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T11:05:50+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T11:31:22+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T11:32:11+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T11:36:59+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T11:38:09+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T11:39:31+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T11:41:22+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,unitree_g1,,
+2026-05-25T11:42:23+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,unitree_g1,,
+2026-05-25T11:45:05+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,unitree_g1,,
+2026-05-25T11:50:04+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,unitree_g1,,
+2026-05-25T11:53:11+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,unitree_g1,,
+2026-05-25T11:54:24+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,unitree_g1,,
+2026-05-25T11:55:40+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,unitree_g1,,
+2026-05-25T11:56:37+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T11:57:28+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T12:02:53+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T12:06:41+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T12:07:27+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T12:07:58+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T12:08:26+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T12:09:00+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T12:10:08+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T12:11:36+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T12:12:38+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T12:13:53+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T12:14:40+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T12:15:49+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T12:16:29+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T12:17:24+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,unitree_g1,,
+2026-05-25T12:19:40+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,unitree_g1,,
+2026-05-25T12:20:34+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:21:27+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:22:06+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:22:56+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:24:05+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:24:44+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:25:26+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:25:55+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:26:24+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:26:57+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:27:19+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:27:43+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:28:32+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:29:03+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:29:38+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:30:25+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:31:00+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T12:31:57+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T12:33:34+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T12:33:38+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:33:38+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,garmi,,
+2026-05-25T12:33:42+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:33:42+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,garmi,,
+2026-05-25T12:33:45+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:33:45+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,garmi,,
+2026-05-25T12:33:49+00:00,failed,robot_substitution:pour:apartment:910004,pour,apartment,910004,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:33:49+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,garmi,,
+2026-05-25T12:33:53+00:00,failed,robot_substitution:pour:apartment:910005,pour,apartment,910005,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:33:53+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,garmi,,
+2026-05-25T12:33:56+00:00,failed,robot_substitution:pour:isr:910001,pour,isr,910001,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:33:56+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,garmi,,
+2026-05-25T12:33:59+00:00,failed,robot_substitution:pour:isr:910002,pour,isr,910002,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:33:59+00:00,started,robot_substitution:pour:isr:910003,pour,isr,910003,garmi,,
+2026-05-25T12:34:03+00:00,failed,robot_substitution:pour:isr:910003,pour,isr,910003,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:34:03+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,garmi,,
+2026-05-25T12:34:06+00:00,failed,robot_substitution:pour:isr:910004,pour,isr,910004,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:34:06+00:00,started,robot_substitution:pour:isr:910005,pour,isr,910005,garmi,,
+2026-05-25T12:34:09+00:00,failed,robot_substitution:pour:isr:910005,pour,isr,910005,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:34:09+00:00,started,robot_substitution:pour:kitchen:910001,pour,kitchen,910001,garmi,,
+2026-05-25T12:34:13+00:00,failed,robot_substitution:pour:kitchen:910001,pour,kitchen,910001,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:34:13+00:00,started,robot_substitution:pour:kitchen:910002,pour,kitchen,910002,garmi,,
+2026-05-25T12:34:16+00:00,failed,robot_substitution:pour:kitchen:910002,pour,kitchen,910002,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:34:16+00:00,started,robot_substitution:pour:kitchen:910003,pour,kitchen,910003,garmi,,
+2026-05-25T12:34:19+00:00,failed,robot_substitution:pour:kitchen:910003,pour,kitchen,910003,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:34:19+00:00,started,robot_substitution:pour:kitchen:910004,pour,kitchen,910004,garmi,,
+2026-05-25T12:34:23+00:00,failed,robot_substitution:pour:kitchen:910004,pour,kitchen,910004,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:34:23+00:00,started,robot_substitution:pour:kitchen:910005,pour,kitchen,910005,garmi,,
+2026-05-25T12:34:26+00:00,failed,robot_substitution:pour:kitchen:910005,pour,kitchen,910005,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:35:21+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T12:35:22+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T12:40:34+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T12:41:15+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T12:42:13+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T12:43:03+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T12:43:06+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:43:06+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,garmi,,
+2026-05-25T12:43:09+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:43:09+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,garmi,,
+2026-05-25T12:43:13+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T12:43:13+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,garmi,,
+2026-05-25T12:43:16+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T12:44:07+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T12:44:37+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T12:45:25+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T12:46:02+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T12:47:02+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,hsrb,,
+2026-05-25T12:47:47+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,hsrb,,
+2026-05-25T12:48:22+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,hsrb,,
+2026-05-25T12:48:55+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,hsrb,,
+2026-05-25T12:49:21+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,hsrb,,
+2026-05-25T12:49:54+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,hsrb,,
+2026-05-25T12:50:23+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,hsrb,,
+2026-05-25T12:50:51+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,hsrb,,
+2026-05-25T12:51:09+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,hsrb,,
+2026-05-25T12:51:29+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,hsrb,,
+2026-05-25T12:53:04+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T12:53:48+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T12:54:39+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T12:55:17+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T12:56:06+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T12:56:53+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T12:57:30+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T12:58:10+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T12:58:56+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T12:59:49+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T13:00:27+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T13:01:07+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T13:02:37+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T13:06:14+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,-11,child process returned non-zero; removed_raw_rows=2
+2026-05-25T13:06:14+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,tiago,,
+2026-05-25T13:07:51+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T13:37:51+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,124,child process returned non-zero; removed_raw_rows=14
+2026-05-25T13:37:51+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,tiago,,
+2026-05-25T14:07:51+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,tiago,124,child process returned non-zero; removed_raw_rows=15
+2026-05-25T14:07:51+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,tiago,,
+2026-05-25T14:37:51+00:00,failed,robot_substitution:pour:apartment:910004,pour,apartment,910004,tiago,124,child process returned non-zero; removed_raw_rows=17
+2026-05-25T14:37:51+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,tiago,,
+2026-05-25T15:07:51+00:00,failed,robot_substitution:pour:apartment:910005,pour,apartment,910005,tiago,124,child process returned non-zero; removed_raw_rows=16
+2026-05-25T15:07:51+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,tiago,,
+2026-05-25T15:36:36+00:00,completed,robot_substitution:pour:isr:910001,pour,isr,910001,tiago,0,
+2026-05-25T15:36:36+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,tiago,,
+2026-05-25T15:52:00+00:00,completed,robot_substitution:pour:isr:910002,pour,isr,910002,tiago,0,
+2026-05-25T15:52:00+00:00,started,robot_substitution:pour:isr:910003,pour,isr,910003,tiago,,
+2026-05-25T16:06:55+00:00,completed,robot_substitution:pour:isr:910003,pour,isr,910003,tiago,0,
+2026-05-25T16:06:55+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,tiago,,
+2026-05-25T16:36:55+00:00,failed,robot_substitution:pour:isr:910004,pour,isr,910004,tiago,124,child process returned non-zero; removed_raw_rows=31
+2026-05-25T16:36:55+00:00,started,robot_substitution:pour:isr:910005,pour,isr,910005,tiago,,
+2026-05-25T16:56:45+00:00,completed,robot_substitution:pour:isr:910005,pour,isr,910005,tiago,0,
+2026-05-25T16:56:45+00:00,started,robot_substitution:pour:kitchen:910001,pour,kitchen,910001,tiago,,
+2026-05-25T17:18:07+00:00,completed,robot_substitution:pour:kitchen:910001,pour,kitchen,910001,tiago,0,
+2026-05-25T17:18:07+00:00,started,robot_substitution:pour:kitchen:910002,pour,kitchen,910002,tiago,,
+2026-05-25T17:35:28+00:00,completed,robot_substitution:pour:kitchen:910002,pour,kitchen,910002,tiago,0,
+2026-05-25T17:35:28+00:00,started,robot_substitution:pour:kitchen:910003,pour,kitchen,910003,tiago,,
+2026-05-25T17:57:32+00:00,completed,robot_substitution:pour:kitchen:910003,pour,kitchen,910003,tiago,0,
+2026-05-25T17:57:32+00:00,started,robot_substitution:pour:kitchen:910004,pour,kitchen,910004,tiago,,
+2026-05-25T18:12:45+00:00,completed,robot_substitution:pour:kitchen:910004,pour,kitchen,910004,tiago,0,
+2026-05-25T18:12:45+00:00,started,robot_substitution:pour:kitchen:910005,pour,kitchen,910005,tiago,,
+2026-05-25T18:27:18+00:00,completed,robot_substitution:pour:kitchen:910005,pour,kitchen,910005,tiago,0,
+2026-05-25T20:08:16+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T20:10:39+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T20:10:44+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T20:10:44+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,tiago,,
+2026-05-25T20:10:49+00:00,failed,robot_substitution:pour:apartment:910003,pour,apartment,910003,tiago,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T20:10:49+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,tiago,,
+2026-05-25T20:10:54+00:00,failed,robot_substitution:pour:apartment:910004,pour,apartment,910004,tiago,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T20:10:54+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,tiago,,
+2026-05-25T20:10:58+00:00,failed,robot_substitution:pour:apartment:910005,pour,apartment,910005,tiago,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T20:10:58+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,tiago,,
+2026-05-25T20:11:03+00:00,failed,robot_substitution:pour:isr:910004,pour,isr,910004,tiago,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T20:12:25+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T20:14:22+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T20:16:55+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T20:20:02+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T20:21:09+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T20:22:04+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T20:23:01+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T20:25:09+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T20:25:55+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T20:26:44+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T20:30:02+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T20:31:48+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T20:34:33+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T20:37:34+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,-11,child process returned non-zero; removed_raw_rows=4
+2026-05-25T20:37:34+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,garmi,,
+2026-05-25T20:38:04+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T20:38:04+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,garmi,,
+2026-05-25T20:39:11+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T20:39:36+00:00,failed,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T20:39:36+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,garmi,,
+2026-05-25T20:40:06+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,garmi,1,child process returned non-zero; removed_raw_rows=0
+2026-05-25T20:40:06+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,garmi,,
+2026-05-25T20:41:18+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T20:44:06+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T20:47:38+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T20:48:22+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T20:49:15+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T20:49:59+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T20:54:01+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,unitree_g1,,
+2026-05-25T20:55:00+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T20:56:17+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T20:57:28+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T20:58:03+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T20:58:52+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T20:59:34+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T21:00:24+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T21:03:38+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T21:04:33+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T21:05:23+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T21:06:01+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T21:06:31+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T21:08:03+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T21:10:25+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T21:16:23+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T21:17:27+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T21:19:08+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T21:20:59+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T21:21:32+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T21:22:09+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T21:22:46+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T21:23:50+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T21:25:29+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T21:29:01+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,,
+2026-05-25T21:38:58+00:00,completed,robot_substitution:pour:apartment:910001,pour,apartment,910001,tiago,0,
+2026-05-25T21:38:58+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,,
+2026-05-25T21:52:07+00:00,completed,robot_substitution:pour:apartment:910001,pour,apartment,910001,rollin_justin,0,
+2026-05-25T21:52:07+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,hsrb,,
+2026-05-25T21:55:01+00:00,completed,robot_substitution:pour:apartment:910001,pour,apartment,910001,hsrb,0,
+2026-05-25T21:55:01+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,,
+2026-05-25T22:01:46+00:00,completed,robot_substitution:pour:apartment:910001,pour,apartment,910001,armar7,0,
+2026-05-25T22:01:46+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,unitree_g1,,
+2026-05-25T22:11:52+00:00,completed,robot_substitution:pour:apartment:910001,pour,apartment,910001,unitree_g1,0,
+2026-05-25T22:11:52+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,,
+2026-05-25T22:26:36+00:00,completed,robot_substitution:pour:apartment:910001,pour,apartment,910001,garmi,0,
+2026-05-25T22:26:36+00:00,started,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,,
+2026-05-25T22:33:25+00:00,completed,robot_substitution:pour:apartment:910001,pour,apartment,910001,stretch,0,
+2026-05-25T22:33:25+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,tiago,,
+2026-05-25T22:36:26+00:00,failed,robot_substitution:pour:apartment:910002,pour,apartment,910002,tiago,-11,child process returned non-zero; removed_raw_rows=3
+2026-05-25T22:36:26+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,rollin_justin,,
+2026-05-25T22:56:10+00:00,completed,robot_substitution:pour:apartment:910002,pour,apartment,910002,rollin_justin,0,
+2026-05-25T22:56:10+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,hsrb,,
+2026-05-25T23:00:21+00:00,completed,robot_substitution:pour:apartment:910002,pour,apartment,910002,hsrb,0,
+2026-05-25T23:00:21+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,,
+2026-05-25T23:12:09+00:00,completed,robot_substitution:pour:apartment:910002,pour,apartment,910002,pr2,0,
+2026-05-25T23:12:09+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,armar7,,
+2026-05-25T23:21:21+00:00,completed,robot_substitution:pour:apartment:910002,pour,apartment,910002,armar7,0,
+2026-05-25T23:21:21+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,unitree_g1,,
+2026-05-25T23:35:28+00:00,completed,robot_substitution:pour:apartment:910002,pour,apartment,910002,unitree_g1,0,
+2026-05-25T23:35:28+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,garmi,,
+2026-05-25T23:54:44+00:00,completed,robot_substitution:pour:apartment:910002,pour,apartment,910002,garmi,0,
+2026-05-25T23:54:44+00:00,started,robot_substitution:pour:apartment:910002,pour,apartment,910002,stretch,,
+2026-05-26T00:05:37+00:00,completed,robot_substitution:pour:apartment:910002,pour,apartment,910002,stretch,0,
+2026-05-26T00:05:37+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,tiago,,
+2026-05-26T00:18:33+00:00,completed,robot_substitution:pour:apartment:910003,pour,apartment,910003,tiago,0,
+2026-05-26T00:18:33+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,rollin_justin,,
+2026-05-26T00:36:06+00:00,completed,robot_substitution:pour:apartment:910003,pour,apartment,910003,rollin_justin,0,
+2026-05-26T00:36:06+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,hsrb,,
+2026-05-26T00:40:01+00:00,completed,robot_substitution:pour:apartment:910003,pour,apartment,910003,hsrb,0,
+2026-05-26T00:40:01+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,,
+2026-05-26T00:50:11+00:00,completed,robot_substitution:pour:apartment:910003,pour,apartment,910003,pr2,0,
+2026-05-26T00:50:11+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,armar7,,
+2026-05-26T00:59:20+00:00,completed,robot_substitution:pour:apartment:910003,pour,apartment,910003,armar7,0,
+2026-05-26T00:59:20+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,unitree_g1,,
+2026-05-26T01:11:51+00:00,completed,robot_substitution:pour:apartment:910003,pour,apartment,910003,unitree_g1,0,
+2026-05-26T01:11:51+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,garmi,,
+2026-05-26T01:29:41+00:00,completed,robot_substitution:pour:apartment:910003,pour,apartment,910003,garmi,0,
+2026-05-26T01:29:41+00:00,started,robot_substitution:pour:apartment:910003,pour,apartment,910003,stretch,,
+2026-05-26T01:39:55+00:00,completed,robot_substitution:pour:apartment:910003,pour,apartment,910003,stretch,0,
+2026-05-26T01:39:55+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,tiago,,
+2026-05-26T01:47:31+00:00,completed,robot_substitution:pour:apartment:910004,pour,apartment,910004,tiago,0,
+2026-05-26T01:47:31+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,rollin_justin,,
+2026-05-26T01:57:29+00:00,completed,robot_substitution:pour:apartment:910004,pour,apartment,910004,rollin_justin,0,
+2026-05-26T01:57:29+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,hsrb,,
+2026-05-26T01:59:48+00:00,completed,robot_substitution:pour:apartment:910004,pour,apartment,910004,hsrb,0,
+2026-05-26T01:59:48+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,,
+2026-05-26T02:06:05+00:00,completed,robot_substitution:pour:apartment:910004,pour,apartment,910004,pr2,0,
+2026-05-26T02:06:05+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,armar7,,
+2026-05-26T02:11:17+00:00,completed,robot_substitution:pour:apartment:910004,pour,apartment,910004,armar7,0,
+2026-05-26T02:11:17+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,unitree_g1,,
+2026-05-26T02:18:25+00:00,completed,robot_substitution:pour:apartment:910004,pour,apartment,910004,unitree_g1,0,
+2026-05-26T02:18:25+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,garmi,,
+2026-05-26T02:29:36+00:00,completed,robot_substitution:pour:apartment:910004,pour,apartment,910004,garmi,0,
+2026-05-26T02:29:36+00:00,started,robot_substitution:pour:apartment:910004,pour,apartment,910004,stretch,,
+2026-05-26T02:35:12+00:00,completed,robot_substitution:pour:apartment:910004,pour,apartment,910004,stretch,0,
+2026-05-26T02:35:12+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,tiago,,
+2026-05-26T02:45:37+00:00,completed,robot_substitution:pour:apartment:910005,pour,apartment,910005,tiago,0,
+2026-05-26T02:45:37+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,rollin_justin,,
+2026-05-26T02:57:11+00:00,completed,robot_substitution:pour:apartment:910005,pour,apartment,910005,rollin_justin,0,
+2026-05-26T02:57:11+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,hsrb,,
+2026-05-26T03:00:07+00:00,completed,robot_substitution:pour:apartment:910005,pour,apartment,910005,hsrb,0,
+2026-05-26T03:00:07+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,,
+2026-05-26T03:08:14+00:00,completed,robot_substitution:pour:apartment:910005,pour,apartment,910005,pr2,0,
+2026-05-26T03:08:14+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,armar7,,
+2026-05-26T03:15:33+00:00,completed,robot_substitution:pour:apartment:910005,pour,apartment,910005,armar7,0,
+2026-05-26T03:15:33+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,unitree_g1,,
+2026-05-26T03:18:34+00:00,failed,robot_substitution:pour:apartment:910005,pour,apartment,910005,unitree_g1,-11,child process returned non-zero; removed_raw_rows=6
+2026-05-26T03:18:34+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,garmi,,
+2026-05-26T03:31:39+00:00,completed,robot_substitution:pour:apartment:910005,pour,apartment,910005,garmi,0,
+2026-05-26T03:31:39+00:00,started,robot_substitution:pour:apartment:910005,pour,apartment,910005,stretch,,
+2026-05-26T03:38:51+00:00,completed,robot_substitution:pour:apartment:910005,pour,apartment,910005,stretch,0,
+2026-05-26T03:38:51+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,rollin_justin,,
+2026-05-26T03:48:18+00:00,completed,robot_substitution:pour:isr:910001,pour,isr,910001,rollin_justin,0,
+2026-05-26T03:48:18+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,hsrb,,
+2026-05-26T03:50:47+00:00,completed,robot_substitution:pour:isr:910001,pour,isr,910001,hsrb,0,
+2026-05-26T03:50:47+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,,
+2026-05-26T03:57:25+00:00,completed,robot_substitution:pour:isr:910001,pour,isr,910001,pr2,0,
+2026-05-26T03:57:25+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,armar7,,
+2026-05-26T04:04:27+00:00,completed,robot_substitution:pour:isr:910001,pour,isr,910001,armar7,0,
+2026-05-26T04:04:27+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,unitree_g1,,
+2026-05-26T04:10:09+00:00,completed,robot_substitution:pour:isr:910001,pour,isr,910001,unitree_g1,0,
+2026-05-26T04:10:09+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,garmi,,
+2026-05-26T04:20:43+00:00,completed,robot_substitution:pour:isr:910001,pour,isr,910001,garmi,0,
+2026-05-26T04:20:43+00:00,started,robot_substitution:pour:isr:910001,pour,isr,910001,stretch,,
+2026-05-26T04:23:44+00:00,failed,robot_substitution:pour:isr:910001,pour,isr,910001,stretch,-11,child process returned non-zero; removed_raw_rows=13
+2026-05-26T04:23:44+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,rollin_justin,,
+2026-05-26T04:30:51+00:00,completed,robot_substitution:pour:isr:910002,pour,isr,910002,rollin_justin,0,
+2026-05-26T04:30:51+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,hsrb,,
+2026-05-26T04:32:57+00:00,completed,robot_substitution:pour:isr:910002,pour,isr,910002,hsrb,0,
+2026-05-26T04:32:57+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,,
+2026-05-26T04:37:56+00:00,completed,robot_substitution:pour:isr:910002,pour,isr,910002,pr2,0,
+2026-05-26T04:37:56+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,armar7,,
+2026-05-26T04:42:26+00:00,completed,robot_substitution:pour:isr:910002,pour,isr,910002,armar7,0,
+2026-05-26T04:42:26+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,unitree_g1,,
+2026-05-26T04:46:23+00:00,completed,robot_substitution:pour:isr:910002,pour,isr,910002,unitree_g1,0,
+2026-05-26T04:46:23+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,garmi,,
+2026-05-26T04:53:54+00:00,completed,robot_substitution:pour:isr:910002,pour,isr,910002,garmi,0,
+2026-05-26T04:53:54+00:00,started,robot_substitution:pour:isr:910002,pour,isr,910002,stretch,,
+2026-05-26T04:56:55+00:00,failed,robot_substitution:pour:isr:910002,pour,isr,910002,stretch,-11,child process returned non-zero; removed_raw_rows=14
+2026-05-26T04:56:55+00:00,started,robot_substitution:pour:isr:910003,pour,isr,910003,rollin_justin,,
+2026-05-26T05:02:28+00:00,completed,robot_substitution:pour:isr:910003,pour,isr,910003,rollin_justin,0,
+2026-05-26T05:02:28+00:00,started,robot_substitution:pour:isr:910003,pour,isr,910003,hsrb,,
+2026-05-26T05:03:59+00:00,completed,robot_substitution:pour:isr:910003,pour,isr,910003,hsrb,0,
+2026-05-26T05:03:59+00:00,started,robot_substitution:pour:isr:910003,pour,isr,910003,pr2,,
+2026-05-26T05:07:53+00:00,completed,robot_substitution:pour:isr:910003,pour,isr,910003,pr2,0,
+2026-05-26T05:07:53+00:00,started,robot_substitution:pour:isr:910003,pour,isr,910003,armar7,,
+2026-05-26T05:11:26+00:00,completed,robot_substitution:pour:isr:910003,pour,isr,910003,armar7,0,
+2026-05-26T05:11:26+00:00,started,robot_substitution:pour:isr:910003,pour,isr,910003,unitree_g1,,
+2026-05-26T05:14:31+00:00,completed,robot_substitution:pour:isr:910003,pour,isr,910003,unitree_g1,0,
+2026-05-26T05:14:31+00:00,started,robot_substitution:pour:isr:910003,pour,isr,910003,garmi,,
+2026-05-26T05:20:33+00:00,completed,robot_substitution:pour:isr:910003,pour,isr,910003,garmi,0,
+2026-05-26T05:20:33+00:00,started,robot_substitution:pour:isr:910003,pour,isr,910003,stretch,,
+2026-05-26T05:23:49+00:00,completed,robot_substitution:pour:isr:910003,pour,isr,910003,stretch,0,
+2026-05-26T05:23:49+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,tiago,,
+2026-05-26T05:26:50+00:00,failed,robot_substitution:pour:isr:910004,pour,isr,910004,tiago,-11,child process returned non-zero; removed_raw_rows=9
+2026-05-26T05:26:50+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,rollin_justin,,
+2026-05-26T05:35:59+00:00,completed,robot_substitution:pour:isr:910004,pour,isr,910004,rollin_justin,0,
+2026-05-26T05:35:59+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,hsrb,,
+2026-05-26T05:38:26+00:00,completed,robot_substitution:pour:isr:910004,pour,isr,910004,hsrb,0,
+2026-05-26T05:38:26+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,pr2,,
+2026-05-26T05:44:39+00:00,completed,robot_substitution:pour:isr:910004,pour,isr,910004,pr2,0,
+2026-05-26T05:44:39+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,armar7,,
+2026-05-26T05:47:40+00:00,failed,robot_substitution:pour:isr:910004,pour,isr,910004,armar7,-11,child process returned non-zero; removed_raw_rows=11
+2026-05-26T05:47:40+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,unitree_g1,,
+2026-05-26T05:52:42+00:00,completed,robot_substitution:pour:isr:910004,pour,isr,910004,unitree_g1,0,
+2026-05-26T05:52:42+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,garmi,,
+2026-05-26T05:55:43+00:00,failed,robot_substitution:pour:isr:910004,pour,isr,910004,garmi,-11,child process returned non-zero; removed_raw_rows=7
+2026-05-26T05:55:43+00:00,started,robot_substitution:pour:isr:910004,pour,isr,910004,stretch,,
+2026-05-26T05:58:45+00:00,failed,robot_substitution:pour:isr:910004,pour,isr,910004,stretch,-11,child process returned non-zero; removed_raw_rows=12
+2026-05-26T05:58:45+00:00,started,robot_substitution:pour:isr:910005,pour,isr,910005,rollin_justin,,
+2026-05-26T06:03:59+00:00,completed,robot_substitution:pour:isr:910005,pour,isr,910005,rollin_justin,0,
+2026-05-26T06:03:59+00:00,started,robot_substitution:pour:isr:910005,pour,isr,910005,hsrb,,
+2026-05-26T06:05:25+00:00,completed,robot_substitution:pour:isr:910005,pour,isr,910005,hsrb,0,
+2026-05-26T06:05:25+00:00,started,robot_substitution:pour:isr:910005,pour,isr,910005,pr2,,
+2026-05-26T06:09:13+00:00,completed,robot_substitution:pour:isr:910005,pour,isr,910005,pr2,0,
+2026-05-26T06:09:13+00:00,started,robot_substitution:pour:isr:910005,pour,isr,910005,armar7,,
+2026-05-26T06:12:23+00:00,completed,robot_substitution:pour:isr:910005,pour,isr,910005,armar7,0,
+2026-05-26T06:12:23+00:00,started,robot_substitution:pour:isr:910005,pour,isr,910005,unitree_g1,,
+2026-05-26T06:15:46+00:00,completed,robot_substitution:pour:isr:910005,pour,isr,910005,unitree_g1,0,
+2026-05-26T06:15:46+00:00,started,robot_substitution:pour:isr:910005,pour,isr,910005,garmi,,

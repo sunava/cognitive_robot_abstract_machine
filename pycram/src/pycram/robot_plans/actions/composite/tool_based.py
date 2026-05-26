@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field
 
 import numpy as np
 from geometry_msgs.msg import Point
+from rclpy.qos import DurabilityPolicy, QoSProfile
 from visualization_msgs.msg import Marker
 from std_msgs.msg import ColorRGBA
 from typing_extensions import Optional, Any
 from visualization_msgs.msg import MarkerArray
 
-from semantic_digital_twin.robots.abstract_robot import Manipulator, AbstractRobot
+
 from pycram.robot_plans.actions.composite.thesis_math.metrics import (
     points_world_to_body,
     cutting_depth_metrics,
@@ -20,8 +22,10 @@ from pycram.robot_plans.actions.composite.thesis_math.motion_models import (
     MotionSegment,
     MotionSequence,
 )
-
-
+from semantic_digital_twin.semantic_annotations.mixins import HasRootBody
+from semantic_digital_twin.spatial_types import Point3, Vector3
+from semantic_digital_twin.spatial_types.spatial_types import Pose, HomogeneousTransformationMatrix
+from semantic_digital_twin.world_description.world_entity import Body
 
 from .thesis_math.motion_presets import (
     build_container_sequence,
@@ -69,6 +73,10 @@ def _color(r, g, b, a=1.0):
     return c
 
 
+def _marker_qos():
+    return QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL)
+
+
 def _as_points(P):
     """Convert an array of points into a list of ROS Point messages."""
     P = np.asarray(P, dtype=float).reshape(-1, 3)
@@ -80,6 +88,15 @@ def _as_points(P):
         p.z = float(P[i, 2])
         pts.append(p)
     return pts
+
+
+def _point_from_xyz(xyz):
+    point = Point()
+    values = np.asarray(xyz, dtype=float).reshape(-1)
+    point.x = float(values[0])
+    point.y = float(values[1])
+    point.z = float(values[2])
+    return point
 
 
 def _phase_color(k, a=1.0):
@@ -172,7 +189,9 @@ def _pose_to_position_and_orientation_lists(pose):
             "pose must provide position/orientation attributes or "
             "to_position()/to_quaternion() methods"
         )
-    if hasattr(position, "to_list"):
+    if hasattr(position, "to_np"):
+        position_values = position.to_np()
+    elif hasattr(position, "to_list"):
         position_values = position.to_list()
     else:
         position_values = [
@@ -181,7 +200,9 @@ def _pose_to_position_and_orientation_lists(pose):
             if hasattr(position, axis)
         ]
 
-    if hasattr(orientation, "to_list"):
+    if hasattr(orientation, "to_np"):
+        orientation_values = orientation.to_np()
+    elif hasattr(orientation, "to_list"):
         orientation_values = orientation.to_list()
     else:
         orientation_values = [
@@ -395,7 +416,7 @@ def publish_points_sequence(
         else _next_marker_group("points_sequence")
     )
 
-    pub = node.create_publisher(MarkerArray, topic, 10)
+    pub = node.create_publisher(MarkerArray, topic, _marker_qos())
 
     # Keep publisher (and optional timer) alive by storing on the node.
     if not hasattr(node, "_rviz_publishers"):
@@ -441,6 +462,149 @@ def publish_points_sequence(
 
             mid += 1
             start = end
+
+    if clear_existing:
+        clear = Marker()
+        clear.action = Marker.DELETEALL
+        arr.markers.append(clear)
+    arr.markers.extend(markers)
+
+    def _publish_once():
+        now = node.get_clock().now().to_msg()
+        for marker in markers:
+            marker.header.stamp = now
+        pub.publish(arr)
+
+    _publish_once()
+
+    timer = None
+    if republish_hz is not None and float(republish_hz) > 0.0:
+        period = 1.0 / float(republish_hz)
+        timer = node.create_timer(period, _publish_once)
+
+    node._rviz_publishers.append((pub, timer))
+    return pub
+
+
+def publish_pose_marker(
+    node,
+    pose,
+    frame_id="map",
+    topic="/simple_pouring_new_pose",
+    marker_ns="simple_pouring_new_pose",
+    marker_id=0,
+    color=(0.1, 0.9, 1.0),
+    alpha=1.0,
+    length=0.25,
+    shaft_diameter=0.025,
+    head_diameter=0.06,
+    republish_hz=2.0,
+    clear_existing=True,
+):
+    """Publish a single oriented arrow marker for a pose."""
+    if node is None:
+        return None
+
+    position, orientation = _pose_to_position_and_orientation_lists(pose)
+    topic = _norm_topic(topic)
+    pub = node.create_publisher(MarkerArray, topic, _marker_qos())
+
+    if not hasattr(node, "_rviz_publishers"):
+        node._rviz_publishers = []
+
+    arr = MarkerArray()
+    marker = Marker()
+    marker.header.frame_id = str(frame_id)
+    marker.ns = str(marker_ns)
+    marker.id = int(marker_id)
+    marker.type = Marker.ARROW
+    marker.action = Marker.ADD
+    marker.pose.position.x = float(position[0])
+    marker.pose.position.y = float(position[1])
+    marker.pose.position.z = float(position[2])
+    marker.pose.orientation.x = float(orientation[0])
+    marker.pose.orientation.y = float(orientation[1])
+    marker.pose.orientation.z = float(orientation[2])
+    marker.pose.orientation.w = float(orientation[3])
+    marker.scale.x = float(length)
+    marker.scale.y = float(shaft_diameter)
+    marker.scale.z = float(head_diameter)
+    marker.color = _color(
+        float(color[0]), float(color[1]), float(color[2]), float(alpha)
+    )
+
+    if clear_existing:
+        clear = Marker()
+        clear.action = Marker.DELETEALL
+        arr.markers.append(clear)
+    arr.markers.append(marker)
+
+    def _publish_once():
+        marker.header.stamp = node.get_clock().now().to_msg()
+        pub.publish(arr)
+
+    _publish_once()
+
+    timer = None
+    if republish_hz is not None and float(republish_hz) > 0.0:
+        period = 1.0 / float(republish_hz)
+        timer = node.create_timer(period, _publish_once)
+
+    node._rviz_publishers.append((pub, timer))
+    return pub
+
+
+def publish_pose_axes_marker(
+    node,
+    pose,
+    frame_id="map",
+    topic="/simple_pouring_pose_axes",
+    marker_ns="pose_axes",
+    marker_id_start=0,
+    axis_length=0.25,
+    shaft_diameter=0.018,
+    head_diameter=0.045,
+    alpha=1.0,
+    republish_hz=2.0,
+    clear_existing=True,
+):
+    """Publish RGB xyz axes for a pose as three oriented arrow markers."""
+    if node is None:
+        return None
+
+    position, orientation = _pose_to_position_and_orientation_lists(pose)
+    rotation = _quaternion_to_rotation_matrix(orientation)
+    topic = _norm_topic(topic)
+    pub = node.create_publisher(MarkerArray, topic, _marker_qos())
+
+    if not hasattr(node, "_rviz_publishers"):
+        node._rviz_publishers = []
+
+    arr = MarkerArray()
+    markers = []
+    axes = [
+        ("x", rotation[:, 0], _color(1.0, 0.1, 0.1, alpha)),
+        ("y", rotation[:, 1], _color(0.1, 0.9, 0.1, alpha)),
+        ("z", rotation[:, 2], _color(0.1, 0.35, 1.0, alpha)),
+    ]
+
+    for axis_index, (axis_name, direction, color) in enumerate(axes):
+        marker = Marker()
+        marker.header.frame_id = str(frame_id)
+        marker.ns = f"{marker_ns}_{axis_name}"
+        marker.id = int(marker_id_start) + axis_index
+        marker.type = Marker.ARROW
+        marker.action = Marker.ADD
+        marker.pose.orientation.w = 1.0
+        marker.scale.x = float(shaft_diameter)
+        marker.scale.y = float(head_diameter)
+        marker.scale.z = float(head_diameter)
+        marker.color = color
+        marker.points = [
+            _point_from_xyz(position),
+            _point_from_xyz(np.asarray(position, dtype=float) + axis_length * direction),
+        ]
+        markers.append(marker)
 
     if clear_existing:
         clear = Marker()
@@ -1097,126 +1261,8 @@ class CuttingAction(GeneralizedActionPlan):
         return seq.sample(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
 
 
-@dataclass
-class PouringAction(GeneralizedActionPlan):
-    """
-    Execute a simple pose-aware pouring motion around a target container or anchor.
-    """
 
-    container: Body = None
-    """
-    Source container that is being tilted.
-    """
-
-    target_container: Optional[Body] = None
-    """
-    Optional target container/body over which the pour should happen.
-    """
-
-    pour_height: float = 0.10
-    """
-    Vertical offset above the target top surface during pouring.
-    """
-
-    pour_offset_xy: tuple[float, float] = (0.0, 0.0)
-    """
-    Additional local XY offset for the pour anchor.
-    """
-
-    approach_distance: float = 0.08
-    """
-    Approach distance before the pour anchor.
-    """
-
-    retreat_distance: float = 0.08
-    """
-    Retreat distance after the pour anchor.
-    """
-
-    max_tilt: float = float(np.deg2rad(65.0))
-    """
-    Maximum tilt angle during the pouring phase.
-    """
-
-    tilt_axis: str = "y"
-    """
-    Local tilt axis for the pouring rotation profile.
-    """
-
-    def _sample_pose_sequence(self):
-        seq = build_pouring_sequence(
-            self.container,
-            target_body=self.target_container,
-            use_visual_aabb=True,
-            apply_shape_scale=True,
-            pour_height=self.pour_height,
-            pour_offset_xy=self.pour_offset_xy,
-            approach_distance=self.approach_distance,
-            retreat_distance=self.retreat_distance,
-            max_tilt=self.max_tilt,
-            tilt_axis=self.tilt_axis,
-        )
-        return seq.sample_poses(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
-
-    def _to_pose_waypoints(
-        self, positions: np.ndarray, rotations: np.ndarray, stride: int
-    ) -> list[Pose]:
-        poses = []
-        for p, r in zip(positions[::stride], rotations[::stride]):
-            rotation_matrix = np.asarray(r, dtype=float)
-            if rotation_matrix.shape == (3, 3):
-                homogeneous_rotation = np.eye(4, dtype=float)
-                homogeneous_rotation[:3, :3] = rotation_matrix
-            elif rotation_matrix.shape == (4, 4):
-                homogeneous_rotation = rotation_matrix
-            else:
-                raise ValueError(
-                    "Expected pouring waypoint rotation to have shape (3, 3) or (4, 4), "
-                    f"got {rotation_matrix.shape}."
-                )
-
-            quat = quaternion_from_matrix(homogeneous_rotation)
-            poses.append(
-                Pose.from_xyz_quaternion(
-                    float(p[0]),
-                    float(p[1]),
-                    float(p[2]),
-                    float(quat[0]),
-                    float(quat[1]),
-                    float(quat[2]),
-                    float(quat[3]),
-                    reference_frame=self.world.root,
-                )
-            )
-        if not poses:
-            raise ValueError("No pose waypoints left after applying pointer_stride.")
-        return poses
-
-    def _sample_motion(self):
-        return self._sample_pose_sequence()
-
-    def _extract_points_for_logging(self, sampled) -> np.ndarray:
-        return np.asarray(sampled.positions, dtype=float)
-
-    def _extract_phase_ids_for_logging(self, sampled) -> np.ndarray:
-        return sampled.phase_ids
-
-    def _logged_technique_value(self):
-        return "pour"
-
-    def _build_waypoints(self, sampled):
-        stride = max(1, int(self.pointer_stride))
-        return self._to_pose_waypoints(sampled.positions, sampled.rotations, stride)
-
-    def _build_motion(self, waypoints):
-        return MoveTCPWaypointsMotion(
-            waypoints,
-            self.arm,
-            allow_gripper_collision=True,
-        )
-
-
-@dataclass
+@dataclass(kw_only=True)
 class SimplePouringAction(ActionDescription):
     """
     Park the arms of the robot.
@@ -1227,57 +1273,362 @@ class SimplePouringAction(ActionDescription):
     The object to pick up
     """
 
+
+    source_object_designator: Body
+    """
+    The object to pick up
+    """
+
     arm: Arms
+    """
+    Physical robot arm used for motion execution.
+    """
+
+    pour_side: Optional[Arms] = None
+    """
+    Robot-relative side of the bowl to pour from. Defaults to the physical arm.
+    This lets one-arm robots use their available arm while still trying the
+    right-side or left-side pouring geometry.
+    """
+
+    nav: Pose
     """
     Entry from the enum for which arm should be parked.
     """
 
-    def execute(self) -> None:
+    pour_side_offset_m: float = 0.10
+    """
+    Lateral TCP offset from the bowl center in the robot-relative left/right direction.
+    """
 
-        grasp = (GraspDescription(
-            ApproachDirection.FRONT, VerticalAlignment.NoAlignment, False
-        ).grasp_orientation())
+    pour_approach_offset_m: float = 0.0
+    """
+    Extra offset away from the bowl along the robot-to-bowl approach direction.
+    """
+
+    pour_height_m: float = 0.13
+    """
+    TCP height above the bowl pose for the pre-pour pose.
+    """
+
+    offset_x: float = 0.0
+    offset_y: float = 0.0
+    offset_z: float = 0.0
+    tilt_degrees: float = 0.0
+    pour_ray_origin_xyz: Optional[list[float]] = None
+    pour_ray_direction_xyz: Optional[list[float]] = None
+
+    logged_target_intersection_success: Optional[bool] = None
+    logged_tool_root_name: Optional[str] = None
+    logged_container_name: Optional[str] = None
+    logged_action_name: Optional[str] = None
+    logged_technique: Optional[str] = None
+    logged_waypoint_count: Optional[int] = None
+    logged_stopped_waypoint_index: Optional[int] = None
+    logged_stopped_waypoint_fraction: Optional[float] = None
+    logged_stopped_waypoint_x: Optional[float] = None
+    logged_stopped_waypoint_y: Optional[float] = None
+    logged_stopped_waypoint_z: Optional[float] = None
+    logged_stopped_distance_m: Optional[float] = None
+    logged_motion_progress_note: Optional[str] = None
+
+    def _held_object_height_m(self) -> float:
+        held_body = getattr(self.source_object_designator, "root", None)
+        if held_body is None:
+            held_body = self.source_object_designator
+        try:
+            mins, maxs = body_local_aabb(
+                held_body,
+                use_visual=True,
+                apply_shape_scale=True,
+            )
+            height = float(maxs[2] - mins[2])
+            if height > 0.0:
+                return height
+        except Exception:
+            pass
+        return 0.0
+
+    def _effective_pour_side(self) -> Arms:
+        return self.pour_side or self.arm
+
+    def _set_pose_progress_for_logging(
+        self,
+        poses: list[Pose],
+        note: str,
+    ) -> None:
+        self.logged_waypoint_count = len(poses)
+        self.logged_motion_progress_note = note
+        if not poses:
+            return
+
+        try:
+            tool_frame = ViewManager().get_end_effector_view(
+                self.arm, self.robot
+            ).tool_frame
+            tool_point = self.world.transform(
+                tool_frame.global_pose.to_position(), self.world.root
+            )
+            tool_xyz = np.asarray(tool_point.to_np(), dtype=float).reshape(-1)[:3]
+            pose_xyz = np.asarray(
+                [
+                    [
+                        float(pose.x),
+                        float(pose.y),
+                        float(pose.z),
+                    ]
+                    for pose in poses
+                ],
+                dtype=float,
+            )
+            distances = np.linalg.norm(pose_xyz - tool_xyz, axis=1)
+            stopped_index = int(np.argmin(distances))
+            stopped_xyz = pose_xyz[stopped_index]
+            final_index = max(1, len(poses) - 1)
+            self.logged_stopped_waypoint_index = stopped_index
+            self.logged_stopped_waypoint_fraction = float(stopped_index / final_index)
+            self.logged_stopped_waypoint_x = float(stopped_xyz[0])
+            self.logged_stopped_waypoint_y = float(stopped_xyz[1])
+            self.logged_stopped_waypoint_z = float(stopped_xyz[2])
+            self.logged_stopped_distance_m = float(distances[stopped_index])
+        except Exception as exc:
+            self.logged_motion_progress_note = (
+                f"{note}:progress_lookup_failed:{type(exc).__name__}"
+            )
+
+    def execute(self) -> None:
+        self.tool = self.source_object_designator
+        self.container = self.object_designator
+        self.logged_action_name = self.__class__.__name__
+        self.logged_technique = "simple_pour"
+        _logging_helper_apply_fields(
+            self, _logging_helper_collect_identity_fields(self)
+        )
+
+        pour_side = self._effective_pour_side()
+        print(
+            "[simple pour execute] "
+            f"arm={self.arm.name} "
+            f"pour_side={pour_side.name} "
+            f"object={getattr(getattr(self.object_designator, 'name', None), 'name', self.object_designator)}",
+            flush=True,
+        )
+
+        from scipy.spatial.transform import Rotation as R
 
         object_pose = self.object_designator.global_pose
-        object_pose.x += 0.009
-        object_pose.y -= 0.125
-        object_pose.z += 0.17
+        robot_pose = self.robot.root.global_pose
+        bowl_x = float(object_pose.x)
+        bowl_y = float(object_pose.y)
+        robot_x = float(robot_pose.x)
+        robot_y = float(robot_pose.y)
 
-        def approach_or_rotate(rotate: bool) -> Pose:
-            ros_pose = object_pose
+        # Unit vector from robot toward bowl
+        approach_x = bowl_x - robot_x
+        approach_y = bowl_y - robot_y
+        approach_norm = math.hypot(approach_x, approach_y)
+        if approach_norm < 1e-6:
+            approach_x = 1.0
+            approach_y = 0.0
+        else:
+            approach_x /= approach_norm
+            approach_y /= approach_norm
 
-            if rotate:
-                q = utils.axis_angle_to_quaternion([1, 0, 0], -110)
-                ros_pose.rotate_by_quaternion(utils.quat_np_list(q))
+        # Snap approach direction to nearest bowl axis so we never aim at a corner
+        bowl_quat = [float(x) for x in object_pose.to_quaternion().to_np()]
+        bowl_rot = R.from_quat(bowl_quat)
+        bowl_x_axis = bowl_rot.apply([1, 0, 0])
+        bowl_y_axis = bowl_rot.apply([0, 1, 0])
+        approach_vec = np.array([approach_x, approach_y, 0.0])
+        candidates = [bowl_x_axis, -bowl_x_axis, bowl_y_axis, -bowl_y_axis]
+        dots = [np.dot(approach_vec, c) for c in candidates]
+        best = candidates[int(np.argmax(dots))]
+        approach_x = float(best[0])
+        approach_y = float(best[1])
+        approach_norm = math.hypot(approach_x, approach_y)
+        if approach_norm > 1e-6:
+            approach_x /= approach_norm
+            approach_y /= approach_norm
 
-            man = next(iter(self.robot_view.manipulators))
-            tool_frame = man.tool_frame
+        print(
+            "[simple pour bowl snap] "
+            f"snapped_approach_xy={[round(approach_x, 4), round(approach_y, 4)]}",
+            flush=True,
+        )
 
-            poseTg = PoseStamped.from_spatial_type(
-                self.world.transform(ros_pose.to_spatial_type(), tool_frame)
-            )
-            poseTg.rotate_by_quaternion(grasp)
+        robot_right_x = approach_y
+        robot_right_y = -approach_x
+        side_sign = 1.0 if pour_side == Arms.RIGHT else -1.0
+        side_x = side_sign * robot_right_x
+        side_y = side_sign * robot_right_y
 
-            return PoseStamped.from_spatial_type(
-                self.world.transform(poseTg.to_spatial_type(), self.world.root)
-            )
+        side_offset = float(self.pour_side_offset_m) + (
+                0.7 * self._held_object_height_m()
+        )
+        approach_offset = float(self.pour_approach_offset_m)  # tilt_reach not in XY
 
-        pose = approach_or_rotate(False)
-        pose_rot = approach_or_rotate(True)
+        target_x = (
+                bowl_x
+                + side_x * side_offset
+                - approach_x * approach_offset
+        )
+        target_y = (
+                bowl_y
+                + side_y * side_offset
+                - approach_y * approach_offset
+        )
+        self.offset_x = float(target_x - bowl_x)
+        self.offset_y = float(target_y - bowl_y)
+        self.offset_z = float(self.pour_height_m)
 
-        self.add_subplan(
-            sequential(
-        [
-            MoveToolCenterPointMotion(
-                pose,
-                self.arm,
-                allow_gripper_collision=True,
-                movement_type=MovementType.CARTESIAN,
+        yaw_to_bowl = math.atan2(
+            bowl_y - target_y,
+            bowl_x - target_x,
+        )
+
+        # Tilt angle — direction depends on arm
+        angle = 1.85 if pour_side == Arms.RIGHT else -1.85
+        self.tilt_degrees = math.degrees(float(angle))
+
+        # Raise Z so cup opening lands at correct height after tilting
+        tilt_reach = self._held_object_height_m() * math.sin(abs(angle))
+        pour_z = float(object_pose.z) + float(self.pour_height_m)
+
+        # Build orientation from yaw_to_bowl, not robot_quat,
+        # so roll-tilt is always correct relative to the bowl regardless of robot pose
+        base_rot = R.from_euler('z', yaw_to_bowl)
+        qx, qy, qz, qw = base_rot.as_quat()  # scipy convention: x,y,z,w
+
+        new_pose = Pose.from_xyz_quaternion(
+            pos_x=target_x,
+            pos_y=target_y,
+            pos_z=pour_z,
+            quat_x=qx,
+            quat_y=qy,
+            quat_z=qz,
+            quat_w=qw,
+            reference_frame=self.world.root,
+        )
+
+        # Left arm: rotate orientation 180° around world Z,
+        # position stays untouched
+        if pour_side == Arms.LEFT:
+            new_mat = new_pose.to_homogeneous_matrix()
+            z180_mat = Pose.from_xyz_rpy(yaw=math.pi).to_homogeneous_matrix()
+            new_mat[:3, :3] = z180_mat[:3, :3] @ new_mat[:3, :3]
+            new_pose = new_mat.to_pose()
+
+        print(
+            "[simple pour pose] "
+            f"arm={self.arm.name} "
+            f"pour_side={pour_side.name} "
+            f"robot_xy={[round(robot_x, 4), round(robot_y, 4)]} "
+            f"bowl_xy={[round(bowl_x, 4), round(bowl_y, 4)]} "
+            f"side_xy={[round(side_x, 4), round(side_y, 4)]} "
+            f"target_xy={[round(target_x, 4), round(target_y, 4)]} "
+            f"side_offset={side_offset:.3f} "
+            f"approach_offset={approach_offset:.3f} "
+            f"tilt_reach={tilt_reach:.3f} "
+            f"pour_z={pour_z:.3f} "
+            f"yaw_to_bowl={yaw_to_bowl:.3f}",
+            flush=True,
+        )
+
+        publish_pose_marker(
+            node=self.plan.context.ros_node,
+            pose=new_pose,
+            frame_id="map",
+            topic="/simple_pouring_new_pose",
+            marker_ns="simple_pouring_new_pose",
+            color=(0.1, 0.9, 1.0),
+            republish_hz=2.0,
+        )
+        publish_pose_axes_marker(
+            node=self.plan.context.ros_node,
+            pose=new_pose,
+            frame_id="map",
+            topic="/simple_pouring_pose_axes",
+            marker_ns="simple_pouring_new_pose_axes",
+            marker_id_start=0,
+            republish_hz=2.0,
+            clear_existing=True,
+        )
+
+        rot = Pose.from_xyz_rpy(pitch=angle)
+        rot_new_pose = new_pose.to_homogeneous_matrix() @ rot.to_homogeneous_matrix()
+        rot_pose = rot_new_pose.to_pose()
+        rot_position, rot_quaternion = _pose_to_position_and_orientation_lists(rot_pose)
+        qx, qy, qz, qw = [float(value) for value in rot_quaternion[:4]]
+        z_dir = np.array(
+            [
+                2 * (qx * qz + qw * qy),
+                2 * (qy * qz - qw * qx),
+                1 - 2 * (qx * qx + qy * qy),
+            ],
+            dtype=float,
+        )
+        z_norm = float(np.linalg.norm(z_dir))
+        if z_norm > 1e-9:
+            z_dir = z_dir / z_norm
+        self.pour_ray_origin_xyz = [float(value) for value in rot_position[:3]]
+        self.pour_ray_direction_xyz = [float(value) for value in z_dir[:3]]
+        pour_poses = [new_pose, rot_pose]
+        self._set_pose_progress_for_logging(pour_poses, note="planned_not_started")
+        _logging_helper_apply_fields(
+            self,
+            _logging_helper_collect_container_fields(
+                self,
+                np.asarray(
+                    [
+                        [float(pose.x), float(pose.y), float(pose.z)]
+                        for pose in pour_poses
+                    ],
+                    dtype=float,
+                ),
             ),
-            MoveToolCenterPointMotion(
-                pose_rot,
-                self.arm,
-                allow_gripper_collision=True,
-                movement_type=MovementType.CARTESIAN,
-            )],             self.context,
-        ).perform()
+        )
+
+        publish_pose_marker(
+            node=self.plan.context.ros_node,
+            pose=rot_new_pose.to_pose(),
+            frame_id="map",
+            topic="/simple_pouring_rot_new_pose",
+            marker_ns="simple_pouring_rot_new_pose",
+            color=(0.1, 0.9, 0.5),
+            republish_hz=2.0,
+        )
+        publish_pose_axes_marker(
+            node=self.plan.context.ros_node,
+            pose=rot_new_pose.to_pose(),
+            frame_id="map",
+            topic="/simple_pouring_pose_axes",
+            marker_ns="simple_pouring_rot_new_pose_axes",
+            marker_id_start=10,
+            republish_hz=2.0,
+            clear_existing=False,
+        )
+
+        self.robot.full_body_controlled = True
+        try:
+            self.add_subplan(
+                sequential(
+                    [
+                        MoveToolCenterPointMotion(
+                            new_pose,
+                            self.arm,
+                            allow_gripper_collision=True,
+                            movement_type=MovementType.CARTESIAN,
+                        ),
+                        MoveToolCenterPointMotion(
+                            rot_new_pose.to_pose(),
+                            self.arm,
+                            allow_gripper_collision=True,
+                            movement_type=MovementType.CARTESIAN,
+                        ),
+                    ],
+                )
+            ).perform()
+            self._set_pose_progress_for_logging(pour_poses, note="completed")
+        except Exception:
+            self._set_pose_progress_for_logging(pour_poses, note="failed")
+            raise

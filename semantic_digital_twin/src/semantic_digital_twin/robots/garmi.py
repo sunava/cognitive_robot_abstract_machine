@@ -25,12 +25,30 @@ from semantic_digital_twin.robots.abstract_robot import (
     Torso,
 )
 from semantic_digital_twin.robots.robot_mixins import HasNeck, SpecifiesLeftRightArm
-from semantic_digital_twin.spatial_types import Quaternion, Vector3
+from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix, Quaternion, Vector3
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import (
     ActiveConnection,
     FixedConnection,
 )
+from semantic_digital_twin.world_description.geometry import BoundingBox
+
+
+class GarmiBase(Base):
+    @property
+    def bounding_box(self) -> BoundingBox:
+        try:
+            return super().bounding_box
+        except ValueError:
+            return BoundingBox(
+                min_x=-0.45,
+                min_y=-0.35,
+                min_z=0.0,
+                max_x=0.45,
+                max_y=0.35,
+                max_z=0.35,
+                origin=HomogeneousTransformationMatrix(reference_frame=self._world.root),
+            )
 
 
 @dataclass(eq=False)
@@ -60,10 +78,10 @@ class Garmi(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
         )
 
     def _setup_semantic_annotations(self):
-        base = Base(
+        base = GarmiBase(
             name=PrefixedName("base", prefix=self.name.name),
             root=self._world.get_body_by_name("base_link"),
-            tip=self._world.get_body_by_name("chassis_link"),
+            tip=self._world.get_body_by_name("base_link"),
             main_axis=Vector3(1, 0, 0),
             _world=self._world,
         )
@@ -113,8 +131,13 @@ class Garmi(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
             name=PrefixedName(f"{side}_gripper", prefix=self.name.name),
             root=self._world.get_body_by_name(f"{arm_id}_gripper_fr3_hand"),
             tool_frame=self._world.get_body_by_name(f"{arm_id}_gripper_fr3_hand_tcp"),
-            front_facing_orientation=Quaternion(0, 0, 0, 1),
             front_facing_axis=Vector3(0, 0, 1),
+            front_facing_orientation=Quaternion(
+                -0.70710678,
+                0.0,
+                -0.70710678,
+                0.0,
+            ),
             thumb=gripper_thumb,
             finger=gripper_finger,
             _world=self._world,

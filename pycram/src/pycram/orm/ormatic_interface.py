@@ -10032,54 +10032,54 @@ class PositionVariableDAO(
         "DegreeOfFreedomDAO", uselist=False, foreign_keys=[dof_id], post_update=True
     )
 
-
-class PouringActionDAO(
-    GeneralizedActionPlanDAO,
-    DataAccessObject[pycram.robot_plans.actions.composite.tool_based.PouringAction],
-):
-
-    __tablename__ = "PouringActionDAO"
-
-    database_id: Mapped[builtins.int] = mapped_column(
-        ForeignKey(GeneralizedActionPlanDAO.database_id),
-        primary_key=True,
-        use_existing_column=True,
-    )
-
-    pour_height: Mapped[builtins.float] = mapped_column(use_existing_column=True)
-    approach_distance: Mapped[builtins.float] = mapped_column(use_existing_column=True)
-    retreat_distance: Mapped[builtins.float] = mapped_column(use_existing_column=True)
-    max_tilt: Mapped[builtins.float] = mapped_column(use_existing_column=True)
-    tilt_axis: Mapped[builtins.str] = mapped_column(
-        sqlalchemy.sql.sqltypes.Text, use_existing_column=True
-    )
-
-    pour_offset_xy: Mapped[typing.List[builtins.float]] = mapped_column(
-        JSON, nullable=False, use_existing_column=True
-    )
-
-    container_id: Mapped[int] = mapped_column(
-        ForeignKey("BodyDAO.database_id", use_alter=True),
-        nullable=True,
-        use_existing_column=True,
-    )
-    target_container_id: Mapped[typing.Optional[builtins.int]] = mapped_column(
-        ForeignKey("BodyDAO.database_id", use_alter=True),
-        nullable=True,
-        use_existing_column=True,
-    )
-
-    container: Mapped[BodyDAO] = relationship(
-        "BodyDAO", uselist=False, foreign_keys=[container_id], post_update=True
-    )
-    target_container: Mapped[BodyDAO] = relationship(
-        "BodyDAO", uselist=False, foreign_keys=[target_container_id], post_update=True
-    )
-
-    __mapper_args__ = {
-        "polymorphic_identity": "PouringActionDAO",
-        "inherit_condition": database_id == GeneralizedActionPlanDAO.database_id,
-    }
+#
+# class PouringActionDAO(
+#     GeneralizedActionPlanDAO,
+#     DataAccessObject[pycram.robot_plans.actions.composite.tool_based.PouringAction],
+# ):
+#
+#     __tablename__ = "PouringActionDAO"
+#
+#     database_id: Mapped[builtins.int] = mapped_column(
+#         ForeignKey(GeneralizedActionPlanDAO.database_id),
+#         primary_key=True,
+#         use_existing_column=True,
+#     )
+#
+#     pour_height: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+#     approach_distance: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+#     retreat_distance: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+#     max_tilt: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+#     tilt_axis: Mapped[builtins.str] = mapped_column(
+#         sqlalchemy.sql.sqltypes.Text, use_existing_column=True
+#     )
+#
+#     pour_offset_xy: Mapped[typing.List[builtins.float]] = mapped_column(
+#         JSON, nullable=False, use_existing_column=True
+#     )
+#
+#     container_id: Mapped[int] = mapped_column(
+#         ForeignKey("BodyDAO.database_id", use_alter=True),
+#         nullable=True,
+#         use_existing_column=True,
+#     )
+#     target_container_id: Mapped[typing.Optional[builtins.int]] = mapped_column(
+#         ForeignKey("BodyDAO.database_id", use_alter=True),
+#         nullable=True,
+#         use_existing_column=True,
+#     )
+#
+#     container: Mapped[BodyDAO] = relationship(
+#         "BodyDAO", uselist=False, foreign_keys=[container_id], post_update=True
+#     )
+#     target_container: Mapped[BodyDAO] = relationship(
+#         "BodyDAO", uselist=False, foreign_keys=[target_container_id], post_update=True
+#     )
+#
+#     __mapper_args__ = {
+#         "polymorphic_identity": "PouringActionDAO",
+#         "inherit_condition": database_id == GeneralizedActionPlanDAO.database_id,
+#     }
 
 
 class PrePushDoorDAO(

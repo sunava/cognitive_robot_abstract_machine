@@ -124,16 +124,16 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
                 "y": 0.0,
                 "z": 0.0,
                 "roll": 0.0,
-                "pitch": -np.pi / 2,
-                "yaw": 0.0,
+                "pitch": 0.0,
+                "yaw": np.pi/2,
             },
             Arms.LEFT: {
                 "x": 0.0,
                 "y": 0.0,
                 "z": 0.0,
                 "roll": 0.0,
-                "pitch": -np.pi / 2,
-                "yaw": 0.0,
+                "pitch": 0.0,
+                "yaw": -np.pi/2,
             },
         },
         "wipe": {
@@ -198,16 +198,16 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
                 "y": 0.0,
                 "z": -0.08,
                 "roll": 0.0,
-                "pitch": np.pi / 2,
-                "yaw": 0.0,
+                "pitch": 0,
+                "yaw": np.pi/2,
             },
             Arms.LEFT: {
                 "x": 0.0,
                 "y": 0.0,
                 "z": -0.08,
                 "roll": 0.0,
-                "pitch": np.pi / 2,
-                "yaw": 0.0,
+                "pitch": 0,
+                "yaw": np.pi/2,
             },
         },
         "wipe": {
@@ -271,7 +271,7 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
                 "x": 0.0,
                 "y": 0,
                 "z": 0.0,
-                "roll": 0.0,
+                "roll": -np.pi/2,
                 "pitch": 0,
                 "yaw": np.pi / 2,
             },
@@ -279,7 +279,7 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
                 "x": 0.0,
                 "y": 0,
                 "z": 0.0,
-                "roll": 0,
+                "roll": np.pi/2,
                 "pitch": 0,
                 "yaw": np.pi / 2,
             },
@@ -340,6 +340,24 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
                 "yaw": -np.pi / 2,
             },
         },
+        "pour": {
+            Arms.RIGHT: {
+                "x": 0.0,
+                "y": 0.05,
+                "z": 0.0,
+                "roll": -np.pi/2,
+                "pitch": 0.0,
+                "yaw": 0,
+            },
+            Arms.LEFT: {
+                "x": 0.0,
+                "y": -0.05,
+                "z": 0.0,
+                "roll": -np.pi/2,
+                "pitch": 0.0,
+                "yaw": 0,
+            },
+        },
         "wipe": {
             Arms.RIGHT: {
                 "x": 0.0,
@@ -378,6 +396,16 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
                 "roll": 0.0,
                 "pitch": -np.pi,
                 "yaw": 0.0,
+            },
+        },
+        "pour": {
+            Arms.LEFT: {
+                "x": 0,
+                "y": 0.0,
+                "z": 0.0,
+                "roll": 0.0,
+                "pitch":np.pi/2,
+                "yaw":  0.0,
             },
         },
         "wipe": {
@@ -428,6 +456,24 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
                 "yaw": 0.0,
             },
         },
+        "pour": {
+            Arms.RIGHT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0,
+                "roll": 0,
+                "pitch": -np.pi/2,
+                "yaw": 0,
+            },
+            Arms.LEFT: {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0,
+                "roll": np.pi,
+                "pitch": np.pi/2,
+                "yaw": 0 ,
+            },
+        },
         "wipe": {
             Arms.LEFT: {
                 "x": 0.0,
@@ -447,8 +493,17 @@ ROBOT_TOOL_MOUNT_OVERRIDES = {
             },
         },
     },
-    "stretch": {},
-}
+    "stretch": {
+        "pour": {
+            Arms.LEFT: {
+                "x": 0.0,
+                "y": 0,
+                "z": 0.0,
+                "roll": 0.0,
+                "pitch": 0.0,
+                "yaw": np.pi/2,
+            },},
+} }
 
 
 def get_tool_mount_pose_kwargs(task_name, robot_name, arm):

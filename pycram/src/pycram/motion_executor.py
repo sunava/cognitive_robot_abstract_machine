@@ -53,6 +53,15 @@ class MotionExecutor:
         "WipingAction": 0.05,
     }
     WIGGLE_CHECKS_BEFORE_ABORT: ClassVar[int] = 8
+    ACTION_WIGGLE_CHECKS_BEFORE_ABORT: ClassVar[dict[str, int]] = {
+        "SimplePouringAction": 4,
+    }
+    ACTION_WIGGLE_RESET_DISTANCE_M: ClassVar[dict[str, float]] = {
+        "SimplePouringAction": 0.05,
+    }
+    ACTION_PROGRESS_CHECK_START_TICKS: ClassVar[dict[str, int]] = {
+        "SimplePouringAction": 250,
+    }
     HARD_TIMEOUT_FACTOR: ClassVar[int] = 10
 
     motions: List[MotionStatechartNode]
@@ -244,12 +253,28 @@ class MotionExecutor:
             progress_robot = self._progress_robot()
             progress_bodies = self._progress_bodies(progress_robot)
             wiggle_distance_epsilon = self._wiggle_distance_epsilon(progress_robot)
+            action_name = self.plan_node.action.__class__.__name__
             wiggle_distance_epsilon = max(
                 wiggle_distance_epsilon,
                 self.ACTION_WIGGLE_DISTANCE_EPSILON_M.get(
-                    self.plan_node.action.__class__.__name__,
+                    action_name,
                     wiggle_distance_epsilon,
                 ),
+            )
+            wiggle_checks_before_abort = self.ACTION_WIGGLE_CHECKS_BEFORE_ABORT.get(
+                action_name,
+                self.WIGGLE_CHECKS_BEFORE_ABORT,
+            )
+            wiggle_reset_distance = max(
+                wiggle_distance_epsilon,
+                self.ACTION_WIGGLE_RESET_DISTANCE_M.get(
+                    action_name,
+                    wiggle_distance_epsilon,
+                ),
+            )
+            progress_check_start_ticks = self.ACTION_PROGRESS_CHECK_START_TICKS.get(
+                action_name,
+                timeout_ticks,
             )
             previous_progress_snapshot = self._body_position_snapshot(progress_bodies)
             stagnant_checks = 0
@@ -268,7 +293,7 @@ class MotionExecutor:
                     break
 
                 if (
-                    counter >= timeout_ticks
+                    counter >= progress_check_start_ticks
                     and counter % self.STAGNATION_CHECK_INTERVAL_TICKS == 0
                 ):
                     current_progress_snapshot = self._body_position_snapshot(
@@ -290,26 +315,30 @@ class MotionExecutor:
                         progress_status = "wiggle"
                     else:
                         stagnant_checks = 0
-                        wiggle_checks = 0
                         progress_status = "moving"
+                        if max_displacement >= wiggle_reset_distance:
+                            wiggle_checks = 0
+                        else:
+                            wiggle_checks = max(0, wiggle_checks - 1)
 
                     logger.warning(
-                        "MotionExecutor progress check: action=%s ticks=%s manipulator_links=%s status=%s max_link_displacement=%.5fm wiggle_epsilon=%.5fm stagnant_checks=%s/%s wiggle_checks=%s/%s",
-                        self.plan_node.action.__class__.__name__,
+                        "MotionExecutor progress check: action=%s ticks=%s manipulator_links=%s status=%s max_link_displacement=%.5fm wiggle_epsilon=%.5fm wiggle_reset=%.5fm stagnant_checks=%s/%s wiggle_checks=%s/%s",
+                        action_name,
                         counter,
                         len(progress_bodies),
                         progress_status,
                         max_displacement,
                         wiggle_distance_epsilon,
+                        wiggle_reset_distance,
                         stagnant_checks,
                         self.STAGNATION_CHECKS_BEFORE_ABORT,
                         wiggle_checks,
-                        self.WIGGLE_CHECKS_BEFORE_ABORT,
+                        wiggle_checks_before_abort,
                     )
 
                     if (
                         stagnant_checks >= self.STAGNATION_CHECKS_BEFORE_ABORT
-                        or wiggle_checks >= self.WIGGLE_CHECKS_BEFORE_ABORT
+                        or wiggle_checks >= wiggle_checks_before_abort
                     ):
                         wiggle_detected = progress_status == "wiggle"
                         raise TimeoutError(

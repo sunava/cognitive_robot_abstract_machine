@@ -1,4 +1,5 @@
 import os
+import inspect
 import time
 
 import numpy as np
@@ -20,9 +21,15 @@ from pycram.robot_plans.actions.core.robot_body import (
     ParkArmsAction,
     SetGripperAction,
 )
+from semantic_digital_twin.collision_checking.collision_matrix import (
+    CollisionCheck,
+    CollisionMatrix,
+)
 from semantic_digital_twin.datastructures.definitions import GripperState, TorsoState
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Cup
+from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.geometry import Color
+from semantic_digital_twin.world_description.world_entity import Body
 
 from .demo_mix_all_bowls_retry import (
     _build_mixing_geometry_binding,
@@ -70,6 +77,21 @@ BASELINE_NAME = "simple_pouring_action"
 TASK_NAME = "pour"
 DEBUG_PROFILE_POURING = True
 session = None
+DEFAULT_COSTMAP_CONFIG = {
+    "costmap_width": 200,
+    "costmap_height": 200,
+    "costmap_resolution": 0.02,
+    "samples": 1000,
+}
+LARGE_BASE_COSTMAP_CONFIG = {
+    "costmap_width": 400,
+    "costmap_height": 400,
+    "costmap_resolution": 0.02,
+    "obstacle_clearance": 0.20,
+    "samples": 2500,
+}
+LARGE_BASE_ROBOTS = {"garmi", "justin", "rollin_justin"}
+RIGHT_SIDE_WITH_LEFT_ARM_ROBOTS = {"stretch"}
 
 
 def _results_csv_fieldnames():
@@ -81,6 +103,66 @@ def _empty_pouring_progress():
     progress.pop("mixing_phase_reached", None)
     progress.pop("mixing_planned_duration_s", None)
     progress.pop("mixing_estimated_completed_time_s", None)
+    return progress
+
+
+def _pouring_progress_from_action(action):
+    if action is None:
+        return _empty_pouring_progress()
+
+    def value(name, default=""):
+        result = getattr(action, name, default)
+        return default if result is None else result
+
+    return {
+        "motion_approach_completed": value("logged_motion_progress_note") == "completed",
+        "motion_waypoint_count": value("logged_waypoint_count"),
+        "motion_stopped_waypoint_index": value("logged_stopped_waypoint_index"),
+        "motion_stopped_waypoint_fraction": value(
+            "logged_stopped_waypoint_fraction"
+        ),
+        "motion_stopped_waypoint_x": value("logged_stopped_waypoint_x"),
+        "motion_stopped_waypoint_y": value("logged_stopped_waypoint_y"),
+        "motion_stopped_waypoint_z": value("logged_stopped_waypoint_z"),
+        "motion_stopped_distance_m": value("logged_stopped_distance_m"),
+        "motion_progress_note": value("logged_motion_progress_note"),
+    }
+
+
+def _stall_status_from_exception(exc):
+    current = exc
+    while current is not None:
+        message = str(current)
+        if "status=wiggle" in message:
+            return "wiggle"
+        if "status=stagnant" in message:
+            return "stagnant"
+        current = current.__cause__ or current.__context__
+    return ""
+
+
+def _failure_kind_from_exception(exc):
+    message = str(exc)
+    stall_status = _stall_status_from_exception(exc)
+    if stall_status:
+        return f"motion_{stall_status}"
+    if "navigation" in message.lower() or "pickup_pose" in message:
+        return "navigation_target_resolution_failed"
+    if "cup and bowl are in collision" in message:
+        return "cup_bowl_collision"
+    if _is_collision_like_failure(exc):
+        return "collision_or_motion_failure"
+    return "execution_failure"
+
+
+def _pouring_progress_from_exception(exc):
+    action = getattr(exc, "pour_action", None)
+    progress = _pouring_progress_from_action(action)
+    stall_status = _stall_status_from_exception(exc)
+    if stall_status:
+        progress["motion_progress_note"] = f"failed:{stall_status}"
+    elif progress.get("motion_progress_note") == "":
+        progress["motion_progress_note"] = "failed"
     return progress
 
 
@@ -118,7 +200,119 @@ def _record_pour_result(
     return row
 
 
-def _try_pour(context, bowl, pickup_pose, arm, cup_tool):
+def _tool_root(tool):
+    if tool is None:
+        return None
+    return getattr(tool, "root", tool)
+
+
+def _bodies_are_colliding(world, body_a, body_b):
+    if body_a is None or body_b is None:
+        return False
+    if not body_a.has_collision() or not body_b.has_collision():
+        return False
+
+    detector = world.collision_manager.collision_detector
+    if hasattr(detector, "sync_world_state"):
+        detector.sync_world_state()
+    result = detector.check_collisions(
+        CollisionMatrix(
+            {
+                CollisionCheck.create_and_validate(
+                    body_a=body_a,
+                    body_b=body_b,
+                    distance=0.0,
+                )
+            }
+        )
+    )
+    return any(float(contact.distance) <= 0.0 for contact in result.contacts)
+
+
+def _raise_if_cup_bowl_collision(bowl: Body, cup_tool: Body, world, pour_action=None):
+    """
+    Casts a ray from the tool center along its Z-axis.
+    Returns True if the ray passes within bowl_radius of the bowl center.
+    """
+    origin = getattr(pour_action, "pour_ray_origin_xyz", None)
+    z_dir = getattr(pour_action, "pour_ray_direction_xyz", None)
+    if origin is not None and z_dir is not None:
+        origin = np.array(origin, dtype=float)
+        z_dir = np.array(z_dir, dtype=float)
+    else:
+        # Fallback for direct calls without the action object. Avoid this path in
+        # causal runs because tool global_pose can trigger expensive symbolic FK.
+        tool_pose = cup_tool.root.global_pose
+        tool_pose_quat = np.array(
+            [float(x) for x in tool_pose.to_quaternion().to_np()],
+            dtype=float
+        )
+        qx, qy, qz, qw = tool_pose_quat
+        z_dir = np.array([
+            2 * (qx * qz + qw * qy),
+            2 * (qy * qz - qw * qx),
+            1 - 2 * (qx * qx + qy * qy)
+        ], dtype=float)
+        origin = np.array(
+            [float(tool_pose.x), float(tool_pose.y), float(tool_pose.z)],
+            dtype=float,
+        )
+    z_norm = float(np.linalg.norm(z_dir))
+    if z_norm <= 1e-9:
+        raise RuntimeError("Pouring failed success check: invalid cup ray direction.")
+    z_dir = z_dir / z_norm
+
+    bowl_pose = bowl.global_pose
+    bowl_center = np.array([float(bowl_pose.x), float(bowl_pose.y), float(bowl_pose.z)])
+    bowl_radius = 0.12
+
+    t = np.dot(bowl_center - origin, z_dir)
+    closest = origin + t * z_dir
+    dist = np.linalg.norm(closest - bowl_center)
+
+    hit = t > 0 and dist < bowl_radius
+
+    print(
+        "[pour raycast] "
+        f"z_dir={np.round(z_dir, 3).tolist()} "
+        f"t={t:.3f} "
+        f"dist_to_bowl={dist:.3f} "
+        f"hit={hit}",
+        flush=True,
+    )
+    if not hit:
+        raise RuntimeError(
+            "Pouring failed success check: cup not tilted towards the bowl."
+        )
+
+
+def _pour_attempts(mounted_cups, robot_name=None):
+    cups_by_arm = {arm: tool for arm, tool in mounted_cups}
+    if Arms.RIGHT in cups_by_arm and Arms.LEFT in cups_by_arm:
+        return [
+            (Arms.RIGHT, cups_by_arm[Arms.RIGHT], Arms.RIGHT),
+            (Arms.LEFT, cups_by_arm[Arms.LEFT], Arms.LEFT),
+        ]
+
+    if Arms.LEFT in cups_by_arm:
+        pour_side = (
+            Arms.RIGHT
+            if robot_name in RIGHT_SIDE_WITH_LEFT_ARM_ROBOTS
+            else Arms.LEFT
+        )
+        return [
+            (Arms.LEFT, cups_by_arm[Arms.LEFT], pour_side),
+        ]
+
+    if Arms.RIGHT in cups_by_arm:
+        return [
+            (Arms.RIGHT, cups_by_arm[Arms.RIGHT], Arms.RIGHT),
+        ]
+
+    return []
+
+
+def _try_pour(context, bowl, pickup_pose, arm, cup_tool, pour_side=None):
     if cup_tool is None:
         raise RuntimeError(f"No mounted pouring cup available for {arm.name}.")
 
@@ -132,25 +326,136 @@ def _try_pour(context, bowl, pickup_pose, arm, cup_tool):
             context,
         ).perform()
 
-    current_plan = None
+    current_plans = []
+    pour_action = None
     try:
         with simulated_robot_with_collision:
             # The cup is attached to the selected hand before Context creation.
             # SimplePouringAction uses that mounted tool frame for the Cartesian tilt.
-            current_plan = sequential(
-                [
-                    SimplePouringAction(
-                        object_designator=bowl,
-                        arm=arm,
-                    ),
-                    ParkArmsAction(get_park_arms_argument(context.world)),
-                ],
-                context,
+            print(
+                "[pour debug] creating SimplePouringAction "
+                f"arm={arm.name} "
+                f"pour_side={(pour_side or arm).name} "
+                f"action_file={inspect.getsourcefile(SimplePouringAction)}",
+                flush=True,
             )
-            current_plan.perform()
+            pour_action = SimplePouringAction(
+                object_designator=bowl,
+                arm=arm,
+                pour_side=pour_side,
+                nav=pickup_pose,
+                source_object_designator=cup_tool
+            )
+            pour_plan = sequential([pour_action], context)
+            current_plans.append(pour_plan)
+            pour_plan.perform()
+            _raise_if_cup_bowl_collision(
+                bowl=bowl,
+                cup_tool=cup_tool,
+                world=context.world,
+                pour_action=pour_action,
+            )
+            with simulated_robot_without_collision:
+                sequential(
+                    [
+                        ParkArmsAction(get_park_arms_argument(context.world)),
+                        MoveTorsoAction(TorsoState.HIGH),
+                    ],
+                    context,
+                ).perform()
+            return pour_action
+    except Exception as exc:
+        stall_status = _stall_status_from_exception(exc)
+        if stall_status and pour_action is not None:
+            try:
+                _raise_if_cup_bowl_collision(
+                    bowl=bowl,
+                    cup_tool=cup_tool,
+                    world=context.world,
+                    pour_action=pour_action,
+                )
+            except Exception as raycast_exc:
+                print(
+                    "[pour timeout acceptance] "
+                    f"{arm.name}/{(pour_side or arm).name} stalled with "
+                    f"{stall_status}, but raycast did not pass "
+                    f"({type(raycast_exc).__name__}: {raycast_exc})",
+                    flush=True,
+                )
+            else:
+                pour_action.logged_motion_progress_note = (
+                    f"accepted_{stall_status}_after_raycast"
+                )
+                print(
+                    "[pour timeout acceptance] "
+                    f"{arm.name}/{(pour_side or arm).name} stalled with "
+                    f"{stall_status}, accepting as success because raycast passed.",
+                    flush=True,
+                )
+                with simulated_robot_without_collision:
+                    sequential(
+                        [
+                            ParkArmsAction(get_park_arms_argument(context.world)),
+                            MoveTorsoAction(TorsoState.HIGH),
+                        ],
+                        context,
+                    ).perform()
+                return pour_action
+
+        if pour_action is not None:
+            setattr(exc, "pour_action", pour_action)
+        raise
     finally:
-        if current_plan is not None:
+        for current_plan in current_plans:
             commit_plan_to_db(session, current_plan)
+
+
+def _park_after_pour_best_effort(context, bowl_name):
+    try:
+        with simulated_robot_without_collision:
+            sequential(
+                [ParkArmsAction(get_park_arms_argument(context.world))],
+                context,
+            ).perform()
+    except Exception as exc:
+        print(
+            f"[cleanup] {bowl_name}: parking after pour failed "
+            f"but pour result is already decided "
+            f"({type(exc).__name__}: {exc})",
+            flush=True,
+        )
+
+
+def _pour_costmap_config(robot_name):
+    if robot_name in LARGE_BASE_ROBOTS:
+        return LARGE_BASE_COSTMAP_CONFIG
+    return DEFAULT_COSTMAP_CONFIG
+
+
+def _resolve_pour_pickup_pose(context, bowl, arm, environment_name, robot_name):
+    costmap_config = _pour_costmap_config(robot_name)
+    pickup_loc = CostmapLocation(
+        target=bowl.global_pose,
+        reachable=True,
+        reachable_arm=arm,
+        validate_reachability=False,
+        context=context,
+        **costmap_config,
+    )
+    print(
+        "[pour costmap] "
+        f"robot={robot_name} arm={arm.name} "
+        f"size={costmap_config['costmap_width']}x{costmap_config['costmap_height']} "
+        f"resolution={costmap_config['costmap_resolution']} "
+        f"clearance={costmap_config.get('obstacle_clearance', 'auto')} "
+        f"samples={costmap_config['samples']}",
+        flush=True,
+    )
+    return resolve_navigation_target_for_environment(
+        pickup_loc,
+        description=f"pouring into {bowl.name} with {arm.name}",
+        environment_name=environment_name,
+    )[0]
 
 
 def main_pouring(seed=None, robot_name=None, environment_name=None):
@@ -189,6 +494,7 @@ def main_pouring(seed=None, robot_name=None, environment_name=None):
             sequential(
                 [
                     ParkArmsAction(get_park_arms_argument(context.world)),
+                    MoveTorsoAction(TorsoState.HIGH),
 
                 ],
                 context,
@@ -255,14 +561,6 @@ def main_pouring(seed=None, robot_name=None, environment_name=None):
                     node, context.robot, world, bowl, debug_costmap_publishers
                 ),
             )
-            pickup_loc = CostmapLocation(
-                target=bowl.global_pose,
-                reachable=True,
-                reachable_arm=mounted_cups[0][0] if mounted_cups else None,
-                validate_reachability=False,
-                samples=1000,
-                context=context,
-            )
             highlight_current_target(
                 world,
                 bowls,
@@ -295,60 +593,35 @@ def main_pouring(seed=None, robot_name=None, environment_name=None):
                 "assistance_type": "",
             }
 
-            try:
-                pickup_pose = resolve_navigation_target_for_environment(
-                    pickup_loc,
-                    description=f"pouring into {bowl.name}",
-                    environment_name=environment_name,
-                )[0]
-            except Exception as exc:
-                failed_bowls.add(bowl)
-                attempt_failures.append(f"navigation setup -> {_format_attempt_error(exc)}")
-                fallback_tool = mounted_cups[-1][1] if mounted_cups else None
-                result_row = _record_pour_result(
-                    pour_results,
-                    bowl_name,
-                    robot_label,
-                    "failed",
-                    "",
-                    _tool_name(fallback_tool),
-                    "pickup_setup",
-                    attempt_failures,
-                    **common_result_kwargs,
-                    feasibility_reason="navigation_target_resolution_failed",
-                    robot_decision="skip_object",
-                    decision_reason="pickup_pose_unavailable",
-                    assistance_requested=False,
-                    assistance_completed=False,
-                    task_blocked_by_prerequisite=False,
-                    task_resumed_after_assistance=False,
-                    final_success=False,
-                    total_attempts=attempt_count,
-                    retry_count=0,
-                    collision_failure_count=collision_failure_count,
-                    recovery_used=False,
-                    recovery_success=False,
-                    perturbation_applied=False,
-                    perturbation_type="",
-                    execution_time_s=time.perf_counter() - bowl_start_time,
-                    geometry_binding=_build_mixing_geometry_binding(
-                        bowl, robot=context.robot
-                    ),
-                    motion_progress=last_progress,
-                )
-                append_csv_row(RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row)
-                continue
-
             attempt_succeeded = False
-            for attempt_index, (arm, tool) in enumerate(mounted_cups):
-                decision = "pour" if attempt_index == 0 else "retry_with_left_arm"
+            attempts = _pour_attempts(mounted_cups, resolved_robot_name)
+            for attempt_index, (arm, tool, pour_side) in enumerate(attempts):
+                decision = "pour" if attempt_index == 0 else "retry_with_alternate_side"
                 decision_reason = (
-                    "primary_success" if attempt_index == 0 else "right_arm_failed"
+                    "primary_success" if attempt_index == 0 else "previous_pour_side_failed"
                 )
-                print(f"[pour] {bowl_name}: try {arm.name} arm")
+                print(
+                    f"[pour] {bowl_name}: try {arm.name} arm "
+                    f"from {pour_side.name} side"
+                )
                 try:
                     attempt_count += 1
-                    _try_pour(context, bowl, pickup_pose, arm, tool)
+                    pickup_pose = _resolve_pour_pickup_pose(
+                        context,
+                        bowl,
+                        arm,
+                        environment_name,
+                        resolved_robot_name,
+                    )
+                    pour_action = _try_pour(
+                        context,
+                        bowl,
+                        pickup_pose,
+                        arm,
+                        tool,
+                        pour_side=pour_side,
+                    )
+                    last_progress = _pouring_progress_from_action(pour_action)
                     success_count += 1
                     successful_bowls.add(bowl)
                     result_row = _record_pour_result(
@@ -380,33 +653,82 @@ def main_pouring(seed=None, robot_name=None, environment_name=None):
                         geometry_binding=_build_mixing_geometry_binding(
                             bowl, robot=context.robot
                         ),
-                        motion_progress={
-                            **last_progress,
-                            "motion_approach_completed": True,
-                            "motion_progress_note": "completed",
-                        },
+                        motion_progress=last_progress,
                     )
                     append_csv_row(
                         RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row
                     )
-                    print(f"[ok] {bowl_name}: poured with {arm.name} arm")
+                    print(
+                        f"[ok] {bowl_name}: poured with {arm.name} arm "
+                        f"from {pour_side.name} side"
+                    )
+                    _park_after_pour_best_effort(context, bowl_name)
                     attempt_succeeded = True
                     break
                 except Exception as exc:
-                    if _is_collision_like_failure(exc):
+                    last_progress = _pouring_progress_from_exception(exc)
+                    failure_kind = _failure_kind_from_exception(exc)
+                    current_failure = (
+                        f"{arm.name}/{pour_side.name} primary -> "
+                        f"{_format_attempt_error(exc)}"
+                    )
+                    if (
+                        _is_collision_like_failure(exc)
+                        or "cup and bowl are in collision" in str(exc)
+                    ):
                         collision_failure_count += 1
-                    attempt_failures.append(
-                        f"{arm.name} primary -> {_format_attempt_error(exc)}"
+                    attempt_failures.append(current_failure)
+                    result_row = _record_pour_result(
+                        pour_results,
+                        bowl_name,
+                        robot_label,
+                        "failed",
+                        "",
+                        _tool_name(tool),
+                        "attempt",
+                        [current_failure],
+                        **common_result_kwargs,
+                        feasibility_reason=failure_kind,
+                        robot_decision=decision,
+                        decision_reason=(
+                            f"{failure_kind}_retry"
+                            if attempt_index < len(attempts) - 1
+                            else f"{failure_kind}_final"
+                        ),
+                        assistance_requested=False,
+                        assistance_completed=False,
+                        task_blocked_by_prerequisite=False,
+                        task_resumed_after_assistance=False,
+                        final_success=False,
+                        total_attempts=attempt_count,
+                        retry_count=max(0, attempt_count - 1),
+                        collision_failure_count=collision_failure_count,
+                        recovery_used=attempt_count > 1,
+                        recovery_success=False,
+                        perturbation_applied=False,
+                        perturbation_type="",
+                        execution_time_s=time.perf_counter() - bowl_start_time,
+                        geometry_binding=_build_mixing_geometry_binding(
+                            bowl, robot=context.robot
+                        ),
+                        motion_progress=last_progress,
+                    )
+                    append_csv_row(
+                        RESULTS_CSV_PATH, _results_csv_fieldnames(), result_row
                     )
                     print(
-                        f"[retry] {bowl_name}: {arm.name} failed "
-                        f"({type(exc).__name__}: {exc})"
+                        f"[retry] {bowl_name}: {arm.name} arm from "
+                        f"{pour_side.name} side failed "
+                        f"({failure_kind}: {type(exc).__name__}: {exc})"
                     )
 
             if attempt_succeeded:
                 continue
 
             failed_bowls.add(bowl)
+            if attempts:
+                continue
+
             last_tool = mounted_cups[-1][1] if mounted_cups else None
             result_row = _record_pour_result(
                 pour_results,

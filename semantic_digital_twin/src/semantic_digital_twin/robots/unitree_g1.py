@@ -246,7 +246,7 @@ class UnitreeG1(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
                         for c in self.right_arm.connections
                         if type(c) != FixedConnection
                     ],
-                    [0, 0, 0, 0, 0, 0, 0],
+                    [-1.4, -1, 0, 0, 0, 0, 0],
                 )
             ),
             state_type=StaticJointState.PARK,
@@ -278,7 +278,7 @@ class UnitreeG1(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
                         for c in self.left_arm.connections
                         if type(c) != FixedConnection
                     ],
-                    [0, 0, 0, 0, 0, 0, 0],
+                    [1.4, 1, 1, 0, 0, 0, 0],
                 )
             ),
             state_type=StaticJointState.PARK,
