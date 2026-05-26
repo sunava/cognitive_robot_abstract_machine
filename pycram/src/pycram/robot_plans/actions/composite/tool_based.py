@@ -737,12 +737,12 @@ class GeneralizedActionPlan(ActionDescription):
     Base class for tool-based motion sequences over a container.
     """
 
-    arm: Arms
+    arm: Arms = None
     """
     Arm used for the motion.
     """
 
-    tool: HasRootBody
+    tool: HasRootBody = None
     """
     Tool body used to estimate the tip offset.
     """
@@ -1275,17 +1275,17 @@ class SimplePouringAction(ActionDescription):
     Park the arms of the robot.
     """
 
-    object_designator: Body
+    object_designator: Body = None
     """
     The object to pick up
     """
 
-    source_object_designator: Body
+    source_object_designator: Body = None
     """
     The object to pick up
     """
 
-    arm: Arms
+    arm: Arms = None
     """
     Physical robot arm used for motion execution.
     """
@@ -1297,7 +1297,7 @@ class SimplePouringAction(ActionDescription):
     right-side or left-side pouring geometry.
     """
 
-    nav: Pose
+    nav: Pose = None
     """
     Entry from the enum for which arm should be parked.
     """

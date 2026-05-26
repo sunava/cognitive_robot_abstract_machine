@@ -41,17 +41,17 @@ class TransportAction(ActionDescription):
     Transports an object to a position using an arm
     """
 
-    object_designator: Body = field(repr=False)
+    object_designator: Body = field(default=None, repr=False)
     """
     Object designator_description describing the object that should be transported.
     """
 
-    target_location: Pose
+    target_location: Pose = None
     """
     Target Location to which the object should be transported
     """
 
-    arm: Optional[Arms]
+    arm: Optional[Arms] = None
     """
     Arm that should be used
     """
@@ -176,19 +176,19 @@ class PickAndPlaceAction(ActionDescription):
     Transports an object to a position using an arm without moving the base of the robot
     """
 
-    object_designator: Body
+    object_designator: Body = None
     """
     Object designator_description describing the object that should be transported.
     """
-    target_location: Pose
+    target_location: Pose = None
     """
     Target Location to which the object should be transported
     """
-    arm: Arms
+    arm: Arms = None
     """
     Arm that should be used
     """
-    grasp_description: GraspDescription
+    grasp_description: GraspDescription = None
     """
     Description of the grasp to pick up the target
     """
@@ -225,22 +225,22 @@ class MoveAndPlaceAction(ActionDescription):
     Navigate to `standing_position`, then turn towards the object and pick it up.
     """
 
-    standing_position: Pose
+    standing_position: Pose = None
     """
     The pose to stand before trying to pick up the object
     """
 
-    object_designator: Body
+    object_designator: Body = None
     """
     The object to pick up
     """
 
-    target_location: Pose
+    target_location: Pose = None
     """
     The location to place the object.
     """
 
-    arm: Arms
+    arm: Arms = None
     """
     The arm to use
     """
@@ -274,22 +274,22 @@ class MoveAndPickUpAction(ActionDescription):
     Navigate to `standing_position`, then turn towards the object and pick it up.
     """
 
-    standing_position: Pose
+    standing_position: Pose = None
     """
     The pose to stand before trying to pick up the object
     """
 
-    object_designator: Body
+    object_designator: Body = None
     """
     The object to pick up
     """
 
-    arm: Arms
+    arm: Arms = None
     """
     The arm to use
     """
 
-    grasp_description: GraspDescription
+    grasp_description: GraspDescription = None
     """
     The grasp to use
     """

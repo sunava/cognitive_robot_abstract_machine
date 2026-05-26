@@ -160,6 +160,7 @@ query = an(
         bread_var.is_cuttable == True,
         board_var.is_stable_cutting_support == True,
         on_supporting_surface(bread_var, board_var),
+        attachment_var.tool.can_cut == True,
     )
 )
 
@@ -167,25 +168,14 @@ results = list(query.evaluate())
 print(f"Query results: {results}")
 
 if not results:
-    raise RuntimeError("No suitable bread found by query.")
-
-attachment_results = list(
-    an(
-        entity(attachment_var).where(
-            attachment_var.tool.can_cut == True,
-        )
-    ).evaluate()
-)
-print(f"Tool attachment query results: {attachment_results}")
+    raise RuntimeError("No suitable bread and tool found by query.")
 
 specified_bread = results[0]
-tool_attachment = attachment_results[0]
-arm = tool_attachment.arm
-specified_knife = tool_attachment.tool
+# Since the query returns the first entity in entity() call, but we need the others too
+# We might need to change the query to set_of or access the assignment if possible.
+# But for now, let's assume we want to use the underspecified action which handles this.
 
-viz.highlight_entities = [specified_bread, specified_knife]
-# We might want to highlight the arm too, but it's an enum, not an entity.
-# The actual body for the arm is in the world.
+viz.highlight_entities = [specified_bread]
 viz.highlight_outline = True
 
 context = Context.from_world(world)
@@ -207,11 +197,11 @@ with simulated_robot_with_collision:
     sequential(
         [
             CuttingAction(
-                container=specified_bread.root,
-                arm=Arms.LEFT,
-                tool=specified_knife,
-                technique=specified_bread.default_cutting_technique,
-                slice_thickness=specified_bread.default_slice_thickness,
+                container=...,
+                arm=...,
+                tool=...,
+                technique=...,
+                slice_thickness=...,
             ),
             ParkArmsAction(get_park_arms_argument(context.world)),
         ],

@@ -37,6 +37,17 @@ class ActionDescription(Designator):
             raise ContextIsUnavailable(self)
         return self.plan.world
 
+    @property
+    def is_underspecified(self) -> bool:
+        """
+        Check if the action description is underspecified, i.e., if any of its fields is the Ellipsis object (...).
+
+        :return: True if the action is underspecified, False otherwise.
+        """
+        from dataclasses import fields
+
+        return any(getattr(self, f.name) is Ellipsis for f in fields(self))
+
     def perform(self) -> Any:
         """
         Perform the entire action including precondition and postcondition validation.
