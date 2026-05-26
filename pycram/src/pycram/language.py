@@ -40,12 +40,7 @@ class LanguageNode(PlanNode, ABC):
             if type(child) != type(self):
                 continue
 
-            for grand_child in child.children:
-                self.plan.add_edge(
-                    self, grand_child, child.layer_index + grand_child.layer_index
-                )
-            self.plan.plan_graph.remove_edge(self.index, child.index)
-            self.plan.remove_node(child)
+            self.merge(child)
 
 
 @dataclass

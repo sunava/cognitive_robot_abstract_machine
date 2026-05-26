@@ -108,15 +108,11 @@ T = TypeVar("T")
 def _make_plan_from_type_and_children(
     root: T, children: List[ActionLike], context: Optional[Context]
 ) -> T:
-    from pycram.language import LanguageNode
-
     plan = Plan(context=context)
     plan.add_node(root)
 
     for action_like in children:
         child = make_node(action_like)
-        if isinstance(child, LanguageNode):
-            root.mount_subplan(child)
         if child.plan:
             root.mount_subplan(child)
         else:

@@ -28,7 +28,7 @@ from pycram.plans.plan_node import (
     ActionNode,
     DesignatorNode,
 )
-from pycram.visualization import plot_rustworkx_interactive
+from pycram.visualization import plot_rustworkx_interactive, create_ordered_graph
 from semantic_digital_twin.robots.abstract_robot import AbstractRobot
 from semantic_digital_twin.world import World
 
@@ -281,7 +281,7 @@ class Plan:
         # for edge in other_plans_edge:
         #     self.add_edge(edge[0], edge[1])
 
-        for layer in other.layers:
+        for layer in reversed(other.layers):
             for node in layer:
                 self.add_edges_from([(node, child) for child in node.children])
 
@@ -314,7 +314,7 @@ class Plan:
         :param layout: The layout of the plot
         """
         plot_rustworkx_interactive(
-            self.plan_graph, layout=layout, start=self.root.index
+            create_ordered_graph(self), layout=layout, start=self.root.index
         )
 
     def __repr__(self):

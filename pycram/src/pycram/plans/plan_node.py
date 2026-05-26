@@ -292,6 +292,20 @@ class PlanNode(PlanEntity, ABC):
         """
         pass
 
+    def merge(self, other: PlanNode):
+        """
+        Merges this node with another, this will mount the children of the other node under this one and remove the other
+        node from the plan.
+
+        :param other: The other node to merge
+        """
+        for grand_child in other.children:
+            self.plan.add_edge(
+                self, grand_child, other.layer_index + grand_child.layer_index
+            )
+        self.plan.plan_graph.remove_edge(self.index, other.index)
+        self.plan.remove_node(other)
+
     @abstractmethod
     def notify(self):
         """
@@ -360,6 +374,22 @@ class DesignatorNode(PlanNode, ABC):
 
     def __repr__(self):
         return f"{type(self.designator).__name__}"
+
+    def simplify(self):
+        """
+        Merges this designator node with its child if they have the same paramters and are of the same type.
+
+        """
+        self_fields = self.designator.fields
+        for child in self.children:
+            if isinstance(child, DesignatorNode) and type(self.designator) == type(
+                child.designator
+            ):
+                child_fields = child.designator.fields
+                for self_field, child_field in zip(self_fields, child_fields):
+                    if not self_field == child_field:
+                        continue
+                self.merge(child)
 
 
 @dataclass(eq=False, repr=False)

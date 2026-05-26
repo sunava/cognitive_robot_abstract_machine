@@ -5,6 +5,19 @@ from typing import Any, Callable, Dict, Iterable, Optional, Sequence, Tuple
 
 import networkx as nx
 from bokeh.io import output_file
+from rustworkx.rustworkx import PyDiGraph
+
+
+def create_ordered_graph(plan):
+    ordered_graph = PyDiGraph(multigraph=False)
+    mapping = {}
+
+    for node in plan.nodes:
+        mapping[node.index] = ordered_graph.add_node(node)
+    for node in plan.nodes:
+        for child in node.children:
+            ordered_graph.add_edge(mapping[node.index], mapping[child.index], None)
+    return ordered_graph
 
 
 def plot_rustworkx_interactive(
@@ -169,7 +182,7 @@ def calculate_layout_positions(
     return pos
 
 
-def build_nx_graph(graph: "Any", node_params, attributes, node_label) -> nx.Graph:
+def build_nx_graph(graph: PyDiGraph, node_params, attributes, node_label) -> nx.Graph:
     """Convert a rustworkx graph to a networkx graph."""
     # Build a NetworkX graph from rustworkx graph
     is_directed = getattr(graph, "is_directed", lambda: True)()

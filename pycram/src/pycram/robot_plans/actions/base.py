@@ -34,6 +34,7 @@ from krrood.entity_query_language.factories import (
 )
 from ...datastructures.dataclasses import Context
 from ...plans.condition_nodes import ConditionNode
+from ...plans.plan import Plan
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +188,7 @@ class ActionDescription(Designator):
     def add_subplan(self, subplan_root: PlanNode) -> PlanNode:
         subplan_root = self.plan._migrate_nodes_from_plan(subplan_root.plan)
         self.plan.add_edge(self.plan_node, subplan_root)
+        self.plan.simplify()
         return subplan_root
 
 
