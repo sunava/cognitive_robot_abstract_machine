@@ -1,19 +1,12 @@
 # source for base: https://medium.com/@idelossantosruiz/events-in-python-e2b3cb76ac2d
-import os
-from enum import Enum
-from typing import Tuple, Any
 from contextlib import contextmanager
 
 
 from demos.bachelor_thesis.classes_and_methods.tasks import SetTableTask, CleanTableTask, PutAwayObjectTask, LoadDishwasherTask, \
     UnloadDishwasherTask
 from semantic_digital_twin.exceptions import WorldEntityNotFoundError
-from semantic_digital_twin.reasoning.queries import semantic_annotations_on_surfaces
-from semantic_digital_twin.robots.abstract_robot import AbstractRobot
-from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Cuttlery, Plate, Cup
-from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.world_entity import Body, SemanticAnnotation
 from demos.bachelor_thesis.actions.predicate_mock import (
@@ -93,16 +86,16 @@ class EventDispatcher:
         self.add_listener(trigger_task)
         #self.add_listener(update_reachable_objects)
 
-    def add_listener(self, listener):
+    def add_listener(self, listener) -> None:
         """Register a new listener."""
         self._listeners.append(listener)
 
-    def remove_listener(self, listener):
+    def remove_listener(self, listener) -> None:
         """Unregister an existing listener."""
         if listener in self._listeners:
             self._listeners.remove(listener)
 
-    def trigger_event(self, event_data : list[Body], world : World):
+    def trigger_event(self, event_data : list[Body], world : World) -> None:
         """Fire the event, passing event_data to every listener."""
         with perf_step(f"trigger_event with {len(event_data)} visible bodies and {len(self._listeners)} listeners"):
             sem_annotations = []
@@ -121,7 +114,7 @@ class EventDispatcher:
 
 
 # Usage example
-def update_perceived_objects(handler : EventDispatcher, data : list[SemanticAnnotation], world : World):
+def update_perceived_objects(handler : EventDispatcher, data : list[SemanticAnnotation], world : World) -> None:
     with perf_step(f"check if correct location for object types are set and of type HasSupportingSurface"):
         is_none = []
         if (handler.correct_location_drinks is None) or not isinstance(handler.correct_location_drinks, HasSupportingSurface):
@@ -129,7 +122,7 @@ def update_perceived_objects(handler : EventDispatcher, data : list[SemanticAnno
         if (handler.correct_location_food is None)  or not isinstance(handler.correct_location_food, HasSupportingSurface):
             is_none.append("handler.correct_location_food")
         if (handler.correct_location_tableware is None)  or not isinstance(handler.correct_location_tableware, HasSupportingSurface):
-            is_none.append("handler.correct_location_food")
+            is_none.append("handler.correct_location_tableware")
         if (handler.correct_location_all_other_items is None)  or not isinstance(handler.correct_location_all_other_items, HasSupportingSurface):
             is_none.append("handler.correct_location_all_other_items")
         if (handler.dining_table is None) or not isinstance(handler.dining_table, HasSupportingSurface):
@@ -179,177 +172,195 @@ def update_perceived_objects(handler : EventDispatcher, data : list[SemanticAnno
             print_perceived_objects(handler)
 
 
-def trigger_task(handler: EventDispatcher, data : list[SemanticAnnotation], world : World):
+def trigger_task(handler: EventDispatcher, data : list[SemanticAnnotation], world : World) -> None:
     with perf_step("trigger_task"):
-        # trigger set the table
-        ts = tm()
-        # time = datetime.datetime.fromtimestamp(ts)
-        time = datetime.datetime(year=2026, month=5, day=6, hour=9, minute=10) # for testing
-        with perf_step("trigger set table task"):
-            if (time.hour == 9 or time.hour == 13 or time.hour == 19) and not human_near():
-                table_name = handler.dining_table.name.name
-                exists = False
-                for task in handler.activated_tasks:
-                    if task.name == ("set_table_task_" + table_name):
-                        exists = True
-                        if handler.perceived_objects_changed:
-                            with perf_step(f"update task: {task.name}"):
-                                task.update_to_current_world_state(
-                                    world,
-                                    handler.perceived_objects,
-                                    handler.surface_annotation_cache,
-                                )
-                        else:
-                            perf_print(f"skip update task {task.name}: perceived objects unchanged")
-                if not exists:
-                    with perf_step("create task: set_table_task_table"):
-                        handler.activated_tasks.append(
-                            SetTableTask(
-                                "set_table_task_"+table_name,
-                                handler.dining_table,
-                                world=world,
-                                perceived_objects=handler.perceived_objects,
-                                surface_cache=handler.surface_annotation_cache,
-                            )
-                        )
+        _trigger_set_table(handler, world)
+        _trigger_clean_table(handler, world)
+        _trigger_put_away_object(handler, world)
+        _trigger_load_dishwasher(handler, world)
+        _trigger_unload_dishwasher(handler, world)
 
+    with perf_step("print tasks"):
+        print_tasks(handler)
 
-        # trigger clean the table
-        with perf_step("trigger clean table task"):
-            if (time.hour != 9 and time.hour != 13 and time.hour != 19) and not human_near():
-                table_name = handler.dining_table.name.name
-                exists = False
-                for task in handler.activated_tasks:
-                    if task.name == ("clean_table_task_" + table_name):
-                        exists = True
-                        if handler.perceived_objects_changed:
-                            with perf_step(f"update task: {task.name}"):
-                                task.update_to_current_world_state(world, handler.perceived_objects)
-                        else:
-                            perf_print(f"skip update task {task.name}: perceived objects unchanged")
-                if not exists:
-                    with perf_step("create task: clean_table_task_table"):
-                        handler.activated_tasks.append(CleanTableTask("clean_table_task_"+table_name, handler.dining_table, world=world, perceived_objects=handler.perceived_objects))
-
-        # trigger put away object
-        with perf_step(f"trigger put away object tasks for {len(handler.misplaced_objects)} misplaced objects"):
-            for obj in handler.misplaced_objects:
-                task_name = "put_away_object_task_" + obj.name.name
-                exists = False
-                for task in handler.activated_tasks:
-                    if task.name == task_name:
-                        exists = True
-                        if handler.perceived_objects_changed:
-                            with perf_step(f"update task: {task.name}"):
-                                task.update_to_current_world_state(world, handler.perceived_objects)
-                        else:
-                            perf_print(f"skip update task {task.name}: perceived objects unchanged")
-                if not exists:
-                    with perf_step(f"create task: {task_name}"):
-                        handler.activated_tasks.append(PutAwayObjectTask(task_name, required_objects=[obj], world=world, perceived_objects=handler.perceived_objects))
-
-        with perf_step(f"scan {len(handler.perceived_objects)} perceived objects for dishware"):
-            perceived_dishware = []
-            for obj in handler.perceived_objects:
-                if isinstance(obj, (Cuttlery, Plate, Bowl, Cup)):
-                    perceived_dishware.append(obj)
-
-        # trigger load dishwasher task
-        load_dishwasher_task = None
-        load_dishwasher_objects = []
-        if len(perceived_dishware) > 0:
-            with perf_step(f"scan {len(perceived_dishware)} perceived dishware objects for load dishwasher"):
-                for obj in perceived_dishware:
-                    if obj not in handler.misplaced_objects and not human_near():
-                        load_dishwasher_task = "load_dishwasher_task"
-                        load_dishwasher_objects.append(obj)
-        else:
-            perf_print("skip counterTop query: no perceived dishware/cutlery")
-
-        if load_dishwasher_task is not None and handler.dishwasher_exists:
-            with perf_step("trigger load dishwasher task"):
-                exists = False
-                for task in handler.activated_tasks:
-                    if task.name == load_dishwasher_task:
-                        exists = True
-                        if handler.perceived_objects_changed:
-                            with perf_step(f"update task: {task.name}"):
-                                task.update_to_current_world_state(
-                                    world,
-                                    handler.perceived_objects,
-                                    surface_cache=handler.surface_annotation_cache,
-                                    support_cache=handler.support_relation_cache,
-                                    required_objects=load_dishwasher_objects,
-                                )
-                        else:
-                            perf_print(f"skip update task {task.name}: perceived objects unchanged")
-                if not exists:
-                    with perf_step("create task: load_dishwasher_task"):
-                        handler.activated_tasks.append(
-                            LoadDishwasherTask(
-                                load_dishwasher_task,
-                                handler.perceived_objects,
-                                handler.correct_location_tableware,
+def _trigger_set_table(handler: EventDispatcher, world: World) -> None:
+    # trigger set the table
+    ts = tm()
+    # time = datetime.datetime.fromtimestamp(ts)
+    time = datetime.datetime(year=2026, month=5, day=6, hour=9, minute=10)  # for testing
+    with perf_step("trigger set table task"):
+        if (time.hour == 9 or time.hour == 13 or time.hour == 19) and not human_near():
+            table_name = handler.dining_table.name.name
+            exists = False
+            for task in handler.activated_tasks:
+                if task.name == ("set_table_task_" + table_name):
+                    exists = True
+                    if handler.perceived_objects_changed:
+                        with perf_step(f"update task: {task.name}"):
+                            task.update_to_current_world_state(
                                 world,
+                                handler.perceived_objects,
+                                handler.surface_annotation_cache,
+                            )
+                    else:
+                        perf_print(f"skip update task {task.name}: perceived objects unchanged")
+            if not exists:
+                with perf_step("create task: set_table_task_table"):
+                    handler.activated_tasks.append(
+                        SetTableTask(
+                            "set_table_task_" + table_name,
+                            handler.dining_table,
+                            world=world,
+                            perceived_objects=handler.perceived_objects,
+                            surface_cache=handler.surface_annotation_cache,
+                        )
+                    )
+
+def _trigger_clean_table(handler: EventDispatcher, world: World) -> None:
+    # trigger clean the table
+    ts = tm()
+    # time = datetime.datetime.fromtimestamp(ts)
+    time = datetime.datetime(year=2026, month=5, day=6, hour=9, minute=10)  # for testing
+    with perf_step("trigger clean table task"):
+        if (time.hour != 9 and time.hour != 13 and time.hour != 19) and not human_near():
+            table_name = handler.dining_table.name.name
+            exists = False
+            for task in handler.activated_tasks:
+                if task.name == ("clean_table_task_" + table_name):
+                    exists = True
+                    if handler.perceived_objects_changed:
+                        with perf_step(f"update task: {task.name}"):
+                            task.update_to_current_world_state(world, handler.perceived_objects)
+                    else:
+                        perf_print(f"skip update task {task.name}: perceived objects unchanged")
+            if not exists:
+                with perf_step("create task: clean_table_task_table"):
+                    handler.activated_tasks.append(
+                        CleanTableTask("clean_table_task_" + table_name, handler.dining_table, world=world,
+                                       perceived_objects=handler.perceived_objects))
+
+def _trigger_put_away_object(handler: EventDispatcher, world: World) -> None:
+    # trigger put away object
+    with perf_step(f"trigger put away object tasks for {len(handler.misplaced_objects)} misplaced objects"):
+        for obj in handler.misplaced_objects:
+            task_name = "put_away_object_task_" + obj.name.name
+            exists = False
+            for task in handler.activated_tasks:
+                if task.name == task_name:
+                    exists = True
+                    if handler.perceived_objects_changed:
+                        with perf_step(f"update task: {task.name}"):
+                            task.update_to_current_world_state(world, handler.perceived_objects)
+                    else:
+                        perf_print(f"skip update task {task.name}: perceived objects unchanged")
+            if not exists:
+                with perf_step(f"create task: {task_name}"):
+                    handler.activated_tasks.append(PutAwayObjectTask(task_name, required_objects=[obj], world=world,
+                                                                     perceived_objects=handler.perceived_objects))
+
+def _perceive_dishware(handler: EventDispatcher) -> list[SemanticAnnotation]:
+    with perf_step(f"scan {len(handler.perceived_objects)} perceived objects for dishware"):
+        perceived_dishware = []
+        for obj in handler.perceived_objects:
+            if isinstance(obj, (Cuttlery, Plate, Bowl, Cup)):
+                perceived_dishware.append(obj)
+
+    return perceived_dishware
+
+def _trigger_load_dishwasher(handler: EventDispatcher, world: World) -> None:
+    perceived_dishware = _perceive_dishware(handler)
+
+    # trigger load dishwasher task
+    load_dishwasher_task = None
+    load_dishwasher_objects = []
+    if len(perceived_dishware) > 0:
+        with perf_step(f"scan {len(perceived_dishware)} perceived dishware objects for load dishwasher"):
+            for obj in perceived_dishware:
+                if obj not in handler.misplaced_objects and not human_near():
+                    load_dishwasher_task = "load_dishwasher_task"
+                    load_dishwasher_objects.append(obj)
+    else:
+        perf_print("skip counterTop query: no perceived dishware/cutlery")
+
+    if load_dishwasher_task is not None and handler.dishwasher_exists:
+        with perf_step("trigger load dishwasher task"):
+            exists = False
+            for task in handler.activated_tasks:
+                if task.name == load_dishwasher_task:
+                    exists = True
+                    if handler.perceived_objects_changed:
+                        with perf_step(f"update task: {task.name}"):
+                            task.update_to_current_world_state(
+                                world,
+                                handler.perceived_objects,
                                 surface_cache=handler.surface_annotation_cache,
                                 support_cache=handler.support_relation_cache,
                                 required_objects=load_dishwasher_objects,
                             )
+                    else:
+                        perf_print(f"skip update task {task.name}: perceived objects unchanged")
+            if not exists:
+                with perf_step("create task: load_dishwasher_task"):
+                    handler.activated_tasks.append(
+                        LoadDishwasherTask(
+                            load_dishwasher_task,
+                            handler.perceived_objects,
+                            handler.correct_location_tableware,
+                            world,
+                            surface_cache=handler.surface_annotation_cache,
+                            support_cache=handler.support_relation_cache,
+                            required_objects=load_dishwasher_objects,
                         )
+                    )
 
-        # trigger unload dishwasher task
-        unload_dishwasher_task = None
-        unload_dishwasher_objects = []
-        if len(perceived_dishware) > 0:
-            dishwasher_rack = world.get_semantic_annotation_by_name("dishwasher_rack")
-            with perf_step(f"scan {len(perceived_dishware)} perceived dishware objects for unload dishwasher"):
-                for annotation in perceived_dishware:
-                    if is_supported_by_surface_cached(
+def _trigger_unload_dishwasher(handler: EventDispatcher, world: World) -> None:
+    perceived_dishware = _perceive_dishware(handler)
+    # trigger unload dishwasher task
+    unload_dishwasher_task = None
+    unload_dishwasher_objects = []
+    if len(perceived_dishware) > 0:
+        dishwasher_rack = world.get_semantic_annotation_by_name("dishwasher_rack")
+        with perf_step(f"scan {len(perceived_dishware)} perceived dishware objects for unload dishwasher"):
+            for annotation in perceived_dishware:
+                if is_supported_by_surface_cached(
                         annotation,
                         dishwasher_rack,
                         handler.support_relation_cache,
-                    ) and not human_near():
-                        unload_dishwasher_task = "unload_dishwasher_task"
-                        unload_dishwasher_objects.append(annotation)
-        else:
-            perf_print("skip dishwasher_rack query: no perceived dishware/cutlery")
+                ) and not human_near():
+                    unload_dishwasher_task = "unload_dishwasher_task"
+                    unload_dishwasher_objects.append(annotation)
+    else:
+        perf_print("skip dishwasher_rack query: no perceived dishware/cutlery")
 
-        if unload_dishwasher_task is not None and handler.dishwasher_exists:
-            with perf_step("trigger unload dishwasher task"):
-                exists = False
-                for task in handler.activated_tasks:
-                    if task.name == unload_dishwasher_task:
-                        exists = True
-                        if handler.perceived_objects_changed:
-                            with perf_step(f"update task: {task.name}"):
-                                task.update_to_current_world_state(
-                                    world,
-                                    handler.perceived_objects,
-                                    surface_cache=handler.surface_annotation_cache,
-                                    required_objects=unload_dishwasher_objects,
-                                )
-                        else:
-                            perf_print(f"skip update task {task.name}: perceived objects unchanged")
-                if not exists:
-                    with perf_step("create task: unload_dishwasher_task"):
-                        handler.activated_tasks.append(
-                            UnloadDishwasherTask(
-                                unload_dishwasher_task,
-                                handler.perceived_objects,
+    if unload_dishwasher_task is not None and handler.dishwasher_exists:
+        with perf_step("trigger unload dishwasher task"):
+            exists = False
+            for task in handler.activated_tasks:
+                if task.name == unload_dishwasher_task:
+                    exists = True
+                    if handler.perceived_objects_changed:
+                        with perf_step(f"update task: {task.name}"):
+                            task.update_to_current_world_state(
                                 world,
+                                handler.perceived_objects,
                                 surface_cache=handler.surface_annotation_cache,
                                 required_objects=unload_dishwasher_objects,
                             )
+                    else:
+                        perf_print(f"skip update task {task.name}: perceived objects unchanged")
+            if not exists:
+                with perf_step("create task: unload_dishwasher_task"):
+                    handler.activated_tasks.append(
+                        UnloadDishwasherTask(
+                            unload_dishwasher_task,
+                            handler.perceived_objects,
+                            world,
+                            surface_cache=handler.surface_annotation_cache,
+                            required_objects=unload_dishwasher_objects,
                         )
+                    )
 
-        with perf_step("print tasks"):
-            print_tasks(handler)
-
-def _trigger_set_table(handler: EventDispatcher, world: World):
-    pass
-
-
-def print_tasks(handler : EventDispatcher):
+def print_tasks(handler : EventDispatcher) -> None:
     print("\n \n")
     print("ACTIVE TASKS")
     print("-" * 110)
@@ -369,7 +380,7 @@ def print_tasks(handler : EventDispatcher):
         print(line)
 
 
-def print_perceived_objects(handler : EventDispatcher):
+def print_perceived_objects(handler : EventDispatcher) -> None:
     print("PERCEIVED OBJECTS")
     print("-"*110)
     print(
