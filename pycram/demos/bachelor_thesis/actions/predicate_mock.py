@@ -1,31 +1,15 @@
-"""
-put knowledge queries here, like:
-empty(supportingSurface) = true
-def misplaced(object):
-    get objects location
-    if location = place where belongs -> return false
-    else -> return true
-"""
-import os
 from contextlib import contextmanager
 
-from sqlalchemy.dialects.oracle.dictionary import all_objects
+from typing_extensions import Tuple
 
-from krrood.symbolic_math.symbolic_math import Scalar
 from semantic_digital_twin.reasoning.queries import semantic_annotations_on_surfaces
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
-from semantic_digital_twin.semantic_annotations.semantic_annotations import Food, Fruit, Cuttlery, Plate, Cup, Bowl, \
-    Bottle, CounterTop, Table, ShelfLayer, DrinkingContainer
-from semantic_digital_twin.spatial_types.spatial_types import Pose
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Food, Cuttlery, Plate, Cup, Bowl, \
+    Bottle, CounterTop, Table, ShelfLayer
 from semantic_digital_twin.world import World
 from semantic_digital_twin.reasoning.predicates import is_supported_by
 
-from time import sleep
-
-
-import math
-
-from semantic_digital_twin.world_description.world_entity import SemanticAnnotation, Body
+from semantic_digital_twin.world_description.world_entity import SemanticAnnotation
 
 
 def perf_print(message: str):
@@ -41,7 +25,7 @@ def semantic_annotations_on_surface_cached(
     furniture: HasSupportingSurface,
     world: World,
     surface_cache: dict | None = None,
-):
+) -> list[SemanticAnnotation]:
     cache_key = str(furniture.name)
     if surface_cache is not None and cache_key in surface_cache:
         perf_print(f"CACHE HIT semantic_annotations_on_surfaces: {cache_key}")
@@ -59,7 +43,7 @@ def is_supported_by_surface_cached(
     obj: SemanticAnnotation,
     surface: HasSupportingSurface,
     support_cache: dict | None = None,
-):
+) -> bool:
     cache_key = (str(obj.name), str(surface.name))
     if support_cache is not None and cache_key in support_cache:
         perf_print(f"CACHE HIT is_supported_by: {cache_key[0]} on {cache_key[1]}")
@@ -82,7 +66,7 @@ def misplaced(
     correct_location_all_other_items: SemanticAnnotation,
     surface_cache: dict | None = None,
     support_cache: dict | None = None,
-):
+)-> Tuple[bool, SemanticAnnotation]:
     """
     returns true if object is misplaced and false if it is already at the correct location
     """
@@ -110,8 +94,7 @@ def misplaced(
         else:
             return True, correct_location
     else:
-        TypeError("Correct location is not of type HasSupportingSurface")
-        return True, correct_location
+        raise TypeError("Correct location is not of type HasSupportingSurface")
 
 
 def is_empty(
@@ -119,7 +102,7 @@ def is_empty(
     known_objects: list[SemanticAnnotation],
     world: World,
     surface_cache: dict | None = None,
-):
+) -> bool:
     """
     returns false, if the furniture has an already perceived object on it
     returns true, if it is empty (only acknowledged objects that are already perceived)
@@ -136,14 +119,14 @@ def is_empty(
                 return False
         return True
 
-def human_near():
+def human_near() -> bool:
     # only useful in real scenario, no human in simulation
     return False
 
     
 
 
-def reachable(object : SemanticAnnotation):
+def reachable(object : SemanticAnnotation) -> bool:
     # debug, WIP for later
     return True
 
