@@ -28,7 +28,8 @@ from demos.thesis_single_object.single_object_cut_demo import (
     _set_uniform_scale,
 )
 from pycram.datastructures.dataclasses import Context
-from pycram.datastructures.enums import Arms
+from pycram.datastructures.enums import Arms, CuttingTechnique
+from pycram.datastructures.enums import CuttingPartitionPolicy as Policy
 from pycram.motion_executor import (
     simulated_robot_with_collision,
     simulated_robot_without_collision,
@@ -138,10 +139,6 @@ with world.modify_world():
             )
         )
 
-print(f"Breads in domain: {len(world.get_semantic_annotations_by_type(Bread))}")
-print(f"Boards in domain: {len(world.get_semantic_annotations_by_type(CuttingBoard))}")
-print(f"Knives in domain: {len(world.get_semantic_annotations_by_type(Knife))}")
-print(f"Arm tools: {arm_tools}")
 
 knife_domain = world.get_semantic_annotations_by_type(Knife)
 attachment_domain = world.get_semantic_annotations_by_type(ToolAttachment)
@@ -182,8 +179,9 @@ with simulated_robot_with_collision:
                 container=...,
                 arm=Arms.LEFT,
                 tool=tool,
-                technique="saw",
+                technique=CuttingTechnique.SAWING,
                 slice_thickness=0.03,
+                with_partition_policy=Policy.BALANCED,
             ),
             ParkArmsAction(get_park_arms_argument(context.world)),
         ],

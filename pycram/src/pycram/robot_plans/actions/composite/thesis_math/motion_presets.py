@@ -1,5 +1,6 @@
 import numpy as np
 
+from pycram.datastructures.enums import CuttingTechnique
 from pycram.robot_plans.actions.composite.thesis_math.motion_models import (
     MotionSegment,
     MotionSequence,
@@ -20,6 +21,20 @@ from pycram.robot_plans.actions.composite.thesis_math.motion_profiles import (
 from pycram.robot_plans.actions.composite.thesis_math.world_utils import body_local_aabb
 
 APPROACH_Z_EXTRA_CLEARANCE_M = 0.02
+
+
+def _as_cutting_technique(technique) -> CuttingTechnique:
+    if isinstance(technique, CuttingTechnique):
+        return technique
+
+    normalized = str(technique).lower().strip()
+    if normalized in ("slice", "slicing"):
+        return CuttingTechnique.SLICING
+    if normalized in ("saw", "sawing"):
+        return CuttingTechnique.SAWING
+    if normalized in ("halve", "halving"):
+        return CuttingTechnique.HALVING
+    raise ValueError(f"Unknown cutting technique '{technique}'")
 
 
 def _cross_2d(o, a, b):
@@ -392,7 +407,7 @@ def build_cutting_sequence(
     debug=False,
     use_visual_aabb=True,
     apply_shape_scale=True,
-    technique="saw",
+    technique=CuttingTechnique.SAWING,
     slice_thickness=0.03,
     num_cuts_x=1,
 ):
@@ -424,10 +439,10 @@ def build_cutting_sequence(
     requested_thickness = max(float(slice_thickness), 1e-4)
     x_anchor = mins[0] + margin_x + min(0.5 * requested_thickness, 0.5 * usable_x)
     x_max_anchor = maxs[0] - margin_x - min(0.5 * requested_thickness, 0.5 * usable_x)
-    technique = str(technique).lower()
+    technique = _as_cutting_technique(technique)
 
     n_cuts = max(1, int(num_cuts_x))
-    if technique in ("halving", "halve"):
+    if technique is CuttingTechnique.HALVING:
         x_anchors = [0.5 * (mins[0] + maxs[0])]
         z_cut = 0.5 * (mins[2] + maxs[2])
     elif n_cuts == 1:
@@ -453,9 +468,8 @@ def build_cutting_sequence(
     shear_depth_max = maxs[2] - z_cut
     shear_amp = 0.5 * max(y_max - y_min, 0.0)
 
-    technique = str(technique).lower()
     phases = []
-    if technique in ("slice", "slicing", "halving", "halve"):
+    if technique in (CuttingTechnique.SLICING, CuttingTechnique.HALVING):
         for cut_idx, x_curr in enumerate(x_anchors):
             phases.extend(
                 [
@@ -497,7 +511,7 @@ def build_cutting_sequence(
                     ),
                 ]
             )
-    elif technique in ("saw", "sawing"):
+    elif technique is CuttingTechnique.SAWING:
         for cut_idx, x_curr in enumerate(x_anchors):
             phases.extend(
                 [

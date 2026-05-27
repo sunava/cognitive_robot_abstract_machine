@@ -15,6 +15,23 @@ class AdjacentBodyMethod(Enum):
     """
 
 
+class CuttingPartitionPolicy(Enum):
+    # Add new partition policies here when the action should resolve conflicting
+    # num_cuts_x and slice_thickness requests differently. Implement the behavior
+    # in CuttingAction._cutting_partition_score().
+    BALANCED = auto()
+    PREFER_NUM_CUTS = auto()
+    PREFER_SLICE_THICKNESS = auto()
+    NUM_CUTS_MAIN = auto()
+    SLICE_THICKNESS_MAIN = auto()
+
+
+class CuttingTechnique(Enum):
+    SLICING = "slicing"
+    SAWING = "sawing"
+    HALVING = "halving"
+
+
 class ContainerManipulationType(Enum):
     """
     Enum for the different types of container manipulation.

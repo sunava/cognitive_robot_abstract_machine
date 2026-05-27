@@ -7,7 +7,7 @@ import numpy as np
 from krrood.entity_query_language.factories import an, entity, variable, variable_from
 import pycram.motion_executor as motion_executor_module
 from pycram.datastructures.dataclasses import Context
-from pycram.datastructures.enums import Arms
+from pycram.datastructures.enums import Arms, CuttingTechnique
 from pycram.motion_executor import (
     simulated_robot_without_collision,
     simulated_robot_with_collision,
@@ -240,7 +240,7 @@ def _add_single_cutting_knowledge(world, *, object_kind, target, arm_tools):
             preferred_support_type=CuttingBoard,
             tool_affordance="cutting",
             support_affordance="stable_cutting_surface",
-            default_cutting_technique="sawing",
+            default_cutting_technique=CuttingTechnique.SAWING,
             default_slice_thickness=CUTTING_SLICE_THICKNESS_M,
             requires_stable_support=True,
             cutting_axis_policy="longest_object_axis",

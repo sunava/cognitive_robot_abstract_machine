@@ -7,6 +7,7 @@ from typing import Iterable, Optional, Self, Tuple
 import numpy as np
 
 from pycram.datastructures.dataclasses import AlignmentPair
+from pycram.datastructures.enums import CuttingTechnique
 from random_events.interval import closed
 from random_events.product_algebra import SimpleEvent
 from typing_extensions import List, Type
@@ -655,7 +656,7 @@ class Bread(Food):
     is_cuttable: bool = True
     preferred_tool_type_name: str = "Knife"
     preferred_support_type_name: str = "CuttingBoard"
-    default_cutting_technique: str = "sawing"
+    default_cutting_technique: CuttingTechnique = CuttingTechnique.SAWING
     default_slice_thickness: float = 0.03
     requires_stable_support: bool = True
     cutting_axis_policy: str = "longest_object_axis"
@@ -1210,7 +1211,7 @@ class CuttingAffordance(SemanticAnnotation):
     preferred_support_type: Type[SemanticAnnotation] = field(kw_only=True)
     tool_affordance: str = "cutting"
     support_affordance: str = "stable_cutting_surface"
-    default_cutting_technique: str = "sawing"
+    default_cutting_technique: CuttingTechnique = CuttingTechnique.SAWING
     default_slice_thickness: float = 0.02
     requires_stable_support: bool = True
     cutting_axis_policy: str = "longest_object_axis"

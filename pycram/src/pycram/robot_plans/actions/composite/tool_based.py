@@ -27,6 +27,8 @@ from semantic_digital_twin.semantic_annotations.mixins import HasRootBody
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     CuttingBoard,
     Bread,
+    Knife,
+    ToolAttachment,
 )
 from semantic_digital_twin.spatial_types import Point3, Vector3
 from semantic_digital_twin.spatial_types.spatial_types import (
@@ -53,6 +55,8 @@ from ....datastructures.enums import (
     MovementType,
     ApproachDirection,
     VerticalAlignment,
+    CuttingPartitionPolicy,
+    CuttingTechnique,
 )
 from ....datastructures.grasp import GraspDescription
 from ....plans.factories import sequential
@@ -63,6 +67,31 @@ from ....view_manager import ViewManager
 
 logger = logging.getLogger(__name__)
 DEFAULT_SAMPLE_DT = 0.01
+
+
+@dataclass(frozen=True)
+class CuttingPartitionConstraints:
+    requested_num_cuts: Optional[int]
+    requested_slice_thickness: Optional[float]
+
+
+@dataclass(frozen=True)
+class CuttingPartitionCandidate:
+    num_cuts_x: int
+    slice_thickness: float
+
+
+@dataclass(frozen=True)
+class CuttingScene:
+    target: Bread
+    support: CuttingBoard
+
+
+@dataclass(frozen=True)
+class ArmToolCandidate:
+    arm: Arms
+    tool: HasRootBody
+
 
 _MARKER_GROUP_COUNTER = 0
 
@@ -762,6 +791,46 @@ class GeneralizedActionPlan(ActionDescription):
     Keep every Nth waypoint for execution (testing downsampling).
     """
 
+    def arm_tool_candidates(self) -> list[ArmToolCandidate]:
+        # Query extension point: add more generic arm/tool constraints here, e.g.
+        # "arm is reachable", "tool is currently attached", or "tool is not busy".
+        candidates = [
+            ArmToolCandidate(
+                arm=attachment.arm,
+                tool=attachment.tool,
+            )
+            for attachment in self.world.get_semantic_annotations_by_type(
+                ToolAttachment
+            )
+        ]
+        if self.arm is not Ellipsis and self.arm is not None:
+            candidates = [
+                candidate for candidate in candidates if candidate.arm == self.arm
+            ]
+        if self.tool is not Ellipsis and self.tool is not None:
+            candidates = [
+                candidate for candidate in candidates if candidate.tool == self.tool
+            ]
+        return candidates
+
+    def select_arm_tool_candidate(
+        self, candidates: list[ArmToolCandidate]
+    ) -> ArmToolCandidate:
+        # Policy extension point: replace this with a real selector later, e.g.
+        # closest arm, preferred arm, least occupied arm, or best reachability.
+        return candidates[0]
+
+    def resolve_arm_tool(self) -> ArmToolCandidate:
+        # Resolver boundary: this is where an underspecified arm/tool becomes a
+        # concrete arm and tool according to arm_tool_candidates() plus policy.
+        candidates = self.arm_tool_candidates()
+        if not candidates:
+            raise RuntimeError("No arm-tool candidates found in world annotations.")
+        selected = self.select_arm_tool_candidate(candidates)
+        self.arm = selected.arm
+        self.tool = selected.tool
+        return selected
+
     logged_target_intersection_success: Optional[bool] = None
     """
     Optional DB-logged boolean derived from target_intersection_success.
@@ -1237,7 +1306,7 @@ class CuttingAction(GeneralizedActionPlan):
     """
     The object to cut.
     """
-    technique: str = "saw"
+    technique: CuttingTechnique = CuttingTechnique.SAWING
     """
     Cutting trajectory variant.
     """
@@ -1252,6 +1321,18 @@ class CuttingAction(GeneralizedActionPlan):
     Number of repeated cut passes distributed across local X.
     """
 
+    with_partition_policy: CuttingPartitionPolicy = CuttingPartitionPolicy.BALANCED
+    """
+    How to resolve conflicts between num_cuts_x and slice_thickness.
+    Options: BALANCED, PREFER_NUM_CUTS, PREFER_SLICE_THICKNESS,
+    NUM_CUTS_MAIN, SLICE_THICKNESS_MAIN.
+    """
+
+    partition_policy: Optional[CuttingPartitionPolicy] = None
+    """
+    Backward-compatible alias for with_partition_policy.
+    """
+
     db_debug_waypoint_count: Optional[float] = None
     """
     Optional DB-logged test metric set during execute().
@@ -1262,10 +1343,48 @@ class CuttingAction(GeneralizedActionPlan):
     Optional DB-logged cutting flag populated during execute().
     """
 
-    def select_cutting_scene(self, candidates):
+    _resolved_cutting_scene: Optional[CuttingScene] = field(
+        default=None,
+        init=False,
+        repr=False,
+    )
+
+    def select_cutting_scene(self, candidates: list[CuttingScene]) -> CuttingScene:
+        # Policy extension point: choose among valid target/support pairs here,
+        # e.g. closest target, cleanest board, largest support, or user preference.
         return candidates[0]
 
-    def resolve_cutting_target(self) -> Body:
+    def arm_tool_candidates(self) -> list[ArmToolCandidate]:
+        # Cutting-specific query extension point: the generic arm/tool query is
+        # narrowed to tools that are knives and can cut.
+        return [
+            candidate
+            for candidate in super().arm_tool_candidates()
+            if isinstance(candidate.tool, Knife) and candidate.tool.can_cut
+        ]
+
+    def select_cutting_partition(
+        self,
+        candidates: list[CuttingPartitionCandidate],
+        constraints: CuttingPartitionConstraints,
+    ) -> CuttingPartitionCandidate:
+        # Policy application point: all feasible partitions are ranked here.
+        # Add new partition policies in CuttingPartitionPolicy and score them in
+        # _cutting_partition_score().
+        policy = self._resolved_partition_policy()
+        return min(
+            candidates,
+            key=lambda candidate: self._cutting_partition_score(
+                candidate, constraints, policy
+            ),
+        )
+
+    def resolve_cutting_scene(self) -> CuttingScene:
+        # Query boundary: this resolves the symbolic cutting scene description
+        # (cuttable target on stable support) against semantic world annotations.
+        if self._resolved_cutting_scene is not None:
+            return self._resolved_cutting_scene
+
         world = self.plan.world
 
         target = variable(Bread, domain=world.semantic_annotations)
@@ -1279,17 +1398,213 @@ class CuttingAction(GeneralizedActionPlan):
             )
         )
 
-        cutting_scenes = list(cutting_scene_query.evaluate())
+        cutting_scenes = [
+            CuttingScene(target=scene[target], support=scene[support])
+            for scene in cutting_scene_query.evaluate()
+        ]
         if not cutting_scenes:
             raise RuntimeError("No valid cutting scene found.")
 
-        selected_scene = self.select_cutting_scene(cutting_scenes)
-        target_annotation = selected_scene[target]
-        return target_annotation.root
+        self._resolved_cutting_scene = self.select_cutting_scene(cutting_scenes)
+        return self._resolved_cutting_scene
+
+    def resolve_cutting_target(self) -> Body:
+        return self.resolve_cutting_scene().target.root
+
+    def resolve_cutting_technique(self) -> CuttingTechnique:
+        # Policy/default boundary: technique can come from the object's semantic
+        # annotation; fallback behavior for missing annotations lives here.
+        if self.container is Ellipsis:
+            scene = self.resolve_cutting_scene()
+            self.container = scene.target.root
+        else:
+            scene = self._resolved_cutting_scene or self._cutting_scene_for_container()
+        if scene.target.default_cutting_technique is None:
+            return CuttingTechnique.SAWING
+        return scene.target.default_cutting_technique
+
+    def _cutting_scene_for_container(self) -> CuttingScene:
+        world = self.plan.world
+        target_annotations = [
+            annotation
+            for annotation in world.get_semantic_annotations_by_type(Bread)
+            if getattr(annotation, "root", None) is self.container
+        ]
+        if not target_annotations:
+            raise RuntimeError(
+                "Could not resolve cutting technique because the concrete container "
+                "has no matching Bread semantic annotation."
+            )
+
+        support_annotations = [
+            annotation
+            for annotation in world.get_semantic_annotations_by_type(CuttingBoard)
+            if annotation.is_stable_cutting_support
+            and on_supporting_surface(target_annotations[0], annotation)
+        ]
+        if not support_annotations:
+            raise RuntimeError(
+                "Could not resolve cutting technique because no stable support "
+                "matches the concrete cutting target."
+            )
+
+        self._resolved_cutting_scene = CuttingScene(
+            target=target_annotations[0],
+            support=support_annotations[0],
+        )
+        return self._resolved_cutting_scene
+
+    def resolve_cutting_partition(self) -> None:
+        # Resolver boundary: turns the user's partial partition request into a
+        # concrete num_cuts_x and slice_thickness using the selected policy.
+        usable_x = self._cutting_usable_x()
+        constraints = self._cutting_partition_constraints()
+
+        if (
+            constraints.requested_num_cuts is None
+            and constraints.requested_slice_thickness is None
+        ):
+            constraints = CuttingPartitionConstraints(
+                requested_num_cuts=4,
+                requested_slice_thickness=None,
+            )
+
+        candidates = self._cutting_partition_candidates(
+            usable_x,
+            requested_num_cuts=constraints.requested_num_cuts,
+            requested_slice_thickness=constraints.requested_slice_thickness,
+        )
+        selected = self.select_cutting_partition(candidates, constraints)
+        self.num_cuts_x = selected.num_cuts_x
+        self.slice_thickness = selected.slice_thickness
+
+    def _cutting_partition_constraints(self) -> CuttingPartitionConstraints:
+        return CuttingPartitionConstraints(
+            requested_num_cuts=self._requested_num_cuts(),
+            requested_slice_thickness=self._requested_slice_thickness(),
+        )
+
+    def _resolved_partition_policy(self) -> CuttingPartitionPolicy:
+        # Policy normalization point: keep public inputs typed. Do not add string
+        # aliases here; add enum members to CuttingPartitionPolicy instead.
+        policy_value = (
+            self.partition_policy
+            if self.partition_policy is not None
+            else self.with_partition_policy
+        )
+        if policy_value is Ellipsis or policy_value is None:
+            return CuttingPartitionPolicy.BALANCED
+        if isinstance(policy_value, CuttingPartitionPolicy):
+            return policy_value
+        raise TypeError(
+            "with_partition_policy must be a CuttingPartitionPolicy, "
+            f"got {policy_value!r}."
+        )
+
+    def _cutting_usable_x(self) -> float:
+        mins, maxs = body_local_aabb(
+            self.container,
+            use_visual=True,
+            apply_shape_scale=True,
+        )
+        size_x = float(maxs[0] - mins[0])
+        margin_x = min(0.01, 0.15 * size_x)
+        return max(1e-4, size_x - 2.0 * margin_x)
+
+    def _requested_num_cuts(self) -> Optional[int]:
+        if self.num_cuts_x is Ellipsis or self.num_cuts_x is None:
+            return None
+        return max(1, int(round(float(self.num_cuts_x))))
+
+    def _requested_slice_thickness(self) -> Optional[float]:
+        if self.slice_thickness is Ellipsis or self.slice_thickness is None:
+            return None
+        return max(1e-4, float(self.slice_thickness))
+
+    def _cutting_partition_candidates(
+        self,
+        usable_x: float,
+        *,
+        requested_num_cuts: Optional[int],
+        requested_slice_thickness: Optional[float],
+    ) -> list[CuttingPartitionCandidate]:
+        # Candidate generation point: extend this if later policies need extra
+        # candidates, e.g. min/max slice width, tool-width spacing, or object shape.
+        estimated_num_cuts = (
+            None
+            if requested_slice_thickness is None
+            else max(1, int(round(usable_x / requested_slice_thickness)))
+        )
+        max_num_cuts = max(
+            1,
+            requested_num_cuts or 1,
+            estimated_num_cuts or 1,
+        )
+        max_num_cuts = max_num_cuts * 2 + 4
+
+        candidates = []
+        for num_cuts in range(1, max_num_cuts + 1):
+            slice_thickness = usable_x / float(num_cuts)
+            candidates.append(
+                CuttingPartitionCandidate(
+                    num_cuts_x=num_cuts,
+                    slice_thickness=slice_thickness,
+                )
+            )
+        return candidates
+
+    def _cutting_partition_score(
+        self,
+        candidate: CuttingPartitionCandidate,
+        constraints: CuttingPartitionConstraints,
+        policy: CuttingPartitionPolicy,
+    ) -> tuple[float, ...]:
+        # Policy implementation point: lower tuples win. Single-value tuples are
+        # soft preferences; multi-value tuples are lexicographic "main then slack".
+        num_cuts_error = self._relative_num_cuts_error(
+            candidate.num_cuts_x, constraints.requested_num_cuts
+        )
+        slice_error = self._relative_slice_thickness_error(
+            candidate.slice_thickness,
+            constraints.requested_slice_thickness,
+        )
+
+        if policy is CuttingPartitionPolicy.NUM_CUTS_MAIN:
+            if constraints.requested_num_cuts is None:
+                return (slice_error, num_cuts_error)
+            return (num_cuts_error, slice_error)
+        if policy is CuttingPartitionPolicy.SLICE_THICKNESS_MAIN:
+            if constraints.requested_slice_thickness is None:
+                return (num_cuts_error, slice_error)
+            return (slice_error, num_cuts_error)
+        if policy is CuttingPartitionPolicy.PREFER_NUM_CUTS:
+            return (10.0 * num_cuts_error + slice_error,)
+        if policy is CuttingPartitionPolicy.PREFER_SLICE_THICKNESS:
+            return (num_cuts_error + 10.0 * slice_error,)
+        return (num_cuts_error + slice_error,)
+
+    @staticmethod
+    def _relative_num_cuts_error(candidate: int, requested: Optional[int]) -> float:
+        if requested is None:
+            return 0.0
+        return abs(candidate - requested) / float(max(1, requested))
+
+    @staticmethod
+    def _relative_slice_thickness_error(
+        candidate: float, requested: Optional[float]
+    ) -> float:
+        if requested is None:
+            return 0.0
+        return abs(candidate - requested) / max(1e-4, requested)
 
     def _sample_points(self):
         if self.container is Ellipsis:
             self.container = self.resolve_cutting_target()
+        if self.arm is Ellipsis or self.tool is Ellipsis:
+            self.resolve_arm_tool()
+        if self.technique is Ellipsis:
+            self.technique = self.resolve_cutting_technique()
+        self.resolve_cutting_partition()
 
         seq = build_cutting_sequence(
             self.container,
