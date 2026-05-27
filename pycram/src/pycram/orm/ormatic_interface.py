@@ -6530,7 +6530,7 @@ class MoveToReachDAO(
 
     hip_rotation: Mapped[builtins.float] = mapped_column(use_existing_column=True)
 
-    target_pose_robot_id: Mapped[int] = mapped_column(
+    target_pose_offset_robot_id: Mapped[int] = mapped_column(
         ForeignKey("Pose2DMappingDAO.database_id", use_alter=True),
         nullable=True,
         use_existing_column=True,
@@ -6546,10 +6546,10 @@ class MoveToReachDAO(
         use_existing_column=True,
     )
 
-    target_pose_robot: Mapped[Pose2DMappingDAO] = relationship(
+    target_pose_offset_robot: Mapped[Pose2DMappingDAO] = relationship(
         "Pose2DMappingDAO",
         uselist=False,
-        foreign_keys=[target_pose_robot_id],
+        foreign_keys=[target_pose_offset_robot_id],
         post_update=True,
     )
     target_pose_manipulator: Mapped[PoseMappingDAO] = relationship(

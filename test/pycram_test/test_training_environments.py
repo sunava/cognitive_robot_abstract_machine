@@ -1,4 +1,3 @@
-import rclpy
 from sqlalchemy import select
 
 from krrood.ormatic.data_access_objects.helper import to_dao
