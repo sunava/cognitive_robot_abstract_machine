@@ -49,11 +49,13 @@ class MotionExecutor:
         "Justin": 0.07,
     }
     ACTION_WIGGLE_DISTANCE_EPSILON_M: ClassVar[dict[str, float]] = {
+        "CuttingAction": 0.005,
         "MixingAction": 0.06,
         "WipingAction": 0.05,
     }
     WIGGLE_CHECKS_BEFORE_ABORT: ClassVar[int] = 8
     ACTION_WIGGLE_CHECKS_BEFORE_ABORT: ClassVar[dict[str, int]] = {
+        "CuttingAction": 20,
         "SimplePouringAction": 4,
     }
     ACTION_WIGGLE_RESET_DISTANCE_M: ClassVar[dict[str, float]] = {
@@ -254,12 +256,9 @@ class MotionExecutor:
             progress_bodies = self._progress_bodies(progress_robot)
             wiggle_distance_epsilon = self._wiggle_distance_epsilon(progress_robot)
             action_name = self.plan_node.action.__class__.__name__
-            wiggle_distance_epsilon = max(
+            wiggle_distance_epsilon = self.ACTION_WIGGLE_DISTANCE_EPSILON_M.get(
+                action_name,
                 wiggle_distance_epsilon,
-                self.ACTION_WIGGLE_DISTANCE_EPSILON_M.get(
-                    action_name,
-                    wiggle_distance_epsilon,
-                ),
             )
             wiggle_checks_before_abort = self.ACTION_WIGGLE_CHECKS_BEFORE_ABORT.get(
                 action_name,

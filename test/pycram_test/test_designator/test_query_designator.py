@@ -1,5 +1,5 @@
 from krrood.entity_query_language.backends import EntityQueryLanguageBackend
-from krrood.entity_query_language.factories import underspecified, variable_from
+from krrood.entity_query_language.factories import query, variable_from
 from pycram.datastructures.enums import (
     Arms,
     ApproachDirection,
@@ -16,12 +16,12 @@ from pycram.robot_plans.actions.core.pick_up import PickUpAction
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 
 
-def test_underspecified_action(mutable_model_world):
+def test_query_action(mutable_model_world):
     """
-    Test that an underspecified action can be executed
+    Test that a query action can be executed.
     """
     world, robot, context = mutable_model_world
-    action = underspecified(NavigateAction)(
+    action = query(NavigateAction)(
         target_location=variable_from(
             [
                 Pose.from_xyz_quaternion(1, 0, 0, reference_frame=world.root),
@@ -39,9 +39,9 @@ def test_underspecified_action(mutable_model_world):
     assert plan.root.children[0].status == TaskStatus.SUCCEEDED
 
 
-def test_underspecified_language(mutable_model_world):
+def test_query_language(mutable_model_world):
     """
-    Test that entire plans can be underspecified
+    Test that entire plans can be queried.
     """
     world, robot, context = mutable_model_world
     grasp_description = GraspDescription(
@@ -49,9 +49,9 @@ def test_underspecified_language(mutable_model_world):
         VerticalAlignment.NoAlignment,
         robot.left_arm.manipulator,
     )
-    plan_generator = underspecified(sequential, target_type=SequentialNode)(
+    plan_generator = query(sequential, target_type=SequentialNode)(
         children=[
-            underspecified(NavigateAction)(
+            query(NavigateAction)(
                 target_location=(
                     target_locations := variable_from(
                         [
@@ -66,47 +66,7 @@ def test_underspecified_language(mutable_model_world):
                 ),
                 keep_joint_states=True,
             ),
-            underspecified(PickUpAction)(
-                arm=...,
-                grasp_description=grasp_description,
-                object_designator=world.get_body_by_name("milk.stl"),
-            ),
-        ],
-        context=context,
-    )
-    plan_generator.resolve()
-    plans = list(EntityQueryLanguageBackend().evaluate(plan_generator))
-    assert len(plans) == len(list(target_locations._domain_)) * len(list(Arms))
-
-
-def test_underspecified_language(mutable_model_world):
-    """
-    Test that entire plans can be underspecified
-    """
-    world, robot, context = mutable_model_world
-    grasp_description = GraspDescription(
-        ApproachDirection.FRONT,
-        VerticalAlignment.NoAlignment,
-        robot.left_arm.manipulator,
-    )
-    plan_generator = underspecified(sequential, target_type=SequentialNode)(
-        children=[
-            underspecified(NavigateAction)(
-                target_location=(
-                    target_locations := variable_from(
-                        [
-                            Pose.from_xyz_quaternion(
-                                1, 0, 0, reference_frame=world.root
-                            ),
-                            Pose.from_xyz_quaternion(
-                                2, 0, 0, reference_frame=world.root
-                            ),
-                        ]
-                    )
-                ),
-                keep_joint_states=True,
-            ),
-            underspecified(PickUpAction)(
+            query(PickUpAction)(
                 arm=...,
                 grasp_description=grasp_description,
                 object_designator=world.get_body_by_name("milk.stl"),

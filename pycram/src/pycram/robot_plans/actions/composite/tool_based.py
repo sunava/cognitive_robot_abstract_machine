@@ -12,7 +12,7 @@ from std_msgs.msg import ColorRGBA
 from typing_extensions import Optional, Any
 from visualization_msgs.msg import MarkerArray
 
-
+from krrood.entity_query_language.factories import an, set_of, variable
 from pycram.robot_plans.actions.composite.thesis_math.metrics import (
     points_world_to_body,
     cutting_depth_metrics,
@@ -22,7 +22,12 @@ from pycram.robot_plans.actions.composite.thesis_math.motion_models import (
     MotionSegment,
     MotionSequence,
 )
+from semantic_digital_twin.reasoning.predicates import on_supporting_surface
 from semantic_digital_twin.semantic_annotations.mixins import HasRootBody
+from semantic_digital_twin.semantic_annotations.semantic_annotations import (
+    CuttingBoard,
+    Bread,
+)
 from semantic_digital_twin.spatial_types import Point3, Vector3
 from semantic_digital_twin.spatial_types.spatial_types import (
     Pose,
@@ -1226,7 +1231,7 @@ class CuttingAction(GeneralizedActionPlan):
     Execute a cutting motion sequence on a food object.
     """
 
-    motion_timeout_ticks = 100
+    motion_timeout_ticks = 1000
 
     container: Body = None
     """
@@ -1242,7 +1247,7 @@ class CuttingAction(GeneralizedActionPlan):
     Target slice thickness used to place the cut anchor.
     """
 
-    num_cuts_x: int = 1
+    num_cuts_x: int = 4
     """
     Number of repeated cut passes distributed across local X.
     """
@@ -1257,7 +1262,35 @@ class CuttingAction(GeneralizedActionPlan):
     Optional DB-logged cutting flag populated during execute().
     """
 
+    def select_cutting_scene(self, candidates):
+        return candidates[0]
+
+    def resolve_cutting_target(self) -> Body:
+        world = self.plan.world
+
+        target = variable(Bread, domain=world.semantic_annotations)
+        support = variable(CuttingBoard, domain=world.semantic_annotations)
+
+        cutting_scene_query = an(
+            set_of(target, support).where(
+                target.is_cuttable == True,
+                support.is_stable_cutting_support == True,
+                on_supporting_surface(target, support),
+            )
+        )
+
+        cutting_scenes = list(cutting_scene_query.evaluate())
+        if not cutting_scenes:
+            raise RuntimeError("No valid cutting scene found.")
+
+        selected_scene = self.select_cutting_scene(cutting_scenes)
+        target_annotation = selected_scene[target]
+        return target_annotation.root
+
     def _sample_points(self):
+        if self.container is Ellipsis:
+            self.container = self.resolve_cutting_target()
+
         seq = build_cutting_sequence(
             self.container,
             use_visual_aabb=True,

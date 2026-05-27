@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import dataclass, field
 from functools import cached_property
-from inspect import ismethod, isfunction, isclass
+from inspect import ismethod, isfunction, isclass, signature
 from typing import assert_never, Any
 
 import rustworkx as rx
@@ -246,18 +246,52 @@ class Match(AbstractMatchExpression[T], HasFactoryAndKwargs[T]):
         else:
             assert_never(self.factory)
 
-    def __call__(self, **kwargs) -> Union[T, Self, CanBehaveLikeAVariable[T]]:
+    def __call__(self, *args, **kwargs) -> Union[T, Self, CanBehaveLikeAVariable[T]]:
         """
         Update the match with new keyword arguments to constrain the type we are matching with.
 
+        :param args: Positional arguments to match against. These are mapped to
+         the factory's parameter names.
         :param kwargs: The keyword arguments to match against.
         :return: The current match instance after updating it with the new keyword arguments.
         """
         if self._has_been_called:
             raise CalledMatchMultipleTimes(self)
+        if args:
+            kwargs = self._map_positional_arguments_to_kwargs(args, kwargs)
         self.kwargs = kwargs
         self._has_been_called = True
         return self
+
+    def _map_positional_arguments_to_kwargs(
+        self, args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Convert constructor-style positional arguments into keyword constraints.
+        """
+
+        parameters = [
+            parameter
+            for parameter in signature(self.factory).parameters.values()
+            if parameter.kind
+            in (
+                parameter.POSITIONAL_ONLY,
+                parameter.POSITIONAL_OR_KEYWORD,
+            )
+        ]
+        if len(args) > len(parameters):
+            raise TypeError(
+                f"{self.factory} takes {len(parameters)} positional query argument(s) "
+                f"but {len(args)} were given"
+            )
+        positional_kwargs = {
+            parameter.name: value for parameter, value in zip(parameters, args)
+        }
+        overlap = positional_kwargs.keys() & kwargs.keys()
+        if overlap:
+            duplicated = ", ".join(sorted(overlap))
+            raise TypeError(f"Got multiple values for query argument(s): {duplicated}")
+        return {**positional_kwargs, **kwargs}
 
     @property
     def expression(self) -> Union[Entity[T], T]:
@@ -443,13 +477,13 @@ class MatchVariable(Match[T]):
 
         self.variable = variable(self.type, domain=self.domain)
 
-    def __call__(self, **kwargs) -> Union[Entity[T], T]:
+    def __call__(self, *args, **kwargs) -> Union[Entity[T], T]:
         """
         Add kwargs constraints and return the resolved expression as An() instance.
         """
-        if not kwargs:
+        if not args and not kwargs:
             raise NoKwargsInMatchVar(self)
-        super().__call__(**kwargs)
+        super().__call__(*args, **kwargs)
         return self.expression
 
 

@@ -4,7 +4,8 @@ import rclpy
 import sys
 from pathlib import Path
 
-from krrood.entity_query_language.factories import an, entity, variable
+from krrood.entity_query_language.factories import variable
+from pycram.language import SequentialNode
 from semantic_digital_twin.adapters.mesh import STLParser
 
 if __package__ in (None, ""):
@@ -142,42 +143,22 @@ print(f"Boards in domain: {len(world.get_semantic_annotations_by_type(CuttingBoa
 print(f"Knives in domain: {len(world.get_semantic_annotations_by_type(Knife))}")
 print(f"Arm tools: {arm_tools}")
 
-bread_domain = world.get_semantic_annotations_by_type(Bread)
-board_domain = world.get_semantic_annotations_by_type(CuttingBoard)
 knife_domain = world.get_semantic_annotations_by_type(Knife)
 attachment_domain = world.get_semantic_annotations_by_type(ToolAttachment)
 
-bread_var = variable(Bread, domain=bread_domain)
-board_var = variable(CuttingBoard, domain=board_domain)
 attachment_var = variable(ToolAttachment, domain=attachment_domain)
 
 # Check on_supporting_surface directly
 on_surface = on_supporting_surface(bread_anno, board_anno)
 print(f"on_supporting_surface(bread, board): {on_surface}")
 
-query = an(
-    entity(bread_var).where(
-        bread_var.is_cuttable == True,
-        board_var.is_stable_cutting_support == True,
-        on_supporting_surface(bread_var, board_var),
-        attachment_var.tool.can_cut == True,
-    )
-)
 
-results = list(query.evaluate())
-print(f"Query results: {results}")
-
-if not results:
-    raise RuntimeError("No suitable bread and tool found by query.")
-
-specified_bread = results[0]
 # Since the query returns the first entity in entity() call, but we need the others too
 # We might need to change the query to set_of or access the assignment if possible.
 # But for now, let's assume we want to use the underspecified action which handles this.
 
-viz.highlight_entities = [specified_bread]
-viz.highlight_outline = True
 
+#
 context = Context.from_world(world)
 
 with simulated_robot_without_collision:
@@ -193,15 +174,16 @@ with simulated_robot_without_collision:
         context,
     ).perform()
 
+
 with simulated_robot_with_collision:
     sequential(
         [
             CuttingAction(
                 container=...,
-                arm=...,
-                tool=...,
-                technique=...,
-                slice_thickness=...,
+                arm=Arms.LEFT,
+                tool=tool,
+                technique="saw",
+                slice_thickness=0.03,
             ),
             ParkArmsAction(get_park_arms_argument(context.world)),
         ],

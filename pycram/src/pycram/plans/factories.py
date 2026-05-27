@@ -138,16 +138,7 @@ def make_node(action_like: ActionLike) -> PlanNode:
     elif is_underspecified(action_like):
         underspecified_action = UnderspecifiedNode(underspecified_action=action_like)
         return underspecified_action
-        # elif isinstance(action_like, ActionDescription):
-        #     if action_like.is_underspecified:
-        #         from krrood.entity_query_language.factories import underspecified
-        #         from dataclasses import fields
-        #         # Convert instance with Ellipsis to a Match object
-        #         match_obj = underspecified(type(action_like))
-        #         kwargs = {f.name: getattr(action_like, f.name) for f in fields(action_like)
-        #                   if getattr(action_like, f.name) is not Ellipsis}
-        #         match_obj(**kwargs)
-        #         return UnderspecifiedNode(underspecified_action=match_obj)
+    elif isinstance(action_like, ActionDescription):
         return ActionNode(designator=action_like)
     elif isinstance(action_like, BaseMotion):
         return MotionNode(designator=action_like)
