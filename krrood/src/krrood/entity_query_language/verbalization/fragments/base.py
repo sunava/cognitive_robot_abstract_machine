@@ -120,29 +120,6 @@ class PhraseFragment(VerbFragment):
     parts: list[VerbFragment]
     separator: str = " "
 
-    @classmethod
-    def joined(cls, parts: list[VerbFragment], separator: str = " ") -> "PhraseFragment":
-        """
-        Create a :class:`PhraseFragment` with an explicit separator.
-
-        :param parts: Child fragments.
-        :param separator: Separator string.
-        :returns: New :class:`PhraseFragment`.
-        :rtype: PhraseFragment
-        """
-        return cls(parts=parts, separator=separator)
-
-    @classmethod
-    def spaced(cls, *parts: VerbFragment) -> "PhraseFragment":
-        """
-        Create a :class:`PhraseFragment` with space-separated *parts*.
-
-        :param parts: Child fragments (varargs).
-        :returns: New :class:`PhraseFragment` with ``separator=" "``.
-        :rtype: PhraseFragment
-        """
-        return cls(parts=list(parts), separator=" ")
-
 
 @dataclass
 class BlockFragment(VerbFragment):
@@ -209,5 +186,5 @@ def oxford_and(parts: list[VerbFragment], conjunction: VerbFragment) -> VerbFrag
     for f in head:
         result.append(f)
         result.append(WordFragment(text=", "))
-    result.append(PhraseFragment(parts=[conjunction, tail], separator=" "))
+    result.append(PhraseFragment(parts=[conjunction, tail]))
     return PhraseFragment(parts=result, separator="")

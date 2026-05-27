@@ -214,7 +214,7 @@ def _make_field_ref_frag(field_name: str, type_name: str, type_cls) -> VerbFragm
             role=SemanticRole.VARIABLE,
             source_ref=SourceRef.for_type(type_cls) if isinstance(type_cls, type) else None,
         ),
-    ], separator=" ")
+    ])
 
 
 def _copula_and_value(
@@ -262,12 +262,12 @@ def _assemble_instantiated_phrase(
     if binding_frags:
         joined = oxford_and(binding_frags, Conjunctions.AND.as_fragment())
         result_parts.append(PhraseFragment(
-            parts=[_word(","), Keywords.WHERE.as_fragment(), joined], separator=" "
+            parts=[_word(","), Keywords.WHERE.as_fragment(), joined]
         ))
     if constraint_frags:
         joined_c = oxford_and(constraint_frags, Conjunctions.AND.as_fragment())
         result_parts.append(PhraseFragment(
-            parts=[_word(","), Keywords.SUCH_THAT.as_fragment(), joined_c], separator=" "
+            parts=[_word(","), Keywords.SUCH_THAT.as_fragment(), joined_c]
         ))
     return PhraseFragment(parts=result_parts, separator="")
 

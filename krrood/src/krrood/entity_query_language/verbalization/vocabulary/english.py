@@ -80,7 +80,6 @@ class SingularExistential(PlainWord):
                 WordFragment(text=f"{self.text} {article}"),
                 RoleFragment(text=type_name, role=SemanticRole.VARIABLE),
             ],
-            separator=" ",
         )
 
 
@@ -109,7 +108,6 @@ class PluralExistential(PlainWord):
                     text=_ensure_plural(type_name), role=SemanticRole.VARIABLE
                 ),
             ],
-            separator=" ",
         )
 
 
@@ -162,7 +160,6 @@ class CommonGroupKeyWord(PlainWord):
                 Prepositions.OF_THE.as_fragment(),
                 WordFragment(text=plural_root),
             ],
-            separator=" ",
         )
 
 

@@ -175,7 +175,7 @@ class AttributePredicateRestrictionRule(RestrictionRule):
         )
         op_frag = _predicate_op_frag(item, ctx, delegate)
         return PhraseFragment(
-            parts=[attr_frag, op_frag, delegate.build(item.right, ctx)], separator=" "
+            parts=[attr_frag, op_frag, delegate.build(item.right, ctx)]
         )
 
 
@@ -315,7 +315,6 @@ class RestrictionClauseBuilder:
                     Keywords.WHOSE.as_fragment(),
                     oxford_and(grouped, Conjunctions.AND.as_fragment()),
                 ],
-                separator=" ",
             )
         residual_frag = self._render_residual(residual, ctx) if residual else None
         return whose_frag, residual_frag

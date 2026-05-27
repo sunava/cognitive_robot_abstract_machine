@@ -561,7 +561,6 @@ def test_display_in_jupyter_calls_ipython_display():
     pipeline = VerbalizationPipeline.html(link_resolver=_ConstantResolver())
     mock_html_cls = MagicMock()
     mock_ipython_display = MagicMock()
-    pipeline.display(an(entity(x)))
     with _patch.object(pipeline_mod, "_is_ipython", return_value=True):
         with _patch.dict(
             "sys.modules",

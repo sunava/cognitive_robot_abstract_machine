@@ -202,7 +202,7 @@ class ChainVerbalizer:
                 ]
             )
         frag_parts.extend([Prepositions.OF.as_fragment(), root_frag])
-        return PhraseFragment(parts=frag_parts, separator=" ")
+        return PhraseFragment(parts=frag_parts)
 
     def _render_possessive_path_(
         self, parts: list[tuple[str, Optional[SourceRef]]], pronoun_frag: VerbFragment
@@ -226,7 +226,7 @@ class ChainVerbalizer:
                 )
             else:
                 frag_parts.extend([Prepositions.OF_THE.as_fragment(), attr_frag])
-        return PhraseFragment(parts=frag_parts, separator=" ")
+        return PhraseFragment(parts=frag_parts)
 
     def _verbalize_chain_root_(self, leaf, ctx: VerbalizationContext) -> VerbFragment:
         """Noun phrase for the root of an attribute chain; unwraps ResultQuantifier wrappers."""

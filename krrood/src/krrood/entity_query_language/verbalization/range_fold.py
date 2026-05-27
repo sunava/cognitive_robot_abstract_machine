@@ -166,4 +166,4 @@ def build_between(
     """
     op = (RangePhrases.BETWEEN if compact else RangePhrases.IS_BETWEEN).as_fragment()
     bounds = oxford_and([lo_frag, hi_frag], Conjunctions.AND.as_fragment())
-    return PhraseFragment(parts=[left_frag, op, bounds], separator=" ")
+    return PhraseFragment(parts=[left_frag, op, bounds])

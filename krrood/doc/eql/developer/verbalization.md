@@ -137,7 +137,7 @@ attr_frag = RoleFragment.for_attribute("battery", Robot)  # ATTRIBUTE role + lin
 op_frag   = RoleFragment.for_operator("is greater than")       # OPERATOR role, no link
 
 # Inline sequence
-phrase = PhraseFragment.spaced(word, role_frag, op_frag)
+phrase = PhraseFragment([word, role_frag, op_frag])
 
 # Oxford-comma join
 list_frag = oxford_and([frag_a, frag_b, frag_c], Conjunctions.AND.as_fragment())
@@ -192,7 +192,7 @@ class MyRule(VerbalizationRule):
     @classmethod
     def transform(cls, expr, ctx, delegate):
         child = delegate.build(expr.child, ctx)
-        return PhraseFragment.spaced(WordFragment(text="my custom phrase"), child)
+        return PhraseFragment([WordFragment(text="my custom phrase"), child])
 ```
 
 Then in `rules/registry.py`, add `MyRule` to `ALL_RULES`.
