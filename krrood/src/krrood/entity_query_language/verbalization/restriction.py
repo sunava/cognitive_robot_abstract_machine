@@ -19,6 +19,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Optional, TYPE_CHECKING
 
+from typing_extensions import Type
+
 from krrood.entity_query_language.core.base_expressions import SymbolicExpression
 from krrood.entity_query_language.core.mapped_variable import Attribute, MappedVariable
 from krrood.entity_query_language.core.variable import Variable
@@ -158,7 +160,7 @@ class AttributePredicateRestrictionRule(RestrictionRule):
         )
 
 
-RESTRICTION_RULES: List[type] = [
+RESTRICTION_RULES: List[Type[RestrictionRule]] = [
     RangeRestrictionRule,
     AttributePredicateRestrictionRule,
 ]
@@ -225,7 +227,7 @@ class AggregationSourceSubjectRule(RestrictionSubjectRule):
         return aggregation_source_root(expr)
 
 
-RESTRICTION_SUBJECT_RULES: List[type] = [
+RESTRICTION_SUBJECT_RULES: List[Type[RestrictionSubjectRule]] = [
     SelectedVariableSubjectRule,
     AggregationSourceSubjectRule,
 ]
@@ -296,7 +298,7 @@ class RestrictionClauseBuilder:
         return whose_frag, residual_frag
 
     @staticmethod
-    def _match(item, subject_var, ctx: VerbalizationContext) -> Optional[type]:
+    def _match(item, subject_var, ctx: VerbalizationContext) -> Optional[Type[RestrictionRule]]:
         for rule in RESTRICTION_RULES:
             if rule.applies(item, subject_var, ctx):
                 return rule
