@@ -228,11 +228,10 @@ def test_verbalize_query_that_inferred_semantic_annotations(apartment_world_setu
     drawer = next(ann for ann in found_semantic_annotations if isinstance(ann, Drawer))
     explanation = explain_inference(drawer)
     verbalization = verbalize_expression(explanation.query_root)
-    assert verbalization == ("a Drawer, where the Drawer's root is"
-                             " a FixedConnection's parent and the Drawer's handle "
-                             "is the FixedConnection's child, such that "
-                             "the FixedConnection's parent is a PrismaticConnection's child,"
-                             " and the FixedConnection's child is a Handle's root")
+    assert verbalization == ("If there's a FixedConnection whose parent is the child of a PrismaticConnection,"
+                             " there's a Handle whose root is the child of the FixedConnection,"
+                             " then there's a Drawer whose root is the parent of the FixedConnection,"
+                             " whose handle is the Handle")
 
 
 def fit_rules_and_assert_semantic_annotations(
