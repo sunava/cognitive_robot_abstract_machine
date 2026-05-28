@@ -120,10 +120,6 @@ def verbalize_query(
 
     context.query_depth += 1
     try:
-        is_the = (
-            expression._quantifier_builder_ is not None
-            and expression._quantifier_builder_.type is The
-        )
         var = expression.selected_variable
 
         if isinstance(var, Entity):
@@ -138,24 +134,7 @@ def verbalize_query(
 
         context.push_subject(var)
         try:
-            if is_the:
-                selected_type = (
-                    var._type_.__name__
-                    if getattr(var, "_type_", None)
-                    else FallbackNouns.ENTITY.text
-                )
-                context.seen[var._id_] = selected_type
-                context.seen[expression._id_] = selected_type
-                selected = phrase(
-                    Articles.THE_UNIQUE.as_fragment(),
-                    role(selected_type, SemanticRole.VARIABLE),
-                )
-            else:
-                selected = verbalizer.build(var, context)
-                selected_type = context.seen.get(
-                    getattr(var, "_id_", None), FallbackNouns.ENTITY.text
-                )
-                context.seen[expression._id_] = selected_type
+            selected, _selected_type = _build_selection(expression, var, context, verbalizer)
             selected, where_item = _apply_subject_restrictions_(
                 expression, var, selected, context, verbalizer
             )
@@ -213,6 +192,67 @@ def verbalize_set_of(
         context.query_depth -= 1
 
 
+def _build_selection(
+    expression: Entity,
+    var: Variable,
+    context: VerbalizationContext,
+    verbalizer: EQLVerbalizer,
+) -> tuple[VerbFragment, str]:
+    """Return ``(selection_fragment, selected_type_name)`` for the query FIND header.
+
+    Handles the branching between *"the unique X"* (when the quantifier is
+    :class:`~krrood.entity_query_language.query.quantifiers.The`) and the
+    indefinite form built by ``verbalizer.build(var)``.
+
+    :param expression: The Entity whose selection is being verbalized.
+    :param var: The entity's ``selected_variable`` (guaranteed to be a plain
+        :class:`~krrood.entity_query_language.core.variable.Variable`).
+    :param context: Shared verbalization state.
+    :param verbalizer: Verbalizer for recursive sub-expression rendering.
+    :returns: ``(selection_fragment, selected_type_name)`` tuple.
+    """
+    is_the = (
+        expression._quantifier_builder_ is not None
+        and expression._quantifier_builder_.type is The
+    )
+    if is_the:
+        selected_type = (
+            var._type_.__name__
+            if getattr(var, "_type_", None)
+            else FallbackNouns.ENTITY.text
+        )
+        context.seen[var._id_] = selected_type
+        context.seen[expression._id_] = selected_type
+        selected = phrase(
+            Articles.THE_UNIQUE.as_fragment(),
+            role(selected_type, SemanticRole.VARIABLE),
+        )
+    else:
+        selected = verbalizer.build(var, context)
+        selected_type = context.seen.get(
+            getattr(var, "_id_", None), FallbackNouns.ENTITY.text
+        )
+        context.seen[expression._id_] = selected_type
+    return selected, selected_type
+
+
+def _build_restrictions(
+    verbalizer: EQLVerbalizer,
+    subject,
+    condition,
+    context: VerbalizationContext,
+) -> tuple[Optional[VerbFragment], Optional[object]]:
+    """Build restriction clauses for *subject* via :class:`RestrictionClauseBuilder`.
+
+    :param verbalizer: Verbalizer for recursive sub-expression rendering.
+    :param subject: The subject expression for restriction folding.
+    :param condition: The WHERE condition to decompose.
+    :param context: Shared verbalization state.
+    :returns: ``(whose_fragment, residual_condition)`` tuple.
+    """
+    return RestrictionClauseBuilder(verbalizer).build(subject, condition, context)
+
+
 # ── Noun forms ──────────────────────────────────────────────────────────────────
 
 
@@ -256,8 +296,9 @@ def as_noun(
     context.query_depth += 1
     context.push_subject(var)
     try:
-        restrictions = RestrictionClauseBuilder(verbalizer)
-        whose, residual = restrictions.build(var, where_expression.condition, context)
+        whose, residual = _build_restrictions(
+            verbalizer, var, where_expression.condition, context
+        )
     finally:
         context.pop_subject()
         context.query_depth -= 1
@@ -359,8 +400,9 @@ def _aggregation_scope_(
     if where_expression is not None:
         context.query_depth += 1
         try:
-            restrictions = RestrictionClauseBuilder(verbalizer)
-            whose, residual = restrictions.build(source, where_expression.condition, context)
+            whose, residual = _build_restrictions(
+                verbalizer, source, where_expression.condition, context
+            )
         finally:
             context.query_depth -= 1
         if whose is not None:
@@ -400,8 +442,9 @@ def _apply_subject_restrictions_(
     subject = restriction_subject(expression, var, context)
     if where_expression is None or subject is None:
         return selected, _UNSET
-    restrictions = RestrictionClauseBuilder(verbalizer)
-    whose, residual = restrictions.build(subject, where_expression.condition, context)
+    whose, residual = _build_restrictions(
+        verbalizer, subject, where_expression.condition, context
+    )
     if whose is not None:
         selected = phrase(selected, whose)
     where_item = (
@@ -430,13 +473,14 @@ def _verbalize_query_body_(
     where = (
         _where_clause(expression, context, verbalizer) if where_item is _UNSET else where_item
     )
+    ordered_by = expression._ordered_by_builder_
     clauses = [
         clause
         for clause in [
             where,
             _grouped_by_clause(expression, context, verbalizer),
             _having_clause(expression, context, verbalizer),
-            _ordered_by_clause(expression, context, verbalizer),
+            _verbalize_ordered_by(ordered_by, context, verbalizer) if ordered_by is not None else None,
         ]
         if clause is not None
     ]
@@ -466,9 +510,10 @@ def _grouped_by_clause(
     groups_phrase = _verbalize_group_keys(
         grouped_expression.variables_to_group_by, context, verbalizer
     )
-    aggregated_frags = _aggregated_noun_frags_(
-        expression, group_key_root_ids, context, verbalizer
-    )
+    aggregated_frags = [
+        verbalize_plural(expr, context, verbalizer.build)
+        for expr in _aggregated_expressions_(expression, group_key_root_ids)
+    ]
     if aggregated_frags and not isinstance(expression, SetOf):
         aggregated_phrase = oxford_and(
             aggregated_frags, Conjunctions.AND.as_fragment()
@@ -495,16 +540,6 @@ def _having_clause(
     having_frag = verbalizer.build(having_expression.condition, context)
     context.compact_predicates = False
     return phrase(Keywords.HAVING.as_fragment(), having_frag)
-
-
-def _ordered_by_clause(
-    expression, context: VerbalizationContext, verbalizer: EQLVerbalizer
-) -> Optional[VerbFragment]:
-    """Build the *"ordered by <variable> (ascending|descending)"* fragment, or ``None``."""
-    ordered_by = expression._ordered_by_builder_
-    if ordered_by is None:
-        return None
-    return _verbalize_ordered_by(ordered_by, context, verbalizer)
 
 
 # ── Grouping helpers ────────────────────────────────────────────────────────────
@@ -540,16 +575,6 @@ def _aggregated_expressions_(query_expr, group_key_root_ids: set) -> list:
             if variable._id_ not in group_key_root_ids
         ]
     return []
-
-
-def _aggregated_noun_frags_(
-    query_expr, group_key_root_ids: set, context: VerbalizationContext, verbalizer: EQLVerbalizer
-) -> list[VerbFragment]:
-    """Pluralise the aggregated expressions into noun fragments for the grouped-by clause."""
-    return [
-        verbalize_plural(expression, context, verbalizer.build)
-        for expression in _aggregated_expressions_(query_expr, group_key_root_ids)
-    ]
 
 
 # ── Rules ───────────────────────────────────────────────────────────────────────
