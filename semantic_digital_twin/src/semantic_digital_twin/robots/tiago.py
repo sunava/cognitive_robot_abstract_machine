@@ -72,7 +72,6 @@ class TiagoLeftThumb(TiagoFinger):
                 robot_root, "gripper_left_left_inner_finger_pad"
             ),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -90,7 +89,6 @@ class TiagoLeftIndexFinger(TiagoFinger):
                 robot_root, "gripper_left_right_inner_finger_pad"
             ),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -110,7 +108,6 @@ class TiagoRightThumb(TiagoFinger):
                 robot_root, "gripper_right_left_inner_finger_pad"
             ),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -130,7 +127,6 @@ class TiagoRightIndexFinger(TiagoFinger):
                 robot_root, "gripper_right_right_inner_finger_pad"
             ),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -176,20 +172,7 @@ class TiagoLeftGripper(TiagoGripper[TiagoLeftIndexFinger, TiagoLeftThumb]):
             ),
             front_facing_orientation=Quaternion(0, 0, 0, 1),
         )
-        world.add_semantic_annotation(gripper)
         return gripper
-
-    def setup_finger_semantic_annotations(self):
-        self.add_thumb(
-            TiagoLeftThumb.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            TiagoLeftIndexFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
 
 
 @dataclass(eq=False)
@@ -209,20 +192,7 @@ class TiagoRightGripper(TiagoGripper[TiagoRightIndexFinger, TiagoRightThumb]):
             ),
             front_facing_orientation=Quaternion(0, 0, 0, 1),
         )
-        world.add_semantic_annotation(gripper)
         return gripper
-
-    def setup_finger_semantic_annotations(self):
-        self.add_thumb(
-            TiagoRightThumb.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            TiagoRightIndexFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
 
 
 @dataclass(eq=False)
@@ -253,17 +223,7 @@ class TiagoLeftArm(Arm[TiagoLeftGripper]):
             root=world.get_body_in_branch_by_name(robot_root, "torso_lift_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "arm_left_tool_link"),
         )
-        world.add_semantic_annotation(arm)
         return arm
-
-    def setup_end_effector_semantic_annotation(self):
-        gripper = (
-            TiagoLeftGripper.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_end_effector(gripper)
-        gripper.setup_finger_semantic_annotations()
 
 
 @dataclass(eq=False)
@@ -294,17 +254,7 @@ class TiagoRightArm(Arm[TiagoRightGripper]):
             root=world.get_body_in_branch_by_name(robot_root, "torso_lift_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "arm_right_tool_link"),
         )
-        world.add_semantic_annotation(arm)
         return arm
-
-    def setup_end_effector_semantic_annotation(self):
-        gripper = (
-            TiagoRightGripper.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_end_effector(gripper)
-        gripper.setup_finger_semantic_annotations()
 
 
 @dataclass(eq=False)
@@ -325,7 +275,6 @@ class TiagoCamera(Camera):
             maximal_height=1.4165,
             default_camera=True,
         )
-        world.add_semantic_annotation(camera)
 
         return camera
 
@@ -354,14 +303,7 @@ class TiagoNeck(Neck[TiagoCamera]):
             root=world.get_body_in_branch_by_name(robot_root, "torso_lift_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "head_2_link"),
         )
-        world.add_semantic_annotation(neck)
         return neck
-
-    def setup_sensor_semantic_annotations(self):
-        camera = TiagoCamera.setup_default_configuration_in_world_below_robot_root(
-            robot_root=self.root
-        )
-        self.add_sensor(camera)
 
 
 @dataclass(eq=False)
@@ -405,28 +347,7 @@ class TiagoTorso(
             root=world.get_body_in_branch_by_name(robot_root, "torso_fixed_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "torso_lift_link"),
         )
-        world.add_semantic_annotation(torso)
         return torso
-
-    def setup_arm_semantic_annotations(self):
-        left_arm = TiagoLeftArm.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_arm(left_arm)
-        left_arm.setup_end_effector_semantic_annotation()
-
-        right_arm = TiagoRightArm.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_arm(right_arm)
-        right_arm.setup_end_effector_semantic_annotation()
-
-    def setup_neck_semantic_annotation(self):
-        neck = TiagoNeck.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        neck.setup_sensor_semantic_annotations()
-        self.add_neck(neck)
 
 
 @dataclass(eq=False)
@@ -448,16 +369,7 @@ class TiagoMobileBase(MobileBase, HasTorso[TiagoTorso]):
             forward_axis=Vector3.X(),
             full_body_controlled=False,
         )
-        world.add_semantic_annotation(base)
         return base
-
-    def setup_torso_semantic_annotation(self):
-        torso = TiagoTorso.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        torso.setup_arm_semantic_annotations()
-        torso.setup_neck_semantic_annotation()
-        self.add_torso(torso)
 
 
 @dataclass(eq=False)
@@ -467,21 +379,9 @@ class Tiago(AbstractRobot, HasMobileBase[TiagoMobileBase]):
     def get_ros_file_path(cls) -> str:
         return "package://iai_tiago_description/urdf/tiago_from_our_robot.urdf"
 
-    def setup_mobile_base_semantic_annotation(self):
-        mobile_base = (
-            TiagoMobileBase.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_mobile_base(mobile_base)
-        mobile_base.setup_torso_semantic_annotation()
-
     @classmethod
     def _get_root_body_name(cls) -> str:
         return "base_footprint"
-
-    def setup_robot_part_semantic_annotations(self):
-        self.setup_mobile_base_semantic_annotation()
 
     def _setup_collision_rules(self):
         srdf_path = os.path.join(
@@ -535,7 +435,6 @@ class TiagoMujocoLeftThumb(TiagoMujocoFinger):
                 robot_root, "gripper_left_left_finger_link"
             ),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -553,7 +452,6 @@ class TiagoMujocoLeftIndexFinger(TiagoMujocoFinger):
                 robot_root, "gripper_left_right_finger_link"
             ),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -571,7 +469,6 @@ class TiagoMujocoRightThumb(TiagoMujocoFinger):
                 robot_root, "gripper_right_left_finger_link"
             ),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -589,7 +486,6 @@ class TiagoMujocoRightIndexFinger(TiagoMujocoFinger):
                 robot_root, "gripper_right_right_finger_link"
             ),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -632,20 +528,7 @@ class TiagoMujocoLeftGripper(
             tool_frame=world.get_body_in_branch_by_name(robot_root, "arm_left_7_link"),
             front_facing_orientation=Quaternion(0, 0, 0, 1),
         )
-        world.add_semantic_annotation(gripper)
         return gripper
-
-    def setup_finger_semantic_annotations(self):
-        thumb = (
-            TiagoMujocoLeftThumb.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_thumb(thumb)
-        finger = TiagoMujocoLeftIndexFinger.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_finger(finger)
 
 
 @dataclass(eq=False)
@@ -663,20 +546,7 @@ class TiagoMujocoRightGripper(
             tool_frame=world.get_body_in_branch_by_name(robot_root, "arm_right_7_link"),
             front_facing_orientation=Quaternion(0, 0, 0, 1),
         )
-        world.add_semantic_annotation(gripper)
         return gripper
-
-    def setup_finger_semantic_annotations(self):
-        thumb = (
-            TiagoMujocoRightThumb.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_thumb(thumb)
-        finger = TiagoMujocoRightIndexFinger.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_finger(finger)
 
 
 @dataclass(eq=False)
@@ -707,15 +577,7 @@ class TiagoMujocoLeftArm(Arm[TiagoMujocoLeftGripper]):
             root=world.get_body_in_branch_by_name(robot_root, "torso_lift_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "arm_left_7_link"),
         )
-        world.add_semantic_annotation(arm)
         return arm
-
-    def setup_end_effector_semantic_annotation(self):
-        gripper = TiagoMujocoLeftGripper.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_end_effector(gripper)
-        gripper.setup_finger_semantic_annotations()
 
 
 @dataclass(eq=False)
@@ -746,15 +608,7 @@ class TiagoMujocoRightArm(Arm[TiagoMujocoRightGripper]):
             root=world.get_body_in_branch_by_name(robot_root, "torso_lift_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "arm_right_7_link"),
         )
-        world.add_semantic_annotation(arm)
         return arm
-
-    def setup_end_effector_semantic_annotation(self):
-        gripper = TiagoMujocoRightGripper.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_end_effector(gripper)
-        gripper.setup_finger_semantic_annotations()
 
 
 @dataclass(eq=False)
@@ -775,14 +629,7 @@ class TiagoMujocoNeck(Neck[TiagoCamera]):
             root=world.get_body_in_branch_by_name(robot_root, "torso_lift_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "head_2_link"),
         )
-        world.add_semantic_annotation(neck)
         return neck
-
-    def setup_sensor_semantic_annotations(self):
-        camera = TiagoCamera.setup_default_configuration_in_world_below_robot_root(
-            robot_root=self.root
-        )
-        self.add_sensor(camera)
 
 
 @dataclass(eq=False)
@@ -791,13 +638,6 @@ class TiagoMujocoTorso(
     HasLeftRightArm[TiagoMujocoLeftArm, TiagoMujocoRightArm],
     HasNeck[TiagoMujocoNeck],
 ):
-
-    def setup_neck_semantic_annotation(self):
-        neck = TiagoMujocoNeck.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        neck.setup_sensor_semantic_annotations()
-        self.add_neck(neck)
 
     def setup_hardware_interfaces(self):
         self._setup_hardware_interfaces_for_active_connections()
@@ -832,25 +672,7 @@ class TiagoMujocoTorso(
             root=world.get_body_in_branch_by_name(robot_root, "base_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "torso_lift_link"),
         )
-        world.add_semantic_annotation(torso)
         return torso
-
-    def setup_arm_semantic_annotations(self):
-        left_arm = (
-            TiagoMujocoLeftArm.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_arm(left_arm)
-        left_arm.setup_end_effector_semantic_annotation()
-
-        right_arm = (
-            TiagoMujocoRightArm.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_arm(right_arm)
-        right_arm.setup_end_effector_semantic_annotation()
 
 
 @dataclass(eq=False)
@@ -872,16 +694,7 @@ class TiagoMujocoMobileBase(MobileBase, HasTorso[TiagoMujocoTorso]):
             forward_axis=Vector3.X(),
             full_body_controlled=False,
         )
-        world.add_semantic_annotation(base)
         return base
-
-    def setup_torso_semantic_annotation(self):
-        torso = TiagoMujocoTorso.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        torso.setup_arm_semantic_annotations()
-        torso.setup_neck_semantic_annotation()
-        self.add_torso(torso)
 
 
 @dataclass(eq=False)
@@ -898,18 +711,6 @@ class TiagoMujoco(AbstractRobot, HasMobileBase[TiagoMujocoMobileBase]):
     @classmethod
     def _get_root_body_name(cls) -> str:
         return "base_link"
-
-    def setup_mobile_base_semantic_annotation(self):
-        mobile_base = (
-            TiagoMujocoMobileBase.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        mobile_base.setup_torso_semantic_annotation()
-        self.add_mobile_base(mobile_base)
-
-    def setup_robot_part_semantic_annotations(self):
-        self.setup_mobile_base_semantic_annotation()
 
     def _setup_collision_rules(self):
         pass

@@ -72,7 +72,6 @@ class HSRBLeftFinger(HSRBFinger):
             root=world.get_body_in_branch_by_name(robot_root, "hand_l_proximal_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "hand_l_distal_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -88,7 +87,6 @@ class HSRBRightFinger(HSRBFinger):
             root=world.get_body_in_branch_by_name(robot_root, "hand_r_proximal_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "hand_r_distal_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -138,18 +136,7 @@ class HSRBGripper(EndEffector, HasTwoFingers[HSRBLeftFinger, HSRBRightFinger]):
                 0.0,
             ),
         )
-        world.add_semantic_annotation(gripper)
         return gripper
-
-    def setup_finger_semantic_annotations(self):
-        thumb = HSRBLeftFinger.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_thumb(thumb)
-        finger = HSRBRightFinger.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_finger(finger)
 
 
 @dataclass(eq=False)
@@ -173,7 +160,6 @@ class HSRBHandCamera(Camera):
             minimal_height=0.75049,
             maximal_height=0.99483,
         )
-        world.add_semantic_annotation(camera)
         return camera
 
 
@@ -215,21 +201,7 @@ class HSRBArm(Arm[HSRBGripper], HasSensors[HSRBHandCamera]):
             root=world.get_body_in_branch_by_name(robot_root, "arm_lift_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "hand_palm_link"),
         )
-        world.add_semantic_annotation(arm)
         return arm
-
-    def setup_end_effector_semantic_annotation(self):
-        gripper = HSRBGripper.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_end_effector(gripper)
-        gripper.setup_finger_semantic_annotations()
-
-    def setup_sensor_semantic_annotations(self):
-        camera = HSRBHandCamera.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_sensor(camera)
 
 
 @dataclass(eq=False)
@@ -256,7 +228,6 @@ class HSRBHeadCenterCamera(Camera):
             maximal_height=0.99483,
             default_camera=True,
         )
-        world.add_semantic_annotation(camera)
         return camera
 
 
@@ -283,7 +254,6 @@ class HSRBHeadLeftCamera(Camera):
             minimal_height=0.75049,
             maximal_height=0.99483,
         )
-        world.add_semantic_annotation(camera)
         return camera
 
 
@@ -310,7 +280,6 @@ class HSRBHeadRightCamera(Camera):
             minimal_height=0.75049,
             maximal_height=0.99483,
         )
-        world.add_semantic_annotation(camera)
         return camera
 
 
@@ -336,7 +305,6 @@ class HSRBHeadRGBDCamera(Camera):
             maximal_height=0.99483,
             default_camera=True,
         )
-        world.add_semantic_annotation(camera)
         return camera
 
 
@@ -370,45 +338,11 @@ class HSRBNeck(
             root=world.get_body_in_branch_by_name(robot_root, "head_pan_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "head_tilt_link"),
         )
-        world.add_semantic_annotation(neck)
         return neck
-
-    def setup_sensor_semantic_annotations(self):
-        self.add_sensor(
-            HSRBHeadCenterCamera.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_sensor(
-            HSRBHeadLeftCamera.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_sensor(
-            HSRBHeadRightCamera.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_sensor(
-            HSRBHeadRGBDCamera.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
 
 
 @dataclass(eq=False)
 class HSRBTorso(Torso, HasOneArm[HSRBArm], HasNeck[HSRBNeck]):
-
-    def setup_arm_semantic_annotations(self):
-        arm = HSRBArm.setup_default_configuration_in_world_below_robot_root(self.root)
-        self.add_arm(arm)
-        arm.setup_end_effector_semantic_annotation()
-        arm.setup_sensor_semantic_annotations()
-
-    def setup_neck_semantic_annotation(self):
-        neck = HSRBNeck.setup_default_configuration_in_world_below_robot_root(self.root)
-        neck.setup_sensor_semantic_annotations()
-        self.add_neck(neck)
 
     def setup_hardware_interfaces(self):
         self._setup_hardware_interfaces_for_active_connections()
@@ -446,7 +380,6 @@ class HSRBTorso(Torso, HasOneArm[HSRBArm], HasNeck[HSRBNeck]):
             root=world.get_body_in_branch_by_name(robot_root, "base_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "torso_lift_link"),
         )
-        world.add_semantic_annotation(torso)
         return torso
 
 
@@ -467,16 +400,7 @@ class HSRBMobileBase(MobileBase, HasTorso[HSRBTorso]):
         mobile_base = cls(
             root=world.get_body_in_branch_by_name(robot_root, "base_link"),
         )
-        world.add_semantic_annotation(mobile_base)
         return mobile_base
-
-    def setup_torso_semantic_annotation(self):
-        torso = HSRBTorso.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_torso(torso)
-        torso.setup_arm_semantic_annotations()
-        torso.setup_neck_semantic_annotation()
 
 
 @dataclass(eq=False)
@@ -489,18 +413,6 @@ class HSRB(AbstractRobot, HasMobileBase[HSRBMobileBase]):
     @classmethod
     def _get_root_body_name(cls) -> str:
         return "base_footprint"
-
-    def setup_mobile_base_semantic_annotation(self):
-        mobile_base = (
-            HSRBMobileBase.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        mobile_base.setup_torso_semantic_annotation()
-        self.add_mobile_base(mobile_base)
-
-    def setup_robot_part_semantic_annotations(self):
-        self.setup_mobile_base_semantic_annotation()
 
     def _setup_collision_rules(self):
         srdf_path = os.path.join(

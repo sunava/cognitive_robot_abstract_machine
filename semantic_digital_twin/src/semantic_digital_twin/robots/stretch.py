@@ -71,7 +71,6 @@ class StretchLeftFinger(StretchFinger):
                 robot_root, "link_gripper_fingertip_left"
             ),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -91,7 +90,6 @@ class StretchRightFinger(StretchFinger):
                 robot_root, "link_gripper_fingertip_right"
             ),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -131,20 +129,7 @@ class StretchGripper(EndEffector, HasTwoFingers[StretchLeftFinger, StretchRightF
             ),
             front_facing_orientation=Quaternion(0, 0, 0, 1),
         )
-        world.add_semantic_annotation(gripper)
         return gripper
-
-    def setup_finger_semantic_annotations(self):
-        thumb = StretchLeftFinger.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_thumb(thumb)
-        finger = (
-            StretchRightFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(finger)
 
 
 @dataclass(eq=False)
@@ -176,15 +161,7 @@ class StretchArm(Arm[StretchGripper]):
             root=world.get_body_in_branch_by_name(robot_root, "link_mast"),
             tip=world.get_body_in_branch_by_name(robot_root, "link_wrist_roll"),
         )
-        world.add_semantic_annotation(arm)
         return arm
-
-    def setup_end_effector_semantic_annotation(self):
-        gripper = StretchGripper.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_end_effector(gripper)
-        gripper.setup_finger_semantic_annotations()
 
 
 @dataclass(eq=False)
@@ -211,7 +188,6 @@ class StretchCameraColor(Camera):
             field_of_view=FieldOfView(horizontal_angle=0.99483, vertical_angle=0.75049),
             default_camera=True,
         )
-        world.add_semantic_annotation(camera)
         return camera
 
 
@@ -238,7 +214,6 @@ class StretchCameraDepth(Camera):
             maximal_height=1.307,
             field_of_view=FieldOfView(horizontal_angle=0.99483, vertical_angle=0.75049),
         )
-        world.add_semantic_annotation(camera)
         return camera
 
 
@@ -265,7 +240,6 @@ class StretchCameraInfra1(Camera):
             maximal_height=1.307,
             field_of_view=FieldOfView(horizontal_angle=0.99483, vertical_angle=0.75049),
         )
-        world.add_semantic_annotation(camera)
         return camera
 
 
@@ -292,7 +266,6 @@ class StretchCameraInfra2(Camera):
             maximal_height=1.257,
             field_of_view=FieldOfView(horizontal_angle=0.99483, vertical_angle=0.75049),
         )
-        world.add_semantic_annotation(camera)
         return camera
 
 
@@ -323,48 +296,11 @@ class StretchNeck(
             root=world.get_body_in_branch_by_name(robot_root, "link_head"),
             tip=world.get_body_in_branch_by_name(robot_root, "link_head_tilt"),
         )
-        world.add_semantic_annotation(neck)
         return neck
-
-    def setup_sensor_semantic_annotations(self):
-        self.add_sensor(
-            StretchCameraColor.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_sensor(
-            StretchCameraDepth.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_sensor(
-            StretchCameraInfra1.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_sensor(
-            StretchCameraInfra2.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
 
 
 @dataclass(eq=False)
 class StretchTorso(Torso, HasNeck[StretchNeck], HasOneArm[StretchArm]):
-
-    def setup_neck_semantic_annotation(self):
-        neck = StretchNeck.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        neck.setup_sensor_semantic_annotations()
-        self.add_neck(neck)
-
-    def setup_arm_semantic_annotations(self):
-        arm = StretchArm.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_arm(arm)
-        arm.setup_end_effector_semantic_annotation()
 
     def setup_hardware_interfaces(self):
         self._setup_hardware_interfaces_for_active_connections()
@@ -402,7 +338,6 @@ class StretchTorso(Torso, HasNeck[StretchNeck], HasOneArm[StretchArm]):
             root=world.get_body_in_branch_by_name(robot_root, "link_mast"),
             tip=world.get_body_in_branch_by_name(robot_root, "link_lift"),
         )
-        world.add_semantic_annotation(torso)
         return torso
 
 
@@ -423,16 +358,7 @@ class StretchMobileBase(MobileBase, HasTorso[StretchTorso]):
         mobile_base = cls(
             root=world.get_body_in_branch_by_name(robot_root, "base_link"),
         )
-        world.add_semantic_annotation(mobile_base)
         return mobile_base
-
-    def setup_torso_semantic_annotation(self):
-        torso = StretchTorso.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        torso.setup_arm_semantic_annotations()
-        torso.setup_neck_semantic_annotation()
-        self.add_torso(torso)
 
 
 @dataclass(eq=False)
@@ -447,18 +373,6 @@ class Stretch(AbstractRobot, HasMobileBase[StretchMobileBase]):
     @classmethod
     def _get_root_body_name(cls) -> str:
         return "base_link"
-
-    def setup_mobile_base_semantic_annotation(self):
-        mobile_base = (
-            StretchMobileBase.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        mobile_base.setup_torso_semantic_annotation()
-        self.add_mobile_base(mobile_base)
-
-    def setup_robot_part_semantic_annotations(self):
-        self.setup_mobile_base_semantic_annotation()
 
     def _setup_collision_rules(self):
         srdf_path = os.path.join(

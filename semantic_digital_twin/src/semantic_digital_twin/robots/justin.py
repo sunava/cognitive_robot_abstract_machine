@@ -58,7 +58,6 @@ class JustinLeftThumb(JustinFinger):
             root=world.get_body_in_branch_by_name(robot_root, "left_1thumb_base"),
             tip=world.get_body_in_branch_by_name(robot_root, "left_1thumb4"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -74,7 +73,6 @@ class JustinLeftIndexFinger(JustinFinger):
             root=world.get_body_in_branch_by_name(robot_root, "left_2tip_base"),
             tip=world.get_body_in_branch_by_name(robot_root, "left_2tip4"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -90,7 +88,6 @@ class JustinLeftMiddleFinger(JustinFinger):
             root=world.get_body_in_branch_by_name(robot_root, "left_3middle_base"),
             tip=world.get_body_in_branch_by_name(robot_root, "left_3middle4"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -106,7 +103,6 @@ class JustinLeftRingFinger(JustinFinger):
             root=world.get_body_in_branch_by_name(robot_root, "left_4ring_base"),
             tip=world.get_body_in_branch_by_name(robot_root, "left_4ring4"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -122,7 +118,6 @@ class JustinRightThumb(JustinFinger):
             root=world.get_body_in_branch_by_name(robot_root, "right_1thumb_base"),
             tip=world.get_body_in_branch_by_name(robot_root, "right_1thumb4"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -138,7 +133,6 @@ class JustinRightIndexFinger(JustinFinger):
             root=world.get_body_in_branch_by_name(robot_root, "right_2tip_base"),
             tip=world.get_body_in_branch_by_name(robot_root, "right_2tip4"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -154,7 +148,6 @@ class JustinRightMiddleFinger(JustinFinger):
             root=world.get_body_in_branch_by_name(robot_root, "right_3middle_base"),
             tip=world.get_body_in_branch_by_name(robot_root, "right_3middle4"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -170,7 +163,6 @@ class JustinRightRingFinger(JustinFinger):
             root=world.get_body_in_branch_by_name(robot_root, "right_4ring_base"),
             tip=world.get_body_in_branch_by_name(robot_root, "right_4ring4"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -223,30 +215,7 @@ class JustinLeftHand(
             ),
             front_facing_orientation=Quaternion(0.707, -0.707, 0.707, -0.707),
         )
-        world.add_semantic_annotation(gripper)
         return gripper
-
-    def setup_finger_semantic_annotations(self):
-        self.add_thumb(
-            JustinLeftThumb.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            JustinLeftIndexFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            JustinLeftMiddleFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            JustinLeftRingFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
 
 
 @dataclass(eq=False)
@@ -273,30 +242,7 @@ class JustinRightHand(
             ),
             front_facing_orientation=Quaternion(0.707, 0.707, 0.707, 0.707),
         )
-        world.add_semantic_annotation(gripper)
         return gripper
-
-    def setup_finger_semantic_annotations(self):
-        self.add_thumb(
-            JustinRightThumb.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            JustinRightIndexFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            JustinRightMiddleFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            JustinRightRingFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
 
 
 @dataclass(eq=False)
@@ -324,15 +270,7 @@ class JustinLeftArm(Arm[JustinLeftHand]):
             root=world.get_body_in_branch_by_name(robot_root, "base_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "left_arm7"),
         )
-        world.add_semantic_annotation(arm)
         return arm
-
-    def setup_end_effector_semantic_annotation(self):
-        gripper = JustinLeftHand.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_end_effector(gripper)
-        gripper.setup_finger_semantic_annotations()
 
 
 @dataclass(eq=False)
@@ -360,15 +298,7 @@ class JustinRightArm(Arm[JustinRightHand]):
             root=world.get_body_in_branch_by_name(robot_root, "base_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "right_arm7"),
         )
-        world.add_semantic_annotation(arm)
         return arm
-
-    def setup_end_effector_semantic_annotation(self):
-        gripper = JustinRightHand.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_end_effector(gripper)
-        gripper.setup_finger_semantic_annotations()
 
 
 @dataclass(eq=False)
@@ -387,7 +317,6 @@ class JustinCamera(Camera):
             maximal_height=0.99483,
             default_camera=True,
         )
-        world.add_semantic_annotation(camera)
         return camera
 
     def setup_hardware_interfaces(self):
@@ -415,43 +344,13 @@ class JustinNeck(Neck[JustinCamera]):
             root=world.get_body_in_branch_by_name(robot_root, "torso4"),
             tip=world.get_body_in_branch_by_name(robot_root, "head2"),
         )
-        world.add_semantic_annotation(neck)
         return neck
-
-    def setup_sensor_semantic_annotations(self):
-        self.add_sensor(
-            JustinCamera.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
 
 
 @dataclass(eq=False)
 class JustinTorso(
     Torso, HasLeftRightArm[JustinLeftArm, JustinRightArm], HasNeck[JustinNeck]
 ):
-
-    def setup_arm_semantic_annotations(self):
-        left_arm = JustinLeftArm.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_arm(left_arm)
-        left_arm.setup_end_effector_semantic_annotation()
-
-        right_arm = (
-            JustinRightArm.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_arm(right_arm)
-        right_arm.setup_end_effector_semantic_annotation()
-
-    def setup_neck_semantic_annotation(self):
-        neck = JustinNeck.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        neck.setup_sensor_semantic_annotations()
-        self.add_neck(neck)
 
     def setup_hardware_interfaces(self):
         self._setup_hardware_interfaces_for_active_connections()
@@ -468,7 +367,6 @@ class JustinTorso(
             root=world.get_body_in_branch_by_name(robot_root, "base_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "torso4"),
         )
-        world.add_semantic_annotation(torso)
         return torso
 
 
@@ -483,7 +381,6 @@ class JustinMobileBase(MobileBase, HasTorso[JustinTorso]):
         torso = cls(
             root=world.get_body_in_branch_by_name(robot_root, "base_link"),
         )
-        world.add_semantic_annotation(torso)
         return torso
 
     def setup_hardware_interfaces(self):
@@ -491,14 +388,6 @@ class JustinMobileBase(MobileBase, HasTorso[JustinTorso]):
 
     def setup_joint_states(self):
         pass
-
-    def setup_torso_semantic_annotation(self):
-        torso = JustinTorso.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_torso(torso)
-        torso.setup_arm_semantic_annotations()
-        torso.setup_neck_semantic_annotation()
 
 
 @dataclass(eq=False)
@@ -511,15 +400,3 @@ class Justin(AbstractRobot, HasMobileBase[JustinMobileBase]):
     @classmethod
     def _get_root_body_name(cls) -> str:
         return "base_footprint"
-
-    def setup_robot_part_semantic_annotations(self):
-        self.setup_mobile_base_semantic_annotation()
-
-    def setup_mobile_base_semantic_annotation(self):
-        mobile_base = (
-            JustinMobileBase.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_mobile_base(mobile_base)
-        mobile_base.setup_torso_semantic_annotation()

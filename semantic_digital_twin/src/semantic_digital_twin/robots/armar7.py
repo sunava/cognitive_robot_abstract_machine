@@ -66,7 +66,6 @@ class Armar7LeftThumb(Armar7Finger):
             root=world.get_body_in_branch_by_name(robot_root, "Hand L Palm_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "Thumb L Tip_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -82,7 +81,6 @@ class Armar7LeftRingFinger(Armar7Finger):
             root=world.get_body_in_branch_by_name(robot_root, "Hand L Palm_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "Ring L Tip_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -98,7 +96,6 @@ class Armar7LeftPinkyFinger(Armar7Finger):
             root=world.get_body_in_branch_by_name(robot_root, "Hand L Palm_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "Pinky L Tip_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -114,7 +111,6 @@ class Armar7LeftMiddleFinger(Armar7Finger):
             root=world.get_body_in_branch_by_name(robot_root, "Hand L Palm_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "Middle L Tip_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -130,7 +126,6 @@ class Armar7LeftIndexFinger(Armar7Finger):
             root=world.get_body_in_branch_by_name(robot_root, "Hand L Palm_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "Index L Tip_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -146,7 +141,6 @@ class Armar7RightThumb(Armar7Finger):
             root=world.get_body_in_branch_by_name(robot_root, "Hand R Palm_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "Thumb R Tip_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -162,7 +156,6 @@ class Armar7RightRingFinger(Armar7Finger):
             root=world.get_body_in_branch_by_name(robot_root, "Hand R Palm_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "Ring R Tip_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -178,7 +171,6 @@ class Armar7RightPinkyFinger(Armar7Finger):
             root=world.get_body_in_branch_by_name(robot_root, "Hand R Palm_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "Pinky R Tip_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -194,7 +186,6 @@ class Armar7RightMiddleFinger(Armar7Finger):
             root=world.get_body_in_branch_by_name(robot_root, "Hand R Palm_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "Middle R Tip_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -210,7 +201,6 @@ class Armar7RightIndexFinger(Armar7Finger):
             root=world.get_body_in_branch_by_name(robot_root, "Hand R Palm_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "Index R Tip_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -264,35 +254,7 @@ class Armar7LeftGripper(
             tool_frame=world.get_body_in_branch_by_name(robot_root, "Hand L TCP_link"),
             front_facing_orientation=Quaternion(-0.5, 0.5, -0.5, 0.5),
         )
-        world.add_semantic_annotation(gripper)
         return gripper
-
-    def setup_finger_semantic_annotations(self):
-        self.add_thumb(
-            Armar7LeftThumb.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            Armar7LeftRingFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            Armar7LeftPinkyFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            Armar7LeftMiddleFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            Armar7LeftIndexFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
 
 
 @dataclass(eq=False)
@@ -320,35 +282,7 @@ class Armar7RightGripper(
             tool_frame=world.get_body_in_branch_by_name(robot_root, "Hand R TCP_link"),
             front_facing_orientation=Quaternion(-0.5, 0.5, -0.5, 0.5),
         )
-        world.add_semantic_annotation(gripper)
         return gripper
-
-    def setup_finger_semantic_annotations(self):
-        self.add_thumb(
-            Armar7RightThumb.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            Armar7RightRingFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            Armar7RightPinkyFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            Armar7RightMiddleFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            Armar7RightIndexFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
 
 
 @dataclass(eq=False)
@@ -377,15 +311,7 @@ class Armar7LeftArm(Arm[Armar7LeftGripper]):
                 robot_root, "ArmL8_Wrist_Hemisphere_B_link"
             ),
         )
-        world.add_semantic_annotation(arm)
         return arm
-
-    def setup_end_effector_semantic_annotation(self):
-        hand = Armar7LeftGripper.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_end_effector(hand)
-        hand.setup_finger_semantic_annotations()
 
 
 @dataclass(eq=False)
@@ -414,15 +340,7 @@ class Armar7RightArm(Arm[Armar7RightGripper]):
                 robot_root, "ArmR8_Wrist_Hemisphere_B_link"
             ),
         )
-        world.add_semantic_annotation(arm)
         return arm
-
-    def setup_end_effector_semantic_annotation(self):
-        hand = Armar7RightGripper.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_end_effector(hand)
-        hand.setup_finger_semantic_annotations()
 
 
 @dataclass(eq=False)
@@ -441,7 +359,6 @@ class AzureKinectRGB(Camera):
             maximal_height=1.7365,
             default_camera=True,
         )
-        world.add_semantic_annotation(self)
         return self
 
     def setup_hardware_interfaces(self):
@@ -469,15 +386,7 @@ class Armar7Neck(Neck[AzureKinectRGB]):
             root=world.get_body_in_branch_by_name(robot_root, "Neck_Root_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "Head_Root_link"),
         )
-        world.add_semantic_annotation(neck)
         return neck
-
-    def setup_sensor_semantic_annotations(self):
-        self.add_sensor(
-            AzureKinectRGB.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
 
 
 @dataclass(eq=False)
@@ -518,30 +427,7 @@ class Armar7Torso(
             root=world.get_body_in_branch_by_name(robot_root, "Platform_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "CenterArms_fixed_link"),
         )
-        world.add_semantic_annotation(torso)
         return torso
-
-    def setup_arm_semantic_annotations(self):
-        left_arm = Armar7LeftArm.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_arm(left_arm)
-        left_arm.setup_end_effector_semantic_annotation()
-
-        right_arm = (
-            Armar7RightArm.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_arm(right_arm)
-        right_arm.setup_end_effector_semantic_annotation()
-
-    def setup_neck_semantic_annotation(self):
-        neck = Armar7Neck.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        neck.setup_sensor_semantic_annotations()
-        self.add_neck(neck)
 
 
 @dataclass(eq=False)
@@ -562,16 +448,7 @@ class Armar7MobileBase(MobileBase, HasTorso[Armar7Torso]):
             root=world.get_body_in_branch_by_name(robot_root, "Dummy_Platform_link"),
             forward_axis=Vector3.Y(),
         )
-        world.add_semantic_annotation(mobile_base)
         return mobile_base
-
-    def setup_torso_semantic_annotation(self):
-        torso = Armar7Torso.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        torso.setup_arm_semantic_annotations()
-        torso.setup_neck_semantic_annotation()
-        self.add_torso(torso)
 
 
 @dataclass(eq=False)
@@ -581,21 +458,9 @@ class Armar7(AbstractRobot, HasMobileBase[Armar7MobileBase]):
     def get_ros_file_path(cls) -> str:
         return "package://iai_kit_armar7/urdf/Armar7.urdf"
 
-    def setup_mobile_base_semantic_annotation(self):
-        mobile_base = (
-            Armar7MobileBase.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        mobile_base.setup_torso_semantic_annotation()
-        self.add_mobile_base(mobile_base)
-
     @classmethod
     def _get_root_body_name(cls) -> str:
         return "Dummy_Platform_link"
-
-    def setup_robot_part_semantic_annotations(self):
-        self.setup_mobile_base_semantic_annotation()
 
     def _setup_collision_rules(self):
         pass

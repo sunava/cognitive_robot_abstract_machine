@@ -71,7 +71,6 @@ class UnitreeG1LeftThumb(UnitreeG1Finger):
             root=world.get_body_in_branch_by_name(robot_root, "left_hand_thumb_0_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "left_hand_thumb_2_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -87,7 +86,6 @@ class UnitreeG1LeftIndexFinger(UnitreeG1Finger):
             root=world.get_body_in_branch_by_name(robot_root, "left_hand_index_0_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "left_hand_index_1_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -105,7 +103,6 @@ class UnitreeG1LeftMiddleFinger(UnitreeG1Finger):
             ),
             tip=world.get_body_in_branch_by_name(robot_root, "left_hand_middle_1_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -123,7 +120,6 @@ class UnitreeG1RightThumb(UnitreeG1Finger):
             ),
             tip=world.get_body_in_branch_by_name(robot_root, "right_hand_thumb_2_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -141,7 +137,6 @@ class UnitreeG1RightIndexFinger(UnitreeG1Finger):
             ),
             tip=world.get_body_in_branch_by_name(robot_root, "right_hand_index_1_link"),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -161,7 +156,6 @@ class UnitreeG1RightMiddleFinger(UnitreeG1Finger):
                 robot_root, "right_hand_middle_1_link"
             ),
         )
-        world.add_semantic_annotation(finger)
         return finger
 
 
@@ -209,25 +203,7 @@ class UnitreeG1LeftHand(
             ),
             front_facing_orientation=Quaternion(),
         )
-        world.add_semantic_annotation(gripper)
         return gripper
-
-    def setup_finger_semantic_annotations(self):
-        self.add_thumb(
-            UnitreeG1LeftThumb.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            UnitreeG1LeftIndexFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            UnitreeG1LeftMiddleFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
 
 
 @dataclass(eq=False)
@@ -251,25 +227,7 @@ class UnitreeG1RightHand(
             ),
             front_facing_orientation=Quaternion(),
         )
-        world.add_semantic_annotation(gripper)
         return gripper
-
-    def setup_finger_semantic_annotations(self):
-        self.add_thumb(
-            UnitreeG1RightThumb.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            UnitreeG1RightIndexFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_finger(
-            UnitreeG1RightMiddleFinger.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
 
 
 @dataclass(eq=False)
@@ -299,15 +257,7 @@ class UnitreeG1LeftArm(Arm[UnitreeG1LeftHand]):
             ),
             tip=world.get_body_in_branch_by_name(robot_root, "left_wrist_yaw_link"),
         )
-        world.add_semantic_annotation(arm)
         return arm
-
-    def setup_end_effector_semantic_annotation(self):
-        hand = UnitreeG1LeftHand.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_end_effector(hand)
-        hand.setup_finger_semantic_annotations()
 
 
 @dataclass(eq=False)
@@ -337,15 +287,7 @@ class UnitreeG1RightArm(Arm[UnitreeG1RightHand]):
             ),
             tip=world.get_body_in_branch_by_name(robot_root, "right_wrist_yaw_link"),
         )
-        world.add_semantic_annotation(arm)
         return arm
-
-    def setup_end_effector_semantic_annotation(self):
-        hand = UnitreeG1RightHand.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_end_effector(hand)
-        hand.setup_finger_semantic_annotations()
 
 
 @dataclass(eq=False)
@@ -364,7 +306,6 @@ class D435(Camera):
             maximal_height=1.60,
             default_camera=True,
         )
-        world.add_semantic_annotation(camera)
 
         return camera
 
@@ -393,42 +334,13 @@ class UnitreeG1Neck(Neck[D435]):
             root=world.get_body_in_branch_by_name(robot_root, "torso_link"),
             tip=world.get_body_in_branch_by_name(robot_root, "d435_link"),
         )
-        world.add_semantic_annotation(neck)
         return neck
-
-    def setup_sensor_semantic_annotations(self):
-        camera = D435.setup_default_configuration_in_world_below_robot_root(self.root)
-        self.add_sensor(camera)
 
 
 @dataclass(eq=False)
 class UnitreeG1Torso(
     Torso, HasLeftRightArm[UnitreeG1LeftArm, UnitreeG1RightArm], HasNeck[UnitreeG1Neck]
 ):
-
-    def setup_arm_semantic_annotations(self):
-        left_arm = (
-            UnitreeG1LeftArm.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_arm(left_arm)
-        left_arm.setup_end_effector_semantic_annotation()
-
-        right_arm = (
-            UnitreeG1RightArm.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_arm(right_arm)
-        right_arm.setup_end_effector_semantic_annotation()
-
-    def setup_neck_semantic_annotation(self):
-        neck = UnitreeG1Neck.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_neck(neck)
-        neck.setup_sensor_semantic_annotations()
 
     def setup_hardware_interfaces(self):
         self._setup_hardware_interfaces_for_active_connections()
@@ -445,7 +357,6 @@ class UnitreeG1Torso(
             root=world.get_body_in_branch_by_name(robot_root, "pelvis"),
             tip=world.get_body_in_branch_by_name(robot_root, "torso_link"),
         )
-        world.add_semantic_annotation(torso)
         return torso
 
 
@@ -460,7 +371,6 @@ class UnitreeG1MobileBase(MobileBase):
         mobile_base = cls(
             root=world.get_body_in_branch_by_name(robot_root, "pelvis"),
         )
-        world.add_semantic_annotation(mobile_base)
         return mobile_base
 
     def setup_hardware_interfaces(self):
@@ -479,29 +389,9 @@ class UnitreeG1(
     def get_ros_file_path(cls) -> str:
         return "package://iai_offis_g1_description/urdf/offis_unitree_g1.urdf"
 
-    def setup_mobile_base_semantic_annotation(self):
-        mobile_base = (
-            UnitreeG1MobileBase.setup_default_configuration_in_world_below_robot_root(
-                self.root
-            )
-        )
-        self.add_mobile_base(mobile_base)
-
-    def setup_torso_semantic_annotation(self):
-        torso = UnitreeG1Torso.setup_default_configuration_in_world_below_robot_root(
-            self.root
-        )
-        self.add_torso(torso)
-        torso.setup_neck_semantic_annotation()
-        torso.setup_arm_semantic_annotations()
-
     @classmethod
     def _get_root_body_name(cls) -> str:
         return "pelvis"
-
-    def setup_robot_part_semantic_annotations(self):
-        self.setup_torso_semantic_annotation()
-        self.setup_mobile_base_semantic_annotation()
 
     def _setup_collision_rules(self):
         srdf_path = os.path.join(
