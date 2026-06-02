@@ -21,7 +21,7 @@ from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface, HasRootBody
 from semantic_digital_twin.world_description.geometry import Color, Scale
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Spoon, Bottle, Cup, ShelfLayer, \
-    CounterTop, Table, Wardrobe, Cabinet, Oven, DishwasherTab
+    CounterTop, Table, Wardrobe, Cabinet, Oven, DishwasherTab, Banana, Bread, Knife, Plate
 from semantic_digital_twin.spatial_types import Point3, Quaternion
 from semantic_digital_twin.spatial_types.spatial_types import Pose, HomogeneousTransformationMatrix
 from semantic_digital_twin.robots.hsrb import HSRB
@@ -88,6 +88,14 @@ jeroen_cup = timed_parse_stl("jeroen cup", "jeroen_cup.stl")
 
 dishwasher_tab = timed_parse_stl("dishwasher tab", "dishwasher_tab.stl")
 
+banana = timed_parse_stl("banana", "banana.stl")
+
+bread = timed_parse_stl("bread", "bread.stl")
+
+knife = timed_parse_stl("knife", "knife.stl")
+
+plate = timed_parse_stl("plate", "plate.stl")
+
 
 
 with perf_step("generate random object locations"):
@@ -126,6 +134,22 @@ with perf_step("modify world: place objects and supporting surfaces"):
                 dishwasher_tab,
                 pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[5], world),
             )
+            world.merge_world_at_pose(
+                banana,
+                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[6], world),
+            )
+            world.merge_world_at_pose(
+                bread,
+                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[7], world),
+            )
+            world.merge_world_at_pose(
+                knife,
+                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[8], world),
+            )
+            world.merge_world_at_pose(
+                plate,
+                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[9], world),
+            )
 
         with perf_step("add object semantic annotations"):
             world.add_semantic_annotations(
@@ -136,6 +160,10 @@ with perf_step("modify world: place objects and supporting surfaces"):
                     Bottle(root=world.get_body_by_name("Static_CokeBottle.stl"), name=PrefixedName("Static_CokeBottle.stl")),
                     Cup(root=world.get_body_by_name("jeroen_cup.stl"), name=PrefixedName("jeroen_cup.stl")),
                     DishwasherTab(root=world.get_body_by_name("dishwasher_tab.stl"), name=PrefixedName("dishwasher_tab.stl")),
+                    Banana(root=world.get_body_by_name("banana.stl"), name=PrefixedName("banana.stl")),
+                    Bread(root=world.get_body_by_name("bread.stl"), name=PrefixedName("bread.stl")),
+                    Knife(root=world.get_body_by_name("knife.stl"), name=PrefixedName("knife.stl")),
+                    Plate(root=world.get_body_by_name("plate.stl"), name=PrefixedName("plate.stl")),
                 ]
             )
             # TODO: not many object stls so stuff like banana: yellow spoon, carrot: orange spoon, ...
