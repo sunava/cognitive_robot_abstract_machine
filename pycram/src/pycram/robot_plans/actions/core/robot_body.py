@@ -119,6 +119,37 @@ class ParkArmsAction(ActionDescription):
             values.extend(joint_state.target_values)
         return names, values
 
+@dataclass
+class ParkArmsWithHighTorsoAction(ActionDescription):
+    """
+    Park the arms of the robot.
+    """
+
+    arm: Arms
+    """
+    Entry from the enum for which arm should be parked.
+    """
+
+    def execute(self) -> None:
+        joint_names, joint_poses = self.get_joint_poses()
+
+        self.add_subplan(
+            execute_single(MoveJointsMotion(names=joint_names, positions=joint_poses))
+        ).perform()
+
+    def get_joint_poses(self) -> Tuple[List[str], List[float]]:
+        """
+        :return: The joint positions that should be set for the arm to be in the park position.
+        """
+        arm_chain = ViewManager().get_all_arm_views(self.arm, self.robot)
+        names = []
+        values = []
+        for arm in arm_chain:
+            joint_state = arm.get_joint_state_by_type(StaticJointState.PARK_HIGH)
+            names.extend([c.name.name for c in joint_state.connections])
+            values.extend(joint_state.target_values)
+        return names, values
+
 
 @dataclass
 class CarryAction(ActionDescription):

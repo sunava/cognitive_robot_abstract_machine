@@ -13,7 +13,7 @@ from pycram.datastructures.enums import Arms
 from pycram.motion_executor import simulated_robot
 from pycram.plans.factories import sequential, execute_single
 from pycram.robot_plans.actions.core.navigation import NavigateAction
-from pycram.robot_plans.actions.core.robot_body import ParkArmsAction, MoveTorsoAction
+from pycram.robot_plans.actions.core.robot_body import ParkArmsAction, MoveTorsoAction, ParkArmsWithHighTorsoAction
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
@@ -190,9 +190,11 @@ context.evaluate_conditions = False
 plan_labels = [
     "park left arm",
     "move torso1",
+    "park left arm high",
     "park left arm",
     "navigate kitchen counter",
     "navigate coffee machine",
+    "park left arm",
     "move torso2",
     "navigate counter and dishwasher",
     "navigate table",
@@ -204,6 +206,8 @@ plan_driving = [
 
         timed_plan("move torso1", MoveTorsoAction(TorsoState.HIGH), context),
 
+        timed_plan("park left arm high", ParkArmsWithHighTorsoAction(Arms.LEFT), context),
+
         timed_plan("navigate kitchen counter", NavigateAction(
             target_location=Pose(Point3(1.38141989, 0.80522632, 0.0), orientation=(Quaternion(z=0.29904239, w=0.954239825)),
                                 reference_frame=world.root), keep_joint_states=True), context),
@@ -211,6 +215,9 @@ plan_driving = [
         timed_plan("navigate coffee machine", NavigateAction(
             target_location=Pose(Point3(1.59057, 3.29541, 0), orientation=(Quaternion(z=-0.999835, w=0.0181642)),
                                  reference_frame=world.root), keep_joint_states = True), context),
+
+        timed_plan("park left arm", ParkArmsAction(Arms.LEFT), context),
+
         timed_plan("move torso2", MoveTorsoAction(TorsoState.LOW), context),
 
         timed_plan("navigate counter and dishwasher", NavigateAction(

@@ -271,6 +271,19 @@ class HSRB(AbstractRobot, HasArms, HasNeck):
 
         self.arm.add_joint_state(arm_park)
 
+        arm_park_high = JointState.from_mapping(
+            name=PrefixedName("arm_park_high", prefix=self.name.name),
+            mapping=dict(
+                zip(
+                    [c for c in self.arm.connections if type(c) != FixedConnection],
+                    [-3.0, 1.5, -1.85, 0.0],  # adjust these until the arm clears the camera
+                )
+            ),
+            state_type=StaticJointState.PARK_HIGH,
+        )
+
+        self.arm.add_joint_state(arm_park_high)
+
         gripper_joints = [
             self._world.get_connection_by_name("hand_l_proximal_joint"),
             self._world.get_connection_by_name("hand_r_proximal_joint"),
