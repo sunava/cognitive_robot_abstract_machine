@@ -12,7 +12,7 @@ from demos.bachelor_thesis.actions.predicate_mock import (
 from semantic_digital_twin.exceptions import SemanticAnnotationNotInWorldError
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Plate, Spoon, Knife, Cup, Milk, \
-    Banana, Bread, Cuttlery, Table
+    Banana, Bread, Cuttlery, Table, DishwasherTab
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.world_entity import SemanticAnnotation
 
@@ -400,6 +400,11 @@ class LoadDishwasherTask(Task):
         self.surface_cache = surface_cache
         self.support_cache = support_cache
 
+        self.dishwasher_tab = None
+        for ob in perceived_objects:
+            if isinstance(ob, DishwasherTab):
+                self.dishwasher_tab = ob
+
         if required_objects is None:
 
             objects_on_counter = semantic_annotations_on_surface_cached(
@@ -433,12 +438,27 @@ class LoadDishwasherTask(Task):
                 break
         preconditions.append(dishwasher_rack_empty)
 
+        if self.dishwasher_tab is not None:
+            preconditions.append(True)
+        else:
+            preconditions.append(False)
+
         for obj in self.required_objects:
             preconditions.append(True)
         return preconditions
 
     def constraints(self):
-        return self.constraints_helper()
+        # last constraint for dishwasher tab:
+        # True, if dishwasher tab is reachable
+        # False, if dishwasher tab unreachable or not perceived
+        if self.dishwasher_tab is not None:
+            dishwasher_tab_bool = reachable(self.dishwasher_tab)
+        else:
+            dishwasher_tab_bool = False
+
+        list_const = self.constraints_helper()
+        list_const.append(dishwasher_tab_bool)
+        return list_const
 
     def effect(self):
         # TODO
@@ -447,6 +467,7 @@ class LoadDishwasherTask(Task):
     def calculate_feasibility(self):
         """
         weight: 3 for precondition dishwasher empty
+        weight: 2 for precondition dishwasher tab is there
         weight: 1 for each precondition object exists
         weight: 0.5 for object constraints
         """
@@ -456,8 +477,11 @@ class LoadDishwasherTask(Task):
         for i in range(len(self.precondition())):
             if i == 0:
                 weight_preconditions.append(float(3))
+            elif i == 1:
+                weight_preconditions.append(float(2))
             else:
                 weight_preconditions.append(float(1))
+
         for j in range(len(self.constraints())):
             weight_constraints.append(float(0.5))
 

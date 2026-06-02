@@ -1052,3 +1052,9 @@ class LiquidCap(HasRootBody):
     """
     A liquid cap.
     """
+
+@dataclass(eq=False)
+class DishwasherTab(HasRootBody):
+    """
+    A dishwasher tab.
+    """

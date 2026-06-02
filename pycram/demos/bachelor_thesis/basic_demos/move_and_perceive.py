@@ -20,7 +20,7 @@ from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
 from semantic_digital_twin.world_description.geometry import Color
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Spoon, Bottle, Cup, ShelfLayer, \
-    CounterTop, Table
+    CounterTop, Table, DishwasherTab
 from semantic_digital_twin.spatial_types import Point3, Quaternion
 from semantic_digital_twin.spatial_types.spatial_types import Pose, HomogeneousTransformationMatrix
 from semantic_digital_twin.robots.hsrb import HSRB
@@ -64,6 +64,8 @@ coke = timed_parse_stl("coke", "Static_CokeBottle.stl")
 
 jeroen_cup = timed_parse_stl("jeroen cup", "jeroen_cup.stl")
 
+dishwasher_tab = timed_parse_stl("dishwasher tab", "dishwasher_tab.stl")
+
 
 
 with perf_step("generate random object locations"):
@@ -93,6 +95,10 @@ with perf_step("modify world: place objects and supporting surfaces"):
                 jeroen_cup,
                 pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(Pose(Point3(x=2, y=-1, z=0.14)), world),
             )
+            world.merge_world_at_pose(
+                dishwasher_tab,
+                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(Pose(Point3(x=2, y=-1, z=0.14)), world),
+            )
 
         with perf_step("add object semantic annotations"):
             world.add_semantic_annotations(
@@ -102,6 +108,7 @@ with perf_step("modify world: place objects and supporting surfaces"):
                     Bottle(root=world.get_body_by_name("Static_MilkPitcher.stl"), name=PrefixedName("Static_MilkPitcher.stl")),
                     Bottle(root=world.get_body_by_name("Static_CokeBottle.stl"), name=PrefixedName("Static_CokeBottle.stl")),
                     Cup(root=world.get_body_by_name("jeroen_cup.stl"), name=PrefixedName("jeroen_cup.stl")),
+                    DishwasherTab(root=world.get_body_by_name("dishwasher_tab.stl"), name=PrefixedName("dishwasher_tab.stl")),
                 ]
             )
             # TODO: not many object stls so stuff like banana: yellow spoon, carrot: orange spoon, ...
