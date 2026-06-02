@@ -38,6 +38,7 @@ def urdf_paths():
         table=os.path.join(urdf_directory, "table.urdf"),
         kitchen=os.path.join(urdf_directory, "kitchen-small.urdf"),
         apartment=os.path.join(urdf_directory, "apartment.urdf"),
+        pr2=PR2.get_ros_file_path(),
     )
 
 

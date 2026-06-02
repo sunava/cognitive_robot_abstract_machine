@@ -457,11 +457,11 @@ def test_hsrb_semantic_annotation(hsr_world_setup):
     hsrb = hsr_world_setup.get_semantic_annotations_by_type(HSRB)[0]
     hsr_world_setup._notify_model_change()
 
-    assert len(hsrb.end_effector) == 1
+    assert len(hsrb.all_end_effectors) == 1
     assert len(hsrb.all_arms) == 1
 
     assert len(hsrb.all_sensors) == 5
-    assert hsrb.torso is not None
+    assert hsrb.mobile_base.torso is not None
 
 
 def test_pr2_tighten_dof_velocity_limits_of_1dof_connections(pr2_world_state_reset):

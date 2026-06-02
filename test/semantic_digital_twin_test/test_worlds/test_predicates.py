@@ -25,7 +25,7 @@ from semantic_digital_twin.reasoning.robot_predicates import (
     bodies_in_gripper,
     is_pose_free_for_robot,
 )
-from semantic_digital_twin.robots.robot_parts import Camera, ParallelGripper
+from semantic_digital_twin.robots.robot_parts import Camera, EndEffector
 from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.testing import *
 from semantic_digital_twin.world import World
@@ -300,7 +300,7 @@ def test_supporting(two_block_world):
 def test_is_body_in_gripper(pr2_world_copy):
     pr2 = pr2_world_copy.get_semantic_annotations_by_type(PR2)[0]
 
-    gripper = pr2_world_copy.get_semantic_annotations_by_type(ParallelGripper)
+    gripper = pr2_world_copy.get_semantic_annotations_by_type(EndEffector)
 
     left_gripper = (
         gripper[0]
@@ -358,38 +358,38 @@ def test_reachable(pr2_world_state_reset, rclpy_node):
     tool_frame_T_reachable_goal = HomogeneousTransformationMatrix.from_xyz_rpy(
         x=-0.2,
         y=0.3,
-        reference_frame=pr2.left_arm.manipulator.tool_frame,
+        reference_frame=pr2.left_arm.end_effector.tool_frame,
     )
 
     assert reachable(
         tool_frame_T_reachable_goal,
         pr2.left_arm.root,
-        pr2.left_arm.manipulator.tool_frame,
+        pr2.left_arm.end_effector.tool_frame,
     )
     assert not blocking(
         tool_frame_T_reachable_goal,
         pr2.left_arm.root,
-        pr2.left_arm.manipulator.tool_frame,
+        pr2.left_arm.end_effector.tool_frame,
     )
     tool_frame_T_unreachable_goal = HomogeneousTransformationMatrix.from_xyz_rpy(
-        x=10, y=10, reference_frame=pr2.left_arm.manipulator.tool_frame
+        x=10, y=10, reference_frame=pr2.left_arm.end_effector.tool_frame
     )
     assert not reachable(
         tool_frame_T_unreachable_goal,
         pr2.left_arm.root,
-        pr2.left_arm.manipulator.tool_frame,
+        pr2.left_arm.end_effector.tool_frame,
     )
 
     tool_frame_T_rotated_reachable_goal = HomogeneousTransformationMatrix.from_xyz_rpy(
         x=-0.2,
         y=0.3,
         yaw=np.pi / 2,
-        reference_frame=pr2.left_arm.manipulator.tool_frame,
+        reference_frame=pr2.left_arm.end_effector.tool_frame,
     )
     assert reachable(
         tool_frame_T_rotated_reachable_goal,
         pr2.left_arm.root,
-        pr2.left_arm.manipulator.tool_frame,
+        pr2.left_arm.end_effector.tool_frame,
     )
 
     tool_frame_T_rotated_unreachable_goal = (
@@ -397,13 +397,13 @@ def test_reachable(pr2_world_state_reset, rclpy_node):
             x=-0.2,
             y=0.3,
             yaw=-np.pi / 2,
-            reference_frame=pr2.left_arm.manipulator.tool_frame,
+            reference_frame=pr2.left_arm.end_effector.tool_frame,
         )
     )
     assert not reachable(
         tool_frame_T_rotated_unreachable_goal,
         pr2.left_arm.root,
-        pr2.left_arm.manipulator.tool_frame,
+        pr2.left_arm.end_effector.tool_frame,
     )
 
 
@@ -434,12 +434,12 @@ def test_blocking(pr2_world_copy):
     tool_frame_T_reachable_goal = HomogeneousTransformationMatrix.from_xyz_rpy(
         x=-0.2,
         y=0.3,
-        reference_frame=pr2.left_arm.manipulator.tool_frame,
+        reference_frame=pr2.left_arm.end_effector.tool_frame,
     )
     assert blocking(
         tool_frame_T_reachable_goal,
         pr2.left_arm.root,
-        pr2.left_arm.manipulator.tool_frame,
+        pr2.left_arm.end_effector.tool_frame,
     )
 
 
@@ -516,7 +516,7 @@ def test_bodies_in_gripper(pr2_apartment_world):
         2, -2, 0
     )
 
-    bodies = bodies_in_gripper(pr2.left_arm.manipulator)
+    bodies = bodies_in_gripper(pr2.left_arm.end_effector)
 
     assert len(bodies) == 1
     assert bodies[0].name.name == "mock_milk"

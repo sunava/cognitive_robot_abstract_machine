@@ -420,6 +420,13 @@ class Finger(KinematicChain, ABC):
     The frame of the finger tip. Could be used to align the finger with, for example, a button.
     """
 
+    @property
+    @abstractmethod
+    def is_thumb(self) -> bool:
+        """
+        A thumb is a finger that must always be involved in manipulation. Mujoco needs this.
+        """
+
 
 @dataclass(eq=False)
 class EndEffector(AbstractRobotPart, ABC):

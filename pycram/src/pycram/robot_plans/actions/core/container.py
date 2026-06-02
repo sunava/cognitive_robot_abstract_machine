@@ -90,7 +90,7 @@ class OpenAction(ActionDescription):
                 test_world.get_semantic_annotations_by_type(type(context.robot))[0],
                 test_world,
                 (
-                    context.robot.full_body_controlled
+                    context.robot.mobile_base.full_body_controlled
                     if isinstance(context.robot, HasMobileBase)
                     else False
                 ),

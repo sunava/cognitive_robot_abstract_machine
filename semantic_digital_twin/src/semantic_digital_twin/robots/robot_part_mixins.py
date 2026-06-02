@@ -57,10 +57,10 @@ class HasFingers(Generic[GenericFinger], AbstractSubClassSafeGeneric, ABC):
     The list of fingers attached to the robot.
     """
 
-    thumb: GenericFinger = field(default=None, kw_only=True)
-    """
-    The thumb is a finger that always needs to be involved in the manipulation of objects.
-    """
+    @property
+    def thumb(self) -> GenericFinger:
+        [thumb] = [finger for finger in self.fingers if finger.is_thumb]
+        return thumb
 
 
 @dataclass(eq=False)
@@ -76,7 +76,7 @@ class HasTwoFingers(
 
     @property
     def finger(self) -> Union[GenericLeftFinger, GenericRightFinger]:
-        [finger] = self.fingers
+        [finger, _] = self.fingers
         return finger
 
 

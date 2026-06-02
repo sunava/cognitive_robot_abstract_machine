@@ -40,6 +40,10 @@ from semantic_digital_twin.world_description.world_entity import (
 @dataclass(eq=False)
 class MMPDresdenThumb(Finger):
 
+    @property
+    def is_thumb(self) -> bool:
+        return True
+
     def setup_hardware_interfaces(self):
         pass
 
@@ -62,6 +66,10 @@ class MMPDresdenThumb(Finger):
 
 @dataclass(eq=False)
 class MMPDresdenIndexFinger(Finger):
+
+    @property
+    def is_thumb(self) -> bool:
+        return False
 
     def setup_hardware_interfaces(self):
         pass

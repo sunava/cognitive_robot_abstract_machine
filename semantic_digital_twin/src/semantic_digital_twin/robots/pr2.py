@@ -78,6 +78,10 @@ class PR2KinectV1(Camera):
 @dataclass(eq=False)
 class PR2RightGripperLeftFinger(Finger):
 
+    @property
+    def is_thumb(self) -> bool:
+        return True
+
     def setup_hardware_interfaces(self):
         pass
 
@@ -100,6 +104,10 @@ class PR2RightGripperLeftFinger(Finger):
 
 @dataclass(eq=False)
 class PR2RightGripperRightFinger(Finger):
+
+    @property
+    def is_thumb(self) -> bool:
+        return False
 
     def setup_hardware_interfaces(self):
         pass
@@ -124,6 +132,10 @@ class PR2RightGripperRightFinger(Finger):
 @dataclass(eq=False)
 class PR2LeftGripperLeftFinger(Finger):
 
+    @property
+    def is_thumb(self) -> bool:
+        return True
+
     def setup_hardware_interfaces(self):
         pass
 
@@ -146,6 +158,10 @@ class PR2LeftGripperLeftFinger(Finger):
 
 @dataclass(eq=False)
 class PR2LeftGripperRightFinger(Finger):
+
+    @property
+    def is_thumb(self) -> bool:
+        return False
 
     def setup_hardware_interfaces(self):
         pass

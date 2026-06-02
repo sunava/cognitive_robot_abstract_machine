@@ -42,17 +42,14 @@ class MinimalRobot(AbstractRobot):
             self = cls(
                 root=branch_root,
             )
-            world.add_semantic_annotation(self)
-            self.setup_robot_part_semantic_annotations()
+            self.bodies_of_branch = world.get_kinematic_structure_entities_of_branch(
+                self.root
+            )
+            world.add_semantic_annotation_recursively(self)
             for robot_part in self._robot_parts:
                 robot_part.setup_hardware_interfaces()
-                robot_part.setup_joint_states()
+                robot_part.add_joint_states(robot_part.setup_joint_states())
             return self
-
-    def setup_robot_part_semantic_annotations(self):
-        self.bodies_of_branch = self._world.get_kinematic_structure_entities_of_branch(
-            self.root
-        )
 
     def _setup_collision_rules(self):
         pass

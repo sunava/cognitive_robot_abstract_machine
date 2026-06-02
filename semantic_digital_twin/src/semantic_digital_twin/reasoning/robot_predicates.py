@@ -21,6 +21,7 @@ from semantic_digital_twin.collision_checking.collision_rules import (
     AllowSelfCollisions,
 )
 from semantic_digital_twin.reasoning.predicates import is_place_occupied
+from semantic_digital_twin.robots.robot_part_mixins import HasTwoFingers
 from semantic_digital_twin.robots.robot_parts import (
     AbstractRobot,
     EndEffector,
@@ -124,7 +125,7 @@ def blocking(
 
 
 @symbolic_function
-def bodies_in_gripper(gripper: EndEffector, sample_size: int = 100) -> List[Body]:
+def bodies_in_gripper(gripper: HasTwoFingers, sample_size: int = 100) -> List[Body]:
     """
     Gets all bodies which are between the finger of the gripper.
     This method uses samples of rays which are cast between the finger

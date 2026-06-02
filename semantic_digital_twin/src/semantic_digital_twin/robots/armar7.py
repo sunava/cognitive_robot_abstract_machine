@@ -47,6 +47,10 @@ from semantic_digital_twin.world_description.world_entity import (
 @dataclass(eq=False)
 class Armar7LeftThumb(Finger):
 
+    @property
+    def is_thumb(self) -> bool:
+        return True
+
     def setup_hardware_interfaces(self):
         pass
 
@@ -69,6 +73,10 @@ class Armar7LeftThumb(Finger):
 
 @dataclass(eq=False)
 class Armar7LeftRingFinger(Finger):
+
+    @property
+    def is_thumb(self) -> bool:
+        return False
 
     def setup_hardware_interfaces(self):
         pass
@@ -93,6 +101,10 @@ class Armar7LeftRingFinger(Finger):
 @dataclass(eq=False)
 class Armar7LeftPinkyFinger(Finger):
 
+    @property
+    def is_thumb(self) -> bool:
+        return False
+
     def setup_hardware_interfaces(self):
         pass
 
@@ -115,6 +127,10 @@ class Armar7LeftPinkyFinger(Finger):
 
 @dataclass(eq=False)
 class Armar7LeftMiddleFinger(Finger):
+
+    @property
+    def is_thumb(self) -> bool:
+        return False
 
     def setup_hardware_interfaces(self):
         pass
@@ -139,6 +155,10 @@ class Armar7LeftMiddleFinger(Finger):
 @dataclass(eq=False)
 class Armar7LeftIndexFinger(Finger):
 
+    @property
+    def is_thumb(self) -> bool:
+        return False
+
     def setup_hardware_interfaces(self):
         pass
 
@@ -161,6 +181,10 @@ class Armar7LeftIndexFinger(Finger):
 
 @dataclass(eq=False)
 class Armar7RightThumb(Finger):
+
+    @property
+    def is_thumb(self) -> bool:
+        return True
 
     def setup_hardware_interfaces(self):
         pass
@@ -185,6 +209,10 @@ class Armar7RightThumb(Finger):
 @dataclass(eq=False)
 class Armar7RightRingFinger(Finger):
 
+    @property
+    def is_thumb(self) -> bool:
+        return False
+
     def setup_hardware_interfaces(self):
         pass
 
@@ -207,6 +235,10 @@ class Armar7RightRingFinger(Finger):
 
 @dataclass(eq=False)
 class Armar7RightPinkyFinger(Finger):
+
+    @property
+    def is_thumb(self) -> bool:
+        return False
 
     def setup_hardware_interfaces(self):
         pass
@@ -231,6 +263,10 @@ class Armar7RightPinkyFinger(Finger):
 @dataclass(eq=False)
 class Armar7RightMiddleFinger(Finger):
 
+    @property
+    def is_thumb(self) -> bool:
+        return False
+
     def setup_hardware_interfaces(self):
         pass
 
@@ -253,6 +289,10 @@ class Armar7RightMiddleFinger(Finger):
 
 @dataclass(eq=False)
 class Armar7RightIndexFinger(Finger):
+
+    @property
+    def is_thumb(self) -> bool:
+        return False
 
     def setup_hardware_interfaces(self):
         pass

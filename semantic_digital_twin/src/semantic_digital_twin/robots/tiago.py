@@ -51,6 +51,10 @@ from semantic_digital_twin.world_description.world_entity import (
 @dataclass(eq=False)
 class TiagoLeftThumb(Finger):
 
+    @property
+    def is_thumb(self) -> bool:
+        return True
+
     def setup_hardware_interfaces(self):
         pass
 
@@ -73,6 +77,10 @@ class TiagoLeftThumb(Finger):
 
 @dataclass(eq=False)
 class TiagoLeftIndexFinger(Finger):
+
+    @property
+    def is_thumb(self) -> bool:
+        return False
 
     def setup_hardware_interfaces(self):
         pass
@@ -97,6 +105,10 @@ class TiagoLeftIndexFinger(Finger):
 @dataclass(eq=False)
 class TiagoRightThumb(Finger):
 
+    @property
+    def is_thumb(self) -> bool:
+        return True
+
     def setup_hardware_interfaces(self):
         pass
 
@@ -119,6 +131,10 @@ class TiagoRightThumb(Finger):
 
 @dataclass(eq=False)
 class TiagoRightIndexFinger(Finger):
+
+    @property
+    def is_thumb(self) -> bool:
+        return False
 
     def setup_hardware_interfaces(self):
         pass
@@ -438,6 +454,10 @@ class Tiago(AbstractRobot, HasMobileBase[TiagoMobileBase]):
 @dataclass(eq=False)
 class TiagoMujocoLeftThumb(Finger):
 
+    @property
+    def is_thumb(self) -> bool:
+        return True
+
     def setup_hardware_interfaces(self):
         pass
 
@@ -460,6 +480,10 @@ class TiagoMujocoLeftThumb(Finger):
 
 @dataclass(eq=False)
 class TiagoMujocoLeftIndexFinger(Finger):
+
+    @property
+    def is_thumb(self) -> bool:
+        return False
 
     def setup_hardware_interfaces(self):
         pass
@@ -484,6 +508,10 @@ class TiagoMujocoLeftIndexFinger(Finger):
 @dataclass(eq=False)
 class TiagoMujocoRightThumb(Finger):
 
+    @property
+    def is_thumb(self) -> bool:
+        return True
+
     def setup_hardware_interfaces(self):
         pass
 
@@ -506,6 +534,10 @@ class TiagoMujocoRightThumb(Finger):
 
 @dataclass(eq=False)
 class TiagoMujocoRightIndexFinger(Finger):
+
+    @property
+    def is_thumb(self) -> bool:
+        return False
 
     def setup_hardware_interfaces(self):
         pass
