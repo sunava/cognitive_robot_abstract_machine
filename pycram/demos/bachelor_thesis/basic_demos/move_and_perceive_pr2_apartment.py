@@ -59,6 +59,7 @@ with world.modify_world():
             Table(root=world.get_body_by_name("coffee_table"), name=PrefixedName("coffee_table")),
             Table(root=world.get_body_by_name("bedside_table"), name=PrefixedName("bedside_table")),
             CounterTop(root=world.get_body_by_name("cooktop"), name=PrefixedName("cooktop")),
+            Table(root=world.get_body_by_name("table_area_main"), name=PrefixedName("table_area_main")),
 
         ]
     )

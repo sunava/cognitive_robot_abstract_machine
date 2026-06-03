@@ -2,8 +2,8 @@
 from contextlib import contextmanager
 
 
-from demos.bachelor_thesis.classes_and_methods.tasks import SetTableTask, CleanTableTask, PutAwayObjectTask, LoadDishwasherTask, \
-    UnloadDishwasherTask
+from demos.bachelor_thesis.classes_and_methods.tasks import SetTableTask, CleanTableTask, PutAwayObjectTask, \
+    LoadDishwasherTask, UnloadDishwasherTask
 from semantic_digital_twin.exceptions import WorldEntityNotFoundError
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Cuttlery, Plate, Cup
@@ -14,7 +14,7 @@ from demos.bachelor_thesis.actions.predicate_mock import (
     misplaced,
     human_near,
     semantic_annotations_on_surface_cached,
-    is_supported_by_surface_cached,
+    is_supported_by_surface_cached, is_empty,
 )
 import datetime
 from time import sleep, time as tm
@@ -175,7 +175,7 @@ def update_perceived_objects(handler : EventDispatcher, data : list[SemanticAnno
 def trigger_task(handler: EventDispatcher, data : list[SemanticAnnotation], world : World) -> None:
     with perf_step("trigger_task"):
         _trigger_set_table(handler, world)
-        _trigger_clean_table(handler, world)
+        _trigger_clean_table(handler, data, world)
         _trigger_put_away_object(handler, world)
         _trigger_load_dishwasher(handler, world)
         _trigger_unload_dishwasher(handler, world)
@@ -187,7 +187,9 @@ def _trigger_set_table(handler: EventDispatcher, world: World) -> None:
     # trigger set the table
     ts = tm()
     # time = datetime.datetime.fromtimestamp(ts)
-    time = datetime.datetime(year=2026, month=5, day=6, hour=9, minute=10)  # for testing
+    # time = datetime.datetime(year=2026, month=5, day=6, hour=9, minute=10)  # for testing set the table
+    time = datetime.datetime(year=2026, month=5, day=6, hour=11, minute=10)  # for testing clean the table
+
     with perf_step("trigger set table task"):
         if (time.hour == 9 or time.hour == 13 or time.hour == 19) and not human_near():
             table_name = handler.dining_table.name.name
@@ -216,13 +218,15 @@ def _trigger_set_table(handler: EventDispatcher, world: World) -> None:
                         )
                     )
 
-def _trigger_clean_table(handler: EventDispatcher, world: World) -> None:
+def _trigger_clean_table(handler: EventDispatcher, data: list[SemanticAnnotation], world: World) -> None:
     # trigger clean the table
     ts = tm()
     # time = datetime.datetime.fromtimestamp(ts)
-    time = datetime.datetime(year=2026, month=5, day=6, hour=9, minute=10)  # for testing
+    # time = datetime.datetime(year=2026, month=5, day=6, hour=9, minute=10)  # for testing set the table
+    time = datetime.datetime(year=2026, month=5, day=6, hour=11, minute=10)  # for testing clean the table
     with perf_step("trigger clean table task"):
-        if (time.hour != 9 and time.hour != 13 and time.hour != 19) and not human_near():
+        if (time.hour != 9 and time.hour != 13 and time.hour != 19) and not human_near() \
+                and not is_empty(handler.dining_table, data, world, handler.surface_annotation_cache):
             table_name = handler.dining_table.name.name
             exists = False
             for task in handler.activated_tasks:
@@ -374,7 +378,10 @@ def print_tasks(handler : EventDispatcher) -> None:
         with perf_step(f"calculate feasibility: {name}"):
             feasibility = task.calculate_feasibility()
         score = task.reward * feasibility
-        norm_score = score / task.duration
+        if task.duration == 0:
+            norm_score = 0
+        else:
+            norm_score = score / task.duration
 
         line = f"{name:<60} | {feasibility:<15.3f} | {score:<10.3f} | {norm_score:<18.3f}"
         print(line)
