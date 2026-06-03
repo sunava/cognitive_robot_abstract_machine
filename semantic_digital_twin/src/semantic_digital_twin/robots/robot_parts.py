@@ -555,6 +555,7 @@ class AbstractRobot(Agent, HasRobotParts, ABC):
                 robot_part.setup_hardware_interfaces()
                 robot_part.add_joint_states(robot_part.setup_joint_states())
             self._setup_collision_rules()
+            self._setup_velocity_limits()
             return self
 
     @property

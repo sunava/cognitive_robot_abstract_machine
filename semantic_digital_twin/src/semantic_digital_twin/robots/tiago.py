@@ -428,7 +428,7 @@ class Tiago(AbstractRobot, HasMobileBase[TiagoMobileBase]):
             Path(files("semantic_digital_twin")).parent.parent,
             "resources",
             "collision_configs",
-            "tiago.srdf",
+            "tiago_from_our_robot.srdf",
         )
         self._world.collision_manager.add_ignore_collision_rule(
             SelfCollisionMatrixRule.from_collision_srdf(srdf_path, self._world)
