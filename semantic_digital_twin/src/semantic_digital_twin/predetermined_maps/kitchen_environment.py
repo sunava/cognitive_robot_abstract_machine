@@ -247,7 +247,7 @@ class KitchenEnvironment:
             trash_lid.root.parent_connection.parent = trash_lid_hinge.root
             trash_lid.root.parent_connection.parent_T_connection_expression = HomogeneousTransformationMatrix.from_xyz_rpy(x=0.15, z=0.01)
 
-            # --- DETAILED REFRIGERATOR (Standing on floor) ---
+            # --- DETAILED REFRIGERATOR ---
             fridge_length, fridge_width, fridge_height = 0.60, 0.658, 1.49
 
             # Create fridge
@@ -466,7 +466,7 @@ class KitchenEnvironment:
                 drawer.add_handle(drawer_handle)
                 drawer_handle.root.parent_connection.parent_T_connection_expression = HomogeneousTransformationMatrix.from_xyz_rpy(x=-0.16, z=drawer_height / 2 - 0.03)
 
-            # --- OVEN TOWER (Final Corrected Framework Implementation) ---
+            # --- OVEN TOWER ---
             oven_tower_width, oven_tower_depth, oven_tower_height = 1.20, 0.658, 1.49
             oven_tower_root_transformation = root_transformation @ HomogeneousTransformationMatrix.from_xyz_rpy(x=3.51, y=-2.181, z=oven_tower_height / 2,
                                                                                            yaw=-np.pi / 2)

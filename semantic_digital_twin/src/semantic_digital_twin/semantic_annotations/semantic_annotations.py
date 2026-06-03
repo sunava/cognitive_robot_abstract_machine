@@ -134,7 +134,7 @@ class Handle(HasRootBody):
         )
 
 @dataclass(eq=False)
-class Dishwasher(HasCaseAsRootBody, HasDoors, HasDrawers):
+class Dishwasher(HasCaseAsRootBody, HasDoors, HasDrawers, HasHinge):
     """
     A dishwasher is a kitchen appliance used for cleaning dishes, utensils, and cookware. It typically has a front door that opens to reveal racks for loading dirty items and a control panel for selecting wash cycles.
     """
@@ -389,7 +389,7 @@ class CounterTop(Furniture, HasSupportingSurface):
 
 
 @dataclass(eq=False)
-class Cabinet(Furniture, HasCaseAsRootBody):
+class Cabinet(Furniture, HasCaseAsRootBody, HasHinge):
     @classproperty
     def hole_direction(self) -> Vector3:
         return Vector3.NEGATIVE_X()
@@ -405,7 +405,7 @@ class Cooktop(HasRootBody):
     """
 
 @dataclass(eq=False)
-class Oven(HasRootBody): ...
+class Oven(HasRootBody, HasHinge): ...
 
 @dataclass(eq=False)
 class Dresser(Cabinet, HasDrawers, HasDoors): ...
@@ -892,7 +892,7 @@ class Armchair(Chair):
 
 
 @dataclass(eq=False)
-class TrashCan(HasRootBody, Furniture):
+class TrashCan(HasRootBody, Furniture, HasHinge):
     """
     Abstract class for Trash Can.
     """
