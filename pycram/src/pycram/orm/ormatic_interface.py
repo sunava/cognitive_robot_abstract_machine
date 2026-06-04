@@ -118,6 +118,7 @@ import pycram.robot_plans.motions.gripper
 import pycram.robot_plans.motions.misc
 import pycram.robot_plans.motions.navigation
 import pycram.robot_plans.motions.robot_body
+import pycram.training_environments.training_environment
 import pycram.view_manager
 import semantic_digital_twin.adapters.sage_10k_dataset.loader
 import semantic_digital_twin.adapters.sage_10k_dataset.schema
@@ -880,6 +881,25 @@ class JointVelocityLimitDAO_joints_association(Base, AssociationDataAccessObject
 
     target: Mapped[ActiveConnection1DOFDAO] = relationship(
         "ActiveConnection1DOFDAO", foreign_keys=[target_activeconnection1dofdao_id]
+    )
+
+
+class TrainingEnvironmentDAO_executed_plans_association(
+    Base, AssociationDataAccessObject
+):
+
+    __tablename__ = "_20382269192826323257614173095775779683137466527102005241072246"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_trainingenvironmentdao_id: Mapped[int] = mapped_column(
+        ForeignKey("TrainingEnvironmentDAO.database_id")
+    )
+    target_planmappingdao_id: Mapped[int] = mapped_column(
+        ForeignKey("PlanMappingDAO.database_id")
+    )
+
+    target: Mapped[PlanMappingDAO] = relationship(
+        "PlanMappingDAO", foreign_keys=[target_planmappingdao_id]
     )
 
 
@@ -13416,6 +13436,65 @@ class ForceImpactMonitorDAO(
     __mapper_args__ = {
         "polymorphic_identity": "ForceImpactMonitorDAO",
         "inherit_condition": database_id == ForceTorqueNodeDAO.database_id,
+    }
+
+
+class TrainingEnvironmentDAO(
+    Base,
+    DataAccessObject[
+        pycram.training_environments.training_environment.TrainingEnvironment
+    ],
+):
+
+    __tablename__ = "TrainingEnvironmentDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        Integer, primary_key=True, use_existing_column=True
+    )
+
+    visualize: Mapped[builtins.bool] = mapped_column(use_existing_column=True)
+
+    polymorphic_type: Mapped[str] = mapped_column(
+        String(255), nullable=False, use_existing_column=True
+    )
+
+    executed_plans: Mapped[
+        builtins.list[TrainingEnvironmentDAO_executed_plans_association]
+    ] = relationship(
+        "TrainingEnvironmentDAO_executed_plans_association",
+        collection_class=builtins.list,
+        cascade="all, delete-orphan",
+        foreign_keys="[TrainingEnvironmentDAO_executed_plans_association.source_trainingenvironmentdao_id]",
+    )
+
+    __mapper_args__ = {
+        "polymorphic_on": "polymorphic_type",
+        "polymorphic_identity": "TrainingEnvironmentDAO",
+    }
+
+
+class MoveToReachTrainingEnvironmentDAO(
+    TrainingEnvironmentDAO,
+    DataAccessObject[
+        pycram.training_environments.training_environment.MoveToReachTrainingEnvironment
+    ],
+):
+
+    __tablename__ = "MoveToReachTrainingEnvironmentDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        ForeignKey(TrainingEnvironmentDAO.database_id),
+        primary_key=True,
+        use_existing_column=True,
+    )
+
+    model_path: Mapped[typing.Optional[pathlib.Path]] = mapped_column(
+        krrood.ormatic.custom_types.PathType, nullable=True, use_existing_column=True
+    )
+
+    __mapper_args__ = {
+        "polymorphic_identity": "MoveToReachTrainingEnvironmentDAO",
+        "inherit_condition": database_id == TrainingEnvironmentDAO.database_id,
     }
 
 

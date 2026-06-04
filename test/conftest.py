@@ -318,7 +318,7 @@ def supported_abstract_robots():
         Justin,
         HSRB,
         Tracy,
-        # Stretch,
+        Stretch,
         Armar7,
         ICub3,
         UnitreeG1,

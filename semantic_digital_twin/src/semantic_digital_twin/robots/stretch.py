@@ -360,7 +360,7 @@ class Stretch(AbstractRobot, HasMobileBase[StretchMobileBase]):
 
     @classmethod
     def get_ros_file_path(cls) -> str:
-        return "package://stretch_description/urdf/stretch_description.urdf"
+        return "package://stretch_description/urdf/stretch_from_our_robot.urdf"
 
     @classmethod
     def _get_root_body_name(cls) -> str:

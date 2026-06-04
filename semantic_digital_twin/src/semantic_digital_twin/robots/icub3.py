@@ -584,6 +584,9 @@ class ICub3MobileBase(MobileBase):
 @dataclass(eq=False)
 class ICub3(AbstractRobot, HasTorso[ICub3Torso], HasMobileBase[ICub3MobileBase]):
 
+    def _setup_collision_rules(self):
+        pass
+
     @classmethod
     def get_ros_file_path(cls) -> str:
         return (

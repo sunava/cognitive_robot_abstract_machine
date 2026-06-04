@@ -56,6 +56,7 @@ from semantic_digital_twin.datastructures.definitions import (
     JointStateType,
     StaticJointState,
 )
+from semantic_digital_twin.robots.robot_part_mixins import HasMobileBase
 from semantic_digital_twin.robots.robot_parts import AbstractRobot, EndEffector
 
 try:
@@ -180,9 +181,13 @@ def immutable_multiple_robot_apartment(
 ) -> Generator[Tuple[World, AbstractRobot, Context]]:
     world, view = setup_multi_robot_apartment
     state = deepcopy(world.state._data)
-    full_body_controlled = view.full_body_controlled
+    full_body_controlled = (
+        view.mobile_base.full_body_controlled
+        if isinstance(view, HasMobileBase)
+        else False
+    )
     yield world, view, Context(world, view)
-    view.full_body_controlled = full_body_controlled
+    view.mobile_base.full_body_controlled = full_body_controlled
     world.state._data[:] = state
     world.notify_state_change()
 
@@ -651,7 +656,6 @@ def test_transport(mutable_multiple_robot_apartment):
 
 def test_move_to_reach(immutable_multiple_robot_apartment):
     world, robot, context = immutable_multiple_robot_apartment
-
     move_to_reach = MoveToReach(
         target_pose_offset_robot=Pose2D(0.2, -0.55),
         target_pose_manipulator=Pose.from_xyz_rpy(

@@ -474,6 +474,9 @@ class JustinMobileBase(MobileBase, HasTorso[JustinTorso]):
 @dataclass(eq=False)
 class Justin(AbstractRobot, HasMobileBase[JustinMobileBase]):
 
+    def _setup_collision_rules(self):
+        pass
+
     @classmethod
     def get_ros_file_path(cls) -> str:
         return "package://iai_dlr_rollin_justin/urdf/rollin_justin.urdf"

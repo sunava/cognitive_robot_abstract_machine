@@ -27,6 +27,7 @@ from pycram.view_manager import ViewManager
 from semantic_digital_twin.datastructures.definitions import GripperState
 from semantic_digital_twin.reasoning.robot_predicates import is_body_in_gripper
 from semantic_digital_twin.robots.robot_part_mixins import HasMobileBase
+from semantic_digital_twin.robots.robot_parts import AbstractRobot
 from semantic_digital_twin.world_description.connections import ActiveConnection1DOF
 from semantic_digital_twin.world_description.world_entity import Body
 
@@ -80,7 +81,9 @@ class OpenAction(ActionDescription):
         The gripper with which to open the container has to be free and the handle has to be reachable.
         """
         test_world = deepcopy(context.world)
-        test_robot = context.robot.from_world(test_world)
+        test_robot: AbstractRobot = test_world.get_semantic_annotation_by_id(
+            context.robot.id
+        )
         manipulator = ViewManager.get_end_effector_view(variables["arm"], test_robot)
 
         return and_(

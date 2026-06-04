@@ -236,6 +236,9 @@ class MMPDresdenMobileBase(MobileBase, HasTorso[MMPDresdenTorso]):
 @dataclass(eq=False)
 class MMPDresden(AbstractRobot, HasMobileBase[MMPDresdenMobileBase]):
 
+    def _setup_collision_rules(self):
+        pass
+
     @classmethod
     def get_ros_file_path(cls) -> str:
         return "package://iai_smart_mobility/urdf/mmp_dresden.urdf"
