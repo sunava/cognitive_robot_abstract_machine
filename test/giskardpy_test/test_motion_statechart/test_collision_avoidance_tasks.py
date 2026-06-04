@@ -908,7 +908,7 @@ def test_repeated_collision_pr2_apartment_does_not_increase_execution_time(
                         AllowCollisionBetweenGroups(
                             body_group_a=[
                                 b
-                                for b in robot.right_arm.manipulator.bodies
+                                for b in robot.right_arm.end_effector.bodies
                                 if b.has_collision()
                             ],
                             body_group_b=[
