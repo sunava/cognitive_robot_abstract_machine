@@ -18,6 +18,8 @@ from typing_extensions import (
     get_origin,
     get_args,
     TypeAlias,
+    TypeVarTuple,
+    Unpack,
 )
 
 from krrood.class_diagrams.utils import (
@@ -35,7 +37,14 @@ if TYPE_CHECKING:
     pass
 
 
-ResolvableType: TypeAlias = type | TypeVar | list["ResolvableType"] | Any
+ResolvableType: TypeAlias = (
+    type
+    | TypeVar
+    | TypeVarTuple
+    | list["ResolvableType"]
+    | tuple["ResolvableType", ...]
+    | Any
+)
 
 
 @dataclass
@@ -143,20 +152,84 @@ class AbstractSubClassSafeGeneric(ABC):
                     include_root_generic_base=True,
                     include_specialized_generic_base=False,
                 )
-                if len(root_parameters) != len(resolved_types):
-                    raise MismatchingNumberOfGenericParametersAndResolvedTypes(
-                        affected_class=base_origin,
-                        parameters=root_parameters,
-                        resolved_types=resolved_types,
-                    )
+                type_var_tuple_index = next(
+                    (
+                        index
+                        for index, parameter in enumerate(root_parameters)
+                        if isinstance(parameter, TypeVarTuple)
+                    ),
+                    -1,
+                )
 
-                for old_type, new_type in zip(root_parameters, resolved_types):
+                if type_var_tuple_index == -1:
+                    if len(root_parameters) != len(resolved_types):
+                        raise MismatchingNumberOfGenericParametersAndResolvedTypes(
+                            affected_class=base_origin,
+                            parameters=root_parameters,
+                            resolved_types=resolved_types,
+                        )
+                    matched_pairs = zip(root_parameters, resolved_types)
+                else:
+                    prefix_length = type_var_tuple_index
+                    suffix_length = len(root_parameters) - type_var_tuple_index - 1
+                    if len(resolved_types) < prefix_length + suffix_length:
+                        raise MismatchingNumberOfGenericParametersAndResolvedTypes(
+                            affected_class=base_origin,
+                            parameters=root_parameters,
+                            resolved_types=resolved_types,
+                        )
+                    type_var_tuple_content_length = (
+                        len(resolved_types) - prefix_length - suffix_length
+                    )
+                    matched_pairs = []
+                    for index in range(prefix_length):
+                        matched_pairs.append(
+                            (root_parameters[index], resolved_types[index])
+                        )
+                    matched_pairs.append(
+                        (
+                            root_parameters[type_var_tuple_index],
+                            tuple(
+                                resolved_types[
+                                    prefix_length : prefix_length
+                                    + type_var_tuple_content_length
+                                ]
+                            ),
+                        )
+                    )
+                    for index in range(suffix_length):
+                        matched_pairs.append(
+                            (
+                                root_parameters[type_var_tuple_index + 1 + index],
+                                resolved_types[
+                                    prefix_length
+                                    + type_var_tuple_content_length
+                                    + index
+                                ],
+                            )
+                        )
+
+                for old_type, new_type in matched_pairs:
                     if (
-                        not isinstance(old_type, TypeVar)
+                        not isinstance(old_type, (TypeVar, TypeVarTuple))
                         or old_type is new_type
                         or new_type is None
                     ):
                         continue
+
+                    # Skip redundant variadic pass-through: Ts -> (Unpack[Ts],)
+                    if (
+                        isinstance(old_type, TypeVarTuple)
+                        and isinstance(new_type, tuple)
+                        and len(new_type) == 1
+                    ):
+                        inner = new_type[0]
+                        if (
+                            get_origin(inner) is Unpack
+                            and get_args(inner)[0] is old_type
+                        ):
+                            continue
+
                     substitutions[ensure_hashable(old_type)] = new_type
 
             # Recursively pull substitutions already defined by the parent
@@ -186,7 +259,7 @@ class AbstractSubClassSafeGeneric(ABC):
         def _resolve_recursive(
             current_type: ResolvableType, visited: set[Any]
         ) -> ResolvableType:
-            if isinstance(current_type, TypeVar):
+            if isinstance(current_type, (TypeVar, TypeVarTuple)):
                 type_key = ensure_hashable(current_type)
                 if type_key in visited:
                     return current_type
@@ -200,12 +273,36 @@ class AbstractSubClassSafeGeneric(ABC):
             if isinstance(current_type, list):
                 return [_resolve_recursive(item, visited) for item in current_type]
 
+            if isinstance(current_type, tuple):
+                resolved_items = []
+                for item in current_type:
+                    result = _resolve_recursive(item, visited)
+                    if get_origin(item) is Unpack and isinstance(result, tuple):
+                        resolved_items.extend(result)
+                    else:
+                        resolved_items.append(result)
+                return tuple(resolved_items)
+
             origin = get_origin(current_type)
             if origin is None:
                 return current_type
 
+            if origin is Unpack:
+                inner_arg = get_args(current_type)[0]
+                resolved_inner = _resolve_recursive(inner_arg, visited)
+                if isinstance(resolved_inner, tuple):
+                    return resolved_inner
+                return Unpack[resolved_inner]
+
             args = get_args(current_type)
-            resolved_args = tuple(_resolve_recursive(arg, visited) for arg in args)
+            resolved_args = []
+            for arg in args:
+                result = _resolve_recursive(arg, visited)
+                if get_origin(arg) is Unpack and isinstance(result, tuple):
+                    resolved_args.extend(result)
+                else:
+                    resolved_args.append(result)
+            resolved_args = tuple(resolved_args)
 
             if resolved_args == args:
                 return current_type
