@@ -100,10 +100,12 @@ while iterator < 4:
             elif iterator == 1:
                 dispatcher.correct_location_drinks = ann
             elif iterator == 2:
-                dispatcher.correct_location_tableware = ann
+                dispatcher.correct_location_tableware_dirty = ann
             elif iterator == 3:
+                dispatcher.correct_location_tableware_clean = ann
+            elif iterator == 4:
                 dispatcher.correct_location_all_other_items = ann
-            elif iterator == 4 and isinstance(ann, Table):
+            elif iterator == 5 and isinstance(ann, Table):
                 dispatcher.dining_table = ann
 
             iterator = iterator + 1

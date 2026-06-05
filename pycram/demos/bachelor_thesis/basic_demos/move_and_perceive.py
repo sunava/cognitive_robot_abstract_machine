@@ -40,7 +40,8 @@ dispatcher.known_furniture = world.bodies
 
 
 #-----------------------------------------------------------------------------------------------------------------------
-dispatcher.correct_location_tableware = world.get_semantic_annotation_by_name("counterTop")
+dispatcher.correct_location_tableware_clean = world.get_semantic_annotation_by_name("counterTop")
+dispatcher.correct_location_tableware_dirty = world.get_semantic_annotation_by_name("desk")
 dispatcher.correct_location_food = world.get_semantic_annotation_by_name("table")
 dispatcher.correct_location_drinks = world.get_semantic_annotation_by_name("desk")
 dispatcher.correct_location_all_other_items = world.get_semantic_annotation_by_name("shelf_1")

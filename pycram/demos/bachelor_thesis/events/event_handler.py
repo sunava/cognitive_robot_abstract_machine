@@ -1,12 +1,13 @@
 # source for base: https://medium.com/@idelossantosruiz/events-in-python-e2b3cb76ac2d
 from contextlib import contextmanager
 
+from rdflib.plugins.sparql.parser import PrefixedName
 
 from demos.bachelor_thesis.classes_and_methods.tasks import SetTableTask, CleanTableTask, PutAwayObjectTask, \
     LoadDishwasherTask, UnloadDishwasherTask
 from semantic_digital_twin.exceptions import WorldEntityNotFoundError
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
-from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Cuttlery, Plate, Cup
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Cuttlery, Plate, Cup, Tableware
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.world_entity import Body, SemanticAnnotation
 from demos.bachelor_thesis.actions.predicate_mock import (
@@ -25,7 +26,8 @@ class EventDispatcher:
         self._listeners = []
 
         #----- correct locations for items -----------------------------------------------------------------------------
-        self.correct_location_tableware = None
+        self.correct_location_tableware_dirty = None
+        self.correct_location_tableware_clean = None
         self.correct_location_food = None
         self.correct_location_drinks = None
         self.correct_location_all_other_items = None
@@ -108,8 +110,10 @@ def update_perceived_objects(handler : EventDispatcher, data : list[SemanticAnno
         is_none.append("handler.correct_location_drinks")
     if (handler.correct_location_food is None)  or not isinstance(handler.correct_location_food, HasSupportingSurface):
         is_none.append("handler.correct_location_food")
-    if (handler.correct_location_tableware is None)  or not isinstance(handler.correct_location_tableware, HasSupportingSurface):
-        is_none.append("handler.correct_location_tableware")
+    if (handler.correct_location_tableware_dirty is None)  or not isinstance(handler.correct_location_tableware_dirty, HasSupportingSurface):
+        is_none.append("handler.correct_location_tableware_dirty")
+    if (handler.correct_location_tableware_clean is None) or not isinstance(handler.correct_location_tableware_clean, HasSupportingSurface):
+        is_none.append("handler.correct_location_tableware_clean")
     if (handler.correct_location_all_other_items is None)  or not isinstance(handler.correct_location_all_other_items, HasSupportingSurface):
         is_none.append("handler.correct_location_all_other_items")
     if (handler.dining_table is None) or not isinstance(handler.dining_table, HasSupportingSurface):
@@ -129,10 +133,19 @@ def update_perceived_objects(handler : EventDispatcher, data : list[SemanticAnno
 
             handler.perceived_objects.append(obj)
 
+            if isinstance(obj, Tableware) and handler.dishwasher_exists and is_supported_by_surface_cached(obj, world.get_semantic_annotation_by_name("dishwasher_rack"), handler.support_relation_cache):
+                obj.clean = True
+                print(f"clean: {obj.name}")
+            elif isinstance(obj, Tableware):
+                obj.clean = False
+                print(f"dirty: {obj.name}")
+
+
             out_misplaced = misplaced(
                 obj,
                 world,
-                handler.correct_location_tableware,
+                handler.correct_location_tableware_dirty,
+                handler.correct_location_tableware_clean,
                 handler.correct_location_food,
                 handler.correct_location_drinks,
                 handler.correct_location_all_other_items,
@@ -280,7 +293,7 @@ def _trigger_load_dishwasher(handler: EventDispatcher, world: World) -> None:
                 LoadDishwasherTask(
                     load_dishwasher_task,
                     handler.perceived_objects,
-                    handler.correct_location_tableware,
+                    handler.correct_location_tableware_dirty,
                     world,
                     surface_cache=handler.surface_annotation_cache,
                     support_cache=handler.support_relation_cache,

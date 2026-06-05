@@ -584,9 +584,20 @@ class MustardBottle(Bottle):
     A mustard bottle.
     """
 
+@dataclass(eq=False)
+class Tableware(HasRootBody):
+    """
+    A piece of tableware.
+    """
+
+    clean: bool = False
+    """
+    for dishwasher logic: is the tableware clean or not?
+    """
+
 
 @dataclass(eq=False)
-class DrinkingContainer(HasRootBody): ...
+class DrinkingContainer(Tableware): ...
 
 
 @dataclass(eq=False)
@@ -604,7 +615,7 @@ class Mug(DrinkingContainer):
 
 
 @dataclass(eq=False)
-class CookingContainer(HasRootBody): ...
+class CookingContainer(Tableware): ...
 
 
 @dataclass(eq=False)
@@ -640,14 +651,14 @@ class PotLid(Lid):
 
 
 @dataclass(eq=False)
-class Plate(HasSupportingSurface):
+class Plate(HasSupportingSurface, Tableware):
     """
     A plate.
     """
 
 
 @dataclass(eq=False)
-class Bowl(HasSupportingSurface, IsPerceivable):
+class Bowl(HasSupportingSurface, IsPerceivable, Tableware):
     """
     A bowl.
     """
@@ -1005,7 +1016,10 @@ class SaltPepperShaker(HasRootBody):
 
 
 @dataclass(eq=False)
-class Cuttlery(HasRootBody): ...
+class Cuttlery(Tableware):
+    """
+    A cutlery.
+    """
 
 
 @dataclass(eq=False)

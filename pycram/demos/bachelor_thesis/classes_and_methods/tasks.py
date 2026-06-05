@@ -396,7 +396,7 @@ class LoadDishwasherTask(Task):
             )
 
             for obj in objects_on_counter:
-                if (obj in self.perceived_objects) and isinstance(obj, (Cuttlery, Plate, Cup, Bowl)):
+                if (obj in self.perceived_objects) and isinstance(obj, (Cuttlery, Plate, Cup, Bowl)) and not obj.clean:
                     self.required_objects.append(obj)
 
         self._calculate_reward_and_duration()

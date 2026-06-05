@@ -200,7 +200,8 @@ plan_driving = [execute_single(ParkArmsAction(Arms.LEFT), context).plan,
 with simulated_robot:
     test_task = "set_table_task_dining_table"
 
-    dispatcher.correct_location_tableware = world.get_semantic_annotation_by_name("counterTop")
+    dispatcher.correct_location_tableware_dirty = world.get_semantic_annotation_by_name("counterTop")
+    dispatcher.correct_location_tableware_clean = world.get_semantic_annotation_by_name("desk")
     dispatcher.correct_location_food = world.get_semantic_annotation_by_name("table")
     dispatcher.correct_location_drinks = world.get_semantic_annotation_by_name("desk")
     dispatcher.correct_location_all_other_items = world.get_semantic_annotation_by_name("shelf_1")

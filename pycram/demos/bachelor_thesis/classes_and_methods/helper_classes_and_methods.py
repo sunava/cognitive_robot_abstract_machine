@@ -148,7 +148,8 @@ def body_name_contains_keyword(body: Body, keyword: str) -> bool:
 
 def compare_robot_world_with_real(dispatcher: EventDispatcher, world: World) -> list[list[float | None]]:
     real_world_dispatcher = EventDispatcher()
-    real_world_dispatcher.correct_location_tableware = dispatcher.correct_location_tableware
+    real_world_dispatcher.correct_location_tableware_clean = dispatcher.correct_location_tableware_clean
+    real_world_dispatcher.correct_location_tableware_dirty = dispatcher.correct_location_tableware_dirty
     real_world_dispatcher.correct_location_food = dispatcher.correct_location_food
     real_world_dispatcher.correct_location_drinks = dispatcher.correct_location_drinks
     real_world_dispatcher.correct_location_all_other_items = dispatcher.correct_location_all_other_items

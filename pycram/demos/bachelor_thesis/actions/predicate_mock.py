@@ -3,13 +3,13 @@ from contextlib import contextmanager
 from typing_extensions import Tuple
 
 from semantic_digital_twin.reasoning.queries import semantic_annotations_on_surfaces
-from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
+from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface, HasRootBody
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Food, Cuttlery, Plate, Cup, Bowl, \
     Bottle, CounterTop, Table, ShelfLayer
 from semantic_digital_twin.world import World
 from semantic_digital_twin.reasoning.predicates import is_supported_by
 
-from semantic_digital_twin.world_description.world_entity import SemanticAnnotation
+from semantic_digital_twin.world_description.world_entity import SemanticAnnotation, Body
 
 
 def semantic_annotations_on_surface_cached(
@@ -47,7 +47,8 @@ def is_supported_by_surface_cached(
 def misplaced(
     obj: SemanticAnnotation,
     world: World,
-    correct_location_tableware: SemanticAnnotation,
+    correct_location_tableware_dirty: SemanticAnnotation,
+    correct_location_tableware_clean: SemanticAnnotation,
     correct_location_food: SemanticAnnotation,
     correct_location_drinks: SemanticAnnotation,
     correct_location_all_other_items: SemanticAnnotation,
@@ -63,7 +64,10 @@ def misplaced(
     elif isinstance(obj, Bottle):
         correct_location = correct_location_drinks
     elif isinstance(obj, (Cuttlery, Plate, Bowl, Cup)):
-        correct_location = correct_location_tableware
+        if obj.clean:
+            correct_location = correct_location_tableware_clean
+        else:
+            correct_location = correct_location_tableware_dirty
     else:
         correct_location = correct_location_all_other_items
 
