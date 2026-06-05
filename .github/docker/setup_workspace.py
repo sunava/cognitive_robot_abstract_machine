@@ -178,6 +178,9 @@ def main():
     repos = [
         Repository("https://github.com/code-iai/iai_maps.git", "ros-jazzy", "iai_maps"),
         Repository(
+            "https://github.com/code-iai/iai_robots.git", "ros-jazzy", "iai_robots"
+        ),
+        Repository(
             "https://github.com/code-iai/iai_pr2.git", "ros-jazzy-main", "iai_pr2"
         ),
         Repository(
