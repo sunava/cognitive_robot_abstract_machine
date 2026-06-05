@@ -35,16 +35,6 @@ DURATION_HANDLE_DISHWASHER = 60
 
 #####################################################
 
-
-def perf_print(message: str):
-    pass
-
-
-@contextmanager
-def perf_step(label: str):
-    yield
-
-
 class Task(ABC):
     name: str
     required_objects: list
@@ -167,10 +157,8 @@ class PutAwayObjectTask(Task):
         weight: 1 for each precondition
         weight: 0.5 for object constraints
         """
-        with perf_step(f"{self.name}.precondition for feasibility"):
-            preconditions = self.precondition()
-        with perf_step(f"{self.name}.constraints for feasibility"):
-            constraints = self.constraints()
+        preconditions = self.precondition()
+        constraints = self.constraints()
 
         weight_preconditions = []
         weight_constraints = []
@@ -198,61 +186,57 @@ class SetTableTask(Task):
         perceived_objects: list[SemanticAnnotation],
         surface_cache: dict | None = None,
     ):
-        with perf_step(f"{name}.__init__"):
-            ## different for all instances of this task ##
-            self.name = name
-            self.table = table
+        ## different for all instances of this task ##
+        self.name = name
+        self.table = table
 
-            ## set for all instances of this task ##
-            self.required_objects = [Bowl, Plate, Spoon, Knife, Cup, Milk, Banana, Bread]
+        ## set for all instances of this task ##
+        self.required_objects = [Bowl, Plate, Spoon, Knife, Cup, Milk, Banana, Bread]
 
-            self.reward = REWARD_PER_OBJECT * len(self.required_objects) + REWARD_CUTTLERY + REWARD_CUTTLERY + REWARD_PLATE + REWARD_NAVIGATE_TO_TABLE # 50 for each thing of cutlery and 100 for plate
-            self.duration = DURATION_PER_OBJECT * len(self.required_objects)
+        self.reward = REWARD_PER_OBJECT * len(self.required_objects) + REWARD_CUTTLERY + REWARD_CUTTLERY + REWARD_PLATE + REWARD_NAVIGATE_TO_TABLE # 50 for each thing of cutlery and 100 for plate
+        self.duration = DURATION_PER_OBJECT * len(self.required_objects)
 
-            ## world stuff ##
-            self.world = world
-            self.perceived_objects = perceived_objects
-            self.surface_cache = surface_cache
+        ## world stuff ##
+        self.world = world
+        self.perceived_objects = perceived_objects
+        self.surface_cache = surface_cache
 
     def precondition(self):
         preconditions = []
 
-        with perf_step(f"{self.name}.precondition table empty check"):
-            preconditions.append(
-                is_empty(
-                    self.table,
-                    self.perceived_objects,
-                    self.world,
-                    self.surface_cache,
-                )
+        preconditions.append(
+            is_empty(
+                self.table,
+                self.perceived_objects,
+                self.world,
+                self.surface_cache,
             )
+        )
 
-        with perf_step(f"{self.name}.precondition match required objects"):
-            for obj in self.required_objects:
-                found = False
-                for ob in self.perceived_objects:
-                    if isinstance(ob, obj):
-                        found = True
-                        preconditions.append(True)
-                        break
-                if not found:
-                    preconditions.append(False)
+        for obj in self.required_objects:
+            found = False
+            for ob in self.perceived_objects:
+                if isinstance(ob, obj):
+                    found = True
+                    preconditions.append(True)
+                    break
+            if not found:
+                preconditions.append(False)
 
         return preconditions
 
     def constraints(self):
         constraints = []
 
-        with perf_step(f"{self.name}.constraints match required objects"):
-            for obj in self.required_objects:
-                found = False
-                for ob in self.perceived_objects:
-                    if isinstance(ob, obj):
-                        found = True
-                        constraints.append(reachable(ob))
-                        break
-                if not found:
-                    constraints.append(False)
+        for obj in self.required_objects:
+            found = False
+            for ob in self.perceived_objects:
+                if isinstance(ob, obj):
+                    found = True
+                    constraints.append(reachable(ob))
+                    break
+            if not found:
+                constraints.append(False)
 
         return constraints
 
@@ -266,8 +250,7 @@ class SetTableTask(Task):
         weight: 1 for each precondition - object exists
         weight: 0.5 for object constraints
         """
-        with perf_step(f"{self.name}.constraints for feasibility"):
-            constraints = self.constraints()
+        constraints = self.constraints()
 
         weight_preconditions = []
         weight_constraints = []
@@ -287,10 +270,9 @@ class SetTableTask(Task):
         perceived_objects: list[SemanticAnnotation],
         surface_cache: dict | None = None,
     ):
-        with perf_step(f"{self.name}.update_to_current_world_state"):
-            self.world = world
-            self.perceived_objects = perceived_objects
-            self.surface_cache = surface_cache
+        self.world = world
+        self.perceived_objects = perceived_objects
+        self.surface_cache = surface_cache
 
 class CleanTableTask(Task):
     table: Table

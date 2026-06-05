@@ -53,8 +53,7 @@ def print_sorted_task_list(tasks: List[Task], duration: float) -> None:
     total_score = 0
     for task in tasks:
         name = task.name
-        with perf_step(f"calculate feasibility: {name}"):
-            feasibility = task.calculate_feasibility()
+        feasibility = task.calculate_feasibility()
         score = task.reward * feasibility
         norm_score = score / task.duration
         duration = task.duration
@@ -89,30 +88,16 @@ def sorted_inserting(sorted_list: List[Task], elem: Task) -> List[Task]:
     return new_list
 
 
-
-
-
-def perf_print(message: str):
-    pass
-
-
-@contextmanager
-def perf_step(label: str):
-    yield
-
-
 def timed_parse_stl(label: str, filename: str) -> World:
-    with perf_step(f"parse STL: {label}"):
-        return STLParser(
-            os.path.join(
-                os.path.dirname(__file__), "../..", "..", "resources", "objects", filename
-            )
-        ).parse()
+    return STLParser(
+        os.path.join(
+            os.path.dirname(__file__), "../..", "..", "resources", "objects", filename
+        )
+    ).parse()
 
 
 def timed_plan(label: str, action, context: Context) -> Plan | None:
-    with perf_step(f"build plan: {label}"):
-        return execute_single(action, context).plan
+    return execute_single(action, context).plan
 
 def debug_task_list_for_demo(dispatcher: EventDispatcher) -> None:
     print("\n \n", "DEBUG")
@@ -205,8 +190,7 @@ def _print_task_comparison_robot_real(handler_robot : EventDispatcher, handler_w
             eval_array.append([None, None, None])
         else:
             name = task.name
-            with perf_step(f"calculate feasibility: {name}"):
-                feasibility = task.calculate_feasibility()
+            feasibility = task.calculate_feasibility()
             score = task.reward * feasibility
             norm_score = score / task.duration
 

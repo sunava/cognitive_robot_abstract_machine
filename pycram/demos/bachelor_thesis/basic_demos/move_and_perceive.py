@@ -27,18 +27,16 @@ from semantic_digital_twin.robots.hsrb import HSRB
 from pycram.datastructures.dataclasses import Context
 from demos.bachelor_thesis.hsrb_setup_world import hsrb_setup_world
 
-from demos.bachelor_thesis.classes_and_methods.helper_classes_and_methods import Environment, perf_step, perf_print, \
+from demos.bachelor_thesis.classes_and_methods.helper_classes_and_methods import Environment, \
     timed_plan, timed_parse_stl, debug_task_list_for_demo, print_sorted_task_list, sort_tasks, \
     compare_robot_world_with_real
 
 environment = Environment.SuturoApartmentLab
 
 #------------------ standard setup -------------------------------------------------------------------------------------
-with perf_step("hsrb_setup_world"):
-    world, dispatcher = hsrb_setup_world(environment=environment)
+world, dispatcher = hsrb_setup_world(environment=environment)
 
-with perf_step("store known furniture"):
-    dispatcher.known_furniture = world.bodies
+dispatcher.known_furniture = world.bodies
 
 
 #-----------------------------------------------------------------------------------------------------------------------
@@ -68,105 +66,88 @@ dishwasher_tab = timed_parse_stl("dishwasher tab", "dishwasher_tab.stl")
 
 
 
-with perf_step("generate random object locations"):
-    locs = random_location_list(world, 10)
+locs = random_location_list(world, 10)
 
 
-with perf_step("modify world: place objects and supporting surfaces"):
-    with world.modify_world():
-        with perf_step("merge object meshes into world"):
-            world.merge_world_at_pose(
-                bowl,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(Pose(Point3(x=2, y=-1.6, z=0.57)), world),
-            )
-            world.merge_world_at_pose(
-                spoon,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[1], world),
-            )
-            world.merge_world_at_pose(
-                pitcher,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[2], world),
-            )
-            world.merge_world_at_pose(
-                coke,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[3], world),
-            )
-            world.merge_world_at_pose(
-                jeroen_cup,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(Pose(Point3(x=2, y=-1, z=0.14)), world),
-            )
-            world.merge_world_at_pose(
-                dishwasher_tab,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(Pose(Point3(x=2, y=-1, z=0.14)), world),
-            )
+with world.modify_world():
+    world.merge_world_at_pose(
+        bowl,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(Pose(Point3(x=2, y=-1.6, z=0.57)), world),
+    )
+    world.merge_world_at_pose(
+        spoon,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[1], world),
+    )
+    world.merge_world_at_pose(
+        pitcher,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[2], world),
+    )
+    world.merge_world_at_pose(
+        coke,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[3], world),
+    )
+    world.merge_world_at_pose(
+        jeroen_cup,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(Pose(Point3(x=2, y=-1, z=0.14)), world),
+    )
+    world.merge_world_at_pose(
+        dishwasher_tab,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(Pose(Point3(x=2, y=-1, z=0.14)), world),
+    )
 
-        with perf_step("add object semantic annotations"):
-            world.add_semantic_annotations(
-                [
-                    Bowl(root=world.get_body_by_name("bowl.stl"), name=PrefixedName("bowl.stl")),
-                    Spoon(root=world.get_body_by_name("spoon.stl"), name=PrefixedName("spoon.stl")),
-                    Bottle(root=world.get_body_by_name("Static_MilkPitcher.stl"), name=PrefixedName("Static_MilkPitcher.stl")),
-                    Bottle(root=world.get_body_by_name("Static_CokeBottle.stl"), name=PrefixedName("Static_CokeBottle.stl")),
-                    Cup(root=world.get_body_by_name("jeroen_cup.stl"), name=PrefixedName("jeroen_cup.stl")),
-                    DishwasherTab(root=world.get_body_by_name("dishwasher_tab.stl"), name=PrefixedName("dishwasher_tab.stl")),
-                ]
-            )
-            # TODO: not many object stls so stuff like banana: yellow spoon, carrot: orange spoon, ...
+    world.add_semantic_annotations(
+        [
+            Bowl(root=world.get_body_by_name("bowl.stl"), name=PrefixedName("bowl.stl")),
+            Spoon(root=world.get_body_by_name("spoon.stl"), name=PrefixedName("spoon.stl")),
+            Bottle(root=world.get_body_by_name("Static_MilkPitcher.stl"), name=PrefixedName("Static_MilkPitcher.stl")),
+            Bottle(root=world.get_body_by_name("Static_CokeBottle.stl"), name=PrefixedName("Static_CokeBottle.stl")),
+            Cup(root=world.get_body_by_name("jeroen_cup.stl"), name=PrefixedName("jeroen_cup.stl")),
+            DishwasherTab(root=world.get_body_by_name("dishwasher_tab.stl"), name=PrefixedName("dishwasher_tab.stl")),
+        ]
+    )
+    # TODO: not many object stls so stuff like banana: yellow spoon, carrot: orange spoon, ...
 
-        # world.add_semantic_annotations(
-        #     [
-        #         ShelfLayer(root=world.get_body_by_name("shelf_1"), name=PrefixedName("shelf_1")),
-        #         ShelfLayer(root=world.get_body_by_name("shelf_2"), name=PrefixedName("shelf_2"))
-        #
-        #     ]
-        # )
-        with perf_step("collect supporting surface annotations"):
-            supporting_surfaces = []
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("shelf_1"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("shelf_2"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("counterTop"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("table"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("lowerTable"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("desk"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("cooking_table"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("dining_table"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("dishwasher_rack"))
+    supporting_surfaces = []
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("shelf_1"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("shelf_2"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("counterTop"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("table"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("lowerTable"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("desk"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("cooking_table"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("dining_table"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("dishwasher_rack"))
 
 
 
 
-        for surface in supporting_surfaces:
-            if isinstance(surface, HasSupportingSurface):
-                with perf_step(f"calculate supporting surface: {surface.name}"):
-                    surface.calculate_supporting_surface()
+    for surface in supporting_surfaces:
+        if isinstance(surface, HasSupportingSurface):
+            surface.calculate_supporting_surface()
 
 
-with perf_step("setup ROS visualization marker"):
+try:
+    import rclpy
     try:
-        import rclpy
-        try:
-            rclpy.init()
-        except:
-            pass
-        from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
-            VizMarkerPublisher,
-        )
+        rclpy.init()
+    except:
+        pass
+    from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
+        VizMarkerPublisher,
+    )
 
-        node = rclpy.create_node("viz_marker")
-        v = VizMarkerPublisher(_world=world, node=node).with_tf_publisher()
-    except ImportError:
-        node = None
+    node = rclpy.create_node("viz_marker")
+    v = VizMarkerPublisher(_world=world, node=node).with_tf_publisher()
+except ImportError:
+    node = None
 
-with perf_step("create HSRB robot from world"):
-    hsrb = HSRB.from_world(world)
+hsrb = HSRB.from_world(world)
 
-with perf_step("create execution context"):
-    context = Context(world=world, robot=hsrb)
+context = Context(world=world, robot=hsrb)
 
-with perf_step("initial world reasoning"):
-    with world.modify_world():
-        world_reasoner = WorldReasoner(world)
-        world_reasoner.reason()
+with world.modify_world():
+    world_reasoner = WorldReasoner(world)
+    world_reasoner.reason()
 
 
 context.evaluate_conditions = False
@@ -250,27 +231,20 @@ plan_driving = [
 
 
 
-with perf_step("execute all plans with simulated robot"):
-    with simulated_robot:
-        for index, (label, plan) in enumerate(zip(plan_labels, plan_driving), start=1):
-            step_label = f"{index:02d}/{len(plan_driving)} {label}"
-            with perf_step(f"perform plan: {step_label}"):
-                plan.perform()
-            with perf_step(f"simulate perception after: {step_label}"):
-                visible_bodies = simulate_perception(
-                    world,
-                    dispatcher,
-                    context,
-                    hsrb,
-                    perf_label=f"perception {step_label}",
-                )
-                visible_count = len(visible_bodies) if visible_bodies is not None else 0
-                perf_print(f"visible bodies after {step_label}: {visible_count}")
-
-        debug_task_list_for_demo(dispatcher)
+with simulated_robot:
+    for index, (label, plan) in enumerate(zip(plan_labels, plan_driving), start=1):
+        step_label = f"{index:02d}/{len(plan_driving)} {label}"
+        plan.perform()
+        visible_bodies = simulate_perception(
+            world,
+            dispatcher,
+            context,
+            hsrb,
+        )
+        visible_count = len(visible_bodies) if visible_bodies is not None else 0
+    debug_task_list_for_demo(dispatcher)
 
 
-perf_print("done")
 print_sorted_task_list(sort_tasks(dispatcher.activated_tasks, 300), 300)
 
 res = compare_robot_world_with_real(dispatcher, world)

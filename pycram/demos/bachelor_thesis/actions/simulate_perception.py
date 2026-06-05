@@ -62,15 +62,6 @@ REASON_WORLD_EACH_PERCEPTION = os.environ.get("MOVE_AND_PERCEIVE_REASON_EACH", "
 _PERCEPTION_DEBUG_NODE = None
 
 
-def perf_print(label: str, message: str):
-    pass
-
-
-@contextmanager
-def perf_step(label: str, step: str):
-    yield
-
-
 def get_perception_debug_node():
     global _PERCEPTION_DEBUG_NODE
     if _PERCEPTION_DEBUG_NODE is not None:
@@ -107,24 +98,22 @@ def simulate_perception(
     dispatcher: EventDispatcher,
     context: Context,
     hsrb: AbstractRobot,
-    perf_label: str = "simulate_perception",
 ):
     """
     returns a list of visible bodies detected using raytracing
     """
-    with perf_step(perf_label, "ROS debug node setup"):
-        node = get_perception_debug_node()
+    node = get_perception_debug_node()
 
     # hsrb = HSRB.from_world(world)
     # context = Context(world=world, robot=hsrb)
 
     if REASON_WORLD_EACH_PERCEPTION:
-        with perf_step(perf_label, "world reasoning"):
-            with world.modify_world():
-                world_reasoner = WorldReasoner(world)
-                world_reasoner.reason()
+        with world.modify_world():
+            world_reasoner = WorldReasoner(world)
+            world_reasoner.reason()
     else:
-        perf_print(perf_label, "skip world reasoning: MOVE_AND_PERCEIVE_REASON_EACH=0")
+        # skip world reasoning: MOVE_AND_PERCEIVE_REASON_EACH=0
+        pass
 
 
 
@@ -133,78 +122,73 @@ def simulate_perception(
 
     ####################################################
 
-    with perf_step(perf_label, "visibility costmap"):
-        visualize = look_at(
-            location=Pose(
-                Point3(2.3, 8, 1.25),
-                orientation=(Quaternion(z=-0.9995140, w=0.03117147)),
-            ),
-            robot_world=world,
-        )
+    visualize = look_at(
+        location=Pose(
+            Point3(2.3, 8, 1.25),
+            orientation=(Quaternion(z=-0.9995140, w=0.03117147)),
+        ),
+        robot_world=world,
+    )
 
     # print(visualize.map)
 
     if node is not None:
-        with perf_step(perf_label, "camera pose and raytracing"):
-            camera = world.get_body_by_name("head_rgbd_sensor_link")  # we use head mount instead of default camera
-            camera_details = hsrb.get_default_camera()  # for simulation: use default stats
-            camera_pose = Pose(
-                position=Point3(x=camera.global_pose.x, y=camera.global_pose.y, z=camera.global_pose.z + 0.03),
-                orientation=camera.global_pose.to_quaternion())
-            forward_axis = np.asarray(
-                camera_details.forward_facing_axis.to_list(), dtype=float
-            ).reshape(-1)[:3]
-            alignment_quaternion = get_quaternion_between_two_vectors(
-                np.array([1.0, 0.0, 0.0], dtype=float),
-                forward_axis,
-            )
-            camera_quaternion = np.asarray(camera_pose.to_quaternion().to_list(), dtype=float)
-            aligned_quaternion = quaternion_multiply(camera_quaternion, alignment_quaternion)
-            camera_position = np.asarray(camera_pose.to_position().to_list(), dtype=float)[:3]
-            raytracer_camera_pose = Pose.from_xyz_quaternion(
-                *camera_position,
-                *aligned_quaternion,
-                reference_frame=camera_pose.reference_frame,
-            )
+        camera = world.get_body_by_name("head_rgbd_sensor_link")  # we use head mount instead of default camera
+        camera_details = hsrb.get_default_camera()  # for simulation: use default stats
+        camera_pose = Pose(
+            position=Point3(x=camera.global_pose.x, y=camera.global_pose.y, z=camera.global_pose.z + 0.03),
+            orientation=camera.global_pose.to_quaternion())
+        forward_axis = np.asarray(
+            camera_details.forward_facing_axis.to_list(), dtype=float
+        ).reshape(-1)[:3]
+        alignment_quaternion = get_quaternion_between_two_vectors(
+            np.array([1.0, 0.0, 0.0], dtype=float),
+            forward_axis,
+        )
+        camera_quaternion = np.asarray(camera_pose.to_quaternion().to_list(), dtype=float)
+        aligned_quaternion = quaternion_multiply(camera_quaternion, alignment_quaternion)
+        camera_position = np.asarray(camera_pose.to_position().to_list(), dtype=float)[:3]
+        raytracer_camera_pose = Pose.from_xyz_quaternion(
+            *camera_position,
+            *aligned_quaternion,
+            reference_frame=camera_pose.reference_frame,
+        )
 
-            ray_tracer = RayTracer(world)
-            segmentation = ray_tracer.create_segmentation_mask(
-                raytracer_camera_pose,
-                resolution=128,
-            )
-            visible_body_ids = {int(idx) for idx in segmentation[segmentation >= 0].flatten()}
-            robot_body_ids = {body.index for body in hsrb.bodies}
-            visible_bodies = [
-                ray_tracer.index_to_body[idx]
-                for idx in sorted(visible_body_ids)
-                if idx not in robot_body_ids and idx in ray_tracer.index_to_body
-            ]
-            perf_print(perf_label, f"visible bodies from raytracing: {len(visible_bodies)}")
+        ray_tracer = RayTracer(world)
+        segmentation = ray_tracer.create_segmentation_mask(
+            raytracer_camera_pose,
+            resolution=128,
+        )
+        visible_body_ids = {int(idx) for idx in segmentation[segmentation >= 0].flatten()}
+        robot_body_ids = {body.index for body in hsrb.bodies}
+        visible_bodies = [
+            ray_tracer.index_to_body[idx]
+            for idx in sorted(visible_body_ids)
+            if idx not in robot_body_ids and idx in ray_tracer.index_to_body
+        ]
 
+        CameraVisiblePointsRviz(
+            world=world,
+            camera_pose=raytracer_camera_pose,
+            node=node,
+            frame_id=str(world.root.name),
+            topic="/debug/camera/visible_points",
+            marker_ns="camera_visible_points",
+            resolution=128,
+            point_scale=0.01,
+            show_rays=True,
+            ray_stride=12,
+            ray_alpha=0.15,
+            origin_scale=0.04,
+            republish_hz=None,
+            clear_existing=True,
+        )
+        # RViz publish wait sleep
+        if RVIZ_PUBLISH_WAIT_SECONDS > 0:
+            time.sleep(RVIZ_PUBLISH_WAIT_SECONDS)
 
-
-        with perf_step(perf_label, "RViz visible points publisher"):
-            CameraVisiblePointsRviz(
-                world=world,
-                camera_pose=raytracer_camera_pose,
-                node=node,
-                frame_id=str(world.root.name),
-                topic="/debug/camera/visible_points",
-                marker_ns="camera_visible_points",
-                resolution=128,
-                point_scale=0.01,
-                show_rays=True,
-                ray_stride=12,
-                ray_alpha=0.15,
-                origin_scale=0.04,
-                republish_hz=None,
-                clear_existing=True,
-            )
-        with perf_step(perf_label, "RViz publish wait sleep"):
-            if RVIZ_PUBLISH_WAIT_SECONDS > 0:
-                time.sleep(RVIZ_PUBLISH_WAIT_SECONDS)
-        with perf_step(perf_label, "dispatch perceived bodies event"):
-            dispatcher.trigger_event(visible_bodies, world)
+        # dispatch perceived bodies event
+        dispatcher.trigger_event(visible_bodies, world)
         return visible_bodies
 
 if __name__ == '__main__':

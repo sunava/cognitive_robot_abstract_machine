@@ -29,15 +29,14 @@ from pycram.datastructures.dataclasses import Context
 from demos.bachelor_thesis.hsrb_setup_world import hsrb_setup_world
 from time import sleep
 
-from demos.bachelor_thesis.classes_and_methods.helper_classes_and_methods import Environment, perf_step, perf_print, \
+from demos.bachelor_thesis.classes_and_methods.helper_classes_and_methods import Environment, \
     timed_plan, timed_parse_stl, debug_task_list_for_demo, print_sorted_task_list, sort_tasks, \
     compare_robot_world_with_real, print_object_locations
 
 environment = Environment.Pr2ApartmentLab
 
 #------------------ standard setup -------------------------------------------------------------------------------------
-with perf_step("hsrb_setup_world"):
-    world, dispatcher = hsrb_setup_world(environment=environment)
+world, dispatcher = hsrb_setup_world(environment=environment)
 
 with world.modify_world():
     dishwasher_rack = Table.create_with_new_body_in_world(
@@ -49,8 +48,7 @@ with world.modify_world():
     for color in dishwasher_rack.bodies[0].visual.shapes:
         color.color = Color.RED()
 
-with perf_step("store known furniture"):
-    dispatcher.known_furniture = world.bodies
+dispatcher.known_furniture = world.bodies
 
 with world.modify_world():
     world.add_semantic_annotations(
@@ -99,8 +97,7 @@ plate = timed_parse_stl("plate", "plate.stl")
 
 
 
-with perf_step("generate random object locations"):
-    locs = random_location_list(world, 10)
+locs = random_location_list(world, 10)
 
 # print("generated_locations: ")
 # i=0
@@ -108,116 +105,96 @@ with perf_step("generate random object locations"):
 #     print(f"loc[{i}]: x={loc.x}, y={loc.y}, z={loc.z}")
 #     i += 1
 
-with perf_step("modify world: place objects and supporting surfaces"):
-    with world.modify_world():
-        with perf_step("merge object meshes into world"):
-            world.merge_world_at_pose(
-                bowl,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[0], world),
-            )
-            world.merge_world_at_pose(
-                spoon,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(Pose(Point3(16.5997, 2.69144, 0.4), orientation=Quaternion(0,0,0,1)), world),
-            )
-            world.merge_world_at_pose(
-                pitcher,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[2], world),
-            )
-            world.merge_world_at_pose(
-                coke,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[3], world),
-            )
-            world.merge_world_at_pose(
-                jeroen_cup,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[4], world),
-            )
-            world.merge_world_at_pose(
-                dishwasher_tab,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[5], world),
-            )
-            world.merge_world_at_pose(
-                banana,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[6], world),
-            )
-            world.merge_world_at_pose(
-                bread,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[7], world),
-            )
-            world.merge_world_at_pose(
-                knife,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[8], world),
-            )
-            world.merge_world_at_pose(
-                plate,
-                pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[9], world),
-            )
+with world.modify_world():
+    world.merge_world_at_pose(
+        bowl,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[0], world),
+    )
+    world.merge_world_at_pose(
+        spoon,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(Pose(Point3(16.5997, 2.69144, 0.4), orientation=Quaternion(0,0,0,1)), world),
+    )
+    world.merge_world_at_pose(
+        pitcher,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[2], world),
+    )
+    world.merge_world_at_pose(
+        coke,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[3], world),
+    )
+    world.merge_world_at_pose(
+        jeroen_cup,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[4], world),
+    )
+    world.merge_world_at_pose(
+        dishwasher_tab,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[5], world),
+    )
+    world.merge_world_at_pose(
+        banana,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[6], world),
+    )
+    world.merge_world_at_pose(
+        bread,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[7], world),
+    )
+    world.merge_world_at_pose(
+        knife,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[8], world),
+    )
+    world.merge_world_at_pose(
+        plate,
+        pose_to_homogeneous_transformation_matrix_from_xyz_quaternion(locs[9], world),
+    )
 
-        with perf_step("add object semantic annotations"):
-            world.add_semantic_annotations(
-                [
-                    Bowl(root=world.get_body_by_name("bowl.stl"), name=PrefixedName("bowl.stl")),
-                    Spoon(root=world.get_body_by_name("spoon.stl"), name=PrefixedName("spoon.stl")),
-                    Bottle(root=world.get_body_by_name("Static_MilkPitcher.stl"), name=PrefixedName("Static_MilkPitcher.stl")),
-                    Bottle(root=world.get_body_by_name("Static_CokeBottle.stl"), name=PrefixedName("Static_CokeBottle.stl")),
-                    Cup(root=world.get_body_by_name("jeroen_cup.stl"), name=PrefixedName("jeroen_cup.stl")),
-                    DishwasherTab(root=world.get_body_by_name("dishwasher_tab.stl"), name=PrefixedName("dishwasher_tab.stl")),
-                    Banana(root=world.get_body_by_name("banana.stl"), name=PrefixedName("banana.stl")),
-                    Bread(root=world.get_body_by_name("bread.stl"), name=PrefixedName("bread.stl")),
-                    Knife(root=world.get_body_by_name("knife.stl"), name=PrefixedName("knife.stl")),
-                    Plate(root=world.get_body_by_name("plate.stl"), name=PrefixedName("plate.stl")),
-                ]
-            )
-            # TODO: not many object stls so stuff like banana: yellow spoon, carrot: orange spoon, ...
+    world.add_semantic_annotations(
+        [
+            Bowl(root=world.get_body_by_name("bowl.stl"), name=PrefixedName("bowl.stl")),
+            Spoon(root=world.get_body_by_name("spoon.stl"), name=PrefixedName("spoon.stl")),
+            Bottle(root=world.get_body_by_name("Static_MilkPitcher.stl"), name=PrefixedName("Static_MilkPitcher.stl")),
+            Bottle(root=world.get_body_by_name("Static_CokeBottle.stl"), name=PrefixedName("Static_CokeBottle.stl")),
+            Cup(root=world.get_body_by_name("jeroen_cup.stl"), name=PrefixedName("jeroen_cup.stl")),
+            DishwasherTab(root=world.get_body_by_name("dishwasher_tab.stl"), name=PrefixedName("dishwasher_tab.stl")),
+            Banana(root=world.get_body_by_name("banana.stl"), name=PrefixedName("banana.stl")),
+            Bread(root=world.get_body_by_name("bread.stl"), name=PrefixedName("bread.stl")),
+            Knife(root=world.get_body_by_name("knife.stl"), name=PrefixedName("knife.stl")),
+            Plate(root=world.get_body_by_name("plate.stl"), name=PrefixedName("plate.stl")),
+        ]
+    )
 
-        # world.add_semantic_annotations(
-        #     [
-        #         ShelfLayer(root=world.get_body_by_name("shelf_1"), name=PrefixedName("shelf_1")),
-        #         ShelfLayer(root=world.get_body_by_name("shelf_2"), name=PrefixedName("shelf_2"))
-        #
-        #     ]
-        # )
-        with perf_step("collect supporting surface annotations"):
-            supporting_surfaces = []
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("counter"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("coffee_table"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("bedside_table"))
-            supporting_surfaces.append(world.get_semantic_annotation_by_name("cooktop"))
+    supporting_surfaces = []
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("counter"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("coffee_table"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("bedside_table"))
+    supporting_surfaces.append(world.get_semantic_annotation_by_name("cooktop"))
+
+    for surface in supporting_surfaces:
+        if isinstance(surface, HasSupportingSurface):
+            surface.calculate_supporting_surface()
 
 
-
-
-        for surface in supporting_surfaces:
-            if isinstance(surface, HasSupportingSurface):
-                with perf_step(f"calculate supporting surface: {surface.name}"):
-                    surface.calculate_supporting_surface()
-
-
-with perf_step("setup ROS visualization marker"):
+try:
+    import rclpy
     try:
-        import rclpy
-        try:
-            rclpy.init()
-        except:
-            pass
-        from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
-            VizMarkerPublisher,
-        )
+        rclpy.init()
+    except:
+        pass
+    from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
+        VizMarkerPublisher,
+    )
 
-        node = rclpy.create_node("viz_marker")
-        v = VizMarkerPublisher(_world=world, node=node).with_tf_publisher()
-    except ImportError:
-        node = None
+    node = rclpy.create_node("viz_marker")
+    v = VizMarkerPublisher(_world=world, node=node).with_tf_publisher()
+except ImportError:
+    node = None
 
-with perf_step("create HSRB robot from world"):
-    hsrb = HSRB.from_world(world)
+hsrb = HSRB.from_world(world)
 
-with perf_step("create execution context"):
-    context = Context(world=world, robot=hsrb)
+context = Context(world=world, robot=hsrb)
 
-with perf_step("initial world reasoning"):
-    with world.modify_world():
-        world_reasoner = WorldReasoner(world)
-        world_reasoner.reason()
+with world.modify_world():
+    world_reasoner = WorldReasoner(world)
+    world_reasoner.reason()
 
 
 context.evaluate_conditions = False
@@ -272,27 +249,20 @@ plan_driving = [
 
 
 
-with perf_step("execute all plans with simulated robot"):
-    with simulated_robot:
-        for index, (label, plan) in enumerate(zip(plan_labels, plan_driving), start=1):
-            step_label = f"{index:02d}/{len(plan_driving)} {label}"
-            print(step_label)
-            with perf_step(f"perform plan: {step_label}"):
-                plan.perform()
-            with perf_step(f"simulate perception after: {step_label}"):
-                visible_bodies = simulate_perception(
-                    world,
-                    dispatcher,
-                    context,
-                    hsrb,
-                    perf_label=f"perception {step_label}",
-                )
-                visible_count = len(visible_bodies) if visible_bodies is not None else 0
-                perf_print(f"visible bodies after {step_label}: {visible_count}")
+with simulated_robot:
+    for index, (label, plan) in enumerate(zip(plan_labels, plan_driving), start=1):
+        step_label = f"{index:02d}/{len(plan_driving)} {label}"
+        print(step_label)
+        plan.perform()
+        visible_bodies = simulate_perception(
+            world,
+            dispatcher,
+            context,
+            hsrb,
+            )
+        visible_count = len(visible_bodies) if visible_bodies is not None else 0
 
-    debug_task_list_for_demo(dispatcher)
-
-perf_print("done")
+debug_task_list_for_demo(dispatcher)
 
 print_object_locations(dispatcher, world)
 
