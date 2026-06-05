@@ -484,6 +484,11 @@ class LoadDishwasherTask(Task):
         self.surface_cache = surface_cache
         self.support_cache = support_cache
 
+        self.dishwasher_tab = None
+        for ob in perceived_objects:
+            if isinstance(ob, DishwasherTab):
+                self.dishwasher_tab = ob
+
         if required_objects is not None:
             self.required_objects = list(required_objects)
             self._calculate_reward_and_duration()

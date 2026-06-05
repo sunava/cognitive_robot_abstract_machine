@@ -50,7 +50,7 @@ def random_location_list(world : World, number_locations : int):
 
 def check_too_close_to_other_object(location_list : list[Pose], loc : Pose):
     for obj in location_list:
-        if abs(loc.x - obj.x) < 0.1 and abs(loc.y - obj.y):
+        if abs(loc.x - obj.x) < 0.3 and abs(loc.y - obj.y) < 0.3:
             return True
         else:
             return False
