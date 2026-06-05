@@ -16,10 +16,11 @@ from typing import (
     DefaultDict,
     Union,
     Any,
+    Generic,
 )
 from uuid import UUID
 
-from typing_extensions import get_origin, get_args
+from typing_extensions import get_origin, get_args, TypeVarTuple, Unpack
 
 from krrood.adapters.json_serializer import list_like_classes
 from krrood.class_diagrams.attribute_introspector import (
@@ -39,9 +40,9 @@ from semantic_digital_twin.exceptions import (
 from semantic_digital_twin.robots.robot_part_mixins import (
     HasEndEffector,
     HasSensors,
-    TGenericSensor,
     TGenericEndEffector,
     HasLeftRightArm,
+    TGenericSensors,
 )
 from semantic_digital_twin.semantic_annotations.mixins import HasRootBody
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Agent
@@ -73,6 +74,8 @@ from semantic_digital_twin.world_description.world_modification import (
 
 if TYPE_CHECKING:
     from semantic_digital_twin.world import World
+else:
+    World = Any
 
 logger = logging.getLogger("semantic_digital_twin")
 
@@ -133,7 +136,7 @@ class HasRobotParts(ABC):
             args = get_args(field_type)
 
             if origin in list_like_classes and args:
-                self._initialize_list_field(field_name, args[0])
+                self._initialize_list_field(field_name, args)
 
             elif (
                 inspect.isclass(field_type)
@@ -161,7 +164,7 @@ class HasRobotParts(ABC):
         if get_origin(item_type) in (Union, getattr(types, "UnionType", Union)):
             types_to_initialize = get_args(item_type)
         else:
-            types_to_initialize = [item_type]
+            types_to_initialize = item_type
 
         current_list = getattr(self, field_name)
         if not isinstance(current_list, list):
@@ -445,7 +448,11 @@ class Arm(KinematicChain, HasEndEffector[TGenericEndEffector], ABC):
 
 
 @dataclass(eq=False)
-class Neck(KinematicChain, HasSensors[TGenericSensor], ABC):
+class Neck(
+    KinematicChain,
+    HasSensors[Unpack[TGenericSensors]],
+    ABC,
+):
     """
     The neck of a robot, which is a kinematic chain that has a camera attached to it.
     """

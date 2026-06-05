@@ -261,12 +261,10 @@ class StretchCameraInfra2(Camera):
 @dataclass(eq=False)
 class StretchNeck(
     Neck[
-        Union[
-            StretchCameraColor,
-            StretchCameraDepth,
-            StretchCameraInfra1,
-            StretchCameraInfra2,
-        ]
+        StretchCameraColor,
+        StretchCameraDepth,
+        StretchCameraInfra1,
+        StretchCameraInfra2,
     ],
 ):
 

@@ -852,6 +852,23 @@ class Armar7NeckDAO_sensors_association(Base, AssociationDataAccessObject):
     )
 
 
+class HSRBNeckDAO_sensors_association(Base, AssociationDataAccessObject):
+
+    __tablename__ = "_42432767956368764438557522591085922362514103275494162825454206"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_hsrbneckdao_id: Mapped[int] = mapped_column(
+        ForeignKey("HSRBNeckDAO.database_id")
+    )
+    target_hsrbheadcentercameradao_id: Mapped[int] = mapped_column(
+        ForeignKey("HSRBHeadCenterCameraDAO.database_id")
+    )
+
+    target: Mapped[HSRBHeadCenterCameraDAO] = relationship(
+        "HSRBHeadCenterCameraDAO", foreign_keys=[target_hsrbheadcentercameradao_id]
+    )
+
+
 class ICub3NeckDAO_sensors_association(Base, AssociationDataAccessObject):
 
     __tablename__ = "_10205463936664727742624430915518765570489938866907620040527290"
@@ -900,6 +917,23 @@ class PR2NeckDAO_sensors_association(Base, AssociationDataAccessObject):
 
     target: Mapped[PR2KinectV1DAO] = relationship(
         "PR2KinectV1DAO", foreign_keys=[target_pr2kinectv1dao_id]
+    )
+
+
+class StretchNeckDAO_sensors_association(Base, AssociationDataAccessObject):
+
+    __tablename__ = "_11168140387188727304074991337531783684941712189284451432430423"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_stretchneckdao_id: Mapped[int] = mapped_column(
+        ForeignKey("StretchNeckDAO.database_id")
+    )
+    target_stretchcameracolordao_id: Mapped[int] = mapped_column(
+        ForeignKey("StretchCameraColorDAO.database_id")
+    )
+
+    target: Mapped[StretchCameraColorDAO] = relationship(
+        "StretchCameraColorDAO", foreign_keys=[target_stretchcameracolordao_id]
     )
 
 
@@ -8968,6 +9002,13 @@ class HSRBNeckDAO(
         ForeignKey(NeckDAO.database_id), primary_key=True, use_existing_column=True
     )
 
+    sensors: Mapped[builtins.list[HSRBNeckDAO_sensors_association]] = relationship(
+        "HSRBNeckDAO_sensors_association",
+        collection_class=builtins.list,
+        cascade="all, delete-orphan",
+        foreign_keys="[HSRBNeckDAO_sensors_association.source_hsrbneckdao_id]",
+    )
+
     __mapper_args__ = {
         "polymorphic_identity": "HSRBNeckDAO",
         "inherit_condition": database_id == NeckDAO.database_id,
@@ -9049,6 +9090,13 @@ class StretchNeckDAO(
 
     database_id: Mapped[builtins.int] = mapped_column(
         ForeignKey(NeckDAO.database_id), primary_key=True, use_existing_column=True
+    )
+
+    sensors: Mapped[builtins.list[StretchNeckDAO_sensors_association]] = relationship(
+        "StretchNeckDAO_sensors_association",
+        collection_class=builtins.list,
+        cascade="all, delete-orphan",
+        foreign_keys="[StretchNeckDAO_sensors_association.source_stretchneckdao_id]",
     )
 
     __mapper_args__ = {

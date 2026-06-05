@@ -192,7 +192,8 @@ class UnitreeG1LeftHand(
     EndEffector,
     HasFingers[
         UnitreeG1LeftThumb,
-        Union[UnitreeG1LeftIndexFinger, UnitreeG1LeftMiddleFinger],
+        UnitreeG1LeftIndexFinger,
+        UnitreeG1LeftMiddleFinger,
     ],
 ):
 
@@ -236,7 +237,8 @@ class UnitreeG1RightHand(
     EndEffector,
     HasFingers[
         UnitreeG1RightThumb,
-        Union[UnitreeG1RightIndexFinger, UnitreeG1RightMiddleFinger],
+        UnitreeG1RightIndexFinger,
+        UnitreeG1RightMiddleFinger,
     ],
 ):
 

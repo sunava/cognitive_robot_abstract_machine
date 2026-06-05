@@ -279,12 +279,10 @@ class Armar7LeftGripper(
     EndEffector,
     HasFingers[
         Armar7LeftThumb,
-        Union[
-            Armar7LeftRingFinger,
-            Armar7LeftPinkyFinger,
-            Armar7LeftMiddleFinger,
-            Armar7LeftIndexFinger,
-        ],
+        Armar7LeftRingFinger,
+        Armar7LeftPinkyFinger,
+        Armar7LeftMiddleFinger,
+        Armar7LeftIndexFinger,
     ],
 ):
 
@@ -328,12 +326,10 @@ class Armar7RightGripper(
     EndEffector,
     HasFingers[
         Armar7RightThumb,
-        Union[
-            Armar7RightRingFinger,
-            Armar7RightPinkyFinger,
-            Armar7RightMiddleFinger,
-            Armar7RightIndexFinger,
-        ],
+        Armar7RightRingFinger,
+        Armar7RightPinkyFinger,
+        Armar7RightMiddleFinger,
+        Armar7RightIndexFinger,
     ],
 ):
 

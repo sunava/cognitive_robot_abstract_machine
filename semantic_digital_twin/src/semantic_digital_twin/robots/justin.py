@@ -219,11 +219,9 @@ class JustinLeftHand(
     EndEffector,
     HasFingers[
         JustinLeftThumb,
-        Union[
-            JustinLeftIndexFinger,
-            JustinLeftMiddleFinger,
-            JustinLeftRingFinger,
-        ],
+        JustinLeftIndexFinger,
+        JustinLeftMiddleFinger,
+        JustinLeftRingFinger,
     ],
 ):
 
@@ -265,11 +263,9 @@ class JustinRightHand(
     EndEffector,
     HasFingers[
         JustinRightThumb,
-        Union[
-            JustinRightRingFinger,
-            JustinRightIndexFinger,
-            JustinRightMiddleFinger,
-        ],
+        JustinRightRingFinger,
+        JustinRightIndexFinger,
+        JustinRightMiddleFinger,
     ],
 ):
 

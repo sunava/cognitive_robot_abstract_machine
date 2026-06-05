@@ -273,12 +273,10 @@ class ICub3LeftHand(
     EndEffector,
     HasFingers[
         ICub3LeftThumb,
-        Union[
-            ICub3LeftIndexFinger,
-            ICub3LeftMiddleFinger,
-            ICub3LeftRingFinger,
-            ICub3LeftLittleFinger,
-        ],
+        ICub3LeftIndexFinger,
+        ICub3LeftMiddleFinger,
+        ICub3LeftRingFinger,
+        ICub3LeftLittleFinger,
     ],
 ):
 
@@ -343,12 +341,10 @@ class ICub3RightHand(
     EndEffector,
     HasFingers[
         ICub3RightThumb,
-        Union[
-            ICub3RightIndexFinger,
-            ICub3RightMiddleFinger,
-            ICub3RightRingFinger,
-            ICub3RightLittleFinger,
-        ],
+        ICub3RightIndexFinger,
+        ICub3RightMiddleFinger,
+        ICub3RightRingFinger,
+        ICub3RightLittleFinger,
     ],
 ):
 

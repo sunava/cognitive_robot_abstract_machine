@@ -6,7 +6,14 @@ from dataclasses import dataclass, field, fields
 from functools import cached_property
 from typing import Union
 
-from typing_extensions import TYPE_CHECKING, Type, TypeVar, Generic
+from typing_extensions import (
+    TYPE_CHECKING,
+    Type,
+    TypeVar,
+    Generic,
+    TypeVarTuple,
+    Unpack,
+)
 
 from krrood.class_diagrams.class_diagram import WrappedClass
 from krrood.patterns.subclass_safe_generic import (
@@ -23,7 +30,6 @@ logger = logging.getLogger("semantic_digital_twin")
 
 TGenericFingerOtherThanThumb = TypeVar("TGenericFingerOtherThanThumb")
 TGenericThumb = TypeVar("TGenericThumb")
-TGenericSensor = TypeVar("TGenericSensor")
 TGenericCamera = TypeVar("TGenericCamera")
 TGenericEndEffector = TypeVar("TGenericEndEffector")
 TGenericArm = TypeVar("TGenericArm")
@@ -35,16 +41,20 @@ TGenericRightArm = TypeVar("TGenericRightArm")
 TGenericLeftFinger = TypeVar("TGenericLeftFinger")
 TGenericRightFinger = TypeVar("TGenericRightFinger")
 
+TGenericFingers = TypeVarTuple("TGenericFingers")
+TGenericArms = TypeVarTuple("TGenericArms")
+TGenericSensors = TypeVarTuple("TGenericSensors")
+
 
 @dataclass(eq=False)
 class HasFingers(
-    Generic[TGenericThumb, TGenericFingerOtherThanThumb], AbstractSubClassSafeGeneric, ABC
+    Generic[TGenericThumb, Unpack[TGenericFingers]], AbstractSubClassSafeGeneric, ABC
 ):
     """
     Mixin class for robots or robot parts that have fingers as their direct children.
     """
 
-    fingers: list[Union[TGenericThumb, TGenericFingerOtherThanThumb]] = field(
+    fingers: list[Union[TGenericThumb, Unpack[TGenericFingers]]] = field(
         default_factory=list, kw_only=True
     )
     """
@@ -86,14 +96,16 @@ class HasTwoFingers(
 
 
 @dataclass(eq=False)
-class HasSensors(Generic[TGenericSensor], AbstractSubClassSafeGeneric, ABC):
+class HasSensors(Generic[Unpack[TGenericSensors]], AbstractSubClassSafeGeneric, ABC):
     """
     Mixin class for robots or robot parts that have sensors
     """
 
-    sensors: list[TGenericSensor] = field(default_factory=list, kw_only=True)
+    sensors: list[Union[Unpack[TGenericSensors]]] = field(
+        default_factory=list, kw_only=True
+    )
     """
-    The list of sensors associated with the robot part.GenericFinger
+    The list of sensors associated with the robot part.
     """
 
 
@@ -110,12 +122,12 @@ class HasEndEffector(Generic[TGenericEndEffector], AbstractSubClassSafeGeneric, 
 
 
 @dataclass(eq=False)
-class HasArms(Generic[TGenericArm], AbstractSubClassSafeGeneric, ABC):
+class HasArms(Generic[Unpack[TGenericArms]], AbstractSubClassSafeGeneric, ABC):
     """
     Mixin class for robots or robot parts that have arms as their direct children.
     """
 
-    arms: list[TGenericArm] = field(default_factory=list, kw_only=True)
+    arms: list[Union[Unpack[TGenericArms]]] = field(default_factory=list, kw_only=True)
     """
     The list of arms attached to the robot part.
     """
@@ -136,7 +148,7 @@ class HasOneArm(HasArms[TGenericArm], ABC):
 @dataclass(eq=False)
 class HasLeftRightArm(
     Generic[TGenericLeftArm, TGenericRightArm],
-    HasArms[Union[TGenericLeftArm, TGenericRightArm]],
+    HasArms[TGenericLeftArm, TGenericRightArm],
     AbstractSubClassSafeGeneric,
     ABC,
 ):
