@@ -20,7 +20,11 @@ def random_location_list(world : World, number_locations : int):
             surface = fur.as_bounding_box_collection_in_frame(world.root).shapes[0]
             # coffee table sometimes calculates z wrong
             if (fur.name != "coffee_table") and (surface.max_z < 0.06):
-                surface.max_z = 0.4
+                surface.max_z = 0.392059
+                surface.min_x = 16.063282
+                surface.max_x = 17.249897
+                surface.min_y = 2.433799505
+                surface.max_y = 3.11273169
             surfaces.append(surface) # coordinates of the bounding box
 
     while number_locations > 0:
