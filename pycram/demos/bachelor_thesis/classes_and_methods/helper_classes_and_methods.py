@@ -22,6 +22,7 @@ from semantic_digital_twin.world_description.world_entity import Body
 class Environment(Enum):
     SuturoApartmentLab = 1
     Pr2ApartmentLab = 2
+    TestBed = 3
 
 
 #-- METHODS ------------------------------------------------------------------------------------------------------------
