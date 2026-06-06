@@ -241,7 +241,7 @@ def recognized_objects_barchart(dictionary: dict[str, Any], iterations: int):
 
 def calculate_obj_percentage(key: str, dictionary: dict[str, Any]):
     if dictionary[key][1] == 0:
-        return 0
+        return 1 # if not in world -> technically 100% recognized
     else:
         res = dictionary[key][0]/dictionary[key][1]
         return res
