@@ -18,15 +18,18 @@ The module is primarily used for:
 * Visualization of stored data
 """
 
+from robokudo.descriptors.camera_configs.config_mongodb_playback import (
+    MongoCameraConfig,
+)
+from robokudo.world import world_instance
 import json
 
 import open3d as o3d
-from typing_extensions import Any
 from robokudo.annotator_parameters import AnnotatorPredefinedParameters
 from robokudo.cas import CAS, CASViews
 from robokudo.io.camera_interface import CameraInterface
 from robokudo.io.storage import Storage
-from robokudo import world
+import robokudo.world as world
 from semantic_digital_twin.adapters.ros.messages import WorldModelSnapshot
 
 
@@ -38,7 +41,7 @@ class StorageReaderInterface(CameraInterface):
     restoration of the Common Analysis Structure (CAS) views.
     """
 
-    def __init__(self, camera_config: Any) -> None:
+    def __init__(self, camera_config: MongoCameraConfig) -> None:
         """Initialize the storage reader interface.
 
         Sets up MongoDB connection and creates a list reader for the specified
@@ -85,10 +88,12 @@ class StorageReaderInterface(CameraInterface):
             return
 
         # Restore the world first to get back references to KinematicStructureEntities
-        tracker = world.init_world_with_entity_tracker()
+        rk_world = world_instance()
+        tracker = world.init_world_entity_tracker_from_world(rk_world)
         kwargs = tracker.create_kwargs()
+        world_snapshot = json.loads(cas_frame["world"])
         WorldModelSnapshot.apply_to_json_snapshot_to_world(
-            world.world_instance(), json.loads(cas_frame["world"]), **kwargs
+            rk_world, world_snapshot, **kwargs
         )
 
         # Restore the views from the individual documents
