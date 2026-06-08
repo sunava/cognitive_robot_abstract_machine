@@ -393,6 +393,10 @@ class WorldSynchronizer(Synchronizer, ModelChangeCallback, StateChangeCallback):
     missed_messages: List[WorldUpdate] = field(
         default_factory=list, init=False, repr=False
     )
+    """
+    Buffer for messages received while the synchronizer is paused. 
+    These messages can be applied later by calling ``apply_missed_messages()``.
+    """
 
     def __post_init__(self):
         Synchronizer.__post_init__(self)
@@ -447,7 +451,9 @@ class WorldSynchronizer(Synchronizer, ModelChangeCallback, StateChangeCallback):
         if previous_positions.shape != current_positions.shape:
             return {
                 identifier: float(value)
-                for identifier, value in zip(degree_of_freedom_identifiers, current_positions)
+                for identifier, value in zip(
+                    degree_of_freedom_identifiers, current_positions
+                )
             }
 
         changed_mask = ~np.isclose(
@@ -483,7 +489,9 @@ class WorldSynchronizer(Synchronizer, ModelChangeCallback, StateChangeCallback):
     def _apply_state(self, state_update_message: WorldStateUpdate):
         identifier_index_state_triples = [
             (identifier, self._world.state._index.get(identifier), state_value)
-            for identifier, state_value in zip(state_update_message.ids, state_update_message.states)
+            for identifier, state_value in zip(
+                state_update_message.ids, state_update_message.states
+            )
         ]
         unknown_identifiers = [
             identifier
@@ -495,7 +503,9 @@ class WorldSynchronizer(Synchronizer, ModelChangeCallback, StateChangeCallback):
                 unknown_identifiers=unknown_identifiers
             )
         indices = [index for _, index, _ in identifier_index_state_triples]
-        state_values = [state_value for _, _, state_value in identifier_index_state_triples]
+        state_values = [
+            state_value for _, _, state_value in identifier_index_state_triples
+        ]
         with self._world._world_lock:
             self._world.state._data[0, indices] = np.asarray(state_values, dtype=float)
             self.update_previous_world_state()
@@ -530,7 +540,9 @@ class WorldSynchronizer(Synchronizer, ModelChangeCallback, StateChangeCallback):
     def stop(self):
         if self.synchronize_model:
             try:
-                self._world.get_world_model_manager().model_change_callbacks.remove(self)
+                self._world.get_world_model_manager().model_change_callbacks.remove(
+                    self
+                )
             except ValueError:
                 pass
         if self.synchronize_state:
