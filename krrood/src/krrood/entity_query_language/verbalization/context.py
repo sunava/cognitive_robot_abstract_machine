@@ -16,9 +16,10 @@ import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
+from typing_extensions import Any, Dict, List, Optional
 
-import inflect
+from krrood.entity_query_language.verbalization._inflect import _engine as _inflect_engine
 
 from krrood.entity_query_language.core.variable import Variable, Literal
 from krrood.entity_query_language.query.query import Entity, Query
@@ -37,7 +38,6 @@ from krrood.entity_query_language.verbalization.vocabulary.english import Articl
 if TYPE_CHECKING:
     from krrood.entity_query_language.core.base_expressions import SymbolicExpression
 
-_engine = inflect.engine()
 
 
 class ArticleSelection(Enum):
@@ -56,7 +56,7 @@ class ArticleSelection(Enum):
 
 def _article(type_name: str) -> str:
     """Return ``"a"`` or ``"an"`` for *type_name* using the inflect engine."""
-    return _engine.a(type_name).split()[0]
+    return _inflect_engine.a(type_name).split()[0]
 
 
 def _aggregation_source_ids(expression) -> set:
@@ -72,7 +72,7 @@ def _aggregation_source_ids(expression) -> set:
     than *"among BankTransactions"*.
 
     :param expression: Root expression to scan.
-    :returns: Set of variable ids to exclude from numbering.
+    :return: Set of variable ids to exclude from numbering.
     :rtype: set
     """
     ids: set = set()
@@ -192,7 +192,7 @@ class VerbalizationContext:
 
         :param expression: Root EQL expression or
             :class:`~krrood.entity_query_language.query.query.Query` to scan.
-        :returns: A fresh :class:`VerbalizationContext` with :attr:`disambiguation_map` populated.
+        :return: A fresh :class:`VerbalizationContext` with :attr:`disambiguation_map` populated.
         :rtype: VerbalizationContext
         """
         return cls(disambiguation_map=_build_disambiguation_map(expression))
@@ -214,7 +214,7 @@ class VerbalizationContext:
         Returns an empty list when no frame is open (defensive behaviour; should
         not occur in well-formed verbalization calls).
 
-        :returns: Deferred expressions from the closed frame, in deferral order.
+        :return: Deferred expressions from the closed frame, in deferral order.
         :rtype: list
         """
         return self.constraint_exprs.pop() if self.constraint_exprs else []
@@ -268,6 +268,25 @@ class VerbalizationContext:
         finally:
             self.query_depth -= 1
 
+    @contextlib.contextmanager
+    def compact_predicates_scope(self):
+        """Context manager that sets :attr:`compact_predicates` to ``True`` for the duration of a ``with`` block.
+
+        Restores the previous value on exit even when an exception is raised, preventing
+        the flag from being stuck ``True`` and corrupting subsequent verbalization passes.
+
+        Usage::
+
+            with context.compact_predicates_scope():
+                ...  # compact_predicates is True here
+            # compact_predicates is restored on exit
+        """
+        self.compact_predicates = True
+        try:
+            yield
+        finally:
+            self.compact_predicates = False
+
     @property
     def current_subject_id(self):
         """``_id_`` of the current coreference subject, or ``None`` when there is none."""
@@ -282,7 +301,7 @@ class VerbalizationContext:
         InstantiatedVariable rendering path performs on re-encountering a variable.
 
         :param expression: Any expression carrying an ``_id_``.
-        :returns: The definite-reference phrase, or ``None`` when *expression* is unseen.
+        :return: The definite-reference phrase, or ``None`` when *expression* is unseen.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment or None
         """
         variable_id = getattr(expression, "_id_", None)
@@ -309,7 +328,7 @@ class VerbalizationContext:
         * *root* has already been mentioned (is in :attr:`seen`).
 
         :param root: Candidate chain-root expression.
-        :returns: The *"its"* fragment, or ``None`` when pronominalisation is unsafe.
+        :return: The *"its"* fragment, or ``None`` when pronominalisation is unsafe.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment or None
         """
         if not isinstance(root, Variable):
@@ -334,7 +353,7 @@ class VerbalizationContext:
         * :attr:`~ArticleSelection.INDEFINITE` — first mention → ``"a"`` / ``"an"``.
 
         :param var: A :class:`~krrood.entity_query_language.core.variable.Variable` instance.
-        :returns: Tuple of ``(ArticleSelection, display_label)``.
+        :return: Tuple of ``(ArticleSelection, display_label)``.
         :rtype: tuple
         """
         type_name = (
@@ -367,7 +386,7 @@ class VerbalizationContext:
 
         :param value: Python value from a
             :class:`~krrood.entity_query_language.core.variable.Literal` node.
-        :returns: Human-readable string representation.
+        :return: Human-readable string representation.
         :rtype: str
         """
         if isinstance(value, type):

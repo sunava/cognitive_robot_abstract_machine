@@ -19,7 +19,7 @@ and the nested-entity renderer
 
 from __future__ import annotations
 
-from typing import Optional
+from typing_extensions import Optional
 
 from krrood.entity_query_language.operators.aggregators import Aggregator
 from krrood.entity_query_language.query.quantifiers import ResultQuantifier
@@ -36,7 +36,7 @@ def selected_aggregator(entity) -> Optional[Aggregator]:
     :attr:`~krrood.entity_query_language.query.query.Entity.selected_aggregator`.
 
     :param entity: Candidate expression.
-    :returns: The selected aggregator, or ``None``.
+    :return: The selected aggregator, or ``None``.
     :rtype: ~krrood.entity_query_language.operators.aggregators.Aggregator or None
     """
     return entity.selected_aggregator if isinstance(entity, Entity) else None
@@ -109,7 +109,7 @@ def aggregation_leaf_attribute(entity):
     not an attribute chain (e.g. ``max(x)`` over a bare variable).
 
     :param entity: Candidate expression.
-    :returns: The leaf attribute node, or ``None``.
+    :return: The leaf attribute node, or ``None``.
     """
     aggregator = selected_aggregator(entity)
     return aggregator._leaf_attribute_ if aggregator is not None else None
@@ -122,7 +122,7 @@ def aggregation_source_root(entity) -> Optional[Variable]:
     variable behind ``max(t.amount_details.amount)``), or ``None``.
 
     :param entity: Candidate expression.
-    :returns: The chain-root variable of the aggregator's child, or ``None``.
+    :return: The chain-root variable of the aggregator's child, or ``None``.
     :rtype: ~krrood.entity_query_language.core.variable.Variable or None
     """
     aggregator = selected_aggregator(entity)

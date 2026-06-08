@@ -15,7 +15,8 @@ Joining utilities (:func:`join_with`, :func:`oxford_and`) produce
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
+from typing_extensions import Optional
 
 from krrood.entity_query_language.verbalization.fragments.roles import SemanticRole
 from krrood.entity_query_language.verbalization.fragments.source_ref import SourceRef
@@ -78,7 +79,7 @@ class RoleFragment(VerbFragment):
         :param label: Display text (type name or disambiguated label).
         :type label: str
         :param expression: Expression whose ``_type_`` attribute supplies the source reference.
-        :returns: :class:`RoleFragment` with :attr:`~SemanticRole.VARIABLE` role.
+        :return: :class:`RoleFragment` with :attr:`~SemanticRole.VARIABLE` role.
         :rtype: RoleFragment
         """
         return cls(
@@ -97,7 +98,7 @@ class RoleFragment(VerbFragment):
         :type attribute_name: str
         :param plural: Whether the attribute is pluralized in the display text.
         :type plural: bool
-        :returns: :class:`RoleFragment` with :attr:`~SemanticRole.ATTRIBUTE` role.
+        :return: :class:`RoleFragment` with :attr:`~SemanticRole.ATTRIBUTE` role.
         :rtype: RoleFragment
         """
         label = attribute_name if not plural else _ensure_plural(attribute_name)
@@ -114,7 +115,7 @@ class RoleFragment(VerbFragment):
 
         :param label: Display text (e.g. ``"is"``, ``"not"``, ``"greater than"``).
         :type label: str
-        :returns: :class:`RoleFragment` with :attr:`~SemanticRole.OPERATOR` role.
+        :return: :class:`RoleFragment` with :attr:`~SemanticRole.OPERATOR` role.
         :rtype: RoleFragment
         """
         return cls(text=label, role=SemanticRole.OPERATOR)
@@ -149,6 +150,36 @@ class BlockFragment(VerbFragment):
     """Ordered list of sub-item fragments."""
 
 
+# ── Fragment flattening ────────────────────────────────────────────────────────
+
+
+def flatten_fragment_to_plain_text(fragment: VerbFragment) -> str:
+    """
+    Flatten a :class:`VerbFragment` tree to a plain string (no colour markup).
+
+    Used for internal comparisons, logging, and plain-text verbalization output.
+
+    :param fragment: Root of the fragment tree to flatten.
+    :type fragment: VerbFragment
+    :return: Plain-text representation with spaces between tokens.
+    :rtype: str
+    """
+    match fragment:
+        case WordFragment(text=t):
+            return t
+        case RoleFragment(text=t):
+            return t
+        case PhraseFragment(parts=parts, separator=separator):
+            return separator.join(flatten_fragment_to_plain_text(p) for p in parts)
+        case BlockFragment(header=header, items=items):
+            parts_text = ", ".join(flatten_fragment_to_plain_text(i) for i in items)
+            if header is None:
+                return parts_text
+            return f"{flatten_fragment_to_plain_text(header)} {parts_text}" if parts_text else flatten_fragment_to_plain_text(header)
+        case _:
+            return ""
+
+
 # ── Fragment joining utilities ─────────────────────────────────────────────────
 
 
@@ -160,7 +191,7 @@ def join_with(parts: list[VerbFragment], separator: VerbFragment) -> VerbFragmen
     :type parts: list[VerbFragment]
     :param separator: Separator fragment inserted between adjacent items.
     :type separator: VerbFragment
-    :returns: A single fragment (or the sole item when ``len(parts) == 1``).
+    :return: A single fragment (or the sole item when ``len(parts) == 1``).
     :rtype: VerbFragment
     """
     if not parts:
@@ -183,7 +214,7 @@ def oxford_and(parts: list[VerbFragment], conjunction: VerbFragment) -> VerbFrag
     :type parts: list[VerbFragment]
     :param conjunction: Conjunction fragment (e.g. *"and"*, *"or"*).
     :type conjunction: VerbFragment
-    :returns: A single fragment representing the joined sequence.
+    :return: A single fragment representing the joined sequence.
     :rtype: VerbFragment
     """
     if not parts:

@@ -28,7 +28,7 @@ from krrood.entity_query_language.verbalization.fragments.factory import phrase,
 from krrood.entity_query_language.verbalization.fragments.roles import SemanticRole
 from krrood.entity_query_language.verbalization.fragments.source_ref import SourceRef
 from krrood.entity_query_language.verbalization.rule_engine import VerbalizationRule
-from krrood.entity_query_language.verbalization.utils import inflect_engine
+from krrood.entity_query_language.verbalization._inflect import _engine as _inflect_engine
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Articles, Conjunctions, Copulas, Keywords, Prepositions,
 )
@@ -60,7 +60,7 @@ class VariableRule(VerbalizationRule):
         :param expression: Variable expression.
         :param context: Shared verbalization state (article selection + coreference).
         :param verbalizer: Parent verbalizer (unused directly).
-        :returns: Noun phrase fragment.
+        :return: Noun phrase fragment.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         article, label = context.noun_for_parts(expression)
@@ -94,7 +94,7 @@ class LiteralRule(VariableRule):
         :param expression: Literal expression.
         :param context: Shared verbalization state (for value rendering).
         :param verbalizer: Parent verbalizer (unused).
-        :returns: Literal value fragment.
+        :return: Literal value fragment.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         return role(context.type_name_of_value(expression._value_), SemanticRole.LITERAL)
@@ -123,7 +123,7 @@ class ExternallySetVariableRule(VerbalizationRule):
         :param expression: ExternallySetVariable expression.
         :param context: Shared verbalization state.
         :param verbalizer: Parent verbalizer (unused).
-        :returns: Noun phrase fragment.
+        :return: Noun phrase fragment.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         type_name = expression._type_.__name__ if getattr(expression, "_type_", None) else "variable"
@@ -152,7 +152,7 @@ class InstantiatedVariableRule(VerbalizationRule):
         :param expression: InstantiatedVariable expression.
         :param context: Shared verbalization state.
         :param verbalizer: Parent verbalizer.
-        :returns: Full natural-language binding phrase.
+        :return: Full natural-language binding phrase.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         return _verbalize_instantiated_natural(expression, context, verbalizer)
@@ -185,7 +185,7 @@ class InstantiatedVerbalizableRule(InstantiatedVariableRule):
         :param expression: InstantiatedVariable with a Verbalizable type.
         :param context: Shared verbalization state.
         :param verbalizer: Parent verbalizer for verbalizing child expressions.
-        :returns: Plain word fragment from the formatted template.
+        :return: Plain word fragment from the formatted template.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         template = expression._type_._verbalization_template_()
@@ -228,7 +228,7 @@ def _copula_and_value(
     verbalizer: EQLVerbalizer,
 ) -> tuple[VerbFragment, VerbFragment]:
     """Return (copula_frag, value_frag) choosing singular/plural based on field name."""
-    if inflect_engine.singular_noun(field_name):
+    if _inflect_engine.singular_noun(field_name):
         return Copulas.ARE.as_fragment(), verbalize_plural(child_expression, context, verbalizer.build)
     return Copulas.IS.as_fragment(), verbalizer.build(child_expression, context)
 

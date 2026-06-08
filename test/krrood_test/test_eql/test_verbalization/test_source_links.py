@@ -16,7 +16,8 @@ Coverage:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from pathlib import Path
+from typing_extensions import Optional
 from unittest.mock import patch
 
 import pytest
@@ -85,27 +86,27 @@ class _NoneResolver:
 
 
 def test_source_ref_cls_only():
-    ref = SourceRef(cls=_Sensor)
-    assert ref.cls is _Sensor
+    ref = SourceRef(owner_type=_Sensor)
+    assert ref.owner_type is _Sensor
     assert ref.attribute is None
 
 
 def test_source_ref_with_attribute():
-    ref = SourceRef(cls=_Sensor, attribute="level")
-    assert ref.cls is _Sensor
+    ref = SourceRef(owner_type=_Sensor, attribute="level")
+    assert ref.owner_type is _Sensor
     assert ref.attribute == "level"
 
 
 def test_source_ref_is_frozen():
-    ref = SourceRef(cls=_Sensor)
+    ref = SourceRef(owner_type=_Sensor)
     with pytest.raises((AttributeError, TypeError)):
-        ref.cls = int  # type: ignore[misc]
+        ref.owner_type = int  # type: ignore[misc]
 
 
 def test_source_ref_equality():
-    assert SourceRef(cls=_Sensor) == SourceRef(cls=_Sensor)
-    assert SourceRef(cls=_Sensor, attribute="level") == SourceRef(cls=_Sensor, attribute="level")
-    assert SourceRef(cls=_Sensor) != SourceRef(cls=_Sensor, attribute="level")
+    assert SourceRef(owner_type=_Sensor) == SourceRef(owner_type=_Sensor)
+    assert SourceRef(owner_type=_Sensor, attribute="level") == SourceRef(owner_type=_Sensor, attribute="level")
+    assert SourceRef(owner_type=_Sensor) != SourceRef(owner_type=_Sensor, attribute="level")
 
 
 # ── AutoAPIResolver ────────────────────────────────────────────────────────────
@@ -113,7 +114,7 @@ def test_source_ref_equality():
 
 def test_autoapi_resolver_class_url_structure():
     r = AutoAPIResolver(base_url="https://docs.example.com")
-    url = r.resolve(SourceRef(cls=_Sensor))
+    url = r.resolve(SourceRef(owner_type=_Sensor))
     assert url is not None
     assert url.startswith("https://docs.example.com/autoapi/")
     assert "#" in url
@@ -121,7 +122,7 @@ def test_autoapi_resolver_class_url_structure():
 
 def test_autoapi_resolver_class_anchor_contains_qualname():
     r = AutoAPIResolver(base_url="https://docs.example.com")
-    url = r.resolve(SourceRef(cls=_Sensor))
+    url = r.resolve(SourceRef(owner_type=_Sensor))
     assert url is not None
     anchor = url.split("#")[1]
     assert "_Sensor" in anchor
@@ -129,7 +130,7 @@ def test_autoapi_resolver_class_anchor_contains_qualname():
 
 def test_autoapi_resolver_attribute_anchor_contains_attr():
     r = AutoAPIResolver(base_url="https://docs.example.com")
-    url = r.resolve(SourceRef(cls=_Sensor, attribute="level"))
+    url = r.resolve(SourceRef(owner_type=_Sensor, attribute="level"))
     assert url is not None
     anchor = url.split("#")[1]
     assert "level" in anchor
@@ -138,13 +139,13 @@ def test_autoapi_resolver_attribute_anchor_contains_attr():
 def test_autoapi_resolver_strips_trailing_slash_from_base():
     r1 = AutoAPIResolver(base_url="https://docs.example.com/")
     r2 = AutoAPIResolver(base_url="https://docs.example.com")
-    ref = SourceRef(cls=_Sensor)
+    ref = SourceRef(owner_type=_Sensor)
     assert r1.resolve(ref) == r2.resolve(ref)
 
 
 def test_autoapi_resolver_module_path_uses_slashes():
     r = AutoAPIResolver(base_url="https://docs.example.com")
-    url = r.resolve(SourceRef(cls=_Sensor))
+    url = r.resolve(SourceRef(owner_type=_Sensor))
     assert url is not None
     path_part = url.split("/autoapi/")[1].split("/index.html")[0]
     assert "." not in path_part
@@ -155,7 +156,7 @@ def test_autoapi_resolver_no_warning_when_html_root_not_set(caplog):
     import logging
     r = AutoAPIResolver(base_url="https://docs.example.com")
     with caplog.at_level(logging.WARNING):
-        r.resolve(SourceRef(cls=_Sensor))
+        r.resolve(SourceRef(owner_type=_Sensor))
     assert not caplog.records
 
 
@@ -165,7 +166,7 @@ def test_autoapi_resolver_warns_when_local_page_missing(tmp_path):
     import krrood.entity_query_language.verbalization.rendering.source_link_resolver as _slr
     r = AutoAPIResolver(base_url="https://docs.example.com", html_root=tmp_path)
     with _patch.object(_slr._log, "warning") as mock_warn:
-        url = r.resolve(SourceRef(cls=_Sensor))
+        url = r.resolve(SourceRef(owner_type=_Sensor))
     assert url is not None, "resolve() must still return the URL"
     mock_warn.assert_called_once()
     assert "_Sensor" in str(mock_warn.call_args)
@@ -181,7 +182,7 @@ def test_autoapi_resolver_no_warning_when_page_exists(tmp_path):
     page.write_text("")
     r = AutoAPIResolver(base_url="https://docs.example.com", html_root=tmp_path)
     with _patch.object(_slr._log, "warning") as mock_warn:
-        r.resolve(SourceRef(cls=_Sensor))
+        r.resolve(SourceRef(owner_type=_Sensor))
     mock_warn.assert_not_called()
 
 
@@ -260,7 +261,7 @@ def test_autoapi_resolver_for_package_url_for_real_class():
     """URL for a real krrood class has the correct module-path structure."""
     from krrood.entity_query_language.query.query import Query
 
-    url = _krrood_resolver.resolve(SourceRef(cls=Query))
+    url = _krrood_resolver.resolve(SourceRef(owner_type=Query))
     assert url is not None
     assert "krrood/entity_query_language/query/query/index.html" in url
     assert "#krrood.entity_query_language.query.query.Query" in url
@@ -367,7 +368,7 @@ def test_role_fragment_source_ref_defaults_to_none():
 
 
 def test_role_fragment_accepts_source_ref():
-    ref = SourceRef(cls=_Sensor)
+    ref = SourceRef(owner_type=_Sensor)
     frag = RoleFragment(text="Sensor", role=SemanticRole.VARIABLE, source_ref=ref)
     assert frag.source_ref is ref
 
@@ -378,7 +379,7 @@ def test_role_fragment_accepts_source_ref():
 def test_paragraph_renderer_injects_link_when_resolver_and_ref_present():
     resolver = _ConstantResolver("http://example.com")
     r = ParagraphRenderer(HTMLFormatter(), resolver)
-    ref = SourceRef(cls=_Sensor)
+    ref = SourceRef(owner_type=_Sensor)
     frag = RoleFragment(text="Sensor", role=SemanticRole.VARIABLE, source_ref=ref)
     result = r.render(frag)
     assert 'href="http://example.com"' in result
@@ -387,7 +388,7 @@ def test_paragraph_renderer_injects_link_when_resolver_and_ref_present():
 
 def test_paragraph_renderer_no_link_when_no_resolver():
     r = ParagraphRenderer(HTMLFormatter())
-    ref = SourceRef(cls=_Sensor)
+    ref = SourceRef(owner_type=_Sensor)
     frag = RoleFragment(text="Sensor", role=SemanticRole.VARIABLE, source_ref=ref)
     result = r.render(frag)
     assert "<a " not in result
@@ -396,7 +397,7 @@ def test_paragraph_renderer_no_link_when_no_resolver():
 
 def test_paragraph_renderer_no_link_when_resolver_returns_none():
     r = ParagraphRenderer(HTMLFormatter(), _NoneResolver())
-    ref = SourceRef(cls=_Sensor)
+    ref = SourceRef(owner_type=_Sensor)
     frag = RoleFragment(text="Sensor", role=SemanticRole.VARIABLE, source_ref=ref)
     result = r.render(frag)
     assert "<a " not in result
@@ -413,7 +414,7 @@ def test_paragraph_renderer_no_link_when_no_source_ref():
 def test_hierarchical_renderer_injects_link():
     resolver = _ConstantResolver("http://example.com")
     r = HierarchicalRenderer(HTMLFormatter(), resolver)
-    ref = SourceRef(cls=_Sensor)
+    ref = SourceRef(owner_type=_Sensor)
     block = BlockFragment(
         header=RoleFragment(text="Sensor", role=SemanticRole.VARIABLE, source_ref=ref),
         items=[WordFragment("some condition")],
@@ -483,29 +484,29 @@ def test_variable_fragment_carries_source_ref_for_its_type():
     x = variable(_Sensor, [])
     frag = EQLVerbalizer().build(x)
     refs = _collect_source_refs(frag)
-    assert any(r.cls is _Sensor and r.attribute is None for r in refs)
+    assert any(r.owner_type is _Sensor and r.attribute is None for r in refs)
 
 
 def test_attribute_fragment_carries_source_ref_with_attribute_name():
     x = variable(_Sensor, [])
     frag = EQLVerbalizer().build(x.level > 5)
     refs = _collect_source_refs(frag)
-    assert any(r.cls is _Sensor and r.attribute == "level" for r in refs)
+    assert any(r.owner_type is _Sensor and r.attribute == "level" for r in refs)
 
 
 def test_bool_attribute_chain_carries_source_ref():
     x = variable(_Sensor, [])
     frag = EQLVerbalizer().build(x.active)
     refs = _collect_source_refs(frag)
-    assert any(r.cls is _Sensor and r.attribute == "active" for r in refs)
+    assert any(r.owner_type is _Sensor and r.attribute == "active" for r in refs)
 
 
 def test_comparator_fragment_has_both_class_and_attr_refs():
     x = variable(_Sensor, [])
     frag = EQLVerbalizer().build(x.level > 0)
     refs = _collect_source_refs(frag)
-    class_refs = [r for r in refs if r.cls is _Sensor and r.attribute is None]
-    attr_refs = [r for r in refs if r.cls is _Sensor and r.attribute == "level"]
+    class_refs = [r for r in refs if r.owner_type is _Sensor and r.attribute is None]
+    attr_refs = [r for r in refs if r.owner_type is _Sensor and r.attribute == "level"]
     assert class_refs, "Expected a SourceRef for the _Sensor class"
     assert attr_refs, "Expected a SourceRef for _Sensor.level"
 
@@ -534,7 +535,6 @@ def test_display_writes_full_html_page_to_temp_file():
     """The temp file written by display() is a complete HTML document."""
     from unittest.mock import patch as _patch
     import krrood.entity_query_language.verbalization.pipeline as pipeline_mod
-    import os
 
     x = variable(_Sensor, [])
     pipeline = VerbalizationPipeline.html()
@@ -548,12 +548,12 @@ def test_display_writes_full_html_page_to_temp_file():
             pipeline.display(an(entity(x)))
 
     assert captured_path, "webbrowser.open was not called"
-    path = captured_path[0]
-    assert os.path.exists(path)
-    content = open(path, encoding="utf-8").read()
+    path = Path(captured_path[0])
+    assert path.exists()
+    content = path.read_text(encoding="utf-8")
     assert "<!DOCTYPE html>" in content
     assert "_Sensor" in content
-    os.unlink(path)
+    path.unlink()
 
 
 def test_display_in_jupyter_calls_ipython_display():
@@ -600,7 +600,6 @@ def test_display_html_page_has_dark_background_style():
     """The browser-fallback page includes the dark-background stylesheet."""
     from unittest.mock import patch as _patch
     import krrood.entity_query_language.verbalization.pipeline as pipeline_mod
-    import os
 
     x = variable(_Sensor, [])
     pipeline = VerbalizationPipeline.html()
@@ -613,6 +612,6 @@ def test_display_html_page_has_dark_background_style():
         with _patch("webbrowser.open", side_effect=fake_open):
             pipeline.display(an(entity(x)))
 
-    content = open(captured_path[0], encoding="utf-8").read()
+    content = Path(captured_path[0]).read_text(encoding="utf-8")
     assert "background" in content
-    os.unlink(captured_path[0])
+    Path(captured_path[0]).unlink()

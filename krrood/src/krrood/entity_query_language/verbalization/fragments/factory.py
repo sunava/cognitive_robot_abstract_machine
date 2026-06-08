@@ -1,16 +1,14 @@
 """
 Tiny fragment constructors shared across verbalization rules.
 
-These replace the per-file ``_word`` / ``_phrase`` / ``_role`` one-liners that were
-previously copy-pasted into every rule module.  Prefer the
-:class:`~krrood.entity_query_language.verbalization.vocabulary.english` constants
-(``Keywords.FIND.as_fragment()`` etc.) for fixed words; use these only for dynamic
-text and ad-hoc composition.
+Prefers the :class:`~krrood.entity_query_language.verbalization.vocabulary.english`
+constants (``Keywords.FIND.as_fragment()`` etc.) for fixed words; use these only
+for dynamic text and ad-hoc composition.
 """
 
 from __future__ import annotations
 
-from typing import Optional
+from typing_extensions import Optional
 
 from krrood.entity_query_language.verbalization.fragments.base import (
     PhraseFragment,

@@ -37,12 +37,27 @@ class ComparatorRule(VerbalizationRule):
 
     @classmethod
     def applies(cls, expression, context: VerbalizationContext) -> bool:
-        """Return ``True`` for Comparator expressions."""
+        """
+        Return ``True`` for :class:`~krrood.entity_query_language.operators.comparator.Comparator` expressions.
+
+        :param expression: Expression to check.
+        :param context: Verbalization context (unused).
+        :return: ``True`` when *expression* is a :class:`Comparator`.
+        :rtype: bool
+        """
         return isinstance(expression, Comparator)
 
     @classmethod
     def transform(
         cls, expression: Comparator, context: VerbalizationContext, verbalizer: EQLVerbalizer
     ) -> VerbFragment:
-        """Build *"<left> <operator> <right>"*."""
+        """
+        Build *"<left> <operator> <right>"* via :func:`~krrood.entity_query_language.verbalization.operator_phrase.comparator_phrase`.
+
+        :param expression: Comparator expression to verbalize.
+        :param context: Shared verbalization state.
+        :param verbalizer: Parent verbalizer for recursive calls.
+        :return: Fragment tree for the comparator phrase.
+        :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
+        """
         return comparator_phrase(expression, context, verbalizer)

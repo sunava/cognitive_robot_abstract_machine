@@ -16,7 +16,8 @@ module only renders the analysed structure.
 from __future__ import annotations
 
 import operator
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
+from typing_extensions import Optional
 
 from krrood.entity_query_language.core.mapped_variable import Attribute, MappedVariable
 from krrood.entity_query_language.core.variable import Variable
@@ -41,7 +42,8 @@ from krrood.entity_query_language.verbalization.rule_analysis import (
     RuleStructure,
 )
 from krrood.entity_query_language.verbalization.rules.query import TopLevelEntityRule
-from krrood.entity_query_language.verbalization.utils import _ensure_plural, inflect_engine
+from krrood.entity_query_language.verbalization._inflect import _engine as _inflect_engine
+from krrood.entity_query_language.verbalization.utils import _ensure_plural
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Articles,
     Copulas,
@@ -266,7 +268,7 @@ def _verbalize_group_key_value_(
         if getattr(current, "_type_", None)
         else FallbackNouns.ENTITY.text
     )
-    root_plural = inflect_engine.plural(root_type)
+    root_plural = _inflect_engine.plural(root_type)
     context.seen[current._id_] = root_type
 
     parts = build_path_parts(chain)

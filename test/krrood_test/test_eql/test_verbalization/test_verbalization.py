@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import datetime
 from dataclasses import dataclass
-from typing import List, Any
+from typing import Any
+from typing_extensions import List
 
 import pytest
 
@@ -1724,19 +1725,18 @@ def test_pr_example():
 
 
 def test_verbalize_expression_no_renderer_backward_compatible():
-    """Calling verbalize_expression with no renderer arg matches current plain output."""
+    """Calling verbalize_expression matches pipeline plain output."""
     r = variable(_Robot, [])
     q = an(entity(r).where(r.battery > 50))
-    assert verbalize_expression(q) == verbalize_expression(
-        q, renderer=ParagraphRenderer(PlainFormatter())
-    )
+    plain = VerbalizationPipeline.plain().verbalize(q)
+    assert verbalize_expression(q) == plain
 
 
 def test_verbalize_expression_explicit_plain_paragraph():
-    """Explicit plain formatter + paragraph renderer produces same output as default."""
+    """Explicit pipeline verbalize produces same output as verbalize_expression."""
     r = variable(_Robot, [])
     q = an(entity(r).where(r.battery > 50))
-    result = verbalize_expression(q, renderer=ParagraphRenderer(PlainFormatter()))
+    result = VerbalizationPipeline.plain().verbalize(q)
     assert "Find" in result
     assert "Robot" in result
     assert "\033" not in result
@@ -1747,7 +1747,7 @@ def test_verbalize_expression_ansi_paragraph():
     """ANSI formatter + paragraph renderer produces escape codes, no added newlines."""
     r = variable(_Robot, [])
     q = an(entity(r).where(r.battery > 50))
-    result = verbalize_expression(q, renderer=ParagraphRenderer(ANSIFormatter()))
+    result = VerbalizationPipeline(ParagraphRenderer(ANSIFormatter())).verbalize(q)
     assert "\033[" in result
     assert "Robot" in result
 
@@ -1756,7 +1756,7 @@ def test_verbalize_expression_ansi_hierarchical():
     """ANSI formatter + hierarchical renderer produces escape codes and newlines."""
     r = variable(_Robot, [])
     q = an(entity(r).where(or_(r.battery > 50, r.battery < 10)))
-    result = verbalize_expression(q, renderer=HierarchicalRenderer(ANSIFormatter()))
+    result = VerbalizationPipeline(HierarchicalRenderer(ANSIFormatter())).verbalize(q)
     assert "\033[" in result
     assert "\n" in result
 
@@ -1765,7 +1765,7 @@ def test_verbalize_expression_html_paragraph():
     """HTML formatter + paragraph renderer produces spans and the dark wrapper div."""
     r = variable(_Robot, [])
     q = an(entity(r).where(r.battery > 50))
-    result = verbalize_expression(q, renderer=ParagraphRenderer(HTMLFormatter()))
+    result = VerbalizationPipeline(ParagraphRenderer(HTMLFormatter())).verbalize(q)
     assert "<span" in result
     # HTML pipeline wraps output in a dark <div> for Jupyter rendering.
     assert "<div" in result
@@ -1775,7 +1775,7 @@ def test_verbalize_expression_html_hierarchical():
     """HTML formatter + hierarchical renderer produces spans and br tags."""
     r = variable(_Robot, [])
     q = an(entity(r).where(or_(r.battery > 50, r.battery < 10)))
-    result = verbalize_expression(q, renderer=HierarchicalRenderer(HTMLFormatter()))
+    result = VerbalizationPipeline(HierarchicalRenderer(HTMLFormatter())).verbalize(q)
     assert "<span" in result
     assert "<br>" in result
 
@@ -1795,14 +1795,14 @@ def test_verbalize_expression_all_combos_produce_non_empty(renderer_factory):
     """Every formatter × renderer combination produces a non-empty string."""
     r = variable(_Robot, [])
     q = an(entity(r).where(r.battery > 50))
-    result = verbalize_expression(q, renderer=renderer_factory())
+    result = VerbalizationPipeline(renderer_factory()).verbalize(q)
     assert isinstance(result, str)
     assert len(result) > 0
     assert "Robot" in result
 
 
 def test_verbalize_expression_equivalence_to_pipeline():
-    """verbalize_expression with a renderer produces the same output as VerbalizationPipeline."""
+    """Every renderer in VerbalizationPipeline produces a non-empty string."""
     r = variable(_Robot, [])
     q = an(entity(r).where(r.battery > 50))
 
@@ -1814,12 +1814,12 @@ def test_verbalize_expression_equivalence_to_pipeline():
         HierarchicalRenderer(ANSIFormatter()),
         HierarchicalRenderer(HTMLFormatter()),
     ]:
-        via_func = verbalize_expression(q, renderer=renderer)
-        via_pipeline = VerbalizationPipeline(renderer).verbalize(q)
-        assert via_func == via_pipeline, (
-            f"Mismatch for {type(renderer).__name__} / "
+        result = VerbalizationPipeline(renderer).verbalize(q)
+        assert isinstance(result, str) and len(result) > 0, (
+            f"Empty result for {type(renderer).__name__} / "
             f"{type(renderer._formatter).__name__}"
         )
+        assert "Robot" in result
 
 
 def test_verbalize_expression_html_hierarchical_handles_constrained_aggregation(
@@ -1834,9 +1834,7 @@ def test_verbalize_expression_html_hierarchical_handles_constrained_aggregation(
         .grouped_by(employee.department)
         .having(avg_salary > 30000)
     )
-    result = verbalize_expression(
-        query, renderer=HierarchicalRenderer(HTMLFormatter())
-    )
+    result = VerbalizationPipeline(HierarchicalRenderer(HTMLFormatter())).verbalize(query)
     assert "<span" in result
     assert "<br>" in result
     assert "Employee" in result

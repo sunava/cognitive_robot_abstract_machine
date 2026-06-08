@@ -9,18 +9,18 @@ subclass that renders ``CountAll`` directly as *"count of all"*.
 
 from __future__ import annotations
 
-from typing import Dict, TYPE_CHECKING
-
-from typing_extensions import Type
+from typing import TYPE_CHECKING
+from typing_extensions import Dict, Type
 
 from krrood.entity_query_language.operators.aggregators import (
     Aggregator, Count, CountAll, Sum, Average, Max, Min, Mode, MultiMode,
 )
 from krrood.entity_query_language.verbalization.chain_utils import verbalize_plural
-from krrood.entity_query_language.verbalization.fragments.base import PhraseFragment, VerbFragment
+from krrood.entity_query_language.verbalization.fragments.base import (
+    PhraseFragment, VerbFragment, flatten_fragment_to_plain_text,
+)
 from krrood.entity_query_language.verbalization.fragments.factory import phrase
 from krrood.entity_query_language.verbalization.rule_engine import VerbalizationRule
-from krrood.entity_query_language.verbalization.utils import _str
 from krrood.entity_query_language.verbalization.vocabulary.english import Aggregations, Articles, Prepositions
 from krrood.entity_query_language.verbalization.vocabulary.words import ChildForm
 
@@ -73,7 +73,7 @@ class AggregatorRule(VerbalizationRule):
         :param expression: Aggregator expression.
         :param context: Shared verbalization state.
         :param verbalizer: Parent verbalizer for recursive calls.
-        :returns: Aggregation phrase fragment.
+        :return: Aggregation phrase fragment.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         aggregation_kind = _AGGREGATION_KIND[type(expression)]
@@ -88,7 +88,7 @@ class AggregatorRule(VerbalizationRule):
             result = phrase(Articles.THE.as_fragment(), aggregation_fragment, child_fragment)
 
         if expression._id_ not in context.seen:
-            context.seen[expression._id_] = _str(phrase(aggregation_fragment, child_fragment))
+            context.seen[expression._id_] = flatten_fragment_to_plain_text(phrase(aggregation_fragment, child_fragment))
         return result
 
 
@@ -113,7 +113,7 @@ class CountAllRule(AggregatorRule):
         :param expression: CountAll expression.
         :param context: Shared verbalization state (unused).
         :param verbalizer: Parent verbalizer (unused).
-        :returns: ``Aggregations.COUNT_ALL.as_fragment()``.
+        :return: ``Aggregations.COUNT_ALL.as_fragment()``.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         return Aggregations.COUNT_ALL.as_fragment()

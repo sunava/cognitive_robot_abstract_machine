@@ -46,7 +46,8 @@ from krrood.entity_query_language.verbalization.rendering.renderer import (
     HierarchicalRenderer,
     ParagraphRenderer,
 )
-from krrood.entity_query_language.verbalization.verbalizer import EQLVerbalizer, _str
+from krrood.entity_query_language.verbalization.fragments.base import flatten_fragment_to_plain_text
+from krrood.entity_query_language.verbalization.verbalizer import EQLVerbalizer
 from ...dataset.semantic_world_like_classes import (
     Drawer,
     FixedConnection,
@@ -592,7 +593,7 @@ def _find_block_with_keyword(
     """Return the first BlockFragment whose header text contains keyword."""
     if not isinstance(fragment, BlockFragment):
         return None
-    if fragment.header is not None and keyword in _str(fragment.header):
+    if fragment.header is not None and keyword in flatten_fragment_to_plain_text(fragment.header):
         return fragment
     for item in fragment.items:
         found = _find_block_with_keyword(item, keyword)
@@ -661,7 +662,7 @@ def test_rule_then_consequent_is_block_fragment(doors_and_drawers_world):
     assert isinstance(
         consequent.header, PhraseFragment
     ), "consequent intro must be a PhraseFragment"
-    assert "Drawer" in _str(consequent.header)
+    assert "Drawer" in flatten_fragment_to_plain_text(consequent.header)
     assert consequent.items, "consequent block must have binding items"
 
 

@@ -1,11 +1,19 @@
+"""
+Verbalization rule engine — abstract base and auto-registration framework.
+
+:class:`VerbalizationRule` subclasses define :meth:`~VerbalizationRule.applies`
+and :meth:`~VerbalizationRule.transform` to handle specific EQL expression types.
+Registration is automatic via :meth:`~object.__init_subclass__` — importing a rule
+module is sufficient to register it.
+"""
+
 from __future__ import annotations
 
 import inspect
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import List, TYPE_CHECKING
-
-from typing_extensions import Type
+from typing import TYPE_CHECKING
+from typing_extensions import List, Type
 
 from krrood.entity_query_language.verbalization.fragments.base import WordFragment
 
@@ -56,7 +64,7 @@ class VerbalizationRule(ABC):
         :type expression: ~krrood.entity_query_language.core.base_expressions.SymbolicExpression
         :param context: Current verbalization state.
         :type context: ~krrood.entity_query_language.verbalization.context.VerbalizationContext
-        :returns: ``True`` when this rule should be applied to *expression*.
+        :return: ``True`` when this rule should be applied to *expression*.
         :rtype: bool
         """
 
@@ -78,7 +86,7 @@ class VerbalizationRule(ABC):
         :type context: ~krrood.entity_query_language.verbalization.context.VerbalizationContext
         :param verbalizer: The top-level verbalizer used for recursive sub-expression verbalization.
         :type verbalizer: ~krrood.entity_query_language.verbalization.verbalizer.EQLVerbalizer
-        :returns: Fragment tree representing *expression* in natural language.
+        :return: Fragment tree representing *expression* in natural language.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
 
@@ -133,7 +141,7 @@ class RuleEngine:
         :type context: ~krrood.entity_query_language.verbalization.context.VerbalizationContext
         :param verbalizer: Top-level verbalizer for recursive calls.
         :type verbalizer: ~krrood.entity_query_language.verbalization.verbalizer.EQLVerbalizer
-        :returns: Fragment tree for *expression*.
+        :return: Fragment tree for *expression*.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         variable_id = getattr(expression, "_id_", None)

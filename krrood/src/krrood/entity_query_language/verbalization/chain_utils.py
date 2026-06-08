@@ -11,7 +11,8 @@ lower in the dependency graph.
 from __future__ import annotations
 
 import datetime as _dt
-from typing import Callable, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
+from typing_extensions import Callable, Optional
 
 from krrood.entity_query_language.core.mapped_variable import (
     Attribute,
@@ -27,7 +28,8 @@ from krrood.entity_query_language.verbalization.fragments.base import (
 )
 from krrood.entity_query_language.verbalization.fragments.roles import SemanticRole
 from krrood.entity_query_language.verbalization.fragments.source_ref import SourceRef
-from krrood.entity_query_language.verbalization.utils import _ensure_plural, inflect_engine
+from krrood.entity_query_language.verbalization._inflect import _engine as _inflect_engine
+from krrood.entity_query_language.verbalization.utils import _ensure_plural
 from krrood.entity_query_language.verbalization.vocabulary.english import Prepositions
 
 if TYPE_CHECKING:
@@ -48,7 +50,7 @@ def walk_chain(expression) -> tuple[list, object]:
 
     :param expression: Any expression; non-MappedVariable expressions return an
         empty chain with *expression* as the root.
-    :returns: Tuple ``(chain, root)`` where *chain* is the core
+    :return: Tuple ``(chain, root)`` where *chain* is the core
         :attr:`~krrood.entity_query_language.core.mapped_variable.MappedVariable._access_path_`
         (root-adjacent first, terminal last) and *root* is the chain base.
     :rtype: tuple[list, object]
@@ -68,7 +70,7 @@ def is_temporal(expression) -> bool:
     value), so it is a pure structural/type check with no verbalization state.
 
     :param expression: Any EQL expression.
-    :returns: ``True`` when the expression is datetime-typed.
+    :return: ``True`` when the expression is datetime-typed.
     :rtype: bool
     """
     if isinstance(expression, Literal):
@@ -89,7 +91,7 @@ def chain_root(expression) -> object:
     Faster than :func:`walk_chain` when only the root is needed.
 
     :param expression: Any expression.
-    :returns: The deepest non-MappedVariable node in the chain, or *expression* itself
+    :return: The deepest non-MappedVariable node in the chain, or *expression* itself
         when it is not a MappedVariable.
     :rtype: object
     """
@@ -112,7 +114,7 @@ def build_path_parts(chain: list) -> list[tuple[str, Optional[SourceRef]]]:
 
     :param chain: Outermost-first chain list from :func:`walk_chain`.
     :type chain: list
-    :returns: Ordered list of ``(display_name, SourceRef | None)`` pairs,
+    :return: Ordered list of ``(display_name, SourceRef | None)`` pairs,
         outermost attribute first.
     :rtype: list[tuple[str, SourceRef | None]]
     """
@@ -159,7 +161,7 @@ def verbalize_plural(expression, context: VerbalizationContext, build_fn: Callab
     :type context: ~krrood.entity_query_language.verbalization.context.VerbalizationContext
     :param build_fn: The top-level dispatcher (``EQLVerbalizer.build``) used as fallback.
     :type build_fn: Callable
-    :returns: Plural fragment for *expression*.
+    :return: Plural fragment for *expression*.
     :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
     """
     if isinstance(expression, FlatVariable):
@@ -169,7 +171,7 @@ def verbalize_plural(expression, context: VerbalizationContext, build_fn: Callab
         type_name = expression._type_.__name__
         label = context.disambiguation_map.get(expression._id_, type_name)
         context.seen[expression._id_] = label
-        plural = label if label != type_name else inflect_engine.plural(type_name)
+        plural = label if label != type_name else _inflect_engine.plural(type_name)
         return RoleFragment.for_variable(plural, expression)
 
     if isinstance(expression, Attribute):
@@ -178,7 +180,7 @@ def verbalize_plural(expression, context: VerbalizationContext, build_fn: Callab
             type_name = root._type_.__name__
             label = context.disambiguation_map.get(root._id_, type_name)
             context.seen[root._id_] = label
-            root_plural = label if label != type_name else inflect_engine.plural(type_name)
+            root_plural = label if label != type_name else _inflect_engine.plural(type_name)
             attribute_name = chain[0]._attribute_name_
             owner = chain[0]._owner_class_
             return PhraseFragment(

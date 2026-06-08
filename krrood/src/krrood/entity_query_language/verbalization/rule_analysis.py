@@ -10,9 +10,9 @@ import operator
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import List, FrozenSet, Optional, Tuple, Any
+from typing_extensions import Any, FrozenSet, List, Optional, Tuple
 
-import inflect
+from krrood.entity_query_language.verbalization._inflect import _engine as _inflect_engine
 
 from krrood.entity_query_language.core.variable import InstantiatedVariable, Variable
 from krrood.entity_query_language.operators.comparator import Comparator
@@ -21,7 +21,6 @@ from krrood.entity_query_language.query.quantifiers import ResultQuantifier
 from krrood.entity_query_language.query.query import Entity
 from krrood.entity_query_language.verbalization.chain_utils import chain_root
 
-_engine = inflect.engine()
 
 
 class AggregationStatus(Enum):
@@ -152,7 +151,7 @@ class RuleAnalyzer:
         :class:`~krrood.entity_query_language.core.variable.InstantiatedVariable`.
 
         :param entity: An :class:`~krrood.entity_query_language.query.query.Entity` expression.
-        :returns: ``True`` if this analyzer can decompose *entity* as an inference rule.
+        :return: ``True`` if this analyzer can decompose *entity* as an inference rule.
         :rtype: bool
         """
         entity.build()
@@ -175,7 +174,7 @@ class RuleAnalyzer:
         :param entity: An :class:`~krrood.entity_query_language.query.query.Entity` whose
             selected variable is an
             :class:`~krrood.entity_query_language.core.variable.InstantiatedVariable`.
-        :returns: Fully populated :class:`RuleStructure`.
+        :return: Fully populated :class:`RuleStructure`.
         :rtype: RuleStructure
         :raises AttributeError: If *entity* has not been built or is not an inference-rule query.
         """
@@ -195,7 +194,7 @@ class RuleAnalyzer:
         consequent_bindings: List[ConsequentBinding] = []
 
         for field_name, child_expression in inferred._child_vars_.items():
-            is_plural = bool(_engine.singular_noun(field_name))
+            is_plural = bool(_inflect_engine.singular_noun(field_name))
 
             if child_expression._id_ in group_key_ids:
                 binding_aggregation = AggregationStatus.GROUP_KEY

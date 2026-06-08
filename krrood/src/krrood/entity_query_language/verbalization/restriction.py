@@ -17,9 +17,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional, TYPE_CHECKING
-
-from typing_extensions import Type
+from typing import TYPE_CHECKING
+from typing_extensions import List, Optional, Type
 
 from krrood.entity_query_language.core.base_expressions import SymbolicExpression
 from krrood.entity_query_language.core.mapped_variable import Attribute, MappedVariable
@@ -241,7 +240,7 @@ def restriction_subject(expression, selected_variable, context: VerbalizationCon
     :param expression: The :class:`~krrood.entity_query_language.query.query.Entity` being verbalized.
     :param selected_variable: Its selected variable (a ``Variable``, ``Aggregator``, …).
     :param context: Shared verbalization state.
-    :returns: The subject ``Variable`` for *"whose"* folding, or ``None``.
+    :return: The subject ``Variable`` for *"whose"* folding, or ``None``.
     :rtype: ~krrood.entity_query_language.core.variable.Variable or None
     """
     for rule in RESTRICTION_SUBJECT_RULES:
@@ -271,7 +270,7 @@ class RestrictionClauseBuilder:
         :param context: Shared verbalization state. Residual conditions are rendered through the
             main engine, so push *subject_variable* as the coreference subject **before** calling
             this when pronouns are wanted in the residual.
-        :returns: ``(whose_modifier | None, residual_condition | None)``.  ``whose_modifier``
+        :return: ``(whose_modifier | None, residual_condition | None)``.  ``whose_modifier``
             already includes the ``whose`` keyword; ``residual_condition`` does **not** include
             a ``such that`` / ``where`` keyword (the caller adds the appropriate one).
         :rtype: tuple

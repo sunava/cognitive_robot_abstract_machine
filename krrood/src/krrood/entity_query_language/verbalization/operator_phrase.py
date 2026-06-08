@@ -2,17 +2,15 @@
 Comparator operator/phrase rendering — the single source of truth for turning a
 :class:`~krrood.entity_query_language.operators.comparator.Comparator` into English.
 
-Previously this logic (temporal vs relational, calculation-equality, negated,
-compact) was copy-pasted across ``ComparatorRule``, ``CalculationEqualityRule``,
-``NotComparatorRule``, ``NotCalculationEqualityRule`` and the restriction builder.
-All of those now call :func:`comparator_operator` (operator fragment only) or
-:func:`comparator_phrase` (full ``left op right``).
+:func:`comparator_operator` returns the operator fragment only (e.g. *"is greater than"*);
+:func:`comparator_phrase` renders the full *"<left> <operator> <right>"* phrase.
 """
 
 from __future__ import annotations
 
 import operator
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
+from typing_extensions import Optional
 
 from krrood.entity_query_language.verbalization.chain_utils import is_temporal
 from krrood.entity_query_language.verbalization.fragments.base import RoleFragment, VerbFragment
@@ -49,7 +47,7 @@ def comparator_operator(
     :param negated: Outer negation (from a wrapping ``Not``).
     :param compact: Copula-less variant (HAVING clauses).  Defaults to
         ``context.compact_predicates`` when ``None``.
-    :returns: The operator fragment.
+    :return: The operator fragment.
     :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
     """
     if compact is None:
@@ -94,7 +92,7 @@ def comparator_phrase(
     :param context: Shared verbalization state.
     :param verbalizer: Verbalizer used to build the operand sub-expressions.
     :param negated: Outer negation (from a wrapping ``Not``).
-    :returns: The comparison phrase fragment.
+    :return: The comparison phrase fragment.
     :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
     """
     left = verbalizer.build(comparator.left, context)

@@ -97,7 +97,7 @@ def test_mock_html_robot_class_anchor(verbalization_domain):
     ids = _collect_anchor_ids(_MOCK_HTML)
     Robot = verbalization_domain.Robot
     resolver = AutoAPIResolver(base_url="http://localhost")
-    url = resolver.resolve(SourceRef(cls=Robot))
+    url = resolver.resolve(SourceRef(owner_type=Robot))
     assert url is not None
     anchor = url.split("#")[1]
     assert anchor in ids, (
@@ -109,7 +109,7 @@ def test_mock_html_robot_name_attribute_anchor(verbalization_domain):
     ids = _collect_anchor_ids(_MOCK_HTML)
     Robot = verbalization_domain.Robot
     resolver = AutoAPIResolver(base_url="http://localhost")
-    url = resolver.resolve(SourceRef(cls=Robot, attribute="name"))
+    url = resolver.resolve(SourceRef(owner_type=Robot, attribute="name"))
     assert url is not None
     anchor = url.split("#")[1]
     assert anchor in ids, f"Anchor '{anchor}' missing from mock HTML."
@@ -119,7 +119,7 @@ def test_mock_html_robot_battery_attribute_anchor(verbalization_domain):
     ids = _collect_anchor_ids(_MOCK_HTML)
     Robot = verbalization_domain.Robot
     resolver = AutoAPIResolver(base_url="http://localhost")
-    url = resolver.resolve(SourceRef(cls=Robot, attribute="battery"))
+    url = resolver.resolve(SourceRef(owner_type=Robot, attribute="battery"))
     assert url is not None
     anchor = url.split("#")[1]
     assert anchor in ids, f"Anchor '{anchor}' missing from mock HTML."
@@ -129,7 +129,7 @@ def test_mock_html_mission_class_anchor(verbalization_domain):
     ids = _collect_anchor_ids(_MOCK_HTML)
     Mission = verbalization_domain.Mission
     resolver = AutoAPIResolver(base_url="http://localhost")
-    url = resolver.resolve(SourceRef(cls=Mission))
+    url = resolver.resolve(SourceRef(owner_type=Mission))
     assert url is not None
     anchor = url.split("#")[1]
     assert anchor in ids, f"Anchor '{anchor}' missing from mock HTML."
@@ -139,7 +139,7 @@ def test_mock_html_mission_assigned_to_attribute_anchor(verbalization_domain):
     ids = _collect_anchor_ids(_MOCK_HTML)
     Mission = verbalization_domain.Mission
     resolver = AutoAPIResolver(base_url="http://localhost")
-    url = resolver.resolve(SourceRef(cls=Mission, attribute="assigned_to"))
+    url = resolver.resolve(SourceRef(owner_type=Mission, attribute="assigned_to"))
     assert url is not None
     anchor = url.split("#")[1]
     assert anchor in ids, f"Anchor '{anchor}' missing from mock HTML."
@@ -149,7 +149,7 @@ def test_mock_html_mission_priority_attribute_anchor(verbalization_domain):
     ids = _collect_anchor_ids(_MOCK_HTML)
     Mission = verbalization_domain.Mission
     resolver = AutoAPIResolver(base_url="http://localhost")
-    url = resolver.resolve(SourceRef(cls=Mission, attribute="priority"))
+    url = resolver.resolve(SourceRef(owner_type=Mission, attribute="priority"))
     assert url is not None
     anchor = url.split("#")[1]
     assert anchor in ids, f"Anchor '{anchor}' missing from mock HTML."
@@ -163,13 +163,13 @@ def test_mock_html_all_dataclass_fields_have_anchors(verbalization_domain):
     for cls_name in ("Robot", "Mission"):
         cls = getattr(verbalization_domain, cls_name)
         # class-level anchor
-        url = resolver.resolve(SourceRef(cls=cls))
+        url = resolver.resolve(SourceRef(owner_type=cls))
         anchor = url.split("#")[1]
         if anchor not in ids:
             missing.append(anchor)
         # field-level anchors
         for field in dataclasses.fields(cls):
-            url = resolver.resolve(SourceRef(cls=cls, attribute=field.name))
+            url = resolver.resolve(SourceRef(owner_type=cls, attribute=field.name))
             anchor = url.split("#")[1]
             if anchor not in ids:
                 missing.append(anchor)
@@ -189,7 +189,7 @@ def test_github_pages_resolver_url_for_robot(verbalization_domain):
     """AutoAPIResolver with the GitHub Pages base URL produces the expected URL for Robot."""
     Robot = verbalization_domain.Robot
     resolver = AutoAPIResolver(base_url=_GITHUB_PAGES_BASE)
-    url = resolver.resolve(SourceRef(cls=Robot))
+    url = resolver.resolve(SourceRef(owner_type=Robot))
     assert url is not None
     assert url.startswith(_GITHUB_PAGES_BASE)
     assert "autoapi/verbalization_domain/index.html" in url
@@ -199,7 +199,7 @@ def test_github_pages_resolver_url_for_robot(verbalization_domain):
 def test_github_pages_resolver_url_for_robot_battery(verbalization_domain):
     Robot = verbalization_domain.Robot
     resolver = AutoAPIResolver(base_url=_GITHUB_PAGES_BASE)
-    url = resolver.resolve(SourceRef(cls=Robot, attribute="battery"))
+    url = resolver.resolve(SourceRef(owner_type=Robot, attribute="battery"))
     assert url is not None
     assert url.endswith("#verbalization_domain.Robot.battery")
 
@@ -207,7 +207,7 @@ def test_github_pages_resolver_url_for_robot_battery(verbalization_domain):
 def test_github_pages_resolver_url_for_mission(verbalization_domain):
     Mission = verbalization_domain.Mission
     resolver = AutoAPIResolver(base_url=_GITHUB_PAGES_BASE)
-    url = resolver.resolve(SourceRef(cls=Mission))
+    url = resolver.resolve(SourceRef(owner_type=Mission))
     assert url is not None
     assert "#verbalization_domain.Mission" in url
 

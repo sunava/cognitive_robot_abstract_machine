@@ -2,14 +2,15 @@
 Verbalization rules for Entity, SetOf, and query-body clause assembly.
 
 This module is the single source of truth for query verbalization: the rules own
-both the *decision* (which form) and the *rendering* (the fragment tree).  All
-clause helpers, noun forms, and aggregation-value rendering that previously lived
-in ``EntityVerbalizer`` are now module-level functions called directly by the rules.
+both the *decision* (which form) and the *rendering* (the fragment tree).
+Clause helpers, noun forms, and aggregation-value rendering are module-level
+functions called directly by the rules.
 """
 
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
+from typing_extensions import Optional
 
 from krrood.entity_query_language.core.base_expressions import Filter
 from krrood.entity_query_language.core.variable import InstantiatedVariable, Variable
@@ -28,6 +29,7 @@ from krrood.entity_query_language.verbalization.fragments.base import (
     RoleFragment,
     VerbFragment,
     WordFragment,
+    flatten_fragment_to_plain_text,
 )
 from krrood.entity_query_language.verbalization.fragments.factory import phrase, role, word
 from krrood.entity_query_language.verbalization.fragments.roles import SemanticRole
@@ -44,7 +46,6 @@ from krrood.entity_query_language.verbalization.subquery import (
     is_constrained_query,
     selected_aggregator,
 )
-from krrood.entity_query_language.verbalization.utils import _str
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Articles,
     Conjunctions,
@@ -59,8 +60,6 @@ from krrood.entity_query_language.verbalization.vocabulary.words import ChildFor
 if TYPE_CHECKING:
     from krrood.entity_query_language.verbalization.context import VerbalizationContext
     from krrood.entity_query_language.verbalization.verbalizer import EQLVerbalizer
-
-_UNSET = object()
 
 # ── Ordered-by / Grouped-by shared helpers ───────────────────────────────────────
 
@@ -77,7 +76,7 @@ def _verbalize_ordered_by(
     :param ordered_by: The OrderedBy expression or builder to verbalize.
     :param context: Shared verbalization state.
     :param verbalizer: Verbalizer for recursive sub-expression rendering.
-    :returns: Phrase fragment for the ORDERED BY clause.
+    :return: Phrase fragment for the ORDERED BY clause.
     """
     direction_frag = (
         SortDirections.DESCENDING.as_fragment()
@@ -99,7 +98,7 @@ def _verbalize_group_keys(
     :param variables: List of group-by key expressions.
     :param context: Shared verbalization state.
     :param verbalizer: Verbalizer for recursive sub-expression rendering.
-    :returns: Comma-separated phrase of verbalized group keys.
+    :return: Comma-separated phrase of verbalized group keys.
     """
     group_frags = [verbalizer.build(variable, context) for variable in variables]
     return PhraseFragment(parts=group_frags, separator=", ")
@@ -127,12 +126,14 @@ def verbalize_query(
 
         if isinstance(var, Entity):
             return _verbalize_query_body_(
-                expression, context, verbalizer, as_noun(var, context, verbalizer)
+                expression, context, verbalizer, as_noun(var, context, verbalizer),
+                where_item=_where_clause(expression, context, verbalizer),
             )
         if var is None:
             context.seen[expression._id_] = FallbackNouns.ENTITY.text
             return _verbalize_query_body_(
-                expression, context, verbalizer, FallbackNouns.ENTITY.plural_fragment()
+                expression, context, verbalizer, FallbackNouns.ENTITY.plural_fragment(),
+                where_item=_where_clause(expression, context, verbalizer),
             )
 
         context.push_subject(var)
@@ -186,6 +187,7 @@ def verbalize_set_of(
             context,
             verbalizer,
             selection,
+            where_item=_where_clause(expression, context, verbalizer),
             find_header=Keywords.FIND_SETS_OF.as_fragment(),
         )
 
@@ -207,7 +209,7 @@ def _build_selection(
         :class:`~krrood.entity_query_language.core.variable.Variable`).
     :param context: Shared verbalization state.
     :param verbalizer: Verbalizer for recursive sub-expression rendering.
-    :returns: ``(selection_fragment, selected_type_name)`` tuple.
+    :return: ``(selection_fragment, selected_type_name)`` tuple.
     """
     is_the = (
         expression._quantifier_builder_ is not None
@@ -246,7 +248,7 @@ def _build_restrictions(
     :param subject: The subject expression for restriction folding.
     :param condition: The WHERE condition to decompose.
     :param context: Shared verbalization state.
-    :returns: ``(whose_fragment, residual_condition)`` tuple.
+    :return: ``(whose_fragment, residual_condition)`` tuple.
     """
     return RestrictionClauseBuilder(verbalizer).build(subject, condition, context)
 
@@ -366,7 +368,7 @@ def _verbalize_aggregation_value_(
     aggregate = phrase(Articles.THE.as_fragment(), aggregation_kind.as_fragment(), leaf_frag)
 
     if aggregator._id_ not in context.seen:
-        context.seen[aggregator._id_] = _str(
+        context.seen[aggregator._id_] = flatten_fragment_to_plain_text(
             phrase(aggregation_kind.as_fragment(), leaf_frag)
         )
 
@@ -403,10 +405,8 @@ def _aggregation_scope_(
 
     having_expression = expression._having_expression_
     if having_expression is not None:
-        context.compact_predicates = True
-        with context.query_depth_scope():
+        with context.compact_predicates_scope(), context.query_depth_scope():
             having_frag = verbalizer.build(having_expression.condition, context)
-        context.compact_predicates = False
         parts += [Keywords.HAVING.as_fragment(), having_frag]
 
     return phrase(*parts)
@@ -424,12 +424,12 @@ def _apply_subject_restrictions_(
 ) -> tuple[VerbFragment, object]:
     """
     Fold a subject's single-hop attribute predicates into a *"whose …"* modifier.
-    Returns ``(selected, _UNSET)`` when no grouping applies.
+    Returns ``(selected, None)`` when no grouping applies.
     """
     where_expression = expression._where_expression_
     subject = restriction_subject(expression, var, context)
     if where_expression is None or subject is None:
-        return selected, _UNSET
+        return selected, None
     whose, residual = _build_restrictions(
         verbalizer, subject, where_expression.condition, context
     )
@@ -451,16 +451,14 @@ def _verbalize_query_body_(
     context: VerbalizationContext,
     verbalizer: EQLVerbalizer,
     selection: VerbFragment,
-    where_item=_UNSET,
+    where_item: Optional[VerbFragment],
     find_header: Optional[VerbFragment] = None,
 ) -> VerbFragment:
     """Assemble the full *"Find <selection> such that … grouped by … having … ordered by …"* block."""
     if find_header is None:
         find_header = Keywords.FIND.as_fragment()
     header = phrase(find_header, selection)
-    where = (
-        _where_clause(expression, context, verbalizer) if where_item is _UNSET else where_item
-    )
+    where = where_item
     ordered_by = expression._ordered_by_builder_
     clauses = [
         clause
@@ -524,9 +522,8 @@ def _having_clause(
     having_expression = expression._having_expression_
     if having_expression is None:
         return None
-    context.compact_predicates = True
-    having_frag = verbalizer.build(having_expression.condition, context)
-    context.compact_predicates = False
+    with context.compact_predicates_scope():
+        having_frag = verbalizer.build(having_expression.condition, context)
     return phrase(Keywords.HAVING.as_fragment(), having_frag)
 
 

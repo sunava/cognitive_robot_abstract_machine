@@ -18,7 +18,8 @@ import logging
 import tempfile
 import webbrowser
 from dataclasses import dataclass, field
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
+from typing_extensions import Optional
 
 from krrood.entity_query_language.verbalization.fragments.base import VerbFragment
 from krrood.entity_query_language.verbalization.rendering.formatter import (
@@ -118,7 +119,7 @@ class VerbalizationPipeline:
         Verbalize *expression* to a string using this pipeline's renderer.
 
         :param expression: Any EQL expression or :class:`~krrood.entity_query_language.query.query.Query`.
-        :returns: Formatted natural-language string (plain, ANSI, or HTML depending on renderer).
+        :return: Formatted natural-language string (plain, ANSI, or HTML depending on renderer).
         :rtype: str
         """
         if isinstance(expression, Query):
@@ -139,7 +140,7 @@ class VerbalizationPipeline:
 
         :param fragment: Root of the fragment tree to render.
         :type fragment: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
-        :returns: Formatted string.
+        :return: Formatted string.
         :rtype: str
         """
         result = self.renderer.render(fragment)
@@ -194,7 +195,7 @@ class VerbalizationPipeline:
         """
         Create a plain-text, paragraph-prose pipeline with no colour markup.
 
-        :returns: A :class:`VerbalizationPipeline` backed by
+        :return: A :class:`VerbalizationPipeline` backed by
             :class:`~krrood.entity_query_language.verbalization.rendering.renderer.ParagraphRenderer`
             and :class:`~krrood.entity_query_language.verbalization.rendering.formatter.PlainFormatter`.
         :rtype: VerbalizationPipeline
@@ -205,7 +206,7 @@ class VerbalizationPipeline:
     def ansi(
         cls,
         hierarchical: bool = False,
-        link_resolver: Optional["SourceLinkResolver"] = None,
+        link_resolver: Optional[SourceLinkResolver] = None,
     ) -> VerbalizationPipeline:
         """
         Create an ANSI true-colour (24-bit) pipeline for terminal display.
@@ -221,7 +222,7 @@ class VerbalizationPipeline:
         :type hierarchical: bool
         :param link_resolver: Optional resolver mapping source references to URLs.
         :type link_resolver: ~krrood.entity_query_language.verbalization.rendering.source_link_resolver.SourceLinkResolver or None
-        :returns: An ANSI-coloured :class:`VerbalizationPipeline`.
+        :return: An ANSI-coloured :class:`VerbalizationPipeline`.
         :rtype: VerbalizationPipeline
         """
         formatter = ANSIFormatter()
@@ -243,7 +244,7 @@ class VerbalizationPipeline:
     def html(
         cls,
         hierarchical: bool = False,
-        link_resolver: Optional["SourceLinkResolver"] = None,
+        link_resolver: Optional[SourceLinkResolver] = None,
     ) -> VerbalizationPipeline:
         """
         Create an HTML ``<span>`` colour pipeline for Jupyter / inline-HTML rendering.
@@ -257,7 +258,7 @@ class VerbalizationPipeline:
         :type hierarchical: bool
         :param link_resolver: Optional resolver mapping source references to URLs.
         :type link_resolver: ~krrood.entity_query_language.verbalization.rendering.source_link_resolver.SourceLinkResolver or None
-        :returns: An HTML-coloured :class:`VerbalizationPipeline`.
+        :return: An HTML-coloured :class:`VerbalizationPipeline`.
         :rtype: VerbalizationPipeline
         """
         formatter = HTMLFormatter()

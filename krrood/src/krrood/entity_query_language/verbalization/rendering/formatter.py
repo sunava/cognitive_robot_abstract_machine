@@ -24,7 +24,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
-from typing import ClassVar, Optional
+from typing_extensions import ClassVar, Optional
 
 from krrood.entity_query_language.verbalization.fragments.roles import ROLE_COLORS, SemanticRole
 
@@ -98,8 +98,8 @@ def _docstring_for_source_ref(source_ref: object) -> Optional[str]:
     looking for a PEP 257 attribute docstring extracted via :func:`_attribute_docstrings`.
     """
     if source_ref.attribute is None:
-        return _first_docstring_line(source_ref.cls)
-    for klass in source_ref.cls.__mro__:
+        return _first_docstring_line(source_ref.owner_type)
+    for klass in source_ref.owner_type.__mro__:
         line = _attribute_docstrings(klass).get(source_ref.attribute)
         if line is not None:
             return line
@@ -173,7 +173,7 @@ class Formatter(ABC):
         :type text: str
         :param role: Semantic role determining the colour.
         :type role: ~krrood.entity_query_language.verbalization.fragments.roles.SemanticRole
-        :returns: Coloured string (or *text* unchanged when no colour is defined for *role*).
+        :return: Coloured string (or *text* unchanged when no colour is defined for *role*).
         :rtype: str
         """
         ...
@@ -211,7 +211,7 @@ class Formatter(ABC):
         :type url: str
         :param tooltip: Optional single-line docstring summary shown on hover (HTML-escaped).
         :type tooltip: str or None
-        :returns: *text* unchanged (base); linked string (subclasses).
+        :return: *text* unchanged (base); linked string (subclasses).
         :rtype: str
         """
         return text

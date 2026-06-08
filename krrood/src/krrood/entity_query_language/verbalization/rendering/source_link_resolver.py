@@ -14,7 +14,7 @@ import inspect
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Protocol
+from typing_extensions import Optional, Protocol
 
 from krrood.entity_query_language.verbalization.fragments.source_ref import SourceRef
 
@@ -42,7 +42,7 @@ class SourceLinkResolver(Protocol):
 
         :param ref: Source reference to resolve.
         :type ref: ~krrood.entity_query_language.verbalization.fragments.source_ref.SourceRef
-        :returns: URL string, or ``None`` when the reference cannot be resolved.
+        :return: URL string, or ``None`` when the reference cannot be resolved.
         :rtype: str or None
         """
         ...
@@ -82,12 +82,12 @@ class AutoAPIResolver:
 
         :param ref: Source reference to resolve.
         :type ref: ~krrood.entity_query_language.verbalization.fragments.source_ref.SourceRef
-        :returns: AutoAPI page URL, or ``None`` when *ref.cls* has no ``__module__``.
+        :return: AutoAPI page URL, or ``None`` when *ref.owner_type* has no ``__module__``.
         :rtype: str or None
         """
         try:
-            module = ref.cls.__module__
-            qualname = ref.cls.__qualname__
+            module = ref.owner_type.__module__
+            qualname = ref.owner_type.__qualname__
         except AttributeError:
             return None
         module_path = module.replace(".", "/")

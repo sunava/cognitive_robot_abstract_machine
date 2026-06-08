@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import ClassVar
+from typing_extensions import ClassVar
 
 from krrood.entity_query_language.verbalization.fragments.base import (
     RoleFragment,
@@ -26,18 +26,16 @@ class PlainWord:
     """
     A neutral word/phrase with no semantic role — renders to
     :class:`~krrood.entity_query_language.verbalization.fragments.base.WordFragment`.
-
-    :ivar text: The raw English text (e.g. ``"of"``, ``"and"``, ``"the"``,
-        ``"ascending"``).
     """
 
     text: str
+    """The raw English text (e.g. ``"of"``, ``"and"``, ``"the"``, ``"ascending"``)."""
 
     def as_fragment(self) -> WordFragment:
         """
         Convert to a :class:`~krrood.entity_query_language.verbalization.fragments.base.WordFragment`.
 
-        :returns: Neutral word fragment.
+        :return: Neutral word fragment.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.WordFragment
         """
         return WordFragment(text=self.text)
@@ -55,11 +53,12 @@ class RoleWord:
 
     ``frozen=True`` is inherited by subclasses via the ``__setattr__`` guard.
 
-    :ivar text: The raw English text.
     :cvar _role_: The semantic role for this word type (set by each subclass).
     """
 
     text: str
+    """The raw English text."""
+
     _role_: ClassVar[SemanticRole]
 
     def as_fragment(self) -> RoleFragment:
@@ -67,7 +66,7 @@ class RoleWord:
         Convert to a :class:`~krrood.entity_query_language.verbalization.fragments.base.RoleFragment`
         carrying :attr:`_role_`.
 
-        :returns: Role-tagged fragment.
+        :return: Role-tagged fragment.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.RoleFragment
         """
         return RoleFragment(text=self.text, role=self._role_)
@@ -106,13 +105,11 @@ class ChildForm(Enum):
 class AggregationWord(RoleWord):
     """
     Aggregation phrase with :attr:`~SemanticRole.AGGREGATION` role.
-
-    :ivar child_form: Controls how the child expression is verbalized.
-        Defaults to :attr:`ChildForm.PLURAL`.
     """
 
     _role_ = SemanticRole.AGGREGATION
     child_form: ChildForm = ChildForm.PLURAL
+    """Controls how the child expression is verbalized. Defaults to :attr:`ChildForm.PLURAL`."""
 
 
 class OperatorWord(RoleWord):
@@ -139,25 +136,31 @@ class OperatorPhrase:
     The three boolean flags ``negated``, ``compact``, and ``temporal`` select
     among the eight fields.  Use :meth:`select` to obtain the appropriate
     :class:`OperatorWord` for a given combination.
-
-    :ivar standard: Default form (e.g. ``"is greater than"``).
-    :ivar compact: Copula-less form used in HAVING clauses (e.g. ``"greater than"``).
-    :ivar negated: Negated form (e.g. ``"is not greater than"``).
-    :ivar negated_compact: Negated copula-less form (e.g. ``"not greater than"``).
-    :ivar temporal: Temporal standard form (e.g. ``"is after"``).
-    :ivar temporal_compact: Temporal compact form (e.g. ``"after"``).
-    :ivar temporal_negated: Temporal negated form (e.g. ``"is no later than"``).
-    :ivar temporal_negated_compact: Temporal negated compact form (e.g. ``"no later than"``).
     """
 
     standard: str
+    """Default form (e.g. ``"is greater than"``)."""
+
     compact: str
+    """Copula-less form used in HAVING clauses (e.g. ``"greater than"``)."""
+
     negated: str
+    """Negated form (e.g. ``"is not greater than"``)."""
+
     negated_compact: str
+    """Negated copula-less form (e.g. ``"not greater than"``)."""
+
     temporal: str = ""
+    """Temporal standard form (e.g. ``"is after"``)."""
+
     temporal_compact: str = ""
+    """Temporal compact form (e.g. ``"after"``)."""
+
     temporal_negated: str = ""
+    """Temporal negated form (e.g. ``"is no later than"``)."""
+
     temporal_negated_compact: str = ""
+    """Temporal negated compact form (e.g. ``"no later than"``)."""
 
     def select(
         self, *, negated: bool = False, compact: bool = False, temporal: bool = False
@@ -174,7 +177,7 @@ class OperatorPhrase:
         :type compact: bool
         :param temporal: Use the temporal variant (for datetime comparisons).
         :type temporal: bool
-        :returns: The appropriate :class:`OperatorWord`.
+        :return: The appropriate :class:`OperatorWord`.
         :rtype: OperatorWord
         """
         if temporal:
@@ -214,7 +217,7 @@ class VocabEnum(Enum):
         Convert the member's value to its
         :class:`~krrood.entity_query_language.verbalization.fragments.base.VerbFragment`.
 
-        :returns: Fragment representing this vocabulary item.
+        :return: Fragment representing this vocabulary item.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         return self.value.as_fragment()

@@ -60,7 +60,7 @@ class ForAllRule(QuantifierRule):
         :param expression: ForAll quantifier expression.
         :param context: Shared verbalization state.
         :param verbalizer: Parent verbalizer for recursive calls.
-        :returns: Universal-quantification phrase.
+        :return: Universal-quantification phrase.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         variable_fragment = verbalize_plural(expression.variable, context, verbalizer.build)
@@ -86,7 +86,7 @@ class ExistsRule(QuantifierRule):
         :param expression: Exists quantifier expression.
         :param context: Shared verbalization state.
         :param verbalizer: Parent verbalizer for recursive calls.
-        :returns: Existential-quantification phrase.
+        :return: Existential-quantification phrase.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         variable_fragment = verbalizer.build(expression.variable, context)

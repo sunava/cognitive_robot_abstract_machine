@@ -11,7 +11,8 @@ renders as a possessive path (*"the attr of the Root"*), optionally pronominalis
 
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
+from typing_extensions import Optional
 
 from krrood.entity_query_language.core.mapped_variable import (
     Attribute,
@@ -67,7 +68,7 @@ def verbalize_chain(
     :param context: Shared verbalization state.
     :param verbalizer: Verbalizer for recursive sub-expression rendering.
     :param negated: Use the negated copula for a boolean terminal attribute.
-    :returns: Fragment for the chain.
+    :return: Fragment for the chain.
     """
     chain, leaf = walk_chain(expression)
     terminal = chain[-1]
@@ -101,7 +102,7 @@ def _verbalize_possessive_path(
         :func:`~krrood.entity_query_language.verbalization.chain_utils.build_path_parts`,
         outermost attribute first.
     :param root_fragment: Noun-phrase fragment for the chain root.
-    :returns: :class:`PhraseFragment` representing the full possessive chain.
+    :return: :class:`PhraseFragment` representing the full possessive chain.
     """
     if not parts:
         return root_fragment
@@ -135,7 +136,7 @@ def _verbalize_pronominal_path(
 
     :param parts: Ordered pairs from :func:`build_path_parts`, outermost first.
     :param pronoun_fragment: Pronoun fragment (typically ``Pronouns.ITS.as_fragment()``).
-    :returns: :class:`PhraseFragment` with the pronoun in the correct position.
+    :return: :class:`PhraseFragment` with the pronoun in the correct position.
     """
     if not parts:
         return pronoun_fragment
@@ -160,7 +161,7 @@ def _attr_fragment(name: str, source_ref: Optional[SourceRef]) -> RoleFragment:
 
     :param name: Display name of the attribute (from :func:`build_path_parts`).
     :param source_ref: Optional source reference for hyperlink resolution.
-    :returns: Role-tagged fragment for the attribute.
+    :return: Role-tagged fragment for the attribute.
     """
     return RoleFragment(text=name, role=SemanticRole.ATTRIBUTE, source_ref=source_ref)
 
@@ -178,7 +179,7 @@ def _chain_root_frag(
     :param leaf: The chain root expression (returned by :func:`walk_chain`).
     :param context: Shared verbalization state.
     :param verbalizer: Top-level verbalizer for recursive sub-expression building.
-    :returns: Noun-phrase fragment for the root.
+    :return: Noun-phrase fragment for the root.
     """
     inner = leaf
     while isinstance(inner, ResultQuantifier):
@@ -205,7 +206,7 @@ def _verbalize_bool_predicative(
     :param context: Shared verbalization state.
     :param verbalizer: Top-level verbalizer for recursive sub-expression building.
     :param negated: If ``True``, use ``"is not"`` copula.
-    :returns: :class:`PhraseFragment` for the predicative form.
+    :return: :class:`PhraseFragment` for the predicative form.
     """
     root_fragment = _chain_root_frag(leaf, context, verbalizer)
     nav_chain = chain[:-1]

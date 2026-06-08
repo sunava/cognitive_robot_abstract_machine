@@ -13,8 +13,7 @@ No manual list maintenance is needed.
 
 from __future__ import annotations
 
-from typing import List
-from typing_extensions import Type
+from typing_extensions import List, Type
 
 from krrood.entity_query_language.verbalization.rule_engine import VerbalizationRule
 

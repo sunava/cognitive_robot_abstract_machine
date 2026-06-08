@@ -13,18 +13,15 @@ For coloured / hierarchical output use
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional, TYPE_CHECKING
+
+from typing_extensions import Optional
 
 from krrood.entity_query_language.core.base_expressions import SymbolicExpression
 from krrood.entity_query_language.query.query import Query
 from krrood.entity_query_language.verbalization.context import VerbalizationContext
-from krrood.entity_query_language.verbalization.fragments.base import VerbFragment
+from krrood.entity_query_language.verbalization.fragments.base import VerbFragment, flatten_fragment_to_plain_text
 from krrood.entity_query_language.verbalization.rule_engine import RuleEngine
 from krrood.entity_query_language.verbalization.rules.registry import ALL_RULES
-from krrood.entity_query_language.verbalization.utils import _str
-
-if TYPE_CHECKING:
-    from krrood.entity_query_language.verbalization.rendering.renderer import FragmentRenderer
 
 
 @dataclass
@@ -64,7 +61,7 @@ class EQLVerbalizer:
         :type expression: ~krrood.entity_query_language.core.base_expressions.SymbolicExpression
         :param context: Shared verbalization state; created automatically when omitted.
         :type context: ~krrood.entity_query_language.verbalization.context.VerbalizationContext or None
-        :returns: Root of the fragment tree representing *expression* in natural language.
+        :return: Root of the fragment tree representing *expression* in natural language.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         if context is None:
@@ -79,7 +76,7 @@ class EQLVerbalizer:
         """
         Translate *expression* into a plain-text English string.
 
-        Equivalent to ``_str(self.build(expression, context))`` — no colour markup.
+        Equivalent to ``flatten_fragment_to_plain_text(self.build(expression, context))`` — no colour markup.
         Prefer :class:`~krrood.entity_query_language.verbalization.pipeline.VerbalizationPipeline`
         when colour or hierarchical layout is needed.
 
@@ -87,49 +84,34 @@ class EQLVerbalizer:
         :type expression: ~krrood.entity_query_language.core.base_expressions.SymbolicExpression
         :param context: Shared verbalization state; created automatically when omitted.
         :type context: ~krrood.entity_query_language.verbalization.context.VerbalizationContext or None
-        :returns: Plain-text natural-language representation of *expression*.
+        :return: Plain-text natural-language representation of *expression*.
         :rtype: str
         """
-        return _str(self.build(expression, context))
+        return flatten_fragment_to_plain_text(self.build(expression, context))
 
 
-_default_verbalizer = EQLVerbalizer()
+# Shared plain-text verbalizer instance — EQLVerbalizer is stateless, so this
+# single instance is safe to reuse across calls.
+_verbalizer = EQLVerbalizer()
 
 
-def verbalize_expression(
-    expression,
-    *,
-    renderer: "FragmentRenderer | None" = None,
-) -> str:
+def verbalize_expression(expression) -> str:
     """
-    Verbalize any EQL expression into a human-readable English phrase.
+    Verbalize any EQL expression into a plain-text English phrase.
 
-    This is the simplest entry point.  With no arguments it returns plain text
-    (no colour markup, paragraph prose).  Pass a *renderer* to control output
-    format and layout:
+    This is the simplest entry point — it returns plain text with no colour markup.
+    For coloured, hierarchical, or hyperlinked output use
+    :class:`~krrood.entity_query_language.verbalization.pipeline.VerbalizationPipeline`
+    directly:
 
-    * :class:`~krrood.entity_query_language.verbalization.rendering.renderer.ParagraphRenderer`
-      (:class:`~krrood.entity_query_language.verbalization.rendering.formatter.PlainFormatter`) —
-      plain prose (default).
-    * ``ParagraphRenderer(ANSIFormatter())`` — ANSI-coloured prose.
-    * ``ParagraphRenderer(HTMLFormatter())`` — HTML-coloured prose.
-    * :class:`~krrood.entity_query_language.verbalization.rendering.renderer.HierarchicalRenderer`
-      — indented bullet list; pair with any formatter.
-
-    For source hyperlinks pass a configured *renderer* with a *link_resolver*,
-    e.g. ``HierarchicalRenderer(HTMLFormatter(), resolver)``.
+    * ``VerbalizationPipeline.plain().verbalize(expr)`` — plain prose (equivalent to this function).
+    * ``VerbalizationPipeline.ansi().verbalize(expr)`` — ANSI-coloured prose.
+    * ``VerbalizationPipeline.html().verbalize(expr)`` — HTML ``<span>`` coloured prose.
 
     :param expression: Any EQL expression or :class:`~krrood.entity_query_language.query.query.Query`.
-    :param renderer: Optional
-        :class:`~krrood.entity_query_language.verbalization.rendering.renderer.FragmentRenderer`
-        instance.  When ``None`` the default plain-text output is produced.
-    :returns: Natural-language string (format depends on *renderer*).
+    :return: Plain-text natural-language string.
     :rtype: str
     """
     if isinstance(expression, Query):
         expression.build()
-    if renderer is None:
-        return _default_verbalizer.verbalize(expression)
-    # Lazy import avoids circular dependency (pipeline imports verbalizer).
-    from krrood.entity_query_language.verbalization.pipeline import VerbalizationPipeline
-    return VerbalizationPipeline(renderer).verbalize(expression)
+    return _verbalizer.verbalize(expression)

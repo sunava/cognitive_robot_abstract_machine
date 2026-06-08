@@ -7,10 +7,8 @@ same attribute into a single ``between`` phrase.
 conjunction rule and the subject-restriction rule render as
 *"… is between lo and hi"*.
 
-This module is a pure utility: :func:`fold_range_pairs` / :func:`has_pair` are the
-pattern detector and :func:`build_between` is the shared phrase builder.  It must
-not import from the verbalizer subsystem files to avoid circular dependencies
-(core/operator imports are done lazily).
+:func:`fold_range_pairs` and :func:`has_pair` detect complementary bound pairs;
+:func:`build_between` renders the folded phrase.
 """
 
 from __future__ import annotations
@@ -18,7 +16,8 @@ from __future__ import annotations
 import operator as _operator
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import List, Optional, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
+from typing_extensions import List, Optional, Union
 
 from krrood.entity_query_language.core.mapped_variable import Attribute, MappedVariable
 from krrood.entity_query_language.core.variable import Variable
@@ -96,7 +95,7 @@ def fold_range_pairs(conjuncts: List) -> List[Union[SymbolicExpression, RangeFol
     ``t.x <= hi`` written before ``t.x >= lo`` still yields ``between lo and hi``.
 
     :param conjuncts: A flat list of conjuncts (e.g. the operands of an ``AND``).
-    :returns: A list whose items are either the original expressions or
+    :return: A list whose items are either the original expressions or
         :class:`RangeFold` instances.
     :rtype: list
     """
@@ -156,7 +155,7 @@ def build_between(
     :param lower_fragment: Rendered lower-bound value.
     :param upper_fragment: Rendered upper-bound value.
     :param compact: Drop the copula (for HAVING / post-nominal contexts).
-    :returns: The range phrase fragment.
+    :return: The range phrase fragment.
     :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
     """
     op = (RangePhrases.BETWEEN if compact else RangePhrases.IS_BETWEEN).as_fragment()

@@ -1,5 +1,5 @@
 """
-Phase 2 fragment-structure tests.
+Fragment-structure tests.
 
 These tests verify that verbalization produces properly typed VerbFragment trees —
 specifically that semantic roles (VARIABLE, ATTRIBUTE, KEYWORD, …) are preserved
@@ -9,7 +9,8 @@ output.  They complement the plain-text regression tests in test_verbalization.p
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, List
+from typing import Any
+from typing_extensions import List
 
 import pytest
 
@@ -37,17 +38,17 @@ def _collect_role_fragments(frag: VerbFragment, role: SemanticRole) -> list[Role
     return found
 
 
-def _walk(frag: VerbFragment, role: SemanticRole, acc: list[RoleFragment]) -> None:
+def _walk(frag: VerbFragment, role: SemanticRole, accumulator: list[RoleFragment]) -> None:
     if isinstance(frag, RoleFragment) and frag.role == role:
-        acc.append(frag)
+        accumulator.append(frag)
     elif isinstance(frag, PhraseFragment):
         for part in frag.parts:
-            _walk(part, role, acc)
+            _walk(part, role, accumulator)
     elif isinstance(frag, BlockFragment):
         if frag.header:
-            _walk(frag.header, role, acc)
+            _walk(frag.header, role, accumulator)
         for item in frag.items:
-            _walk(item, role, acc)
+            _walk(item, role, accumulator)
 
 
 def _all_texts(frag: VerbFragment) -> list[str]:
@@ -57,17 +58,17 @@ def _all_texts(frag: VerbFragment) -> list[str]:
     return texts
 
 
-def _walk_texts(frag: VerbFragment, acc: list[str]) -> None:
+def _walk_texts(frag: VerbFragment, accumulator: list[str]) -> None:
     if isinstance(frag, (WordFragment, RoleFragment)):
-        acc.append(frag.text)
+        accumulator.append(frag.text)
     elif isinstance(frag, PhraseFragment):
         for part in frag.parts:
-            _walk_texts(part, acc)
+            _walk_texts(part, accumulator)
     elif isinstance(frag, BlockFragment):
         if frag.header:
-            _walk_texts(frag.header, acc)
+            _walk_texts(frag.header, accumulator)
         for item in frag.items:
-            _walk_texts(item, acc)
+            _walk_texts(item, accumulator)
 
 
 # ── 1. Constraint fragments retain semantic roles ──────────────────────────────
@@ -179,7 +180,7 @@ def test_grouped_by_vars_are_role_fragments(departments_and_employees_fixture):
     _, _ = departments_and_employees_fixture
     emp = variable(Employee, domain=None)
     avg_salary = eql.average(emp.salary)
-    query = a(set_of := eql.set_of(emp.department, avg_salary)
+    query = a(so := eql.set_of(emp.department, avg_salary)
               .grouped_by(emp.department)
               .having(avg_salary > 30000))
 
@@ -217,17 +218,17 @@ def test_ordered_by_direction_fragment(handles_and_containers_world):
     )
 
 
-def _collect_word_leaves(frag: VerbFragment, acc: list[str]) -> None:
+def _collect_word_leaves(frag: VerbFragment, accumulator: list[str]) -> None:
     if isinstance(frag, (WordFragment, RoleFragment)):
-        acc.append(frag.text)
+        accumulator.append(frag.text)
     elif isinstance(frag, PhraseFragment):
         for part in frag.parts:
-            _collect_word_leaves(part, acc)
+            _collect_word_leaves(part, accumulator)
     elif isinstance(frag, BlockFragment):
         if frag.header:
-            _collect_word_leaves(frag.header, acc)
+            _collect_word_leaves(frag.header, accumulator)
         for item in frag.items:
-            _collect_word_leaves(item, acc)
+            _collect_word_leaves(item, accumulator)
 
 
 # ── 6. set_of selected vars are role fragments ────────────────────────────────

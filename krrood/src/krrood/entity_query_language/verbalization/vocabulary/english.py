@@ -24,7 +24,7 @@ from enum import Enum
 
 from krrood.entity_query_language.operators.comparator import not_contains as _nc
 
-import inflect
+from krrood.entity_query_language.verbalization._inflect import _engine as _inflect_engine
 
 from krrood.entity_query_language.verbalization.fragments.base import (
     PhraseFragment,
@@ -46,7 +46,6 @@ from krrood.entity_query_language.verbalization.vocabulary.words import (
     VocabEnum,
 )
 
-_engine = inflect.engine()
 
 
 # ── English-specific word subtypes ─────────────────────────────────────────────
@@ -60,8 +59,6 @@ class SingularExistential(PlainWord):
 
     The article (*a* / *an*) is computed phonologically at call time using the
     ``inflect`` library.
-
-    :ivar text: Fixed prefix (e.g. ``"there's"``).
     """
 
     def build_phrase(self, type_name: str) -> VerbFragment:
@@ -71,10 +68,10 @@ class SingularExistential(PlainWord):
 
         :param type_name: English noun in singular form (e.g. ``"Robot"``, ``"Apple"``).
         :type type_name: str
-        :returns: Phrase fragment with the correct indefinite article.
+        :return: Phrase fragment with the correct indefinite article.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
-        article = _engine.a(type_name).split()[0]
+        article = _inflect_engine.a(type_name).split()[0]
         return PhraseFragment(
             parts=[
                 WordFragment(text=f"{self.text} {article}"),
@@ -87,8 +84,6 @@ class SingularExistential(PlainWord):
 class PluralExistential(PlainWord):
     """
     Parameterised existential phrase: *"there are TypeNames"*.
-
-    :ivar text: Fixed prefix (e.g. ``"there are"``).
     """
 
     def build_phrase(self, type_name: str) -> VerbFragment:
@@ -98,7 +93,7 @@ class PluralExistential(PlainWord):
 
         :param type_name: English noun in singular form; pluralised automatically.
         :type type_name: str
-        :returns: Phrase fragment with pluralised type name.
+        :return: Phrase fragment with pluralised type name.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         return PhraseFragment(
@@ -117,8 +112,6 @@ class FallbackNounWord(PlainWord):
     A fallback noun used when no type information is available from the expression.
 
     Provides both :meth:`as_fragment` (singular) and :meth:`plural_fragment`.
-
-    :ivar text: Singular English noun (e.g. ``"entity"``).
     """
 
     def plural_fragment(self) -> WordFragment:
@@ -126,10 +119,10 @@ class FallbackNounWord(PlainWord):
         Return a :class:`~krrood.entity_query_language.verbalization.fragments.base.WordFragment`
         with the pluralised form.
 
-        :returns: Pluralised noun fragment (e.g. ``"entities"``).
+        :return: Pluralised noun fragment (e.g. ``"entities"``).
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.WordFragment
         """
-        return WordFragment(text=_engine.plural(self.text))
+        return WordFragment(text=_inflect_engine.plural(self.text))
 
 
 @dataclass(frozen=True)
@@ -138,8 +131,6 @@ class CommonGroupKeyWord(PlainWord):
     Group-key binding phrase: *"the common <field> of the <plural_root>"*.
 
     Used in the THEN clause when a consequent binding refers to a GROUP BY key.
-
-    :ivar text: Fixed prefix (e.g. ``"the common"``).
     """
 
     def build_phrase(self, field_name: str, plural_root: str) -> VerbFragment:
@@ -150,7 +141,7 @@ class CommonGroupKeyWord(PlainWord):
         :type field_name: str
         :param plural_root: Plural root type name (e.g. ``"Robots"``).
         :type plural_root: str
-        :returns: Phrase fragment.
+        :return: Phrase fragment.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         return PhraseFragment(
@@ -206,9 +197,8 @@ class Aggregations(VocabEnum):
 
 
 class Copulas(VocabEnum):
-    """Copula verbs (IS, IS NOT, ARE). Role is OPERATOR — copulas appear alongside comparators visually."""
+    """Copula verbs (IS, IS NOT, ARE) — role is OPERATOR so they share colouring with comparators."""
 
-    # role = OPERATOR — copulas appear alongside comparison operators visually
     IS = OperatorWord("is")
     IS_NOT = OperatorWord("is not")
     ARE = OperatorWord("are")
@@ -271,10 +261,10 @@ class Articles(VocabEnum):
 
         :param following_word: The word immediately following the article.
         :type following_word: str
-        :returns: ``WordFragment("a")`` or ``WordFragment("an")``.
+        :return: ``WordFragment("a")`` or ``WordFragment("an")``.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.WordFragment
         """
-        text = _engine.a(following_word).split()[0] if following_word else "a"
+        text = _inflect_engine.a(following_word).split()[0] if following_word else "a"
         return WordFragment(text=text)
 
 
@@ -294,7 +284,7 @@ class ExistentialPhrase(VocabEnum):
 
         :param type_name: English noun in singular form.
         :type type_name: str
-        :returns: Existential phrase fragment.
+        :return: Existential phrase fragment.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         return self.value.build_phrase(type_name)
@@ -311,7 +301,7 @@ class FallbackNouns(VocabEnum):
         """
         Return a plural :class:`~krrood.entity_query_language.verbalization.fragments.base.WordFragment`.
 
-        :returns: Pluralised noun fragment (e.g. ``"entities"``).
+        :return: Pluralised noun fragment (e.g. ``"entities"``).
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.WordFragment
         """
         return self.value.plural_fragment()
@@ -332,7 +322,7 @@ class GroupKeyPhrases(VocabEnum):
         :type field_name: str
         :param plural_root: Plural root type name.
         :type plural_root: str
-        :returns: Group-key phrase fragment.
+        :return: Group-key phrase fragment.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         return self.value.build_phrase(field_name, plural_root)
@@ -444,7 +434,7 @@ class Operators(Enum):
         :type compact: bool
         :param temporal: Use the temporal variant for datetime comparisons.
         :type temporal: bool
-        :returns: Selected :class:`~krrood.entity_query_language.verbalization.vocabulary.words.OperatorWord`.
+        :return: Selected :class:`~krrood.entity_query_language.verbalization.vocabulary.words.OperatorWord`.
         :rtype: ~krrood.entity_query_language.verbalization.vocabulary.words.OperatorWord
         """
         return self.value.select(negated=negated, compact=compact, temporal=temporal)
@@ -456,18 +446,22 @@ class Operators(Enum):
 
         :param function: A callable from the ``operator`` module (e.g. ``operator.gt``,
             ``operator.eq``) or the custom ``not_contains`` comparator.
-        :returns: The corresponding :class:`Operators` member.
+        :return: The corresponding :class:`Operators` member.
         :rtype: Operators
         :raises KeyError: If *function* has no registered mapping.
         """
-        _MAP = {
-            _operator.eq: cls.EQ,
-            _operator.ne: cls.NE,
-            _operator.lt: cls.LT,
-            _operator.le: cls.LE,
-            _operator.gt: cls.GT,
-            _operator.ge: cls.GE,
-            _operator.contains: cls.CONTAINS,
-            _nc: cls.NOT_CONTAINS,
-        }
-        return _MAP[function]
+        return _OPERATOR_CALLABLE_MAP[function]
+
+
+#: Map Python ``operator`` callables to :class:`Operators` members.
+#: Built once at module load time — avoids rebuilding on every call.
+_OPERATOR_CALLABLE_MAP: dict = {
+    _operator.eq: Operators.EQ,
+    _operator.ne: Operators.NE,
+    _operator.lt: Operators.LT,
+    _operator.le: Operators.LE,
+    _operator.gt: Operators.GT,
+    _operator.ge: Operators.GE,
+    _operator.contains: Operators.CONTAINS,
+    _nc: Operators.NOT_CONTAINS,
+}

@@ -102,7 +102,7 @@ class AndRule(LogicalRule):
         :param expression: Root AND expression.
         :param context: Shared verbalization state.
         :param verbalizer: Parent verbalizer for recursive calls.
-        :returns: Oxford-comma joined fragment.
+        :return: Oxford-comma joined fragment.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         parts = [verbalizer.build(conjunct, context) for conjunct in flatten_operands(expression, AND)]
@@ -138,7 +138,7 @@ class RangeConjunctionRule(AndRule):
         :param expression: Root AND expression containing a range pair.
         :param context: Shared verbalization state.
         :param verbalizer: Parent verbalizer for recursive calls.
-        :returns: Conjunction fragment with folded *between* phrase(s).
+        :return: Conjunction fragment with folded *between* phrase(s).
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         parts: list[VerbFragment] = []
@@ -181,7 +181,7 @@ class OrRule(LogicalRule):
         :param expression: Root OR expression.
         :param context: Shared verbalization state.
         :param verbalizer: Parent verbalizer for recursive calls.
-        :returns: Disjunction phrase fragment.
+        :return: Disjunction phrase fragment.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         parts = [verbalizer.build(conjunct, context) for conjunct in flatten_operands(expression, OR)]
@@ -221,7 +221,7 @@ class NotRule(LogicalRule):
         :param expression: Not expression.
         :param context: Shared verbalization state.
         :param verbalizer: Parent verbalizer for recursive calls.
-        :returns: Negation phrase fragment.
+        :return: Negation phrase fragment.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         child_fragment = verbalizer.build(expression._child_, context)
@@ -256,7 +256,7 @@ class NotComparatorRule(NotRule):
         :param expression: Not-wrapping-Comparator expression.
         :param context: Shared verbalization state.
         :param verbalizer: Parent verbalizer for recursive calls.
-        :returns: Negated comparator phrase.
+        :return: Negated comparator phrase.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         return comparator_phrase(expression._child_, context, verbalizer, negated=True)
@@ -289,7 +289,7 @@ class NotBoolAttrRule(NotRule):
         :param expression: Not-wrapping-bool-Attribute expression.
         :param context: Shared verbalization state.
         :param verbalizer: Parent verbalizer for recursive calls.
-        :returns: Predicative *"is not <attr>"* fragment.
+        :return: Predicative *"is not <attr>"* fragment.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
         return verbalize_chain(expression._child_, context, verbalizer, negated=True)
