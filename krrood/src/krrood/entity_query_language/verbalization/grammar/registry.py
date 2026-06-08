@@ -15,7 +15,8 @@ from __future__ import annotations
 
 from typing_extensions import List
 
+from krrood.entity_query_language.verbalization.grammar.english import RULES
 from krrood.entity_query_language.verbalization.grammar.phrase_rule import PhraseRule
 
 #: Every phrase rule, in no particular order (``select`` decides specificity).
-ALL_PHRASE_RULES: List[PhraseRule] = []
+ALL_PHRASE_RULES: List[PhraseRule] = list(RULES)
