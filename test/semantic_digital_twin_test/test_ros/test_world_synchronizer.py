@@ -31,6 +31,8 @@ from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.exceptions import (
     MissingWorldModificationContextError,
     MismatchingPublishChangesAttribute,
+    ApplyMissedMessagesWhileWorldIsBeingModifiedError,
+    StateUpdateContainsUnknownDegreesOfFreedomError,
 )
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Handle,
@@ -56,6 +58,7 @@ from semantic_digital_twin.world_description.world_modification import (
     synchronized_attribute_modification,
 )
 from krrood.adapters.json_serializer import JSONAttributeDiff, to_json, from_json
+from semantic_digital_twin.callbacks.callback import StateChangeCallback
 from semantic_digital_twin.adapters.ros.messages import (
     MetaData,
     WorldStateUpdate,
@@ -1038,8 +1041,8 @@ def test_skipping_incorrect_message(rclpy_node):
 
     assert len(w1.kinematic_structure_entities) == len(w2.kinematic_structure_entities)
 
+    synchronizer_1.apply_missed_messages()
     with w1.modify_world():
-        synchronizer_1.apply_missed_messages()
         handle = Handle.create_with_new_body_in_world(PrefixedName("handle"), w1)
 
     time.sleep(1)
@@ -1713,6 +1716,446 @@ def test_world_synchronizer_missed_messages_applied_in_order(rclpy_node):
 
     ws1.close()
     ws2.close()
+
+
+def test_synchronize_model_false_suppresses_outgoing_model(rclpy_node):
+    """When synchronize_model=False, local model changes are not published to peers."""
+    world_1 = World(name="sync_model_false_w1")
+    world_2 = World(name="sync_model_false_w2")
+
+    world_synchronizer_1 = WorldSynchronizer(
+        node=rclpy_node,
+        _world=world_1,
+        synchronize_model=False,
+    )
+    world_synchronizer_2 = WorldSynchronizer(
+        node=rclpy_node,
+        _world=world_2,
+    )
+
+    time.sleep(0.2)
+
+    with world_1.modify_world():
+        new_body = Body(name=PrefixedName("suppressed_body"))
+        world_1.add_kinematic_structure_entity(new_body)
+
+    time.sleep(0.3)
+
+    assert len(world_1.kinematic_structure_entities) == 1
+    assert (
+        len(world_2.kinematic_structure_entities) == 0
+    ), "world_2 must not receive model changes when synchronize_model=False on sender"
+
+    world_synchronizer_1.close()
+    world_synchronizer_2.close()
+
+
+def test_synchronize_model_false_still_receives_incoming_model(rclpy_node):
+    """Even when synchronize_model=False, the synchronizer still applies incoming model messages."""
+    world_1 = World(name="recv_model_w1")
+    world_2 = World(name="recv_model_w2")
+
+    world_synchronizer_1 = WorldSynchronizer(
+        node=rclpy_node,
+        _world=world_1,
+    )
+    world_synchronizer_2 = WorldSynchronizer(
+        node=rclpy_node,
+        _world=world_2,
+        synchronize_model=False,
+    )
+
+    time.sleep(0.2)
+
+    with world_1.modify_world():
+        new_body = Body(name=PrefixedName("incoming_body"))
+        body_identifier = new_body.id
+        world_1.add_kinematic_structure_entity(new_body)
+
+    time.sleep(0.3)
+
+    assert (
+        world_2.get_kinematic_structure_entity_by_id(body_identifier) is not None
+    ), "world_2 must still receive and apply model changes even when synchronize_model=False"
+
+    world_synchronizer_1.close()
+    world_synchronizer_2.close()
+
+
+def test_synchronize_state_false_suppresses_outgoing_state(rclpy_node):
+    """When synchronize_state=False, local state changes are not published to peers."""
+    world_1 = create_dummy_world()
+    world_2 = create_dummy_world()
+
+    world_synchronizer_1 = WorldSynchronizer(
+        node=rclpy_node,
+        _world=world_1,
+        synchronize_state=False,
+    )
+    world_synchronizer_2 = WorldSynchronizer(
+        node=rclpy_node,
+        _world=world_2,
+    )
+
+    time.sleep(0.2)
+
+    world_1.state._data[0, 0] = 7.77
+    world_1.notify_state_change()
+
+    time.sleep(0.3)
+
+    assert world_2.state._data[0, 0] != pytest.approx(
+        7.77, abs=1e-6
+    ), "world_2 must not receive state changes when synchronize_state=False on sender"
+
+    world_synchronizer_1.close()
+    world_synchronizer_2.close()
+
+
+def test_synchronize_state_false_still_receives_incoming_state(rclpy_node):
+    """Even when synchronize_state=False, the synchronizer still applies incoming state messages."""
+    world_1 = create_dummy_world()
+    world_2 = create_dummy_world()
+
+    world_synchronizer_1 = WorldSynchronizer(
+        node=rclpy_node,
+        _world=world_1,
+    )
+    world_synchronizer_2 = WorldSynchronizer(
+        node=rclpy_node,
+        _world=world_2,
+        synchronize_state=False,
+    )
+
+    time.sleep(0.2)
+
+    world_1.state._data[0, 0] = 4.44
+    world_1.notify_state_change()
+
+    time.sleep(0.3)
+
+    assert world_2.state._data[0, 0] == pytest.approx(
+        4.44, abs=1e-9
+    ), "world_2 must still receive and apply state changes even when synchronize_state=False"
+
+    world_synchronizer_1.close()
+    world_synchronizer_2.close()
+
+
+def test_synchronize_both_false_suppresses_all_outgoing(rclpy_node):
+    """When both flags are False, no outgoing messages are published."""
+    world_1 = World(name="both_false_w1")
+    world_2 = World(name="both_false_w2")
+
+    world_synchronizer_1 = WorldSynchronizer(
+        node=rclpy_node,
+        _world=world_1,
+        synchronize_model=False,
+        synchronize_state=False,
+    )
+    world_synchronizer_2 = WorldSynchronizer(
+        node=rclpy_node,
+        _world=world_2,
+    )
+
+    time.sleep(0.2)
+
+    with world_1.modify_world():
+        new_body = Body(name=PrefixedName("silent_body"))
+        world_1.add_kinematic_structure_entity(new_body)
+
+    time.sleep(0.3)
+
+    assert (
+        len(world_2.kinematic_structure_entities) == 0
+    ), "world_2 must not receive anything when both synchronize flags are False"
+
+    world_synchronizer_1.close()
+    world_synchronizer_2.close()
+
+
+def test_stop_is_idempotent(rclpy_node):
+    """Calling stop() twice must not raise ValueError."""
+    world = World(name="idempotent_stop_world")
+    world_synchronizer = WorldSynchronizer(node=rclpy_node, _world=world)
+
+    world_synchronizer.stop()
+    world_synchronizer.stop()
+
+    world_synchronizer.close()
+
+
+def test_stop_without_close_leaves_ros_resources_alive(rclpy_node):
+    """stop() deregisters callbacks but must not destroy the ROS subscriber or publisher."""
+    world = World(name="stop_no_close_world")
+    world_synchronizer = WorldSynchronizer(node=rclpy_node, _world=world)
+
+    world_synchronizer.stop()
+
+    assert (
+        world_synchronizer.subscriber is not None
+    ), "subscriber must remain alive after stop() — only close() destroys ROS resources"
+    assert (
+        world_synchronizer.publisher is not None
+    ), "publisher must remain alive after stop() — only close() destroys ROS resources"
+
+    world_synchronizer.close()
+
+
+def test_stop_deregisters_from_model_change_callbacks(rclpy_node):
+    """After stop(), the synchronizer must no longer be in model_change_callbacks."""
+    world = World(name="stop_deregister_model_world")
+    world_synchronizer = WorldSynchronizer(node=rclpy_node, _world=world)
+
+    assert world_synchronizer in world.get_world_model_manager().model_change_callbacks
+
+    world_synchronizer.stop()
+
+    assert (
+        world_synchronizer not in world.get_world_model_manager().model_change_callbacks
+    )
+
+    world_synchronizer.close()
+
+
+def test_stop_deregisters_from_state_change_callbacks(rclpy_node):
+    """After stop(), the synchronizer must no longer be in state_change_callbacks."""
+    world = World(name="stop_deregister_state_world")
+    world_synchronizer = WorldSynchronizer(node=rclpy_node, _world=world)
+
+    assert world_synchronizer in world.state.state_change_callbacks
+
+    world_synchronizer.stop()
+
+    assert world_synchronizer not in world.state.state_change_callbacks
+
+    world_synchronizer.close()
+
+
+def test_stop_with_synchronize_model_false_does_not_touch_model_callbacks(rclpy_node):
+    """stop() must not try to remove from model_change_callbacks when synchronize_model=False."""
+    world = World(name="stop_no_model_reg_world")
+    world_synchronizer = WorldSynchronizer(
+        node=rclpy_node,
+        _world=world,
+        synchronize_model=False,
+    )
+
+    assert (
+        world_synchronizer not in world.get_world_model_manager().model_change_callbacks
+    )
+
+    world_synchronizer.stop()
+    world_synchronizer.stop()
+
+    world_synchronizer.close()
+
+
+def test_apply_missed_messages_interleaved_model_and_state(rclpy_node):
+    """
+    Messages buffered while paused are applied in order even when model and state
+    messages are interleaved — the model message must be applied before the state
+    message that references its DOFs.
+    """
+    world_1 = World(name="interleaved_w1")
+    world_2 = World(name="interleaved_w2")
+
+    world_synchronizer_1 = WorldSynchronizer(node=rclpy_node, _world=world_1)
+    world_synchronizer_2 = WorldSynchronizer(node=rclpy_node, _world=world_2)
+
+    time.sleep(0.2)
+
+    world_synchronizer_2.pause()
+
+    body_1 = Body(name=PrefixedName("interleaved_b1"))
+    body_2 = Body(name=PrefixedName("interleaved_b2"))
+
+    with world_1.modify_world():
+        world_1.add_body(body_1)
+        world_1.add_body(body_2)
+        prismatic_connection = PrismaticConnection.create_with_dofs(
+            world=world_1, parent=body_1, child=body_2, axis=Vector3.X()
+        )
+        world_1.add_connection(prismatic_connection)
+
+    time.sleep(0.2)
+
+    world_1.state[prismatic_connection.dof_id].position = 3.5
+    world_1.notify_state_change()
+
+    time.sleep(0.2)
+
+    assert (
+        len(world_synchronizer_2.missed_messages) == 3
+    ), "expected at least a model message and a state message to be buffered"
+    assert len(world_2.kinematic_structure_entities) == 0
+
+    world_synchronizer_2.resume()
+    world_synchronizer_2.apply_missed_messages()
+
+    assert len(world_2.kinematic_structure_entities) == 2
+    synchronized_prismatic_connections = world_2.get_connections_by_type(
+        PrismaticConnection
+    )
+    assert len(synchronized_prismatic_connections) == 1
+    assert synchronized_prismatic_connections[0].position == pytest.approx(
+        3.5, abs=1e-9
+    )
+
+    world_synchronizer_1.close()
+    world_synchronizer_2.close()
+
+
+def test_apply_state_with_unknown_identifier_raises(rclpy_node):
+    """
+    _apply_state must raise StateUpdateContainsUnknownDegreesOfFreedomError when
+    any DOF identifier in the WorldStateUpdate is absent from the world state index,
+    whether that is one unknown identifier or all of them.
+    """
+    world = create_dummy_world()
+    world_synchronizer = WorldSynchronizer(node=rclpy_node, _world=world)
+
+    known_identifier = world.state.keys()[0]
+    unknown_identifier = uuid4()
+
+    partially_unknown_state_update = WorldStateUpdate(
+        meta_data=world_synchronizer.meta_data,
+        ids=[known_identifier, unknown_identifier],
+        states=[0.0, 9.9],
+    )
+
+    with pytest.raises(StateUpdateContainsUnknownDegreesOfFreedomError):
+        world_synchronizer._apply_state(partially_unknown_state_update)
+
+    all_unknown_state_update = WorldStateUpdate(
+        meta_data=world_synchronizer.meta_data,
+        ids=[uuid4(), uuid4()],
+        states=[1.0, 2.0],
+    )
+
+    with pytest.raises(StateUpdateContainsUnknownDegreesOfFreedomError):
+        world_synchronizer._apply_state(all_unknown_state_update)
+
+    world_synchronizer.close()
+
+
+def test_close_destroys_acknowledge_publisher_and_subscriber(rclpy_node):
+    """
+    After close(), both acknowledge_publisher and acknowledge_subscriber must be None.
+    Failure here means Synchronizer.close() is leaking acknowledge ROS resources.
+    """
+    world = World(name="ack_leak_world")
+    world_synchronizer = WorldSynchronizer(
+        node=rclpy_node, _world=world, synchronous=True
+    )
+
+    assert world_synchronizer.acknowledge_publisher is not None
+    assert world_synchronizer.acknowledge_subscriber is not None
+
+    world_synchronizer.close()
+
+    assert (
+        world_synchronizer.acknowledge_publisher is None
+    ), "acknowledge_publisher must be destroyed by close()"
+    assert (
+        world_synchronizer.acknowledge_subscriber is None
+    ), "acknowledge_subscriber must be destroyed by close()"
+
+
+def test_apply_missed_messages_inside_modify_world_raises(rclpy_node):
+    """
+    Calling apply_missed_messages() while a modify_world context is active must raise
+    ApplyMissedMessagesWhileWorldIsBeingModifiedError before attempting to apply any
+    message (which would otherwise cause a MismatchingPublishChangesAttribute crash).
+    """
+    world_1 = World(name="missed_in_modify_w1")
+    world_2 = World(name="missed_in_modify_w2")
+
+    world_synchronizer_1 = WorldSynchronizer(node=rclpy_node, _world=world_1)
+    world_synchronizer_2 = WorldSynchronizer(node=rclpy_node, _world=world_2)
+
+    world_synchronizer_2.pause()
+
+    time.sleep(0.2)
+
+    with world_1.modify_world():
+        new_body = Body(name=PrefixedName("body_for_missed_in_modify"))
+        world_1.add_kinematic_structure_entity(new_body)
+
+    time.sleep(0.2)
+
+    assert len(world_synchronizer_2.missed_messages) >= 1
+
+    world_synchronizer_2.resume()
+
+    with pytest.raises(ApplyMissedMessagesWhileWorldIsBeingModifiedError):
+        with world_2.modify_world():
+            world_synchronizer_2.apply_missed_messages()
+
+    world_synchronizer_1.close()
+    world_synchronizer_2.close()
+
+
+def test_apply_state_does_not_deadlock_when_callback_acquires_world_lock(rclpy_node):
+    """
+    _apply_state must call notify_state_change after releasing _world_lock so that a
+    StateChangeCallback whose on_state_change acquires _world_lock from a separate
+    thread does not deadlock.
+
+    A 3-second thread-join timeout is used as the deadlock sentinel — the test fails
+    if the publish does not complete within that window.
+    """
+    receiver_node = rclpy.create_node("deadlock_test_receiver")
+    receiver_executor = SingleThreadedExecutor()
+    receiver_executor.add_node(receiver_node)
+    receiver_thread = threading.Thread(
+        target=receiver_executor.spin, daemon=True, name="deadlock-receiver"
+    )
+    receiver_thread.start()
+    time.sleep(0.1)
+
+    try:
+        world_1 = create_dummy_world()
+        world_2 = create_dummy_world()
+
+        world_synchronizer_1 = WorldSynchronizer(node=rclpy_node, _world=world_1)
+        world_synchronizer_2 = WorldSynchronizer(node=receiver_node, _world=world_2)
+
+        @dataclass(eq=False)
+        class LockAcquiringStateCallback(StateChangeCallback):
+            """A state callback that acquires _world_lock from inside on_state_change."""
+
+            def on_state_change(self, **kwargs):
+                with self._world._world_lock:
+                    pass
+
+        locking_callback = LockAcquiringStateCallback(_world=world_2)
+
+        time.sleep(0.2)
+
+        completed = threading.Event()
+
+        def trigger_state_change():
+            world_1.state._data[0, 0] = 5.55
+            world_1.notify_state_change()
+            completed.set()
+
+        trigger_thread = threading.Thread(target=trigger_state_change, daemon=True)
+        trigger_thread.start()
+        trigger_thread.join(timeout=3.0)
+
+        assert completed.is_set(), (
+            "Deadlock detected: notify_state_change did not complete within 3 seconds. "
+            "Likely cause: notify_state_change is called while _world_lock is held in _apply_state."
+        )
+
+        locking_callback.stop()
+        world_synchronizer_1.close()
+        world_synchronizer_2.close()
+    finally:
+        receiver_executor.shutdown()
+        receiver_thread.join(timeout=2.0)
+        receiver_node.destroy_node()
 
 
 if __name__ == "__main__":

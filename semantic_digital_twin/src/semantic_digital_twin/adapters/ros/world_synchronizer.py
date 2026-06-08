@@ -31,7 +31,11 @@ from semantic_digital_twin.callbacks.callback import (
     StateChangeCallback,
     ModelChangeCallback,
 )
-from semantic_digital_twin.exceptions import MissingPublishChangesKWARG
+from semantic_digital_twin.exceptions import (
+    MissingPublishChangesKWARG,
+    ApplyMissedMessagesWhileWorldIsBeingModifiedError,
+    StateUpdateContainsUnknownDegreesOfFreedomError,
+)
 from semantic_digital_twin.orm.ormatic_interface import WorldMappingDAO
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.world_entity import (
@@ -171,9 +175,11 @@ class Synchronizer(WorldEntityWithClassBasedID):
 
         self._subscription_callback(msg)
 
-    def acknowledge_message(self, msg: message_type):
+    def acknowledge_message(self, message: message_type):
+        if self.acknowledge_publisher is None:
+            return
         acknowledgment = Acknowledgment(
-            publication_event_id=msg.publication_event_id,
+            publication_event_id=message.publication_event_id,
             node_meta_data=self.meta_data,
         )
         self.acknowledge_publisher.publish(
@@ -270,16 +276,21 @@ class Synchronizer(WorldEntityWithClassBasedID):
         """
         Clean up publishers and subscribers.
         """
-
-        # Destroy subscribers
         if self.subscriber is not None:
             self.node.destroy_subscription(self.subscriber)
             self.subscriber = None
 
-        # Destroy publishers
+        if self.acknowledge_subscriber is not None:
+            self.node.destroy_subscription(self.acknowledge_subscriber)
+            self.acknowledge_subscriber = None
+
         if self.publisher is not None:
             self.node.destroy_publisher(self.publisher)
             self.publisher = None
+
+        if self.acknowledge_publisher is not None:
+            self.node.destroy_publisher(self.acknowledge_publisher)
+            self.acknowledge_publisher = None
 
 
 @dataclass
@@ -354,6 +365,10 @@ class WorldSynchronizer(Synchronizer, ModelChangeCallback, StateChangeCallback):
     ordering guarantees — a model update published before a state update will always be
     received first, eliminating the cross-topic race that causes ``KeyError`` when state
     messages arrive before the model update that introduced the referenced DOF UUIDs.
+
+    The ``synchronize_model`` and ``synchronize_state`` flags control whether outgoing
+    changes are published.  Incoming messages from other nodes are always received and
+    applied regardless of these flags.
     """
 
     message_type: ClassVar[Optional[Type[Message]]] = WorldUpdate
@@ -363,31 +378,29 @@ class WorldSynchronizer(Synchronizer, ModelChangeCallback, StateChangeCallback):
     synchronous: bool = False
     """If ``True``, publish blocks until all subscribers acknowledge receipt."""
 
-    fanout_model_topic: Optional[str] = None
-    """Optional topic name on which model-only :class:`ModificationBlock` messages are relayed."""
+    synchronize_model: bool = True
+    """
+    If ``True``, model changes on this world are published to the synchronization topic.
+    If ``False``, this synchronizer acts as a receive-only participant for model changes.
+    """
 
-    fanout_state_topic: Optional[str] = None
-    """Optional topic name on which state-only :class:`WorldStateUpdate` messages are relayed."""
+    synchronize_state: bool = True
+    """
+    If ``True``, state changes on this world are published to the synchronization topic.
+    If ``False``, this synchronizer acts as a receive-only participant for state changes.
+    """
 
-    _fanout_model_publisher: Optional[Publisher] = field(init=False, default=None)
-    _fanout_state_publisher: Optional[Publisher] = field(init=False, default=None)
     missed_messages: List[WorldUpdate] = field(
         default_factory=list, init=False, repr=False
     )
 
     def __post_init__(self):
         Synchronizer.__post_init__(self)
-        self._world.get_world_model_manager().model_change_callbacks.append(self)
-        self._world.state.state_change_callbacks.append(self)
+        if self.synchronize_model:
+            self._world.get_world_model_manager().model_change_callbacks.append(self)
+        if self.synchronize_state:
+            self._world.state.state_change_callbacks.append(self)
         self.update_previous_world_state()
-        if self.fanout_model_topic is not None:
-            self._fanout_model_publisher = self.node.create_publisher(
-                std_msgs.msg.String, topic=self.fanout_model_topic, qos_profile=10
-            )
-        if self.fanout_state_topic is not None:
-            self._fanout_state_publisher = self.node.create_publisher(
-                std_msgs.msg.String, topic=self.fanout_state_topic, qos_profile=10
-            )
 
     def on_model_change(self, **kwargs):
         publish_changes = kwargs.get("publish_changes")
@@ -405,11 +418,6 @@ class WorldSynchronizer(Synchronizer, ModelChangeCallback, StateChangeCallback):
         update = WorldUpdate(meta_data=self.meta_data, modification_block=model_block)
         self.publish(update, synchronous=self.synchronous)
 
-        if self._fanout_model_publisher is not None:
-            self._fanout_model_publisher.publish(
-                std_msgs.msg.String(data=json.dumps(to_json(model_block)))
-            )
-
     def on_state_change(self, **kwargs):
         publish_changes = kwargs.get("publish_changes")
         if publish_changes is None:
@@ -420,68 +428,78 @@ class WorldSynchronizer(Synchronizer, ModelChangeCallback, StateChangeCallback):
         changes = self.compute_state_changes()
         if not changes:
             return
-        self.update_previous_world_state()
 
-        state_msg = WorldStateUpdate(
+        state_message = WorldStateUpdate(
             meta_data=self.meta_data,
             ids=list(changes.keys()),
             states=list(changes.values()),
         )
-        update = WorldUpdate(meta_data=self.meta_data, state_update=state_msg)
+        update = WorldUpdate(meta_data=self.meta_data, state_update=state_message)
         self.publish(update, synchronous=self.synchronous)
-
-        if self._fanout_state_publisher is not None:
-            self._fanout_state_publisher.publish(
-                std_msgs.msg.String(data=json.dumps(to_json(state_msg)))
-            )
+        self.update_previous_world_state()
 
     def compute_state_changes(self) -> Dict[UUID, float]:
         """Return only DOF positions that changed since the last snapshot."""
-        ids = self._world.state.keys()
-        curr = self._world.state.positions
-        prev = self.previous_world_state_data
+        degree_of_freedom_identifiers = self._world.state.keys()
+        current_positions = self._world.state.positions
+        previous_positions = self.previous_world_state_data
 
-        if prev.shape != curr.shape:
-            return {n: float(v) for n, v in zip(ids, curr)}
+        if previous_positions.shape != current_positions.shape:
+            return {
+                identifier: float(value)
+                for identifier, value in zip(degree_of_freedom_identifiers, current_positions)
+            }
 
-        changed_mask = ~np.isclose(curr, prev, rtol=1e-8, atol=1e-12, equal_nan=True)
+        changed_mask = ~np.isclose(
+            current_positions, previous_positions, rtol=1e-8, atol=1e-12, equal_nan=True
+        )
         if not np.any(changed_mask):
             return {}
 
-        idx = np.nonzero(changed_mask)[0]
-        return {ids[i]: float(curr[i]) for i in idx}
+        changed_indices = np.nonzero(changed_mask)[0]
+        return {
+            degree_of_freedom_identifiers[index]: float(current_positions[index])
+            for index in changed_indices
+        }
 
-    def _subscription_callback(self, msg: WorldUpdate):
+    def _subscription_callback(self, message: WorldUpdate):
         if self._is_paused:
-            self.missed_messages.append(msg)
+            self.missed_messages.append(message)
         else:
-            self.apply_message(msg)
-            self.acknowledge_message(msg)
+            self.apply_message(message)
+            self.acknowledge_message(message)
 
-    def apply_message(self, msg: WorldUpdate):
+    def apply_message(self, message: WorldUpdate):
         """Apply model first, then state — preserves the ordering invariant."""
-        if msg.modification_block is not None:
-            self._apply_model(msg.modification_block)
-        if msg.state_update is not None:
-            self._apply_state(msg.state_update)
+        if message.modification_block is not None:
+            self._apply_model(message.modification_block)
+        if message.state_update is not None:
+            self._apply_state(message.state_update)
 
-    def _apply_model(self, msg: ModificationBlock):
+    def _apply_model(self, modification_block_message: ModificationBlock):
         with self._world.modify_world(publish_changes=False):
-            msg.modifications.apply(self._world)
+            modification_block_message.modifications.apply(self._world)
 
-    def _apply_state(self, msg: WorldStateUpdate):
-        pairs = [
-            (self._world.state._index.get(_id), s)
-            for _id, s in zip(msg.ids, msg.states)
+    def _apply_state(self, state_update_message: WorldStateUpdate):
+        identifier_index_state_triples = [
+            (identifier, self._world.state._index.get(identifier), state_value)
+            for identifier, state_value in zip(state_update_message.ids, state_update_message.states)
         ]
-        valid_pairs = [(idx, s) for idx, s in pairs if idx is not None]
-        if not valid_pairs:
-            return
-        indices, states = zip(*valid_pairs)
+        unknown_identifiers = [
+            identifier
+            for identifier, index, _ in identifier_index_state_triples
+            if index is None
+        ]
+        if unknown_identifiers:
+            raise StateUpdateContainsUnknownDegreesOfFreedomError(
+                unknown_identifiers=unknown_identifiers
+            )
+        indices = [index for _, index, _ in identifier_index_state_triples]
+        state_values = [state_value for _, _, state_value in identifier_index_state_triples]
         with self._world._world_lock:
-            self._world.state._data[0, list(indices)] = np.asarray(states, dtype=float)
+            self._world.state._data[0, indices] = np.asarray(state_values, dtype=float)
             self.update_previous_world_state()
-            self._world.notify_state_change(publish_changes=False)
+        self._world.notify_state_change(publish_changes=False)
 
     def apply_missed_messages(self):
         """Apply buffered messages accumulated while the synchronizer was paused.
@@ -490,36 +508,38 @@ class WorldSynchronizer(Synchronizer, ModelChangeCallback, StateChangeCallback):
         fire between messages, which is required for state messages that follow
         model messages (``compiled_all_fks`` must exist before
         ``notify_state_change`` is called).
+
+        :raises ApplyMissedMessagesWhileWorldIsBeingModifiedError: If called while a
+            ``modify_world`` context is active on this synchronizer's world.
         """
+        if self._world.world_is_being_modified:
+            raise ApplyMissedMessagesWhileWorldIsBeingModifiedError()
         if not self.missed_messages:
             return
-        missed = self.missed_messages
+        pending_messages = self.missed_messages
         self.missed_messages = []
-        for msg in missed:
-            self.apply_message(msg)
-        for msg in missed:
-            self.acknowledge_message(msg)
+        for message in pending_messages:
+            self.apply_message(message)
+        for message in pending_messages:
+            self.acknowledge_message(message)
 
     def resume(self):
         """Resume publishing and subscribing. Missed messages are NOT applied automatically."""
         super().resume()
 
     def stop(self):
-        try:
-            self._world.get_world_model_manager().model_change_callbacks.remove(self)
-        except ValueError:
-            pass
-        try:
-            self._world.state.state_change_callbacks.remove(self)
-        except ValueError:
-            pass
+        if self.synchronize_model:
+            try:
+                self._world.get_world_model_manager().model_change_callbacks.remove(self)
+            except ValueError:
+                pass
+        if self.synchronize_state:
+            try:
+                self._world.state.state_change_callbacks.remove(self)
+            except ValueError:
+                pass
+        super().stop()
 
     def close(self):
         self.stop()
         super().close()
-        if self._fanout_model_publisher is not None:
-            self.node.destroy_publisher(self._fanout_model_publisher)
-            self._fanout_model_publisher = None
-        if self._fanout_state_publisher is not None:
-            self.node.destroy_publisher(self._fanout_state_publisher)
-            self._fanout_state_publisher = None
