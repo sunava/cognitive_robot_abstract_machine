@@ -417,7 +417,9 @@ def build_cutting_sequence(
     margin_y = min(0.01, 0.10 * size_y)
     z_clearance = max(0.01, 0.25 * size_z) + APPROACH_Z_EXTRA_CLEARANCE_M
     z_top = maxs[2] + z_clearance
-    z_cut = mins[2] + max(0.003, 0.05 * size_z)
+    cut_floor_clearance = max(0.015, 0.20 * size_z)
+    cut_floor_clearance = min(cut_floor_clearance, max(0.003, size_z - 0.005))
+    z_cut = mins[2] + cut_floor_clearance
     center_y = 0.5 * (mins[1] + maxs[1])
 
     usable_x = max(0.0, size_x - 2.0 * margin_x)

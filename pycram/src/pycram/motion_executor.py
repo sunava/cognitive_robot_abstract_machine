@@ -44,6 +44,9 @@ class MotionExecutor:
     STAGNATION_CHECK_INTERVAL_TICKS: ClassVar[int] = 25
     STAGNATION_DISTANCE_EPSILON_M: ClassVar[float] = 0.002
     STAGNATION_CHECKS_BEFORE_ABORT: ClassVar[int] = 4
+    ACTION_STAGNATION_CHECKS_BEFORE_ABORT: ClassVar[dict[str, int]] = {
+        "CuttingAction": 25,
+    }
     WIGGLE_DISTANCE_EPSILON_M: ClassVar[float] = 0.025
     ROBOT_WIGGLE_DISTANCE_EPSILON_M: ClassVar[dict[str, float]] = {
         "Justin": 0.07,
@@ -55,6 +58,7 @@ class MotionExecutor:
     WIGGLE_CHECKS_BEFORE_ABORT: ClassVar[int] = 8
     ACTION_WIGGLE_CHECKS_BEFORE_ABORT: ClassVar[dict[str, int]] = {
         "SimplePouringAction": 4,
+        "CuttingAction": 25,
     }
     ACTION_WIGGLE_RESET_DISTANCE_M: ClassVar[dict[str, float]] = {
         "SimplePouringAction": 0.05,
@@ -265,6 +269,12 @@ class MotionExecutor:
                 action_name,
                 self.WIGGLE_CHECKS_BEFORE_ABORT,
             )
+            stagnation_checks_before_abort = (
+                self.ACTION_STAGNATION_CHECKS_BEFORE_ABORT.get(
+                    action_name,
+                    self.STAGNATION_CHECKS_BEFORE_ABORT,
+                )
+            )
             wiggle_reset_distance = max(
                 wiggle_distance_epsilon,
                 self.ACTION_WIGGLE_RESET_DISTANCE_M.get(
@@ -331,15 +341,16 @@ class MotionExecutor:
                         wiggle_distance_epsilon,
                         wiggle_reset_distance,
                         stagnant_checks,
-                        self.STAGNATION_CHECKS_BEFORE_ABORT,
+                        stagnation_checks_before_abort,
                         wiggle_checks,
                         wiggle_checks_before_abort,
                     )
 
-                    if (
-                        stagnant_checks >= self.STAGNATION_CHECKS_BEFORE_ABORT
+                    should_abort_for_progress = (
+                        stagnant_checks >= stagnation_checks_before_abort
                         or wiggle_checks >= wiggle_checks_before_abort
-                    ):
+                    )
+                    if should_abort_for_progress:
                         wiggle_detected = progress_status == "wiggle"
                         raise TimeoutError(
                             "Motion stalled while waiting for end of motion "

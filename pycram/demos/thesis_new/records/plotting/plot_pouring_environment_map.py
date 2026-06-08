@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+from plot_environment_maps import main
+
+
+if __name__ == "__main__":
+    main(
+        default_input_name="csv/pouring_results.csv",
+        default_output_dir_name="environment_maps/pouring",
+        task_label="Pouring",
+    )

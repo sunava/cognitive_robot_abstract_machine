@@ -1,4 +1,5 @@
 import time
+from contextlib import contextmanager, nullcontext
 
 from pycram.locations.locations import CostmapLocation
 from pycram.motion_executor import (
@@ -35,7 +36,7 @@ from .utils.demo_utils import (
     attach_available_tools,
     update_navigation_costmap_debug_publishers,
     collect_named_targets,
-    commit_plan_to_db,
+
     get_park_arms_argument,
     highlight_current_target,
     resolve_navigation_target_for_environment,
@@ -98,9 +99,11 @@ CUTTING_COSTMAP_WIDTH = 140
 CUTTING_COSTMAP_HEIGHT = 140
 CUTTING_COSTMAP_RESOLUTION = 0.03
 DEBUG_PROFILE_CUTTING = True
+ENABLE_CUTTING_HIGHLIGHT = True
+PAUSE_ROS_STATE_PUBLISHERS_DURING_CUT = False
 CUTTING_TECHNIQUE = "saw"
-CUTTING_POINTER_STRIDE = 13
-CUTTING_NUM_CUTS_X = 4
+CUTTING_POINTER_STRIDE = 20
+CUTTING_NUM_CUTS_X = 2
 CUTTING_SLICE_THICKNESS_M = 0.03
 
 
@@ -347,6 +350,24 @@ def _fold_parallel_angle_rad(angle):
     return float(min(folded, abs(np.pi - folded)))
 
 
+@contextmanager
+def _pause_ros_state_publishers_during_motion(world):
+    paused_callbacks = []
+    for callback in list(getattr(world.state, "state_change_callbacks", [])):
+        callback_type = callback.__class__.__name__
+        callback_module = callback.__class__.__module__
+        if callback_type == "TFPublisher" or ".adapters.ros." in callback_module:
+            was_paused = getattr(callback, "_is_paused", False)
+            if not was_paused:
+                callback.pause()
+                paused_callbacks.append(callback)
+    try:
+        yield
+    finally:
+        for callback in paused_callbacks:
+            callback.resume()
+
+
 def _try_cut(
     context,
     bread,
@@ -413,17 +434,19 @@ def _try_cut(
                 [cutting_action],
                 context,
             )
-            _, _ = _timed("cut/action_plan_perform", current_plan.perform)
+            motion_context = (
+                _pause_ros_state_publishers_during_motion(context.world)
+                if PAUSE_ROS_STATE_PUBLISHERS_DURING_CUT
+                else nullcontext()
+            )
+            with motion_context:
+                _, _ = _timed("cut/action_plan_perform", current_plan.perform)
             return _motion_progress_from_action(cutting_action)
     except Exception as exc:
         exc.motion_progress = _motion_progress_from_action(cutting_action)
         raise
     finally:
-        if current_plan is not None:
-            _, _ = _timed(
-                "cut/db_commit", lambda: commit_plan_to_db(session, current_plan)
-            )
-
+        pass
 
 def _build_cut_geometry_binding(bread, *, cutting_technique, num_cuts_x, robot=None):
     mins, maxs = body_local_aabb(
@@ -676,16 +699,12 @@ def main_cutting(
     seed=None,
     robot_name=None,
     environment_name=None,
-    object_kind="apple",
+    object_kind="bread",
     object_name=None,
     container_kind=None,
     container_name=None,
 ):
-    global session
-    if session is None:
-        session = pycram_sessionmaker()()
-        Base.metadata.create_all(session.bind)
-        session.commit()
+
     if object_name is not None:
         object_kind = object_name
     if container_name is not None:
@@ -741,6 +760,7 @@ def main_cutting(
     print("[setup] building execution context", flush=True)
     context = Context.from_world(world)
     context.ros_node = node
+    context.robot.full_body_controlled = True
     robot_name = _robot_name(context.robot)
     world_name = environment_name
     run_id = new_run_id()
@@ -819,20 +839,22 @@ def main_cutting(
                 context=context,
             ),
         )
-        _, highlight_elapsed = _timed(
-            f"bread/{bread_name}/highlight",
-            lambda: highlight_current_target(
-                world,
-                breads,
-                bread,
-                default_color=default_object_color,
-                active_color=ACTIVE_BREAD_COLOR,
-                failed_color=FAILED_BREAD_COLOR,
-                success_color=SUCCESS_BREAD_COLOR,
-                failed_targets=failed_breads,
-                successful_targets=successful_breads,
-            ),
-        )
+        highlight_elapsed = 0.0
+        if ENABLE_CUTTING_HIGHLIGHT:
+            _, highlight_elapsed = _timed(
+                f"bread/{bread_name}/highlight",
+                lambda: highlight_current_target(
+                    world,
+                    breads,
+                    bread,
+                    default_color=default_object_color,
+                    active_color=ACTIVE_BREAD_COLOR,
+                    failed_color=FAILED_BREAD_COLOR,
+                    success_color=SUCCESS_BREAD_COLOR,
+                    failed_targets=failed_breads,
+                    successful_targets=successful_breads,
+                ),
+            )
         common_result_kwargs = {
             "task_instance_id": bread_name,
             "experiment_condition": EXPERIMENT_CONDITION,
@@ -1128,17 +1150,18 @@ def main_cutting(
                 f"{time.perf_counter() - bread_start_time:.3f}s"
             )
 
-    highlight_current_target(
-        world,
-        breads,
-        None,
-        default_color=default_object_color,
-        active_color=ACTIVE_BREAD_COLOR,
-        failed_color=FAILED_BREAD_COLOR,
-        success_color=SUCCESS_BREAD_COLOR,
-        failed_targets=failed_breads,
-        successful_targets=successful_breads,
-    )
+    if ENABLE_CUTTING_HIGHLIGHT:
+        highlight_current_target(
+            world,
+            breads,
+            None,
+            default_color=default_object_color,
+            active_color=ACTIVE_BREAD_COLOR,
+            failed_color=FAILED_BREAD_COLOR,
+            success_color=SUCCESS_BREAD_COLOR,
+            failed_targets=failed_breads,
+            successful_targets=successful_breads,
+        )
 
     print("[summary]")
     print(f"  total breads: {len(breads)}")
@@ -1150,12 +1173,3 @@ def main_cutting(
     print(f"  results csv: {RESULTS_CSV_PATH}")
 
     shutdown_experiment_runtime(node)
-
-
-# if __name__ == "__main__":
-#     session = pycram_sessionmaker()()
-#     # drop_database(session.bind)
-#     Base.metadata.create_all(session.bind)
-#     session.commit()
-#
-#     main_cutting()

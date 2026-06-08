@@ -60,12 +60,12 @@ class Garmi(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
 
     ARM_PARK_CONFIGURATION: ClassVar[list[float]] = [
         0.0,
-        -0.7853981633974483,
+        -0.6,
         0.0,
-        -2.356194490192345,
+        -2.0,
         0.0,
-        1.5707963267948966,
-        0.7853981633974483,
+        1.3,
+        0.6,
     ]
 
     @classmethod

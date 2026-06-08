@@ -55,7 +55,7 @@ SPAWN_OBSTACLE_TOP_EPSILON_M = 0.01
 
 # Automatic count model: breads ~= usable_surface_area * BREADS_PER_SQM.
 # Keep this tunable when switching to a new environment.
-BREADS_PER_SQM = 12.0
+BREADS_PER_SQM = 14.0
 MIN_BREADS_PER_SURFACE = 0
 MAX_BREADS_PER_SURFACE = 30
 STRICT_CLEAN_MODE = True
@@ -876,12 +876,12 @@ def setup_random_bread_world(
         object_name_prefix=object_cfg["object_name_prefix"],
         mesh_parts=object_cfg["mesh_parts"],
         object_color=object_cfg["object_color"],
-        scale_choices=np.array([0.8, 1.0, 1.2, 1.4, 1.6], dtype=float),
+        scale_choices=np.array([0.7, 0.8, 0.9, 1.0, 1.1, 1.2], dtype=float),
         base_radius=_base_xy_radius_for_mesh(*object_cfg["mesh_parts"]),
         radius_safety_factor=BREAD_RADIUS_SAFETY_FACTOR,
         min_clearance_m=MIN_BREAD_CLEARANCE_M,
         strict_clean_mode=STRICT_CLEAN_MODE,
-        z_offset=0.03,
+        z_offset=0.05,
         reachability_fn=_is_pose_reachable_for_cutting,
         debug_disable_reachability=DEBUG_DISABLE_REACHABILITY,
         debug_force_spawn_all_targets=DEBUG_FORCE_SPAWN_ALL_TARGETS,

@@ -405,6 +405,15 @@ def publish_points_sequence(
     if node is None:
         return None
 
+    if clear_existing and hasattr(node, "_rviz_publishers"):
+        for _, timer in node._rviz_publishers:
+            if timer is not None:
+                try:
+                    node.destroy_timer(timer)
+                except Exception:
+                    pass
+        node._rviz_publishers = []
+
     pts = _as_points(points)
     phase_id_arr = (
         None if phase_id is None else np.asarray(phase_id, dtype=int).reshape(-1)
@@ -811,55 +820,59 @@ class GeneralizedActionPlan(ActionDescription):
             frame_id="map",
             topic="/point_sequence",
             phase_id=self._extract_phase_ids_for_logging(sampled),
-            republish_hz=2.0,
+            republish_hz=None,
             clear_existing=self.clear_viz,
         )
+        previous_full_body_controlled = self.robot.full_body_controlled
         self.robot.full_body_controlled = True
-        waypoints = self._build_waypoints(sampled)
-        self._last_waypoints = waypoints
-        self._postprocess_waypoints_for_logging(waypoints)
-        self._update_waypoint_progress_for_logging(
-            waypoints, note="planned_not_started"
-        )
-
-        _logging_helper_apply_fields(
-            self, _logging_helper_collect_container_fields(self, P)
-        )
-
         try:
-            self.add_subplan(sequential([self._build_motion(waypoints)])).perform()
-            self._update_waypoint_progress_for_logging(waypoints, note="completed")
-        except Exception as exc:
-            self._update_waypoint_progress_for_logging(waypoints, note="failed")
-            if self._accept_execution_failure_as_success(waypoints, exc):
-                self.logged_motion_progress_note = "accepted_failure_as_success"
-                return
+            waypoints = self._build_waypoints(sampled)
+            self._last_waypoints = waypoints
+            self._postprocess_waypoints_for_logging(waypoints)
+            self._update_waypoint_progress_for_logging(
+                waypoints, note="planned_not_started"
+            )
 
-            collision_contacts = None
+            _logging_helper_apply_fields(
+                self, _logging_helper_collect_container_fields(self, P)
+            )
+
             try:
-                collision_contacts = len(
-                    self.world.collision_manager.compute_collisions().contacts
-                )
-            except Exception:
+                self.add_subplan(sequential([self._build_motion(waypoints)])).perform()
+                self._update_waypoint_progress_for_logging(waypoints, note="completed")
+            except Exception as exc:
+                self._update_waypoint_progress_for_logging(waypoints, note="failed")
+                if self._accept_execution_failure_as_success(waypoints, exc):
+                    self.logged_motion_progress_note = "accepted_failure_as_success"
+                    return
+
                 collision_contacts = None
+                try:
+                    collision_contacts = len(
+                        self.world.collision_manager.compute_collisions().contacts
+                    )
+                except Exception:
+                    collision_contacts = None
 
-            msg = str(exc)
-            if (
-                "No waypoints provided to MoveTCPWaypointsAlignedMotion" in msg
-                or "No aligned waypoint tasks generated" in msg
-                or "No waypoints left after applying pointer_stride" in msg
-                or "No pose waypoints left after applying pointer_stride" in msg
-            ):
-                raise ValueError(
-                    "Aligned motion failed: no waypoint sequence to execute "
-                    f"(waypoints={len(waypoints)}, collisions_now={collision_contacts})."
+                msg = str(exc)
+                if (
+                    "No waypoints provided to MoveTCPWaypointsAlignedMotion" in msg
+                    or "No aligned waypoint tasks generated" in msg
+                    or "No waypoints left after applying pointer_stride" in msg
+                    or "No pose waypoints left after applying pointer_stride" in msg
+                ):
+                    raise ValueError(
+                        "Aligned motion failed: no waypoint sequence to execute "
+                        f"(waypoints={len(waypoints)}, collisions_now={collision_contacts})."
+                    ) from exc
+
+                raise RuntimeError(
+                    "Aligned motion failed during execution "
+                    f"(waypoints={len(waypoints)}, collisions_now={collision_contacts}): "
+                    f"{type(exc).__name__}: {exc}"
                 ) from exc
-
-            raise RuntimeError(
-                "Aligned motion failed during execution "
-                f"(waypoints={len(waypoints)}, collisions_now={collision_contacts}): "
-                f"{type(exc).__name__}: {exc}"
-            ) from exc
+        finally:
+            self.robot.full_body_controlled = previous_full_body_controlled
 
     def _update_waypoint_progress_for_logging(self, waypoints, note: str) -> None:
         self.logged_waypoint_count = len(waypoints) if waypoints is not None else 0
@@ -1218,7 +1231,8 @@ class CuttingAction(GeneralizedActionPlan):
     Execute a cutting motion sequence on a food object.
     """
 
-    motion_timeout_ticks = 100
+    motion_timeout_ticks = 300
+    clear_viz: bool = True
 
     container: Body = None
     """

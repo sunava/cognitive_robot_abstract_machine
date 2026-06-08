@@ -1,0 +1,16 @@
+causal_experiment_id,intervention_family,treatment_variable,treatment_value,task_name,environment_name,seed,robot_name,expected_instance_key
+robot_substitution:cut:apartment:910001,robot_substitution,robot_name,pr2,cut,apartment,910001,pr2,cut:apartment:910001:<task_instance_id>
+robot_substitution:cut:apartment:910002,robot_substitution,robot_name,pr2,cut,apartment,910002,pr2,cut:apartment:910002:<task_instance_id>
+robot_substitution:cut:apartment:910003,robot_substitution,robot_name,pr2,cut,apartment,910003,pr2,cut:apartment:910003:<task_instance_id>
+robot_substitution:cut:apartment:910004,robot_substitution,robot_name,pr2,cut,apartment,910004,pr2,cut:apartment:910004:<task_instance_id>
+robot_substitution:cut:apartment:910005,robot_substitution,robot_name,pr2,cut,apartment,910005,pr2,cut:apartment:910005:<task_instance_id>
+robot_substitution:cut:isr:910001,robot_substitution,robot_name,pr2,cut,isr,910001,pr2,cut:isr:910001:<task_instance_id>
+robot_substitution:cut:isr:910002,robot_substitution,robot_name,pr2,cut,isr,910002,pr2,cut:isr:910002:<task_instance_id>
+robot_substitution:cut:isr:910003,robot_substitution,robot_name,pr2,cut,isr,910003,pr2,cut:isr:910003:<task_instance_id>
+robot_substitution:cut:isr:910004,robot_substitution,robot_name,pr2,cut,isr,910004,pr2,cut:isr:910004:<task_instance_id>
+robot_substitution:cut:isr:910005,robot_substitution,robot_name,pr2,cut,isr,910005,pr2,cut:isr:910005:<task_instance_id>
+robot_substitution:cut:kitchen:910001,robot_substitution,robot_name,pr2,cut,kitchen,910001,pr2,cut:kitchen:910001:<task_instance_id>
+robot_substitution:cut:kitchen:910002,robot_substitution,robot_name,pr2,cut,kitchen,910002,pr2,cut:kitchen:910002:<task_instance_id>
+robot_substitution:cut:kitchen:910003,robot_substitution,robot_name,pr2,cut,kitchen,910003,pr2,cut:kitchen:910003:<task_instance_id>
+robot_substitution:cut:kitchen:910004,robot_substitution,robot_name,pr2,cut,kitchen,910004,pr2,cut:kitchen:910004:<task_instance_id>
+robot_substitution:cut:kitchen:910005,robot_substitution,robot_name,pr2,cut,kitchen,910005,pr2,cut:kitchen:910005:<task_instance_id>

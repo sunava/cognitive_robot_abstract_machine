@@ -59,7 +59,7 @@ PAIRED_DATASET_CSV = EXPERIMENT_DIR / "paired_robot_substitution_dataset.csv"
 PAIRWISE_EFFECTS_CSV = EXPERIMENT_DIR / "paired_robot_substitution_effects.csv"
 SUMMARY_JSON = EXPERIMENT_DIR / "robot_substitution_summary.json"
 RUN_STATUS_CSV = EXPERIMENT_DIR / "robot_substitution_run_status.csv"
-DEFAULT_CHILD_RUN_TIMEOUT_S = 1800
+DEFAULT_CHILD_RUN_TIMEOUT_S = 300
 RUN_STATUS_COLUMNS = [
     "timestamp_utc",
     "status",
@@ -144,6 +144,15 @@ def normalize_task_name(task_name: object) -> str:
         supported = ", ".join(sorted(TASK_ALIASES))
         raise ValueError(f"Unsupported task '{task_name}'. Supported: {supported}")
     return TASK_ALIASES[value]
+
+
+def normalize_task_name_or_missing(task_name: object) -> object:
+    if pd.isna(task_name):
+        return pd.NA
+    value = str(task_name).replace("\x00", "").strip().lower()
+    if not value:
+        return pd.NA
+    return TASK_ALIASES.get(value, pd.NA)
 
 
 def raw_results_path_for_task(task_name: object) -> Path:
@@ -236,12 +245,19 @@ def append_run_status(row, status: str, *, returncode: int | str = "", message: 
 def load_run_status_events() -> pd.DataFrame:
     if not RUN_STATUS_CSV.exists() or RUN_STATUS_CSV.stat().st_size == 0:
         return pd.DataFrame(columns=RUN_STATUS_COLUMNS)
-    events = pd.read_csv(RUN_STATUS_CSV)
+    events = pd.read_csv(RUN_STATUS_CSV, on_bad_lines="skip")
     for column in RUN_STATUS_COLUMNS:
         if column not in events.columns:
             events[column] = ""
     events["seed"] = pd.to_numeric(events["seed"], errors="coerce").astype("Int64")
-    events["task_name"] = events["task_name"].map(normalize_task_name)
+    required_columns = ["status", "task_name", "environment_name", "seed", "robot_name"]
+    events = events.dropna(subset=required_columns).copy()
+    for column in ["status", "task_name", "environment_name", "robot_name"]:
+        events[column] = events[column].astype(str).str.replace("\x00", "", regex=False)
+        events[column] = events[column].str.strip()
+        events = events[events[column] != ""].copy()
+    events["task_name"] = events["task_name"].map(normalize_task_name_or_missing)
+    events = events.dropna(subset=["task_name"]).copy()
     events["environment_name"] = events["environment_name"].map(
         normalize_environment_name
     )
@@ -339,11 +355,11 @@ def remove_raw_rows_for_run(row) -> int:
         normalize_environment_name
     )
     task = raw.get("task_name", pd.Series("", index=raw.index)).map(
-        normalize_task_name
+        normalize_task_name_or_missing
     )
     key = manifest_row_key(row)
     matching = (
-        (task == key[0])
+        (task.fillna("") == key[0])
         & (environment == key[1])
         & (seed == key[2])
         & (robot == key[3])
@@ -454,10 +470,21 @@ def run_task_intervention_isolated(
     ]
     child_python_paths = local_python_paths + existing_python_paths
     EXPERIMENT_DIR.mkdir(parents=True, exist_ok=True)
+    child_run_timeout_s = int(
+        os.environ.get("THESIS_CAUSAL_CHILD_TIMEOUT_S", DEFAULT_CHILD_RUN_TIMEOUT_S)
+    )
+    child_traceback_timeout_s = int(
+        os.environ.get("THESIS_CAUSAL_TRACEBACK_TIMEOUT_S", "0")
+    )
+    traceback_timer_code = (
+        f"faulthandler.dump_traceback_later({child_traceback_timeout_s}, repeat=False); "
+        if child_traceback_timeout_s > 0
+        else ""
+    )
     code = (
         "import faulthandler, sys; "
         "faulthandler.enable(); "
-        "faulthandler.dump_traceback_later(180, repeat=False); "
+        f"{traceback_timer_code}"
         f"sys.path[:0] = {[str(path) for path in local_python_paths]!r}; "
         "from demos.thesis_new.src.demo_runners import run_thesis_demo; "
         "run_thesis_demo("
@@ -473,9 +500,6 @@ def run_task_intervention_isolated(
     env.setdefault("MPLCONFIGDIR", "/tmp")
     env[RESULTS_ENV_BY_TASK[normalized_task]] = str(
         raw_results_path_for_task(normalized_task)
-    )
-    child_run_timeout_s = int(
-        os.environ.get("THESIS_CAUSAL_CHILD_TIMEOUT_S", DEFAULT_CHILD_RUN_TIMEOUT_S)
     )
     try:
         result = subprocess.run(
@@ -519,7 +543,10 @@ def load_raw_results(raw_results_path: Path = RAW_INTERVENTION_RESULTS) -> pd.Da
             if candidate in results.columns:
                 results["task_instance_id"] = results[candidate]
                 break
-    results["task_name_normalized"] = results["task_name"].map(normalize_task_name)
+    results["task_name_normalized"] = results["task_name"].map(
+        normalize_task_name_or_missing
+    )
+    results = results.dropna(subset=["task_name_normalized"]).copy()
     return results
 
 
