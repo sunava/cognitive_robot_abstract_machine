@@ -904,8 +904,10 @@ class SystemDynamicsStrategy(EnforcementStrategy):
         return SlackLimits()
 
     def create_bounds(
-        self, bounds: list[Scalar], normalization_numbers: list[float]
-    ) -> Vector:
+        self, bounds_getter: Callable[GiskardConstraint, Scalar]
+    ) -> Vector: ...
+
+    def create_equality_bounds(self) -> Vector:
         res = sm.Vector.zeros(self.number_of_jerk_columns)
         res[: self.number_of_free_variables] = (
             -self.velocity_variables - self.acceleration_variables * self.config.mpc_dt

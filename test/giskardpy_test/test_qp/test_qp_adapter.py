@@ -2,7 +2,7 @@ from collections import defaultdict
 
 import numpy as np
 import pytest
-from giskardpy.qp.constraint import DofLimits
+from giskardpy.qp.constraint import DofLimits, SystemDynamicsStrategy
 from giskardpy.qp.constraint_collection import ConstraintCollection
 from giskardpy.qp.qp_controller_config import QPControllerConfig
 from giskardpy.qp.qp_data_factories import QPDataExplicitFactory
@@ -186,19 +186,21 @@ def test_mpc_model(prismatic_bot2):
     target_frequency = 20
     prediction_horizon = 10
     number_of_variables = len(prismatic_bot2.active_degrees_of_freedom)
-    mpc_model = EqualityDerivativeLinkModel(
+    mpc_model = SystemDynamicsStrategy(
         degrees_of_freedom=prismatic_bot2.active_degrees_of_freedom,
-        constraint_collection=ConstraintCollection(),
+        constraints=[],
         config=QPControllerConfig(
             target_frequency=target_frequency, prediction_horizon=prediction_horizon
         ),
     )
-    assert len(mpc_model.bounds[0].free_variables()) == 2
-    assert len(mpc_model.bounds[1].free_variables()) == 2
-    assert len(mpc_model.bounds[2].free_variables()) == 1
-    assert len(mpc_model.bounds[3].free_variables()) == 1
-    assert len(mpc_model.bounds[4:].free_variables()) == 0
-    assert len(mpc_model.constraint_names) == len(mpc_model.bounds)
+    bounds = mpc_model.create_equality_bounds()
+    names = mpc_model.create_names()
+    assert len(bounds[0].free_variables()) == 2
+    assert len(bounds[1].free_variables()) == 2
+    assert len(bounds[2].free_variables()) == 1
+    assert len(bounds[3].free_variables()) == 1
+    assert len(bounds[4:].free_variables()) == 0
+    assert len(names) == len(bounds)
 
     variables = []
     variable_dicts = defaultdict(lambda: defaultdict(dict))
@@ -211,7 +213,7 @@ def test_mpc_model(prismatic_bot2):
                 variable_dicts[derivative][name][k] = variables[-1]
 
     x = Vector(variables)
-    constraints = mpc_model.matrix @ x
+    constraints = mpc_model.create_matrix() @ x
 
     # constraints on first two idx
     for variable_id in range(number_of_variables):
@@ -260,7 +262,10 @@ def test_mpc_model(prismatic_bot2):
         )
         constraint_index += 1
 
-    assert mpc_model.slack_matrix.shape == (number_of_variables * prediction_horizon, 0)
+    assert mpc_model.create_slack_matrix().shape == (
+        number_of_variables * prediction_horizon,
+        0,
+    )
 
 
 def test_equality_constraint_model(prismatic_bot2):

@@ -86,7 +86,7 @@ class QPDataSymbolic:
         )
         eq_matrix_dofs.append(system_dynamics_strategy.create_matrix())
         eq_matrix_slack.append(system_dynamics_strategy.create_slack_matrix())
-        eq_bounds.append(system_dynamics_strategy.create_bounds([], []))
+        eq_bounds.append(system_dynamics_strategy.create_equality_bounds())
         self.eq_constraint_names.extend(system_dynamics_strategy.create_names())
 
         for (
