@@ -1,0 +1,25 @@
+flowchart TB
+    base["GeneralizedActionPlan<br/>execute lifecycle<br/>motion building<br/>logging<br/>generic arm/tool query"]
+    mixing["MixingAction<br/>resolver boundary<br/>policy selector<br/>candidate scoring<br/>object-local sampling"]
+    base --> mixing
+    wiping["WipingAction<br/>resolver boundary<br/>policy selector<br/>candidate scoring<br/>object-local sampling"]
+    base --> wiping
+    cutting["CuttingAction<br/>resolver boundary<br/>policy selector<br/>candidate scoring<br/>object-local sampling"]
+    base --> cutting
+    simplepouring["SimplePouringAction<br/>resolver boundary<br/>policy selector<br/>candidate scoring"]
+    base --> simplepouring
+    semantic[(SDT semantic annotations)]
+    policies[(typed policy enums)]
+    candidates[(frozen candidate/constraint dataclasses)]
+    semantic --> mixing
+    policies --> mixing
+    candidates --> mixing
+    semantic --> wiping
+    policies --> wiping
+    candidates --> wiping
+    semantic --> cutting
+    policies --> cutting
+    candidates --> cutting
+    semantic --> simplepouring
+    policies --> simplepouring
+    candidates --> simplepouring

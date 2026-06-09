@@ -1,12 +1,12 @@
 import os
 import numpy as np
 import pytest
-from cora_plex.datastructures.grasp import GraspDescription
-from cora_plex.robot_plans.actions.core.robot_body import (
+from coraplex.datastructures.grasp import GraspDescription
+from coraplex.robot_plans.actions.core.robot_body import (
     ParkArmsAction,
     MoveTorsoAction,
 )
-from cora_plex.view_manager import ViewManager
+from coraplex.view_manager import ViewManager
 from requests import HTTPError
 
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
@@ -35,17 +35,17 @@ from semantic_digital_twin.spatial_types.spatial_types import (
     Pose,
 )
 
-from cora_plex.motion_executor import simulated_robot
+from coraplex.motion_executor import simulated_robot
 
-from cora_plex.plans.factories import execute_single, sequential
+from coraplex.plans.factories import execute_single, sequential
 
-from cora_plex.robot_plans.actions.core.navigation import NavigateAction
+from coraplex.robot_plans.actions.core.navigation import NavigateAction
 
-from cora_plex.datastructures.dataclasses import Context
+from coraplex.datastructures.dataclasses import Context
 
-from cora_plex.datastructures.enums import Arms, ApproachDirection, VerticalAlignment
+from coraplex.datastructures.enums import Arms, ApproachDirection, VerticalAlignment
 
-from cora_plex.robot_plans.actions.core.pick_up import PickUpAction
+from coraplex.robot_plans.actions.core.pick_up import PickUpAction
 
 from semantic_digital_twin.datastructures.definitions import TorsoState
 
@@ -177,7 +177,7 @@ def test_loader_with_robot(rclpy_node, sage10k_scene, pr2_world_copy):
             "..",
             "..",
             "..",
-            "cora_plex",
+            "coraplex",
             "resources",
             "objects",
             "jeroen_cup.stl",

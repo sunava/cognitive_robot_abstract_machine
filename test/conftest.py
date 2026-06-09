@@ -8,7 +8,7 @@ import objgraph
 import pytest
 
 try:
-    from cora_plex.datastructures.dataclasses import Context
+    from coraplex.datastructures.dataclasses import Context
 except ModuleNotFoundError:
     # ROS dependencies.
     Context = None
@@ -398,7 +398,7 @@ def hsr_world_setup():
     urdf_dir = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         "..",
-        "cora_plex",
+        "coraplex",
         "resources",
         "robots",
     )
@@ -429,7 +429,7 @@ def stretch_world():
     urdf_dir = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         "..",
-        "cora_plex",
+        "coraplex",
         "resources",
         "robots",
     )
@@ -449,7 +449,7 @@ def apartment_world_setup():
         os.path.join(
             os.path.dirname(__file__),
             "..",
-            "cora_plex",
+            "coraplex",
             "resources",
             "worlds",
             "apartment.urdf",
@@ -459,7 +459,7 @@ def apartment_world_setup():
         os.path.join(
             os.path.dirname(__file__),
             "..",
-            "cora_plex",
+            "coraplex",
             "resources",
             "objects",
             "milk.stl",
@@ -469,7 +469,7 @@ def apartment_world_setup():
         os.path.join(
             os.path.dirname(__file__),
             "..",
-            "cora_plex",
+            "coraplex",
             "resources",
             "objects",
             "breakfast_cereal.stl",
@@ -591,7 +591,7 @@ def simple_apartment_setup():
         os.path.join(
             os.path.dirname(__file__),
             "..",
-            "cora_plex",
+            "coraplex",
             "resources",
             "objects",
             "milk.stl",

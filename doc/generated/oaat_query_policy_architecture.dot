@@ -1,0 +1,55 @@
+digraph OAAT {
+  rankdir=TB;
+  graph [fontname="Helvetica", fontsize=16, labelloc="t", label="OAAT query and policy extension structure", bgcolor="white"];
+  node [shape=record, style="rounded,filled", fontname="Helvetica", fontsize=10, color="#2f3a45", penwidth=1.6];
+  edge [fontname="Helvetica", fontsize=9, color="#5b6773", arrowsize=0.8, penwidth=1.4];
+
+  subgraph cluster_infrastructure {
+    label="shared execution infrastructure";
+    color="#8aa4c8";
+    penwidth=1.8;
+    style="rounded,filled";
+    fillcolor="#eef4fb";
+    base [fillcolor="#d8e8f8", label="{GeneralizedActionPlan|execute lifecycle|motion building|waypoint logging|generic arm/tool query}"];
+  }
+
+  subgraph cluster_knowledge {
+    label="query inputs and policy types";
+    color="#b9a26b";
+    penwidth=1.8;
+    style="rounded,filled";
+    fillcolor="#fff8e6";
+    semantic [shape=box, fillcolor="#f8e3a3", label="SDT semantic annotations"];
+    policies [shape=box, fillcolor="#f4d184", label="typed policy enums"];
+    candidates [shape=box, fillcolor="#fdebc3", label="frozen scene/constraint/candidate dataclasses"];
+  }
+
+  subgraph cluster_actions {
+    label="action-specific extension points";
+    color="#77a892";
+    penwidth=1.8;
+    style="rounded,filled";
+    fillcolor="#edf8f3";
+    mixing [fillcolor="#dff1e8", label="{MixingAction|resolver boundary|policy selector|candidate scoring|object-local sampling}"];
+    wiping [fillcolor="#dff1e8", label="{WipingAction|resolver boundary|policy selector|candidate scoring|object-local sampling}"];
+    cutting [fillcolor="#dff1e8", label="{CuttingAction|resolver boundary|policy selector|candidate scoring|object-local sampling}"];
+    simplepouring [fillcolor="#dff1e8", label="{SimplePouringAction|resolver boundary|policy selector|candidate scoring}"];
+  }
+
+  base -> mixing [label="inherits", color="#3778bf"];
+  semantic -> mixing [label="query", color="#a07822"];
+  policies -> mixing [label="policy", color="#b05f2c"];
+  candidates -> mixing [label="rank", color="#5b8f76"];
+  base -> wiping [label="inherits", color="#3778bf"];
+  semantic -> wiping [label="query", color="#a07822"];
+  policies -> wiping [label="policy", color="#b05f2c"];
+  candidates -> wiping [label="rank", color="#5b8f76"];
+  base -> cutting [label="inherits", color="#3778bf"];
+  semantic -> cutting [label="query", color="#a07822"];
+  policies -> cutting [label="policy", color="#b05f2c"];
+  candidates -> cutting [label="rank", color="#5b8f76"];
+  base -> simplepouring [label="inherits", color="#3778bf"];
+  semantic -> simplepouring [label="query", color="#a07822"];
+  policies -> simplepouring [label="policy", color="#b05f2c"];
+  candidates -> simplepouring [label="rank", color="#5b8f76"];
+}

@@ -15,9 +15,9 @@ jobs:
             doc_path: doc
             artifact_name: krrood-doc
             use_container: false
-          - lib: cora_plex
+          - lib: coraplex
             doc_path: doc/source
-            artifact_name: cora_plex-doc
+            artifact_name: coraplex-doc
             use_container: false
           - lib: semantic_digital_twin
             doc_path: doc
@@ -75,11 +75,11 @@ jobs:
           name: krrood-doc
           path: aggregate/krrood
 
-      - name: Download cora_plex-doc
+      - name: Download coraplex-doc
         uses: actions/download-artifact@v4
         with:
-          name: cora_plex-doc
-          path: aggregate/cora_plex
+          name: coraplex-doc
+          path: aggregate/coraplex
 
       - name: Download semantic-digital-twin-doc
         uses: actions/download-artifact@v4

@@ -94,7 +94,7 @@ class MyNewRobot(AbstractRobot, SpecifiesLeftRightArm, HasNeck):
 
     def _setup_joint_states(self):
         """
-        These joint states are usually used within cora_plex plans to put the robot into a specific, predefined state.
+        These joint states are usually used within coraplex plans to put the robot into a specific, predefined state.
         """
 
     def _setup_hardware_interfaces(self):

@@ -16,7 +16,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship, Mapped, mapped_column, DeclarativeBase
 
 import builtins
-import cora_plex.orm.model
+import coraplex.orm.model
 import datetime
 import enum
 import krrood.adapters.json_serializer
@@ -984,7 +984,7 @@ class PersonDAO(
     )
 
 
-class PlanMappingDAO(Base, DataAccessObject[cora_plex.orm.model.PlanMapping]):
+class PlanMappingDAO(Base, DataAccessObject[coraplex.orm.model.PlanMapping]):
 
     __tablename__ = "PlanMappingDAO"
 
@@ -1100,7 +1100,7 @@ class PoseMappingDAO(
 
 
 class GrasPoseMappingDAO(
-    PoseMappingDAO, DataAccessObject[cora_plex.orm.model.GrasPoseMapping]
+    PoseMappingDAO, DataAccessObject[coraplex.orm.model.GrasPoseMapping]
 ):
 
     __tablename__ = "GrasPoseMappingDAO"
@@ -1111,7 +1111,7 @@ class GrasPoseMappingDAO(
         use_existing_column=True,
     )
 
-    arm: Mapped[typing.Optional[cora_plex.datastructures.enums.Arms]] = mapped_column(
+    arm: Mapped[typing.Optional[coraplex.datastructures.enums.Arms]] = mapped_column(
         krrood.ormatic.custom_types.PolymorphicEnumType,
         nullable=True,
         use_existing_column=True,

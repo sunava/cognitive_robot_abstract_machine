@@ -4,7 +4,7 @@ flowchart TD
         Annotators[Annotators]
     end
 
-    subgraph Cora Plex ["Cora Plex"]
+    subgraph CoraPlex ["CoraPlex"]
         Plans[Plans]
         Designators[Designators]
         MotionExecutor[Motion Executor]
@@ -45,7 +45,7 @@ flowchart TD
     end
 
 
-    %% Cora Plex Relationships
+    %% CoraPlex Relationships
     Plans -.->|uses| Designators
     Plans -.->|is parameterized by| Parameterizer
     Designators -.->|uses| MotionExecutor

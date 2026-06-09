@@ -79,7 +79,7 @@ alternative_mappings = [
 
 def generate_orm():
     """
-    Generate the ORM classes for the cora_plex package.
+    Generate the ORM classes for the coraplex package.
     """
 
     logging.basicConfig(level=logging.INFO)  # Or your preferred config

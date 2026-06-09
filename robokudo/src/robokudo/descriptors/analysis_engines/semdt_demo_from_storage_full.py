@@ -38,7 +38,7 @@ class AnalysisEngine(AnalysisEngineInterface):
             "..",
             "..",
             "..",
-            "cora_plex",
+            "coraplex",
             "resources",
             "worlds",
             "apartment.urdf",
