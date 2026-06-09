@@ -121,7 +121,7 @@ def update_perceived_objects(handler : EventDispatcher, data : list[SemanticAnno
 
     if is_none:
         raise Exception(f"{is_none} is not set or is not a supporting surface.")
-
+    print(world.root)
     print("#"*110 + "\n" + "#"*110)
     print(f"NEW UPDATE No. {handler.trigger_nr}\n \n")
     handler.trigger_nr += 1

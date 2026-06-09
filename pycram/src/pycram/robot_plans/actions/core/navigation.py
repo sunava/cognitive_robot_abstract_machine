@@ -15,7 +15,7 @@ from pycram.robot_plans.motions.navigation import MoveMotion
 from pycram.robot_plans.motions.robot_body import LookingMotion
 from semantic_digital_twin.reasoning.predicates import allclose
 from semantic_digital_twin.reasoning.robot_predicates import is_pose_free_for_robot
-from semantic_digital_twin.robots.abstract_robot import Camera
+from semantic_digital_twin.robots.robot_parts import Camera
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 
 
@@ -35,9 +35,20 @@ class NavigateAction(ActionDescription):
     Keep the joint states of the robot the same during the navigation.
     """
 
+    teleport: bool = False
+    """
+    If the robot should teleport to the target location instead of moving to it
+    """
+
     def execute(self) -> None:
         self.add_subplan(
-            execute_single(MoveMotion(self.target_location, self.keep_joint_states))
+            execute_single(
+                MoveMotion(
+                    self.target_location,
+                    self.keep_joint_states,
+                    teleport=self.teleport,
+                )
+            )
         ).perform()
 
     @staticmethod
@@ -60,6 +71,7 @@ class NavigateAction(ActionDescription):
         """
         The robot needs to be within 3 cm of the target location
         """
+
         return allclose(
             context.robot.root.global_pose,
             kwargs["target_location"],

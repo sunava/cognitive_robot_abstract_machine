@@ -5,6 +5,8 @@ from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
 from semantic_digital_twin.spatial_computations.raytracer import RayTracer
 
+DEFAULT_SAMPLE_DT = 0.01
+
 _MARKER_GROUP_COUNTER = 0
 
 
@@ -380,12 +382,8 @@ class CostmapHeatmapRviz:
         origin_position, origin_orientation = _pose_to_position_and_orientation_lists(
             self.costmap.origin
         )
-        corner_offset = np.array(
-            [
-                -self.costmap.height * self.costmap.resolution / 2.0,
-                -self.costmap.width * self.costmap.resolution / 2.0,
-                self.z_offset,
-            ],
+        center = np.array(
+            [map_data.shape[0] // 2, map_data.shape[1] // 2],
             dtype=float,
         )
 
@@ -398,12 +396,11 @@ class CostmapHeatmapRviz:
             if normalized < self.min_normalized_value:
                 continue
 
-            local_point = corner_offset + np.array(
-                [
-                    (float(row) + 0.5) * self.costmap.resolution,
-                    (float(col) + 0.5) * self.costmap.resolution,
-                    normalized * self.z_scale,
-                ],
+            offset = (np.array([float(row), float(col)], dtype=float) - center) * (
+                self.costmap.resolution
+            )
+            local_point = np.array(
+                [offset[0], offset[1], self.z_offset + normalized * self.z_scale],
                 dtype=float,
             )
             points.append(

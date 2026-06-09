@@ -4,7 +4,9 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 
 import numpy as np
-import rclpy
+
+from pycram import logger
+
 from typing_extensions import List, Optional, Iterator
 
 from giskardpy.executor import Executor
@@ -43,17 +45,38 @@ from pycram.pose_validator import (
 )
 from pycram.utils import link_pose_for_joint_config
 from pycram.view_manager import ViewManager
-from semantic_digital_twin.adapters.ros.visualization.pose_publisher import (
-    PosePublisher,
+from semantic_digital_twin.robots.robot_part_mixins import HasMobileBase
+from semantic_digital_twin.semantic_annotations.semantic_annotations import (
+    Floor,
+    RoomWithWallsAndDoors,
+    Wall,
+    SemanticEnvironmentAnnotation,
 )
-from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
-    VizMarkerPublisher,
+from semantic_digital_twin.world_description.graph_of_convex_sets import (
+    GraphOfConvexSets,
 )
+
+try:
+    from semantic_digital_twin.adapters.ros.visualization.pose_publisher import (
+        PosePublisher,
+    )
+    from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
+        VizMarkerPublisher,
+    )
+except ModuleNotFoundError as e:
+    logger.warning(f"Could not import modules from ros adapter: {e}")
+    PosePublisher = None
+    VizMarkerPublisher = None
+
 from semantic_digital_twin.collision_checking.collision_rules import (
     AvoidExternalCollisions,
 )
-from semantic_digital_twin.robots.abstract_robot import AbstractRobot
-from semantic_digital_twin.spatial_types.spatial_types import Pose
+from semantic_digital_twin.robots.robot_parts import AbstractRobot
+from semantic_digital_twin.semantic_annotations.semantic_annotations import (
+    Floor,
+    RoomWithWallsAndDoors,
+)
+from semantic_digital_twin.spatial_types.spatial_types import Pose, Point3, Vector3
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.world_description.world_entity import Body
@@ -124,72 +147,304 @@ class CostmapLocation(Location):
     A grasp description that should be used to calculate the pose.
     """
 
+    samples: int = 600
+    """
+    Number of costmap candidates to sample.
+    """
+
+    validate_reachability: bool = True
+    """
+    If False, return collision-free navigation candidates without reachability/visibility IK validation.
+    """
+
+    costmap_width: int = 200
+    costmap_height: int = 200
+    costmap_resolution: float = 0.02
+    ring_std: float = 15.0
+    ring_distance: float = 0.4
+    obstacle_clearance: Optional[float] = None
+    floor_boundary_margin: float = 0.05
+    wall_bloat: float = 0.05
+    allowed_area_points: Optional[List[Point3]] = None
+
+    _last_costmap_source: str = field(default="unknown", init=False, repr=False)
+
     def resolve(self) -> Pose:
         return next(iter(self))
+
+    @staticmethod
+    def _pose_debug_string(pose: Pose) -> str:
+        position = pose.to_position()
+        try:
+            pos = position.to_np()
+            x, y, z = float(pos[0]), float(pos[1]), float(pos[2])
+        except Exception:
+            x, y, z = float(position.x), float(position.y), float(position.z)
+        try:
+            _, _, yaw = pose.to_rotation_matrix().to_rpy()
+            yaw = float(yaw)
+        except Exception:
+            yaw = float("nan")
+        ref = getattr(pose.reference_frame, "name", pose.reference_frame)
+        return f"x={x:.3f} y={y:.3f} z={z:.3f} yaw={yaw:.3f} frame={ref}"
+
+    @staticmethod
+    def _describe_target(target: Pose) -> str:
+        pos = np.asarray(target.to_position().to_np(), dtype=float).reshape(-1)[:3]
+        return f"Pose(x={float(pos[0]):.3f}, y={float(pos[1]):.3f}, z={float(pos[2]):.3f})"
+
+    def _allowed_xy_bounds(self) -> Optional[tuple[float, float, float, float]]:
+        if self.allowed_area_points:
+            xs = [float(p.x) for p in self.allowed_area_points]
+            ys = [float(p.y) for p in self.allowed_area_points]
+            return min(xs), max(xs), min(ys), max(ys)
+
+        floors = self.world.get_semantic_annotations_by_type(Floor)
+        if not floors:
+            return None
+
+        floor_bb = floors[0].root.collision.as_bounding_box_collection_in_frame(
+            self.world.root
+        ).bounding_box()
+        return (
+            float(floor_bb.min_x) - self.floor_boundary_margin,
+            float(floor_bb.max_x) + self.floor_boundary_margin,
+            float(floor_bb.min_y) - self.floor_boundary_margin,
+            float(floor_bb.max_y) + self.floor_boundary_margin,
+        )
+
+    def _room_free_space_gcs(self) -> Optional[GraphOfConvexSets]:
+        if self.allowed_area_points is not None:
+            return None
+
+        room_annotations = self.world.get_semantic_annotations_by_type(
+            RoomWithWallsAndDoors
+        )
+        if room_annotations:
+            room = room_annotations[0]
+        else:
+            floors = self.world.get_semantic_annotations_by_type(Floor)
+            if not floors:
+                return None
+            walls = self.world.get_semantic_annotations_by_type(Wall)
+            room = RoomWithWallsAndDoors(floor=floors[0], walls=list(walls), doors=[])
+
+        search_space = room.floor.root.collision.as_bounding_box_collection_in_frame(
+            self.world.root
+        )
+        semantic_environment = SemanticEnvironmentAnnotation(
+            root=self.world.root, _world=self.world
+        )
+        return GraphOfConvexSets.navigation_map_from_semantic_annotation(
+            search_space=search_space,
+            semantic_obstacle_annotation=semantic_environment,
+            semantic_wall_annotation=room,
+            bloat_obstacles=0.02,
+            bloat_walls=self.wall_bloat,
+        )
+
+    def _room_search_space_and_origin(self) -> Optional[tuple[int, int, Pose]]:
+        room_annotations = self.world.get_semantic_annotations_by_type(
+            RoomWithWallsAndDoors
+        )
+        if room_annotations:
+            floor = room_annotations[0].floor
+        else:
+            floors = self.world.get_semantic_annotations_by_type(Floor)
+            if not floors:
+                return None
+            floor = floors[0]
+
+        floor_bb = floor.root.collision.as_bounding_box_collection_in_frame(
+            self.world.root
+        ).bounding_box()
+        min_x = float(floor_bb.min_x) - self.floor_boundary_margin
+        max_x = float(floor_bb.max_x) + self.floor_boundary_margin
+        min_y = float(floor_bb.min_y) - self.floor_boundary_margin
+        max_y = float(floor_bb.max_y) + self.floor_boundary_margin
+
+        width = max(
+            self.costmap_width,
+            int(np.ceil((max_x - min_x) / self.costmap_resolution)),
+        )
+        height = max(
+            self.costmap_height,
+            int(np.ceil((max_y - min_y) / self.costmap_resolution)),
+        )
+        origin = Pose.from_xyz_rpy(
+            x=(min_x + max_x) / 2.0,
+            y=(min_y + max_y) / 2.0,
+            z=0.0,
+            reference_frame=self.world.root,
+        )
+        return width, height, origin
+
+    def _is_within_room_bounds(self, pose: Pose) -> bool:
+        bounds = self._allowed_xy_bounds()
+        if bounds is not None:
+            min_x, max_x, min_y, max_y = bounds
+            if not (
+                min_x <= float(pose.x) <= max_x and min_y <= float(pose.y) <= max_y
+            ):
+                return False
+            if self.allowed_area_points is not None:
+                return True
+
+        room_gcs = self._room_free_space_gcs()
+        if room_gcs is not None:
+            base_bb = self.robot.mobile_base.bounding_box
+            half_width = float(base_bb.width) / 2.0 + self.floor_boundary_margin
+            half_depth = float(base_bb.depth) / 2.0 + self.floor_boundary_margin
+            center = pose.to_position()
+            if room_gcs.node_of_point(center) is None:
+                return False
+
+            _, _, yaw = pose.to_rotation_matrix().to_rpy()
+            cos_yaw = float(np.cos(yaw))
+            sin_yaw = float(np.sin(yaw))
+
+            corners = [
+                (-half_width, -half_depth),
+                (-half_width, half_depth),
+                (half_width, -half_depth),
+                (half_width, half_depth),
+            ]
+            for local_x, local_y in corners:
+                world_offset = Vector3(
+                    local_x * cos_yaw - local_y * sin_yaw,
+                    local_x * sin_yaw + local_y * cos_yaw,
+                    0.0,
+                )
+                if room_gcs.node_of_point(center + world_offset) is None:
+                    return False
+            return True
+
+        return True
+
+    def _restrict_costmap_to_room(self, costmap: Costmap) -> Costmap:
+        room_gcs = self._room_free_space_gcs()
+        if room_gcs is None:
+            return costmap
+
+        center = np.array([costmap.height // 2, costmap.width // 2], dtype=float)
+        positive_indices = np.argwhere(costmap.map > 0)
+        for row, col in positive_indices:
+            offset = (np.array([row, col], dtype=float) - center) * costmap.resolution
+            position = costmap.origin.to_position() + Vector3(offset[0], offset[1], 0)
+            if room_gcs.node_of_point(position) is None:
+                costmap.map[row, col] = 0
+        return costmap
+
+    def _restrict_costmap_to_allowed_box(self, costmap: Costmap) -> Costmap:
+        bounds = self._allowed_xy_bounds()
+        if bounds is None:
+            return costmap
+
+        min_x, max_x, min_y, max_y = bounds
+        center = np.array([costmap.height // 2, costmap.width // 2], dtype=float)
+        positive_indices = np.argwhere(costmap.map > 0)
+        for row, col in positive_indices:
+            offset = (np.array([row, col], dtype=float) - center) * costmap.resolution
+            position = costmap.origin.to_position() + Vector3(offset[0], offset[1], 0)
+            if not (
+                min_x <= float(position.x) <= max_x
+                and min_y <= float(position.y) <= max_y
+            ):
+                costmap.map[row, col] = 0
+        return costmap
 
     def setup_costmaps(self, target: Pose, visible: bool, reachable: bool) -> Costmap:
         """
         Sets up the costmap for the given target and robot.
         The costmap are merged and stored in the final_map
         """
-        ground_pose = deepcopy(target)
-        ground_pose.z = 0
+        room_layout = None if self.allowed_area_points is not None else self._room_search_space_and_origin()
+        room_based_map = room_layout is not None
+        if room_layout is not None:
+            costmap_width, costmap_height, ground_pose = room_layout
+        else:
+            ground_pose = deepcopy(target)
+            ground_pose.z = 0
+            costmap_width = self.costmap_width
+            costmap_height = self.costmap_height
 
-        base_bb = self.robot.base.bounding_box
+        base_bb = self.robot.mobile_base.bounding_box
+        obstacle_clearance = self.obstacle_clearance
+        if obstacle_clearance is None:
+            obstacle_clearance = (base_bb.depth / 2 + base_bb.width / 2) / 2
 
         occupancy = OccupancyCostmap(
-            distance_to_obstacle=(base_bb.depth / 2 + base_bb.width / 2) / 2,
-            world=self.world,
+            distance_to_obstacle=obstacle_clearance,
             robot_view=self.robot,
-            width=200,
-            height=200,
-            resolution=0.02,
+            world=self.world,
+            width=costmap_width,
+            height=costmap_height,
+            resolution=self.costmap_resolution,
             origin=ground_pose,
         )
         final_map = occupancy
+        self._last_costmap_source = "occupancy_room" if room_based_map else "occupancy"
 
-        if visible:
-            camera = list(self.robot.neck.sensors)[0]
-            visible = VisibilityCostmap(
+        if visible and not room_based_map:
+            camera = self.robot.get_default_camera()
+            visible_map = VisibilityCostmap(
                 min_height=camera.minimal_height,
                 max_height=camera.maximal_height,
                 world=self.world,
-                width=200,
-                height=200,
-                resolution=0.02,
+                width=costmap_width,
+                height=costmap_height,
+                resolution=self.costmap_resolution,
                 origin=target,
             )
-            final_map += visible
+            final_map += visible_map
+            if not self.validate_reachability and np.any(final_map.map > 0):
+                self._last_costmap_source = "occupancy+visibility"
+                return final_map
+            if not self.validate_reachability and np.any(visible_map.map > 0):
+                self._last_costmap_source = "visibility"
+                return visible_map
 
-        if reachable:
+        if reachable and not room_based_map:
             ring = RingCostmap(
-                resolution=0.02,
-                width=200,
-                height=200,
-                std=15,
-                distance=0.4,  # That needs to be replaced with an estimate of the reachability space of the robot arms
+                resolution=self.costmap_resolution,
+                width=costmap_width,
+                height=costmap_height,
+                std=self.ring_std,
+                distance=self.ring_distance,
                 world=self.world,
                 origin=target,
             )
             final_map += ring
+            if not self.validate_reachability and np.any(final_map.map > 0):
+                self._last_costmap_source = "occupancy+ring"
+                return final_map
+            if not self.validate_reachability and np.any(ring.map > 0):
+                self._last_costmap_source = "ring"
+                return ring
 
-        return final_map
+        if not self.validate_reachability:
+            self._last_costmap_source = "occupancy_room" if room_based_map else "occupancy"
+            return self._restrict_costmap_to_room(occupancy)
+
+        if self.allowed_area_points is not None:
+            return self._restrict_costmap_to_allowed_box(final_map)
+        return self._restrict_costmap_to_room(final_map)
 
     def get_object_in_hand(
         self, test_robot: AbstractRobot, test_world: World
     ) -> List[Body]:
 
-        manipulator = ViewManager.get_end_effector_view(
+        end_effector = ViewManager.get_end_effector_view(
             self.reachable_arm if self.reachable_arm is not None else Arms.BOTH,
             test_robot,
         )
-        manipulators = (
-            [manipulator]
-            if not isinstance(manipulator, list_like_classes)
-            else manipulator
+        end_effectors = (
+            [end_effector]
+            if not isinstance(end_effector, list_like_classes)
+            else end_effector
         )
         objs = set()
-        for man in manipulators:
+        for man in end_effectors:
             objs.update(
                 test_world.get_kinematic_structure_entities_of_branch(man.tool_frame)
             )
@@ -219,21 +474,21 @@ class CostmapLocation(Location):
                 _world=test_world, node=self.context.ros_node
             ).with_tf_publisher()
 
-        robot = self.robot
+        robot_id = self.robot.id
 
-        test_robot = robot.from_world(test_world)
+        test_robot = test_world.get_semantic_annotation_by_id(robot_id)
 
         objects_in_hand = self.get_object_in_hand(test_robot, test_world)
         object_in_hand = objects_in_hand[0] if objects_in_hand else None
 
         final_map = self.setup_costmaps(self.target, self.visible, self.reachable)
-        final_map.number_of_samples = 600
+        final_map.number_of_samples = self.samples
         final_map.orientation_generator = (
             OrientationGenerator.orientation_generator_for_axis(
-                list(self.robot.base.main_axis.to_np())
+                list(self.robot.mobile_base.forward_axis.to_np())
             )
         )
-
+        room_gcs = self._room_free_space_gcs()
         for pose_candidate in final_map:
             logger.debug(f"Testing candidate pose at {pose_candidate}")
             odom_height = test_world.compute_forward_kinematics(
@@ -241,6 +496,43 @@ class CostmapLocation(Location):
                 test_robot.root.parent_kinematic_structure_entity,
             ).z
             pose_candidate.z = odom_height
+
+            if self.allowed_area_points is not None and not self._is_within_room_bounds(
+                pose_candidate
+            ):
+                continue
+
+            if room_gcs is not None and not self._is_within_room_bounds(pose_candidate):
+                continue
+            if room_gcs is not None:
+                center = pose_candidate.to_position()
+                _, _, yaw = pose_candidate.to_rotation_matrix().to_rpy()
+                base_bb = self.robot.mobile_base.bounding_box
+                half_width = float(base_bb.width) / 2.0 + self.floor_boundary_margin
+                half_depth = float(base_bb.depth) / 2.0 + self.floor_boundary_margin
+                cos_yaw = float(np.cos(yaw))
+                sin_yaw = float(np.sin(yaw))
+                corner_checks = []
+                for local_x, local_y in [
+                    (-half_width, -half_depth),
+                    (-half_width, half_depth),
+                    (half_width, -half_depth),
+                    (half_width, half_depth),
+                ]:
+                    world_offset = Vector3(
+                        local_x * cos_yaw - local_y * sin_yaw,
+                        local_x * sin_yaw + local_y * cos_yaw,
+                        0.0,
+                    )
+                    corner_point = center + world_offset
+                    corner_checks.append(
+                        (
+                            float(corner_point.x),
+                            float(corner_point.y),
+                            room_gcs.node_of_point(corner_point) is not None,
+                        )
+                    )
+
             test_robot.root.parent_connection.origin = pose_candidate
 
             collisions = collision_check(
@@ -274,7 +566,7 @@ class CostmapLocation(Location):
                 else GraspDescription.calculate_grasp_descriptions(
                     ViewManager.get_arm_view(
                         self.reachable_arm, test_robot
-                    ).manipulator,
+                    ).end_effector,
                     self.target,
                 )
             )
@@ -295,10 +587,14 @@ class CostmapLocation(Location):
                 ee = ViewManager.get_arm_view(self.reachable_arm, test_robot)
                 is_reachable = pose_sequence_reachability_validator(
                     target_sequence,
-                    ee.manipulator.tool_frame,
+                    ee.end_effector.tool_frame,
                     test_robot,
                     test_world,
-                    use_fullbody_ik=test_robot.full_body_controlled,
+                    use_fullbody_ik=(
+                        test_robot.mobile_base.full_body_controlled
+                        if isinstance(test_robot, HasMobileBase)
+                        else False
+                    ),
                 )
                 if is_reachable:
                     pose = GraspPose.from_pose(
@@ -403,10 +699,10 @@ class AccessingLocation(Location):
         ground_pose = handle.global_pose
         ground_pose.z = 0
 
-        base_bb = self.robot.base.bounding_box
+        base_bb = self.robot.mobile_base.bounding_box
         occupancy = OccupancyCostmap(
-            robot_view=self.robot,
             distance_to_obstacle=(base_bb.depth / 2 + base_bb.width / 2) / 2,
+            robot_view=self.robot,
             width=200,
             height=200,
             resolution=0.02,
@@ -471,7 +767,9 @@ class AccessingLocation(Location):
         :yield: A location designator containing the pose and the arms that can be used.
         """
         test_world = deepcopy(self.world)
-        test_robot = self.robot.from_world(test_world)
+        test_robot: AbstractRobot = test_world.get_semantic_annotation_by_id(
+            self.robot.id
+        )
 
         final_map = self.setup_costmaps(self.handle)
 
@@ -491,11 +789,11 @@ class AccessingLocation(Location):
             except RobotInCollision:
                 continue
 
-            for arm_chain in test_robot.manipulator_chains:
+            for arm_chain in test_robot.get_arms():
                 grasp = GraspDescription(
                     ApproachDirection.FRONT,
                     VerticalAlignment.NoAlignment,
-                    arm_chain.manipulator,
+                    arm_chain.end_effector,
                 ).grasp_orientation()
                 grasp.reference_frame = test_world.root
                 current_target_sequence = [deepcopy(pose) for pose in target_sequence]
@@ -506,10 +804,14 @@ class AccessingLocation(Location):
 
                 is_reachable = pose_sequence_reachability_validator(
                     current_target_sequence,
-                    arm_chain.manipulator.tool_frame,
+                    arm_chain.end_effector.tool_frame,
                     test_robot,
                     test_world,
-                    use_fullbody_ik=test_robot.full_body_controlled,
+                    use_fullbody_ik=(
+                        test_robot.mobile_base.full_body_controlled
+                        if isinstance(test_robot, HasMobileBase)
+                        else False
+                    ),
                 )
                 if is_reachable:
                     yield pose_candidate
@@ -549,7 +851,7 @@ class GiskardLocation(Location):
         ground_pose = deepcopy(pose)
         ground_pose.z = 0.0
 
-        base_bb = self.robot.base.bounding_box
+        base_bb = self.robot.mobile_base.bounding_box
 
         occupancy_map = OccupancyCostmap(
             resolution=0.02,
@@ -638,8 +940,8 @@ class GiskardLocation(Location):
         test_world = deepcopy(self.world)
         test_world.name = "Test World"
 
-        test_robot = self.robot.__class__.from_world(test_world)
-        test_ee = test_world._get_world_entity_by_hash(hash(ee.manipulator.tool_frame))
+        test_robot = test_world.get_semantic_annotation_by_id(self.robot.id)
+        test_ee = test_world._get_world_entity_by_hash(hash(ee.end_effector.tool_frame))
         with test_world.modify_world():
             test_robot._setup_collision_rules()
 
@@ -650,9 +952,9 @@ class GiskardLocation(Location):
                 if self.grasp_description
                 else GraspDescription.calculate_grasp_descriptions(
                     (
-                        test_robot.left_arm.manipulator
+                        test_robot.left_arm.end_effector
                         if self.arm == Arms.LEFT
-                        else test_robot.right_arm.manipulator
+                        else test_robot.right_arm.end_effector
                     ),
                     self.target_pose,
                 )

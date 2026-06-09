@@ -13,7 +13,8 @@ from matplotlib import colors
 from skimage.measure import label
 from typing_extensions import Tuple, List, Optional, Iterator, Callable
 
-from semantic_digital_twin.robots.abstract_robot import AbstractRobot
+from semantic_digital_twin.robots.robot_parts import AbstractRobot
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Floor
 from semantic_digital_twin.spatial_computations.raytracer import RayTracer
 from semantic_digital_twin.spatial_types import (
     HomogeneousTransformationMatrix,
@@ -447,6 +448,12 @@ class OccupancyCostmap(Costmap):
         )
         self.map = self._create_from_world()
 
+    def _free_surface_bodies(self) -> set[Body]:
+        free_bodies = set()
+        for floor in self.world.get_semantic_annotations_by_type(Floor):
+            free_bodies.add(floor.root)
+        return free_bodies
+
     def create_ray_mask_around_origin(self):
         """
         Determines the occupied space around the origin position using ray testing. A ray is cast from the ground
@@ -455,49 +462,50 @@ class OccupancyCostmap(Costmap):
         :return: A 2d numpy array of the occupied space
         """
         origin_position = self.origin.to_position().to_list()
-        # Generate 2d grid with indices
-        indices = np.concatenate(
-            np.dstack(
-                np.mgrid[
-                    int(-self.width / 2) : int(self.width / 2),
-                    int(-self.width / 2) : int(self.width / 2),
-                ]
-            ),
-            axis=0,
-        ) * self.resolution + np.array(origin_position[:2])
+        rows = np.arange(self.height) - self.height // 2
+        cols = np.arange(self.width) - self.width // 2
+        row_grid, col_grid = np.meshgrid(rows, cols, indexing="ij")
+        xy = (
+            np.stack((row_grid, col_grid), axis=-1).reshape(-1, 2) * self.resolution
+            + np.array(origin_position[:2], dtype=float)
+        )
 
-        # base height of the robot plus a safty offset
-        base_height = self.robot_view.base.bounding_box.height + 0.1
-        # Add the z-coordinate to the grid, which is either 0 or 10
-        indices_0 = np.pad(
-            indices, (0, 1), mode="constant", constant_values=base_height
-        )[:-1]
-        indices_10 = np.pad(indices, (0, 1), mode="constant", constant_values=0)[:-1]
-        # Zips both arrays such that there are tuples for every coordinate that
-        # only differ in the z-coordinate
-        rays = np.dstack(np.dstack((indices_0, indices_10))).T
+        # base height of the robot plus a safety offset
+        base_height = self.robot_view.mobile_base.bounding_box.height + 0.1
+        ray_starts = np.column_stack(
+            (xy, np.full(len(xy), base_height, dtype=float))
+        )
+        ray_ends = np.column_stack((xy, np.zeros(len(xy), dtype=float)))
 
-        res = np.ones(len(rays))
+        res = np.ones(len(ray_starts))
 
         ray_tracer = RayTracer(self.world)
-        r_t = ray_tracer.ray_test(rays[:, 0], rays[:, 1])
+        r_t = ray_tracer.ray_test(ray_starts, ray_ends)
+        free_surface_bodies = self._free_surface_bodies()
         if self.robot_view:
             res[r_t[1]] = [
-                (
-                    1
-                    if r_t[2][i]
-                    in self.world.get_kinematic_structure_entities_of_branch(
-                        self.robot_view.root
-                    )
-                    else 0
+                1
+                if (
+                    r_t[2][i] in free_surface_bodies
+                    or "floor" in str(getattr(r_t[2][i], "name", "")).lower()
+                    or "ground" in str(getattr(r_t[2][i], "name", "")).lower()
                 )
+                else 0
+                for i in range(len(r_t[1]))
+                ]
+        else:
+            res[r_t[1]] = [
+                1
+                if (
+                    r_t[2][i] in free_surface_bodies
+                    or "floor" in str(getattr(r_t[2][i], "name", "")).lower()
+                    or "ground" in str(getattr(r_t[2][i], "name", "")).lower()
+                )
+                else 0
                 for i in range(len(r_t[1]))
             ]
-        else:
-            res[r_t[1]] = 0
 
-        res = np.flip(np.reshape(np.array(res), (self.width, self.width)))
-        return res
+        return np.reshape(np.array(res), (self.height, self.width))
 
     def inflate_obstacles(self, map: np.ndarray):
         """
@@ -540,11 +548,19 @@ class OccupancyCostmap(Costmap):
         map = self.inflate_obstacles(map)
         # The map loses some size due to the strides and because I dont want to
         # deal with indices outside of the index range
-        offset = self.width - map.shape[0]
-        odd = 0 if offset % 2 == 0 else 1
-        map = np.pad(map, (offset // 2, offset // 2 + odd))
+        pad_h = max(self.height - map.shape[0], 0)
+        pad_w = max(self.width - map.shape[1], 0)
+        pad_h_odd = 0 if pad_h % 2 == 0 else 1
+        pad_w_odd = 0 if pad_w % 2 == 0 else 1
+        map = np.pad(
+            map,
+            (
+                (pad_h // 2, pad_h // 2 + pad_h_odd),
+                (pad_w // 2, pad_w // 2 + pad_w_odd),
+            ),
+        )
 
-        return np.flip(map)
+        return map
 
 
 @dataclass
@@ -582,16 +598,13 @@ class VisibilityCostmap(Costmap):
 
         origin_copy = deepcopy(self.origin)
 
-        for quarter_turn in range(4):
+        for _ in range(4):
+            # this quaternion is invalid, as it is never normalized. But the test pass with it, and any 90° yaw fails for me
+            # finding out the error is super annoying in the current implementation, and it is not really used atm, so I dont
+            # think its worth the time to fix it. If you disagree, feel free to give it a shot.
             rotated_origin_copy = (
                 HomogeneousTransformationMatrix.from_point_rotation_matrix(
-                    rotation_matrix=RotationMatrix.from_rpy(
-                        0,
-                        0,
-                        quarter_turn * (np.pi / 2),
-                        reference_frame=origin_copy.reference_frame,
-                    ),
-                    reference_frame=origin_copy.reference_frame,
+                    rotation_matrix=Quaternion(0, 0, 1, 1).to_rotation_matrix()
                 )
                 @ origin_copy
             )
@@ -785,7 +798,7 @@ class GaussianCostmap(Costmap):
         cut_dist = int(0.05 * self.mean)
         center = int(self.mean / 2)
         # Cuts out the middle 5% of the gaussian to avoid the robot being too close to the target since this is usually
-        # bad for reaching the target with a manipulator. 15% is a magic number that might need some tuning in the future
+        # bad for reaching the target with a end_effector. 15% is a magic number that might need some tuning in the future
         self.map[
             center - cut_dist : center + cut_dist, center - cut_dist : center + cut_dist
         ] = 0

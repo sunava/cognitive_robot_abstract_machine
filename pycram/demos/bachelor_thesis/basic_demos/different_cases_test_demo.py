@@ -1,29 +1,38 @@
 import os
 
+import rustworkx
+
 from demos.bachelor_thesis.actions.predicate_mock import misplaced
 from demos.bachelor_thesis.actions.random_location_generator import random_location_list, \
     pose_to_homogeneous_transformation_matrix_from_xyz_quaternion
 from demos.bachelor_thesis.classes_and_methods.tasks import PutAwayObjectTask, SetTableTask, CleanTableTask
+from krrood.entity_query_language.factories import underspecified, variable
 from pycram import plans
-from pycram.datastructures.enums import Arms
+from pycram.datastructures.enums import Arms, ApproachDirection, VerticalAlignment
+from pycram.datastructures.grasp import GraspDescription
+from pycram.locations.locations import CostmapLocation
 from pycram.motion_executor import simulated_robot
 from pycram.plans.factories import sequential, execute_single
+from pycram.robot_plans.actions.core.misc import MoveToReach
 from pycram.robot_plans.actions.core.navigation import NavigateAction
 from pycram.robot_plans.actions.core.robot_body import ParkArmsAction
+from semantic_digital_twin.adapters.ros.visualization.viz_marker import CostmapHeatmapRviz
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
+from semantic_digital_twin.exceptions import PointOccupiedError
 from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
+from semantic_digital_twin.robots.robot_parts import EndEffector
 from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Bowl, Spoon, Bottle, Cup, ShelfLayer, \
     CounterTop
 from semantic_digital_twin.spatial_types import Point3, Quaternion
-from semantic_digital_twin.spatial_types.spatial_types import Pose, HomogeneousTransformationMatrix
+from semantic_digital_twin.spatial_types.spatial_types import Pose, HomogeneousTransformationMatrix, Pose2D
 from semantic_digital_twin.robots.hsrb import HSRB
 from pycram.datastructures.dataclasses import Context
 from demos.bachelor_thesis.hsrb_setup_world import hsrb_setup_world
 from demos.bachelor_thesis.classes_and_methods.helper_classes_and_methods import Environment
-
-
+from semantic_digital_twin.world_description.graph_of_convex_sets import navigation_map_at_target, \
+    translate_free_space_to_where_condition
 
 #------------------ standard setup -------------------------------------------------------------------------------------
 world, dispatcher = hsrb_setup_world(Environment.SuturoApartmentLab)
@@ -122,8 +131,8 @@ try:
     except:
         pass
     from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
-        VizMarkerPublisher,
-    )
+        VizMarkerPublisher, CostmapHeatmapRviz,
+)
 
     node = rclpy.create_node("viz_marker")
     v = VizMarkerPublisher(_world=world, node=node).with_tf_publisher()
@@ -195,6 +204,65 @@ plan_driving = [execute_single(ParkArmsAction(Arms.LEFT), context).plan,
                                  reference_frame=world.root), keep_joint_states=True), context).plan,
         ]
 
+# def navigate_to_reach(object_body):
+#     gcs = navigation_map_at_target(target=object_body)
+#
+#     arm = Arms.LEFT
+#
+#     min_p = object_body.collision.min_point
+#     max_p = object_body.collision.max_point
+#
+#     x = min_p.x - 0.05
+#     y = (min_p.y + max_p.y) / 2
+#     z = (min_p.z + max_p.z) / 2
+#
+#     pre_grasp_pose = Pose.from_xyz_rpy(
+#         x=x, y=y, z=z, reference_frame=object_body
+#     )
+#
+#     # Find a node in free space that is near the pre-grasp pose.
+#     target_node = gcs.node_of_point(pre_grasp_pose.position)
+#     if target_node is None:
+#         raise PointOccupiedError(
+#            world.transform(pre_grasp_pose, world.root).position
+#         )
+#
+#     gcs = gcs.create_subgraph(
+#         list(
+#             rustworkx.node_connected_component(
+#                 gcs.graph, gcs.box_to_index_map[target_node]
+#             )
+#         )
+#     )
+#
+#     reach_query = underspecified(MoveToReach)(
+#         target_pose_offset_robot=underspecified(Pose2D)(
+#             x=..., y=..., yaw=..., reference_frame=None
+#         ),
+#         hip_rotation=0.0,
+#         target_pose_end_effector=pre_grasp_pose,
+#         grasp_description=underspecified(GraspDescription)(
+#             approach_direction=ApproachDirection.FRONT,
+#             vertical_alignment=VerticalAlignment.NoAlignment,
+#             end_effector=variable(EndEffector, world.semantic_annotations),
+#             rotate_gripper=False,
+#         ),
+#     )
+#
+#     where_condition = translate_free_space_to_where_condition(
+#         gcs.free_space_event,
+#         reach_query.expression,
+#         x_variable_name="MoveToReach.target_pose_offset_robot.x",
+#         y_variable_name="MoveToReach.target_pose_offset_robot.y",
+#     )
+#
+#     reach_action = reach_query.where(where_condition)
+#
+#
+#     plan = execute_single(reach_action, context=context)
+#     with simulated_robot:
+#         plan.perform()
+#
 
 
 with simulated_robot:
@@ -209,6 +277,36 @@ with simulated_robot:
     dispatcher.dining_table = world.get_semantic_annotation_by_name("dining_table")
 
     surface_cache = {}
+    cL = CostmapLocation(
+        target=world.get_body_by_name("jeroen_cup.stl").global_pose,
+        reachable=True,
+        reachable_arm=None,
+        # validate_reachability=False,
+        # samples=1000,
+        context=context,
+        allowed_area_points=[
+            Point3(x=0.3, y=-2.0, z=0.0),
+            Point3(x=5.45, y=-1.69, z=0.0),
+            Point3(x=4.0, y=6.45, z=0.0),
+            Point3(x=-0.6, y=6.03, z=0.0),
+        ],
+    )
+    costmap = cL.setup_costmaps(cL.target, cL.visible, cL.reachable)
+    costmap_viz = CostmapHeatmapRviz(
+        costmap,
+        node=node,
+        topic="costmap_heatmap",
+        frame_id=str(world.root.name),
+        sample_stride=2,
+        min_normalized_value=0.0,
+        republish_hz=None,  # publish once, no ROS spin needed
+    )
+    pickup_pose = cL.resolve()
+    sequential(
+        [NavigateAction(pickup_pose, True, teleport=True)],
+        context,
+    ).perform()
+    # navigate_to_reach(world.get_body_by_name("bowl.stl"))
     # for plan in plan_driving:
     #     plan.perform()
     #     simulate_perception(world, dispatcher, context, hsrb)
@@ -218,8 +316,3 @@ with simulated_robot:
     for task in dispatcher.activated_tasks:
         if task.name == test_task:
             task1=task
-
-    print(task1.required_objects)
-    print(task1.precondition())
-    print(task1.constraints())
-    print(task1.calculate_feasibility_custom())
