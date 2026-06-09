@@ -7,8 +7,8 @@ binding value → register the field-reference overrides → pop the frame → r
 deferred constraints): the order matters because no binding's value may be rendered
 under a sibling binding's override, and the deferred constraints reference the overrides
 (verified order-dependent — it cannot be pre-planned).  The copula's number agreement is
-delegated to the :class:`~krrood.entity_query_language.verbalization.grammar.choices.copula.CopulaForm`
-system, so the assembler reads a feature → resolves a form → combines.
+plain lexical inflection (``Copulas.for_number``) driven by the field's
+:class:`~krrood.entity_query_language.verbalization.vocabulary.words.Number`.
 
 Reference: Gatt & Reiter (2009), SimpleNLG — surface realisation.
 """
@@ -28,8 +28,6 @@ from krrood.entity_query_language.verbalization.fragments.factory import phrase,
 from krrood.entity_query_language.verbalization.fragments.roles import SemanticRole
 from krrood.entity_query_language.verbalization.fragments.source_ref import SourceRef
 from krrood.entity_query_language.verbalization.grammar.assembly.base import Assembler
-from krrood.entity_query_language.verbalization.grammar.choices.copula import CopulaForm
-from krrood.entity_query_language.verbalization.grammar.choices.features import Number
 from krrood.entity_query_language.verbalization.grammar.planning.instantiated import (
     BindingPlan,
     InstantiatedPlan,
@@ -37,9 +35,11 @@ from krrood.entity_query_language.verbalization.grammar.planning.instantiated im
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Articles,
     Conjunctions,
+    Copulas,
     Keywords,
     Prepositions,
 )
+from krrood.entity_query_language.verbalization.vocabulary.words import Number
 
 
 class InstantiatedAssembler(Assembler[InstantiatedPlan]):
@@ -96,7 +96,7 @@ class InstantiatedAssembler(Assembler[InstantiatedPlan]):
         )
 
     def _copula(self, binding: BindingPlan) -> VerbFragment:
-        return CopulaForm.resolve(number=Number.of(binding.is_plural))
+        return Copulas.for_number(Number.of(binding.is_plural)).as_fragment()
 
     def _value(self, binding: BindingPlan) -> VerbFragment:
         if binding.is_plural:

@@ -38,6 +38,7 @@ from krrood.entity_query_language.verbalization.vocabulary.words import (
     ChildForm,
     KeyWord,
     LogicalWord,
+    Number,
     OperatorPhrase,
     OperatorWord,
     PlainWord,
@@ -200,6 +201,11 @@ class Copulas(VocabEnum):
     IS_NOT = OperatorWord("is not")
     ARE = OperatorWord("are")
 
+    @classmethod
+    def for_number(cls, number: Number) -> "Copulas":
+        """The affirmative copula agreeing with *number*: ``ARE`` (plural) / ``IS`` (singular)."""
+        return cls.ARE if number is Number.PLURAL else cls.IS
+
 
 class Prepositions(VocabEnum):
     """Prepositions used in possessive path phrases (OF, OF THE) and aggregate scopes (AMONG)."""
@@ -274,6 +280,11 @@ class ExistentialPhrase(VocabEnum):
 
     THERE_IS_A = SingularExistential("there's")
     THERE_ARE = PluralExistential("there are")
+
+    @classmethod
+    def for_number(cls, number: Number) -> "ExistentialPhrase":
+        """The existential frame agreeing with *number*: ``THERE_ARE`` / ``THERE_IS_A``."""
+        return cls.THERE_ARE if number is Number.PLURAL else cls.THERE_IS_A
 
     def build_phrase(self, type_name: str) -> VerbFragment:
         """

@@ -4,13 +4,13 @@ Inference-rule **assembler** — realise a :class:`RuleStructure` (from
 into an ``IF … THEN …`` :class:`~krrood.entity_query_language.verbalization.fragments.base.BlockFragment`.
 
 Realisation sub-steps are methods sharing ``self.ctx`` (recursion via ``self.ctx.child``,
-coreference via ``self.ctx.refer``).  Every micro form-decision (existential number, copula
-number, noun number) is delegated to a :class:`~krrood.entity_query_language.verbalization.grammar.choices.base.Choice`
-system, so the assembler only *reads a feature → resolves a form → combines* — no inline
-``if aggregated/is_plural`` branching.  This is the realisation half of the planner/assembler
-split (see :class:`~krrood.entity_query_language.verbalization.grammar.assembly.base.Assembler`).
+coreference via ``self.ctx.refer``).  Number agreement (existential frame, copula, noun) is
+plain morphology driven by the planner-decided :class:`~krrood.entity_query_language.verbalization.vocabulary.words.Number`:
+the lexicon inflects (``Copulas.for_number`` / ``ExistentialPhrase.for_number``) and nouns
+pluralise via :mod:`morphology` — no per-form dispatch.  This is the realisation half of the
+planner/assembler split (see :class:`~krrood.entity_query_language.verbalization.grammar.assembly.base.Assembler`).
 
-Reference: Gatt & Reiter (2009), SimpleNLG — surface realisation.
+Reference: Gatt & Reiter (2009), SimpleNLG — surface realisation + the MorphologyProcessor.
 """
 
 from __future__ import annotations
@@ -29,15 +29,9 @@ from krrood.entity_query_language.verbalization.fragments.base import (
     BlockFragment,
     VerbFragment,
 )
-from krrood.entity_query_language.verbalization.fragments.factory import phrase
+from krrood.entity_query_language.verbalization.fragments.factory import phrase, role
 from krrood.entity_query_language.verbalization.fragments.roles import SemanticRole
 from krrood.entity_query_language.verbalization.grammar.assembly.base import Assembler
-from krrood.entity_query_language.verbalization.grammar.choices.copula import CopulaForm
-from krrood.entity_query_language.verbalization.grammar.choices.existential import (
-    ExistentialForm,
-)
-from krrood.entity_query_language.verbalization.grammar.choices.features import Number
-from krrood.entity_query_language.verbalization.grammar.choices.noun import NounForm
 from krrood.entity_query_language.verbalization.grammar.planning.inference import (
     AggregationStatus,
     AntecedentInfo,
@@ -47,10 +41,13 @@ from krrood.entity_query_language.verbalization.grammar.planning.inference impor
 )
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Articles,
+    Copulas,
+    ExistentialPhrase,
     FallbackNouns,
     GroupKeyPhrases,
     Keywords,
 )
+from krrood.entity_query_language.verbalization.vocabulary.words import Number
 
 
 class InferenceAssembler(Assembler[RuleStructure]):
@@ -74,6 +71,13 @@ class InferenceAssembler(Assembler[RuleStructure]):
         """The grammatical number of an antecedent — plural iff aggregated."""
         return Number.of(antecedent.aggregation_status == AggregationStatus.AGGREGATED)
 
+    def _noun(
+        self, name: str, number: Number, semantic_role: SemanticRole
+    ) -> VerbFragment:
+        """A role-tagged noun inflected for *number* (pluralised when plural)."""
+        text = morphology.ensure_plural(name) if number is Number.PLURAL else name
+        return role(text, semantic_role)
+
     # ── IF clause ───────────────────────────────────────────────────────────────
 
     def _if_items(self, s: RuleStructure) -> List[VerbFragment]:
@@ -95,8 +99,8 @@ class InferenceAssembler(Assembler[RuleStructure]):
         return items or [Keywords.TRUE.as_fragment()]
 
     def _antecedent_intro(self, antecedent: AntecedentInfo) -> VerbFragment:
-        return ExistentialForm.resolve(
-            number=self._number(antecedent), type_name=antecedent.type_name
+        return ExistentialPhrase.for_number(self._number(antecedent)).build_phrase(
+            antecedent.type_name
         )
 
     def _register_antecedent(self, antecedent: AntecedentInfo) -> None:
@@ -122,12 +126,8 @@ class InferenceAssembler(Assembler[RuleStructure]):
         number = self._number(antecedent)
         return phrase(
             Keywords.WHOSE.as_fragment(),
-            NounForm.resolve(
-                number=number,
-                name=pc.whose_attr,
-                semantic_role=SemanticRole.ATTRIBUTE,
-            ),
-            CopulaForm.resolve(number=number),
+            self._noun(pc.whose_attr, number, SemanticRole.ATTRIBUTE),
+            Copulas.for_number(number).as_fragment(),
             self._value(pc.expression.right, number),
         )
 
@@ -140,9 +140,9 @@ class InferenceAssembler(Assembler[RuleStructure]):
     # ── THEN clause ───────────────────────────────────────────────────────────
 
     def _then_items(self, s: RuleStructure) -> List[VerbFragment]:
-        intro: VerbFragment = ExistentialForm.resolve(
-            number=Number.SINGULAR, type_name=s.consequent_type
-        )
+        intro: VerbFragment = ExistentialPhrase.for_number(
+            Number.SINGULAR
+        ).build_phrase(s.consequent_type)
         binding_frags = [self._binding_frag(b) for b in s.consequent_bindings]
         if not binding_frags:
             return [intro]
@@ -152,12 +152,8 @@ class InferenceAssembler(Assembler[RuleStructure]):
         number = Number.of(binding.is_plural_field)
         return phrase(
             Keywords.WHOSE.as_fragment(),
-            NounForm.resolve(
-                number=number,
-                name=binding.field_name,
-                semantic_role=SemanticRole.ATTRIBUTE,
-            ),
-            CopulaForm.resolve(number=number),
+            self._noun(binding.field_name, number, SemanticRole.ATTRIBUTE),
+            Copulas.for_number(number).as_fragment(),
             self._binding_value(binding),
         )
 

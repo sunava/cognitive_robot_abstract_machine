@@ -21,6 +21,22 @@ from krrood.entity_query_language.verbalization.fragments.base import (
 from krrood.entity_query_language.verbalization.fragments.roles import SemanticRole
 
 
+class Number(Enum):
+    """
+    Grammatical **number** — the morphological feature a planner decides and the lexicon
+    inflects on (see ``for_number`` on the inflecting enums).  Replaces the bespoke
+    number ``Choice`` systems: agreement is plain morphology, not a dispatch.
+    """
+
+    SINGULAR = "singular"
+    PLURAL = "plural"
+
+    @classmethod
+    def of(cls, is_plural: bool) -> "Number":
+        """``PLURAL`` when *is_plural* else ``SINGULAR`` (bridges boolean plan features)."""
+        return cls.PLURAL if is_plural else cls.SINGULAR
+
+
 @dataclass(frozen=True)
 class PlainWord:
     """
