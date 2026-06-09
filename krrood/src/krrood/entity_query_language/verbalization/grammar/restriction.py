@@ -3,10 +3,10 @@ Subject restriction systems — recognising a subject's ``WHERE`` conjunct as a
 post-nominal *"whose <attr> is …"* modifier (vs. a residual *"such that …"* clause),
 and resolving **which** variable a selection restricts.
 
-Both decisions are **declarative**: small rule hierarchies whose preconditions carry
-the analysis, dispatched first-by-specificity through the *same*
-:func:`~krrood.entity_query_language.verbalization.grammar.phrase_rule.most_specific`
-primitive that selects :class:`~krrood.entity_query_language.verbalization.grammar.phrase_rule.PhraseRule`
+Both decisions are **declarative**: small rule hierarchies that share the
+:class:`~krrood.entity_query_language.verbalization.grammar.selection.SpecificityRule`
+base — self-registering alternatives selected by specificity, the same primitive family
+as :class:`~krrood.entity_query_language.verbalization.grammar.phrase_rule.PhraseRule`
 — so there is no bespoke dispatch loop.  Matching is **pure analysis** (used by
 :class:`~krrood.entity_query_language.verbalization.grammar.planning.query.QueryPlanner`);
 each rule's :meth:`render` is the realisation half (used by
@@ -17,9 +17,9 @@ Reference: Dale & Reiter (1995) — referring expressions / post-nominal modific
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import TYPE_CHECKING
-from typing_extensions import ClassVar, List, Optional, Type
+from typing_extensions import Optional, Type
 
 from krrood.entity_query_language.core.mapped_variable import Attribute, MappedVariable
 from krrood.entity_query_language.core.variable import Variable
@@ -34,10 +34,8 @@ from krrood.entity_query_language.verbalization.fragments.base import (
     RoleFragment,
     VerbFragment,
 )
-from krrood.entity_query_language.verbalization.grammar.phrase_rule import (
-    Ctx,
-    most_specific,
-)
+from krrood.entity_query_language.verbalization.grammar.phrase_rule import Ctx
+from krrood.entity_query_language.verbalization.grammar.selection import SpecificityRule
 from krrood.entity_query_language.verbalization.microplanning.coordination import (
     build_between,
     RangeFold,
@@ -80,15 +78,14 @@ def _references(expression, subject_variable) -> bool:
 # ── restriction rules (groupable conjunct → bare predicate) ──────────────────
 
 
-class RestrictionRule(ABC):
+class RestrictionRule(SpecificityRule):
     """
     Recognise a folded conjunct as a groupable subject restriction and render it as a
     bare post-nominal predicate (the enclosing *"whose"* supplies the subject).  A
     conjunct matched by no rule is residual and stays in a *"such that …"* clause.
-    """
 
-    priority: ClassVar[int] = 0
-    """Tiebreak when several rules apply (higher wins); mirrors ``PhraseRule.tiebreak``."""
+    Self-registering alternative (see :class:`SpecificityRule`); ranked by ``priority``.
+    """
 
     @classmethod
     @abstractmethod
@@ -150,12 +147,6 @@ class AttributePredicateRestrictionRule(RestrictionRule):
         )
 
 
-RESTRICTION_RULES: List[Type[RestrictionRule]] = [
-    RangeRestrictionRule,
-    AttributePredicateRestrictionRule,
-]
-
-
 def match_restriction(
     item, subject_variable, context: "VerbalizationContext"
 ) -> Optional[Type[RestrictionRule]]:
@@ -163,26 +154,20 @@ def match_restriction(
 
     Pure analysis — no fragment is built; the planner uses this to partition conjuncts.
     """
-    applicable = [
-        rule
-        for rule in RESTRICTION_RULES
-        if rule.applies(item, subject_variable, context)
-    ]
-    return most_specific(applicable, key=lambda rule: rule.priority)
+    return RestrictionRule.most_applicable(item, subject_variable, context)
 
 
 # ── restriction-subject rules (which variable does the WHERE restrict?) ──────
 
 
-class RestrictionSubjectRule(ABC):
+class RestrictionSubjectRule(SpecificityRule):
     """
     Resolve **which variable** a query's selection restricts, so the selection's ``WHERE``
     can fold into a post-nominal *"whose …"* modifier on it.  A selection matched by no
     rule has no groupable subject — its ``WHERE`` stays a full *"such that …"* clause.
-    """
 
-    priority: ClassVar[int] = 0
-    """Tiebreak when several rules apply (higher wins)."""
+    Self-registering alternative (see :class:`SpecificityRule`); ranked by ``priority``.
+    """
 
     @classmethod
     @abstractmethod
@@ -232,20 +217,11 @@ class AggregationSourceSubjectRule(RestrictionSubjectRule):
         return aggregation_source_root(expression)
 
 
-RESTRICTION_SUBJECT_RULES: List[Type[RestrictionSubjectRule]] = [
-    SelectedVariableSubjectRule,
-    AggregationSourceSubjectRule,
-]
-
-
 def restriction_subject(expression, selected_variable, context: "VerbalizationContext"):
     """The variable a selection's ``WHERE`` restricts (most-specific rule wins), or ``None``."""
-    applicable = [
-        rule
-        for rule in RESTRICTION_SUBJECT_RULES
-        if rule.applies(expression, selected_variable, context)
-    ]
-    chosen = most_specific(applicable, key=lambda rule: rule.priority)
+    chosen = RestrictionSubjectRule.most_applicable(
+        expression, selected_variable, context
+    )
     return (
         chosen.subject(expression, selected_variable, context)
         if chosen is not None

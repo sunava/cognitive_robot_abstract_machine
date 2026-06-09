@@ -29,9 +29,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
-from typing_extensions import Any, Callable, ClassVar, Optional, Sequence, TypeVar
+from typing_extensions import Any, Callable, ClassVar, Optional, Sequence
 
 from krrood.entity_query_language.verbalization.fragments.base import VerbFragment
+from krrood.entity_query_language.verbalization.grammar.selection import most_specific
 
 if TYPE_CHECKING:
     from krrood.entity_query_language.verbalization.context import VerbalizationContext
@@ -44,8 +45,6 @@ if TYPE_CHECKING:
     from krrood.entity_query_language.verbalization.microplanning.referring import (
         ReferringExpressions,
     )
-
-_T = TypeVar("_T")
 
 
 @dataclass
@@ -138,21 +137,6 @@ def _mro_depth(cls: type) -> int:
 def _is_guarded(rule: PhraseRule) -> bool:
     """``True`` when *rule* overrides :meth:`PhraseRule.when` (a guarded rule)."""
     return type(rule).when is not PhraseRule.when
-
-
-def most_specific(candidates: Sequence[_T], key: Callable[[_T], tuple]) -> Optional[_T]:
-    """
-    Return the single most-specific candidate by *key*, or ``None`` when empty.
-
-    The shared selection primitive — used both by :func:`select` over the grammar
-    and by the subject-restriction registries, so first-match-by-specificity is
-    written once.
-
-    :param candidates: Items already filtered to those that apply.
-    :param key: Specificity key; the maximum wins.
-    :return: The most specific candidate, or ``None``.
-    """
-    return max(candidates, key=key, default=None)
 
 
 def select(node, rules: Sequence[PhraseRule], ctx: Ctx) -> Optional[PhraseRule]:
