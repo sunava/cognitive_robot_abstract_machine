@@ -4,7 +4,7 @@ from dataclasses import is_dataclass
 
 import numpy as np
 
-import giskardpy
+import giskardpy  # type: ignore
 import coraplex.locations.costmaps
 import coraplex.orm.ormatic_interface
 import semantic_digital_twin.orm.ormatic_interface

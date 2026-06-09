@@ -14,6 +14,7 @@ from typing_extensions import assert_never
 
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.datastructures.variables import SpatialVariables
+
 from semantic_digital_twin.semantic_annotations.position_descriptions import (
     SemanticPositionDescription,
     HorizontalSemanticDirection,

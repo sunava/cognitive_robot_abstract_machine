@@ -14,8 +14,10 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-TOOL_BASED = REPO_ROOT / "pycram/src/pycram/robot_plans/actions/composite/tool_based.py"
-ENUMS = REPO_ROOT / "pycram/src/pycram/datastructures/enums.py"
+TOOL_BASED = (
+    REPO_ROOT / "coraplex/src/coraplex/robot_plans/actions/composite/tool_based.py"
+)
+ENUMS = REPO_ROOT / "coraplex/src/coraplex/datastructures/enums.py"
 SEMANTIC_ANNOTATIONS = (
     REPO_ROOT
     / "semantic_digital_twin/src/semantic_digital_twin/semantic_annotations/semantic_annotations.py"

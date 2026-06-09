@@ -64,7 +64,7 @@ Comprehensive examples are provided as Jupyter Notebooks in the `examples` folde
     @software{cram-coraplex,
     author = {Arion, Sorin and Bassiouny, Abdelrhman and Beetz, Michael and Dech, Jonas and Hassouna, Vanessa and Huerkamp, Malte and Krohm, Luca and Mania, Patrick and Prüser, David and Schäfer, Jeroen and Schierenbeck, Tom and Stelter, Simon and Vasantakumaar, Naren},
     title = {CoraPlex: Cognitive Orchestrated Reasoning Architecture - Plan Executive},
-    url = {https://github.com/cram2/pycram},
+    url = {https://github.com/cram2/coraplex},
     version = {2.0.0},
     }
 ```

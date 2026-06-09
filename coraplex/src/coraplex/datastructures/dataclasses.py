@@ -17,9 +17,11 @@ from krrood.entity_query_language.backends import (
 from krrood.class_diagrams.mocking import MockedClass, MockedModule
 from coraplex.plans.plan import Plan
 from coraplex.plans.plan_entity import PlanEntity
-from semantic_digital_twin.robots.abstract_robot import AbstractRobot
-from semantic_digital_twin.spatial_types.spatial_types import Pose, Vector3
-from semantic_digital_twin.world import World
+from semantic_digital_twin.robots.robot_parts import AbstractRobot
+
+if TYPE_CHECKING:
+    from coraplex.plans.plan import Plan
+    from semantic_digital_twin.world import World
 
 try:
     import rclpy

@@ -46,7 +46,7 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]  # list of folders that contain the packages (["."] by default)
-include = ["coraplex*", "cora_plex*"]
+include = ["coraplex*"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = "requirements.txt"}
