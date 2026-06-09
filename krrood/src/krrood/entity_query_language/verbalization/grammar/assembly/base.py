@@ -2,17 +2,19 @@
 Assembler — abstract parent for the **realisation** half of a complex construct's
 verbalization.
 
-An assembler takes a *plan* (from the matching
-:class:`~krrood.entity_query_language.verbalization.grammar.planning.base.Planner`)
-plus the per-node :class:`~krrood.entity_query_language.verbalization.grammar.phrase_rule.Ctx`,
-and builds the :class:`~krrood.entity_query_language.verbalization.fragments.base.VerbFragment`.
-It owns the things that genuinely cannot be pre-planned: recursion into children
-(``self.ctx.child``) and the render-scope mutations (query depth, coreference
-subject, compact predicates, constraint deferral).  Realisation sub-steps are
-**methods** sharing ``self.ctx`` (no parameter threading), mirroring the existing
-microplanning service classes
-(:class:`~krrood.entity_query_language.verbalization.microplanning.referring.ReferringExpressions`,
-…).
+An assembler **owns its paired planner**: it declares it as the :attr:`Assembler.planner`
+class attribute, and :meth:`assemble` plans the node then realises the plan.  Callers
+therefore only say ``XAssembler(ctx).assemble(node)`` — the planner is an implementation
+detail of the assembler, and the planner↔assembler pairing is explicit and declarative.
+:meth:`realize` is the single-responsibility core (plan → fragment) and stays directly
+unit-testable with a stub plan.
+
+The assembler owns the things that genuinely cannot be pre-planned: recursion into
+children (``self.ctx.child``) and the render-scope mutations (query depth, coreference
+subject, compact predicates, constraint deferral).  Realisation sub-steps are **methods**
+sharing ``self.ctx`` (no parameter threading), mirroring the microplanning service classes.
+A realisation-only construct (e.g. a chain, which has nothing to decide) sets
+``planner = None`` and receives ``plan=None``.
 
 Reference: Gatt, A. & Reiter, E. (2009), "SimpleNLG: A realisation engine for
 practical applications", ENLG — surface realisation as a dedicated stage.
@@ -22,22 +24,26 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
-from typing_extensions import Generic, TypeVar
+from typing_extensions import ClassVar, Generic, Optional, Type, TypeVar
 
 from krrood.entity_query_language.verbalization.fragments.base import VerbFragment
 from krrood.entity_query_language.verbalization.grammar.phrase_rule import Ctx
+from krrood.entity_query_language.verbalization.grammar.planning.base import Planner
+
+N = TypeVar("N")
+"""The EQL node type the assembler realises."""
 
 P = TypeVar("P")
 """The plan (data record) the assembler realises."""
 
 
 @dataclass
-class Assembler(ABC, Generic[P]):
+class Assembler(ABC, Generic[N, P]):
     """
-    Realise a plan of type ``P`` into a
-    :class:`~krrood.entity_query_language.verbalization.fragments.base.VerbFragment`.
+    Realise an EQL *node* into a
+    :class:`~krrood.entity_query_language.verbalization.fragments.base.VerbFragment`,
+    planning it first via the paired :attr:`planner`.
 
     Holds the :class:`~krrood.entity_query_language.verbalization.grammar.phrase_rule.Ctx`
     so realisation sub-steps (methods) share ``self.ctx`` rather than threading it.
@@ -46,6 +52,17 @@ class Assembler(ABC, Generic[P]):
     ctx: Ctx
     """The per-node context (recursion entry + microplanning services)."""
 
+    planner: ClassVar[Optional[Type[Planner]]] = None
+    """The paired planner (set per family); ``None`` for realisation-only assemblers."""
+
+    def plan(self, node: N) -> Optional[P]:
+        """Run the paired planner on *node* (or ``None`` when there is nothing to plan)."""
+        return self.planner(node).plan() if self.planner is not None else None
+
+    def assemble(self, node: N) -> VerbFragment:
+        """Plan *node*, then realise the plan — the single public entry point."""
+        return self.realize(node, self.plan(node))
+
     @abstractmethod
-    def assemble(self, node, plan: P) -> VerbFragment:
+    def realize(self, node: N, plan: P) -> VerbFragment:
         """Build the fragment for *node* from its *plan*, recursing via ``self.ctx.child``."""

@@ -108,9 +108,6 @@ from krrood.entity_query_language.verbalization.grammar.assembly.query import (
 from krrood.entity_query_language.verbalization.grammar.planning.inference import (
     InferencePlanner,
 )
-from krrood.entity_query_language.verbalization.grammar.planning.query import (
-    QueryPlanner,
-)
 from krrood.entity_query_language.verbalization.grammar.assembly.instantiated import (
     InstantiatedAssembler,
 )
@@ -434,7 +431,7 @@ class TopLevelEntityRule(PhraseRule):
         return ctx.config.query_depth == 0
 
     def build(self, node, ctx: Ctx):
-        return QueryAssembler(ctx).assemble(node, QueryPlanner(node).plan())
+        return QueryAssembler(ctx).assemble(node)
 
 
 class NestedEntityRule(PhraseRule):
@@ -447,7 +444,7 @@ class NestedEntityRule(PhraseRule):
         return ctx.config.query_depth > 0
 
     def build(self, node, ctx: Ctx):
-        return QueryAssembler(ctx).assemble_nested(node, QueryPlanner(node).plan())
+        return QueryAssembler(ctx).assemble_nested(node)
 
 
 class InferenceRuleRule(PhraseRule):
@@ -461,7 +458,7 @@ class InferenceRuleRule(PhraseRule):
         return ctx.config.query_depth == 0 and InferencePlanner.can_handle(node)
 
     def build(self, node, ctx: Ctx):
-        return InferenceAssembler(ctx).assemble(node, InferencePlanner(node).plan())
+        return InferenceAssembler(ctx).assemble(node)
 
 
 class SetOfRule(PhraseRule):
@@ -471,7 +468,7 @@ class SetOfRule(PhraseRule):
     name = "set-of"
 
     def build(self, node, ctx: Ctx):
-        return QueryAssembler(ctx).assemble_set_of(node, QueryPlanner(node).plan())
+        return QueryAssembler(ctx).assemble_set_of(node)
 
 
 class ResultQuantifierRule(PhraseRule):
@@ -524,9 +521,7 @@ class InstantiatedVariableRule(PhraseRule):
     name = "instantiated-variable"
 
     def build(self, node, ctx: Ctx):
-        return InstantiatedAssembler(ctx).assemble(
-            node, InstantiatedPlanner(node).plan()
-        )
+        return InstantiatedAssembler(ctx).assemble(node)
 
 
 class InstantiatedVerbalizableRule(PhraseRule):

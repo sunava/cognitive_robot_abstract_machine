@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from typing_extensions import Dict, List, Tuple
 
+from krrood.entity_query_language.core.variable import InstantiatedVariable
 from krrood.entity_query_language.verbalization.chain_utils import verbalize_plural
 from krrood.entity_query_language.verbalization.fragments.base import (
     oxford_and,
@@ -31,6 +32,7 @@ from krrood.entity_query_language.verbalization.grammar.assembly.base import Ass
 from krrood.entity_query_language.verbalization.grammar.planning.instantiated import (
     BindingPlan,
     InstantiatedPlan,
+    InstantiatedPlanner,
 )
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Articles,
@@ -42,10 +44,12 @@ from krrood.entity_query_language.verbalization.vocabulary.english import (
 from krrood.entity_query_language.verbalization.vocabulary.words import Number
 
 
-class InstantiatedAssembler(Assembler[InstantiatedPlan]):
+class InstantiatedAssembler(Assembler[InstantiatedVariable, InstantiatedPlan]):
     """Realise an InstantiatedVariable from its :class:`InstantiatedPlan`."""
 
-    def assemble(self, node, plan: InstantiatedPlan) -> VerbFragment:
+    planner = InstantiatedPlanner
+
+    def realize(self, node, plan: InstantiatedPlan) -> VerbFragment:
         seen = self.ctx.refer.seen_reference(node)
         if seen is not None:
             return seen

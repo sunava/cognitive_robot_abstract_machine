@@ -36,6 +36,7 @@ from krrood.entity_query_language.verbalization.grammar.planning.inference impor
     AggregationStatus,
     AntecedentInfo,
     ConsequentBinding,
+    InferencePlanner,
     PlannedCondition,
     RuleStructure,
 )
@@ -50,10 +51,12 @@ from krrood.entity_query_language.verbalization.vocabulary.english import (
 from krrood.entity_query_language.verbalization.vocabulary.words import Number
 
 
-class InferenceAssembler(Assembler[RuleStructure]):
+class InferenceAssembler(Assembler[Entity, RuleStructure]):
     """Realise the IF/THEN block from a :class:`RuleStructure`."""
 
-    def assemble(self, node, plan: RuleStructure) -> VerbFragment:
+    planner = InferencePlanner
+
+    def realize(self, node, plan: RuleStructure) -> VerbFragment:
         return BlockFragment(
             header=None,
             items=[

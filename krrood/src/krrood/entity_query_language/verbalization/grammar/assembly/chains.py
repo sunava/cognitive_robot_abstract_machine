@@ -49,10 +49,14 @@ from krrood.entity_query_language.verbalization.vocabulary.english import (
 )
 
 
-class ChainAssembler(Assembler[None]):
-    """Realise a MappedVariable chain (possessive / predicative / pronominal forms)."""
+class ChainAssembler(Assembler[MappedVariable, None]):
+    """Realise a MappedVariable chain (possessive / predicative / pronominal forms).
 
-    def assemble(self, node, plan: None = None) -> VerbFragment:
+    Realisation-only (``planner = None``): a chain has no content to decide, only a surface
+    form, so there is no plan — :meth:`realize` ignores it.
+    """
+
+    def realize(self, node, plan: None = None) -> VerbFragment:
         """Default chain rendering (the :class:`Assembler` entry point)."""
         return self.chain(node)
 

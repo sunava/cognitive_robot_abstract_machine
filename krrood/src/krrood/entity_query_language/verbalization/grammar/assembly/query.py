@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing_extensions import List, Optional, Tuple
 
-from krrood.entity_query_language.query.query import Entity, SetOf
+from krrood.entity_query_language.query.query import Entity, Query, SetOf
 from krrood.entity_query_language.verbalization.chain_utils import verbalize_plural
 from krrood.entity_query_language.verbalization.fragments.base import (
     BlockFragment,
@@ -58,12 +58,14 @@ from krrood.entity_query_language.verbalization.vocabulary.english import (
 from krrood.entity_query_language.verbalization.vocabulary.words import ChildForm
 
 
-class QueryAssembler(Assembler[QueryPlan]):
+class QueryAssembler(Assembler[Query, QueryPlan]):
     """Realise a query / nested-entity / set-of from its :class:`QueryPlan`."""
+
+    planner = QueryPlanner
 
     # ── entry points ─────────────────────────────────────────────────────────
 
-    def assemble(self, node, plan: QueryPlan) -> VerbFragment:
+    def realize(self, node, plan: QueryPlan) -> VerbFragment:
         """Top-level imperative form: *"Find X such that …"*."""
         seen = self.ctx.context.seen_reference(node)
         if seen is not None:
@@ -84,8 +86,9 @@ class QueryAssembler(Assembler[QueryPlan]):
                 )
             return self._assemble_subject(node, plan)
 
-    def assemble_nested(self, node, plan: QueryPlan) -> VerbFragment:
+    def assemble_nested(self, node) -> VerbFragment:
         """Noun-phrase form for a nested Entity (never emits *"Find …"*)."""
+        plan = self.plan(node)
         seen = self.ctx.context.seen_reference(node)
         if seen is not None:
             return seen
@@ -93,8 +96,9 @@ class QueryAssembler(Assembler[QueryPlan]):
             return self._aggregation_value(node, plan)
         return self._as_noun(node)
 
-    def assemble_set_of(self, node, plan: QueryPlan) -> VerbFragment:
+    def assemble_set_of(self, node) -> VerbFragment:
         """*"Find (v1, v2, …) such that …"* for a SetOf query."""
+        plan = self.plan(node)
         with self.ctx.context.query_depth_scope():
             variable_fragments = [
                 self.ctx.child(variable) for variable in node._selected_variables_
@@ -177,7 +181,7 @@ class QueryAssembler(Assembler[QueryPlan]):
         seen = self.ctx.context.seen_reference(entity)
         if seen is not None:
             return seen
-        plan = QueryPlanner(entity).plan()
+        plan = self.plan(entity)
         var = entity.selected_variable
         selected_type = plan.selected_type
         self.ctx.context.seen[entity._id_] = selected_type
