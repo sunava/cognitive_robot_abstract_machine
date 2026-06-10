@@ -27,6 +27,9 @@ from krrood.entity_query_language.verbalization.microplanning.referring import (
     ArticleSelection,
     ReferringExpressions,
 )
+from krrood.entity_query_language.verbalization.rendering.determiner_processor import (
+    DeterminerProcessor,
+)
 from krrood.entity_query_language.verbalization.vocabulary.english import RangePhrases
 
 
@@ -63,7 +66,9 @@ def test_seen_reference_is_none_until_mentioned_then_definite():
 
     assert refer.seen_reference(var) is None
     refer.noun_for_parts(var)  # records the mention
-    assert flatten_fragment_to_plain_text(refer.seen_reference(var)) == "the Robot"
+    # seen_reference returns a NounPhrase spec; the determiner phase realises "the Robot"
+    reference = DeterminerProcessor().process(refer.seen_reference(var))
+    assert flatten_fragment_to_plain_text(reference) == "the Robot"
 
 
 def test_pronoun_only_for_current_unnumbered_seen_subject():

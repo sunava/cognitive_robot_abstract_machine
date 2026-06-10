@@ -31,7 +31,6 @@ from krrood.entity_query_language.core.variable import Variable, Literal
 from krrood.entity_query_language.query.query import Entity, Query
 from krrood.entity_query_language.verbalization.fragments.base import (
     NounPhrase,
-    PhraseFragment,
     RoleFragment,
     VerbFragment,
 )
@@ -41,10 +40,7 @@ from krrood.entity_query_language.verbalization.subquery import (
     aggregation_source_root,
     selected_aggregator,
 )
-from krrood.entity_query_language.verbalization.vocabulary.english import (
-    Articles,
-    Pronouns,
-)
+from krrood.entity_query_language.verbalization.vocabulary.english import Pronouns
 
 if TYPE_CHECKING:
     from krrood.entity_query_language.core.base_expressions import SymbolicExpression
@@ -224,8 +220,8 @@ class ReferringExpressions:
         variable_id = getattr(expression, "_id_", None)
         if variable_id is None or variable_id not in self.seen:
             return None
-        return PhraseFragment(
-            parts=[Articles.THE.as_fragment(), self.seen[variable_id]]
+        return NounPhrase(
+            head=self.seen[variable_id], definiteness=Definiteness.DEFINITE
         )
 
     def pronoun_for(self, root) -> Optional[VerbFragment]:

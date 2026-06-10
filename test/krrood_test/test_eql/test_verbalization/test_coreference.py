@@ -1,7 +1,7 @@
 """
 Unit tests for the de-stringified coreference store (:class:`ReferringExpressions`):
 labels are now **fragments**, registration is encapsulated, and ``seen_reference``
-composes *"the <label>"* from the stored fragment.
+composes a definite-reference :class:`NounPhrase` (*"the <label>"*) from the stored fragment.
 """
 
 from __future__ import annotations
@@ -14,6 +14,9 @@ from krrood.entity_query_language.verbalization.fragments.roles import SemanticR
 from krrood.entity_query_language.verbalization.microplanning.referring import (
     ReferringExpressions,
 )
+from krrood.entity_query_language.verbalization.rendering.determiner_processor import (
+    DeterminerProcessor,
+)
 
 
 class _Ref:
@@ -24,7 +27,8 @@ class _Ref:
 
 
 def _text(fragment) -> str:
-    return flatten_fragment_to_plain_text(fragment)
+    """Lower the DP (``seen_reference`` returns a NounPhrase spec) then flatten."""
+    return flatten_fragment_to_plain_text(DeterminerProcessor().process(fragment))
 
 
 def test_register_label_stores_a_fragment_and_composes_definite_reference():

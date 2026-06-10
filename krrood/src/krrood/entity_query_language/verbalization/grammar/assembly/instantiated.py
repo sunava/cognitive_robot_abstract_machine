@@ -22,6 +22,7 @@ from typing_extensions import Dict, List, Tuple
 from krrood.entity_query_language.core.variable import InstantiatedVariable
 from krrood.entity_query_language.verbalization.grammar.agreement import copula
 from krrood.entity_query_language.verbalization.fragments.base import (
+    NounPhrase,
     oxford_and,
     PhraseFragment,
     RoleFragment,
@@ -116,10 +117,7 @@ class InstantiatedAssembler(Assembler[InstantiatedVariable, InstantiatedPlan]):
         constraint_frags: List[VerbFragment],
     ) -> VerbFragment:
         result_parts: List[VerbFragment] = [
-            phrase(
-                Articles.indefinite(type_name),
-                RoleFragment.for_variable(type_name, node),
-            )
+            NounPhrase(head=RoleFragment.for_variable(type_name, node))
         ]
         if binding_frags:
             joined = oxford_and(binding_frags, Conjunctions.AND.as_fragment())
