@@ -32,11 +32,9 @@ jobs:
           source /opt/ros/cram-env/bin/activate
           sudo apt-get update
           sudo apt-get install -y xvfb libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0 libegl1
-          poetry install
-          which python
+          uv sync --frozen --active --all-packages
           python -c "import sys; print(sys.executable)"
           python -c "import skimage; print(skimage.__file__)"
-          poetry show scikit-image
 
       - name: Restore cache
         uses: actions/cache/restore@v4
@@ -55,8 +53,6 @@ jobs:
           source /opt/ros/overlay_ws/install/setup.bash
           source /opt/ros/cram-env/bin/activate
           python generate_orm.py
-      - name: Run Script
-        run: |
 
       - name: Run Script
         run: |

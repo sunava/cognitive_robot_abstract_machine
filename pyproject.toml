@@ -63,7 +63,6 @@ probabilistic_model = { path = "probabilistic_model", develop = true }
 robokudo = { path = "robokudo", develop = true }
 physics_simulators = { path = "physics_simulators", develop = true }
 experiments = { path = "experiments", develop = true }
-scikit-image = "*"
 
 [tool.setuptools]
 packages = []

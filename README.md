@@ -54,24 +54,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 then install packages:
 
 ```bash
-uv sync --active
-```
-
-
-### Alternative: Poetry
-
-Alternatively you can use poetry to install all packages in the repository.
-
-Install poetry if you haven't already:
-
-```bash
-pip install poetry
-``` 
-
-Install the CRAM package along with its dependencies:
-
-```bash 
-poetry install
+uv sync --active --all-packages
 ```
 
 ## To run tests
