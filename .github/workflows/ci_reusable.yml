@@ -71,7 +71,6 @@ jobs:
 
       - name: Run tests
         run: |
-          cd cognitive_robot_abstract_machine
           source /opt/ros/cram-env/bin/activate
           source /opt/ros/overlay_ws/install/setup.bash
           echo "PYTHONPATH: $PYTHONPATH"
