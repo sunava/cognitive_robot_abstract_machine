@@ -7,11 +7,19 @@ from dataclasses import dataclass, field
 
 from typing_extensions import List, Iterator, Optional, Iterable
 
+from giskardpy.motion_statechart.goals.collision_avoidance import (
+    ExternalCollisionDistanceMonitor,
+)
 from krrood.entity_query_language.predicate import Predicate
 from pycram.datastructures.dataclasses import Context
 from pycram.utils import collision_check
 from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
     VizMarkerPublisher,
+)
+from semantic_digital_twin.collision_checking.collision_matrix import CollisionMatrix
+from semantic_digital_twin.collision_checking.collision_rules import (
+    AvoidExternalCollisions,
+    AllowSelfCollisions,
 )
 from semantic_digital_twin.robots.robot_parts import AbstractRobot
 from semantic_digital_twin.spatial_types.spatial_types import Pose
@@ -76,12 +84,17 @@ class Location(Iterable[Pose]):
 
             test_robot.root.parent_connection.origin = pose_candidate
 
-            collisions = collision_check(
-                robot=test_robot,
-                world=test_world,
+            test_world.collision_manager.clear_temporary_rules()
+            test_world.collision_manager.add_temporary_rule(
+                AvoidExternalCollisions(robot=test_robot)
             )
+            test_world.collision_manager.add_temporary_rule(
+                AllowSelfCollisions(robot=test_robot)
+            )
+            test_world.collision_manager.update_collision_matrix()
+            collisions = test_world.collision_manager.compute_collisions()
 
-            if collisions:
+            if collisions.contacts:
                 logger.debug(f"Candidate pose in collision, skipping")
                 continue
 

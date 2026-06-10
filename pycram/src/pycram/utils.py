@@ -40,30 +40,6 @@ if TYPE_CHECKING:
     from pycram.view_manager import CameraDescription
 
 
-def collision_check(robot: AbstractRobot, world: World) -> List[ClosestPoints]:
-    """
-    This method checks if a given robot collides with any object within the world
-    which it is not allowed to collide with.
-    This is done checking iterating over every object within the world and checking
-    if the robot collides with it. Careful the floor will be ignored.
-    If there is a collision with an object that was not within the allowed collision
-    list the function will raise a RobotInCollision exception.
-
-    :param robot: The robot object in the (Bullet)World where it should be checked if it collides with something
-    :param allowed_collision: dict of objects with which the robot is allowed to collide each object correlates to a list of links of which this object consists
-    :param world: The world in which collision should be checked
-    :raises: RobotInCollision if the robot collides with an object it is not allowed to collide with.
-    """
-    world.collision_manager.clear_temporary_rules()
-    world.collision_manager.add_temporary_rule(AllowSelfCollisions(robot=robot))
-    world.collision_manager.update_collision_matrix(buffer=0.0)
-    return [
-        contact
-        for contact in world.collision_manager.compute_collisions().contacts
-        if contact.distance <= 0.0
-    ]
-
-
 def link_pose_for_joint_config(obj: Body, joint_config: Dict[str, float]) -> Pose:
     """
     Get the pose a link would be in if the given joint configuration would be applied to the object.
