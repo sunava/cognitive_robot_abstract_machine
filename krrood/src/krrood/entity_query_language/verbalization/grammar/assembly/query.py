@@ -1,11 +1,19 @@
 """
 Query **assembler** — realise a :class:`~krrood.entity_query_language.verbalization.grammar.planning.query.QueryPlan`
 into the *"Find … such that … grouped by … having … ordered by …"* block (and the nested
-noun-phrase / aggregation-value forms).
+noun-phrase form).
 
-This is the realisation half of the planner/assembler split: it owns recursion
-(``self.ctx.child``) and the render-scope mutations (query-depth, compact predicates).
-Coreference is no longer resolved here — the assembler emits referring ``NounPhrase`` s and
+This is the realisation half of the planner/assembler split.  It is the **orchestrator** of the
+query block: it dispatches on the selection shape (:class:`SelectionKind`), builds the selection
+and its restrictions, and combines the trailing clauses — delegating the cohesive sub-forms to
+their own components: the trailing clauses to
+:mod:`~krrood.entity_query_language.verbalization.grammar.assembly.clauses`, the subject's WHERE
+partition to
+:class:`~krrood.entity_query_language.verbalization.grammar.assembly.restrictions.RestrictionAssembler`,
+and the aggregation value-subquery to
+:class:`~krrood.entity_query_language.verbalization.grammar.assembly.aggregation_value.AggregationValueAssembler`.
+It owns recursion (``self.ctx.child``) and the render-scope mutations (query-depth, compact
+predicates).  Coreference is resolved later — the assembler emits referring ``NounPhrase`` s and
 ``SubjectScope`` markers, and the document-order ``CoreferenceProcessor`` pass decides
 first/subsequent/pronoun afterwards (Reiter & Dale 2000).  All *what to say* decisions already
 live in the plan; the assembler only combines.
@@ -22,19 +30,15 @@ from krrood.entity_query_language.query.query import Query
 from krrood.entity_query_language.verbalization.fragments.base import (
     BlockFragment,
     NounPhrase,
-    oxford_and,
     PhraseFragment,
     RoleFragment,
     SubjectScope,
     VerbFragment,
     WordFragment,
 )
-from krrood.entity_query_language.verbalization.fragments.features import (
-    Definiteness,
-    Number,
-)
-from krrood.entity_query_language.verbalization.grammar.aggregation_kinds import (
-    AGGREGATION_KIND,
+from krrood.entity_query_language.verbalization.fragments.features import Definiteness
+from krrood.entity_query_language.verbalization.grammar.assembly.aggregation_value import (
+    AggregationValueAssembler,
 )
 from krrood.entity_query_language.verbalization.grammar.assembly.base import Assembler
 from krrood.entity_query_language.verbalization.grammar.assembly.clauses import (
@@ -42,23 +46,18 @@ from krrood.entity_query_language.verbalization.grammar.assembly.clauses import 
     HavingAssembler,
     OrderedByAssembler,
 )
+from krrood.entity_query_language.verbalization.grammar.assembly.restrictions import (
+    RestrictionAssembler,
+)
 from krrood.entity_query_language.verbalization.grammar.planning.query import (
     QueryPlan,
     QueryPlanner,
-    RestrictionPlan,
     SelectionKind,
 )
-from krrood.entity_query_language.verbalization.microplanning.coordination import (
-    build_between,
-    RangeFold,
-)
 from krrood.entity_query_language.verbalization.vocabulary.english import (
-    Conjunctions,
     FallbackNouns,
     Keywords,
-    Prepositions,
 )
-from krrood.entity_query_language.verbalization.vocabulary.words import ChildForm
 
 
 def _subject_id(var):
@@ -75,27 +74,38 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
     # ── entry points ─────────────────────────────────────────────────────────
 
     def realize(self, node, plan: QueryPlan) -> VerbFragment:
-        """Top-level imperative form: *"Find X such that …"*."""
+        """Top-level imperative form *"Find X such that …"*, dispatched on the selection shape
+        (a closed enum → handler table; ``SET_OF`` enters via :meth:`assemble_set_of`).
+        """
+        handlers = {
+            SelectionKind.ENTITY_SELECTOR: self._realize_entity_selector,
+            SelectionKind.EMPTY: self._realize_empty,
+            SelectionKind.SUBJECT: self._assemble_subject,
+        }
         with self.ctx.context.query_depth_scope():
-            if plan.kind is SelectionKind.ENTITY_SELECTOR:
-                selection = self._as_noun(node.selected_variable)
-                return self._query_body(
-                    node, plan, selection, where_item=self._where_clause(plan)
-                )
-            if plan.kind is SelectionKind.EMPTY:
-                return self._query_body(
-                    node,
-                    plan,
-                    FallbackNouns.ENTITY.plural_fragment(),
-                    where_item=self._where_clause(plan),
-                )
-            return self._assemble_subject(node, plan)
+            return handlers[plan.kind](node, plan)
+
+    def _realize_entity_selector(self, node, plan: QueryPlan) -> VerbFragment:
+        """*"Find <a Robot where …> such that …"* — the selected variable is itself an Entity."""
+        selection = self._as_noun(node.selected_variable)
+        return self._query_body(
+            node, plan, selection, where_item=self._where_clause(plan)
+        )
+
+    def _realize_empty(self, node, plan: QueryPlan) -> VerbFragment:
+        """*"Find entities such that …"* — no selected variable (the fallback form)."""
+        return self._query_body(
+            node,
+            plan,
+            FallbackNouns.ENTITY.plural_fragment(),
+            where_item=self._where_clause(plan),
+        )
 
     def assemble_nested(self, node) -> VerbFragment:
         """Noun-phrase form for a nested Entity (never emits *"Find …"*)."""
         plan = self.plan(node)
         if plan.is_aggregation_subquery:
-            return self._aggregation_value(node, plan)
+            return AggregationValueAssembler(self.ctx).realize(node, plan)
         return self._as_noun(node)
 
     def assemble_set_of(self, node) -> VerbFragment:
@@ -146,7 +156,9 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
         restriction = plan.subject_restriction
         if restriction is None:
             return selected, None
-        whose, residual = self._render_restrictions(restriction, plan.subject)
+        whose, residual = RestrictionAssembler(self.ctx).render(
+            restriction, plan.subject
+        )
         if whose is not None:
             selected = PhraseFragment(parts=[selected, whose])
         where_item = (
@@ -172,7 +184,7 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
         modifiers: List[VerbFragment] = []
         if plan.subject_restriction is not None:
             with self.ctx.context.query_depth_scope():
-                whose, residual = self._render_restrictions(
+                whose, residual = RestrictionAssembler(self.ctx).render(
                     plan.subject_restriction, plan.subject
                 )
             if whose is not None:
@@ -191,104 +203,6 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
         return (
             SubjectScope(subject_id=_subject_id(var), child=noun) if modifiers else noun
         )
-
-    # ── aggregation value-subquery ──────────────────────────────────────────────
-
-    def _aggregation_value(self, node, plan: QueryPlan) -> VerbFragment:
-        av = plan.aggregation_value
-        if av.leaf is None:
-            with self.ctx.context.query_depth_scope():
-                return self.ctx.child(av.aggregator)
-
-        aggregation_kind = AGGREGATION_KIND[type(av.aggregator)]
-        plural_leaf = aggregation_kind.value.child_form == ChildForm.PLURAL
-        leaf_frag = RoleFragment.for_attribute(
-            av.leaf._owner_class_,
-            av.leaf._attribute_name_,
-            number=Number.of(plural_leaf),
-        )
-        aggregate = NounPhrase(
-            head=aggregation_kind.as_fragment(),
-            definiteness=Definiteness.DEFINITE,
-            modifiers=[leaf_frag],
-        )
-
-        if not av.is_constrained:
-            return aggregate
-        return self._aggregation_scope(node, plan, aggregate)
-
-    def _aggregation_scope(self, node, plan: QueryPlan, aggregate) -> VerbFragment:
-        """Append *"among <plural source> such that <filter> having <filter>"*."""
-        source = plan.aggregation_value.source
-        source_frag = (
-            self.ctx.child(source, number=Number.PLURAL)
-            if source is not None
-            else FallbackNouns.ENTITY.plural_fragment()
-        )
-        parts: List[VerbFragment] = [
-            aggregate,
-            Prepositions.AMONG.as_fragment(),
-            source_frag,
-        ]
-
-        if plan.subject_restriction is not None:
-            with self.ctx.context.query_depth_scope():
-                whose, residual = self._render_restrictions(
-                    plan.subject_restriction, plan.subject
-                )
-            if whose is not None:
-                parts.append(whose)
-            if residual is not None:
-                parts += [Keywords.SUCH_THAT.as_fragment(), residual]
-
-        with self.ctx.context.query_depth_scope():
-            having = HavingAssembler(self.ctx).clause(node)
-        if having is not None:
-            parts.append(having)
-
-        return PhraseFragment(parts=parts)
-
-    # ── restriction rendering ──────────────────────────────────────────────────
-
-    def _render_restrictions(
-        self, restriction: RestrictionPlan, subject
-    ) -> Tuple[Optional[VerbFragment], Optional[VerbFragment]]:
-        """Render the *"whose <grouped>"* modifier and the residual condition."""
-        grouped_frags = [
-            rule.render(item, subject, self.ctx) for rule, item in restriction.grouped
-        ]
-        whose = None
-        if grouped_frags:
-            whose = PhraseFragment(
-                parts=[
-                    Keywords.WHOSE.as_fragment(),
-                    oxford_and(grouped_frags, Conjunctions.AND.as_fragment()),
-                ]
-            )
-        residual = (
-            self._render_residual(restriction.residual)
-            if restriction.has_residual
-            else None
-        )
-        return whose, residual
-
-    def _render_residual(self, items: List) -> VerbFragment:
-        parts: List[VerbFragment] = []
-        for item in items:
-            if isinstance(item, RangeFold):
-                parts.append(
-                    build_between(
-                        self.ctx.child(item.chain_expression),
-                        self.ctx.child(item.lower_expression),
-                        self.ctx.child(item.upper_expression),
-                        compact=self.ctx.context.compact_predicates,
-                    )
-                )
-            else:
-                parts.append(self.ctx.child(item))
-        if len(parts) == 1:
-            return parts[0]
-        return oxford_and(parts, Conjunctions.AND.as_fragment())
 
     # ── query-body clauses ─────────────────────────────────────────────────────
 
