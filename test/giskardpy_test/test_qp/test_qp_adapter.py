@@ -2,7 +2,7 @@ from collections import defaultdict
 
 import numpy as np
 import pytest
-from giskardpy.qp.constraint import DofLimits, SystemDynamicsStrategy
+from giskardpy.qp.constraint import DofLimits, SystemDynamicsStrategy, IntegralStrategy
 from giskardpy.qp.constraint_collection import ConstraintCollection
 from giskardpy.qp.qp_controller_config import QPControllerConfig
 from giskardpy.qp.qp_data_factories import QPDataExplicitFactory
@@ -281,29 +281,27 @@ def test_equality_constraint_model(prismatic_bot2):
         quadratic_weight=1,
         reference_velocity=1,
     )
-    eq_constraint_model = EqualityConstraintModel(
+    eq_constraint_model = IntegralStrategy(
         degrees_of_freedom=prismatic_bot2.active_degrees_of_freedom,
-        constraint_collection=constraints,
+        constraints=constraints.equality_constraints,
         config=QPControllerConfig(
             target_frequency=target_frequency, prediction_horizon=prediction_horizon
         ),
     )
     assert np.allclose(
-        sum(eq_constraint_model.matrix[0, :].to_np()),
+        sum(eq_constraint_model.create_matrix()[0, :].to_np()),
         (1 / target_frequency) * (prediction_horizon - 2),
     )
-    assert eq_constraint_model.bounds[
-        0
-    ] == eq_constraint_model.config.radian_normalization_number * (
+    bounds = eq_constraint_model.create_equality_bounds()
+    slack_variables = eq_constraint_model.create_slack_variables()
+    assert bounds[0] == eq_constraint_model.config.radian_normalization_number * (
         1 / target_frequency
-    ) * (
-        prediction_horizon - 2
-    )
-    assert eq_constraint_model.slack_variables.quadratic_weights[0] != 0
-    assert eq_constraint_model.slack_variables.linear_weights[0] == 0
-    assert eq_constraint_model.slack_variables.lower_bounds < 0
-    assert eq_constraint_model.slack_variables.upper_bounds > 0
-    assert eq_constraint_model.slack_matrix[0, 0] == (1 / target_frequency)
+    ) * (prediction_horizon - 2)
+    assert slack_variables.quadratic_weights[0] != 0
+    assert slack_variables.linear_weights[0] == 0
+    assert slack_variables.lower_bounds < 0
+    assert slack_variables.upper_bounds > 0
+    assert eq_constraint_model.create_slack_matrix()[0, 0] == (1 / target_frequency)
 
 
 def test_inequality_constraint_model(prismatic_bot2):

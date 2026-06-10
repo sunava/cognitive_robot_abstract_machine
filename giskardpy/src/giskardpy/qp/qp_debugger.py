@@ -140,49 +140,6 @@ class QuadraticProgramDebugger:
                 dtype=float,
             )
 
-    def _has_nan(self):
-        nan_entries = self.p_A[0].isnull().stack()
-        row_col_names = nan_entries[nan_entries].index.tolist()
-        pass
-
-    def _print_pandas_array(self, array):
-        import pandas as pd
-
-        if len(array) > 0:
-            with pd.option_context(
-                "display.max_rows", None, "display.max_columns", None
-            ):
-                print(array)
-
-    def save_pandas(
-        self, dfs, names, path, time: float, folder_name: Optional[str] = None
-    ):
-
-        if folder_name is None:
-            folder_name = ""
-        folder_name = f"{path}/pandas/{folder_name}_{date_str}/{time}/"
-        create_path(folder_name)
-        for df, name in zip(dfs, names):
-            csv_string = "name\n"
-            with pd.option_context(
-                "display.max_rows", None, "display.max_columns", None
-            ):
-                if df.shape[1] > 1:
-                    for column_name, column in df.T.items():
-                        zero_filtered_column = (
-                            column.replace(0, np.nan)
-                            .dropna(how="all")
-                            .replace(np.nan, 0)
-                        )
-                        csv_string += zero_filtered_column.add_prefix(
-                            column_name + "||"
-                        ).to_csv(float_format="%.6f")
-                else:
-                    csv_string += df.to_csv(float_format="%.6f")
-            file_name2 = f"{folder_name}{name}.csv"
-            with open(file_name2, "w") as f:
-                f.write(csv_string)
-
     @property
     def free_variable_names(self) -> list[str]:
         return self.qp_data_symbolic.free_variable_names
@@ -208,43 +165,3 @@ class QuadraticProgramDebugger:
     @property
     def inequality_constr_names(self):
         return self.qp_data_symbolic.neq_constraint_names
-
-    def _print_iis(self):
-        import pandas as pd
-
-        def print_iis_matrix(
-            row_filter: np.ndarray,
-            column_filter: np.ndarray,
-            matrix: pd.DataFrame,
-            bounds: pd.DataFrame,
-        ):
-            if len(row_filter) == 0:
-                return
-            filtered_matrix = matrix.loc[row_filter, column_filter]
-            filtered_matrix["bounds"] = bounds.loc[row_filter]
-            print(filtered_matrix)
-
-        result = self.qp_controller.qp_solver.analyze_infeasibility()
-        if result is None:
-            logger.info(
-                f"Can only compute possible causes with gurobi, "
-                f"but current solver is {self.qp_controller.config.qp_solver_id.name}."
-            )
-            return
-        lb_ids, ub_ids, eq_ids, lbA_ids, ubA_ids = result
-        b_ids = lb_ids | ub_ids
-        with pd.option_context(
-            "display.max_rows", None, "display.max_columns", None, "display.width", None
-        ):
-            logger.info("Irreducible Infeasible Subsystem:")
-            logger.info("  Free variable bounds")
-            free_variables = self.p_lb[b_ids]
-            free_variables["ub"] = self.p_ub[b_ids]
-            free_variables = free_variables.rename(columns={"data": "lb"})
-            print(free_variables)
-            logger.info("  Equality constraints:")
-            print_iis_matrix(eq_ids, b_ids, self.p_E, self.p_bE)
-            logger.info("  Inequality constraint lower bounds:")
-            print_iis_matrix(lbA_ids, b_ids, self.p_A, self.p_lbA)
-            logger.info("  Inequality constraint upper bounds:")
-            print_iis_matrix(ubA_ids, b_ids, self.p_A, self.p_ubA)
