@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing_extensions import List, Optional, Tuple
 
+from krrood.entity_query_language.core.variable import Variable
 from krrood.entity_query_language.query.query import Query
 from krrood.entity_query_language.verbalization.fragments.base import (
     BlockFragment,
@@ -23,6 +24,7 @@ from krrood.entity_query_language.verbalization.fragments.base import (
     oxford_and,
     PhraseFragment,
     RoleFragment,
+    SubjectScope,
     VerbFragment,
 )
 from krrood.entity_query_language.verbalization.fragments.factory import (
@@ -64,6 +66,12 @@ from krrood.entity_query_language.verbalization.vocabulary.english import (
 from krrood.entity_query_language.verbalization.vocabulary.words import ChildForm
 
 
+def _subject_id(var):
+    """The referent id for a subject variable (``None`` when *var* is not a single Variable,
+    e.g. a ``SetOf`` — which suppresses pronominalisation)."""
+    return var._id_ if isinstance(var, Variable) else None
+
+
 class QueryAssembler(Assembler[Query, QueryPlan]):
     """Realise a query / nested-entity / set-of from its :class:`QueryPlan`."""
 
@@ -73,9 +81,6 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
 
     def realize(self, node, plan: QueryPlan) -> VerbFragment:
         """Top-level imperative form: *"Find X such that …"*."""
-        seen = self.ctx.context.seen_reference(node)
-        if seen is not None:
-            return seen
         with self.ctx.context.query_depth_scope():
             if plan.kind is SelectionKind.ENTITY_SELECTOR:
                 selection = self._as_noun(node.selected_variable)
@@ -83,7 +88,6 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
                     node, plan, selection, where_item=self._where_clause(plan)
                 )
             if plan.kind is SelectionKind.EMPTY:
-                self.ctx.context.register_label(node, FallbackNouns.ENTITY.text)
                 return self._query_body(
                     node,
                     plan,
@@ -95,9 +99,6 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
     def assemble_nested(self, node) -> VerbFragment:
         """Noun-phrase form for a nested Entity (never emits *"Find …"*)."""
         plan = self.plan(node)
-        seen = self.ctx.context.seen_reference(node)
-        if seen is not None:
-            return seen
         if plan.is_aggregation_subquery:
             return self._aggregation_value(node, plan)
         return self._as_noun(node)
@@ -125,27 +126,23 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
 
     def _assemble_subject(self, node, plan: QueryPlan) -> VerbFragment:
         var = node.selected_variable
-        self.ctx.context.push_subject(var)
-        try:
-            selected = self._build_selection(node, var, plan)
-            selected, where_item = self._apply_subject_restrictions(plan, selected)
-            return self._query_body(node, plan, selected, where_item=where_item)
-        finally:
-            self.ctx.context.pop_subject()
+        selected = self._build_selection(node, var, plan)
+        selected, where_item = self._apply_subject_restrictions(plan, selected)
+        body = self._query_body(node, plan, selected, where_item=where_item)
+        # Mark the subject region so the coreference pass pronominalises chains rooted at it.
+        return SubjectScope(subject_id=_subject_id(var), child=body)
 
     def _build_selection(self, node, var, plan: QueryPlan) -> VerbFragment:
         if plan.is_the:
-            selected_type = plan.selected_type
-            self.ctx.context.register_label(var, selected_type)
-            self.ctx.context.register_label(node, selected_type)
-            return phrase(
-                Articles.THE_UNIQUE.as_fragment(),
-                role(selected_type, SemanticRole.VARIABLE),
+            # "the unique <type>" first mention; the coreference pass reduces a repeat to
+            # "the <type>" (UNIQUE downgrades to DEFINITE) — so it is a referring NP.
+            return NounPhrase(
+                head=RoleFragment.for_variable(plan.selected_type, var),
+                definiteness=Definiteness.UNIQUE,
+                referent_id=_subject_id(var),
             )
-        selected = self.ctx.child(var)
-        # The entity shares its selected variable's label (registered by ctx.child above).
-        self.ctx.context.alias(node, var)
-        return selected
+        # ctx.child(var) → VariableRule referring NP (referent_id = var); the entity shares it.
+        return self.ctx.child(var)
 
     def _apply_subject_restrictions(
         self, plan: QueryPlan, selected: VerbFragment
@@ -166,43 +163,36 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
     # ── noun forms ───────────────────────────────────────────────────────────
 
     def _as_noun(self, entity) -> VerbFragment:
-        """Standalone-noun form: *"a Robot where …"* (for nested Entity selectors)."""
-        seen = self.ctx.context.seen_reference(entity)
-        if seen is not None:
-            return seen
+        """Standalone-noun form: *"a Robot where …"* (for nested Entity selectors).
+
+        A referring NP — *"a/the unique <type>"* first mention with the restrictions as
+        appositive modifiers; a repeat is reduced to *"the <type>"* by the coreference pass.
+        Wrapped in a ``SubjectScope`` so chains in the restrictions pronominalise to *"its …"*.
+        """
         plan = self.plan(entity)
         var = entity.selected_variable
-        selected_type = plan.selected_type
-        self.ctx.context.register_label(entity, selected_type)
-        if var is not None:
-            self.ctx.context.register_label(var, selected_type)
+        definiteness = Definiteness.UNIQUE if plan.is_the else Definiteness.INDEFINITE
 
-        if plan.is_the:
-            article_noun: VerbFragment = phrase(
-                Articles.THE_UNIQUE.as_fragment(),
-                RoleFragment.for_variable(selected_type, var),
-            )
-        else:
-            article_noun = NounPhrase(
-                head=RoleFragment.for_variable(selected_type, var)
-            )
-
-        if plan.subject_restriction is None:
-            return article_noun
-        with self.ctx.context.query_depth_scope():
-            self.ctx.context.push_subject(var)
-            try:
+        modifiers: List[VerbFragment] = []
+        if plan.subject_restriction is not None:
+            with self.ctx.context.query_depth_scope():
                 whose, residual = self._render_restrictions(
                     plan.subject_restriction, plan.subject
                 )
-            finally:
-                self.ctx.context.pop_subject()
-        result = article_noun
-        if whose is not None:
-            result = phrase(result, whose)
-        if residual is not None:
-            result = phrase(result, Keywords.WHERE.as_fragment(), residual)
-        return result
+            if whose is not None:
+                modifiers.append(whose)
+            if residual is not None:
+                modifiers.append(phrase(Keywords.WHERE.as_fragment(), residual))
+
+        noun = NounPhrase(
+            head=RoleFragment.for_variable(plan.selected_type, var),
+            definiteness=definiteness,
+            referent_id=_subject_id(var),
+            modifiers=modifiers,
+        )
+        return (
+            SubjectScope(subject_id=_subject_id(var), child=noun) if modifiers else noun
+        )
 
     # ── aggregation value-subquery ──────────────────────────────────────────────
 
@@ -224,11 +214,6 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
             definiteness=Definiteness.DEFINITE,
             modifiers=[leaf_frag],
         )
-
-        if av.aggregator._id_ not in self.ctx.context.seen:
-            self.ctx.context.register(
-                av.aggregator, phrase(aggregation_kind.as_fragment(), leaf_frag)
-            )
 
         if not av.is_constrained:
             return aggregate
@@ -351,10 +336,6 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
         can emit it as a *"such that …"* clause after all binding overrides are
         registered.  Used by the chain assembler for Entity-rooted chains.
         """
-        seen = self.ctx.context.seen_reference(entity)
-        if seen is not None:
-            return seen
-
         entity.build()
         var = entity.selected_variable
         variable_type = getattr(var, "_type_", None)
@@ -362,11 +343,12 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
             variable_type.__name__ if variable_type else FallbackNouns.ENTITY.text
         )
 
-        self.ctx.context.register_label(entity, type_name)
-        self.ctx.context.register_label(var, type_name)
-
         where_expression = entity._where_expression_
         if where_expression is not None:
             self.ctx.context.defer_constraint(where_expression.condition)
 
-        return NounPhrase(head=RoleFragment.for_variable(type_name, var))
+        # A referring NP (referent_id below) — a repeat reduces to "the <type>" in the pass.
+        return NounPhrase(
+            head=RoleFragment.for_variable(type_name, var),
+            referent_id=_subject_id(var),
+        )

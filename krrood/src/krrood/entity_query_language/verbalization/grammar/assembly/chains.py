@@ -34,6 +34,7 @@ from krrood.entity_query_language.verbalization.chain_utils import (
 from krrood.entity_query_language.verbalization.fragments.base import (
     NounPhrase,
     PhraseFragment,
+    PossessiveChain,
     RoleFragment,
     VerbFragment,
 )
@@ -50,6 +51,9 @@ from krrood.entity_query_language.verbalization.grammar.assembly.query import (
 )
 from krrood.entity_query_language.verbalization.grammar.conditions.recognition import (
     is_bool_attr_chain,
+)
+from krrood.entity_query_language.verbalization.rendering.possessive import (
+    possessive_path,
 )
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Articles,
@@ -86,8 +90,15 @@ class ChainAssembler(Assembler[MappedVariable, None]):
         chain, leaf = walk_chain(expression)
         if is_bool_attr_chain(expression):
             return self._bool_predicative(chain, leaf, negated)
+        parts = build_path_parts(chain)
         root_fragment = self._chain_root(leaf)
-        return self._possessive_path(build_path_parts(chain), root_fragment)
+        if isinstance(leaf, Variable):
+            # Defer the pronominal-vs-possessive choice to the coreference pass: it knows
+            # whether the root is the current subject (a build-time fact no longer consulted here).
+            return PossessiveChain(
+                parts=parts, root_fragment=root_fragment, root_referent_id=leaf._id_
+            )
+        return possessive_path(parts, root_fragment)
 
     def _plural_attribute(self, expression: MappedVariable) -> Optional[VerbFragment]:
         """*"attrs of Roots"* when *expression* is a single ``Attribute`` on a ``Variable``,
@@ -120,68 +131,6 @@ class ChainAssembler(Assembler[MappedVariable, None]):
             modifiers=[Prepositions.OF.as_fragment(), root_np],
         )
 
-    def possessive(
-        self, expression: MappedVariable, pronoun: VerbFragment
-    ) -> VerbFragment:
-        """Chain rooted at the coreference subject → *"its booking_date"* / *"the amount of its …"*."""
-        chain, _root = walk_chain(expression)
-        return self._pronominal_path(build_path_parts(chain), pronoun)
-
-    # ── path builders ──────────────────────────────────────────────────────────
-
-    def _possessive_path(
-        self, parts: List[Tuple[str, Optional[SourceRef]]], root_fragment: VerbFragment
-    ) -> VerbFragment:
-        """*"the <inner> of the <outer> of <root>"* (parts iterated innermost-first)."""
-        if not parts:
-            return root_fragment
-        reversed_parts = list(reversed(parts))
-        first_name, first_ref = reversed_parts[0]
-        fragment_parts: List[VerbFragment] = [
-            Articles.THE.as_fragment(),
-            self._attr(first_name, first_ref),
-        ]
-        for attribute_name, attribute_reference in reversed_parts[1:]:
-            fragment_parts.extend(
-                [
-                    Prepositions.OF_THE.as_fragment(),
-                    self._attr(attribute_name, attribute_reference),
-                ]
-            )
-        fragment_parts.extend([Prepositions.OF.as_fragment(), root_fragment])
-        return PhraseFragment(parts=fragment_parts)
-
-    def _pronominal_path(
-        self, parts: List[Tuple[str, Optional[SourceRef]]], pronoun: VerbFragment
-    ) -> VerbFragment:
-        """*"its attr"* (single hop) or *"the attr of its foo"* (multi-hop)."""
-        if not parts:
-            return pronoun
-        reversed_parts = list(reversed(parts))
-        last = len(reversed_parts) - 1
-        fragment_parts: List[VerbFragment] = []
-        for index, (attribute_name, attribute_reference) in enumerate(reversed_parts):
-            attribute_fragment = self._attr(attribute_name, attribute_reference)
-            if index == 0 and index != last:
-                fragment_parts.extend([Articles.THE.as_fragment(), attribute_fragment])
-            elif index == 0:  # single attribute → "its booking_date"
-                fragment_parts.extend([pronoun, attribute_fragment])
-            elif index == last:  # adjacent to the elided root → "of its amount_details"
-                fragment_parts.extend(
-                    [Prepositions.OF.as_fragment(), pronoun, attribute_fragment]
-                )
-            else:
-                fragment_parts.extend(
-                    [Prepositions.OF_THE.as_fragment(), attribute_fragment]
-                )
-        return PhraseFragment(parts=fragment_parts)
-
-    def _attr(self, name: str, source_ref: Optional[SourceRef]) -> RoleFragment:
-        """A role-tagged attribute fragment."""
-        return RoleFragment(
-            text=name, role=SemanticRole.ATTRIBUTE, source_ref=source_ref
-        )
-
     def _chain_root(self, leaf: object) -> VerbFragment:
         """Noun phrase for the chain root — inline-noun for Entity roots, else recurse."""
         inner = leaf
@@ -202,9 +151,7 @@ class ChainAssembler(Assembler[MappedVariable, None]):
             nav_fragment = root_fragment
         elif isinstance(nav_chain[-1], Index) and isinstance(nav_chain[-1]._key_, int):
             ordinal = morphology.ordinal(nav_chain[-1]._key_)
-            pre_frag = self._possessive_path(
-                build_path_parts(nav_chain[:-1]), root_fragment
-            )
+            pre_frag = possessive_path(build_path_parts(nav_chain[:-1]), root_fragment)
             nav_fragment = phrase(
                 Articles.THE.as_fragment(),
                 word(ordinal),
@@ -212,9 +159,7 @@ class ChainAssembler(Assembler[MappedVariable, None]):
                 pre_frag,
             )
         else:
-            nav_fragment = self._possessive_path(
-                build_path_parts(nav_chain), root_fragment
-            )
+            nav_fragment = possessive_path(build_path_parts(nav_chain), root_fragment)
 
         copula = Copulas.IS_NOT.as_fragment() if negated else Copulas.IS.as_fragment()
         terminal = chain[-1]

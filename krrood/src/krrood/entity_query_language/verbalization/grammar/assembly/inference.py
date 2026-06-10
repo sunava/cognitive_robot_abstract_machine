@@ -96,9 +96,22 @@ class InferenceAssembler(Assembler[Entity, RuleStructure]):
         return items or [Keywords.TRUE.as_fragment()]
 
     def _antecedent_intro(self, antecedent: AntecedentInfo) -> VerbFragment:
+        # Pass the antecedent's referent so the coreference pass marks it introduced — a later
+        # mention (e.g. "the parent of the FixedConnection" in the THEN clause) then reads "the".
         return ExistentialPhrase.for_number(self._number(antecedent)).build_phrase(
-            antecedent.type_name
+            antecedent.type_name, referent_id=self._antecedent_referent_id(antecedent)
         )
+
+    @staticmethod
+    def _antecedent_referent_id(antecedent: AntecedentInfo):
+        """The antecedent's canonical referent id — the selected variable for an Entity root,
+        else the root's own id (matching the variable the THEN-clause chains reference).
+        """
+        root = antecedent.root
+        if isinstance(root, Entity):
+            root.build()
+            return getattr(root.selected_variable, "_id_", None)
+        return getattr(root, "_id_", None)
 
     def _register_antecedent(self, antecedent: AntecedentInfo) -> None:
         root = antecedent.root

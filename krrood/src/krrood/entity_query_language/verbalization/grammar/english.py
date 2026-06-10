@@ -316,30 +316,6 @@ class MappedVariableRule(PhraseRule):
         return ChainAssembler(ctx).chain(node)
 
 
-class PronominalChainRule(PhraseRule):
-    """A chain rooted at the current subject → leading possessive *"its …"*."""
-
-    construct = MappedVariable
-    name = "pronominal-chain"
-
-    def when(self, node, ctx: Ctx):
-        if ctx.number is Number.PLURAL:
-            return False  # a plural noun phrase is not pronominalised ("drawers of Cabinets")
-        if isinstance(node, FlatVariable):
-            return False
-        chain, root = walk_chain(node)
-        if not chain:
-            return False
-        terminal = chain[-1]
-        if isinstance(terminal, Attribute) and terminal._type_ is bool:
-            return False
-        return ctx.refer.pronoun_for(root) is not None
-
-    def build(self, node, ctx: Ctx):
-        root = chain_root(node)
-        return ChainAssembler(ctx).possessive(node, ctx.refer.pronoun_for(root))
-
-
 class FlatVariableRule(PhraseRule):
     """A transparent SetOf wrapper → unwrap to its child (forwarding the requested number)."""
 
@@ -370,15 +346,11 @@ class AggregatorRule(PhraseRule):
         else:
             child_fragment = ctx.child(node._child_, number=Number.PLURAL)
             modifiers = [child_fragment]
-        result = NounPhrase(
+        return NounPhrase(
             head=aggregation_fragment,
             definiteness=Definiteness.DEFINITE,
             modifiers=modifiers,
         )
-
-        if node._id_ not in ctx.refer.seen:
-            ctx.refer.register(node, phrase(aggregation_fragment, child_fragment))
-        return result
 
 
 class CountAllRule(PhraseRule):
@@ -569,7 +541,6 @@ RULES: List[PhraseRule] = [
     NotComparatorRule(),
     NotBoolAttrRule(),
     MappedVariableRule(),
-    PronominalChainRule(),
     FlatVariableRule(),
     AggregatorRule(),
     CountAllRule(),

@@ -27,6 +27,7 @@ from krrood.entity_query_language.operators.comparator import not_contains as _n
 from krrood.entity_query_language.verbalization import morphology
 
 from krrood.entity_query_language.verbalization.fragments.base import (
+    NounPhrase,
     PhraseFragment,
     RoleFragment,
     VerbFragment,
@@ -59,16 +60,29 @@ class SingularExistential(PlainWord):
     ``inflect`` library.
     """
 
-    def build_phrase(self, type_name: str) -> VerbFragment:
+    def build_phrase(self, type_name: str, referent_id=None) -> VerbFragment:
         """
         Build *"there's a/an <type_name>"* as a
         :class:`~krrood.entity_query_language.verbalization.fragments.base.PhraseFragment`.
 
         :param type_name: English noun in singular form (e.g. ``"Robot"``, ``"Apple"``).
         :type type_name: str
+        :param referent_id: When given, the noun is a **referring** ``NounPhrase`` for that
+            entity (so the coreference pass marks it introduced and reduces later mentions to
+            *"the <type>"*); the indefinite article is then chosen by the determiner concord.
         :return: Phrase fragment with the correct indefinite article.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
+        if referent_id is not None:
+            return PhraseFragment(
+                parts=[
+                    WordFragment(text=self.text),
+                    NounPhrase(
+                        head=RoleFragment(text=type_name, role=SemanticRole.VARIABLE),
+                        referent_id=referent_id,
+                    ),
+                ],
+            )
         article = morphology.indefinite_article(type_name)
         return PhraseFragment(
             parts=[
@@ -287,15 +301,19 @@ class ExistentialPhrase(VocabEnum):
         """The existential frame agreeing with *number*: ``THERE_ARE`` / ``THERE_IS_A``."""
         return cls.THERE_ARE if number is Number.PLURAL else cls.THERE_IS_A
 
-    def build_phrase(self, type_name: str) -> VerbFragment:
+    def build_phrase(self, type_name: str, referent_id=None) -> VerbFragment:
         """
         Delegate to the underlying :class:`SingularExistential` or :class:`PluralExistential`.
 
         :param type_name: English noun in singular form.
         :type type_name: str
+        :param referent_id: Optional referent for coreference (singular only; see
+            :meth:`SingularExistential.build_phrase`).
         :return: Existential phrase fragment.
         :rtype: ~krrood.entity_query_language.verbalization.fragments.base.VerbFragment
         """
+        if referent_id is not None and self is ExistentialPhrase.THERE_IS_A:
+            return self.value.build_phrase(type_name, referent_id=referent_id)
         return self.value.build_phrase(type_name)
 
 

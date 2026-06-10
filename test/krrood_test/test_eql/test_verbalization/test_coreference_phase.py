@@ -13,6 +13,7 @@ from krrood.entity_query_language.verbalization.fragments.base import (
     flatten_fragment_to_plain_text,
     NounPhrase,
     PhraseFragment,
+    PossessiveChain,
     RoleFragment,
     SubjectScope,
     WordFragment,
@@ -130,3 +131,67 @@ def test_distinct_referents_do_not_interfere():
         ]
     )
     assert _realise(tree) == "a Robot and a Cabinet"
+
+
+def test_unique_first_mention_then_definite_repeat():
+    rid = uuid.uuid4()
+    tree = PhraseFragment(
+        parts=[
+            NounPhrase(
+                head=_noun("Robot"), definiteness=Definiteness.UNIQUE, referent_id=rid
+            ),
+            WordFragment(text="and"),
+            NounPhrase(
+                head=_noun("Robot"), definiteness=Definiteness.UNIQUE, referent_id=rid
+            ),
+        ]
+    )
+    assert _realise(tree) == "the unique Robot and the Robot"
+
+
+def test_entity_repeat_drops_restriction_modifiers():
+    rid = uuid.uuid4()
+    full = NounPhrase(
+        head=_noun("Robot"),
+        referent_id=rid,
+        modifiers=[PhraseFragment(parts=[WordFragment(text="whose battery is high")])],
+    )
+    repeat = NounPhrase(head=_noun("Robot"), referent_id=rid)
+    tree = PhraseFragment(parts=[full, WordFragment(text="and"), repeat])
+    assert _realise(tree) == "a Robot whose battery is high and the Robot"
+
+
+# ── possessive chains: pronominal vs possessive ──────────────────────────────────
+
+
+def _attr_part(name):
+    return (name, None)
+
+
+def test_chain_rooted_at_subject_pronominalises():
+    rid = uuid.uuid4()
+    chain = PossessiveChain(
+        parts=[_attr_part("battery")],
+        root_fragment=NounPhrase(head=_noun("Robot"), referent_id=rid),
+        root_referent_id=rid,
+    )
+    tree = SubjectScope(
+        subject_id=rid,
+        child=PhraseFragment(
+            parts=[NounPhrase(head=_noun("Robot"), referent_id=rid), chain]
+        ),
+    )
+    # subject introduced first ("a Robot"), then the chain rooted at it → "its battery"
+    assert _realise(tree) == "a Robot its battery"
+
+
+def test_chain_not_rooted_at_subject_is_possessive():
+    subj, other = uuid.uuid4(), uuid.uuid4()
+    chain = PossessiveChain(
+        parts=[_attr_part("battery")],
+        root_fragment=NounPhrase(head=_noun("Robot"), referent_id=other),
+        root_referent_id=other,
+    )
+    tree = SubjectScope(subject_id=subj, child=chain)
+    # root is not the subject → possessive "the battery of a Robot" (root resolved as first mention)
+    assert _realise(tree) == "the battery of a Robot"

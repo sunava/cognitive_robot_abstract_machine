@@ -17,7 +17,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
-from typing_extensions import Callable, List, Optional, TypeVar
+from typing_extensions import Callable, List, Optional, Tuple, TypeVar
 
 from krrood.entity_query_language.verbalization.fragments.features import (
     Definiteness,
@@ -218,6 +218,34 @@ class SubjectScope(VerbFragment):
 
     child: VerbFragment
     """The wrapped fragment the scope applies to."""
+
+
+@dataclass
+class PossessiveChain(VerbFragment):
+    """
+    A navigation chain whose **pronominal-vs-possessive** surface form is decided by coreference.
+
+    Emitted by the chain rule instead of pre-rendering, because the choice between
+    *"the amount of its amount_details"* (root is the current subject) and
+    *"the amount of the amount_details of the BankTransaction"* (otherwise) is a discourse
+    decision the :class:`~krrood.entity_query_language.verbalization.rendering.coreference_processor.CoreferenceProcessor`
+    makes — it then calls the
+    :mod:`~krrood.entity_query_language.verbalization.rendering.possessive` builders to render
+    the chosen form.  Bool-predicative chains never pronominalise and so render directly without
+    this node.
+    """
+
+    parts: List[Tuple[str, Optional[SourceRef]]]
+    """The chain's ``(attr_name, source_ref)`` path, innermost-last (the same shape the
+    possessive/pronominal builders consume)."""
+
+    root_fragment: VerbFragment
+    """The referring noun phrase for the chain root, used by the *possessive* rendering (and
+    resolved for first/subsequent mention by the same pass)."""
+
+    root_referent_id: Optional[uuid.UUID] = None
+    """The root variable's referent id — the chain pronominalises only when this is the current
+    subject (and the root is not a numbered label)."""
 
 
 @dataclass

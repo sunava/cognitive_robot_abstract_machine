@@ -28,6 +28,7 @@ import uuid
 from krrood.entity_query_language.verbalization.fragments.base import (
     map_structural_children,
     NounPhrase,
+    PossessiveChain,
     SubjectScope,
     VerbFragment,
 )
@@ -35,6 +36,11 @@ from krrood.entity_query_language.verbalization.fragments.features import (
     Definiteness,
     Number,
 )
+from krrood.entity_query_language.verbalization.rendering.possessive import (
+    possessive_path,
+    pronominal_path,
+)
+from krrood.entity_query_language.verbalization.vocabulary.english import Pronouns
 
 
 class CoreferenceProcessor:
@@ -74,9 +80,31 @@ class CoreferenceProcessor:
                     self._subject_stack.pop()
             case NounPhrase():
                 return self._noun_phrase(fragment)
+            case PossessiveChain():
+                return self._possessive_chain(fragment)
             case _:
                 rebuilt = map_structural_children(fragment, self._walk)
                 return rebuilt if rebuilt is not None else fragment
+
+    def _possessive_chain(self, pc: PossessiveChain) -> VerbFragment:
+        """Render a chain as *"its …"* when its root is the current subject, else as the
+        possessive *"the … of <root>"* (resolving the root NP for first/subsequent mention).
+        """
+        if self._pronominalises(pc):
+            return pronominal_path(pc.parts, Pronouns.ITS.as_fragment())
+        return possessive_path(pc.parts, self._walk(pc.root_fragment))
+
+    def _pronominalises(self, pc: PossessiveChain) -> bool:
+        """The chain root is the current, already-introduced, non-numbered subject."""
+        if pc.root_referent_id is None or pc.root_referent_id not in self._seen:
+            return False
+        if not self._subject_stack or self._subject_stack[-1] != pc.root_referent_id:
+            return False
+        # A numbered root ("Robot 2") renders BARE and is never pronominalised.
+        return not (
+            isinstance(pc.root_fragment, NounPhrase)
+            and pc.root_fragment.definiteness is Definiteness.BARE
+        )
 
     def _noun_phrase(self, np: NounPhrase) -> VerbFragment:
         """Resolve a referring NP (first / repeat) in document order; recurse otherwise.

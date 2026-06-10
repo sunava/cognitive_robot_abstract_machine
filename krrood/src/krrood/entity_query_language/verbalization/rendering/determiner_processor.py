@@ -86,6 +86,8 @@ class DeterminerProcessor:
     @staticmethod
     def _determiner(definiteness: Definiteness, number: Number, head: VerbFragment):
         """The determiner fragment for *(definiteness, number)*, or ``None`` (bare)."""
+        if definiteness is Definiteness.UNIQUE:
+            return Articles.THE_UNIQUE.as_fragment()
         if definiteness is Definiteness.DEFINITE:
             return Articles.THE.as_fragment()
         if definiteness is Definiteness.INDEFINITE and number is Number.SINGULAR:

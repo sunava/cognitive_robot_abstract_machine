@@ -39,8 +39,12 @@ class Definiteness(Enum):
     :cvar INDEFINITE: First, non-specific mention — *"a/an Robot"* (singular) or a **bare**
         plural *"Robots"* (the indefinite article is inherently singular).
     :cvar DEFINITE: Identifiable / subsequent mention — *"the Robot"* / *"the Robots"*.
+    :cvar UNIQUE: A uniqueness-quantified first mention — *"the unique Robot"* (the ``eql.the``
+        selection).  A *repeat* mention downgrades to ``DEFINITE`` (*"the Robot"*), so it is a
+        referring first-mention form like ``INDEFINITE``, not an invariant determiner.
     """
 
     BARE = "bare"
     INDEFINITE = "indefinite"
     DEFINITE = "definite"
+    UNIQUE = "unique"
