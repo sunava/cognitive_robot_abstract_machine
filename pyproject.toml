@@ -24,6 +24,7 @@ dependencies = [
   "experiments",
   "ipykernel>=7.2.0",
   "lark-parser>=0.12.0",
+  "scikit-image",
 ]
 
 [tool.uv.workspace]
@@ -63,6 +64,7 @@ probabilistic_model = { path = "probabilistic_model", develop = true }
 robokudo = { path = "robokudo", develop = true }
 physics_simulators = { path = "physics_simulators", develop = true }
 experiments = { path = "experiments", develop = true }
+scikit-image = "*"
 
 [tool.setuptools]
 packages = []
