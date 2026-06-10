@@ -16,10 +16,10 @@ from coraplex.datastructures.enums import (
     VerticalAlignment,
 )
 from coraplex.datastructures.grasp import GraspDescription
+from coraplex.locations.pose_validator import IsReachableBy
 from coraplex.plans.factories import sequential
-from coraplex.pose_validator import reachability_validator
 from coraplex.querying.predicates import GripperIsFree
-from coraplex.robot_plans.actions.base import ActionDescription, DescriptionType
+from coraplex.robot_plans.actions.base import ActionDescription
 from coraplex.robot_plans.actions.core.pick_up import GraspingAction
 from coraplex.robot_plans.motions.container import OpeningMotion, ClosingMotion
 from coraplex.robot_plans.motions.gripper import MoveGripperMotion
@@ -88,20 +88,17 @@ class OpenAction(ActionDescription):
 
         return and_(
             GripperIsFree(end_effector),
-            reachability_validator(
-                kwargs["object_designator"].global_pose,
-                end_effector.tool_frame,
-                test_world.get_semantic_annotations_by_type(type(context.robot))[0],
-                test_world,
-                (
-                    context.robot.mobile_base.full_body_controlled
-                    if isinstance(context.robot, HasMobileBase)
-                    else False
-                ),
-                GraspDescription(
+            IsReachableBy(
+                world=test_world,
+                robot=test_world.get_semantic_annotations_by_type(type(context.robot))[
+                    0
+                ],
+                pose=kwargs["object_designator"].global_pose,
+                tip_link=end_effector.tool_frame,
+                grasp_description=GraspDescription(
                     ApproachDirection.FRONT,
                     VerticalAlignment.NoAlignment,
-                    ViewManager.get_end_effector_view(kwargs["arm"], test_robot),
+                    next(end_effector.evaluate()),
                 ),
             ),
         )
