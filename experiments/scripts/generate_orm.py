@@ -5,7 +5,7 @@ from dataclasses import is_dataclass
 import numpy as np
 
 import experiments
-import pycram.orm.ormatic_interface
+import coraplex.orm.ormatic_interface
 from krrood.class_diagrams import ClassDiagram
 from krrood.ormatic.data_access_objects.alternative_mappings import AlternativeMapping
 from krrood.ormatic.helper import get_classes_of_ormatic_interface
@@ -13,10 +13,10 @@ from krrood.ormatic.ormatic import ORMatic
 from krrood.ormatic.type_dict import TypeDict
 from krrood.ormatic.utils import classes_of_package
 from krrood.utils import recursive_subclasses
-from pycram.orm.model import NumpyType
+from coraplex.orm.model import NumpyType
 
 # ----------------------------------------------------------------------------------------------------------------------
-# This script generates the ORM classes for the pycram package
+# This script generates the ORM classes for the coraplex package
 # Classes that are self_mapped and explicitly_mapped are already mapped in the model.py file. Look there for more
 # information on how to map them.
 # ----------------------------------------------------------------------------------------------------------------------
@@ -24,7 +24,7 @@ from pycram.orm.model import NumpyType
 
 # import classes from the existing interface
 classes, alternative_mappings, type_mappings = get_classes_of_ormatic_interface(
-    pycram.orm.ormatic_interface
+    coraplex.orm.ormatic_interface
 )
 classes = set(classes)
 

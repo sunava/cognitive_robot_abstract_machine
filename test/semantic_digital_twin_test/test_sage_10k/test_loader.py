@@ -30,17 +30,17 @@ from semantic_digital_twin.spatial_types.spatial_types import (
     Pose,
 )
 
-from pycram.motion_executor import simulated_robot
+from coraplex.motion_executor import simulated_robot
 
-from pycram.plans.factories import execute_single, sequential
+from coraplex.plans.factories import execute_single, sequential
 
-from pycram.robot_plans.actions.core.navigation import NavigateAction
+from coraplex.robot_plans.actions.core.navigation import NavigateAction
 
-from pycram.datastructures.dataclasses import Context
+from coraplex.datastructures.dataclasses import Context
 
-from pycram.datastructures.enums import Arms, ApproachDirection, VerticalAlignment
+from coraplex.datastructures.enums import Arms, ApproachDirection, VerticalAlignment
 
-from pycram.robot_plans.actions.core.pick_up import PickUpAction
+from coraplex.robot_plans.actions.core.pick_up import PickUpAction
 
 from semantic_digital_twin.datastructures.definitions import TorsoState
 
