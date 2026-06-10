@@ -1,3 +1,4 @@
+import gc
 import os
 import threading
 import time
@@ -115,6 +116,14 @@ The structure of fixtures in this conftest:
 """
 
 
+def pytest_configure(config):
+    worker = os.environ.get("PYTEST_XDIST_WORKER")
+
+    if worker:
+        worker_num = int(worker.removeprefix("gw"))
+        os.environ["ROS_DOMAIN_ID"] = str(100 + worker_num)
+
+
 @pytest.fixture(autouse=True, scope="function")
 def cleanup_after_test():
     # We need to pass the class diagram, since otherwise some names are not found anymore after clearing the symbol graph
@@ -135,6 +144,7 @@ def cleanup_after_test():
 @pytest.fixture(autouse=True, scope="module")
 def count_worlds():
     yield
+    gc.collect()
     world_in_mem = objgraph.count("World")
     if world_in_mem > 30:
         raise MemoryError(
@@ -517,7 +527,7 @@ def _apartment_world_setup():
 
 
 @pytest.fixture(scope="function")
-def apartment_world_copy(_apartment_world_setup, _pr2_world_setup):
+def apartment_world_copy(_apartment_world_setup):
     result = deepcopy(_apartment_world_setup)
     return result
 

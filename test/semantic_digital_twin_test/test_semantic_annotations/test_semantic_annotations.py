@@ -167,12 +167,12 @@ def test_has_hinge_has_slider_aggregate_bodies():
     assert set(drawer.kinematic_structure_entities) == expected_drawer_bodies
 
 
-def test_semantic_annotation_hash(_apartment_world_setup):
-    semantic_annotation1 = Handle(root=_apartment_world_setup.bodies[0])
-    semantic_annotation2 = Handle(root=_apartment_world_setup.bodies[0])
-    with _apartment_world_setup.modify_world():
-        _apartment_world_setup.add_semantic_annotation(semantic_annotation1)
-        _apartment_world_setup.add_semantic_annotation(semantic_annotation2)
+def test_semantic_annotation_hash(apartment_world_copy):
+    semantic_annotation1 = Handle(root=apartment_world_copy.bodies[0])
+    semantic_annotation2 = Handle(root=apartment_world_copy.bodies[0])
+    with apartment_world_copy.modify_world():
+        apartment_world_copy.add_semantic_annotation(semantic_annotation1)
+        apartment_world_copy.add_semantic_annotation(semantic_annotation2)
 
     # hash of semantic annotations should be based on their properties, not ids
     assert id(semantic_annotation1) != id(semantic_annotation2)
@@ -180,8 +180,8 @@ def test_semantic_annotation_hash(_apartment_world_setup):
     assert semantic_annotation1 == semantic_annotation2
 
 
-def test_handle_semantic_annotation_eql(_apartment_world_setup):
-    body = variable(type_=Body, domain=_apartment_world_setup.bodies)
+def test_handle_semantic_annotation_eql(apartment_world_copy):
+    body = variable(type_=Body, domain=apartment_world_copy.bodies)
     query = an(
         entity(inference(Handle)(root=body)).where(
             in_("handle", body.name.name.lower())
@@ -279,22 +279,22 @@ def fit_rules_and_assert_semantic_annotations(
     )
 
 
-def test_semantic_annotation_serialization_deserialization_once(_apartment_world_setup):
-    handle_body = _apartment_world_setup.bodies[0]
-    door_body = _apartment_world_setup.bodies[1]
+def test_semantic_annotation_serialization_deserialization_once(apartment_world_copy):
+    handle_body = apartment_world_copy.bodies[0]
+    door_body = apartment_world_copy.bodies[1]
 
     handle = Handle(root=handle_body)
     door = Door(root=door_body, handle=handle)
-    with _apartment_world_setup.modify_world():
-        _apartment_world_setup.add_semantic_annotation(handle)
-        _apartment_world_setup.add_semantic_annotation(door)
+    with apartment_world_copy.modify_world():
+        apartment_world_copy.add_semantic_annotation(handle)
+        apartment_world_copy.add_semantic_annotation(door)
 
     door_se = door.to_json()
 
-    with _apartment_world_setup.modify_world():
-        _apartment_world_setup.remove_semantic_annotation(door)
+    with apartment_world_copy.modify_world():
+        apartment_world_copy.remove_semantic_annotation(door)
 
-    tracker = WorldEntityWithIDKwargsTracker.from_world(_apartment_world_setup)
+    tracker = WorldEntityWithIDKwargsTracker.from_world(apartment_world_copy)
     kwargs = tracker.create_kwargs()
 
     door_de = Door.from_json(door_se, **kwargs)

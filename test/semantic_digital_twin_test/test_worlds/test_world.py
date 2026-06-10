@@ -1,9 +1,12 @@
+import gc
 import os
 from copy import deepcopy
 from dataclasses import dataclass
+from time import sleep
 from uuid import UUID
 
 import numpy as np
+import objgraph
 import pytest
 from numpy.testing import assert_raises
 
@@ -825,6 +828,15 @@ def test_copy_drawer(apartment_world_copy):
     copied_drawer = apartment_copy.get_semantic_annotation_by_name(drawer.name)
     assert copied_handle == handle
     assert copied_drawer == drawer
+
+
+def test_copy_many_times_doesnt_leak(pr2_world_state_reset):
+    world_copy = deepcopy(pr2_world_state_reset)
+    initial_count = objgraph.count("World")
+    for _ in range(5):
+        world_copy = deepcopy(world_copy)
+    gc.collect()
+    assert initial_count == objgraph.count("World")
 
 
 def test_copy_id(pr2_world_state_reset):
