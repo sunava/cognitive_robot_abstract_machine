@@ -87,7 +87,6 @@ from krrood.entity_query_language.verbalization.grammar.assembly.chains import (
 )
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Aggregations,
-    Articles,
     Conjunctions,
     Keywords,
     Logicals,
@@ -365,17 +364,15 @@ class AggregatorRule(PhraseRule):
 
         if aggregation_word.child_form == ChildForm.SINGULAR_OF:
             child_fragment = ctx.child(node._child_)
-            result = phrase(
-                Articles.THE.as_fragment(),
-                aggregation_fragment,
-                Prepositions.OF.as_fragment(),
-                child_fragment,
-            )
+            modifiers = [Prepositions.OF.as_fragment(), child_fragment]
         else:
             child_fragment = ctx.child(node._child_, number=Number.PLURAL)
-            result = phrase(
-                Articles.THE.as_fragment(), aggregation_fragment, child_fragment
-            )
+            modifiers = [child_fragment]
+        result = NounPhrase(
+            head=aggregation_fragment,
+            definiteness=Definiteness.DEFINITE,
+            modifiers=modifiers,
+        )
 
         if node._id_ not in ctx.refer.seen:
             ctx.refer.register(node, phrase(aggregation_fragment, child_fragment))

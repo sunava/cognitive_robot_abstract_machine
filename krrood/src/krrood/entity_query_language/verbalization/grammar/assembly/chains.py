@@ -32,12 +32,16 @@ from krrood.entity_query_language.verbalization.chain_utils import (
     walk_chain,
 )
 from krrood.entity_query_language.verbalization.fragments.base import (
+    NounPhrase,
     PhraseFragment,
     RoleFragment,
     VerbFragment,
 )
 from krrood.entity_query_language.verbalization.fragments.factory import phrase, word
-from krrood.entity_query_language.verbalization.fragments.features import Number
+from krrood.entity_query_language.verbalization.fragments.features import (
+    Definiteness,
+    Number,
+)
 from krrood.entity_query_language.verbalization.fragments.roles import SemanticRole
 from krrood.entity_query_language.verbalization.fragments.source_ref import SourceRef
 from krrood.entity_query_language.verbalization.grammar.assembly.base import Assembler
@@ -99,19 +103,20 @@ class ChainAssembler(Assembler[MappedVariable, None]):
         type_name = root._type_.__name__
         label = self.ctx.refer.disambiguation_map.get(root._id_, type_name)
         self.ctx.refer.register_label(root, label)
-        root_number = Number.SINGULAR if label != type_name else Number.PLURAL
+        numbered = label != type_name
         attribute = chain[0]
-        return PhraseFragment(
-            parts=[
-                RoleFragment.for_attribute(
-                    attribute._owner_class_,
-                    attribute._attribute_name_,
-                    number=Number.PLURAL,
-                ),
-                Prepositions.OF.as_fragment(),
-                RoleFragment.for_variable(label, root, number=root_number),
-            ],
-            separator=" ",
+        root_np = NounPhrase(
+            head=RoleFragment.for_variable(label, root),
+            number=Number.SINGULAR if numbered else Number.PLURAL,
+            definiteness=Definiteness.BARE if numbered else Definiteness.INDEFINITE,
+        )
+        return NounPhrase(
+            head=RoleFragment.for_attribute(
+                attribute._owner_class_, attribute._attribute_name_
+            ),
+            number=Number.PLURAL,
+            definiteness=Definiteness.INDEFINITE,
+            modifiers=[Prepositions.OF.as_fragment(), root_np],
         )
 
     def possessive(
