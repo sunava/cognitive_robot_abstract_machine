@@ -136,6 +136,27 @@ class ReferringExpressions:
         """Record *expression* as introduced (so a later build sharing this context seeds it)."""
         self.seen.add(expression._id_)
 
+    def numbered_label(self, var) -> tuple[str, bool]:
+        """The display ``(label, is_numbered)`` for *var* and record it as introduced.
+
+        The label is the pre-computed disambiguation label (*"Robot 2"* for a colliding type),
+        else the plain type name; *is_numbered* is whether they differ (a numbered collision).
+        The single source of the disambiguation lookup — shared by :meth:`noun_for_parts` and the
+        plural noun-phrase builders.  Records the mention in :attr:`seen` for cross-build seeding.
+
+        :param var: A :class:`~krrood.entity_query_language.core.variable.Variable` instance.
+        :return: Tuple of ``(display_label, is_numbered)``.
+        :rtype: tuple
+        """
+        type_name = (
+            var._type_.__name__
+            if getattr(var, "_type_", None)
+            else var.__class__.__name__
+        )
+        label = self.disambiguation_map.get(var._id_, type_name)
+        self.seen.add(var._id_)
+        return label, label != type_name
+
     def noun_for_parts(self, var) -> tuple[Definiteness, str]:
         """
         Return the **first-mention** ``(Definiteness, label)`` for *var* — a numbered variable
@@ -145,19 +166,11 @@ class ReferringExpressions:
         stamps the resulting :class:`~krrood.entity_query_language.verbalization.fragments.base.NounPhrase`
         with a ``referent_id`` and the
         :class:`~krrood.entity_query_language.verbalization.rendering.coreference_processor.CoreferenceProcessor`
-        downgrades repeats in document order (the discourse decision, in one place).  The mention
-        is still recorded in :attr:`seen` so a later build sharing this context seeds it.
+        downgrades repeats in document order (the discourse decision, in one place).
 
         :param var: A :class:`~krrood.entity_query_language.core.variable.Variable` instance.
         :return: Tuple of ``(first-mention Definiteness, display_label)``.
         :rtype: tuple
         """
-        type_name = (
-            var._type_.__name__
-            if getattr(var, "_type_", None)
-            else var.__class__.__name__
-        )
-        label = self.disambiguation_map.get(var._id_, type_name)
-        is_numbered = label != type_name
-        self.seen.add(var._id_)  # recorded for cross-build seeding (see :attr:`seen`)
+        label, is_numbered = self.numbered_label(var)
         return (Definiteness.BARE if is_numbered else Definiteness.INDEFINITE), label

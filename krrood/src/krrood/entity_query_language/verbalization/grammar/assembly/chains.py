@@ -110,10 +110,7 @@ class ChainAssembler(Assembler[MappedVariable, None]):
             and isinstance(analysis.chain[0], Attribute)
         ):
             return None
-        type_name = root._type_.__name__
-        label = self.ctx.refer.disambiguation_map.get(root._id_, type_name)
-        self.ctx.refer.mark_introduced(root)
-        numbered = label != type_name
+        label, numbered = self.ctx.refer.numbered_label(root)
         attribute = analysis.chain[0]
         root_np = NounPhrase(
             head=RoleFragment.for_variable(label, root),

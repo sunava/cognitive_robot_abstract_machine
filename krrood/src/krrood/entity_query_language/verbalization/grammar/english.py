@@ -153,10 +153,7 @@ class VariableRule(PhraseRule):
         A numbered label (*"Robot 2"*) is surface-final — kept singular and bare; a plain type
         name is a plural indefinite NP (the concord table renders it bare-then-pluralised).
         """
-        type_name = node._type_.__name__
-        label = ctx.refer.disambiguation_map.get(node._id_, type_name)
-        ctx.refer.mark_introduced(node)
-        numbered = label != type_name
+        label, numbered = ctx.refer.numbered_label(node)
         return NounPhrase(
             head=RoleFragment.for_variable(label, node),
             number=Number.SINGULAR if numbered else Number.PLURAL,
