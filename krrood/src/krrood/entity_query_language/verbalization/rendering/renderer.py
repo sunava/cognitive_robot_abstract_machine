@@ -102,7 +102,7 @@ class ParagraphRenderer(FragmentRenderer):
     adds no visual structure — only content is preserved.
 
     This is the default renderer used by
-    :func:`~krrood.entity_query_language.verbalization.verbalizer.verbalize_expression`
+    :func:`~krrood.entity_query_language.verbalization.pipeline.verbalize_expression`
     and :meth:`~krrood.entity_query_language.verbalization.pipeline.VerbalizationPipeline.plain`.
     """
 

@@ -674,7 +674,7 @@ def test_rule_then_consequent_is_block_fragment(doors_and_drawers_world):
 
 
 def test_pipeline_plain_matches_verbalize_expression():
-    from krrood.entity_query_language.verbalization.verbalizer import (
+    from krrood.entity_query_language.verbalization.pipeline import (
         verbalize_expression,
     )
 

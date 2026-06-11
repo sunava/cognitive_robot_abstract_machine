@@ -41,7 +41,10 @@ from krrood.entity_query_language.factories import (
     or_,
 )
 from krrood.entity_query_language.predicate import HasType, Predicate, Triple
-from krrood.entity_query_language.verbalization.pipeline import VerbalizationPipeline
+from krrood.entity_query_language.verbalization.pipeline import (
+    VerbalizationPipeline,
+    verbalize_expression,
+)
 from krrood.entity_query_language.verbalization.rendering.formatter import (
     ANSIFormatter,
     HTMLFormatter,
@@ -54,7 +57,6 @@ from krrood.entity_query_language.verbalization.rendering.renderer import (
 from krrood.entity_query_language.verbalization.verbalizer import (
     EQLVerbalizer,
     VerbalizationContext,
-    verbalize_expression,
 )
 from ...dataset.department_and_employee import Department, Employee
 
@@ -161,10 +163,10 @@ def test_verbalize_variable_article_consonant():
 
 def test_verbalize_variable_coreference():
     context = VerbalizationContext()
-    verbalizer = EQLVerbalizer()
+    pipeline = VerbalizationPipeline.plain()
     x = variable(Handle, [])
-    first = verbalizer.verbalize(x, context)
-    second = verbalizer.verbalize(x, context)
+    first = pipeline.verbalize(x, context)
+    second = pipeline.verbalize(x, context)
     assert first == "a Handle"
     assert second == "the Handle"
 

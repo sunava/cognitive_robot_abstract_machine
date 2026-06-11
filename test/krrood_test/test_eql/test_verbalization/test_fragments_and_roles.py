@@ -33,10 +33,8 @@ from krrood.entity_query_language.verbalization.fragments.base import (
     WordFragment,
 )
 from krrood.entity_query_language.verbalization.fragments.roles import SemanticRole
-from krrood.entity_query_language.verbalization.verbalizer import (
-    EQLVerbalizer,
-    verbalize_expression,
-)
+from krrood.entity_query_language.verbalization.pipeline import verbalize_expression
+from krrood.entity_query_language.verbalization.verbalizer import EQLVerbalizer
 from ...dataset.semantic_world_like_classes import (
     Cabinet,
     Container,

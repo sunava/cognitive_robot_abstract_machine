@@ -8,7 +8,7 @@ from krrood.entity_query_language.core.base_expressions import SymbolicExpressio
 from krrood.entity_query_language.explanation.explanation import explain_inference
 from krrood.entity_query_language.factories import entity, variable, in_, inference, an
 from krrood.entity_query_language.verbalization.rendering.renderer import HierarchicalRenderer
-from krrood.entity_query_language.verbalization.verbalizer import verbalize_expression
+from krrood.entity_query_language.verbalization.pipeline import verbalize_expression
 from semantic_digital_twin.adapters.world_entity_kwargs_tracker import (
     WorldEntityWithIDKwargsTracker,
 )

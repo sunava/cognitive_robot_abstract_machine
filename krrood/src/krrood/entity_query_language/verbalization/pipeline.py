@@ -1,15 +1,18 @@
 """
-Verbalization pipeline — combines verbalizer + renderer for formatted output.
+Verbalization pipeline — **the** entry point for turning an EQL expression into text.
 
-:class:`VerbalizationPipeline` is the high-level entry point for coloured,
-hierarchical, or hyperlinked output.  Factory class methods cover the most
-common configurations:
+:class:`VerbalizationPipeline` combines the fragment builder
+(:class:`~krrood.entity_query_language.verbalization.verbalizer.EQLVerbalizer`, an internal
+detail) with a renderer, and is the single public surface for every output mode.  Factory class
+methods cover the common configurations:
 
 * :meth:`~VerbalizationPipeline.plain` — prose, no colour.
 * :meth:`~VerbalizationPipeline.ansi` — ANSI true-colour terminal output.
 * :meth:`~VerbalizationPipeline.html` — HTML ``<span>`` colours for Jupyter.
 
-All accept an optional *link_resolver* for source hyperlinks.
+All accept an optional *link_resolver* for source hyperlinks, and :meth:`~VerbalizationPipeline.verbalize`
+accepts an optional shared context for coreference across calls.  :func:`verbalize_expression` is
+the one-line plain-text shortcut (``VerbalizationPipeline.plain().verbalize``).
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 from typing_extensions import Optional
 
+from krrood.entity_query_language.verbalization.context import VerbalizationContext
 from krrood.entity_query_language.verbalization.fragments.base import VerbFragment
 from krrood.entity_query_language.verbalization.rendering.formatter import (
     ANSIFormatter,
@@ -99,8 +103,7 @@ class VerbalizationPipeline:
 
     Factory class methods cover the most common configurations:
 
-    * :meth:`plain` — no colour, paragraph prose (default for
-      :func:`~krrood.entity_query_language.verbalization.verbalizer.verbalize_expression`).
+    * :meth:`plain` — no colour, paragraph prose (used by :func:`verbalize_expression`).
     * :meth:`ansi`  — ANSI true-colour terminal output.
     * :meth:`html`  — HTML ``<span>`` colours for Jupyter / inline HTML.
 
@@ -117,17 +120,23 @@ class VerbalizationPipeline:
     _verbalizer: EQLVerbalizer = field(default_factory=EQLVerbalizer, init=False)
     """The verbalizer that builds fragment trees from EQL expressions."""
 
-    def verbalize(self, expression) -> str:
+    def verbalize(
+        self,
+        expression,
+        context: Optional[VerbalizationContext] = None,
+    ) -> str:
         """
         Verbalize *expression* to a string using this pipeline's renderer.
 
         :param expression: Any EQL expression or :class:`~krrood.entity_query_language.query.query.Query`.
+        :param context: Shared verbalization state; created automatically when omitted.  Pass the
+            same context across calls for coreference (a Robot … the Robot).
         :return: Formatted natural-language string (plain, ANSI, or HTML depending on renderer).
         :rtype: str
         """
         if isinstance(expression, Query):
             expression.build()
-        fragment = self._verbalizer.build(expression)
+        fragment = self._verbalizer.build(expression, context)
         return self.verbalize_fragment(fragment)
 
     def _is_html_renderer(self) -> bool:
@@ -276,3 +285,22 @@ class VerbalizationPipeline:
             else ParagraphRenderer(formatter, link_resolver)
         )
         return cls(renderer)
+
+
+#: Shared plain-text pipeline reused by :func:`verbalize_expression` (stateless, so safe to reuse).
+_PLAIN_PIPELINE = VerbalizationPipeline.plain()
+
+
+def verbalize_expression(expression) -> str:
+    """
+    Verbalize any EQL expression into a plain-text English phrase — the simplest entry point.
+
+    Equivalent to ``VerbalizationPipeline.plain().verbalize(expression)`` (no colour markup).
+    For coloured / hierarchical / hyperlinked output use a :class:`VerbalizationPipeline`
+    (``.ansi()`` / ``.html()``).
+
+    :param expression: Any EQL expression or :class:`~krrood.entity_query_language.query.query.Query`.
+    :return: Plain-text natural-language string.
+    :rtype: str
+    """
+    return _PLAIN_PIPELINE.verbalize(expression)

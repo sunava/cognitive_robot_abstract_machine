@@ -1,7 +1,7 @@
 """
 Verbalization context — a thin facade composing the microplanning services
 threaded through a single
-:meth:`~krrood.entity_query_language.verbalization.verbalizer.EQLVerbalizer.verbalize`
+:meth:`~krrood.entity_query_language.verbalization.verbalizer.EQLVerbalizer.build`
 call.
 
 The per-pass state is split by concern into three single-responsibility services

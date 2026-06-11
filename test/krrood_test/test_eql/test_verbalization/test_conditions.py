@@ -18,7 +18,7 @@ from krrood.entity_query_language.verbalization.grammar.conditions.recognition i
     references,
     single_hop_attr,
 )
-from krrood.entity_query_language.verbalization.verbalizer import verbalize_expression
+from krrood.entity_query_language.verbalization.pipeline import verbalize_expression
 
 
 @dataclass
