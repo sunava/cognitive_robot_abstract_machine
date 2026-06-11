@@ -13,6 +13,7 @@ from krrood.entity_query_language.operators.aggregators import (
     Aggregator,
     Average,
     Count,
+    CountAll,
     Max,
     Min,
     Mode,
@@ -21,9 +22,11 @@ from krrood.entity_query_language.operators.aggregators import (
 )
 from krrood.entity_query_language.verbalization.vocabulary.english import Aggregations
 
-#: Maps each standard aggregator subtype to its lexicon phrase.
+#: Maps each standard aggregator subtype to its lexicon phrase.  ``CountAll`` is childless
+#: (``COUNT_ALL`` carries ``ChildForm.NONE``), so the aggregator rule renders it bare.
 AGGREGATION_KIND: Dict[Type[Aggregator], Aggregations] = {
     Count: Aggregations.COUNT,
+    CountAll: Aggregations.COUNT_ALL,
     Sum: Aggregations.SUM,
     Average: Aggregations.AVERAGE,
     Max: Aggregations.MAX,

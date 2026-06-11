@@ -30,10 +30,7 @@ from krrood.entity_query_language.core.variable import (
     Literal,
     Variable,
 )
-from krrood.entity_query_language.operators.aggregators import (
-    Aggregator,
-    CountAll,
-)
+from krrood.entity_query_language.operators.aggregators import Aggregator
 from krrood.entity_query_language.operators.comparator import Comparator
 from krrood.entity_query_language.operators.core_logical_operators import (
     AND,
@@ -78,8 +75,8 @@ from krrood.entity_query_language.verbalization.grammar.assembly.chains import (
     ChainAssembler,
 )
 from krrood.entity_query_language.verbalization.vocabulary.english import (
-    Aggregations,
     Conjunctions,
+    FallbackNouns,
     Keywords,
     Logicals,
     Prepositions,
@@ -189,7 +186,9 @@ class ExternalVariableRule(PhraseRule):
 
     def build(self, node, ctx: Ctx):
         type_name = (
-            node._type_.__name__ if getattr(node, "_type_", None) else "variable"
+            node._type_.__name__
+            if getattr(node, "_type_", None)
+            else FallbackNouns.VARIABLE.text
         )
         return NounPhrase(head=RoleFragment(text=type_name, role=SemanticRole.VARIABLE))
 
@@ -351,6 +350,8 @@ class AggregatorRule(PhraseRule):
         aggregation_word = aggregation_kind.value
         aggregation_fragment = aggregation_kind.as_fragment()
 
+        if aggregation_word.child_form is ChildForm.NONE:
+            return aggregation_fragment  # childless aggregate, e.g. "count of all"
         if aggregation_word.child_form == ChildForm.SINGULAR_OF:
             child_fragment = ctx.child(node._child_)
             modifiers = [Prepositions.OF.as_fragment(), child_fragment]
@@ -362,16 +363,6 @@ class AggregatorRule(PhraseRule):
             definiteness=Definiteness.DEFINITE,
             modifiers=modifiers,
         )
-
-
-class CountAllRule(PhraseRule):
-    """``CountAll`` → *"count of all"* (no child)."""
-
-    construct = CountAll
-    name = "count-all"
-
-    def build(self, node, ctx: Ctx):
-        return Aggregations.COUNT_ALL.as_fragment()
 
 
 # ── quantifiers ──────────────────────────────────────────────────────────────

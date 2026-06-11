@@ -18,7 +18,10 @@ from krrood.entity_query_language.verbalization.fragments.base import (
     VerbFragment,
 )
 from krrood.entity_query_language.verbalization.subquery import is_calculation_value
-from krrood.entity_query_language.verbalization.vocabulary.english import Operators
+from krrood.entity_query_language.verbalization.vocabulary.english import (
+    Logicals,
+    Operators,
+)
 
 if TYPE_CHECKING:
     from krrood.entity_query_language.operators.comparator import Comparator
@@ -73,4 +76,6 @@ def comparator_operator(
         )
     except KeyError:
         name = comparator._name_
-        return RoleFragment.for_operator(f"not {name}" if negated else name)
+        return RoleFragment.for_operator(
+            f"{Logicals.NOT.text} {name}" if negated else name
+        )

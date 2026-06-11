@@ -35,7 +35,7 @@ from krrood.entity_query_language.verbalization.vocabulary.english import Copula
 #: Plural suppletion for the copula (the only ``OPERATOR`` leaves ever tagged plural).
 _COPULA_PLURAL = {
     Copulas.IS.text: Copulas.ARE.text,
-    Copulas.IS_NOT.text: "are not",
+    Copulas.IS_NOT.text: Copulas.ARE_NOT.text,
 }
 
 

@@ -205,7 +205,7 @@ class Aggregations(VocabEnum):
     """Aggregation function phrases (number of, sum of, average of, etc.)."""
 
     COUNT = AggregationWord("number of")
-    COUNT_ALL = AggregationWord("count of all")
+    COUNT_ALL = AggregationWord("count of all", child_form=ChildForm.NONE)
     SUM = AggregationWord("sum of")
     AVERAGE = AggregationWord("average of")
     MAX = AggregationWord("maximum", child_form=ChildForm.SINGULAR_OF)
@@ -220,6 +220,7 @@ class Copulas(VocabEnum):
     IS = OperatorWord("is")
     IS_NOT = OperatorWord("is not")
     ARE = OperatorWord("are")
+    ARE_NOT = OperatorWord("are not")
 
     @classmethod
     def for_number(cls, number: Number) -> RoleFragment:
@@ -330,6 +331,7 @@ class FallbackNouns(VocabEnum):
     """
 
     ENTITY = FallbackNounWord("entity")
+    VARIABLE = FallbackNounWord("variable")
 
     def plural_fragment(self) -> WordFragment:
         """

@@ -101,10 +101,13 @@ class ChildForm(Enum):
       ``"minimum"``); a literal *"of"* preposition is inserted and the child is
       rendered via the regular (singular, definite-article) chain verbalization:
       *"maximum of the amount of the amount_details of a BankTransaction"*.
+    * ``NONE`` — the aggregation word takes **no** child (``"count of all"``); it renders
+      as the bare phrase with no child and no determiner.
     """
 
     PLURAL = "plural"
     SINGULAR_OF = "singular_of"
+    NONE = "none"
 
 
 @dataclass(frozen=True)

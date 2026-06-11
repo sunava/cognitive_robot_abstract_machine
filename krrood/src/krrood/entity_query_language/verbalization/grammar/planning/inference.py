@@ -34,6 +34,7 @@ from krrood.entity_query_language.verbalization.grammar.conditions.recognition i
     attribute_names,
 )
 from krrood.entity_query_language.verbalization.grammar.planning.base import Planner
+from krrood.entity_query_language.verbalization.vocabulary.english import FallbackNouns
 
 
 class AggregationStatus(Enum):
@@ -281,7 +282,7 @@ class InferencePlanner(Planner[Entity, RuleStructure]):
             type_name = (
                 var._type_.__name__
                 if var and getattr(var, "_type_", None)
-                else "entity"
+                else FallbackNouns.ENTITY.text
             )
             conditions: List[ConditionPlan] = []
             if root._where_expression_ is not None:
@@ -292,7 +293,9 @@ class InferencePlanner(Planner[Entity, RuleStructure]):
             return type_name, conditions
         if isinstance(root, Variable):
             type_name = (
-                root._type_.__name__ if getattr(root, "_type_", None) else "variable"
+                root._type_.__name__
+                if getattr(root, "_type_", None)
+                else FallbackNouns.VARIABLE.text
             )
             return type_name, []
         return "entity", []
