@@ -221,9 +221,7 @@ def run_reliability_experiment(
     raw = []
     for _ in range(iterations):
         state = deepcopy(world.state._data)
-        result = reliability_experiment(
-            plan_size, world, pr2, ctx, world_building_duration
-        )
+        result = reliability_experiment(plan_size, world, ctx, world_building_duration)
         world.state._data[:] = state
         world.notify_state_change()
         raw.append(result)
@@ -300,7 +298,7 @@ def main():
             1,
         ]
     ):
-        aggregate, raw = run_reliability_experiment(plan_size, iterations=10)
+        aggregate, raw = run_reliability_experiment(plan_size, iterations=1)
         aggregate_results.append(aggregate)
         all_raw.extend(raw)
 
