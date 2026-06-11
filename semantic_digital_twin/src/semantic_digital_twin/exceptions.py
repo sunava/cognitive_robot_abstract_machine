@@ -161,6 +161,24 @@ class IncorrectWorldStateValueShapeError(DataclassException, ValueError):
 
 
 @dataclass
+class WrongWorldModelVersion(LogicalError):
+    """
+    Raised when a specific world model version is required.
+    """
+
+    expected_version: int
+    actual_version: int
+
+    def error_message(self) -> str:
+        return (
+            f"Expected world model version {self.expected_version}, but got {self.actual_version}. "
+            f"The model version increments with every structural change (adding/removing bodies, "
+            f"connections or degrees of freedom), so the world model changed since this object was created. "
+            f"Recreate whatever was derived from the old world model."
+        )
+
+
+@dataclass
 class NonMonotonicTimeError(LogicalError):
     """
     Raised when attempting to append a world state with a time that is not strictly greater than the last time.
