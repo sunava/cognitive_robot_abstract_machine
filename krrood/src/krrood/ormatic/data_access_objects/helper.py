@@ -78,6 +78,19 @@ def get_dao_class(
     return None
 
 
+def clear_dao_lookup_caches() -> None:
+    """
+    Clear all caches that map domain classes to DAO classes.
+
+    This has to be called whenever a new DataAccessObject or AlternativeMapping
+    subclass is created, since previously failed lookups (cached as None) would
+    otherwise stay stale forever.
+    """
+    _get_clazz_by_original_clazz.cache_clear()
+    get_dao_class.cache_clear()
+    get_alternative_mapping.cache_clear()
+
+
 @lru_cache(maxsize=None)
 def get_alternative_mapping(
     original_clazz: Type,

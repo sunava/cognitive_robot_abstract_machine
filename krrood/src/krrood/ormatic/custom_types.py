@@ -17,8 +17,11 @@ class TypeType(TypeDecorator):
     """
 
     impl = types.String(256)
+    cache_ok = True
 
-    def process_bind_param(self, value: Type, dialect):
+    def process_bind_param(self, value: Optional[Type], dialect) -> Optional[str]:
+        if value is None:
+            return None
         return module_and_class_name(value)
 
     def process_result_value(self, value: impl, dialect) -> Optional[Type]:
@@ -74,10 +77,14 @@ class JSONDataType(TypeDecorator):
 
     def process_bind_param(self, value, dialect):
         """Store the value as-is (already JSON-serializable)."""
+        if value is None:
+            return None
         return json.dumps(value)
 
     def process_result_value(self, value, dialect):
         """Return the value as-is (raw JSON, not deserialized)."""
+        if value is None:
+            return None
         return json.loads(value)
 
 
