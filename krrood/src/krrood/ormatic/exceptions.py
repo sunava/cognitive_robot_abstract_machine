@@ -65,12 +65,6 @@ class NoDAOFoundDuringParsingError(NoDAOFoundError):
     The relationship that tried to create the DAO.
     """
 
-    def __init__(self, obj: Any, dao: Type, relationship: RelationshipProperty = None):
-        self.obj = obj
-        self.dao = dao
-        self.relationship = relationship
-        self.__post_init__()
-
     def error_message(self) -> str:
         return (
             f"Class {type(self.obj)} does not have a DAO. This happened when trying "
