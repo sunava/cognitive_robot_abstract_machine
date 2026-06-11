@@ -11,13 +11,25 @@ surface-form decision consults them.
 
 from __future__ import annotations
 
+import operator
+from dataclasses import dataclass
+
 from typing_extensions import List, Optional
 
 from krrood.entity_query_language.core.mapped_variable import Attribute, MappedVariable
 from krrood.entity_query_language.core.variable import Variable
+from krrood.entity_query_language.operators.aggregators import Aggregator, Extreme
+from krrood.entity_query_language.operators.comparator import Comparator
+from krrood.entity_query_language.query.quantifiers import ResultQuantifier
+from krrood.entity_query_language.query.query import Entity
 from krrood.entity_query_language.verbalization.chain_utils import (
     chain_root,
     walk_chain,
+)
+from krrood.entity_query_language.verbalization.subquery import (
+    aggregation_source_root,
+    is_collapsible_aggregation_subquery,
+    selected_aggregator,
 )
 
 
@@ -61,3 +73,53 @@ def is_bool_attr_chain(expression) -> bool:
         return False
     chain, _ = walk_chain(expression)
     return bool(chain) and isinstance(chain[-1], Attribute) and chain[-1]._type_ is bool
+
+
+@dataclass(frozen=True)
+class SuperlativeFold:
+    """A subject restriction of the form ``subject.<chain> == max/min(<same-type>.<same chain>)``
+    folded to a superlative selection modifier — *"with the maximum <leaf>"*.
+
+    English's superlative *is* the meaning of "equal to the extreme value over the whole
+    population", so this fold is meaning-preserving — **not** an optimisation — under the guard
+    in :func:`superlative_aggregation`: an ``==`` against an *unconstrained* ``Max``/``Min``
+    sub-query over the *same type* and the *same attribute chain*."""
+
+    aggregator: Aggregator
+    """The ``Max`` / ``Min`` aggregator — supplies the superlative word (via ``AGGREGATION_KIND``)
+    and the leaf attribute (``aggregator._leaf_attribute_``) for the *"… <leaf>"* tail."""
+
+
+def superlative_aggregation(comparator, subject) -> Optional[SuperlativeFold]:
+    """Recognise a superlative restriction on *subject* — see :class:`SuperlativeFold`.
+
+    Returns the fold when *comparator* is ``subject.<chain> == <unconstrained Max/Min over a
+    different same-type variable's identical chain>``, else ``None`` (the conjunct then renders
+    normally).  Pure structural analysis; the guard is deliberately strict so it never fires on a
+    self-join, a constrained sub-query, a different chain, or a non-extreme aggregation.
+    """
+    if subject is None or not isinstance(comparator, Comparator):
+        return None
+    if comparator.operation is not operator.eq:
+        return None
+    left_root = chain_root(comparator.left)
+    if getattr(left_root, "_id_", None) != getattr(subject, "_id_", object()):
+        return None
+
+    inner = comparator.right
+    while isinstance(inner, ResultQuantifier):
+        inner = inner._child_
+    if not (isinstance(inner, Entity) and is_collapsible_aggregation_subquery(inner)):
+        return None
+    aggregator = selected_aggregator(inner)
+    if not isinstance(aggregator, Extreme) or aggregator._leaf_attribute_ is None:
+        return None
+
+    source = aggregation_source_root(inner)
+    if source is None or source is subject:
+        return None  # the population must be a distinct variable of the same type
+    if getattr(source, "_type_", None) is not getattr(subject, "_type_", None):
+        return None
+    if attribute_names(comparator.left) != attribute_names(aggregator._child_):
+        return None
+    return SuperlativeFold(aggregator=aggregator)

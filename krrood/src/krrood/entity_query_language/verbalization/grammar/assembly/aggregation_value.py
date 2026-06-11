@@ -98,13 +98,14 @@ class AggregationValueAssembler(Assembler[Query, QueryPlan]):
         ]
 
         if plan.subject_restriction is not None:
-            whose, residual = RestrictionAssembler(self.ctx).render(
+            r = RestrictionAssembler(self.ctx).render(
                 plan.subject_restriction, plan.subject
             )
-            if whose is not None:
-                parts.append(whose)
-            if residual is not None:
-                parts += [Keywords.SUCH_THAT.as_fragment(), residual]
+            parts.extend(r.superlatives)
+            if r.whose is not None:
+                parts.append(r.whose)
+            if r.residual is not None:
+                parts += [Keywords.SUCH_THAT.as_fragment(), r.residual]
 
         having = HavingAssembler(self.ctx).clause(node)
         if having is not None:

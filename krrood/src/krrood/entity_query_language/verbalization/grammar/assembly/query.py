@@ -169,14 +169,13 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
         restriction = plan.subject_restriction
         if restriction is None:
             return selected, None
-        whose, residual = RestrictionAssembler(self.ctx).render(
-            restriction, plan.subject
-        )
-        if whose is not None:
-            selected = PhraseFragment(parts=[selected, whose])
+        r = RestrictionAssembler(self.ctx).render(restriction, plan.subject)
+        modifiers = [*r.superlatives] + ([r.whose] if r.whose is not None else [])
+        if modifiers:
+            selected = PhraseFragment(parts=[selected, *modifiers])
         where_item = (
-            PhraseFragment(parts=[Keywords.SUCH_THAT.as_fragment(), residual])
-            if residual is not None
+            PhraseFragment(parts=[Keywords.SUCH_THAT.as_fragment(), r.residual])
+            if r.residual is not None
             else None
         )
         return selected, where_item
@@ -196,14 +195,15 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
 
         modifiers: List[VerbFragment] = []
         if plan.subject_restriction is not None:
-            whose, residual = RestrictionAssembler(self.ctx).render(
+            r = RestrictionAssembler(self.ctx).render(
                 plan.subject_restriction, plan.subject
             )
-            if whose is not None:
-                modifiers.append(whose)
-            if residual is not None:
+            modifiers.extend(r.superlatives)
+            if r.whose is not None:
+                modifiers.append(r.whose)
+            if r.residual is not None:
                 modifiers.append(
-                    PhraseFragment(parts=[Keywords.WHERE.as_fragment(), residual])
+                    PhraseFragment(parts=[Keywords.WHERE.as_fragment(), r.residual])
                 )
 
         noun = NounPhrase(

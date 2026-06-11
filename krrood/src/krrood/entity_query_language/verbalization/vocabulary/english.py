@@ -238,6 +238,7 @@ class Prepositions(VocabEnum):
     OF = PlainWord("of")
     OF_THE = PlainWord("of the")
     AMONG = PlainWord("among")
+    WITH = PlainWord("with")
 
 
 class Conjunctions(VocabEnum):

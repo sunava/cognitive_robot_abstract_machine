@@ -584,17 +584,79 @@ def test_deeply_nested_subqueries_golden():
     assert text.count("Find") == 1  # only the top level emits the imperative
 
 
-def test_nested_aggregation_collapses_to_compact_amount():
-    """An unconstrained max sub-query collapses to 'the maximum amount' (no chain, no variable)."""
+def test_superlative_fold_max_and_min():
+    """``subject.<chain> == max/min(<same-type>.<same chain>)`` folds to the superlative
+    *"with the maximum/minimum <leaf>"* — meaning-preserving (the superlative *is* "equal to the
+    extreme over the whole population"), not an optimisation."""
     t1 = variable(BankTransaction, domain=None)
     t2 = variable(BankTransaction, domain=None)
-    query = eql.the(
+    max_query = eql.the(
         entity(t1).where(
             t1.amount_details.amount == an(entity(eql.max(t2.amount_details.amount)))
         )
     )
+    assert (
+        verbalize_expression(max_query)
+        == "Find the unique BankTransaction with the maximum amount"
+    )
+    t3 = variable(BankTransaction, domain=None)
+    t4 = variable(BankTransaction, domain=None)
+    min_query = eql.the(
+        entity(t3).where(
+            t3.amount_details.amount == an(entity(eql.min(t4.amount_details.amount)))
+        )
+    )
+    assert (
+        verbalize_expression(min_query)
+        == "Find the unique BankTransaction with the minimum amount"
+    )
+
+
+def test_superlative_fold_declines_when_aggregation_is_constrained():
+    """The fold is strict: a *constrained* extreme sub-query is load-bearing, so it stays the
+    explicit *"such that … is equal to the maximum amount among … whose …"* form."""
+    t1 = variable(BankTransaction, domain=None)
+    t2 = variable(BankTransaction, domain=None)
+    query = eql.the(
+        entity(t1).where(
+            t1.amount_details.amount
+            == an(
+                entity(eql.max(t2.amount_details.amount)).where(
+                    t2.booking_date < datetime.datetime(2024, 1, 1)
+                )
+            )
+        )
+    )
     text = verbalize_expression(query)
-    assert "is equal to the maximum amount" in text, f"Got: {text!r}"
+    assert "with the maximum amount" not in text, f"Should not fold: {text!r}"
+    assert "is equal to the maximum amount among BankTransactions" in text
+
+
+def test_superlative_fold_declines_for_non_extreme_aggregation():
+    """Only Max/Min are superlatives — SUM stays *"is equal to the sum of amounts"*."""
+    t1 = variable(BankTransaction, domain=None)
+    t2 = variable(BankTransaction, domain=None)
+    query = eql.the(
+        entity(t1).where(
+            t1.amount_details.amount == an(entity(eql.sum(t2.amount_details.amount)))
+        )
+    )
+    assert "the sum of amounts" in verbalize_expression(query)
+
+
+def test_superlative_fold_declines_on_different_chain():
+    """The fold requires the *same* attribute chain on both sides — comparing one attribute to
+    the maximum of a *different* one is not a superlative and must not fold."""
+    t1 = variable(BankTransaction, domain=None)
+    t2 = variable(BankTransaction, domain=None)
+    query = eql.the(
+        entity(t1).where(
+            t1.amount_details.amount == an(entity(eql.max(t2.booking_date)))
+        )
+    )
+    text = verbalize_expression(query)
+    assert "with the maximum" not in text, f"Should not fold: {text!r}"
+    assert "the maximum booking_date" in text, f"Got: {text!r}"
 
 
 def test_nested_aggregation_sum_uses_plural_leaf():
@@ -640,8 +702,9 @@ def test_nested_aggregation_source_not_numbered_on_outer_subject():
         )
     )
     text = verbalize_expression(query)
-    assert "its amount_details is equal to the maximum amount" in text, f"Got: {text!r}"
+    assert text == "Find the unique BankTransaction with the maximum amount"
     assert "BankTransaction 1" not in text, f"Spurious numbering in: {text!r}"
+    assert "BankTransaction 2" not in text, f"Spurious numbering in: {text!r}"
 
 
 def test_nested_constrained_aggregation_scope_is_plural_unnumbered():
@@ -1650,27 +1713,43 @@ def test_example_sum_between_full_sentence():
 
 
 def test_example_max_full_sentence():
-    """Motivating example 2: pronoun + calc-equality, multi-hop residual keeps 'such that'."""
+    """Motivating example 2: pronoun + calc-equality, multi-hop residual keeps 'such that'.
+
+    Uses a *constrained* max (which does not fold to a superlative) so the calc-equality residual
+    survives as the full *"such that … is equal to the maximum amount among … whose …"* sentence.
+    """
     bank_transaction = variable(BankTransaction, domain=None)
     bt2 = variable(BankTransaction, domain=None)
-    max_q = an(entity(eql.max(bt2.amount_details.amount)))
+    max_q = an(
+        entity(eql.max(bt2.amount_details.amount)).where(
+            bt2.booking_date < datetime.datetime(2024, 1, 1)
+        )
+    )
     query = eql.the(
         entity(bank_transaction).where(bank_transaction.amount_details.amount == max_q)
     )
     assert verbalize_expression(query) == (
         "Find the unique BankTransaction such that the amount of its amount_details "
-        "is equal to the maximum amount"
+        "is equal to the maximum amount among BankTransactions whose booking_date "
+        "is before January 1, 2024"
     )
 
 
 def test_pronoun_multi_hop_chain_elides_subject():
-    """A multi-hop chain rooted at the subject becomes 'the amount of its amount_details'."""
+    """A multi-hop chain rooted at the subject becomes 'the amount of its amount_details'.
+
+    Uses a *constrained* max so the chain stays a residual comparison (an unconstrained max would
+    fold to the superlative 'with the maximum amount', eliding the chain entirely)."""
     bank_transaction = variable(BankTransaction, domain=None)
     bt2 = variable(BankTransaction, domain=None)
     query = eql.the(
         entity(bank_transaction).where(
             bank_transaction.amount_details.amount
-            == an(entity(eql.max(bt2.amount_details.amount)))
+            == an(
+                entity(eql.max(bt2.amount_details.amount)).where(
+                    bt2.booking_date < datetime.datetime(2024, 1, 1)
+                )
+            )
         )
     )
     text = verbalize_expression(query)
@@ -1741,7 +1820,11 @@ def test_whose_grouping_mixed_groupable_and_residual():
             bank_transaction.booking_date >= lower_bound,
             bank_transaction.booking_date <= upper_bound,
             bank_transaction.amount_details.amount
-            == an(entity(eql.max(bt2.amount_details.amount))),
+            == an(
+                entity(eql.max(bt2.amount_details.amount)).where(
+                    bt2.booking_date < datetime.datetime(2024, 1, 1)
+                )
+            ),
         )
     )
     text = verbalize_expression(query)
