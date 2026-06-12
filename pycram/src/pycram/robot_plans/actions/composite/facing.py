@@ -55,14 +55,8 @@ class FaceAtAction(ActionDescription):
 
         return sequential(
             [
-                NavigateAction(
-                    new_robot_pose, self.keep_joint_states
-                ).action_plan_for_context(
-                    self.context
-                ),  # turn robot
-                LookAtAction(self.pose).action_plan_for_context(
-                    self.context
-                ),  # look at the target
+                NavigateAction(new_robot_pose, self.keep_joint_states),  # turn robot
+                LookAtAction(self.pose),  # look at the target
             ]
         )
 

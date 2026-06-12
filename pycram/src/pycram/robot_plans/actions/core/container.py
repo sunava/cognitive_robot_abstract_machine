@@ -65,9 +65,7 @@ class OpenAction(ActionDescription):
 
         return sequential(
             [
-                GraspingAction(
-                    self.object_designator, self.arm, grasp_description
-                ).action_plan_for_context(self.context),
+                GraspingAction(self.object_designator, self.arm, grasp_description),
                 OpeningMotion(self.object_designator, self.arm),
                 MoveGripperMotion(
                     GripperState.OPEN, self.arm, allow_gripper_collision=True
@@ -160,9 +158,7 @@ class CloseAction(ActionDescription):
 
         return sequential(
             [
-                GraspingAction(
-                    self.object_designator, self.arm, grasp_description
-                ).action_plan_for_context(self.context),
+                GraspingAction(self.object_designator, self.arm, grasp_description),
                 ClosingMotion(self.object_designator, self.arm),
                 MoveGripperMotion(
                     GripperState.OPEN, self.arm, allow_gripper_collision=True

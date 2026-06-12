@@ -80,7 +80,7 @@ class PlaceAction(ActionDescription):
                     previous_grasp,
                     self.object_designator,
                     reverse_reach_order=True,
-                ).action_plan_for_context(self.context),
+                ),
                 MoveGripperMotion(GripperState.OPEN, self.arm),
                 DetachNode(body=self.object_designator, new_parent=self.world.root),
                 MoveToolCenterPointMotion(retract_pose, self.arm),

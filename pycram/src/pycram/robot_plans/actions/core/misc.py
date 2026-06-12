@@ -132,14 +132,12 @@ class MoveToReach(ActionDescription):
         )
         return sequential(
             [
-                NavigateAction(self.standing_pose).action_plan_for_context(
-                    self.context
-                ),
+                NavigateAction(self.standing_pose),
                 MoveManipulatorAction(
                     target_pose,
                     self.grasp_description.end_effector,
                     allow_gripper_collision=False,
-                ).action_plan_for_context(self.context),
+                ),
             ]
         )
 
