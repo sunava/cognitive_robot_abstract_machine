@@ -137,17 +137,23 @@ class ORMaticReliabilityAggregateResult(ExperimentResult):
     plan_size: int
     """Number of actions in each plan in this aggregate."""
     world_building_duration: MeanAndStandardDeviation
+    """Mean and standard deviation of world-building time across runs (seconds)."""
     plan_execution_duration: MeanAndStandardDeviation
-    to_dao_duration: MeanAndStandardDeviation
+    """Mean and standard deviation of plan execution time under simulated_robot (seconds)."""
+    to_data_access_object_duration: MeanAndStandardDeviation
+    """Mean and standard deviation of to_dao() serialisation time (seconds)."""
     writing_to_database_duration: MeanAndStandardDeviation
+    """Mean and standard deviation of session.add() + session.commit() time (seconds)."""
     reading_from_database_duration: MeanAndStandardDeviation
+    """Mean and standard deviation of session.scalars(select(PlanMappingDAO)).one() time (seconds)."""
     reconstruction_duration: MeanAndStandardDeviation
+    """Mean and standard deviation of from_dao() reconstruction time (seconds)."""
 
 
 def reliability_experiment(
     plan_size: int,
     world: World,
-    ctx: Context,
+    context: Context,
     world_building_duration: float,
 ) -> ORMaticReliabilityExperimentResult:
     """
@@ -156,11 +162,11 @@ def reliability_experiment(
 
     :param plan_size: Number of actions to include in the random plan.
     :param world: The pre-built world to create the plan in.
-    :param ctx: The execution context.
+    :param context: The execution context.
     :param world_building_duration: Pre-measured world building time (s).
     :return: Timing breakdown for this single run.
     """
-    plan = create_random_plan(world, ctx, plan_size)
+    plan = create_random_plan(world, context, plan_size)
 
     t0 = time.perf_counter()
     with simulated_robot:
@@ -236,8 +242,8 @@ def run_reliability_experiment(
         plan_execution_duration=MeanAndStandardDeviation.from_measurements(
             [r.plan_execution_duration for r in raw]
         ),
-        to_dao_duration=MeanAndStandardDeviation.from_measurements(
-            [r.to_dao_duration for r in raw]
+        to_data_access_object_duration=MeanAndStandardDeviation.from_measurements(
+            [r.to_data_access_object_duration for r in raw]
         ),
         writing_to_database_duration=MeanAndStandardDeviation.from_measurements(
             [r.writing_to_database_duration for r in raw]
