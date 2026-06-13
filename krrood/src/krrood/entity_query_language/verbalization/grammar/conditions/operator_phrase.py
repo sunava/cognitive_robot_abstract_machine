@@ -1,11 +1,3 @@
-"""
-Comparator **operator** selection — the single source of truth for the operator phrase of
-a :class:`~krrood.entity_query_language.operators.comparator.Comparator` (e.g. *"is greater
-than"*, *"is not equal to"*, *"is before"*).  The full *"<left> <operator> <right>"* phrase
-is assembled by
-:meth:`~krrood.entity_query_language.verbalization.grammar.conditions.verbalizer.ConditionVerbalizer.predicate`.
-"""
-
 from __future__ import annotations
 
 import operator
@@ -24,12 +16,12 @@ from krrood.entity_query_language.verbalization.vocabulary.english import (
 
 if TYPE_CHECKING:
     from krrood.entity_query_language.operators.comparator import Comparator
-    from krrood.entity_query_language.verbalization.context import VerbalizationContext
+    from krrood.entity_query_language.verbalization.context import MicroplanningServices
 
 
 def comparator_operator(
     comparator: Comparator,
-    context: VerbalizationContext,
+    services: MicroplanningServices,
     *,
     negated: bool = False,
     compact: Optional[bool] = None,
@@ -46,15 +38,14 @@ def comparator_operator(
     * **Negation / compactness** — flags forwarded to the vocabulary.
 
     :param comparator: The comparator expression.
-    :param context: Shared verbalization state.
+    :param services: Shared verbalization state.
     :param negated: Outer negation (from a wrapping ``Not``).
     :param compact: Copula-less variant (HAVING clauses).  Defaults to
-        ``context.config.compact_predicates`` when ``None``.
+        ``services.configuration.compact_predicates`` when ``None``.
     :return: The operator fragment.
-    :rtype: ~krrood.entity_query_language.verbalization.fragments.base.Fragment
     """
     if compact is None:
-        compact = context.config.compact_predicates
+        compact = services.configuration.compact_predicates
     operation = comparator.operation
 
     is_calculation = operation in (operator.eq, operator.ne) and (

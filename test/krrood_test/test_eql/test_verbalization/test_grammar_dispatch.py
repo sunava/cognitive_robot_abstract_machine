@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from krrood.entity_query_language.verbalization.context import VerbalizationContext
+from krrood.entity_query_language.verbalization.context import MicroplanningServices
 from krrood.entity_query_language.verbalization.engine import (
     fold,
     UnverbalizableExpressionError,
@@ -19,7 +19,7 @@ from krrood.entity_query_language.verbalization.fragments.base import (
     WordFragment,
 )
 from krrood.entity_query_language.verbalization.grammar.phrase_rule import (
-    Ctx,
+    RuleContext,
     PhraseRule,
     select,
 )
@@ -44,9 +44,9 @@ class Other:
     _name_ = "other"
 
 
-def _ctx():
-    """A Ctx for dispatch tests (no recursion needed by select)."""
-    return Ctx(child=lambda node: node, context=VerbalizationContext())
+def _rule_context():
+    """A RuleContext for dispatch tests (no recursion needed by select)."""
+    return RuleContext(child=lambda node: node, services=MicroplanningServices())
 
 
 def _custom(construct, name, build_fn, *, guard=None, tiebreak=0):
@@ -55,16 +55,16 @@ def _custom(construct, name, build_fn, *, guard=None, tiebreak=0):
         "construct": construct,
         "name": name,
         "tiebreak": tiebreak,
-        "build": lambda self, node, ctx: build_fn(node, ctx),
+        "build": lambda self, node, context: build_fn(node, context),
     }
     if guard is not None:
-        namespace["when"] = lambda self, node, ctx: guard(node)
+        namespace["when"] = lambda self, node, context: guard(node)
     return type(f"R_{name}", (PhraseRule,), namespace)()
 
 
 def _rule(construct, name, **kw):
     """A rule whose build just emits its own name."""
-    return _custom(construct, name, lambda node, ctx: WordFragment(name), **kw)
+    return _custom(construct, name, lambda node, context: WordFragment(name), **kw)
 
 
 # ── select: specificity ──────────────────────────────────────────────────────
@@ -72,14 +72,14 @@ def _rule(construct, name, **kw):
 
 def test_select_prefers_deeper_construct():
     rules = [_rule(Base, "base"), _rule(Mid, "mid"), _rule(Leaf, "leaf")]
-    assert select(Leaf(), rules, _ctx()).name == "leaf"
-    assert select(Mid(), rules, _ctx()).name == "mid"
-    assert select(Base(), rules, _ctx()).name == "base"
+    assert select(Leaf(), rules, _rule_context()).name == "leaf"
+    assert select(Mid(), rules, _rule_context()).name == "mid"
+    assert select(Base(), rules, _rule_context()).name == "base"
 
 
 def test_select_guarded_beats_unguarded_same_construct():
     rules = [_rule(Mid, "plain"), _rule(Mid, "guarded", guard=lambda n: True)]
-    assert select(Mid(), rules, _ctx()).name == "guarded"
+    assert select(Mid(), rules, _rule_context()).name == "guarded"
 
 
 def test_select_tiebreak_breaks_same_construct_both_guarded():
@@ -87,20 +87,20 @@ def test_select_tiebreak_breaks_same_construct_both_guarded():
         _rule(Mid, "low", guard=lambda n: True, tiebreak=0),
         _rule(Mid, "high", guard=lambda n: True, tiebreak=5),
     ]
-    assert select(Mid(), rules, _ctx()).name == "high"
+    assert select(Mid(), rules, _rule_context()).name == "high"
 
 
 def test_select_guard_can_exclude():
     rules = [_rule(Mid, "only-ok", guard=lambda n: getattr(n, "ok", False))]
     node = Mid()
-    assert select(node, rules, _ctx()) is None
+    assert select(node, rules, _rule_context()) is None
     node.ok = True
-    assert select(node, rules, _ctx()).name == "only-ok"
+    assert select(node, rules, _rule_context()).name == "only-ok"
 
 
 def test_select_returns_none_when_nothing_matches():
     rules = [_rule(Mid, "mid")]
-    assert select(Other(), rules, _ctx()) is None
+    assert select(Other(), rules, _rule_context()) is None
 
 
 # ── fold: dispatch, recursion, override, fallback ────────────────────────────
@@ -109,25 +109,25 @@ def test_select_returns_none_when_nothing_matches():
 def test_fold_dispatches_to_selected_rule():
     rules = [_rule(Leaf, "leaf")]
     assert (
-        flatten_fragment_to_plain_text(fold(Leaf(), VerbalizationContext(), rules))
+        flatten_fragment_to_plain_text(fold(Leaf(), MicroplanningServices(), rules))
         == "leaf"
     )
 
 
 def test_fold_child_re_enters_the_fold():
-    # A parent rule recurses into a child node via ctx.child.
+    # A parent rule recurses into a child node via context.child.
     child = Other()
     parent = Mid()
     rules = [
         _custom(
             Mid,
             "parent",
-            lambda node, ctx: PhraseFragment([WordFragment("p"), ctx.child(child)]),
+            lambda node, context: PhraseFragment([WordFragment("p"), context.child(child)]),
         ),
-        _custom(Other, "child", lambda node, ctx: WordFragment("c")),
+        _custom(Other, "child", lambda node, context: WordFragment("c")),
     ]
     assert (
-        flatten_fragment_to_plain_text(fold(parent, VerbalizationContext(), rules))
+        flatten_fragment_to_plain_text(fold(parent, MicroplanningServices(), rules))
         == "p c"
     )
 
@@ -135,7 +135,7 @@ def test_fold_child_re_enters_the_fold():
 def test_fold_binding_override_short_circuits_before_dispatch():
     node = Mid()
     node._id_ = "k"
-    context = VerbalizationContext()
+    context = MicroplanningServices()
     context.binding.binding_overrides["k"] = WordFragment("OVERRIDE")
     # No rules at all — the override must still win.
     assert flatten_fragment_to_plain_text(fold(node, context, [])) == "OVERRIDE"
@@ -145,7 +145,7 @@ def test_fold_raises_when_no_rule_covers_the_node():
     node = Mid()
     node._name_ = "uncovered"
     with pytest.raises(UnverbalizableExpressionError):
-        fold(node, VerbalizationContext(), [])
+        fold(node, MicroplanningServices(), [])
 
 
 def test_enters_query_scope_wraps_build_but_not_when():
@@ -159,16 +159,16 @@ def test_enters_query_scope_wraps_build_but_not_when():
         name = "scoped"
         enters_query_scope = True
 
-        def when(self, node, ctx):
-            observed["when_depth"] = ctx.config.query_depth
+        def when(self, node, context):
+            observed["when_depth"] = context.configuration.query_depth
             return True
 
-        def build(self, node, ctx):
-            observed["build_depth"] = ctx.config.query_depth
+        def build(self, node, context):
+            observed["build_depth"] = context.configuration.query_depth
             return WordFragment("scoped")
 
-    context = VerbalizationContext()
+    context = MicroplanningServices()
     fold(Mid(), context, [ScopedRule()])
     assert observed["when_depth"] == 0  # the guard judges the rule's own position
     assert observed["build_depth"] == 1  # everything inside is one query level deeper
-    assert context.config.query_depth == 0  # restored on exit
+    assert context.configuration.query_depth == 0  # restored on exit

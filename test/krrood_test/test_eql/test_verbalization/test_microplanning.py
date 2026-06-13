@@ -18,7 +18,7 @@ from krrood.entity_query_language.verbalization.fragments.base import (
 from krrood.entity_query_language.verbalization.microplanning.binding_scope import (
     BindingScope,
 )
-from krrood.entity_query_language.verbalization.microplanning.config import RenderConfig
+from krrood.entity_query_language.verbalization.microplanning.config import RenderConfiguration
 from krrood.entity_query_language.verbalization.microplanning.coordination import (
     build_between,
     has_pair,
@@ -94,29 +94,29 @@ def test_binding_scope_frames_nest():
     assert scope.pop_constraint_frame() == ["outer"]
 
 
-# ── RenderConfig ─────────────────────────────────────────────────────────────
+# ── RenderConfiguration ─────────────────────────────────────────────────────────────
 
 
 def test_query_depth_scope_increments_and_restores():
-    config = RenderConfig()
-    assert config.query_depth == 0
-    with config.query_depth_scope():
-        assert config.query_depth == 1
-        with config.query_depth_scope():
-            assert config.query_depth == 2
-        assert config.query_depth == 1
-    assert config.query_depth == 0
+    configuration = RenderConfiguration()
+    assert configuration.query_depth == 0
+    with configuration.query_depth_scope():
+        assert configuration.query_depth == 1
+        with configuration.query_depth_scope():
+            assert configuration.query_depth == 2
+        assert configuration.query_depth == 1
+    assert configuration.query_depth == 0
 
 
 def test_compact_predicates_scope_restores_previous_even_nested():
-    config = RenderConfig()
-    assert config.compact_predicates is False
-    with config.compact_predicates_scope():
-        assert config.compact_predicates is True
-        with config.compact_predicates_scope():
-            assert config.compact_predicates is True
-        assert config.compact_predicates is True
-    assert config.compact_predicates is False
+    configuration = RenderConfiguration()
+    assert configuration.compact_predicates is False
+    with configuration.compact_predicates_scope():
+        assert configuration.compact_predicates is True
+        with configuration.compact_predicates_scope():
+            assert configuration.compact_predicates is True
+        assert configuration.compact_predicates is True
+    assert configuration.compact_predicates is False
 
 
 # ── Coordination ─────────────────────────────────────────────────────────────

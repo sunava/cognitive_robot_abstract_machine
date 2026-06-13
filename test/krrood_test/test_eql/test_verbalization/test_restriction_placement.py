@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import pytest
 
-from krrood.entity_query_language.verbalization.context import VerbalizationContext
+from krrood.entity_query_language.verbalization.context import MicroplanningServices
 from krrood.entity_query_language.verbalization.fragments.base import WordFragment
 from krrood.entity_query_language.verbalization.grammar.assembly.restrictions import (
     RestrictionAssembler,
     UnplacedRestrictionError,
 )
-from krrood.entity_query_language.verbalization.grammar.phrase_rule import Ctx
+from krrood.entity_query_language.verbalization.grammar.phrase_rule import RuleContext
 from krrood.entity_query_language.verbalization.grammar.planning.query import (
     RestrictionPlan,
 )
@@ -27,8 +27,8 @@ from krrood.entity_query_language.verbalization.grammar.restriction import (
 )
 
 
-def _ctx() -> Ctx:
-    return Ctx(child=lambda node, number=None: node, context=VerbalizationContext())
+def _rule_context() -> RuleContext:
+    return RuleContext(child=lambda node, number=None: node, services=MicroplanningServices())
 
 
 def test_every_restriction_rule_declares_a_placement():
@@ -56,9 +56,9 @@ def test_unhandled_placement_raises_loudly():
         placement = _MysteryPlacement()
 
         @classmethod
-        def render(cls, item, subject_variable, ctx):
+        def render(cls, item, subject_variable, context):
             return WordFragment(text="x")
 
     plan = RestrictionPlan(matched=[(_MysteryRule, object())])
     with pytest.raises(UnplacedRestrictionError, match="MYSTERY"):
-        RestrictionAssembler(_ctx()).render(plan, subject=None)
+        RestrictionAssembler(_rule_context()).render(plan, subject=None)

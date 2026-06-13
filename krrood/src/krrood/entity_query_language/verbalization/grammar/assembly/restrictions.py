@@ -1,37 +1,24 @@
-"""
-Restriction **assembler** — render a
-:class:`~krrood.entity_query_language.verbalization.grammar.planning.query.RestrictionPlan`
-(a subject's WHERE partition) into its surface pieces: superlative selection modifiers
-(*"with the maximum <leaf>"*), the appositive *"whose <grouped>"* modifier, and the residual
-*"such that …"* / *"where …"* condition.
-
-Realisation-only, but deliberately **not** an :class:`Assembler` subclass: a restriction yields
-*several* pieces (:class:`RestrictionFragments`), not a single fragment — the caller drops each
-into its own slot (inline after the selection, as a noun modifier, or inside an aggregation
-scope).  Shared by ``QueryAssembler`` and ``AggregationValueAssembler`` so the
-restriction rendering lives in one place.
-
-Reference: Reiter & Dale (2000) — content structuring (the WHERE partition is the *plan*).
-"""
-
 from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-from typing_extensions import Dict, List, Optional
+from typing_extensions import Dict, List, Optional, Union
 
+from krrood.entity_query_language.core.base_expressions import SymbolicExpression
+from krrood.entity_query_language.core.variable import Variable
 from krrood.entity_query_language.verbalization.fragments.base import (
     oxford_and,
     PhraseFragment,
     Fragment,
 )
-from krrood.entity_query_language.verbalization.grammar.phrase_rule import Ctx
+from krrood.entity_query_language.verbalization.grammar.phrase_rule import RuleContext
 from krrood.entity_query_language.verbalization.grammar.planning.query import (
     RestrictionPlan,
 )
 from krrood.entity_query_language.verbalization.grammar.restriction import Placement
 from krrood.entity_query_language.verbalization.microplanning.coordination import (
+    RangeFold,
     fragment_for_folded_conjunct,
 )
 from krrood.entity_query_language.verbalization.vocabulary.english import (
@@ -41,13 +28,9 @@ from krrood.entity_query_language.verbalization.vocabulary.english import (
 
 
 class UnplacedRestrictionError(ValueError):
-    """A :class:`~krrood.entity_query_language.verbalization.grammar.restriction.RestrictionRule`
-    declared a :class:`~krrood.entity_query_language.verbalization.grammar.restriction.Placement`
-    that no :class:`RestrictionFragments` slot surfaces.
-
-    Raised loudly instead of dropping the fragment: add a field on
-    :class:`RestrictionFragments` and surface it in the consumers
-    (``QueryAssembler`` / ``AggregationValueAssembler``)."""
+    """
+    A restriction rule declared a placement that no ``RestrictionFragments`` slot surfaces.
+    """
 
 
 @dataclass(frozen=True)
@@ -55,7 +38,7 @@ class RestrictionFragments:
     """The rendered pieces of a subject restriction, each placed by the caller."""
 
     superlatives: List[Fragment] = field(default_factory=list)
-    """Selection PP modifiers, e.g. *"with the maximum amount"* (attach right after the noun)."""
+    """Selection prepositional phrase modifiers, e.g. *"with the maximum amount"* (attach right after the noun)."""
 
     whose: Optional[Fragment] = None
     """The appositive *"whose <grouped>"* modifier, or ``None``."""
@@ -66,17 +49,34 @@ class RestrictionFragments:
 
 @dataclass
 class RestrictionAssembler:
-    """Render a :class:`RestrictionPlan` into its :class:`RestrictionFragments`."""
+    """
+    Render a subject's WHERE partition into its surface pieces: superlative selection modifiers
+    (*"with the maximum <leaf>"*), the appositive *"whose <grouped>"* modifier, and the residual
+    *"such that …"* / *"where …"* condition.
 
-    ctx: Ctx
-    """The per-node context (recursion entry + microplanning services)."""
+    A restriction yields several pieces, not a single fragment, so this is realisation-only but
+    not an ``Assembler`` subclass.
 
-    def render(self, restriction: RestrictionPlan, subject) -> RestrictionFragments:
-        """Render each matched conjunct via its rule and place it by the rule's
-        :class:`Placement`; then build the residual condition."""
+    Reference: Reiter & Dale (2000) — content structuring (the WHERE partition is the plan).
+    """
+
+    context: RuleContext
+    """The per-node context (recursion entry and microplanning services)."""
+
+    def render(
+        self, restriction: RestrictionPlan, subject: Variable
+    ) -> RestrictionFragments:
+        """
+        Render each matched conjunct via its rule and place it by the rule's placement, then
+        build the residual condition.
+
+        :param restriction: The subject's WHERE partition.
+        :param subject: The variable the restriction is on.
+        :return: The rendered restriction pieces.
+        """
         by_placement: Dict[Placement, List[Fragment]] = defaultdict(list)
         for rule, item in restriction.matched:
-            by_placement[rule.placement].append(rule.render(item, subject, self.ctx))
+            by_placement[rule.placement].append(rule.render(item, subject, self.context))
 
         superlatives = by_placement.pop(Placement.SELECTION_MODIFIER, [])
         grouped = by_placement.pop(Placement.WHOSE_GROUP, [])
@@ -104,11 +104,14 @@ class RestrictionAssembler:
             superlatives=superlatives, whose=whose, residual=residual
         )
 
-    def _residual(self, items) -> Fragment:
-        """The residual conjuncts (raw expressions / folded ranges) joined into one condition."""
+    def _residual(self, items: List[Union[SymbolicExpression, RangeFold]]) -> Fragment:
+        """
+        :param items: The residual conjuncts (raw expressions or folded ranges).
+        :return: The residual conjuncts joined into one condition.
+        """
         parts: List[Fragment] = [
             fragment_for_folded_conjunct(
-                item, self.ctx.child, compact=self.ctx.config.compact_predicates
+                item, self.context.child, compact=self.context.configuration.compact_predicates
             )
             for item in items
         ]

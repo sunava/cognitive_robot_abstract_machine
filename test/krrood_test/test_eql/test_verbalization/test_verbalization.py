@@ -56,7 +56,7 @@ from krrood.entity_query_language.verbalization.rendering.renderer import (
 )
 from krrood.entity_query_language.verbalization.verbalizer import (
     EQLVerbalizer,
-    VerbalizationContext,
+    MicroplanningServices,
 )
 from ...dataset.department_and_employee import Department, Employee
 
@@ -162,7 +162,7 @@ def test_verbalize_variable_article_consonant():
 
 
 def test_verbalize_variable_coreference():
-    context = VerbalizationContext()
+    context = MicroplanningServices()
     pipeline = VerbalizationPipeline.plain()
     x = variable(Handle, [])
     first = pipeline.verbalize(x, context)
