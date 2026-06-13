@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from abc import abstractmethod
+
+from typing_extensions import List
+
 from krrood.entity_query_language.core.base_expressions import SymbolicExpression
 from krrood.entity_query_language.core.mapped_variable import (
     Index,
@@ -31,6 +35,9 @@ from krrood.entity_query_language.verbalization.grammar.planning.chains import (
     ChainPlan,
     ChainPlanner,
 )
+from krrood.entity_query_language.verbalization.grammar.selection import (
+    SpecificityRule,
+)
 from krrood.entity_query_language.verbalization.microplanning.possessive import (
     possessive_path,
 )
@@ -42,6 +49,99 @@ from krrood.entity_query_language.verbalization.vocabulary.english import (
     Copulas,
     Prepositions,
 )
+
+
+def _ends_in_integer_index(navigation_chain: List[MappedVariable]) -> bool:
+    """
+    :param navigation_chain: A boolean predicative's navigation prefix.
+    :return: ``True`` when it ends in an integer index — the ordinal navigation *"the 1st of …"*.
+    """
+    return (
+        bool(navigation_chain)
+        and isinstance(navigation_chain[-1], Index)
+        and isinstance(navigation_chain[-1]._key_, int)
+    )
+
+
+class NavigationForm(SpecificityRule):
+    """How to render the navigation prefix of a boolean predicative — the *"<navigation>"* of
+    *"<navigation> is <attribute>"*.
+
+    The forms partition the prefix shapes (empty / ordinal-index / any other), so exactly one
+    applies; adding a navigation form is a new subclass with no change to the others.
+    """
+
+    @classmethod
+    @abstractmethod
+    def applies(cls, navigation_chain: List[MappedVariable]) -> bool:
+        """
+        :param navigation_chain: The predicative's navigation prefix (the chain minus its terminal).
+        :return: ``True`` when this form renders *navigation_chain*.
+        """
+
+    @classmethod
+    @abstractmethod
+    def render(
+        cls, navigation_chain: List[MappedVariable], root_fragment: Fragment
+    ) -> Fragment:
+        """
+        :param navigation_chain: The navigation prefix this form matched.
+        :param root_fragment: The rendered chain root.
+        :return: The navigation fragment.
+        """
+
+
+class EmptyNavigation(NavigationForm):
+    """No navigation (the boolean attribute sits on the root) — the root itself navigates."""
+
+    @classmethod
+    def applies(cls, navigation_chain: List[MappedVariable]) -> bool:
+        return not navigation_chain
+
+    @classmethod
+    def render(
+        cls, navigation_chain: List[MappedVariable], root_fragment: Fragment
+    ) -> Fragment:
+        return root_fragment
+
+
+class OrdinalIndexNavigation(NavigationForm):
+    """Navigation ending in an integer index → ordinal *"the 1st of <prefix>"*."""
+
+    @classmethod
+    def applies(cls, navigation_chain: List[MappedVariable]) -> bool:
+        return _ends_in_integer_index(navigation_chain)
+
+    @classmethod
+    def render(
+        cls, navigation_chain: List[MappedVariable], root_fragment: Fragment
+    ) -> Fragment:
+        ordinal = morphology.ordinal(navigation_chain[-1]._key_)
+        prefix_fragment = possessive_path(
+            build_path_parts(navigation_chain[:-1]), root_fragment
+        )
+        return PhraseFragment(
+            parts=[
+                Articles.THE.as_fragment(),
+                WordFragment(text=ordinal),
+                Prepositions.OF.as_fragment(),
+                prefix_fragment,
+            ]
+        )
+
+
+class PossessiveNavigation(NavigationForm):
+    """Any other navigation → the possessive path *"the a of the b of …"*."""
+
+    @classmethod
+    def applies(cls, navigation_chain: List[MappedVariable]) -> bool:
+        return bool(navigation_chain) and not _ends_in_integer_index(navigation_chain)
+
+    @classmethod
+    def render(
+        cls, navigation_chain: List[MappedVariable], root_fragment: Fragment
+    ) -> Fragment:
+        return possessive_path(build_path_parts(navigation_chain), root_fragment)
 
 
 class ChainAssembler(Assembler[MappedVariable, ChainPlan]):
@@ -126,7 +226,8 @@ class ChainAssembler(Assembler[MappedVariable, ChainPlan]):
 
     def boolean_predicative(self, plan: ChainPlan, negated: bool = False) -> Fragment:
         """
-        Chains ending in an integer index get ordinal navigation.
+        The navigation prefix is rendered by its :class:`NavigationForm` (ordinal index / possessive
+        / none).
 
         :param plan: The analysed chain (a boolean terminal — see
             :attr:`ChainPlan.is_boolean_terminal`).
@@ -137,27 +238,8 @@ class ChainAssembler(Assembler[MappedVariable, ChainPlan]):
         root_fragment = self._chain_root(plan.root)
         navigation_chain = chain[:-1]
 
-        if not navigation_chain:
-            navigation_fragment = root_fragment
-        elif isinstance(navigation_chain[-1], Index) and isinstance(
-            navigation_chain[-1]._key_, int
-        ):
-            ordinal = morphology.ordinal(navigation_chain[-1]._key_)
-            prefix_fragment = possessive_path(
-                build_path_parts(navigation_chain[:-1]), root_fragment
-            )
-            navigation_fragment = PhraseFragment(
-                parts=[
-                    Articles.THE.as_fragment(),
-                    WordFragment(text=ordinal),
-                    Prepositions.OF.as_fragment(),
-                    prefix_fragment,
-                ]
-            )
-        else:
-            navigation_fragment = possessive_path(
-                build_path_parts(navigation_chain), root_fragment
-            )
+        navigation_form = NavigationForm.most_applicable(navigation_chain)
+        navigation_fragment = navigation_form.render(navigation_chain, root_fragment)
 
         copula = Copulas.IS_NOT.as_fragment() if negated else Copulas.IS.as_fragment()
         terminal = chain[-1]
