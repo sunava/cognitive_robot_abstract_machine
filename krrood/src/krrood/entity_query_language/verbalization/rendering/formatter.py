@@ -8,14 +8,25 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing_extensions import ClassVar, Optional
 
-from krrood.entity_query_language.verbalization.fragments.roles import (
-    ROLE_COLORS,
-    SemanticRole,
-)
+from krrood.entity_query_language.verbalization.fragments.roles import SemanticRole
 
 _TOOLTIP_ATTR = "title"
 
 _log = logging.getLogger(__name__)
+
+
+#: Hex colour string (or ``None`` for no colour) for each semantic role, matching the
+#: query-graph palette.  Colour is a *formatter* concern — the IR carries only the role tag.
+ROLE_COLORS: dict[SemanticRole, Optional[str]] = {
+    SemanticRole.KEYWORD: "#eded18",  # ConclusionSelector yellow
+    SemanticRole.VARIABLE: "cornflowerblue",
+    SemanticRole.AGGREGATION: "#F54927",  # Aggregator red-orange
+    SemanticRole.OPERATOR: "#ff7f0e",  # Comparator orange
+    SemanticRole.LOGICAL: "#2ca02c",  # LogicalOperator green
+    SemanticRole.LITERAL: "#949292",  # Literal gray
+    SemanticRole.ATTRIBUTE: "#8FC7B8",  # MappedVariable teal
+    SemanticRole.PLAIN: None,
+}
 
 
 class BulletStyle(StrEnum):
