@@ -612,7 +612,7 @@ def test_superlative_fold_max_and_min():
     )
 
 
-def test_superlative_fold_declines_when_aggregation_is_constrained():
+def test_superlative_fold_declines_when_aggregation_is_constrained_or_grouped():
     """The fold is strict: a *constrained* extreme sub-query is load-bearing, so it stays the
     explicit *"such that … is equal to the maximum amount among … whose …"* form."""
     t1 = variable(BankTransaction, domain=None)

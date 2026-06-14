@@ -90,7 +90,7 @@ class AggregationData:
     leaf: Optional[MappedVariable]
     """The leaf attribute of the aggregator chain, or ``None``."""
 
-    is_constrained: bool
+    is_constrained_or_grouped: bool
     """``True`` when the aggregation is constrained by a WHERE/HAVING clause."""
 
     source: Optional[Variable]
@@ -224,6 +224,6 @@ class QueryPlanner(Planner[Query, QueryPlan]):
         return AggregationData(
             aggregator=selected_aggregator(self.node),
             leaf=aggregation_leaf_attribute(self.node),
-            is_constrained=self.node.is_constrained,
+            is_constrained_or_grouped=self.node.is_constrained_or_grouped,
             source=aggregation_source_root(self.node),
         )
