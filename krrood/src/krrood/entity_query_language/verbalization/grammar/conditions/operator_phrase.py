@@ -3,7 +3,7 @@ from __future__ import annotations
 import operator
 from typing_extensions import TYPE_CHECKING, Optional
 
-from krrood.entity_query_language.verbalization.chain_utils import is_temporal
+from krrood.entity_query_language.core.expression_structure import is_temporal
 from krrood.entity_query_language.verbalization.fragments.base import (
     RoleFragment,
     Fragment,

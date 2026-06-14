@@ -7,9 +7,9 @@ from typing_extensions import List, Optional
 from krrood.entity_query_language.core.base_expressions import SymbolicExpression
 from krrood.entity_query_language.core.variable import Variable
 from krrood.entity_query_language.query.query import Entity
-from krrood.entity_query_language.verbalization.chain_utils import (
+from krrood.entity_query_language.core.expression_structure import walk_chain
+from krrood.entity_query_language.verbalization.navigation_path import (
     build_path_parts,
-    walk_chain,
 )
 from krrood.entity_query_language.verbalization.fragments.base import (
     BlockFragment,

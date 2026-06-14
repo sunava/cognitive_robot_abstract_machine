@@ -15,7 +15,7 @@ from krrood.entity_query_language.verbalization.fragments.roles import SemanticR
 from krrood.entity_query_language.verbalization.fragments.source_reference import (
     SourceReference,
 )
-from krrood.entity_query_language.verbalization.chain_utils import PathStep
+from krrood.entity_query_language.verbalization.navigation_path import PathStep
 from krrood.entity_query_language.verbalization.exceptions import UnloweredFragmentError
 
 _T = TypeVar("_T")

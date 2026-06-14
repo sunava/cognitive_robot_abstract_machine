@@ -10,7 +10,7 @@ from krrood.entity_query_language.core.base_expressions import SymbolicExpressio
 from krrood.entity_query_language.core.variable import InstantiatedVariable, Variable
 from krrood.entity_query_language.query.operations import GroupedBy
 from krrood.entity_query_language.query.query import Entity, Query
-from krrood.entity_query_language.verbalization.chain_utils import chain_root
+from krrood.entity_query_language.core.expression_structure import chain_root
 from krrood.entity_query_language.verbalization.grammar.framework.planner import Planner
 
 

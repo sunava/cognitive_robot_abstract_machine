@@ -12,7 +12,7 @@ from krrood.entity_query_language.core.mapped_variable import (
 from krrood.entity_query_language.core.variable import Variable
 from krrood.entity_query_language.query.query import Entity
 from krrood.entity_query_language.verbalization import morphology
-from krrood.entity_query_language.verbalization.chain_utils import (
+from krrood.entity_query_language.verbalization.navigation_path import (
     build_path_parts,
 )
 from krrood.entity_query_language.verbalization.fragments.base import (

@@ -16,7 +16,7 @@ from typing_extensions import (
 from krrood.entity_query_language.core.mapped_variable import Attribute, MappedVariable
 from krrood.entity_query_language.core.variable import Variable
 from krrood.entity_query_language.operators.comparator import Comparator
-from krrood.entity_query_language.verbalization.chain_utils import walk_chain
+from krrood.entity_query_language.core.expression_structure import walk_chain
 from krrood.entity_query_language.verbalization.fragments.base import (
     oxford_comma,
     PhraseFragment,

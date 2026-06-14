@@ -11,7 +11,7 @@ from krrood.entity_query_language.core.variable import Variable
 from krrood.entity_query_language.operators.aggregators import Aggregator, Extreme
 from krrood.entity_query_language.operators.comparator import Comparator
 from krrood.entity_query_language.query.query import Entity
-from krrood.entity_query_language.verbalization.chain_utils import (
+from krrood.entity_query_language.core.expression_structure import (
     chain_ends_in_boolean_attribute,
     chain_root,
     walk_chain,

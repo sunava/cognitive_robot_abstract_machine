@@ -10,11 +10,13 @@ from krrood.entity_query_language.core.mapped_variable import (
     MappedVariable,
 )
 from krrood.entity_query_language.core.variable import Variable
-from krrood.entity_query_language.verbalization.chain_utils import (
-    PathStep,
-    build_path_parts,
+from krrood.entity_query_language.core.expression_structure import (
     chain_ends_in_boolean_attribute,
     walk_chain,
+)
+from krrood.entity_query_language.verbalization.navigation_path import (
+    PathStep,
+    build_path_parts,
 )
 from krrood.entity_query_language.verbalization.fragments.features import Number
 from krrood.entity_query_language.verbalization.grammar.framework.planner import Planner

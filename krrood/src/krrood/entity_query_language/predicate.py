@@ -30,7 +30,7 @@ from krrood.entity_query_language.core.base_expressions import (
     SymbolicExpression,
 )
 from krrood.entity_query_language.core.base_expressions import Selectable
-from krrood.entity_query_language.verbalization.utils import camel_case_to_words
+from krrood.entity_query_language.utils import camel_case_to_words
 from krrood.ormatic.utils import classproperty
 from krrood.patterns.code_parsing_utils import (
     get_accessed_attribute_name_in_return_statement_of_property,

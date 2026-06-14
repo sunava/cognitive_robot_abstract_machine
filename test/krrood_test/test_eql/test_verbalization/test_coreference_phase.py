@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 
-from krrood.entity_query_language.verbalization.chain_utils import PathStep
+from krrood.entity_query_language.verbalization.navigation_path import PathStep
 from krrood.entity_query_language.verbalization.fragments.base import (
     flatten_fragment_to_plain_text,
     NounPhrase,

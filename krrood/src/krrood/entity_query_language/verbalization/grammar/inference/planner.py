@@ -17,7 +17,7 @@ from krrood.entity_query_language.operators.core_logical_operators import (
 )
 from krrood.entity_query_language.query.query import Entity
 from krrood.entity_query_language.verbalization import morphology
-from krrood.entity_query_language.verbalization.chain_utils import chain_root
+from krrood.entity_query_language.core.expression_structure import chain_root
 from krrood.entity_query_language.verbalization.grammar.conditions.recognition import (
     attribute_names,
 )

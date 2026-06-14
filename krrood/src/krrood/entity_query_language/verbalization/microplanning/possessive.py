@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing_extensions import List
 
-from krrood.entity_query_language.verbalization.chain_utils import PathStep
+from krrood.entity_query_language.verbalization.navigation_path import PathStep
 from krrood.entity_query_language.verbalization.fragments.base import (
     PhraseFragment,
     RoleFragment,
