@@ -472,7 +472,7 @@ def test_pick_up_multi(mutable_multiple_robot_apartment, rclpy_node):
 
     assert np.allclose(
         world.get_body_by_name("milk.stl").global_pose.to_np(),
-        left_arm.manipulator.tool_frame.global_pose.to_np(),
+        left_arm.end_effector.tool_frame.global_pose.to_np(),
         atol=0.01,
     )
 

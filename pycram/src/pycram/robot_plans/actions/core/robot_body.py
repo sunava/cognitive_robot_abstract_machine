@@ -58,7 +58,9 @@ class MoveTorsoAction(ActionDescription):
         """
         The target joint state for the torso needs to be archived
         """
-        joint_state = context.robot.torso.get_joint_state_by_type(kwargs["torso_state"])
+        joint_state = context.robot.get_torso().get_joint_state_by_type(
+            kwargs["torso_state"]
+        )
         return joint_state.is_achieved()
 
 
