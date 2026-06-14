@@ -234,14 +234,22 @@ class Storage:
 
             cas_dict["view_ids"][view_name] = result.inserted_id
 
-    def load_views_from_mongo_in_cas(self, cas_document: Dict[str, Any]) -> None:
+    def load_views_from_mongo_in_cas(
+        self,
+        cas_document: Dict[str, Any],
+        excluded_view_names: Optional[set[str]] = None,
+    ) -> None:
         """Load views from MongoDB into a CAS document.
 
         Retrieve and decode each persisted view referenced in ``view_ids``.
 
         :param cas_document: CAS document to update with loaded views
+        :param excluded_view_names: View names to leave undecoded for caller-specific handling.
         """
+        excluded_view_names = excluded_view_names or set()
         for expected_view_name, view_id in cas_document["view_ids"].items():
+            if expected_view_name in excluded_view_names:
+                continue
             view_document = self.db[Storage.VIEW_COLLECTION_NAME].find_one(
                 {"_id": view_id}
             )

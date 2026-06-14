@@ -134,6 +134,10 @@ def unsafe_clear_world() -> None:
     with this.world.modify_world():
         this.world.clear()
 
+    model_manager = this.world.get_world_model_manager()
+    model_manager.model_modification_blocks.clear()
+    model_manager.current_model_modification_block.modifications.clear()
+
 
 def world_has_body_by_name(world: World, body_name: str) -> bool:
     """Check whether a body with a given name exists in the given world.
@@ -162,45 +166,45 @@ def setup_world_for_camera_frame(
     :param world_frame: The name of the world frame.
     :param camera_frame: The name of the camera frame.
     """
-    world = world_instance()
-    world_exists = world_has_body_by_name(world=world, body_name=world_frame)
-    camera_exists = world_has_body_by_name(world=world, body_name=camera_frame)
+    rk_world = world_instance()
+    world_bodies = rk_world.get_bodies_by_name(name=world_frame)
+    camera_bodies = rk_world.get_bodies_by_name(name=camera_frame)
 
-    if world_exists and camera_exists:
-        return None
+    world_body = world_bodies[0] if len(world_bodies) > 0 else None
+    camera_body = camera_bodies[0] if len(camera_bodies) > 0 else None
 
-    if not world_exists and not camera_exists:
-        world_body = Body(name=PrefixedName(name=world_frame))
-        world_body.visual.append(
-            Mesh.from_trimesh(
-                mesh=trimesh.creation.axis(),
-                origin=HomogeneousTransformationMatrix(reference_frame=world_body),
+    with rk_world.modify_world():
+        if world_body is None:
+            world_body = Body(name=PrefixedName(name=world_frame))
+            rk_world.add_body(world_body)
+
+            world_body.visual.append(
+                Mesh.from_trimesh(
+                    mesh=trimesh.creation.axis(),
+                    origin=HomogeneousTransformationMatrix(reference_frame=world_body),
+                )
             )
-        )
 
-        camera_body = Body(name=PrefixedName(name=camera_frame))
-        camera_body.visual.append(
-            Mesh.from_trimesh(
-                mesh=trimesh.creation.axis(),
-                origin=HomogeneousTransformationMatrix(reference_frame=camera_body),
+        if camera_body is None:
+            camera_body = Body(name=PrefixedName(name=camera_frame))
+            rk_world.add_body(camera_body)
+
+            camera_body.visual.append(
+                Mesh.from_trimesh(
+                    mesh=trimesh.creation.axis(),
+                    origin=HomogeneousTransformationMatrix(reference_frame=camera_body),
+                )
             )
-        )
 
-        with world.modify_world():
+        connection_name = PrefixedName(name=f"{camera_frame}_T_{world_frame}")
+        if len(rk_world.get_connections_by_name(connection_name)) == 0:
             cam_T_world = Connection6DoF.create_with_dofs(
                 parent=world_body,
                 child=camera_body,
-                world=world,
-                name=PrefixedName(name=f"{camera_frame}_T_{world_frame}"),
+                world=rk_world,
+                name=connection_name,
             )
-
-            world.add_connection(cam_T_world)
-        return None
-
-    raise AssertionError(
-        f"This method can currently only be called when neither the world or camera frame exist. "
-        f"Existence of camera frame: {camera_exists}, world frame: {world_exists}."
-    )
+            rk_world.add_connection(cam_T_world)
 
 
 def update_connection_transform(

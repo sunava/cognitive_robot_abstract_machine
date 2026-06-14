@@ -25,6 +25,7 @@ from robokudo.world import update_connection_transform
 
 import logging
 import struct
+import warnings
 from threading import Lock, Thread
 
 import builtin_interfaces.msg
@@ -179,15 +180,6 @@ class ROSCameraInterface(CameraInterface):
         :param timestamp: The timestamp of the transform
         """
         if self.lookup_viewpoint:
-            # # Set legacy transform
-            # st = robokudo.types.tf.StampedTransform()
-            # st.rotation = self.cam_quaternion
-            # st.translation = self.cam_translation
-            # st.frame = self.tf_from
-            # st.child_frame = self.tf_to
-            # st.timestamp = timestamp
-            # cas.set(CASViews.VIEWPOINT_CAM_TO_WORLD, st)
-
             setup_world_for_camera_frame(
                 world_frame=self.tf_to, camera_frame=self.tf_from
             )
@@ -217,14 +209,18 @@ class ROSCameraInterface(CameraInterface):
                 transform=world_T_camera,
             )
 
-            ROSCameraInterface.store_legacy_cam_to_world_transform_from_cas(cas=cas)
-
     @staticmethod
     def store_legacy_cam_to_world_transform_from_cas(cas: CAS) -> None:
         """Create legacy StampedTransform from CAS cam_to_world_transform and data_timestamp.
 
         :param cas: The CAS to store the transform in
         """
+        warnings.warn(
+            "store_legacy_cam_to_world_transform_from_cas() is deprecated. "
+            "Use CASViews.CAM_TO_WORLD_TRANSFORM instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         cam_to_world_transform = cas.cam_to_world_transform
         if cam_to_world_transform is None:
             raise KeyError("cam_to_world_transform not set in CAS")
@@ -259,7 +255,7 @@ class ROSCameraInterface(CameraInterface):
         if cam_to_world_transform.reference_frame is not None:
             st.child_frame = str(cam_to_world_transform.reference_frame.name)
         st.timestamp = timestamp
-        cas.viewpoint_cam_to_world = st
+        cas.views[CASViews.VIEWPOINT_CAM_TO_WORLD] = st
 
     def set_o3d_cam_intrinsics_from_ros_cam_info(self) -> None:
         """Convert ROS camera info to Open3D camera intrinsics.

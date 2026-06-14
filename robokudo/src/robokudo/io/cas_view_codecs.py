@@ -408,6 +408,18 @@ class HomogeneousTransformationMatrixCodec(ViewCodec):
             serializer_id=self.serializer_id,
             payload=value.to_json(),
             type_name=_full_type_name(value),
+            metadata={
+                "reference_frame_name": (
+                    str(value.reference_frame.name)
+                    if value.reference_frame is not None
+                    else None
+                ),
+                "child_frame_name": (
+                    str(value.child_frame.name)
+                    if value.child_frame is not None
+                    else None
+                ),
+            },
         )
 
     def decode(self, payload: ViewPayload) -> HomogeneousTransformationMatrix:
