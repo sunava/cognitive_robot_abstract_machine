@@ -6,7 +6,7 @@ urdf-parser-py
 matplotlib
 casadi~=3.7.0
 hypothesis
-pytest>=7.1.1,<8.0.0
+pytest<8.0.0
 scipy
 sqlacodegen
 pytest-order
