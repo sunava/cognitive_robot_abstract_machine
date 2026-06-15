@@ -380,9 +380,12 @@ class SimpleEvent(AbstractSimpleSet, VariableMap):
 
         :param variables: The variables to fill the event with
         """
-        for variable in variables:
-            if variable not in self:
-                self[variable] = variable.domain
+        missing = [v for v in variables if v not in self]
+        if not missing:
+            return
+        for variable in missing:
+            self._setitem_without_cpp(variable, variable.domain)
+        self._update_cpp_object()
 
     def fill_missing_variables_pure(self, variables: Iterable[Variable]):
         """
@@ -540,18 +543,18 @@ class Event(AbstractCompositeSet):
 
         :return: The bounding box as a simple event
         """
-        result = SimpleEvent.from_data()
-        for variable in self.variables:
-            for simple_set in self.simple_sets:
+        simple_sets = self.simple_sets
+        if not simple_sets:
+            return SimpleEvent.from_data()
+        result = {}
+        variables = SortedSet(v for ss in simple_sets for v in ss.variables)
+        for variable in variables:
+            for simple_set in simple_sets:
                 if variable not in result:
-                    result[variable] = simple_set[variable].__deepcopy__()
+                    result[variable] = simple_set[variable]
                 else:
-                    result[variable] = (
-                        result[variable]
-                        .__deepcopy__()
-                        .union_with(simple_set[variable].__deepcopy__())
-                    )
-        return result
+                    result[variable] = result[variable].union_with(simple_set[variable])
+        return SimpleEvent.from_data(result)
 
     def update_variables(self, new_variables: Dict[Variable, Variable]) -> Event:
         """
