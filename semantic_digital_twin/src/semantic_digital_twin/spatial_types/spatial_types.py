@@ -350,7 +350,7 @@ class HomogeneousTransformationMatrix(
         """
         p = Point3(x=pos_x, y=pos_y, z=pos_z)
         r = RotationMatrix.from_quaternion(
-            q=Quaternion(w=quat_w, x=quat_x, y=quat_y, z=quat_z)
+            quaternion=Quaternion(w=quat_w, x=quat_x, y=quat_y, z=quat_z)
         )
         return cls.from_point_rotation_matrix(
             p, r, reference_frame=reference_frame, child_frame=child_frame
@@ -595,7 +595,7 @@ class RotationMatrix(sm.SymbolicMathType, SpatialType, SubclassJSONSerializer):
         return cls(s, reference_frame=reference_frame)
 
     @classmethod
-    def _from_constant_quaternion(cls, q: Quaternion) -> RotationMatrix:
+    def _from_constant_quaternion(cls, quaternion: Quaternion) -> RotationMatrix:
         """
         Build a rotation matrix from a constant (fully numeric) quaternion.
 
@@ -605,11 +605,11 @@ class RotationMatrix(sm.SymbolicMathType, SpatialType, SubclassJSONSerializer):
         an order of magnitude faster and covers the common case for values
         loaded from a database.
 
-        :param q: Quaternion whose underlying CasADi expression satisfies
-                  ``q.is_constant()``.
+        :param quaternion: Quaternion whose underlying CasADi expression satisfies
+                  ``quaternion.is_constant()``.
         :return: The corresponding rotation matrix.
         """
-        x, y, z, w = q.to_np().ravel()
+        x, y, z, w = quaternion.to_np().ravel()
         x2, y2, z2, w2 = x * x, y * y, z * z, w * w
         data = np.array(
             [
@@ -619,20 +619,20 @@ class RotationMatrix(sm.SymbolicMathType, SpatialType, SubclassJSONSerializer):
                 [0, 0, 0, 1],
             ]
         )
-        return cls(data=data, reference_frame=q.reference_frame)
+        return cls(data=data, reference_frame=quaternion.reference_frame)
 
     @classmethod
-    def from_quaternion(cls, q: Quaternion) -> RotationMatrix:
+    def from_quaternion(cls, quaternion: Quaternion) -> RotationMatrix:
         """
         Unit quaternion to 4x4 rotation matrix according to:
         https://github.com/orocos/orocos_kinematics_dynamics/blob/master/orocos_kdl/src/frames.cpp#L167
         """
-        if q.is_constant():
-            return cls._from_constant_quaternion(q)
-        x = q[0]
-        y = q[1]
-        z = q[2]
-        w = q[3]
+        if quaternion.is_constant():
+            return cls._from_constant_quaternion(quaternion)
+        x = quaternion[0]
+        y = quaternion[1]
+        z = quaternion[2]
+        w = quaternion[3]
         x2 = x * x
         y2 = y * y
         z2 = z * z
@@ -659,7 +659,7 @@ class RotationMatrix(sm.SymbolicMathType, SpatialType, SubclassJSONSerializer):
                 ],
                 [0, 0, 0, 1],
             ],
-            reference_frame=q.reference_frame,
+            reference_frame=quaternion.reference_frame,
         )
 
     def x_vector(self) -> Vector3:
