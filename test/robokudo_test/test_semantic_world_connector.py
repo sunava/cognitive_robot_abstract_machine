@@ -231,7 +231,7 @@ class TestSemanticDigitalTwinConnector:
         pipeline.cas.set(CASViews.COLOR_IMAGE, color_image)
         pipeline.cas.annotations.append(hypothesis)
 
-        status = connector.update()
+        status = connector.compute()
 
         output_image = connector.get_annotator_output_struct().image
         assert status is py_trees.common.Status.SUCCESS
