@@ -3,7 +3,7 @@ from __future__ import annotations
 import operator
 from dataclasses import dataclass
 
-from typing_extensions import Dict, List, Optional, Tuple, Union
+from typing_extensions import Dict, List, Optional, Tuple
 
 from krrood.entity_query_language.core.base_expressions import SymbolicExpression
 from krrood.entity_query_language.core.expression_structure import walk_chain
@@ -12,10 +12,6 @@ from krrood.entity_query_language.core.variable import Literal
 from krrood.entity_query_language.operators.comparator import Comparator
 from krrood.entity_query_language.query.match import Match, is_underspecified
 from krrood.entity_query_language.verbalization.grammar.framework.planner import Planner
-from krrood.entity_query_language.verbalization.microplanning.coordination import (
-    fold_range_pairs,
-    RangeFold,
-)
 
 
 @dataclass(frozen=True)
@@ -75,11 +71,10 @@ class MatchPlan:
     """Construction conditions that don't group (multi-hop chains, type filters); rendered as
     individual *"given that"* points."""
 
-    where_conditions: List[Union[SymbolicExpression, RangeFold]]
-    """The conditions added via ``.where(...)``, already range-folded (a complementary bound pair
-    on one chain reduced to a single :class:`RangeFold`) — each rendered as one *"where"* point.
-    Folding here, at content-determination time, is what lets the assembler simply recurse each
-    item without invoking any folding itself."""
+    where_conditions: List[SymbolicExpression]
+    """The conditions added via ``.where(...)``. The plan only classifies them as the ``where``
+    part; deciding how to say a list of conditions (including folding bound pairs into a *between*)
+    belongs to the condition verbalizer, not here."""
 
 
 @dataclass
@@ -122,7 +117,7 @@ class MatchPlanner(Planner[Match, MatchPlan]):
             selection=match.variable,
             groups=groups,
             other_conditions=other,
-            where_conditions=fold_range_pairs(list(match._where_conditions_)),
+            where_conditions=list(match._where_conditions_),
         )
 
     @staticmethod

@@ -12,6 +12,9 @@ from krrood.entity_query_language.verbalization.fragments.base import (
     RoleFragment,
     WordFragment,
 )
+from krrood.entity_query_language.verbalization.grammar.conditions.assembler import (
+    ConditionAssembler,
+)
 from krrood.entity_query_language.verbalization.grammar.framework.assembler import (
     Assembler,
 )
@@ -141,7 +144,7 @@ class MatchAssembler(Assembler[Match, MatchPlan]):
         points: List[Fragment] = [
             self._group_point(group) for group in plan.groups if group.concrete
         ]
-        points += [self.context.child(condition) for condition in plan.other_conditions]
+        points += ConditionAssembler(self.context).verbalize(plan.other_conditions)
         if not points:
             return None
         return BlockFragment(header=Keywords.GIVEN_THAT.as_fragment(), items=points)
@@ -176,13 +179,13 @@ class MatchAssembler(Assembler[Match, MatchPlan]):
     def _where_block(self, plan: MatchPlan) -> Optional[Fragment]:
         """:return: The *"where"* block — one point per free condition — or ``None`` when absent.
 
-        The conditions arrive already range-folded from the planner (a bound pair is one
-        :class:`RangeFold`), so each point is just the standard recursion — a raw comparator or a
-        range fold, rendered by its own rule. The assembler never folds anything itself.
+        The points are whatever the condition verbalizer makes of the ``where`` conditions — the
+        assembler only knows it has a list of conditions to say, and hands them over; folding a
+        bound pair into a *between* is the verbalizer's concern, not this one's.
         """
         if not plan.where_conditions:
             return None
-        points = [self.context.child(item) for item in plan.where_conditions]
+        points = ConditionAssembler(self.context).verbalize(plan.where_conditions)
         return BlockFragment(header=Keywords.WHERE.as_fragment(), items=points)
 
     # ── shared ───────────────────────────────────────────────────────────────

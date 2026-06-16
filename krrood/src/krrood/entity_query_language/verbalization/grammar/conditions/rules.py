@@ -36,7 +36,6 @@ from krrood.entity_query_language.verbalization.grammar.framework.phrase_rule im
 )
 from krrood.entity_query_language.verbalization.microplanning.coordination import (
     build_between,
-    fold_range_pairs,
     RangeFold,
 )
 from krrood.entity_query_language.verbalization.vocabulary.english import (
@@ -77,13 +76,7 @@ class AndRule(PhraseRule):
     name = "and"
 
     def build(self, node: AND, context: RuleContext) -> Fragment:
-        # Reduce complementary bound pairs to range folds, then recurse each item uniformly — a
-        # raw conjunct via its rule, a range fold via RangeFoldRule. The fold is a list reduction,
-        # so it runs once here over the operands.
-        parts = [
-            context.child(item)
-            for item in fold_range_pairs(flatten_operands(node, AND))
-        ]
+        parts = ConditionAssembler(context).verbalize(flatten_operands(node, AND))
         if len(parts) == 1:
             return parts[0]
         return oxford_comma(parts, Conjunctions.AND.as_fragment())

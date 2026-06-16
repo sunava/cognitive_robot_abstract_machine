@@ -22,9 +22,12 @@ from krrood.entity_query_language.verbalization.grammar.conditions.recognition i
     superlative_aggregation,
 )
 from krrood.entity_query_language.verbalization.microplanning.coordination import (
+    fold_range_pairs,
     RangeFold,
     build_between,
 )
+from typing_extensions import List
+from krrood.entity_query_language.core.base_expressions import SymbolicExpression
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Articles,
     Copulas,
@@ -68,6 +71,21 @@ class ConditionAssembler(Assembler[Comparator, None]):
                 self.context.child(comparator.right),
             ]
         )
+
+    def verbalize(self, conditions: List[SymbolicExpression]) -> List[Fragment]:
+        """
+        Verbalize a list of conditions — the single general entry a caller uses when it has *some
+        conditions* to say (a ``where`` block, an ``AND``'s operands). The verbalizer decides
+        everything inside: it reduces the conjuncts (a complementary lower/upper bound pair on one
+        chain becomes one *"… is between …"*) and says each resulting condition.
+
+        The caller only knows it has conditions and that this verbalizer says them; it never sees
+        the folding, nor chooses among the per-form methods below.
+
+        :param conditions: The conditions to verbalize, in order.
+        :return: One fragment per condition (after reduction), in order.
+        """
+        return [self.context.child(item) for item in fold_range_pairs(list(conditions))]
 
     def attribute_modifier(self, comparator: Comparator, subject: Variable) -> Fragment:
         """
