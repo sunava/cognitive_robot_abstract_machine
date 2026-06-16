@@ -26,6 +26,7 @@ from krrood.entity_query_language.verbalization.vocabulary.english import (
     Conjunctions,
     Keywords,
 )
+from krrood.entity_query_language.verbalization.vocabulary.words import Number
 
 
 @dataclass(frozen=True)
@@ -64,7 +65,10 @@ class RestrictionAssembler:
     """The per-node context (recursion entry and microplanning services)."""
 
     def render(
-        self, restriction: RestrictionPlan, subject: Variable
+        self,
+        restriction: RestrictionPlan,
+        subject: Variable,
+        number: Number = Number.SINGULAR,
     ) -> RestrictionFragments:
         """
         Place each folded conjunct via the form registry, then bucket by slot: superlatives and the
@@ -73,10 +77,12 @@ class RestrictionAssembler:
 
         :param restriction: The subject's folded WHERE conjuncts.
         :param subject: The variable the restriction is on.
+        :param number: The number the subject agrees with — singular for a query selection, plural
+            for an aggregated inference antecedent.
         :return: The rendered restriction pieces.
         """
         placed = [
-            place(Placement(item=item, subject=subject), self.context)
+            place(Placement(item=item, subject=subject, number=number), self.context)
             for item in restriction.folded
         ]
         superlatives = self._of_slot(placed, Slot.SELECTION_MODIFIER)

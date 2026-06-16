@@ -27,6 +27,7 @@ from krrood.entity_query_language.verbalization.grammar.framework.specificity im
 from krrood.entity_query_language.verbalization.microplanning.coordination import (
     RangeFold,
 )
+from krrood.entity_query_language.verbalization.vocabulary.words import Number
 
 
 class Slot(Enum):
@@ -50,6 +51,10 @@ class Placement:
 
     subject: Variable
     """The variable the condition may attach to."""
+
+    number: Number = Number.SINGULAR
+    """The number the subject (and so the predicate) agrees with — singular for a query subject,
+    plural for an aggregated inference antecedent (*"whose children are …"*)."""
 
 
 @dataclass(frozen=True)
@@ -195,7 +200,7 @@ class WhosePredicateForm(StandaloneForm):
     @classmethod
     def render(cls, request: Placement, context: RuleContext) -> Fragment:
         return ConditionAssembler(context).attribute_modifier(
-            request.item, request.subject
+            request.item, request.subject, request.number
         )
 
 
