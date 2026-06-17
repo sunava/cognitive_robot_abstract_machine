@@ -1211,8 +1211,6 @@ class GraphVisualizer:
             labelcolor="black",
             fontsize=legend_fs,
             title_fontsize=title_fs,
-            facecolor="white",
-            labelcolor="black",
         )
         legend.get_title().set_color("black")
 

@@ -96,7 +96,7 @@ def goal_surface_of_object(
     supporting_surface = variable(HasSupportingSurface, supporting_surfaces)
     supporting_body = supporting_surface.bodies[0]
     non_supporting_table = entity(supporting_surface).where(
-        exists(supporting_surface, not_(is_supporting(supporting_body))))
+        exists(supporting_body, not_(is_supporting(supporting_body))))
 
     # Query annotations on the surfaces of the tables
     obj = variable(SemanticAnnotation, semantic_annotations_on_surfaces(
