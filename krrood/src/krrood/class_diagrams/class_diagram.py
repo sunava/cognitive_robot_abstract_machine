@@ -45,6 +45,7 @@ from krrood.class_diagrams.attribute_introspector import (
     AttributeIntrospector,
     DataclassOnlyIntrospector,
 )
+from krrood.class_diagrams.method_classifier import factory_method_names
 from krrood.class_diagrams.utils import get_generic_type_param, resolve_type
 from krrood.class_diagrams.wrapped_field import WrappedField
 
@@ -318,6 +319,14 @@ class WrappedClass(Generic[T]):
         :return: The name of the class that is wrapped.
         """
         return self.clazz.__name__
+
+    @cached_property
+    def factory_methods(self) -> Tuple[str, ...]:
+        """
+        :return: The names of the factory classmethods of the wrapped class (see
+            :func:`krrood.class_diagrams.method_classifier.is_factory_method`).
+        """
+        return factory_method_names(self.clazz)
 
     def __hash__(self):
         return hash((self.index, self.clazz))

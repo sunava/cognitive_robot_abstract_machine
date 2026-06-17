@@ -14,6 +14,7 @@ from typing_extensions import (
 )
 
 from krrood.class_diagrams.exceptions import ClassIsUnMappedInClassDiagram
+from krrood.class_diagrams.method_classifier import factory_method, is_factory_method
 from krrood.class_diagrams.utils import ROLE_TAKER_METADATA_KEY, T
 from krrood.class_diagrams.wrapped_field import WrappedField
 from krrood.exceptions import DataclassException
@@ -41,6 +42,42 @@ class RoleTakerFieldNotFound(DataclassException):
         self.message = (
             f"{self.role_type.__name__} declares no role-taker field. A role must mark "
             f"exactly one field with role_taker_field()."
+        )
+        super().__post_init__()
+
+
+@dataclass
+class DelegatedFactoryMethodError(DataclassException):
+    """
+    Raised when a role-taker factory method is invoked through a role.
+
+    A factory classmethod constructs an instance of the role taker, so delegating it through a
+    role would return a bare role taker and silently drop the role. The call is refused to keep
+    that mistake loud instead of quiet.
+    """
+
+    role_type: Type
+    """
+    The role type the factory method was accessed through.
+    """
+
+    taker_type: Type
+    """
+    The role-taker type that declares the factory method.
+    """
+
+    method_name: str
+    """
+    The name of the delegated factory method.
+    """
+
+    def __post_init__(self):
+        self.message = (
+            f"{self.taker_type.__name__}.{self.method_name}() is a factory method; calling it "
+            f"through {self.role_type.__name__} would build a bare {self.taker_type.__name__} and "
+            f"drop the role. Either override {self.method_name}() on {self.role_type.__name__} to "
+            f"return a proper role, or call it on the role taker explicitly via .role_taker or "
+            f".root_persistent_entity."
         )
         super().__post_init__()
 
@@ -194,7 +231,30 @@ class Role(Symbol, SubClassSafeGeneric[T]):
             role_taker = object.__getattribute__(self, taker_field_name)
         except AttributeError:
             raise AttributeError(item)
+        if not isinstance(role_taker, Role) and is_factory_method(
+            type(role_taker), item
+        ):
+            return self._delegated_factory_guard(role_taker, item)
         return getattr(role_taker, item)
+
+    def _delegated_factory_guard(self, role_taker: T, item: str):
+        """
+        Build a callable that refuses to run a role-taker factory method delegated through a role.
+
+        :param role_taker: The role taker that declares the factory method.
+        :param item: The name of the factory method.
+        :return: A callable that raises :class:`DelegatedFactoryMethodError` when invoked.
+        """
+
+        def guard(*args: Any, **kwargs: Any):
+            raise DelegatedFactoryMethodError(
+                role_type=type(self),
+                taker_type=type(role_taker),
+                method_name=item,
+            )
+
+        guard.__name__ = item
+        return guard
 
     def __setattr__(self, key: str, value: Any):
         """

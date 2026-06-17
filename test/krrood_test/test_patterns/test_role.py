@@ -11,13 +11,21 @@ from krrood.class_diagrams.class_diagram import (
     HasRoleTaker,
     AssociationThroughRoleTaker,
 )
+from krrood.class_diagrams.method_classifier import (
+    factory_method_names,
+    is_factory_method,
+)
 from krrood.class_diagrams.utils import classes_of_module, T
-from krrood.patterns.role import Role, role_taker_field
+from krrood.patterns.role import DelegatedFactoryMethodError, Role, role_taker_field
 from krrood.patterns.subclass_safe_generic import SubClassSafeGeneric
-from ..dataset.role_and_ontology import university_ontology_like_classes
+from ..dataset.role_and_ontology import (
+    university_ontology_like_classes,
+    university_ontology_like_classes_without_descriptors,
+)
 from ..dataset.role_and_ontology.university_ontology_like_classes_without_descriptors import (
     PersonInRoleAndOntology,
     CEOAsFirstRole,
+    CEOThatOverridesFactory,
     Company,
     ProfessorAsFirstRole,
     Course,
@@ -227,6 +235,93 @@ def test_role_taker_associations():
         )
         == 9
     )
+
+
+def test_delegated_factory_method_raises_on_call_through_role():
+    person = PersonInRoleAndOntology(name="Bass")
+    ceo = CEOAsFirstRole(person=person)
+
+    # Accessing the delegated factory is fine; the guard fires only on call.
+    delegated_factory = ceo.from_name
+    with pytest.raises(DelegatedFactoryMethodError):
+        delegated_factory("Other")
+    with pytest.raises(DelegatedFactoryMethodError):
+        ceo.from_name("Other")
+
+    # The @factory_method-marked classmethod is guarded the same way.
+    with pytest.raises(DelegatedFactoryMethodError):
+        ceo.spawn()
+
+
+def test_factory_method_still_callable_on_taker_and_root_persistent_entity():
+    person = PersonInRoleAndOntology(name="Bass")
+    ceo = CEOAsFirstRole(person=person)
+
+    built_from_taker = ceo.role_taker.from_name("Made")
+    built_from_root = ceo.root_persistent_entity.from_name("Made")
+
+    assert isinstance(built_from_taker, PersonInRoleAndOntology)
+    assert built_from_taker.name == "Made"
+    assert isinstance(built_from_root, PersonInRoleAndOntology)
+
+
+def test_role_overriding_factory_method_shadows_the_guard():
+    # A role that overrides the factory keeps the role instead of dropping it. Normal attribute
+    # lookup finds the override, so __getattr__ (and the guard) never runs.
+    from_class = CEOThatOverridesFactory.from_name("Bass")
+    assert isinstance(from_class, CEOThatOverridesFactory)
+    assert from_class.name == "Bass"
+
+    existing = CEOThatOverridesFactory(person=PersonInRoleAndOntology(name="Seed"))
+    from_instance = existing.from_name("Bass")
+    assert isinstance(from_instance, CEOThatOverridesFactory)
+    assert from_instance.name == "Bass"
+
+
+def test_factory_method_guard_applies_through_nested_roles():
+    person = PersonInRoleAndOntology(name="Bass")
+    representative = RepresentativeAsSecondRole(ceo=CEOAsFirstRole(person=person))
+    with pytest.raises(DelegatedFactoryMethodError):
+        representative.from_name("Other")
+
+
+def test_ordinary_taker_method_still_delegates_through_role():
+    person = PersonInRoleAndOntology(name="Bass", works_for=Company(name="BassCo"))
+    ceo = CEOAsFirstRole(person=person)
+
+    # An ordinary (non-factory) classmethod delegates to the taker and runs normally.
+    assert ceo.describe() == "PersonInRoleAndOntology"
+    # An instance method also keeps delegating.
+    assert ceo.method_in_person() == Company(name="BassCo")
+
+
+def test_is_factory_method_classification():
+    assert is_factory_method(PersonInRoleAndOntology, "from_name")  # -> Self annotation
+    assert is_factory_method(PersonInRoleAndOntology, "spawn")  # @factory_method marker
+    assert not is_factory_method(PersonInRoleAndOntology, "describe")  # -> str
+    assert not is_factory_method(
+        PersonInRoleAndOntology, "method_in_person"
+    )  # instance
+    assert not is_factory_method(PersonInRoleAndOntology, "name")  # not a method
+
+    names = factory_method_names(PersonInRoleAndOntology)
+    assert "from_name" in names and "spawn" in names
+    assert "describe" not in names and "method_in_person" not in names
+
+
+def test_wrapped_class_exposes_factory_methods():
+    classes = [
+        cls
+        for cls in classes_of_module(
+            university_ontology_like_classes_without_descriptors
+        )
+        if is_dataclass(cls)
+    ]
+    diagram = ClassDiagram(classes)
+    wrapped = diagram.get_wrapped_class(PersonInRoleAndOntology)
+    assert "from_name" in wrapped.factory_methods
+    assert "spawn" in wrapped.factory_methods
+    assert "describe" not in wrapped.factory_methods
 
 
 @dataclass

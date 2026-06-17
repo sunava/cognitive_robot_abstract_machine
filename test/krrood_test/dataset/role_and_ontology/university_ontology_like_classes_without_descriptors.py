@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from typing_extensions import Set, List, TypeVar
+from typing_extensions import Self, Set, List, TypeVar
 
 from test.krrood_test.dataset.role_and_ontology.role_takers_in_another_module import (
     RoleTakerInAnotherModule,
 )
 from krrood.entity_query_language.predicate import Symbol
-from krrood.patterns.role import Role, role_taker_field
+from krrood.patterns.role import Role, factory_method, role_taker_field
 
 
 @dataclass(eq=False)
@@ -54,6 +54,22 @@ class PersonInRoleAndOntology(HasName, Symbol):
             return [self.works_for]
         return self.member_of
 
+    @classmethod
+    def from_name(cls, name: str) -> Self:
+        """A factory classmethod detected via its ``-> Self`` return annotation."""
+        return cls(name=name)
+
+    @classmethod
+    @factory_method
+    def spawn(cls):
+        """A factory classmethod detected only via the ``@factory_method`` marker."""
+        return cls(name="spawned")
+
+    @classmethod
+    def describe(cls) -> str:
+        """An ordinary classmethod that is not a factory (its return type is not the class)."""
+        return cls.__name__
+
 
 @dataclass(eq=False)
 class SubclassOfARoleTaker(PersonInRoleAndOntology):
@@ -69,6 +85,16 @@ TPersonInRoleAndOntology = TypeVar(
 class CEOAsFirstRole(Role[TPersonInRoleAndOntology], Symbol):
     person: TPersonInRoleAndOntology = role_taker_field()
     head_of: RecognizedGroup = None
+
+
+@dataclass(eq=False)
+class CEOThatOverridesFactory(Role[TPersonInRoleAndOntology], Symbol):
+    person: TPersonInRoleAndOntology = role_taker_field()
+
+    @classmethod
+    def from_name(cls, name: str) -> Self:
+        """Overrides the taker factory so the role is preserved instead of being dropped."""
+        return cls(person=PersonInRoleAndOntology(name=name))
 
 
 TSubclassOfARoleTaker = TypeVar("TSubclassOfARoleTaker", bound=SubclassOfARoleTaker)
