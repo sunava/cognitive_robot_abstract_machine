@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import operator
 
+from krrood.entity_query_language.core.mapped_variable import Attribute
 from krrood.entity_query_language.core.variable import Variable
 from krrood.entity_query_language.operators.comparator import Comparator
 from krrood.entity_query_language.verbalization.fragments.base import (
@@ -20,6 +21,7 @@ from krrood.entity_query_language.verbalization.grammar.conditions.operator_phra
     comparator_operator,
 )
 from krrood.entity_query_language.verbalization.grammar.conditions.recognition import (
+    is_none_literal,
     single_hop_attribute,
     superlative_aggregation,
 )
@@ -31,8 +33,10 @@ from krrood.entity_query_language.verbalization.microplanning.coordination impor
 from typing_extensions import List
 from krrood.entity_query_language.core.base_expressions import SymbolicExpression
 from krrood.entity_query_language.verbalization.vocabulary.english import (
+    Absence,
     Articles,
     Copulas,
+    NonExistence,
     Prepositions,
 )
 from krrood.entity_query_language.verbalization.vocabulary.words import Number
@@ -63,13 +67,56 @@ class ConditionAssembler(Assembler[Comparator, None]):
         """
         :param comparator: The comparator to render.
         :param negated: Whether an outer negation applies.
-        :return: The standalone comparator form *"<left> <operator> <right>"*.
+        :return: The standalone comparator form *"<left> <operator> <right>"* — or the absence
+            predicate (*"<owner> has no <attribute>"* / *"<subject> does not exist"*) when it is a
+            non-negated ``<chain> == None`` comparison.
         """
+        if (
+            not negated
+            and comparator.operation is operator.eq
+            and is_none_literal(comparator.right)
+        ):
+            return self.absence(comparator)
         return PhraseFragment(
             parts=[
                 self.context.child(comparator.left),
                 comparator_operator(comparator, self.context.services, negated=negated),
-                self.context.child(comparator.right),
+                self.context.child(comparator.right, as_value=True),
+            ]
+        )
+
+    def absence(
+        self, comparator: Comparator, *, number: Number = Number.SINGULAR
+    ) -> Fragment:
+        """
+        Render an ``<chain> == None`` comparison as an absence predicate rather than a value: an
+        owned attribute reads *"<owner> has no <attribute>"* (the owner is the chain minus its
+        terminal), and a bare variable reads *"<subject> does not exist"* (no attribute to name).
+
+        Both flip the subject and object relative to the *"<attribute> of <owner> is <value>"*
+        frame, so they are standalone predicates — never folded into a *"whose"* / *"respectively"*
+        coordination (see :class:`WhosePredicateForm`'s guard and the match assembler's None split).
+
+        :param comparator: The ``<chain> == None`` comparator.
+        :param number: The number the verb agrees with (plural owner → *"have no"* / *"do not
+            exist"*).
+        :return: The absence predicate fragment.
+        """
+        left = comparator.left
+        if isinstance(left, Attribute):
+            return PhraseFragment(
+                parts=[
+                    self.context.child(left._child_),
+                    Absence.for_number(number).as_fragment(),
+                    RoleFragment.for_attribute(
+                        left._owner_class_, left._attribute_name_
+                    ),
+                ]
+            )
+        return PhraseFragment(
+            parts=[
+                self.context.child(left),
+                NonExistence.for_number(number).as_fragment(),
             ]
         )
 
@@ -118,7 +165,7 @@ class ConditionAssembler(Assembler[Comparator, None]):
                     attribute._owner_class_, attribute._attribute_name_, number=number
                 ),
                 operator_fragment,
-                self.context.child(comparator.right, number=number),
+                self.context.child(comparator.right, number=number, as_value=True),
             ]
         )
 

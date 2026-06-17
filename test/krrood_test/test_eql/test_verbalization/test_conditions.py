@@ -22,6 +22,7 @@ from krrood.entity_query_language.factories import (
 from krrood.entity_query_language.verbalization.grammar.conditions.recognition import (
     attribute_names,
     is_boolean_attribute_chain,
+    is_none_literal,
     references,
     single_hop_attribute,
 )
@@ -74,6 +75,60 @@ def test_predicate_form_end_to_end():
     assert "battery" in text
     assert "greater than" in text
     assert "50" in text
+
+
+# ── Absence: ``== None`` as a predicate, not a value ─────────────────────────
+
+
+@dataclass
+class _Mission:
+    assigned_to: _Robot
+
+
+def test_is_none_literal_recognizer():
+    r = variable(_Robot, [])
+    assert is_none_literal((r.battery == None).right) is True
+    assert is_none_literal((r.battery == 5).right) is False
+
+
+def test_attribute_eq_none_reads_as_has_no():
+    """An owned attribute ``== None`` flips to *"<owner> has no <attribute>"*, not a value."""
+    m = variable(_Mission, [])
+    text = verbalize_expression(m.assigned_to == None)
+    assert "has no assigned_to" in text
+    assert "None" not in text and "nothing" not in text
+
+
+def test_bare_variable_eq_none_reads_as_does_not_exist():
+    """A bare variable ``== None`` (no attribute to name) reads *"<subject> does not exist"*."""
+    r = variable(_Robot, [])
+    text = verbalize_expression(r == None)
+    assert "does not exist" in text
+
+
+def test_subject_where_eq_none_is_standalone_not_whose():
+    """A subject ``where … == None`` is said as its own clause, never folded into *"whose"*."""
+    m = variable(_Mission, [])
+    text = verbalize_expression(an(entity(m).where(m.assigned_to == None)))
+    assert "has no assigned_to" in text
+    assert "whose" not in text
+
+
+# ── Domain-constrained value variables: "one of …" in value position ─────────
+
+
+def test_primitive_domain_variable_lists_in_value_position():
+    """A primitive value-type variable in value position lists its candidates; a subject does not."""
+    r = variable(_Robot, [])
+    text = verbalize_expression(r.battery == variable(int, [1, 2, 3]))
+    assert "one of 1, 2, or 3" in text
+    # The same variable as a bare subject keeps its type-name noun.
+    assert verbalize_expression(variable(int, [1, 2])) == "an int"
+
+
+def test_entity_domain_variable_not_listed():
+    """An entity-type variable's domain is the population and is never listed."""
+    assert verbalize_expression(variable(_Robot, [])) == "a _Robot"
 
 
 # ── Co-indexed comparator factoring ──────────────────────────────────────────

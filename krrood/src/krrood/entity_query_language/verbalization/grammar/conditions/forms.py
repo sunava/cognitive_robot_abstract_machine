@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import operator
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -18,6 +19,7 @@ from krrood.entity_query_language.verbalization.grammar.conditions.assembler imp
     ConditionAssembler,
 )
 from krrood.entity_query_language.verbalization.grammar.conditions.recognition import (
+    is_none_literal,
     references,
     single_hop_attribute,
     superlative_aggregation,
@@ -202,6 +204,8 @@ class WhosePredicateForm(StandaloneForm):
         attribute = single_hop_attribute(item.left, subject)
         if attribute is None or attribute._type_ is bool:
             return False
+        if is_none_literal(item.right):
+            return False  # an absence comparison is AbsenceForm's (standalone, not "whose")
         if superlative_aggregation(item, subject) is not None:
             return False  # a superlative comparator is SuperlativeForm's
         return not references(item.right, subject)
@@ -211,6 +215,33 @@ class WhosePredicateForm(StandaloneForm):
         return ConditionAssembler(context).attribute_modifier(
             request.item, request.subject, request.number
         )
+
+
+class AbsenceForm(StandaloneForm):
+    """A non-negated ``<chain> == None`` comparison → the absence predicate *"<owner> has no
+    <attribute>"* (an owned attribute) or *"<subject> does not exist"* (a bare variable), said as
+    its own clause rather than folded onto the subject noun (the subject/object flip cannot sit in a
+    *"whose …"* coordination).
+
+    >>> mission = variable(Mission, [])
+    >>> verbalize_expression(an(entity(mission).where(mission.assigned_to == None)))
+    'Find a Mission such that the Mission has no assigned_to'
+    """
+
+    slot = Slot.STANDALONE
+
+    @classmethod
+    def applies(cls, request: Placement) -> bool:
+        item = request.item
+        return (
+            isinstance(item, Comparator)
+            and item.operation is operator.eq
+            and is_none_literal(item.right)
+        )
+
+    @classmethod
+    def render(cls, request: Placement, context: RuleContext) -> Fragment:
+        return ConditionAssembler(context).absence(request.item, number=request.number)
 
 
 def place(request: Placement, context: RuleContext) -> Placed:

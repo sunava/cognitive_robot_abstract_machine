@@ -256,6 +256,48 @@ class Conjunctions(VocabEnum):
     OR = PlainWord("or")
 
 
+class Absence(VocabEnum):
+    """Absence-of-attribute verb — the *"has no"* / *"have no"* of *"the Pose has no orientation"*,
+    produced for an owned attribute compared ``== None``. Number-agreeing, but selected explicitly
+    (the morphology pass only agrees the copula), so the right member is chosen here."""
+
+    HAS_NO = OperatorWord("has no")
+    HAVE_NO = OperatorWord("have no")
+
+    @classmethod
+    def for_number(cls, number: Number) -> "Absence":
+        """:return: ``HAVE_NO`` for a plural owner, else ``HAS_NO``."""
+        return cls.HAVE_NO if number is Number.PLURAL else cls.HAS_NO
+
+
+class NonExistence(VocabEnum):
+    """Non-existence verb — the *"does not exist"* / *"do not exist"* of *"the Robot does not
+    exist"*, produced for a bare variable compared ``== None`` (no attribute to name).
+    """
+
+    DOES_NOT_EXIST = OperatorWord("does not exist")
+    DO_NOT_EXIST = OperatorWord("do not exist")
+
+    @classmethod
+    def for_number(cls, number: Number) -> "NonExistence":
+        """:return: ``DO_NOT_EXIST`` for a plural subject, else ``DOES_NOT_EXIST``."""
+        return cls.DO_NOT_EXIST if number is Number.PLURAL else cls.DOES_NOT_EXIST
+
+
+class SetMembership(VocabEnum):
+    """Membership phrase for a domain-constrained value variable — the *"one of"* of *"one of
+    OPTION_A, OPTION_B, or OPTION_C"*."""
+
+    ONE_OF = PlainWord("one of")
+
+
+class Specificity(VocabEnum):
+    """Pre-head marking a concrete object literal as a specific instance (its identity, not its
+    repr) — the *"specific"* of *"a specific Body"*."""
+
+    SPECIFIC = PlainWord("specific")
+
+
 class Punctuation(VocabEnum):
     """Structural punctuation tokens — role-less, like the brackets around a tuple (*"(v1, v2)"*)
     and the comma in a coordinated list (*"a, b, or c"*)."""

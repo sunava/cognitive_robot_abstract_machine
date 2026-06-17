@@ -15,6 +15,9 @@ from krrood.entity_query_language.verbalization.fragments.base import (
 from krrood.entity_query_language.verbalization.grammar.conditions.assembler import (
     ConditionAssembler,
 )
+from krrood.entity_query_language.verbalization.grammar.conditions.recognition import (
+    is_none_literal,
+)
 from krrood.entity_query_language.verbalization.grammar.framework.assembler import (
     Assembler,
 )
@@ -24,6 +27,7 @@ from krrood.entity_query_language.verbalization.grammar.match.planner import (
     MatchPlanner,
 )
 from krrood.entity_query_language.verbalization.vocabulary.english import (
+    Absence,
     Conjunctions,
     Copulas,
     Directive,
@@ -141,18 +145,42 @@ class MatchAssembler(Assembler[Match, MatchPlan]):
     def _given_that_block(self, plan: MatchPlan) -> Optional[Fragment]:
         """:return: The *"given that"* block — one point per attribute group (concrete assignments)
         and per non-grouping condition — or ``None`` when there is nothing to give."""
-        points: List[Fragment] = [
-            self._group_point(group) for group in plan.groups if group.concrete
-        ]
+        points: List[Fragment] = []
+        for group in plan.groups:
+            if group.concrete:
+                points += self._concrete_points(group)
         points += ConditionAssembler(self.context).as_statements(plan.other_conditions)
         if not points:
             return None
         return BlockFragment(header=Keywords.GIVEN_THAT.as_fragment(), items=points)
 
-    def _group_point(self, group: AttributeGroup) -> Fragment:
+    def _concrete_points(self, group: AttributeGroup) -> List[Fragment]:
+        """:return: The given-that points for a group's concrete assignments — a value point for the
+        present attributes (*"x of the <object> is 1"*) and a separate absence point for any set to
+        ``None`` (*"the <object> has no <attrs>"*), since an absence flips subject/object and cannot
+        fold into the *"… respectively"* coordination."""
+        present = [a for a in group.concrete if not is_none_literal(a.value)]
+        absent = [a for a in group.concrete if is_none_literal(a.value)]
+        points: List[Fragment] = []
+        if present:
+            points.append(self._group_point(group, present))
+        if absent:
+            points.append(self._absence_point(group, absent))
+        return points
+
+    def _absence_point(self, group: AttributeGroup, absent: List) -> Fragment:
+        """:return: *"the <object> has no <attrs>"* for attributes assigned ``None``."""
+        return PhraseFragment(
+            parts=[
+                self.context.child(group.object),
+                Absence.HAS_NO.as_fragment(),
+                self._attribute_list([a.attribute for a in absent]),
+            ]
+        )
+
+    def _group_point(self, group: AttributeGroup, concrete: List) -> Fragment:
         """:return: *"x, y, and z of the <object> are 1, 2, and 3 respectively"* for several
         attributes, or *"x of the <object> is 1"* for one."""
-        concrete = group.concrete
         attribute_list = self._attribute_list([a.attribute for a in concrete])
         object_phrase = self.context.child(group.object)
         parts: List[Fragment] = [
@@ -161,10 +189,13 @@ class MatchAssembler(Assembler[Match, MatchPlan]):
             object_phrase,
         ]
         if len(concrete) == 1:
-            parts += [Copulas.IS.as_fragment(), self.context.child(concrete[0].value)]
+            parts += [
+                Copulas.IS.as_fragment(),
+                self.context.child(concrete[0].value, as_value=True),
+            ]
         else:
             value_list = oxford_comma(
-                [self.context.child(a.value) for a in concrete],
+                [self.context.child(a.value, as_value=True) for a in concrete],
                 Conjunctions.AND.as_fragment(),
             )
             parts += [

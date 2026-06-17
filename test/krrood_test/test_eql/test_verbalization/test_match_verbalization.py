@@ -11,9 +11,14 @@ is a value to generate → folded into the header (*"… and predict its x, y, a
 
 from __future__ import annotations
 
+import enum
 from dataclasses import dataclass
 
-from krrood.entity_query_language.factories import match_variable, underspecified
+from krrood.entity_query_language.factories import (
+    match_variable,
+    underspecified,
+    variable,
+)
 from krrood.entity_query_language.verbalization.pipeline import (
     VerbalizationPipeline,
     verbalize_expression,
@@ -193,3 +198,57 @@ def test_nested_predict_with_where_range_on_sub_object():
         "  where\n"
         "    - the x of its position is between 0.0, and 5.0"
     )
+
+
+# ── leaf-value rendering: None, domains, concrete objects ────────────────────
+
+
+class _Color(enum.Enum):
+    RED = "red"
+    GREEN = "green"
+    BLUE = "blue"
+
+
+@dataclass
+class _Widget:
+    color: _Color
+    size: int
+    owner: object
+
+
+def test_none_assignment_reads_as_has_no_separate_from_group():
+    """An attribute set to ``None`` is a *"<object> has no <attr>"* point, pulled out of the
+    *"… respectively"* group of the present attributes — never the raw ``None`` value.
+    """
+    text = verbalize_expression(
+        underspecified(Pose)(position=underspecified(Position)(x=0.1), orientation=None)
+    )
+    assert "the Pose has no orientation" in text
+    assert "None" not in text
+
+
+def test_multiple_none_assignments_coordinate_under_has_no():
+    """Several ``None`` attributes of one object coordinate under a single *"has no"*."""
+    text = verbalize_expression(
+        underspecified(_Widget)(color=None, size=None, owner=object())
+    )
+    assert "has no color, and size" in text
+
+
+def test_domain_value_variable_lists_candidates():
+    """A bounded enum-domain variable assigned to an attribute lists its candidates."""
+    text = verbalize_expression(
+        underspecified(_Widget)(
+            color=variable(_Color, [_Color.RED, _Color.GREEN, _Color.BLUE])
+        )
+    )
+    assert "one of RED, GREEN, or BLUE" in text
+
+
+def test_concrete_object_reads_as_a_specific_type():
+    """A concrete object assignment reads *"a specific <Type>"* — identity, not its repr."""
+    text = verbalize_expression(
+        underspecified(_Widget)(owner=Position(x=1.0, y=2.0, z=3.0))
+    )
+    assert "a specific Position" in text
+    assert "Position(" not in text  # no repr leak

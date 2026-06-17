@@ -178,6 +178,22 @@ def test_verbalize_literal_plain_value():
     assert "42" in verbalize_expression(literal_value)
 
 
+def test_type_name_of_value_none_is_nothing():
+    assert MicroplanningServices().type_name_of_value(None) == "nothing"
+
+
+def test_type_name_of_value_enum_uses_member_name():
+    import enum
+
+    class _Choice(enum.Enum):
+        FIRST_OPTION = "first"
+
+    assert (
+        MicroplanningServices().type_name_of_value(_Choice.FIRST_OPTION)
+        == "FIRST_OPTION"
+    )
+
+
 def test_verbalize_literal_type_object():
     literal_value = Literal(_value_=Apple)
     assert verbalize_expression(literal_value) == "Apple"
@@ -216,7 +232,7 @@ def test_verbalize_attribute_uses_of_form_all_hops():
     assert " of " in text
 
 
-def test_verbalize_index_access_merged_into_attribute():
+def test_verbalize_index_access_rendered_as_ordinal():
     @dataclass
     class Robot:
         tasks: list
@@ -225,7 +241,24 @@ def test_verbalize_index_access_merged_into_attribute():
     text = verbalize_expression(r.tasks[0])
     assert "Robot" in text
     assert "tasks" in text
-    assert "[0]" in text
+    # An integer index reads as an ordinal ("the first of the tasks"), not a raw subscript leak.
+    assert "first" in text
+    assert "[0]" not in text
+
+
+def test_verbalize_index_then_attribute_is_ordinal_chain():
+    @dataclass
+    class Task:
+        name: str
+
+    @dataclass
+    class Robot:
+        tasks: list
+
+    r = variable(Robot, [])
+    text = verbalize_expression(r.tasks[0].name)
+    assert text == "the name of the first of the tasks of a Robot"
+    assert "[0]" not in text
 
 
 def test_verbalize_bool_attribute_predicative():
