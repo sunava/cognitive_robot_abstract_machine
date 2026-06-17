@@ -141,6 +141,10 @@ class QPControllerConfig:
 
     @property
     def control_horizon(self) -> int:
+        """
+        Number of time steps over which commands are applied, two fewer than the prediction
+        horizon because the final two steps only bring the system to rest.
+        """
         return self.prediction_horizon - 2
 
     @classmethod
@@ -149,10 +153,6 @@ class QPControllerConfig:
             target_frequency=20,
             prediction_horizon=7,
         )
-
-    @property
-    def velocity_horizon(self) -> int:
-        return self.prediction_horizon - 2
 
     def set_dof_weight(
         self, dof_name: PrefixedName, derivative: Derivatives, weight: float

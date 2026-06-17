@@ -31,7 +31,7 @@ VELOCITY_LIMIT = 1.0
 
 
 @pytest.fixture()
-def prismatic_world(cylinder_bot_world):
+def prismatic_world():
     world = World()
     with world.modify_world():
         map_body = Body(name=PrefixedName("map"))
@@ -64,7 +64,7 @@ def prismatic_world(cylinder_bot_world):
 
 
 @pytest.fixture()
-def prismatic_world_no_position_limits(cylinder_bot_world):
+def prismatic_world_no_position_limits():
     world = World()
     with world.modify_world():
         map_body = Body(name=PrefixedName("map"))

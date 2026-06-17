@@ -595,14 +595,20 @@ class DofLimits:
                 limit=degree_of_freedom.limits.upper[derivative],
                 base_weight=config.get_dof_weight(degree_of_freedom.name, derivative),
                 t=t,
-                derivative=derivative,
                 horizon=config.prediction_horizon - 3,
                 alpha=config.horizon_weight_gain_scalar,
             )
             quadratic_weights.append(normalized_weight)
         return sm.Vector(quadratic_weights), sm.Vector.zeros(len(quadratic_weights))
 
-    def normalize_dof_weight(self, limit, base_weight, t, horizon, alpha) -> sm.Scalar:
+    def normalize_dof_weight(
+        self,
+        limit: float | None,
+        base_weight: float,
+        t: int,
+        horizon: int,
+        alpha: float,
+    ) -> sm.Scalar:
         """
         Scales a free variable weight by its limit so derivatives become comparable, and ramps it
         over the horizon so later time steps are penalized more.
@@ -786,7 +792,7 @@ class IntegralStrategy(EnforcementStrategy):
             * self.config.mpc_dt
         )
         return sm.hstack(
-            [jacobian for _ in range(self.config.velocity_horizon)]
+            [jacobian for _ in range(self.config.control_horizon)]
             + [sm.Matrix.zeros(jacobian.shape[0], self.number_of_jerk_columns)]
         )
 
@@ -811,7 +817,7 @@ class IntegralStrategy(EnforcementStrategy):
                     normalize_slack_weight(
                         c.quadratic_weight,
                         c.normalization_factor,
-                        self.config.velocity_horizon,
+                        self.config.control_horizon,
                     )
                     for c in self.constraints
                 ]
@@ -821,7 +827,7 @@ class IntegralStrategy(EnforcementStrategy):
                     normalize_slack_weight(
                         c.linear_weight,
                         c.normalization_factor,
-                        self.config.velocity_horizon,
+                        self.config.control_horizon,
                     )
                     for c in self.constraints
                 ]
@@ -872,7 +878,7 @@ class IntegralStrategy(EnforcementStrategy):
                     bounds_getter(c),
                     self.config.mpc_dt,
                     c.normalization_factor,
-                    self.config.velocity_horizon,
+                    self.config.control_horizon,
                 )
                 for c in self.constraints
             ]

@@ -190,14 +190,14 @@ class QuadraticProgramDebugger:
         return names
 
     @property
-    def equality_constr_names(self):
+    def equality_constr_names(self) -> list[str]:
         """
         Returns the names of all equality constraints.
         """
         return self.qp_data_symbolic.eq_constraint_names
 
     @property
-    def inequality_constr_names(self):
+    def inequality_constr_names(self) -> list[str]:
         """
         Returns the names of all inequality constraints.
         """

@@ -64,9 +64,6 @@ from krrood.symbolic_math.symbolic_math import (
     trinary_logic_or,
     FloatVariable,
 )
-from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
-    VizMarkerPublisher,
-)
 from semantic_digital_twin.spatial_types import (
     HomogeneousTransformationMatrix,
     Vector3,
@@ -1703,10 +1700,7 @@ class TestLifeCycleTransitions:
 
 
 class TestMaxManipulability:
-    def test_MaxManipulability(self, pr2_world_state_reset: World, rclpy_node):
-        VizMarkerPublisher(
-            _world=pr2_world_state_reset, node=rclpy_node
-        ).with_tf_publisher()
+    def test_MaxManipulability(self, pr2_world_state_reset: World):
         root = pr2_world_state_reset.get_body_by_name("base_footprint")
         tip = pr2_world_state_reset.get_body_by_name("r_gripper_tool_frame")
 

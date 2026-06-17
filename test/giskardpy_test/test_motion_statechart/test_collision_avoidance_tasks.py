@@ -85,8 +85,7 @@ from semantic_digital_twin.world_description.world_entity import (
 )
 
 
-def test_external_collision_avoidance(cylinder_bot_world: World, rclpy_node):
-    VizMarkerPublisher(_world=cylinder_bot_world, node=rclpy_node).with_tf_publisher()
+def test_external_collision_avoidance(cylinder_bot_world: World):
     robot = cylinder_bot_world.get_semantic_annotations_by_type(AbstractRobot)[0]
     tip = cylinder_bot_world.get_kinematic_structure_entity_by_name("bot")
     env1 = cylinder_bot_world.get_kinematic_structure_entity_by_name("environment")

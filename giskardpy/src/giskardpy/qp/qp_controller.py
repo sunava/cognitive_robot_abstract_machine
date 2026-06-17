@@ -37,6 +37,7 @@ class QPController:
     qp_data_factory: QPDataFactory = field(default=None, init=False)
     qp_solver: QPSolver = field(default=None, init=False)
     debugger: QuadraticProgramDebugger = field(default=None, init=False)
+    dof_filter: np.ndarray = field(default=None, init=False)
 
     def __post_init__(self, degrees_of_freedom: List[DegreeOfFreedom]):
         self.qp_solver = self.config.qp_solver_class()

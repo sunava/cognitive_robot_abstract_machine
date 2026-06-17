@@ -41,9 +41,6 @@ from krrood.symbolic_math.symbolic_math import (
     trinary_logic_and,
     trinary_logic_not,
 )
-from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
-    VizMarkerPublisher,
-)
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.robots.robot_parts import EndEffector
 from semantic_digital_twin.robots.hsrb import HSRB
@@ -361,10 +358,7 @@ class TestCartesianTasks:
         diff = after - t
         print(diff / kin_sim.control_cycles)
 
-    def test_cart_goal_1eef(self, pr2_world_state_reset: World, rclpy_node):
-        VizMarkerPublisher(
-            _world=pr2_world_state_reset, node=rclpy_node
-        ).with_tf_publisher()
+    def test_cart_goal_1eef(self, pr2_world_state_reset: World):
         tip = pr2_world_state_reset.get_kinematic_structure_entity_by_name(
             "r_gripper_tool_frame"
         )

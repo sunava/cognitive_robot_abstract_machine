@@ -580,21 +580,21 @@ class World(HasSimulatorProperties):
 
     @property
     def active_degrees_of_freedom(self) -> list[DegreeOfFreedom]:
-        result = []
-        for connection in self.connections:
-            for dof in connection.active_dofs:
-                if dof not in result:
-                    result.append(dof)
-        return result
+        return list(
+            dict.fromkeys(
+                dof for connection in self.connections for dof in connection.active_dofs
+            )
+        )
 
     @property
     def passive_degrees_of_freedom(self) -> list[DegreeOfFreedom]:
-        result = []
-        for connection in self.connections:
-            for dof in connection.passive_dofs:
-                if dof not in result:
-                    result.append(dof)
-        return result
+        return list(
+            dict.fromkeys(
+                dof
+                for connection in self.connections
+                for dof in connection.passive_dofs
+            )
+        )
 
     @property
     def regions(self) -> List[Region]:
