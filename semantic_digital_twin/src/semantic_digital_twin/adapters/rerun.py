@@ -113,7 +113,7 @@ class RerunAdapter(StateChangeCallback):
     """Name of the Rerun timeline driven by the world state version."""
     state_history: bool = field(default=False, kw_only=True)
     """Keep a scrubbable state history (bounded by ``memory_limit``); if ``False``, keep only the current state."""
-    memory_limit: str = field(default="75%", kw_only=True)
+    memory_limit: str = field(default="10%", kw_only=True)
     """Spawned-viewer memory budget (e.g. ``"2GB"``); oldest data is dropped past it. Only used by the ``SPAWN`` mode."""
 
     recording: rr.RecordingStream = field(init=False)
