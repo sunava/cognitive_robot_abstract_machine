@@ -696,7 +696,7 @@ A type variable for Liquid types.
 
 
 @dataclass(eq=False)
-class Bottle(HasCaseAsRootBody, HasStorageSpace[TLiquid]):
+class Bottle(HasCaseAsRootBody, IsStorageSpace[TLiquid]):
     """
     Abstract class for bottles.
     """
@@ -732,7 +732,7 @@ class MustardBottle(Bottle[Mustard]):
 
 
 @dataclass(eq=False)
-class DrinkingContainer(HasStorageSpace[TLiquid]): ...
+class DrinkingContainer(IsStorageSpace[TLiquid]): ...
 
 
 @dataclass(eq=False)
@@ -972,7 +972,7 @@ class Salt(SaltOrPepper):
 
 @dataclass(eq=False)
 class SaltContainer(
-    HasStorageSpace[Salt],
+    IsStorageSpace[Salt],
     IsPerceivable,
 ):
     """
@@ -1159,7 +1159,7 @@ class BookFront(HasRootBody): ...
 
 @dataclass(eq=False)
 class SaltPepperShaker(
-    HasStorageSpace[SaltOrPepper],
+    IsStorageSpace[SaltOrPepper],
 ):
     """
     A salt and pepper shaker is a container that cotains salt and pepper and can be shaken to sprinkle the contents
