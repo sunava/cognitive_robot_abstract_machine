@@ -9,6 +9,7 @@ from coraplex.datastructures.grasp_scoring import (
 )
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.spatial_types.spatial_types import Pose, Point3, Quaternion
+from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 
 import uuid
 from semantic_digital_twin.world_description.world_entity import Body
@@ -40,11 +41,9 @@ def object_tree(object_mesh):
 def gripper_mesh():
     """Creates a simple parallel-jaw gripper out of two box-shaped fingers."""
     finger1 = trimesh.creation.box(extents=[0.02, 0.02, 0.1])
-    finger1.apply_translation([0, 0.06, 0])
-
+    finger1.apply_translation([0, 0.065, 0])
     finger2 = trimesh.creation.box(extents=[0.02, 0.02, 0.1])
-    finger2.apply_translation([0, -0.06, 0])
-
+    finger2.apply_translation([0, -0.065, 0])
     return trimesh.util.concatenate([finger1, finger2])
 
 
@@ -62,7 +61,7 @@ def test_calculate_grasp_score_collision(gripper_mesh, object_mesh, object_tree)
     # Translate gripper such that one of the fingers intersects with the object.
     # The object occupies y in [-0.05, 0.05]. Moving the gripper by 0.02 in y
     # puts finger2 at y=-0.04, causing an intersection.
-    grasp_pose = Pose(Point3(0.0, 0.02, 0.05), Quaternion(1.0, 0.0, 0.0, 0.0))
+    grasp_pose = Pose(Point3(0.0, 0.02, 0.05), Quaternion())
 
     score = scorer.calculate_grasp_score(
         grasp_pose, gripper_mesh, object_mesh, object_tree
@@ -73,7 +72,7 @@ def test_calculate_grasp_score_collision(gripper_mesh, object_mesh, object_tree)
 def test_calculate_grasp_score_clearance(gripper_mesh, object_mesh, object_tree):
     """Tests if the GraspScorer detects when the gripper dives below the ground plane."""
     # Submerge the gripper below the ground plane z=0
-    grasp_pose = Pose(Point3(0.0, 0.0, -0.5), Quaternion(1.0, 0.0, 0.0, 0.0))
+    grasp_pose = Pose(Point3(0.0, 0.0, -0.5), Quaternion())
 
     score = scorer.calculate_grasp_score(
         grasp_pose, gripper_mesh, object_mesh, object_tree
@@ -84,23 +83,22 @@ def test_calculate_grasp_score_clearance(gripper_mesh, object_mesh, object_tree)
 def test_calculate_grasp_score_good_grasp(gripper_mesh, object_mesh, object_tree):
     """Tests the stability analysis on a completely valid grasp without collisions."""
     # Position the gripper perfectly around the object.
-    # Fingers are at y=+-0.06, which clears the object (y ends at +-0.05).
-    grasp_pose = Pose(Point3(0.0, 0.0, 0.05), Quaternion(1.0, 0.0, 0.0, 0.0))
+    # Fingers are at y=+-0.065, which clears the object (y ends at +-0.05).
+    grasp_pose = Pose(Point3(0.0, 0.0, 0.05), Quaternion())
 
     score = scorer.calculate_grasp_score(
         grasp_pose, gripper_mesh, object_mesh, object_tree
     )
-    # Since the internal rays from y=+-0.06 pointing inwards will intersect the
+    # Since the internal rays from local y=+-0.06 pointing inwards will intersect the
     # object and give normal and distance scores, the score should be positive.
     assert score > 0.0
 
 
 def test_rank_grasps(gripper_mesh, object_mesh):
     """Tests whether grasping poses are correctly ranked by score."""
-    pose_good = Pose(Point3(0.0, 0.0, 0.05), Quaternion(1.0, 0.0, 0.0, 0.0))
-    pose_collision = Pose(Point3(0.0, 0.02, 0.05), Quaternion(1.0, 0.0, 0.0, 0.0))
-    pose_clearance = Pose(Point3(0.0, 0.0, -0.5), Quaternion(1.0, 0.0, 0.0, 0.0))
-
+    pose_good = Pose(Point3(0.0, 0.0, 0.05), Quaternion())
+    pose_collision = Pose(Point3(0.0, 0.02, 0.05), Quaternion())
+    pose_clearance = Pose(Point3(0.0, 0.0, -0.5), Quaternion())
     grasps = [pose_clearance, pose_collision, pose_good]
 
     # Ranks grasps descending by score
@@ -137,7 +135,7 @@ def test_load_successful_grasps_from_dataset(tmp_path):
 
     grasp = GraspPose(
         position=Point3(1.0, 2.0, 3.0),
-        orientation=Quaternion(1.0, 0.0, 0.0, 0.0),
+        orientation=Quaternion(),
         reference_frame=body,
     )
 
@@ -148,7 +146,7 @@ def test_load_successful_grasps_from_dataset(tmp_path):
 
     # Test loading the existing grasp
     grasps = load_successful_grasps_from_dataset(
-        str(db_path), "fake_gripper", str(test_uuid)
+        str(db_path), "fake_gripper", test_uuid
     )
 
     assert len(grasps) == 1
@@ -158,6 +156,7 @@ def test_load_successful_grasps_from_dataset(tmp_path):
 
     # Test with non-existing UUID
     empty_grasps = load_successful_grasps_from_dataset(
-        str(db_path), "fake_gripper", str(uuid.uuid4())
+        str(db_path), "fake_gripper", uuid.uuid4()
     )
+
     assert len(empty_grasps) == 0

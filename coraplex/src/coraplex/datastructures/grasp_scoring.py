@@ -155,12 +155,24 @@ class GraspScorer:
             ray_origins=ray_origins_world, ray_directions=ray_directions_world, multiple_hits=False
         )
 
+        contact_points = []
+        contact_normals = []
+        
+        for i in range(len(ray_origins_world)):
+            mask = (index_ray == i)
+            if np.any(mask):
+                locs = locations[mask]
+                tris = index_triangle[mask]
+                dists = np.linalg.norm(locs - ray_origins_world[i], axis=1)
+                closest_idx = np.argmin(dists)
+                contact_points.append(locs[closest_idx])
+                contact_normals.append(object_mesh.face_normals[tris[closest_idx]])
+
         # Grade the contact instead of pass/fail
-        if len(locations) == 2:
+        if len(contact_points) == 2:
             # IDEAL CASE: Two contacts found, calculate a full, detailed score.
-            contact_p1, contact_p2 = locations
-            normal_p1 = object_mesh.face_normals[index_triangle[0]]
-            normal_p2 = object_mesh.face_normals[index_triangle[1]]
+            contact_p1, contact_p2 = contact_points
+            normal_p1, normal_p2 = contact_normals
 
             normal_score = max(0.0, -np.dot(normal_p1, normal_p2))
             distance_score = np.linalg.norm(contact_p1 - contact_p2)
@@ -169,7 +181,7 @@ class GraspScorer:
             positive_score = (self.weight_normal * normal_score) + (self.weight_distance * distance_score) + (self.weight_clearance * clearance_score)
             total_score += positive_score
 
-        elif len(locations) == 1:
+        elif len(contact_points) == 1:
             # GOOD ENOUGH CASE: One contact found. Give a small, fixed bonus.
             total_score += self.score_partial_contact
         else:
@@ -210,13 +222,13 @@ class GraspScorer:
         ranked_grasps.sort(key=lambda x: x.score, reverse=True)
         return ranked_grasps
 
-def load_successful_grasps_from_dataset(dataset_path: str, gripper_name: str, object_uuid: Union[str, uuid.UUID]) -> List[Pose]:
+def load_successful_grasps_from_dataset(dataset_path: str, gripper_name: str, object_uuid: uuid.UUID) -> List[Pose]:
     """
     Helper to read dataset and return a list of successful grasp poses using ormatic.
     
     :param dataset_path: The database path or root directory path containing the dataset SQLite database.
     :param gripper_name: The name of the gripper used in the dataset.
-    :param object_uuid: The unique identifier for the target object (string or UUID).
+    :param object_uuid: The unique identifier for the target object.
     :return: A list of Pose objects representing successful grasp poses. Returns an empty list if no grasps are found.
     """
     from coraplex.orm.ormatic_interface import GrasPoseMappingDAO
@@ -233,12 +245,10 @@ def load_successful_grasps_from_dataset(dataset_path: str, gripper_name: str, ob
 
     engine = create_engine(db_uri, echo=False)
     with Session(engine) as session:
-        target_uuid = uuid.UUID(object_uuid) if isinstance(object_uuid, str) else object_uuid
-
         query = (
             select(GrasPoseMappingDAO)
             .join(BodyDAO, GrasPoseMappingDAO.reference_frame_id == BodyDAO.database_id)
-            .where(BodyDAO.id == target_uuid)
+            .where(BodyDAO.id == object_uuid)
         )
         
         grasp_daos = session.scalars(query).all()
