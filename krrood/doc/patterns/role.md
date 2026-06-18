@@ -158,7 +158,7 @@ fields declared directly on the role class. The **Python Role Lens** plugin for 
 the delegated ones, and lets you navigate straight to the source class that defines each
 attribute — much like navigating an inheritance hierarchy.
 
-- Plugin: [Python Role Lens on the JetBrains Marketplace](https://share.google/9peTa3AIqJ9cGsZYK)
+- Plugin: [Python Role Lens on the JetBrains Marketplace](https://plugins.jetbrains.com/plugin/32276-python-role-lens)
 - Install from your IDE: open **Settings → Plugins → Marketplace** and search for
   *Python Role Lens* (plugin id `io.github.abdelrhmanbassiouny.pyroles`).
 
@@ -344,7 +344,7 @@ flowchart TD
 - **Source**: `krrood/src/krrood/patterns/role.py`
 - **Tests**: `test/krrood_test/test_patterns/test_role.py` and the dataset under
   `test/krrood_test/dataset/role_and_ontology/`.
-- **IDE tooling**: [Python Role Lens](https://share.google/9peTa3AIqJ9cGsZYK) (plugin id
+- **IDE tooling**: [Python Role Lens](https://plugins.jetbrains.com/plugin/32276-python-role-lens) (plugin id
   `io.github.abdelrhmanbassiouny.pyroles`) — a JetBrains plugin that displays a role's
   accessible (including delegated) attributes and lets you navigate to the classes that
   define them.
