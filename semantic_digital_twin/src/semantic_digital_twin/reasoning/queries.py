@@ -5,15 +5,37 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import Frui
 
 from krrood.entity_query_language.factories import variable_from, entity, contains, variable, \
     an, and_, exists, not_, set_of, type_
+import math
+from typing import List, Union, Optional
+from krrood.entity_query_language.factories import (
+    variable_from,
+    entity,
+    flat_variable,
+    in_,
+    the,
+    contains,
+    variable,
+    an,
+    or_,
+    and_,
+    distinct,
+)
 from krrood.entity_query_language.query.query import Entity
 from krrood.entity_query_language.predicate import symbolic_function, length
+from krrood.utils import recursive_subclasses
 from krrood.utils import recursive_subclasses
 
 from semantic_digital_twin.reasoning.predicates import (
     is_supported_by,
     is_supporting, compute_euclidean_planar_distance, inheritance_path_length_,
+    is_supporting,
+    compute_euclidean_planar_distance,
 )
-from semantic_digital_twin.semantic_annotations.mixins import HasSupportingSurface, IsPerceivable, HasRootBody
+from semantic_digital_twin.semantic_annotations.mixins import (
+    HasSupportingSurface,
+    IsPerceivable,
+    HasRootBody,
+)
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.geometry import Color
 
@@ -61,9 +83,9 @@ def get_next_object_using_planar_distance(
     """
     # if supporting_surface is None:
     #     return []
-    supported_semantic_annotations = variable_from(semantic_annotations_on_surfaces(
-        [supporting_surface], main_body._world
-    ))
+    supported_semantic_annotations = variable_from(
+        semantic_annotations_on_surfaces([supporting_surface], main_body._world)
+    )
     return entity(supported_semantic_annotations).ordered_by(
         compute_euclidean_planar_distance(
             body1=supported_semantic_annotations.bodies[0],
@@ -112,7 +134,10 @@ def goal_surface_of_object(
     return next(query[supporting_surface].evaluate(), next(non_supporting_table.evaluate(), None))
 
 
-def filter_annotations_by_color(color: Color, objects: list[SemanticAnnotation]) -> Entity[SemanticAnnotation]:
+
+def filter_annotations_by_color(
+    color: Color, objects: list[SemanticAnnotation]
+) -> Entity[SemanticAnnotation]:
     """
     Queries and retrieves a list of annotations from another one that match
     the specified color based on their visual properties.
@@ -149,11 +174,17 @@ def annotation_class_by_label(label: str) -> Optional[type]:
     :return: The matching class (e.g., Bowl) or None if no match is found.
     """
     semantic_class = variable_from(recursive_subclasses(IsPerceivable))
-    matching_class = an(entity(semantic_class).where(contains(label.lower(), semantic_class.__name__.lower())))
+    matching_class = an(
+        entity(semantic_class).where(
+            contains(label.lower(), semantic_class.__name__.lower())
+        )
+    )
     return next(matching_class.evaluate(), None)
 
 
-def sort_annotations_by_volume(annotations: List[HasRootBody], order: Optional[bool] = True) -> List[HasRootBody]:
+def sort_annotations_by_volume(
+    annotations: List[HasRootBody], order: Optional[bool] = True
+) -> List[HasRootBody]:
     """
     Sorts a list of SemanticAnnotations by volume in descending order (largest to smallest).
     Volume is calculated by multiplying the scale dimensions (x * y * z) of the object's shape.
@@ -171,29 +202,12 @@ def sort_annotations_by_volume(annotations: List[HasRootBody], order: Optional[b
 
         # Get shapes from collision if available, otherwise from visual
         if body.collision is not None:
-            return body.collision.scale.x * body.collision.scale.y * body.collision.scale.z
+            return (
+                body.collision.scale.x * body.collision.scale.y * body.collision.scale.z
+            )
         else:
             return 0.0
 
-    return entity(annotaion_var).ordered_by(get_volume(annotaion_var), descending=not order)
-
-# world1 = kitchen_environment_fixture()
-# table1 = world1.get_semantic_annotation_by_name("fruit_table")
-# table2 = world1.get_semantic_annotation_by_name("vegetable_table")
-# table3 = world1.get_semantic_annotation_by_name("empty_table")
-#
-# banana = world1.get_semantic_annotation_by_name("banana")
-#
-# print(goal_surface_of_object(banana, [table1, table2, table3]))
-
-
-# a = True
-# b = True
-# c = True
-#
-# if not (a and b and c):
-#     print("test")
-# else:
-#     print("test2")
-#
-# print(issubclass(Banana, Apple))
+    return entity(annotaion_var).ordered_by(
+        get_volume(annotaion_var), descending=not order
+    )
