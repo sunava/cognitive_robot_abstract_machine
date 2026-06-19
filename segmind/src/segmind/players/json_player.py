@@ -64,9 +64,6 @@ class JSONPlayer(FilePlayer):
     Correction matrix for the average rotation of the objects.
     """
 
-    def __post_init__(self):
-        super().__post_init__()
-
     def get_frame_data_generator(self):
         """
         Generates the frame data from the json file.

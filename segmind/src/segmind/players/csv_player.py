@@ -25,9 +25,6 @@ class CSVEpisodePlayer(FilePlayer):
     The names of the objects in the CSV file.
     """
 
-    def __post_init__(self):
-        super().__post_init__()
-
     def get_frame_data_generator(self):
         """
         Reads the CSV file and generates the frame data.

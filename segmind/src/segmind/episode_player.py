@@ -34,7 +34,7 @@ class EpisodePlayer(PropagatingThread, ABC):
     The world associated with the episode player.
     """
 
-    time_between_frames: Optional[datetime.timedelta] = None
+    time_between_frames: Optional[datetime.timedelta] = field(default_factory=lambda: datetime.timedelta(seconds=0.01))
     """
     The time between frames of the episode player.
     """
@@ -64,15 +64,23 @@ class EpisodePlayer(PropagatingThread, ABC):
     A lock for pausing and resuming the episode player.
     """
 
+    _ready : bool = field(default=False, init=False)
+    """
+    Whether the episode player is ready to start playing.
+    """
+
+    _status: PlayerStatus = field(default=PlayerStatus.CREATED, init=False)
+    """
+    The status of the episode player.
+    """
+
+    _initialized: bool = field(default=False, init=False)
+    """
+    Whether the episode player has been initialized.
+    """
+
     def __post_init__(self):
-        if self._initialized:
-            return
         super().__post_init__()
-        self._ready: bool = False
-        self._status = PlayerStatus.CREATED
-        if self.time_between_frames is None:
-            self.time_between_frames = datetime.timedelta(seconds=0.01)
-        self._initialized = True
 
     def __new__(cls, *args, **kwargs):
         if cls not in EpisodePlayer._instances:

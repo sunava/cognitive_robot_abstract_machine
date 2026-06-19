@@ -61,10 +61,14 @@ class DataPlayer(EpisodePlayer, ABC):
     If True, only the robot will be synchronized.
     """
 
+    frame_data_generator: FrameDataGenerator = field(init=False)
+    """
+    The generator that yields frame data for playback.
+    """
+
     def __post_init__(self):
         super().__post_init__()
-        if not hasattr(self, 'frame_data_generator'):
-            self.frame_data_generator: FrameDataGenerator = self.get_frame_data_generator()
+        self.frame_data_generator = self.get_frame_data_generator()
 
     def reset(self):
         """
@@ -149,8 +153,19 @@ class FilePlayer(DataPlayer, ABC):
     """
 
     file_path: str = ""
+    """
+    The path to the file.
+    """
+
     models_dir: Optional[str] = None
+    """
+    The directory containing the models.
+    """
+
     position_shift: Optional[Vector3] = None
+    """
+    Position shift that needs to be applied to the objects.
+    """
 
     def __post_init__(self):
         super().__post_init__()

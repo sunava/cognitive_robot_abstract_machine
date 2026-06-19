@@ -17,7 +17,7 @@ class PropagatingThread(threading.Thread, ABC):
     when registering instances internally on initialization.
     """
 
-    exc: Optional[Exception] = field(default=None, init=False)
+    exception: Optional[Exception] = field(default=None, init=False)
     """
     Exception that was raised in the thread.
     """
@@ -27,7 +27,7 @@ class PropagatingThread(threading.Thread, ABC):
         self.kill_event = threading.Event()
 
     def run(self):
-        self.exc = None
+        self.exception = None
         self._run()
 
     @abstractmethod

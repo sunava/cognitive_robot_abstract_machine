@@ -7,7 +7,6 @@ from giskardpy.executor import Executor
 from semantic_digital_twin.adapters.package_resolver import FileUriResolver
 from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
-from semantic_digital_twin.semantic_annotations.semantic_annotations import Aperture
 from semantic_digital_twin.world_description.connections import (
     Connection6DoF,
     FixedConnection,
@@ -113,22 +112,19 @@ class EpisodeSegmenterExecutor(Executor):
         obj_name = file.stem
         if obj_name in self.ignored_objects:
             return
-        try:
-            resolver_kwargs = (
-                {"path_resolver": FileUriResolver(base_directory=str(file.parent))}
-                if file_resolver is not None
-                else {}
-            )
-            obj_world = URDFParser.from_file(str(file), **resolver_kwargs).parse()
-            connection = (
-                FixedConnection(parent=self.context.world.root, child=obj_world.root)
-                if obj_name in self.fixed_objects
-                else None
-            )
-            with self.context.world.modify_world():
-                self.context.world.merge_world(obj_world, *([connection] if connection else []))
-        except (FileNotFoundError, OSError) as e:
-            logger.warning(f"File issue with {file}: {e}")
+        resolver_kwargs = (
+            {"path_resolver": FileUriResolver(base_directory=str(file.parent))}
+            if file_resolver is not None
+            else {}
+        )
+        obj_world = URDFParser.from_file(str(file), **resolver_kwargs).parse()
+        connection = (
+            FixedConnection(parent=self.context.world.root, child=obj_world.root)
+            if obj_name in self.fixed_objects
+            else None
+        )
+        with self.context.world.modify_world():
+            self.context.world.merge_world(obj_world, *([connection] if connection else []))
 
     def _load_stl(self, file: Path):
         """
