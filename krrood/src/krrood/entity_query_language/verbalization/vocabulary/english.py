@@ -284,6 +284,30 @@ class NonExistence(VocabEnum):
         return cls.DO_NOT_EXIST if number is Number.PLURAL else cls.DOES_NOT_EXIST
 
 
+class PassiveAbsence(VocabEnum):
+    """Passive absence verb for a *relational* (past-participle) attribute — the *"has not been"* /
+    *"have not been"* of *"a Mission has not been assigned to any Robot"*, produced for a
+    ``<participle>_<preposition>`` attribute compared ``== None``. Number-agreeing, selected
+    explicitly (the morphology pass only agrees the copula)."""
+
+    HAS_NOT_BEEN = OperatorWord("has not been")
+    HAVE_NOT_BEEN = OperatorWord("have not been")
+
+    @classmethod
+    def for_number(cls, number: Number) -> "PassiveAbsence":
+        """:return: ``HAVE_NOT_BEEN`` for a plural owner, else ``HAS_NOT_BEEN``."""
+        return cls.HAVE_NOT_BEEN if number is Number.PLURAL else cls.HAS_NOT_BEEN
+
+
+class Quantifiers(VocabEnum):
+    """Indefinite quantifier for the object of a passive absence — the *"any"* of *"… assigned to
+    any Robot"*, or the bare *"anything"* when the related type is not a nameable class.
+    """
+
+    ANY = PlainWord("any")
+    ANYTHING = PlainWord("anything")
+
+
 class SetMembership(VocabEnum):
     """Membership phrase for a domain-constrained value variable — the *"one of"* of *"one of
     OPTION_A, OPTION_B, or OPTION_C"*."""
