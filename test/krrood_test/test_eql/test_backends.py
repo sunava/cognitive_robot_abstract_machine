@@ -197,7 +197,6 @@ def test_probabilistic_query_backend():
         position=an(KRROODPosition)(x=..., y=..., z=...),
         orientation=KRROODOrientation(x=0.0, y=0.0, z=0.0, w=1.0),
     )
-    prob_q.resolve()
     prob_q.where(prob_q.variable.position.x > 0.5)
 
     pm_backend = ProbabilisticBackend(number_of_samples=10)
@@ -215,24 +214,8 @@ def test_generative_eql_backend():
         charge=variable_from([0.0, 1.0, 2.0]),
         timestamp=datetime.datetime.now(),
     )
-    q.resolve()
-    q.where(q.variable.type > q.variable.charge)
-    results = list(q.evaluate(backend=EntityQueryLanguageGenerativeBackend()))
-    assert len(results) == 6
-    for result in results:
-        assert isinstance(result.element, Element)
-        assert result.type > result.charge
-
-
-def test_generative_where_without_explicit_resolve():
-    """The subject variable is available as soon as the pattern is specified, so ``where``
-    can reference it without a separate ``resolve()`` call (and without a lambda)."""
-    q = an(Atom)(
-        element=...,
-        type=variable_from([0, 1, 2]),
-        charge=variable_from([0.0, 1.0, 2.0]),
-        timestamp=datetime.datetime.now(),
-    )
+    # No explicit resolve(): the subject variable is available as soon as the pattern is
+    # specified, so where() can reference it directly.
     q.where(q.variable.type > q.variable.charge)
     results = list(q.evaluate(backend=EntityQueryLanguageGenerativeBackend()))
     assert len(results) == 6
