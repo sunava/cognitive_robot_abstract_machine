@@ -221,3 +221,20 @@ def test_generative_eql_backend():
     for result in results:
         assert isinstance(result.element, Element)
         assert result.type > result.charge
+
+
+def test_generative_where_without_explicit_resolve():
+    """The subject variable is available as soon as the pattern is specified, so ``where``
+    can reference it without a separate ``resolve()`` call (and without a lambda)."""
+    q = an(Atom)(
+        element=...,
+        type=variable_from([0, 1, 2]),
+        charge=variable_from([0.0, 1.0, 2.0]),
+        timestamp=datetime.datetime.now(),
+    )
+    q.where(q.variable.type > q.variable.charge)
+    results = list(q.evaluate(backend=EntityQueryLanguageBackend()))
+    assert len(results) == 6
+    for result in results:
+        assert isinstance(result.element, Element)
+        assert result.type > result.charge
