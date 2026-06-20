@@ -177,10 +177,30 @@ class Query(
 
         return wrapper
 
-    def evaluate(self) -> Iterator:
+    def evaluate(self, backend=None) -> Iterator:
         """
-        Wrap the query in a ResultQuantifier expression and evaluate it,
-         returning an iterator over the results.
+        Evaluate the query using the given backend, returning an iterator over the results.
+
+        :param backend: The query backend to evaluate with. Defaults to the
+            ``EntityQueryLanguageBackend`` (native python evaluation).
+        """
+        if backend is None:
+            from krrood.entity_query_language.backends import (
+                EntityQueryLanguageBackend,
+            )
+
+            backend = EntityQueryLanguageBackend()
+        # Finalize the query structure eagerly so that ``evaluate`` consistently marks the
+        # query as built (and forbids further modification) regardless of when the returned
+        # iterator is consumed. ``build`` is idempotent.
+        self.build()
+        return backend.evaluate(self)
+
+    def _evaluate_natively_(self) -> Iterator:
+        """
+        Wrap the query in a ResultQuantifier expression and evaluate it natively (in this
+        python process), returning an iterator over the results. This is the engine used by
+        the ``EntityQueryLanguageBackend``.
         """
         self.build()
         if self._expression_ is not self:

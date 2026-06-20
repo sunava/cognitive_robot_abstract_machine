@@ -50,6 +50,7 @@ from krrood.entity_query_language.exceptions import (
     MatchTypeCannotBeDetermined,
 )
 from krrood.entity_query_language.predicate import HasType
+from krrood.entity_query_language.query.quantifiers import An, ResultQuantifier
 from krrood.entity_query_language.utils import T
 from krrood.patterns.factory_and_kwargs import HasFactoryAndKwargs
 from krrood.rustworkx_utils import RWXNode
@@ -207,7 +208,7 @@ class Match(AbstractMatchExpression[T], HasFactoryAndKwargs[T]):
         >>> @dataclass
         >>> class Drawer:
         >>>     body: Body
-        >>> drawer = match_variable(Drawer, domain=None)(body=match(Body)(name="drawer_1")))
+        >>> drawer = an(Drawer, domain=world.views)(body=an(Body)(name="drawer_1"))
 
     .. warning::
         Match can take a factory as a mean to construct `T`. If the keyword argument names of the match are not
@@ -231,6 +232,12 @@ class Match(AbstractMatchExpression[T], HasFactoryAndKwargs[T]):
     _has_been_called: bool = field(init=False, default=False)
     """
     Flag indicating whether the match instance has been called with keyword arguments.
+    """
+
+    _quantifier_type_: Type[ResultQuantifier] = field(init=False, default=An)
+    """
+    The result quantifier applied when this match is materialized into a runnable query.
+    Defaults to ``An`` (zero or more results); set to ``The`` when built via ``the(...)``.
     """
 
     def __post_init__(self):
@@ -281,6 +288,7 @@ class Match(AbstractMatchExpression[T], HasFactoryAndKwargs[T]):
         entity_ = entity(self.variable)
         if self.conditions:
             entity_ = entity_.where(*self.conditions)
+        entity_._quantify_(self._quantifier_type_)
         self._expression = entity_
         return entity_
 
@@ -385,11 +393,20 @@ class Match(AbstractMatchExpression[T], HasFactoryAndKwargs[T]):
 
         self.variable = variable(self.type, domain=None)
 
-    def evaluate(self):
+    def evaluate(self, backend=None):
         """
         Evaluate the match expression and return the result.
+
+        :param backend: The query backend to evaluate with. Defaults to the
+            ``EntityQueryLanguageBackend`` (native python evaluation / generation).
         """
-        return self.expression.evaluate()
+        if backend is None:
+            from krrood.entity_query_language.backends import (
+                EntityQueryLanguageBackend,
+            )
+
+            backend = EntityQueryLanguageBackend()
+        return backend.evaluate(self)
 
     @property
     def name(self) -> str:

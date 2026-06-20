@@ -21,7 +21,6 @@ from krrood.entity_query_language.factories import (
     variable,
     variable_from,
     entity,
-    an,
 )
 from krrood.entity_query_language.query.match import (
     Match,
@@ -111,7 +110,7 @@ class EntityQueryLanguageBackend(SelectiveBackend):
         if isinstance(expression, Match) and not isinstance(expression, MatchVariable):
             yield from self._evaluate_underspecified(expression)
             return
-        yield from expression.evaluate()
+        yield from expression._evaluate_natively_()
 
     def _evaluate_underspecified(self, expression: Match[T]) -> Iterable[T]:
         """
@@ -133,11 +132,13 @@ class EntityQueryLanguageBackend(SelectiveBackend):
             self._generate_raw_results(expression, variables)
         )
 
-        filtered_results = an(entity(expression.variable))
+        filtered_results = entity(expression.variable)._quantify_(
+            expression._quantifier_type_
+        )
 
         if expression._where_conditions_:
             filtered_results = filtered_results.where(*expression._where_conditions_)
-        yield from filtered_results.evaluate()
+        yield from filtered_results._evaluate_natively_()
 
     def _check_if_attribute_match_is_suitable_for_generation(
         self, attribute_match: AttributeMatch
@@ -190,7 +191,7 @@ class EntityQueryLanguageBackend(SelectiveBackend):
         :return: A generator yielding instances generated from the match expression.
         """
         all_combinations = set_of(*variables.values())
-        for combination in all_combinations.evaluate():
+        for combination in all_combinations._evaluate_natively_():
             for variable_name, value in zip(variables, combination.values()):
                 mapped_variable = expression._get_mapped_variable_by_name(variable_name)
                 mapped_variable._value_ = value
