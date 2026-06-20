@@ -1198,6 +1198,38 @@ def test_subquery_independence():
     assert query.tolist() == [1, 4, 3]
 
 
+def test_editing_and_rebuilding_original_after_embedding_leaves_subquery_snapshot_unchanged():
+    """Embedding a query as a subquery captures an immutable snapshot, so editing **and rebuilding**
+    the original afterwards does not retroactively change the already-embedded copy."""
+    var1 = variable(int, [1, 2, 3, 4])
+    inner = entity(var1).where(var1 == 2)
+    outer = an(entity(var1).where(var1 != an(inner)))
+
+    before = sorted(outer.tolist())
+    assert before == [1, 3, 4]
+
+    # Mutate the original inner query and rebuild it (rebuilding rewires the live query node, which
+    # would corrupt the embedded copy if it were shared rather than snapshotted).
+    inner.where(var1 == 3)
+    inner.tolist()
+
+    assert sorted(outer.tolist()) == before
+
+
+def test_embedded_subquery_is_a_snapshot_clone_sharing_variable_leaves():
+    """The operand embedded for a subquery is an independent clone of the source's compiled
+    expression (not the live node), while variable leaves are shared so derived references stay
+    valid."""
+    var1 = variable(int, [1, 2, 3])
+    source = entity(var1).where(var1 == 2)
+
+    condition = var1 != an(source)
+    source.build()
+
+    assert condition.right is not source._expression_
+    assert any(descendant is var1 for descendant in condition.right._descendants_)
+
+
 def test_first():
     var1 = variable(int, [1, 2, 3])
     first = the(entity(var1)).first()

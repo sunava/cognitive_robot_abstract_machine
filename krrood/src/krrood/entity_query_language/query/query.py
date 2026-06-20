@@ -27,7 +27,11 @@ from typing_extensions import (
     Iterator,
 )
 
-from krrood.entity_query_language.core.mapped_variable import CanBehaveLikeAVariable
+from krrood.entity_query_language.core.mapped_variable import (
+    CanBehaveLikeAVariable,
+    MappedVariable,
+)
+from krrood.entity_query_language.query.snapshot import SpineSnapshot
 from krrood.entity_query_language.query.builders import (
     WhereBuilder,
     HavingBuilder,
@@ -39,7 +43,6 @@ from krrood.entity_query_language.query.operations import (
     Where,
     Having,
     GroupedBy,
-    OrderedBy,
 )
 from krrood.entity_query_language.query.quantifiers import (
     ResultQuantificationConstraint,
@@ -147,14 +150,6 @@ class Query(
     Whether the data-source chain (Where / GroupedBy / Having + selected variables) needs rewiring,
     set by :meth:`where`, :meth:`having` and :meth:`grouped_by`.
     """
-    _ordered_by_dirty_: bool = field(default=True, init=False)
-    """
-    Whether the ``OrderedBy`` wrapper needs (re)applying, set by :meth:`ordered_by`.
-    """
-    _quantifier_dirty_: bool = field(default=True, init=False)
-    """
-    Whether the ``ResultQuantifier`` wrapper needs (re)applying, set by :meth:`_quantify_`.
-    """
     _building_: bool = field(default=False, init=False)
     """
     Re-entrancy guard set while :meth:`build` wires the wrapper layers, so that parenting the query
@@ -166,6 +161,13 @@ class Query(
     """
     The data-source head (Where / GroupedBy / Having) wired by the last build, tracked so it can be
     detached cleanly when the chain is rewired.
+    """
+    _embedding_snapshot_: Optional[SymbolicExpression] = field(default=None, init=False)
+    """
+    The immutable snapshot embedded into parent expressions, cached so that multiple embeddings of
+    this query (for example as a selected variable and within a condition) share one identity. It is
+    discarded whenever the query is modified, so a later embedding reflects the change while
+    already-embedded snapshots stay frozen.
     """
 
     def __post_init__(self):
@@ -183,6 +185,7 @@ class Query(
         next :meth:`build` recomputes them. Called by every modifier method.
         """
         self._dirty_ = True
+        self._embedding_snapshot_ = None
         self.__dict__.pop("_group_", None)
         self.__dict__.pop("_distinct_on_ids_", None)
 
@@ -243,7 +246,6 @@ class Query(
         self._ordered_by_builder_ = OrderedByBuilder(
             self, variable, descending=descending, key=key
         )
-        self._ordered_by_dirty_ = True
         self._mark_dirty_()
         return self
 
@@ -308,7 +310,6 @@ class Query(
         self._quantifier_builder_ = QuantifierBuilder(
             self, quantifier_type, quantification_constraint
         )
-        self._quantifier_dirty_ = True
         self._mark_dirty_()
         return self
 
@@ -344,8 +345,7 @@ class Query(
             self._rewire_data_source_chain_()
             self._inner_dirty_ = False
 
-        self._update_ordered_by_expression_()
-        self._update_quantifier_expression_()
+        self._apply_wrapping_modifiers_()
 
         self._dirty_ = False
         self._building_ = False
@@ -399,39 +399,18 @@ class Query(
             return [self._where_builder_.expression]
         return []
 
-    def _update_ordered_by_expression_(self) -> None:
+    def _apply_wrapping_modifiers_(self) -> None:
         """
-        Apply (or replace) the ``OrderedBy`` wrapper around the current compiled expression. Wrapping
-        the current expression — rather than the bare query node — keeps any reference captured by an
-        order-by expression derived from the query valid.
+        Apply the ordering and quantification wrappers, innermost first, around the current compiled
+        expression. Each modifier is applied only when it needs (re)applying; an already-applied
+        wrapper keeps its identity across rebuilds, so a reference captured by an expression derived
+        from the query stays valid. ``OrderedBy`` nests inside the ``ResultQuantifier``.
         """
-        if not self._ordered_by_dirty_ or self._ordered_by_builder_ is None:
-            self._ordered_by_dirty_ = False
-            return
-        child = self._expression_
-        if isinstance(child, OrderedBy):
-            wrapper = child
-            child = wrapper._original_expression_
-            child._remove_parent_(wrapper)
-        self._expression_ = self._ordered_by_builder_.wrap(child)
-        self._ordered_by_dirty_ = False
-
-    def _update_quantifier_expression_(self) -> None:
-        """
-        Apply (or replace) the ``ResultQuantifier`` wrapper around the current compiled expression,
-        and propagate the result limit to it.
-        """
-        if not self._quantifier_dirty_ or self._quantifier_builder_ is None:
-            self._quantifier_dirty_ = False
-            return
-        child = self._expression_
-        if isinstance(child, ResultQuantifier):
-            wrapper = child
-            child = wrapper._child_
-            child._remove_parent_(wrapper)
-        self._expression_ = self._quantifier_builder_.wrap(child)
-        self._expression_._limit_ = self._limit_
-        self._quantifier_dirty_ = False
+        for modifier in (self._ordered_by_builder_, self._quantifier_builder_):
+            if modifier is None or not modifier._needs_apply_:
+                continue
+            self._expression_ = modifier.rewrap(self._expression_)
+            modifier._needs_apply_ = False
 
     def _if_count_all_is_used_update_its_child_to_be_the_grouped_by_expression_(
         self,
@@ -613,6 +592,63 @@ class Query(
         for result_mapping in self._results_mapping:
             results = result_mapping(results)
         return results
+
+    def _as_embeddable_child_(self, parent: SymbolicExpression) -> SymbolicExpression:
+        """
+        Embed an immutable snapshot of this query when it becomes a value operand of another
+        expression, so a later edit to this query cannot mutate the already-embedded copy.
+
+        The live compiled node is used instead in two cases: while this query wires its own wrapper
+        layers during :meth:`build` (``_building_``), where the wrappers must wrap the query itself;
+        and when the parent is a derived reference (a :class:`MappedVariable` such as ``query.name``),
+        which must track the live query so its values resolve against the query's own bindings.
+
+        :param parent: The expression about to take this query as a child.
+        :return: A snapshot of the compiled expression, or the live node for self-wrapping and
+            derived references.
+        """
+        if self._building_:
+            return self._expression_
+        self.build()
+        if isinstance(parent, MappedVariable):
+            return self._expression_
+        return self._snapshot_for_embedding_()
+
+    def _snapshot_for_embedding_(self) -> SymbolicExpression:
+        """
+        The snapshot is cached so that several embeddings of this query share one identity (for
+        example a subquery used both as a selected variable and inside a condition), and the cache is
+        discarded on modification (see :meth:`_mark_dirty_`).
+
+        :return: An immutable snapshot of the compiled expression for embedding, or the live compiled
+            expression when it cannot be snapshotted (see :meth:`_is_snapshotable_`).
+        """
+        if not self._is_snapshotable_():
+            return self._expression_
+        if self._embedding_snapshot_ is None:
+            self._embedding_snapshot_ = SpineSnapshot().snapshot(self._expression_)
+        return self._embedding_snapshot_
+
+    def _is_snapshotable_(self) -> bool:
+        """
+        Snapshotting shares variable leaves and clones structural nodes. That is unsound when the
+        compiled expression aggregates or groups (a shared aggregator would reference an
+        un-cloned grouping), applies distinct (its result mapping is bound to this query), or
+        contains a variable derived from this query itself (a shared self-reference would re-evaluate
+        the original). In those cases the live expression is shared as before.
+
+        :return: Whether the compiled expression can be safely snapshotted.
+        """
+        if self._results_mapping:
+            return False
+        for node in (self._expression_, *self._expression_._descendants_):
+            if isinstance(node, (GroupedBy, Aggregator)):
+                return False
+            if isinstance(node, MappedVariable) and any(
+                descendant is self for descendant in node._descendants_
+            ):
+                return False
+        return True
 
     @UnaryExpression._parent_.setter
     def _parent_(self, parent: SymbolicExpression):

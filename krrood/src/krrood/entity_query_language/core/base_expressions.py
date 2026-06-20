@@ -221,9 +221,20 @@ class SymbolicExpression(ABC):
             v if isinstance(v, SymbolicExpression) else Literal(_value_=v)
             for v in children
         ]
-        for v in children:
-            v._parent_ = self
-        return tuple(v._expression_ for v in children)
+        embedded_children = tuple(v._as_embeddable_child_(self) for v in children)
+        for child in embedded_children:
+            child._parent_ = self
+        return embedded_children
+
+    def _as_embeddable_child_(self, parent: SymbolicExpression) -> SymbolicExpression:
+        """
+        :param parent: The expression about to take this expression as a child.
+        :return: The node that should be stored as ``parent``'s child, defaulting to this
+            expression's compiled form. Subclasses whose compiled form is mutable and shared (for
+            example :class:`~krrood.entity_query_language.query.query.Query`) override this to embed
+            an immutable snapshot instead.
+        """
+        return self._expression_
 
     def _ensure_children_ids_are_cached_(self, *children: SymbolicExpression) -> None:
         """
