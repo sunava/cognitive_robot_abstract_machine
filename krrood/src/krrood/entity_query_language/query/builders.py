@@ -92,21 +92,6 @@ class ExpressionBuilder(ABC):
         :return: The expression that is built from the metadata.
         """
 
-    def reset(self) -> None:
-        """
-        Discard the cached built expression and any memoized metadata so the next access to
-        :attr:`expression` recomputes from the current spec.
-
-        The query calls this whenever it rebuilds, because a modifier may have been mutated in
-        place since the last build (for example extra ``where``/``having`` conditions appended),
-        which would otherwise be hidden behind stale caches.
-        """
-        self._built_expression = None
-        for klass in type(self).__mro__:
-            for name, value in vars(klass).items():
-                if isinstance(value, cached_property):
-                    self.__dict__.pop(name, None)
-
     def __hash__(self) -> int:
         return hash((self.__class__, self.query))
 
@@ -114,29 +99,9 @@ class ExpressionBuilder(ABC):
 @dataclass(eq=False)
 class WrappingModifier(ExpressionBuilder, ABC):
     """
-    A modifier that wraps the whole compiled query expression in an outer node, such as ordering
-    or quantification.
-
-    The query applies wrapping modifiers around its current compiled expression (rather than the
-    bare query node) and keeps the produced wrapper across rebuilds, so a reference captured by an
-    expression derived from the query stays valid. ``OrderedBy`` nests inside ``ResultQuantifier``.
+    A modifier that wraps the whole compiled product expression in an outer node, such as ordering
+    or quantification. ``OrderedBy`` nests inside ``ResultQuantifier``.
     """
-
-    _needs_apply_: bool = field(init=False, default=True)
-    """
-    Whether this modifier still needs (re)applying on the next build. A freshly created modifier
-    needs applying; once applied its wrapper keeps its identity across rebuilds that only change the
-    inner data source, until the modifier is replaced.
-    """
-
-    @property
-    @abstractmethod
-    def _wrapper_type_(self) -> Type[SymbolicExpression]:
-        """
-        :return: The type of wrapper this modifier produces, used to recognise an existing wrapper
-            of the same kind when re-applying.
-        """
-        ...
 
     @abstractmethod
     def wrap(self, child: SymbolicExpression) -> SymbolicExpression:
@@ -146,29 +111,16 @@ class WrappingModifier(ExpressionBuilder, ABC):
         """
         ...
 
-    def rewrap(self, current_expression: SymbolicExpression) -> SymbolicExpression:
+    def wrap_around(self, current_expression: SymbolicExpression) -> SymbolicExpression:
         """
-        Apply this modifier around ``current_expression``, first unwrapping any wrapper of the same
-        kind so re-applying replaces rather than nests it.
+        Wrap ``current_expression`` in a wrapper of this modifier's kind and configure it.
 
-        :param current_expression: The query's current compiled expression.
-        :return: ``current_expression`` wrapped by a fresh wrapper of this modifier's kind.
+        :param current_expression: The compiled expression to wrap.
+        :return: ``current_expression`` wrapped by this modifier's wrapper.
         """
-        wrapper = self.wrap(self._unwrap_(current_expression))
+        wrapper = self.wrap(current_expression)
         self._configure_wrapper_(wrapper)
         return wrapper
-
-    def _unwrap_(self, current_expression: SymbolicExpression) -> SymbolicExpression:
-        """
-        :param current_expression: The query's current compiled expression.
-        :return: The expression beneath an existing wrapper of this modifier's kind (detaching that
-            wrapper), or ``current_expression`` unchanged when there is none.
-        """
-        if not isinstance(current_expression, self._wrapper_type_):
-            return current_expression
-        wrapped_child = current_expression._original_expression_
-        wrapped_child._remove_parent_(current_expression)
-        return wrapped_child
 
     def _configure_wrapper_(self, wrapper: SymbolicExpression) -> None:
         """
@@ -476,10 +428,6 @@ class QuantifierBuilder(WrappingModifier):
     The quantification constraint that must be satisfied by the result quantifier if present.
     """
 
-    @property
-    def _wrapper_type_(self) -> Type[ResultQuantifier]:
-        return ResultQuantifier
-
     def wrap(self, child: SymbolicExpression) -> ResultQuantifier:
         """
         Wrap ``child`` in a result quantifier of the specified type and quantification constraint.
@@ -514,10 +462,6 @@ class OrderedByBuilder(WrappingModifier):
     """
     A function to extract the key from the variable value.
     """
-
-    @property
-    def _wrapper_type_(self) -> Type[OrderedBy]:
-        return OrderedBy
 
     def wrap(self, child: SymbolicExpression) -> OrderedBy:
         return OrderedBy(child, self.variable, self.descending, self.key)

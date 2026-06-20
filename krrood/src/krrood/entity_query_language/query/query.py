@@ -144,11 +144,6 @@ class Query(
     is a no-op while clean and otherwise applies only the parts flagged below. The query is never
     frozen, so it can always be modified, even after being built or embedded as a child.
     """
-    _inner_dirty_: bool = field(default=True, init=False)
-    """
-    Whether the data-source chain (Where / GroupedBy / Having + selected variables) needs rewiring,
-    set by :meth:`where`, :meth:`having` and :meth:`grouped_by`.
-    """
     _building_: bool = field(default=False, init=False)
     """
     Re-entrancy guard set while :meth:`build` wires the wrapper layers, so that parenting the query
@@ -166,13 +161,6 @@ class Query(
     identifier, beneath the ordering/quantification wrappers). Derived references such as
     ``query.name`` embed this node so that, evaluated against a result that already binds the query's
     identifier, they resolve to that result rather than re-running the whole subquery.
-    """
-    _compiled_inner_head_: Optional[SymbolicExpression] = field(
-        default=None, init=False
-    )
-    """
-    The data-source head (Where / GroupedBy / Having) wired by the last build, tracked so it can be
-    detached cleanly when the chain is rewired.
     """
 
     def __post_init__(self):
@@ -215,7 +203,6 @@ class Query(
             self._where_builder_ = WhereBuilder(conditions=conditions, query=self)
         else:
             self._where_builder_.conditions += conditions
-        self._inner_dirty_ = True
         self._mark_dirty_()
         return self
 
@@ -230,7 +217,6 @@ class Query(
             self._having_builder_ = HavingBuilder(conditions=conditions, query=self)
         else:
             self._having_builder_.conditions += conditions
-        self._inner_dirty_ = True
         self._mark_dirty_()
         return self
 
@@ -279,7 +265,6 @@ class Query(
         :return: This query.
         """
         self._grouped_by_builder_ = GroupedByBuilder(self, variables_to_group_by)
-        self._inner_dirty_ = True
         self._mark_dirty_()
         return self
 
@@ -394,7 +379,6 @@ class Query(
         self._building_ = True
         self._is_compiled_product_ = True
         self._rewire_data_source_chain_()
-        self._inner_dirty_ = False
         self._apply_wrapping_modifiers_()
         self._dirty_ = False
         self._building_ = False
@@ -402,27 +386,10 @@ class Query(
 
     def _rewire_data_source_chain_(self) -> None:
         """
-        (Re)wire the data-source chain (Where / GroupedBy / Having) and the selected variables as the
-        children of this query node. Safe to call repeatedly: the previous chain head is detached and
-        modifier caches discarded so a fresh head reflecting the current conditions is built. The
-        ordering/quantification wrappers keep pointing at this query node, so they pick up the change.
+        Wire the data-source chain (Where / GroupedBy / Having) and the selected variables as the
+        children of this product node.
         """
-        # Detach the head built last time and discard cached metadata on the chain modifiers, which
-        # may have been mutated in place (e.g. extra ``where``/``having`` conditions appended).
-        if self._compiled_inner_head_ is not None:
-            self._compiled_inner_head_._parent_ = None
-            self._compiled_inner_head_ = None
-        for modifier in (
-            self._where_builder_,
-            self._grouped_by_builder_,
-            self._having_builder_,
-        ):
-            if modifier is not None:
-                modifier.reset()
-
         children = self._data_source_chain_head_()
-        self._compiled_inner_head_ = children[0] if children else None
-
         children.extend(self._selected_variables_)
         self.update_children(*children)
 
@@ -448,16 +415,13 @@ class Query(
 
     def _apply_wrapping_modifiers_(self) -> None:
         """
-        Apply the ordering and quantification wrappers, innermost first, around the current compiled
-        expression. Each modifier is applied only when it needs (re)applying; an already-applied
-        wrapper keeps its identity across rebuilds, so a reference captured by an expression derived
-        from the query stays valid. ``OrderedBy`` nests inside the ``ResultQuantifier``.
+        Apply the ordering and quantification wrappers, innermost first, around this product node.
+        ``OrderedBy`` nests inside the ``ResultQuantifier``.
         """
         for modifier in (self._ordered_by_builder_, self._quantifier_builder_):
-            if modifier is None or not modifier._needs_apply_:
+            if modifier is None:
                 continue
-            self._expression_ = modifier.rewrap(self._expression_)
-            modifier._needs_apply_ = False
+            self._expression_ = modifier.wrap_around(self._expression_)
 
     def _evaluate__(
         self,
