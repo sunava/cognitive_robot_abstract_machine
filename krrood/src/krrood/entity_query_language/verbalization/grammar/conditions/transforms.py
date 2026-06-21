@@ -27,6 +27,8 @@ from krrood.entity_query_language.verbalization.grammar.conditions.operator_phra
 from krrood.entity_query_language.verbalization.grammar.conditions.recognition import (
     is_boolean_attribute_chain,
     is_none_literal,
+)
+from krrood.entity_query_language.verbalization.relational_attributes import (
     relational_verb_phrase,
 )
 from krrood.entity_query_language.verbalization.grammar.framework.phrase_rule import (

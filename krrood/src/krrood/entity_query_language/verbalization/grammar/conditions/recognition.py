@@ -18,69 +18,12 @@ from krrood.entity_query_language.core.expression_structure import (
     chain_root,
     walk_chain,
 )
-from krrood.entity_query_language.verbalization import morphology
-from krrood.entity_query_language.verbalization.subquery import (
+from krrood.entity_query_language.query.aggregation_structure import (
     aggregation_source_root,
     is_collapsible_aggregation_subquery,
     selected_aggregator,
     unwrap_result_quantifiers,
 )
-from krrood.entity_query_language.verbalization.vocabulary.english import (
-    ENGLISH_PREPOSITIONS,
-)
-
-#: The prepositions that, as the final token of a snake_case attribute name, mark a *relational*
-#: field (*assigned_to*, *owned_by*, *located_in*): the English preposition inventory from the
-#: lexicon minus ``of`` — ``<noun>_of`` is a genitive (``number_of``, ``type_of``), never a relation.
-_RELATIONAL_PREPOSITIONS = ENGLISH_PREPOSITIONS - {"of"}
-
-
-@dataclass(frozen=True)
-class RelationVerb:
-    """A relational field's verb, split into its parts — so callers can either strand the
-    preposition (*"assigned to"*, used by absence) or pied-pipe it (*"to which … is assigned"*,
-    used by relational navigation)."""
-
-    participle: str
-    """The past-participle verb word(s) (*"assigned"*, *"cross referenced"*)."""
-
-    preposition: str
-    """The trailing preposition (*"to"*, *"by"*, *"with"*)."""
-
-    @property
-    def phrase(self) -> str:
-        """:return: The stranded phrase *"<participle> <preposition>"* (*"assigned to"*)."""
-        return f"{self.participle} {self.preposition}"
-
-
-def relational_verb(attribute_name: str) -> Optional[RelationVerb]:
-    """
-    :param attribute_name: An attribute identifier (snake_case).
-    :return: The relation's verb, split into participle + preposition, when *attribute_name* names a
-        relation as *past-participle + preposition* (*assigned_to* → *"assigned"* + *"to"*); else
-        ``None`` for a plain noun attribute.
-
-    The participle check (:func:`morphology.is_past_participle`) is what distinguishes a relation
-    from a noun that merely ends in a preposition: *color_in* / *price_at* / *name_to* are rejected
-    because *color* / *price* / *name* are not participles.
-    """
-    tokens = attribute_name.split("_")
-    if len(tokens) < 2 or tokens[-1] not in _RELATIONAL_PREPOSITIONS:
-        return None
-    if not morphology.is_past_participle(tokens[-2]):
-        return None
-    return RelationVerb(participle=" ".join(tokens[:-1]), preposition=tokens[-1])
-
-
-def relational_verb_phrase(attribute_name: str) -> Optional[str]:
-    """
-    :param attribute_name: An attribute identifier (snake_case).
-    :return: The humanized stranded verb phrase (*"assigned to"*) for a relational field, else
-        ``None`` — the form absence uses (*"has not been assigned to any Robot"*). Thin wrapper over
-        :func:`relational_verb` so the recognition lives in one place.
-    """
-    verb = relational_verb(attribute_name)
-    return verb.phrase if verb is not None else None
 
 
 def attribute_names(left: SymbolicExpression) -> List[str]:

@@ -18,7 +18,7 @@ from krrood.entity_query_language.query.query import Entity
 from krrood.entity_query_language.verbalization import morphology
 from krrood.entity_query_language.core.expression_structure import chain_root
 from krrood.entity_query_language.verbalization.grammar.framework.planner import Planner
-from krrood.entity_query_language.verbalization.subquery import (
+from krrood.entity_query_language.query.aggregation_structure import (
     unwrap_result_quantifiers,
 )
 from krrood.entity_query_language.verbalization.vocabulary.english import FallbackNouns

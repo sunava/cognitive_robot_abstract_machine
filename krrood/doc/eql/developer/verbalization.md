@@ -408,7 +408,7 @@ The resolver is passed to the renderer at construction (via the `VerbalizationPi
 | Conditions | `grammar/conditions/` — `rules`, `assembler` (`ConditionAssembler`), `forms` (`ConditionForm` registry, `place` / `as_subject_restrictions`), `transforms` (`PredicateTransform` registry), `recognition`, `operator_phrase`, `restriction` |
 | Microplanning | `microplanning/` — `referring`, `binding_scope`, `config` (`RenderConfiguration`), `microplan` (`Microplan`), `coordination`, `possessive` |
 | Rendering | `rendering/` — `realization` (the passes), `coreference_processor`, `determiner_processor`, `morphology_processor`, `orthography_processor`, `discourse` (`DiscourseModel`), `renderer`, `formatter`, `source_link_resolver` |
-| Utilities | `morphology.py` (word-morphology facade over `inflect` + `lemminflect`: pluralise / article / ordinal / `is_past_participle`), `navigation_path.py` (`build_path_parts`, `PathStep`), `value_lexicon.py` (`value_phrase`), `subquery.py`; chain walking is `core.expression_structure.walk_chain` |
+| Utilities | `morphology.py` (word-morphology facade over `inflect` + `lemminflect`: pluralise / article / ordinal / `is_past_participle`), `navigation_path.py` (`build_path_parts`, `PathStep`), `relational_attributes.py` (the relational-attribute recognizer `relational_verb` shared by navigation and absence), `value_lexicon.py` (`value_phrase`); chain walking is `core.expression_structure.walk_chain`; aggregation-subquery structure is `query.aggregation_structure` |
 
 ---
 

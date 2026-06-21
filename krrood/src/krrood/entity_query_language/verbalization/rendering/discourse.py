@@ -11,7 +11,7 @@ from krrood.entity_query_language.verbalization.grammar.query.planner import (
     QueryPlanner,
 )
 from krrood.entity_query_language.verbalization.microplanning.microplan import Microplan
-from krrood.entity_query_language.verbalization.subquery import (
+from krrood.entity_query_language.query.aggregation_structure import (
     aggregation_leaf_attribute,
 )
 

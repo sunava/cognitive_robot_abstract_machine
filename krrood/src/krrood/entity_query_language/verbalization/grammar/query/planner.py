@@ -24,7 +24,7 @@ from krrood.entity_query_language.verbalization.grammar.framework.planner import
 from krrood.entity_query_language.verbalization.grammar.conditions.restriction import (
     restriction_subject,
 )
-from krrood.entity_query_language.verbalization.subquery import (
+from krrood.entity_query_language.query.aggregation_structure import (
     aggregation_leaf_attribute,
     aggregation_source_root,
     is_aggregation_subquery,

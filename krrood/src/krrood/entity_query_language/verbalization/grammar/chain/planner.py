@@ -19,7 +19,7 @@ from krrood.entity_query_language.verbalization.navigation_path import (
     build_path_parts,
 )
 from krrood.entity_query_language.verbalization.fragments.features import Number
-from krrood.entity_query_language.verbalization.grammar.conditions.recognition import (
+from krrood.entity_query_language.verbalization.relational_attributes import (
     relational_verb,
 )
 from krrood.entity_query_language.verbalization.grammar.framework.planner import Planner

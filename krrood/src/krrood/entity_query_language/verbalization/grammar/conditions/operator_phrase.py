@@ -9,7 +9,7 @@ from krrood.entity_query_language.verbalization.fragments.base import (
     Fragment,
 )
 from krrood.entity_query_language.verbalization.fragments.features import Number
-from krrood.entity_query_language.verbalization.subquery import is_calculation_value
+from krrood.entity_query_language.query.aggregation_structure import is_calculation_value
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Logicals,
     Operators,

@@ -10,10 +10,10 @@ from krrood.entity_query_language.core.mapped_variable import Attribute
 from krrood.entity_query_language.core.variable import Variable, Literal
 from krrood.entity_query_language.query.query import Entity, Query
 from krrood.entity_query_language.verbalization.fragments.features import Definiteness
-from krrood.entity_query_language.verbalization.grammar.conditions.recognition import (
+from krrood.entity_query_language.verbalization.relational_attributes import (
     relational_verb,
 )
-from krrood.entity_query_language.verbalization.subquery import (
+from krrood.entity_query_language.query.aggregation_structure import (
     aggregation_source_root,
     selected_aggregator,
 )

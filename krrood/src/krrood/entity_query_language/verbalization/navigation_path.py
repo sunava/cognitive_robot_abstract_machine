@@ -18,7 +18,7 @@ from krrood.entity_query_language.verbalization.fragments.source_reference impor
 )
 
 if TYPE_CHECKING:
-    from krrood.entity_query_language.verbalization.grammar.conditions.recognition import (
+    from krrood.entity_query_language.verbalization.relational_attributes import (
         RelationVerb,
     )
 
