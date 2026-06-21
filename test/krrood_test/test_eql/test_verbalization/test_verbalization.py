@@ -480,10 +480,10 @@ def test_relational_navigation_repeat_pronominalises_to_its():
     assert text.count("to which it is assigned") == 1  # spelled out once, then pronoun
 
 
-def test_relational_navigation_reduces_in_nested_query():
-    """The relative clause is introduced once in a nested aggregation sub-query (the owner spelled
-    out as it is first introduced there) and the repeat in the WHERE clause pronominalises the
-    referent's attribute to *"its battery"*."""
+def test_aggregation_where_on_measured_quantity_reduces_to_the_attribute():
+    """When the WHERE filters the very attribute being aggregated, the relative clause is spelled
+    out once (in the measure) and the repeat reduces to a bare *"the battery"* — not the whole
+    possessive, and not *"its battery"* (which would re-introduce the owner)."""
     m = variable(_NavMission, [])
     nested = an(
         entity(eql.average(m.assigned_to.battery)).where(m.assigned_to.battery > 5)
@@ -491,9 +491,20 @@ def test_relational_navigation_reduces_in_nested_query():
     text = verbalize_expression(nested)
     assert text == (
         "Find the average of the battery of the _NavRobot to which a _NavMission is "
-        "assigned such that its battery is greater than 5"
+        "assigned such that the battery is greater than 5"
     )
-    assert text.count("to which") == 1  # introduced once, then pronoun
+    assert text.count("to which") == 1  # spelled out once, then the bare attribute
+
+
+def test_aggregation_where_on_other_attribute_still_pronominalises():
+    """A WHERE on a *different* attribute of the measured referent is not the selected quantity, so
+    it still reads *"its <attribute>"* via the local centre."""
+    m = variable(_NavMission, [])
+    nested = an(
+        entity(eql.average(m.assigned_to.battery)).where(m.assigned_to.power > 5)
+    )
+    text = verbalize_expression(nested)
+    assert "such that its power is greater than 5" in text
 
 
 def test_boolean_predicative_pronominalises_relational_navigation():

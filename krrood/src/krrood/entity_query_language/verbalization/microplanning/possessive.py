@@ -24,7 +24,7 @@ from krrood.entity_query_language.verbalization.vocabulary.english import (
 )
 
 
-def _attribute_fragment(step: PathStep) -> RoleFragment:
+def attribute_fragment(step: PathStep) -> RoleFragment:
     """:return: A role-tagged attribute fragment for *step*."""
     return RoleFragment(
         text=step.name,
@@ -38,7 +38,7 @@ def _genitive_step(step: PathStep, owner_fragment: Fragment) -> Fragment:
     return PhraseFragment(
         parts=[
             Articles.THE.as_fragment(),
-            _attribute_fragment(step),
+            attribute_fragment(step),
             Prepositions.OF.as_fragment(),
             owner_fragment,
         ]
@@ -110,7 +110,7 @@ def pronominal_path(parts: List[PathStep], subject_number: Number) -> Fragment:
                 _relative_clause(step, nominative_pronoun, subject_number)
                 if step.is_relation
                 else PhraseFragment(
-                    parts=[possessive_pronoun, _attribute_fragment(step)]
+                    parts=[possessive_pronoun, attribute_fragment(step)]
                 )
             )
         else:

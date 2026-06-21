@@ -268,6 +268,16 @@ print(verbalize_expression(eql.min(t.amount_details.amount)))
 All aggregations use the definite article (*"the number of"*, *"the sum of"*, ...).
 The attribute chain following the aggregation uses a possessive *"of the ..."* path.
 
+When a WHERE condition filters the *very attribute being aggregated*, that attribute is named in
+full once (in the aggregate) and the condition refers back to it as a bare *"the battery"*:
+
+```{code-cell} ipython3
+query = an(entity(eql.average(m.assigned_to.battery)).where(m.assigned_to.battery > 5))
+print(verbalize_expression(query))
+# Find the average of the battery of the Robot to which a Mission is assigned such that
+# the battery is greater than 5
+```
+
 ## Date Range Folding
 
 When a lower-bound and an upper-bound comparison on the same datetime attribute appear

@@ -75,6 +75,7 @@ class ChainAssembler(Assembler[MappedVariable, ChainPlan]):
                 parts=plan.parts,
                 root_fragment=root_fragment,
                 root_referent_id=plan.root._id_,
+                node_id=plan.chain[-1]._id_,
             )
         return possessive_path(plan.parts, root_fragment)
 

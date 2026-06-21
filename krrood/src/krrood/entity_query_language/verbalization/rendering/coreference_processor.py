@@ -16,6 +16,7 @@ from krrood.entity_query_language.verbalization.fragments.features import (
     Number,
 )
 from krrood.entity_query_language.verbalization.microplanning.possessive import (
+    attribute_fragment,
     possessive_path,
     pronominal_path,
 )
@@ -137,8 +138,10 @@ class CoreferenceProcessor:
 
         After resolving, this chain's own topic becomes the local centre, so the *next* chain's
         matching attribute can pronominalise to *"its …"*."""
-        built = self._relational_possessive(possessive_chain)
-        if built is not None:
+        reduced_quantity = self._reduced_selected_quantity(possessive_chain)
+        if reduced_quantity is not None:
+            resolved = reduced_quantity
+        elif (built := self._relational_possessive(possessive_chain)) is not None:
             resolved = self._walk(built)
         elif self._pronominalises(possessive_chain):
             subject_number = self._subject_stack[-1].number
@@ -151,6 +154,27 @@ class CoreferenceProcessor:
             )
         self._center = self._chain_topic(possessive_chain.parts)
         return resolved
+
+    def _reduced_selected_quantity(
+        self, possessive_chain: PossessiveChain
+    ) -> Optional[Fragment]:
+        """A query's selected / measured quantity (an aggregation's measured attribute) spells out
+        in full where it is first named — *"the average of the battery of the Robot to which a
+        Mission is assigned"* — and a later mention of that same quantity (a WHERE on the very
+        attribute being aggregated) reduces to a bare *"the battery"* rather than repeating it.
+
+        :return: The bare definite attribute on a repeat of the selected quantity, or ``None`` when
+            the chain is not a selected quantity (or is its first mention, recorded here).
+        """
+        if not self.discourse.is_selected_quantity(possessive_chain.node_id):
+            return None
+        if possessive_chain.node_id not in self._seen:
+            self._seen.add(possessive_chain.node_id)
+            return None
+        return NounPhrase(
+            head=attribute_fragment(possessive_chain.parts[-1]),
+            definiteness=Definiteness.DEFINITE,
+        )
 
     @staticmethod
     def _outermost_relation(parts: List[PathStep]) -> Optional[Tuple[uuid.UUID, List]]:

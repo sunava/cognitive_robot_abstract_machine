@@ -317,7 +317,8 @@ Rules emit the *first-mention* form — a `NounPhrase` tagged with a `referent_i
 
 * keeps the first mention of a referent (e.g. *"a Robot"*) and marks it introduced;
 * downgrades a repeat **singular** mention to definite, dropping the first-mention modifiers (*"the Robot"*; a UNIQUE *"the unique Robot"* likewise downgrades to a plain DEFINITE *"the Robot"*); numbered labels (*"Robot 2"*, `BARE`) never downgrade;
-* renders a `PossessiveChain` as *"its …"* when its root is the discourse subject, else as the possessive *"the … of …"*.
+* renders a `PossessiveChain` as *"its …"* when its root is the discourse subject, else as the possessive *"the … of …"*;
+* reduces a repeat of a query's **selected quantity** — an aggregation's measured attribute, which `DiscourseModel` also collects (`is_selected_quantity`) — to a bare *"the battery"*, so a WHERE on the very attribute being aggregated does not repeat the whole possessive (*"the average of the battery of the Robot to which a Mission is assigned such that **the battery** is greater than 5"*). The `PossessiveChain` carries its own `node_id` for this match; the first mention (in the aggregate) spells out in full, the repeat reduces.
 
 The build is therefore free of in-fold coreference mutation.  {py:class}`~krrood.entity_query_language.verbalization.microplanning.referring.ReferringExpressions` holds only the pre-computed disambiguation map and a `seen` **set** of introduced referent ids — the latter solely to *seed* the pass across builds sharing one services bundle.  `numbered_label(var)` is the single source of the disambiguation lookup; `noun_for_parts(var)` builds on it for the first-mention `Definiteness`.
 
