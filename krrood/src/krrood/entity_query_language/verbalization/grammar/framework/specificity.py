@@ -36,6 +36,23 @@ def mro_depth(cls: type) -> int:
     return len(cls.__mro__)
 
 
+def concrete_subclasses(base: Type[_T]) -> List[Type[_T]]:
+    """
+    The single subclass-discovery primitive: every concrete (instantiable) transitive subclass of
+    *base*, abstract intermediates excluded. Shared by the ``RULES`` registry (over
+    :class:`PhraseRule`) and the :class:`SpecificityRule` families (over each family base), so
+    discovery is defined once.
+
+    :param base: The family / rule base class.
+    :return: Its concrete transitive subclasses.
+    """
+    return [
+        subclass
+        for subclass in recursive_subclasses(base)
+        if not inspect.isabstract(subclass)
+    ]
+
+
 class SpecificityRule(ABC):
     """
     A guarded alternative selected by specificity: the shared base of the small rule
@@ -59,11 +76,7 @@ class SpecificityRule(ABC):
     def alternatives(cls) -> List[Type[SpecificityRule]]:
         """:return: The concrete alternative subclasses of this family (transitive; abstract
         family bases are excluded)."""
-        return [
-            subclass
-            for subclass in recursive_subclasses(cls)
-            if not inspect.isabstract(subclass)
-        ]
+        return concrete_subclasses(cls)
 
     @classmethod
     def most_applicable(cls, *args: Any) -> Optional[Type[SpecificityRule]]:

@@ -237,7 +237,7 @@ class BetweenRule(PhraseRule):
 
 #### Step 3 — Registration is automatic
 
-`RULES` is **auto-discovered**: {py:data}`~krrood.entity_query_language.verbalization.grammar.framework.registry.RULES` instantiates every concrete `PhraseRule` subclass via `recursive_subclasses(PhraseRule)` (abstract bases filtered out).  Importing the rule module is enough — the registry module imports every construct package so the subclasses exist before `RULES` is built.  (`select` is specificity-based, so definition order is irrelevant.)
+`RULES` is **auto-discovered**: {py:data}`~krrood.entity_query_language.verbalization.grammar.framework.registry.RULES` instantiates every concrete `PhraseRule` subclass via `concrete_subclasses(PhraseRule)` (abstract bases filtered out) — the same subclass-discovery primitive the `SpecificityRule` families use.  The registry first walks the `grammar` package and imports every `grammar/<construct>/rules.py`, so the subclasses exist before `RULES` is built; **adding a construct's `rules.py` is enough — there is no import list to edit.**  (`select` is specificity-based, so definition order is irrelevant.)
 
 #### Step 4 — Recurse with `context.child`, decide with `context` services
 
@@ -403,7 +403,7 @@ The resolver is passed to the renderer at construction (via the `VerbalizationPi
 | Engine | `engine.py` (`fold`), `verbalizer.py` (`EQLVerbalizer`), `pipeline.py` (`VerbalizationPipeline`, `verbalize_expression`), `context.py` (`MicroplanningServices`), `exceptions.py` (`UnverbalizableExpressionError`) |
 | Fragment IR | `fragments/base.py` (the `Fragment` hierarchy + `fold_fragment` / `map_structural_children` / `map_fragment` / `oxford_comma` / `flatten_fragment_to_plain_text`), `fragments/features.py`, `fragments/roles.py`, `fragments/source_reference.py` |
 | Lexicon | `vocabulary/english.py`, `vocabulary/words.py` — **all** English words/phrases/punctuation |
-| Grammar framework | `grammar/framework/` — `phrase_rule` (`PhraseRule`, `RuleContext`, `select`), `registry` (`RULES` via `recursive_subclasses`), `specificity` (`SpecificityRule`, `most_applicable`), `assembler` (`Assembler` base), `planner` (`Planner` base) |
+| Grammar framework | `grammar/framework/` — `phrase_rule` (`PhraseRule`, `RuleContext`, `select`), `registry` (`RULES`, auto-discovered by walking the grammar package), `specificity` (`SpecificityRule`, `most_applicable`, and the shared `concrete_subclasses` / `most_specific` / `mro_depth` selection primitives), `assembler` (`Assembler` base), `planner` (`Planner` base) |
 | Grammar (per construct) | `grammar/<construct>/` — `terms`, `chain`, `conditions`, `query`, `inference`, `aggregation`, `clauses`, `instantiated`, `match`; each has `rules.py`, and the involved ones a `planner.py` + `assembler.py` |
 | Conditions | `grammar/conditions/` — `rules`, `assembler` (`ConditionAssembler`), `forms` (`ConditionForm` registry, `place` / `as_subject_restrictions`), `transforms` (`PredicateTransform` registry), `recognition`, `operator_phrase`, `restriction` |
 | Microplanning | `microplanning/` — `referring`, `binding_scope`, `config` (`RenderConfiguration`), `microplan` (`Microplan`), `coordination`, `possessive` |

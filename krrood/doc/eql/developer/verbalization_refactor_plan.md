@@ -283,3 +283,30 @@ the rules and lock in comprehension. Each phase is a small, green, reviewable un
   under-covered areas (3-way genitive folding, range fold beside an unrelated conjunct, AND-in-OR,
   double negation — recorded as *not* simplified today, superlative-in-WHERE collapse, and
   plural-subject agreement across the whole pipeline).
+
+### Phase 1 — done
+
+- The 7 `verbalization/subquery.py` functions moved to a new **`query/aggregation_structure.py`**
+  (query layer, clean global imports; `core/` would have forced lazy imports to dodge a
+  `query→core→query` cycle). `subquery.py` deleted; all importers re-pointed.
+- The relational-attribute recognizer (`RelationVerb` / `relational_verb` / `relational_verb_phrase`)
+  moved out of `conditions/recognition.py` into **`verbalization/relational_attributes.py`** (above
+  the lexicon, below the grammar). This removed the only `chain → conditions` import, **breaking the
+  `conditions ↔ chain` package cycle** (verified by a test + grep). `navigation_path` keeps a
+  TYPE_CHECKING-only reference to `RelationVerb`, so no runtime cycle.
+- New `test_aggregation_structure.py` + doctests on the relocated recognizer. 568 passed, 7 skipped.
+
+### Phase 2 — done
+
+- Extracted one **`concrete_subclasses(base)`** primitive (`framework/specificity.py`), now used by
+  *both* `RULES` and `SpecificityRule.alternatives` — the subclass-discovery logic was duplicated.
+- **`registry.py` now auto-discovers** the construct `rules` modules by walking the `grammar`
+  package, replacing the hand-maintained 8-import list (answering "is the registry needed?" — yes,
+  but it should not hand-list imports). Adding a `grammar/<construct>/rules.py` now needs no registry
+  edit. New `test_grammar_registry.py` asserts `RULES` is exactly one instance per concrete rule and
+  that every construct folder is reached.
+- The `PhraseRule` selection (`select`) and the `SpecificityRule` families both route through the
+  same `most_specific` / `mro_depth` primitives in `specificity.py`; the contract now lives in one
+  place. (A deeper merge of the two into a single class hierarchy was considered and rejected — they
+  differ legitimately: instance-vs-class, `isinstance`-construct-gate vs pure `applies` guard — so
+  forcing one base would be a leaky abstraction. They share the selection *primitive*, not the shape.)
