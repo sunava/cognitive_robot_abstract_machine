@@ -465,25 +465,25 @@ def test_relational_navigation_pronominalises_the_subject():
     )  # the owner is pronominalised, not repeated
 
 
-def test_relational_navigation_repeat_reduces_to_bare_type():
-    """The relative clause is a referring expression: the first occurrence spells it out (the owner
-    pronominalised), and a repeat mention of the *same* navigation reduces to a bare *"the Robot"*
-    rather than repeating the whole clause."""
+def test_relational_navigation_repeat_pronominalises_to_its():
+    """The relative clause is spelled out on its first occurrence; a later attribute reached through
+    the *same* (unique) relational referent reads *"its power"* rather than re-naming the robot.
+    """
     m = variable(_NavMission, [])
     text = verbalize_expression(
         an(entity(m).where(m.assigned_to.battery > 5, m.assigned_to.power > 10))
     )
     assert text == (
         "Find a _NavMission such that the battery of the _NavRobot to which it is "
-        "assigned is greater than 5, and the power of the _NavRobot is greater than 10"
+        "assigned is greater than 5, and its power is greater than 10"
     )
-    assert text.count("to which it is assigned") == 1  # spelled out once, then reduced
+    assert text.count("to which it is assigned") == 1  # spelled out once, then pronoun
 
 
 def test_relational_navigation_reduces_in_nested_query():
     """The relative clause is introduced once in a nested aggregation sub-query (the owner spelled
-    out as it is first introduced there) and the repeat in the WHERE clause reduces to the bare
-    type."""
+    out as it is first introduced there) and the repeat in the WHERE clause pronominalises the
+    referent's attribute to *"its battery"*."""
     m = variable(_NavMission, [])
     nested = an(
         entity(eql.average(m.assigned_to.battery)).where(m.assigned_to.battery > 5)
@@ -491,9 +491,9 @@ def test_relational_navigation_reduces_in_nested_query():
     text = verbalize_expression(nested)
     assert text == (
         "Find the average of the battery of the _NavRobot to which a _NavMission is "
-        "assigned such that the battery of the _NavRobot is greater than 5"
+        "assigned such that its battery is greater than 5"
     )
-    assert text.count("to which") == 1  # introduced once, then reduced
+    assert text.count("to which") == 1  # introduced once, then pronoun
 
 
 def test_boolean_predicative_pronominalises_relational_navigation():
@@ -514,6 +514,36 @@ def test_boolean_predicative_standalone_navigation_unchanged():
         verbalize_expression(m.assigned_to.operational)
         == "the _NavRobot to which a _NavMission is assigned is operational"
     )
+
+
+def test_attribute_through_relational_referent_pronominalises():
+    """An attribute reached through an already-introduced, unique relational referent reads as
+    *"its <attribute>"* — after a boolean predicative introduces it too."""
+    m = variable(_NavMission, [])
+    text = verbalize_expression(
+        an(entity(m).where(m.assigned_to.operational, m.assigned_to.battery > 5))
+    )
+    assert text == (
+        "Find a _NavMission such that the _NavRobot to which it is assigned is "
+        "operational, and its battery is greater than 5"
+    )
+
+
+def test_numbered_relational_referent_keeps_its_label_not_its():
+    """*"its"* would be ambiguous when two same-type relational referents coexist, so a numbered
+    referent keeps its *"Robot 1"* label instead of pronominalising."""
+    p = variable(_NavPair, [])
+    text = verbalize_expression(
+        an(
+            entity(p).where(
+                p.primary.assigned_to.battery > 5,
+                p.primary.assigned_to.power > 1,
+                p.secondary.assigned_to.battery > 3,
+            )
+        )
+    )
+    assert "the power of _NavRobot 1" in text
+    assert "its power" not in text
 
 
 def test_two_distinct_relational_referents_are_numbered():

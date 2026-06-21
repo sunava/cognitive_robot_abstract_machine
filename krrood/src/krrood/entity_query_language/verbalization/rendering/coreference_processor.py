@@ -126,6 +126,9 @@ class CoreferenceProcessor:
         The built chain is walked, not returned raw: a relational hop emits a referring noun phrase
         (*"the Robot to which it is assigned"*), so the walk resolves its first/repeat mention — a
         second mention of the same navigation reduces to a bare *"the Robot"*."""
+        built = self._relational_possessive(possessive_chain)
+        if built is not None:
+            return self._walk(built)
         if self._pronominalises(possessive_chain):
             subject_number = self._subject_stack[-1].number
             built = pronominal_path(possessive_chain.parts, subject_number)
@@ -134,6 +137,37 @@ class CoreferenceProcessor:
                 possessive_chain.parts, possessive_chain.root_fragment
             )
         return self._walk(built)
+
+    def _relational_possessive(
+        self, possessive_chain: PossessiveChain
+    ) -> Optional[Fragment]:
+        """An attribute reached *through* an already-introduced relational referent reads as
+        *"its <attribute>"* rather than re-naming the referent — *"the power of the Robot to which
+        it is assigned"* becomes *"its power"* on a later mention.
+
+        Fires only when the relational referent is a repeat mention (so the pronoun has an
+        antecedent) and is the *unique* one of its type (not numbered — otherwise *"its"* would be
+        ambiguous between *"Robot 1"* and *"Robot 2"*, which keep their numbered label instead).
+
+        :return: The pronominalised tail, or ``None`` when no relational referent qualifies (leaving
+            the subject / possessive forms to apply).
+        """
+        parts = possessive_chain.parts
+        relational_index = next(
+            (i for i in reversed(range(len(parts))) if parts[i].is_relation), None
+        )
+        if relational_index is None:
+            return None
+        referent_id = parts[relational_index].relation.referent_id
+        tail = parts[relational_index + 1 :]
+        if (
+            referent_id is None
+            or referent_id not in self._seen
+            or referent_id in self.numbered_labels
+            or not tail
+        ):
+            return None
+        return pronominal_path(tail, Number.SINGULAR)
 
     def _pronominalises(self, possessive_chain: PossessiveChain) -> bool:
         """:return: ``True`` when the chain root is the current, already-introduced, non-numbered subject."""
