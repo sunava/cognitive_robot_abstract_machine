@@ -165,23 +165,17 @@ class OperatorPhrase:
         :param temporal: Use the temporal variant (for datetime comparisons).
         :return: The appropriate operator word.
         """
-        if temporal:
-            if negated and compact:
-                text = self.temporal_negated_compact
-            elif negated:
-                text = self.temporal_negated
-            elif compact:
-                text = self.temporal_compact
-            else:
-                text = self.temporal
-        elif negated and compact:
-            text = self.negated_compact
-        elif negated:
-            text = self.negated
-        elif compact:
-            text = self.compact
-        else:
-            text = self.standard
+        by_flags = {
+            (False, False, False): self.standard,
+            (False, False, True): self.compact,
+            (False, True, False): self.negated,
+            (False, True, True): self.negated_compact,
+            (True, False, False): self.temporal,
+            (True, False, True): self.temporal_compact,
+            (True, True, False): self.temporal_negated,
+            (True, True, True): self.temporal_negated_compact,
+        }
+        text = by_flags[(temporal, negated, compact)]
         return OperatorWord(text=text or self.standard)
 
 

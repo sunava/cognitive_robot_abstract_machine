@@ -96,6 +96,16 @@ def coordinated_genitive(
     )
 
 
+def _extend_hop(step: PathStep, owner_fragment: Fragment) -> Fragment:
+    """:return: *owner_fragment* wrapped by one more hop — the relative clause for a relational hop,
+    else the genitive. The shared hop builder both path readouts extend their owner with."""
+    return (
+        _relative_clause(step, owner_fragment)
+        if step.is_relation
+        else _genitive_step(step, owner_fragment)
+    )
+
+
 def possessive_path(parts: List[PathStep], root_fragment: Fragment) -> Fragment:
     """:return: the navigation read out from the root, hop by hop (parts innermost-first) — a plain
     hop as the genitive *"the <attribute> of <owner>"*, a relational hop as the relative clause
@@ -103,11 +113,7 @@ def possessive_path(parts: List[PathStep], root_fragment: Fragment) -> Fragment:
     *"the <outer> of the <inner> of <root>"*."""
     owner = root_fragment
     for step in parts:
-        owner = (
-            _relative_clause(step, owner)
-            if step.is_relation
-            else _genitive_step(step, owner)
-        )
+        owner = _extend_hop(step, owner)
     return owner
 
 
@@ -125,28 +131,19 @@ def pronominal_path(parts: List[PathStep], subject_number: Number) -> Fragment:
     if not parts:
         return possessive_pronoun
     nominative_pronoun = Pronouns.nominative(subject_number).as_fragment()
-    owner: Fragment = possessive_pronoun
-    for index, step in enumerate(parts):
-        if index == 0:
-            # A scalar leaf possessed by a plural subject distributes ("their salaries"); an entity
-            # owner of further structure stays singular ("the begin and end of their period").
-            attribute_number = (
-                subject_number if step.is_scalar_value else Number.SINGULAR
-            )
-            owner = (
-                _relative_clause(step, nominative_pronoun, subject_number)
-                if step.is_relation
-                else PhraseFragment(
-                    parts=[
-                        possessive_pronoun,
-                        attribute_fragment(step, attribute_number),
-                    ]
-                )
-            )
-        else:
-            owner = (
-                _relative_clause(step, owner)
-                if step.is_relation
-                else _genitive_step(step, owner)
-            )
+    # The innermost hop, adjacent to the elided root, takes the pronoun; the rest extend it exactly
+    # as :func:`possessive_path` does.
+    first, rest = parts[0], parts[1:]
+    # A scalar leaf possessed by a plural subject distributes ("their salaries"); an entity owner of
+    # further structure stays singular ("the begin and end of their period").
+    attribute_number = subject_number if first.is_scalar_value else Number.SINGULAR
+    owner: Fragment = (
+        _relative_clause(first, nominative_pronoun, subject_number)
+        if first.is_relation
+        else PhraseFragment(
+            parts=[possessive_pronoun, attribute_fragment(first, attribute_number)]
+        )
+    )
+    for step in rest:
+        owner = _extend_hop(step, owner)
     return owner
