@@ -389,29 +389,33 @@ class Query(
         Wire the data-source chain (Where / GroupedBy / Having) and the selected variables as the
         children of this product node.
         """
-        children = self._data_source_chain_head_()
-        children.extend(self._selected_variables_)
+        head = self._data_source_chain_head_()
+        children = (
+            self._selected_variables_
+            if head is None
+            else (head, *self._selected_variables_)
+        )
         self.update_children(*children)
 
-    def _data_source_chain_head_(self) -> List[SymbolicExpression]:
+    def _data_source_chain_head_(self) -> Optional[SymbolicExpression]:
         """
         Build the head of the data-source chain that feeds the selected variables. At most one of
         Having / GroupedBy / Where heads the chain, with precedence ``Having > GroupedBy > Where``
         since each already incorporates the previous one.
 
-        :return: A list containing the chain head, or empty if the query is unfiltered/ungrouped.
+        :return: The chain head, or ``None`` if the query is unfiltered/ungrouped.
         """
         if self._group_ and self._grouped_by_builder_ is None:
             self._grouped_by_builder_ = GroupedByBuilder(self)
 
         if self._having_builder_ is not None:
             self._having_builder_.grouped_by = self._grouped_by_builder_.expression
-            return [self._having_builder_.expression]
+            return self._having_builder_.expression
         if self._grouped_by_builder_ is not None:
-            return [self._grouped_by_builder_.expression]
+            return self._grouped_by_builder_.expression
         if self._where_builder_ is not None:
-            return [self._where_builder_.expression]
-        return []
+            return self._where_builder_.expression
+        return None
 
     def _apply_wrapping_modifiers_(self) -> None:
         """
