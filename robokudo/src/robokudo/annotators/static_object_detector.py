@@ -261,7 +261,7 @@ class StaticObjectDetectorAnnotator(BaseAnnotator):
 
         if rect_outside_image(corner_points, image_width, image_height):
             self.rk_logger.info(
-                "ROI of object would be completely out of camera frame. Skipping ..."
+                f"ROI of object {self._body_name(body)} would be completely out of camera frame. Skipping ..."
             )
             return None
 
