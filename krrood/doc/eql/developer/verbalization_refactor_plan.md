@@ -310,3 +310,20 @@ the rules and lock in comprehension. Each phase is a small, green, reviewable un
   place. (A deeper merge of the two into a single class hierarchy was considered and rejected — they
   differ legitimately: instance-vs-class, `isinstance`-construct-gate vs pure `applies` guard — so
   forcing one base would be a leaky abstraction. They share the selection *primitive*, not the shape.)
+
+### Phase 3 — done (EQL-level folding)
+
+- The EQL-level conjunct reduction is now a cohesive, class-based pass: **`ConjunctReducer`** applies
+  an ordered registry of **`ConjunctFold`** strategies (`RangeBoundFold`, `CoindexedComparisonFold`)
+  — adding a fold is a new strategy, nothing else changes (open/closed). `reduce_conjuncts` is the
+  thin function entry the two callers use; the fold algorithms and recognizers are preserved as the
+  (test-facing) implementation, and the file now reads top-down: artifacts → pass → algorithms →
+  recognizers → fragment builders.
+- Removed the dead `fragment_for_folded_conjunct` (no callers). `has_pair` is kept (it has tests).
+- New `test_conjunct_reduction.py` adds generality cases (reverse-order bounds, distinct chains, a
+  third unpaired bound, empty/lone/ non-comparator inputs). 572 passed, 7 skipped.
+- **Scope note / decision:** *fragment-level* coordination (the co-owned genitive selection fold in
+  `QueryAssembler`, the match *"…respectively"* grouping) is a different stage — it builds fragments
+  from already-recursed pieces rather than reducing EQL to artifacts — so it is *not* merged into this
+  EQL pass. The selection fold is extracted into its own cohesive unit in Phase 6; the two stages are
+  now documented side by side so a developer knows where each lives.

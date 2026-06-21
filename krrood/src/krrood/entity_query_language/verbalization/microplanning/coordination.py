@@ -1,7 +1,25 @@
+"""
+Coordination — the conjunction-reduction (aggregation) microplanning task.
+
+Two stages live here, top to bottom:
+
+* **EQL-level conjunct reduction** — the :class:`ConjunctReducer` pass folds a flat conjunct list
+  (e.g. an ``AND``'s operands) into one where recognizable groups become first-class fold *artifacts*
+  (:class:`RangeFold`, :class:`CoindexedFold`) that the grammar then renders. Each fold is a
+  :class:`ConjunctFold` strategy in the reducer's ordered registry — adding a fold is a new strategy,
+  nothing else changes (open/closed). This is the *one* place a caller goes to simplify conjuncts.
+* **Fragment-level coordination builders** — :func:`build_between` and :func:`oxford_comma`
+  (re-exported from the fragment layer) assemble already-rendered pieces into a coordinated phrase.
+
+References: Reiter & Dale (2000) and Dalianis (1999) — aggregation realised via coordination /
+conjunction reduction.
+"""
+
 from __future__ import annotations
 
 import operator
-from dataclasses import dataclass
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing_extensions import (
     TYPE_CHECKING,
@@ -35,6 +53,20 @@ if TYPE_CHECKING:
 #: Hashable identity of a pure attribute chain: ``(root variable id, ((name, owner), …))``.
 ChainKey = Tuple
 
+#: The comparison operators a co-indexed group folds over. Equality additionally licenses the
+#: natural *"… have the same …"* surface (see :func:`coindexed_natural_parts`); the others read in
+#: the faithful *"… are <op> those of …"* form. ``ne``/``contains``/temporal never fold.
+COINDEXED_OPERATORS: Tuple[Callable, ...] = (
+    operator.eq,
+    operator.gt,
+    operator.lt,
+    operator.ge,
+    operator.le,
+)
+
+
+# ── fold artifacts (the vocabulary the pass produces) ───────────────────────
+
 
 @dataclass
 class RangeFold:
@@ -48,18 +80,6 @@ class RangeFold:
 
     upper_expression: SymbolicExpression
     """The upper-bound value expression (the ``<=`` / ``<`` right operand)."""
-
-
-#: The comparison operators a co-indexed group folds over. Equality additionally licenses the
-#: natural *"… have the same …"* surface (see :func:`coindexed_natural_parts`); the others read in
-#: the faithful *"… are <op> those of …"* form. ``ne``/``contains``/temporal never fold.
-COINDEXED_OPERATORS: Tuple[Callable, ...] = (
-    operator.eq,
-    operator.gt,
-    operator.lt,
-    operator.ge,
-    operator.le,
-)
 
 
 @dataclass
@@ -98,6 +118,76 @@ class CoindexedNaturalParts:
 
     right_hop: Tuple[str, type]
     """The right prefix's distinguishing final hop ``(name, owner)`` (e.g. ``end``)."""
+
+
+# ── the conjunct-reduction pass (high-level entry) ──────────────────────────
+
+ConjunctList = List[Union["SymbolicExpression", RangeFold, CoindexedFold]]
+
+
+class ConjunctFold(ABC):
+    """One coordination fold: recognise a foldable group within a list of sibling conjuncts and
+    collapse it to a single fold artifact, leaving everything else (and its order) intact.
+
+    A fold is order-preserving and idempotent on already-folded items, so the reducer can apply its
+    folds in sequence without interference.
+    """
+
+    @abstractmethod
+    def apply(self, conjuncts: ConjunctList) -> ConjunctList:
+        """:param conjuncts: The (possibly already partly-folded) conjunct list.
+        :return: The list with every group this fold recognises collapsed to its artifact."""
+
+
+class RangeBoundFold(ConjunctFold):
+    """Fold a complementary lower/upper bound pair on one chain into a :class:`RangeFold`
+    (*"x is between low and high"*)."""
+
+    def apply(self, conjuncts: ConjunctList) -> ConjunctList:
+        return fold_range_pairs(conjuncts)
+
+
+class CoindexedComparisonFold(ConjunctFold):
+    """Fold a group of co-indexed comparisons across two shared prefixes into a
+    :class:`CoindexedFold` (*"the begin and end … have the same month and year"*)."""
+
+    def apply(self, conjuncts: ConjunctList) -> ConjunctList:
+        return fold_coindexed_groups(conjuncts)
+
+
+@dataclass
+class ConjunctReducer:
+    """The single home of WHERE-conjunct simplification: applies its ordered :class:`ConjunctFold`
+    registry to a flat conjunct list. The default registry folds range pairs, then co-indexed
+    groups; the two operate on disjoint patterns, so the order only fixes a stable result.
+    """
+
+    folds: List[ConjunctFold] = field(
+        default_factory=lambda: [RangeBoundFold(), CoindexedComparisonFold()]
+    )
+    """The folds applied, in order — the open/closed registry (append a strategy to extend)."""
+
+    def reduce(self, conjuncts: List[SymbolicExpression]) -> ConjunctList:
+        """:param conjuncts: A flat conjunct list (e.g. an ``AND``'s operands).
+        :return: The list with each fold's recognised groups reduced to artifacts."""
+        items: ConjunctList = list(conjuncts)
+        for fold in self.folds:
+            items = fold.apply(items)
+        return items
+
+
+def reduce_conjuncts(conjuncts: List[SymbolicExpression]) -> ConjunctList:
+    """
+    Reduce a flat conjunct list by every coordination fold — the single entry every
+    conjunct-rendering caller uses, so none has to know a fold exists.
+
+    :param conjuncts: A flat list of conjuncts (e.g. the operands of an ``AND``).
+    :return: The reduced list (raw expressions interleaved with range / co-indexed folds).
+    """
+    return ConjunctReducer().reduce(conjuncts)
+
+
+# ── range-bound fold ────────────────────────────────────────────────────────
 
 
 class _Bound(Enum):
@@ -147,17 +237,10 @@ def fold_range_pairs(
     Fold complementary lower/upper bound comparisons on the same chain into range items,
     preserving the order of everything else.
 
-    This is the coordination (aggregation) microplanning task — conjunction reduction folding
-    ``x >= low`` and ``x <= high`` into ``x is between low and high``. Direction (not position) decides
-    which operand is the lower vs upper bound, so ``t.x <= high`` written before ``t.x >= low`` still
-    yields ``between low and high``.
-
-    References:
-
-    * Reiter, E. & Dale, R. (2000), "Building Natural Language Generation Systems", CUP —
-      aggregation as a microplanning task.
-    * Dalianis, H. (1999), "Aggregation in Natural Language Generation", *Computational
-      Intelligence* 15(4) — aggregation realised via coordination / conjunction reduction.
+    Direction (not position) decides which operand is the lower vs upper bound, so ``t.x <= high``
+    written before ``t.x >= low`` still yields ``between low and high``. Folding is greedy: the first
+    unfolded bound in one direction pairs with the first arriving opposite-direction bound on the
+    same chain.
 
     :param conjuncts: A flat list of conjuncts (e.g. the operands of an ``AND``).
     :return: A list whose items are either the original expressions or range folds.
@@ -197,6 +280,9 @@ def has_pair(conjuncts: List[SymbolicExpression]) -> bool:
     :return: ``True`` when range folding would produce at least one range fold.
     """
     return any(isinstance(item, RangeFold) for item in fold_range_pairs(conjuncts))
+
+
+# ── co-indexed fold ─────────────────────────────────────────────────────────
 
 
 def _attribute_pair(node: SymbolicExpression) -> Optional[Tuple[str, type]]:
@@ -293,19 +379,6 @@ def fold_coindexed_groups(
     return [slot for index, slot in enumerate(slots) if not dropped[index]]
 
 
-def reduce_conjuncts(
-    conjuncts: List[SymbolicExpression],
-) -> List[Union[SymbolicExpression, RangeFold, CoindexedFold]]:
-    """
-    Reduce a flat conjunct list by both coordination folds — range pairs then co-indexed groups —
-    the single entry every conjunct-rendering caller uses so neither has to know a fold exists.
-
-    :param conjuncts: A flat list of conjuncts (e.g. the operands of an ``AND``).
-    :return: The reduced list (raw expressions interleaved with range / co-indexed folds).
-    """
-    return fold_coindexed_groups(fold_range_pairs(list(conjuncts)))
-
-
 def coindexed_natural_parts(fold: CoindexedFold) -> Optional[CoindexedNaturalParts]:
     """
     The pieces for the natural *"the <a> and <b> of <shared> have the same …"* rendering, or
@@ -341,29 +414,7 @@ def coindexed_natural_parts(fold: CoindexedFold) -> Optional[CoindexedNaturalPar
     )
 
 
-def fragment_for_folded_conjunct(
-    item: Union[SymbolicExpression, RangeFold],
-    child: Callable[[SymbolicExpression], Fragment],
-    *,
-    compact: bool,
-) -> Fragment:
-    """
-    Render one folded conjunct: a range fold becomes a *between* phrase; any other conjunct is
-    rendered via *child*.
-
-    :param item: A folded conjunct (a range fold or a raw expression).
-    :param child: The fold continuation rendering a raw expression.
-    :param compact: Drop the copula in the *between* phrase (HAVING / post-nominal contexts).
-    :return: The fragment for *item*.
-    """
-    if isinstance(item, RangeFold):
-        return build_between(
-            child(item.chain_expression),
-            child(item.lower_expression),
-            child(item.upper_expression),
-            compact=compact,
-        )
-    return child(item)
+# ── fragment-level coordination builders ────────────────────────────────────
 
 
 def build_between(
