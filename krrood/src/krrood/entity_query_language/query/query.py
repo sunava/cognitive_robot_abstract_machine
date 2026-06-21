@@ -464,13 +464,11 @@ class Query(
 
     def _apply_wrapping_modifiers_(self) -> None:
         """
-        Apply the ordering and quantification wrappers, innermost first, around this product node.
-        ``OrderedBy`` nests inside the ``ResultQuantifier``.
+        Apply the quantification wrapper around this product node. Ordering is applied as an
+        evaluation phase of the product rather than as a wrapper node.
         """
-        for modifier in (self._ordered_by_builder_, self._quantifier_builder_):
-            if modifier is None:
-                continue
-            self._expression_ = modifier.wrap_around(self._expression_)
+        if self._quantifier_builder_ is not None:
+            self._expression_ = self._quantifier_builder_.wrap_around(self._expression_)
 
     def _evaluate__(
         self,
@@ -530,15 +528,40 @@ class Query(
         :param sources: The current bindings.
         :return: An iterator over the query's result rows.
         """
-        yield from (
+        results = (
             self._get_operation_result_(result)
             for result in self._apply_results_mapping_(
                 self._evaluate_product_(sources),
             )
         )
+        if self._ordered_by_builder_ is not None:
+            results = iter(
+                sorted(
+                    results,
+                    key=self._ordering_key_,
+                    reverse=self._ordered_by_builder_.descending,
+                )
+            )
+        yield from results
 
         if self._seen_results is not None:
             self._seen_results.clear()
+
+    def _ordering_key_(self, result: OperationResult) -> Any:
+        """
+        :param result: A result row to order.
+        :return: The value to order *result* by, resolving the ordering variable against the row's
+            bindings (evaluating it when not already bound) and applying the optional key function.
+        """
+        ordering = self._ordered_by_builder_
+        variable_id = ordering.variable._id_
+        if variable_id not in result.all_bindings:
+            ordering_value = next(
+                ordering.variable._evaluate_(OperationResult(result.all_bindings))
+            ).value
+        else:
+            ordering_value = result.all_bindings[variable_id]
+        return ordering.key(ordering_value) if ordering.key else ordering_value
 
     def _get_operation_result_(self, child_result: OperationResult) -> OperationResult:
         """
