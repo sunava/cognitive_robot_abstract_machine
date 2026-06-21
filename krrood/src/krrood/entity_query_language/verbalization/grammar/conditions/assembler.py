@@ -13,15 +13,13 @@ from krrood.entity_query_language.verbalization.grammar.aggregation.kinds import
 from krrood.entity_query_language.verbalization.grammar.framework.assembler import (
     Assembler,
 )
-from krrood.entity_query_language.verbalization.grammar.conditions.operator_phrase import (
+from krrood.entity_query_language.verbalization.grammar.conditions.predication import (
     comparator_operator,
+    PredicateTransform,
 )
 from krrood.entity_query_language.verbalization.grammar.conditions.recognition import (
     single_hop_attribute,
     superlative_aggregation,
-)
-from krrood.entity_query_language.verbalization.grammar.conditions.transforms import (
-    PredicateTransform,
 )
 from krrood.entity_query_language.verbalization.microplanning.coordination import (
     reduce_conjuncts,
@@ -102,7 +100,7 @@ class ConditionAssembler(Assembler[Comparator, None]):
             inference antecedent — *"whose salaries are greater than 5"*).
         :return: The bare *"<attribute> <operator> <value>"* grouped predicate a *"whose …"* envelope
             wraps, all agreeing with *number* — the predicative operator factors its copula out so a
-            plural subject reads *"are greater than"* (see :func:`~…operator_phrase.comparator_operator`).
+            plural subject reads *"are greater than"* (see :func:`~…predication.comparator_operator`).
         """
         attribute = single_hop_attribute(comparator.left, subject)
         return PhraseFragment(

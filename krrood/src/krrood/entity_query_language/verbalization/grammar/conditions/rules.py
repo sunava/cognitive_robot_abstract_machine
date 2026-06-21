@@ -28,7 +28,7 @@ from krrood.entity_query_language.verbalization.grammar.chain.planner import (
 from krrood.entity_query_language.verbalization.grammar.conditions.assembler import (
     ConditionAssembler,
 )
-from krrood.entity_query_language.verbalization.grammar.conditions.operator_phrase import (
+from krrood.entity_query_language.verbalization.grammar.conditions.predication import (
     coindexed_operator,
 )
 from krrood.entity_query_language.verbalization.grammar.conditions.recognition import (

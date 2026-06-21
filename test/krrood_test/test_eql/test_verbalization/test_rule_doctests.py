@@ -8,7 +8,7 @@ from what the grammar actually produces.
 The set of scanned modules is **auto-discovered** by walking the verbalization package: any module
 whose docstrings contain ``>>>`` examples is found and run, so a doctest added anywhere in the
 package is executed without editing this harness (the previous hand-maintained list silently dropped
-doctests in modules it omitted — e.g. ``grammar.conditions.forms``).
+doctests in modules it omitted — e.g. ``grammar.conditions.placement``).
 
 The examples are kept to a single readable line by injecting a shared namespace — the EQL
 factories, ``Not``, ``verbalize_expression`` and the example-domain classes — so a docstring need
@@ -102,14 +102,14 @@ def test_rule_docstring_examples_execute(module_name):
 def test_doctest_discovery_includes_previously_uncovered_modules():
     """
     The auto-discovery must execute doctests the old hand-maintained list silently dropped — in
-    particular ``grammar.conditions.forms`` — and must still cover the originally-curated modules.
+    particular ``grammar.conditions.placement`` — and must still cover the originally-curated modules.
     """
     previously_curated = {
         "grammar.terms.rules",
         "grammar.chain.rules",
         "grammar.chain.planner",
         "grammar.conditions.rules",
-        "grammar.conditions.restriction",
+        "grammar.conditions.subject",
         "grammar.query.rules",
         "grammar.query.assembler",
         "grammar.query.planner",
@@ -124,4 +124,4 @@ def test_doctest_discovery_includes_previously_uncovered_modules():
     }
     missing = previously_curated - discovered_suffixes
     assert not missing, f"auto-discovery regressed on: {sorted(missing)}"
-    assert "grammar.conditions.forms" in discovered_suffixes
+    assert "grammar.conditions.placement" in discovered_suffixes

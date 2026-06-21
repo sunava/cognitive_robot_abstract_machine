@@ -89,7 +89,7 @@ class RankingForm(SpecificityRule):
 
     The registry is *total*: :class:`LeadingRankForm` is the unguarded base every specific form
     refines, so :meth:`~SpecificityRule.most_applicable` always returns a form. Adding a template is
-    a new subclass; nothing else changes (open/closed). Mirrors ``grammar/conditions/forms.py``.
+    a new subclass; nothing else changes (open/closed). Mirrors ``grammar/conditions/placement.py``.
     """
 
     @classmethod

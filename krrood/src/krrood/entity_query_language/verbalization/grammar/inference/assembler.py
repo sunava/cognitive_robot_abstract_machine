@@ -22,7 +22,7 @@ from krrood.entity_query_language.verbalization.grammar.framework.assembler impo
 from krrood.entity_query_language.verbalization.grammar.conditions.assembler import (
     ConditionAssembler,
 )
-from krrood.entity_query_language.verbalization.grammar.conditions.forms import (
+from krrood.entity_query_language.verbalization.grammar.conditions.placement import (
     as_subject_restrictions,
 )
 from krrood.entity_query_language.verbalization.grammar.inference.planner import (

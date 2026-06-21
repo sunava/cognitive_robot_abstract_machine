@@ -12,7 +12,7 @@ from krrood.entity_query_language.verbalization.grammar.clauses.assembler import
     HavingAssembler,
     OrderedByAssembler,
 )
-from krrood.entity_query_language.verbalization.grammar.conditions.forms import (
+from krrood.entity_query_language.verbalization.grammar.conditions.placement import (
     as_subject_restrictions,
     RestrictionFragments,
 )

@@ -29,7 +29,7 @@ from krrood.entity_query_language.verbalization.grammar.conditions.recognition i
     single_hop_attribute,
     superlative_aggregation,
 )
-from krrood.entity_query_language.verbalization.grammar.conditions.transforms import (
+from krrood.entity_query_language.verbalization.grammar.conditions.predication import (
     render_absence,
 )
 from krrood.entity_query_language.verbalization.grammar.framework.phrase_rule import (

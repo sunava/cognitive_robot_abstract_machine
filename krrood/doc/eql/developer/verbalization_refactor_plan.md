@@ -354,3 +354,21 @@ The fragment **builders** that render the folded results (`build_between`, `coor
 `oxford_comma`, the match *"respectively"* phrase) are a separate, later stage and stay with the
 fragment layer / their construct assembler — they assemble already-rendered pieces and need the
 recursion, so they are deliberately not in the (pure) coordination mechanism.
+
+### Phase 4 — done (conditions cohesion)
+
+The 7-file `grammar/conditions/` hairball is now 6 clearly-named, cohesive units, consistent with the
+other construct folders (every construct keeps its `assembler.py`):
+
+| was | now | concern |
+|---|---|---|
+| `transforms.py` + `operator_phrase.py` | **`predication.py`** | how a comparator is said as a *predicate* — the `PredicateTransform` registry + operator-word selection (`comparator_operator` / `coindexed_operator`) + `render_absence` |
+| `forms.py` | **`placement.py`** | *where* a condition attaches to a subject — `ConditionForm` registry, `Slot`, `place` / `as_subject_restrictions` |
+| `restriction.py` | **`subject.py`** | *which* variable the WHERE restricts — `RestrictionSubjectRule`, `restriction_subject` |
+| `rules.py`, `assembler.py`, `recognition.py` | unchanged | entry `PhraseRule`s; the `ConditionAssembler` surface toolkit; structural recognizers |
+
+`ConditionAssembler.predicate` dispatches over the `PredicateTransform` registry in `predication.py`,
+mirroring how `QueryAssembler` dispatches over the `RankingForm` registry in `query/ranking.py` — so
+conditions now follows the same assembler-plus-registry shape as the rest of the grammar. The
+misnomer (`transforms`) and the `rules.py`/`restriction.py` name clash are gone. New
+`test_conditions_layout.py` pins the layout (and that the old module names are gone). 582 passed.
