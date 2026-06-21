@@ -209,14 +209,8 @@ class ExternalVariableRule(PhraseRule):
     name = "external-variable"
 
     def build(self, node: ExternallySetVariable, context: RuleContext) -> Fragment:
-        type_name = (
-            node._type_.__name__
-            if getattr(node, "_type_", None)
-            else FallbackNouns.VARIABLE.text
-        )
-        return NounPhrase(
-            head=RoleFragment.for_type(getattr(node, "_type_", None), text=type_name)
-        )
+        type_name = FallbackNouns.VARIABLE.name_of(node)
+        return NounPhrase(head=RoleFragment.for_type(node._type_, text=type_name))
 
 
 class FlatVariableRule(PhraseRule):

@@ -284,20 +284,11 @@ class InferencePlanner(Planner[Entity, RuleStructure]):
         if isinstance(root, Entity):
             root.build()
             selected = root.selected_variable
-            type_name = (
-                selected._type_.__name__
-                if selected and getattr(selected, "_type_", None)
-                else FallbackNouns.ENTITY.text
-            )
+            type_name = FallbackNouns.ENTITY.name_of(selected)
             conditions: List[SymbolicExpression] = []
             if root._where_expression_ is not None:
                 conditions = flatten_operands(root._where_expression_.condition, AND)
             return type_name, conditions
         if isinstance(root, Variable):
-            type_name = (
-                root._type_.__name__
-                if getattr(root, "_type_", None)
-                else FallbackNouns.VARIABLE.text
-            )
-            return type_name, []
+            return FallbackNouns.VARIABLE.name_of(root), []
         return FallbackNouns.ENTITY.text, []

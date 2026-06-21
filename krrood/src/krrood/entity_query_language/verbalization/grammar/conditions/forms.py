@@ -352,7 +352,5 @@ def _join_residual(fragments: List[Fragment]) -> Optional[Fragment]:
     """:return: The standalone conjuncts joined into one residual condition, or ``None``."""
     if not fragments:
         return None
-    if len(fragments) == 1:
-        return fragments[0]
     # Residual conjuncts are independent clauses, so a two-clause pair keeps its comma.
     return oxford_comma(fragments, Conjunctions.AND.as_fragment(), pair_comma=True)

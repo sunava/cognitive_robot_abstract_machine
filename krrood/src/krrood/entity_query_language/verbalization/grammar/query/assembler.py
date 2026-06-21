@@ -519,10 +519,7 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
         """
         entity.build()
         variable = entity.selected_variable
-        variable_type = getattr(variable, "_type_", None)
-        type_name = (
-            variable_type.__name__ if variable_type else FallbackNouns.ENTITY.text
-        )
+        type_name = FallbackNouns.ENTITY.name_of(variable)
 
         where_expression = entity._where_expression_
         if where_expression is not None:

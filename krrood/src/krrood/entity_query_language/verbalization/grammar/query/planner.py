@@ -277,10 +277,7 @@ class QueryPlanner(Planner[Query, QueryPlan]):
         return builder is not None and builder.type is The
 
     def _selected_type(self) -> str:
-        selected = self._selected
-        if selected is not None and getattr(selected, "_type_", None):
-            return selected._type_.__name__
-        return FallbackNouns.ENTITY.text
+        return FallbackNouns.ENTITY.name_of(self._selected)
 
     # ── subject restriction (WHERE partition) ────────────────────────────────
 

@@ -201,11 +201,7 @@ class InferenceAssembler(Assembler[Entity, RuleStructure]):
         chain, current = walk_chain(expression)
         if not chain or not isinstance(current, Variable):
             return self.context.child(expression)
-        root_type = (
-            current._type_.__name__
-            if getattr(current, "_type_", None)
-            else FallbackNouns.ENTITY.text
-        )
+        root_type = FallbackNouns.ENTITY.name_of(current)
         parts = build_path_parts(chain)
         field = list(reversed(parts))[0].name if parts else root_type
         return GroupKeyPhrases.COMMON_OF.build_phrase(field, root_type)

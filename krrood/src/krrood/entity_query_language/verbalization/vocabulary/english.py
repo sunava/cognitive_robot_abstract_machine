@@ -532,6 +532,16 @@ class FallbackNouns(VocabEnum):
         """:return: A pluralised noun fragment (e.g. ``"entities"``)."""
         return self.value.plural_fragment()
 
+    def name_of(self, node: object) -> str:
+        """
+        :param node: A variable/entity-like node, or ``None``.
+        :return: *node*'s type name (``_type_.__name__``), or this fallback noun's text when *node*
+            is ``None`` or carries no type. Centralises the one optional-``_type_`` read every
+            planner/assembler would otherwise repeat.
+        """
+        node_type = getattr(node, "_type_", None)
+        return node_type.__name__ if node_type is not None else self.text
+
 
 class GroupKeyPhrases(VocabEnum):
     """

@@ -251,6 +251,4 @@ class MatchAssembler(Assembler[Match, MatchPlan]):
             )
             for attribute in attributes
         ]
-        if len(fragments) == 1:
-            return fragments[0]
         return oxford_comma(fragments, Conjunctions.AND.as_fragment())
