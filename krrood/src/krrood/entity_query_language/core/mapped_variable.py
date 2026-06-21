@@ -138,13 +138,6 @@ class MappedVariable(UnaryExpression, CanBehaveLikeAVariable[T], ABC):
         super().__post_init__()
         self._update_type_()
 
-    @property
-    def _reads_child_result_bindings_(self) -> bool:
-        """
-        :return: ``True``; a mapped variable maps over its child's per-result bindings.
-        """
-        return True
-
     def _update_type_(self) -> None:
         """
         Update the `_type_` attribute.

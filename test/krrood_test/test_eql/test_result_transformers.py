@@ -7,8 +7,30 @@ traversing the expression tree or evaluating it.
 
 from __future__ import annotations
 
-from krrood.entity_query_language.factories import entity, variable, an
-from krrood.entity_query_language.query.result_transformers import Ordering
+from krrood.entity_query_language.factories import entity, variable, an, the
+from krrood.entity_query_language.query.quantifiers import An, The
+from krrood.entity_query_language.query.result_transformers import (
+    Ordering,
+    Quantification,
+)
+
+
+def test_result_stages_reports_the_quantifier_kind():
+    """The pipeline exposes the quantifier kind, so an inspector can tell ``an`` from ``the`` without
+    evaluating or traversing the expression tree."""
+    value = variable(int, [1])
+
+    an_stages = an(entity(value)).result_stages
+    assert any(
+        isinstance(stage, Quantification) and stage.quantifier_type is An
+        for stage in an_stages
+    )
+
+    the_stages = the(entity(value)).result_stages
+    assert any(
+        isinstance(stage, Quantification) and stage.quantifier_type is The
+        for stage in the_stages
+    )
 
 
 def test_result_stages_includes_an_ordering_stage_when_ordered():

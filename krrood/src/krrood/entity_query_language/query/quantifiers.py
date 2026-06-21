@@ -95,6 +95,28 @@ class Exactly(SingleValueQuantificationConstraint):
 
 
 @dataclass
+class ExactlyOne(Exactly):
+    """
+    A definite single-result constraint. Unlike :class:`Exactly`, it raises the definite-result
+    errors (:class:`NoSolutionFound` / :class:`MultipleSolutionFound`) directly, so a definite query
+    (``the``) enforces exactly one result without translating generic quantification errors.
+    """
+
+    value: int = 1
+    """
+    The required number of results, always one.
+    """
+
+    def assert_satisfaction(
+        self, number_of_solutions: int, quantifier: ResultQuantifier, done: bool
+    ) -> None:
+        if number_of_solutions > self.value:
+            raise MultipleSolutionFound(quantifier)
+        if done and number_of_solutions < self.value:
+            raise NoSolutionFound(quantifier)
+
+
+@dataclass
 class AtLeast(SingleValueQuantificationConstraint):
     """
     A class that specifies a minimum number of results as a quantification constraint.
@@ -182,6 +204,14 @@ class ResultQuantifier(
         self._var_ = self._child_
         super().__post_init__()
 
+    @classmethod
+    def _default_constraint_(cls) -> Optional[ResultQuantificationConstraint]:
+        """
+        :return: The result-count constraint this quantifier kind enforces by default, applied by the
+            query's quantification pipeline stage when no explicit constraint is given.
+        """
+        return None
+
     @property
     def _original_expression_(self) -> SymbolicExpression:
         return self._child_
@@ -245,23 +275,6 @@ class The(ResultQuantifier):
     Quantifier that expects exactly one result; raises MultipleSolutionFound if more, and NoSolutionFound if none.
     """
 
-    _quantification_constraint_: ResultQuantificationConstraint = field(
-        init=False, default_factory=lambda: Exactly(1)
-    )
-
-    def _evaluate__(
-        self,
-        sources: OperationResult,
-    ) -> Iterable[TypingUnion[T, Dict[TypingUnion[T, SymbolicExpression], T]]]:
-        """
-        Evaluates the query object descriptor with the given bindings and yields the results.
-
-        :raises MultipleSolutionFound: If more than one result is found.
-        :raises NoSolutionFound: If no result is found.
-        """
-        try:
-            yield from super()._evaluate__(sources)
-        except LessThanExpectedNumberOfSolutions:
-            raise NoSolutionFound(self)
-        except GreaterThanExpectedNumberOfSolutions:
-            raise MultipleSolutionFound(self)
+    @classmethod
+    def _default_constraint_(cls) -> ResultQuantificationConstraint:
+        return ExactlyOne()

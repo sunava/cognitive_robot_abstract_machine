@@ -502,7 +502,7 @@ def test_having_node_hierarchy(departments_and_employees):
     ).build()
 
     # Graph hierarchy check: the having node is wired into the compiled product the query delegates to.
-    product = query._compiled_product_node_
+    product = query._expression_
     assert product._having_expression_._parent_ is product
     assert isinstance(product._having_expression_.grouped_by, GroupedBy)
     assert query._conditions_root_._name_ == ">"

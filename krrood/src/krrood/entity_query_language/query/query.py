@@ -47,6 +47,7 @@ from krrood.entity_query_language.query.quantifiers import (
 )
 from krrood.entity_query_language.query.result_transformers import (
     Ordering,
+    Quantification,
     ResultTransformer,
 )
 from krrood.entity_query_language.core.base_expressions import (
@@ -204,13 +205,6 @@ class Query(
     spec. A spec delegates evaluation to the product it compiles, so that the spec behaves like its
     product while never being the mutated, embedded node itself.
     """
-    _compiled_product_node_: Optional[Query] = field(default=None, init=False)
-    """
-    The inner cartesian-product node of the last compiled product (the node sharing this query's
-    identifier, beneath the ordering/quantification wrappers). Derived references such as
-    ``query.name`` embed this node so that, evaluated against a result that already binds the query's
-    identifier, they resolve to that result rather than re-running the whole subquery.
-    """
 
     def __post_init__(self):
         self._operation_children_ = tuple(self._selected_variables_)
@@ -327,10 +321,7 @@ class Query(
         self._limit_ = n
         if not isinstance(self._limit_, int) or self._limit_ <= 0:
             raise NonPositiveLimitValue(self._limit_)
-        # The quantifier wrapper keeps its identity across rebuilds, so update it in place when it
-        # already exists; otherwise the first build picks the limit up.
-        if isinstance(self._expression_, ResultQuantifier):
-            self._expression_._limit_ = self._limit_
+        self._mark_dirty_()
         return self
 
     def _quantify_(
@@ -375,8 +366,7 @@ class Query(
         """
         if not self._dirty_:
             return self
-        self._compiled_product_node_ = self._compile_()
-        self._expression_ = self._compiled_product_node_._expression_
+        self._expression_ = self._compile_()
         self._dirty_ = False
         return self
 
@@ -420,15 +410,15 @@ class Query(
     def _wire_in_place_(self) -> Self:
         """
         Wire this instance as the cartesian-product node: build the data-source chain (Where /
-        GroupedBy / Having) and selected variables as its children, then apply the ordering and
-        quantification wrappers around it. Called once on a freshly compiled product instance.
+        GroupedBy / Having) and selected variables as its children. Ordering and quantification are
+        applied as result-pipeline stages during evaluation, not as wrapper nodes, so the product is
+        its own compiled expression. Called once on a freshly compiled product instance.
 
         :return: This instance.
         """
         self._building_ = True
         self._is_compiled_product_ = True
         self._rewire_data_source_chain_()
-        self._apply_wrapping_modifiers_()
         self._dirty_ = False
         self._building_ = False
         return self
@@ -466,14 +456,6 @@ class Query(
             return self._where_builder_.expression
         return None
 
-    def _apply_wrapping_modifiers_(self) -> None:
-        """
-        Apply the quantification wrapper around this product node. Ordering is applied as an
-        evaluation phase of the product rather than as a wrapper node.
-        """
-        if self._quantifier_builder_ is not None:
-            self._expression_ = self._quantifier_builder_.wrap_around(self._expression_)
-
     def _evaluate__(
         self,
         sources: OperationResult,
@@ -492,7 +474,7 @@ class Query(
         """
         if not self._is_compiled_product_:
             self.build()
-            yield from self._compiled_product_node_._evaluate__(sources)
+            yield from self._expression_._evaluate__(sources)
             return
 
         evaluation_context = get_evaluation_context()
@@ -548,8 +530,8 @@ class Query(
     @cached_property
     def _result_transformers_(self) -> List[ResultTransformer]:
         """
-        :return: The ordered result-pipeline stages applied to this query's produced rows (ordering,
-            then quantification). Inspectable as :attr:`result_stages`.
+        :return: The ordered result-pipeline stages applied to this query's produced rows: ordering
+            (when configured), then quantification. Inspectable as :attr:`result_stages`.
         """
         transformers: List[ResultTransformer] = []
         if self._ordered_by_builder_ is not None:
@@ -561,6 +543,16 @@ class Query(
                     key=ordering.key,
                 )
             )
+        quantifier = self._quantifier_builder_
+        constraint = (
+            quantifier.quantification_constraint
+            or quantifier.type._default_constraint_()
+        )
+        transformers.append(
+            Quantification(
+                quantifier_type=quantifier.type, constraint=constraint, owner=self
+            )
+        )
         return transformers
 
     @property
@@ -571,8 +563,7 @@ class Query(
             without traversing or evaluating.
         """
         self.build()
-        compiled_product = self._compiled_product_node_ or self
-        return compiled_product._result_transformers_
+        return self._expression_._result_transformers_
 
     def _get_operation_result_(self, child_result: OperationResult) -> OperationResult:
         """
@@ -607,18 +598,6 @@ class Query(
         """
         return (
             self._grouped_by_builder_.expression if self._grouped_by_builder_ else None
-        )
-
-    @property
-    def _quantifier_expression_(self) -> Optional[ResultQuantifier]:
-        """
-        :return: The compiled result quantifier at the root of the built expression, if any.
-        """
-        self.build()
-        return (
-            self._expression_
-            if isinstance(self._expression_, ResultQuantifier)
-            else None
         )
 
     @cached_property
@@ -718,20 +697,17 @@ class Query(
 
         The product is captured as it stands at embed time; because each rebuild produces a new
         product rather than mutating the previous one, a later edit to this query cannot change the
-        already-embedded copy. While a product instance wires its own wrapper layers during
-        :meth:`_wire_in_place_` (``_building_``), the wrappers must wrap that instance itself, so its
-        own (partial) expression is returned.
+        already-embedded copy. The product shares this query's identifier, so a derived reference
+        (``query.name``) embedded over it resolves against the query's own results. While the product
+        is wiring itself during :meth:`_wire_in_place_` (``_building_``), its own in-place node is
+        returned.
 
         :param parent: The expression about to take this query as a child.
-        :return: The compiled product to embed; the inner product node (binding source) when the
-            parent reads this query's per-result bindings (a derived reference such as ``query.name``)
-            so it resolves against the query's own results; or the in-place node during self-wrapping.
+        :return: The compiled product to embed (or the in-place node during self-wiring).
         """
         if self._building_:
             return self._expression_
         self.build()
-        if parent._reads_child_result_bindings_:
-            return self._compiled_product_node_
         return self._expression_
 
     @property
@@ -743,6 +719,8 @@ class Query(
         :return: The conditions root of the compiled product.
         """
         self.build()
+        if self._expression_ is self:
+            return SymbolicExpression._conditions_root_.fget(self)
         return self._expression_._conditions_root_
 
     @UnaryExpression._parent_.setter

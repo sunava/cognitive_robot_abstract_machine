@@ -236,16 +236,6 @@ class SymbolicExpression(ABC):
         """
         return self._expression_
 
-    @property
-    def _reads_child_result_bindings_(self) -> bool:
-        """
-        :return: Whether this expression derives its value from its child's per-result bindings (a
-            derived reference) rather than consuming the child's value. A query embedded as a child
-            of such an expression hands over its binding source rather than its quantified value, so
-            the reference resolves against the query's own results.
-        """
-        return False
-
     def _ensure_children_ids_are_cached_(self, *children: SymbolicExpression) -> None:
         """
         Ensure that the IDs of the provided children expressions are cached within the current expression.
@@ -422,13 +412,10 @@ class SymbolicExpression(ABC):
         """
         from krrood.entity_query_language.query.query import Query
 
-        root = self._root_
-        root_query = None
-        for descendant in root._descendants_:
-            if isinstance(descendant, Query):
-                root_query = descendant
-                break
-        return root_query
+        for expression in self._all_expressions_:
+            if isinstance(expression, Query):
+                return expression
+        return None
 
     @property
     @abstractmethod
