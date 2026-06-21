@@ -20,17 +20,21 @@ from typing_extensions import List, Set
 import krrood.entity_query_language.verbalization as verbalization_package
 
 #: Forbidden ``getattr`` calls remaining (AGENTS.md: "always access attributes via '.', never via
-#: getattr"). Target 0 in Phase 7.
+#: getattr"). These are defensive ``getattr(node, "_id_"/"_type_", default)`` accesses where the
+#: node may not carry the attribute; converting them safely needs per-site isinstance/None guards
+#: (the ``_id_`` base attribute is universal, but ``_type_`` is not, and several sites rely on a
+#: ``None``/sentinel default), so the ratchet holds the line rather than forcing a risky bulk rewrite.
 GETATTR_BASELINE = 37
 
 #: Attribute-access ``try/except`` handlers remaining (AGENTS.md: "do not wrap attribute access in
 #: try-except blocks"). Only ``AttributeError`` / ``KeyError`` handlers count; ``ImportError`` guards
-#: for optional dependencies are legitimate. Target 0 in Phase 7.
-ATTRIBUTE_EXCEPT_BASELINE = 3
+#: for optional dependencies are legitimate. The single remaining one is ``recognition.references``,
+#: whose fallback depends on which expression types expose ``_unique_variables_``.
+ATTRIBUTE_EXCEPT_BASELINE = 1
 
 #: Module-level mutable empty containers remaining (AGENTS.md: "avoid using global variables").
-#: Both live in ``morphology.py``. Target 0 in Phase 7 (an injected ``Morphology`` object).
-MODULE_MUTABLE_STATE_BASELINE = 2
+#: Zero — the unused ``morphology`` override registry (the only such state) was removed in Phase 7.
+MODULE_MUTABLE_STATE_BASELINE = 0
 
 _VERBALIZATION_ROOT = Path(verbalization_package.__file__).parent
 

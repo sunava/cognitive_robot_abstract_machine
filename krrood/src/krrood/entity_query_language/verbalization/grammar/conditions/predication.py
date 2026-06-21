@@ -217,15 +217,13 @@ def comparator_operator(
         return word.as_fragment() if compact else predicative_operator(word.text, number)
 
     temporal = is_temporal(comparator.left) or is_temporal(comparator.right)
-    try:
-        word = Operators.from_callable(operation).select(
-            negated=negated, compact=compact, temporal=temporal
-        )
-    except KeyError:
+    operator_member = Operators.for_callable(operation)
+    if operator_member is None:
         name = comparator._name_
         return RoleFragment.for_operator(
             f"{Logicals.NOT.text} {name}" if negated else name
         )
+    word = operator_member.select(negated=negated, compact=compact, temporal=temporal)
     return word.as_fragment() if compact else predicative_operator(word.text, number)
 
 

@@ -390,3 +390,22 @@ misnomer (`transforms`) and the `rules.py`/`restriction.py` name clash are gone.
 - New `test_realization_pipeline.py` pins the contract and that `realize_tree` equals the ordered
   composition of the four passes (the pass-ordering/state-handoff integration the suite previously
   lacked). Suite green.
+
+### Phase 7 — done (AGENTS.md violations; taken before Phase 6 as it is lower-risk)
+
+- **Global mutable state removed.** `morphology.py`'s `_plural_overrides` / `_article_overrides`
+  module dicts (and `register_plural` / `register_indefinite_article` / `clear_overrides`) had **no
+  callers anywhere** — dead, untested, and the only global mutable state. Removed; the four facade
+  functions simplified to pure `inflect` calls. (**Decision to review:** alternative was to keep the
+  override hook but encapsulate it in an injected config; chosen removal because it was unused
+  YAGNI + global state. If irregular-plural support is wanted, reintroduce it as injected config.)
+  Module-mutable-state guardrail tightened **2 → 0**.
+- **Two of three attribute-access `try/except` removed**, replaced with explicit checks:
+  `source_link_resolver.resolve` (`isinstance(owner_type, type)`), and `comparator_operator` (new
+  `Operators.for_callable` returning `Optional`, replacing the `KeyError` catch). Guardrail tightened
+  **3 → 1**; the remaining one (`recognition.references`) depends on which expression types expose
+  `_unique_variables_` and is left under the ratchet.
+- **`getattr` (37) held under the ratchet, not bulk-converted.** `_id_` is a universal base
+  attribute but `_type_` is not, and several sites depend on a `None`/sentinel default — converting
+  all 37 safely needs per-site `isinstance`/`None` guards that add verbosity and risk for little
+  value. The ratchet prevents any *new* `getattr`. (Deferred, documented.)

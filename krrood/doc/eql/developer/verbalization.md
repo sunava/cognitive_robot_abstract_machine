@@ -310,7 +310,7 @@ After the fold, {py:func}`~krrood.entity_query_language.verbalization.rendering.
 
 1. **{py:class}`~krrood.entity_query_language.verbalization.rendering.coreference_processor.CoreferenceProcessor`** — resolves referring expressions in document order and strips `PossessiveChain` markers (below).
 2. **{py:class}`~krrood.entity_query_language.verbalization.rendering.determiner_processor.DeterminerProcessor`** — lowers every `NounPhrase` to a determiner-bearing `PhraseFragment` via the concord table (INDEFINITE×SINGULAR → *a/an*; INDEFINITE×PLURAL → bare; DEFINITE → *the*; UNIQUE → *the unique*; BARE → no determiner), and tags the head with its `Number`.
-3. **{py:class}`~krrood.entity_query_language.verbalization.rendering.morphology_processor.MorphologyProcessor`** — inflects every leaf tagged `Number.PLURAL` (pluralise nouns; copula suppletion *is*→*are*).  Domain exceptions can be registered via {py:func}`~krrood.entity_query_language.verbalization.morphology.register_plural` / {py:func}`~krrood.entity_query_language.verbalization.morphology.register_indefinite_article`.
+3. **{py:class}`~krrood.entity_query_language.verbalization.rendering.morphology_processor.MorphologyProcessor`** — inflects every leaf tagged `Number.PLURAL` (pluralise nouns; copula suppletion *is*→*are*) via the {py:mod}`~krrood.entity_query_language.verbalization.morphology` facade over `inflect` / `lemminflect`.
 4. **{py:class}`~krrood.entity_query_language.verbalization.rendering.orthography_processor.OrthographyProcessor`** — removes the space adjacent to glued punctuation (a `Punctuation` token carries a spacing feature), so rules emit *","* / *"("* / *")"* as ordinary, normally-separated tokens and still get *"x, y"* / *"(x)"*.
 
 ### Coreference

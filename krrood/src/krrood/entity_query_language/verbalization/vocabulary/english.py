@@ -669,6 +669,15 @@ class Operators(Enum):
         """
         return _OPERATOR_CALLABLE_MAP[function]
 
+    @classmethod
+    def for_callable(cls, function) -> Optional[Operators]:
+        """
+        :param function: Any callable.
+        :return: The member for *function*, or ``None`` when it has no registered mapping (so a
+            caller can fall back without catching an exception).
+        """
+        return _OPERATOR_CALLABLE_MAP.get(function)
+
 
 #: Map Python ``operator`` callables to ``Operators`` members.
 _OPERATOR_CALLABLE_MAP: Dict[Callable, Operators] = {
