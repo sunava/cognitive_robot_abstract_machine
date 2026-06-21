@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing_extensions import List, Any, Optional
+from typing_extensions import List, Any, Optional, Type
 import operator
 
 import sqlalchemy.inspection
@@ -21,7 +21,15 @@ from krrood.entity_query_language.core.base_expressions import SymbolicExpressio
 from krrood.entity_query_language.core.variable import Variable, Literal
 from krrood.entity_query_language.core.mapped_variable import Attribute
 from krrood.entity_query_language.operators.comparator import Comparator
-from krrood.entity_query_language.operators.aggregators import Aggregator, CountAll, Count, Max, Min, Sum, Average
+from krrood.entity_query_language.operators.aggregators import (
+    Aggregator,
+    CountAll,
+    Count,
+    Max,
+    Min,
+    Sum,
+    Average,
+)
 
 from krrood.entity_query_language.operators.conditionals import CaseWhen
 from krrood.ormatic.data_access_objects.helper import get_dao_class
@@ -46,7 +54,6 @@ class UnsupportedQuantifierError(EQLTranslationError):
 
 class AttributeResolutionError(EQLTranslationError):
     """Raised when an attribute cannot be resolved."""
-
 
 
 class DomainExtractionError(EQLTranslationError):
@@ -371,9 +378,9 @@ class EQLTranslator:
     join_manager: JoinManager = field(default_factory=JoinManager)
 
     @property
-    def quantifier(self) -> ResultQuantifier:
-        """Get the quantifier from the query."""
-        return self.eql_query._quantifier_expression_
+    def quantifier_type(self) -> Type[ResultQuantifier]:
+        """The result-quantifier kind (``An``/``The``) requested by the query."""
+        return self.eql_query._quantifier_builder_.type
 
     @property
     def select_like(self) -> Query:
@@ -431,17 +438,16 @@ class EQLTranslator:
         """
         selected = self.select_like._selected_variables_
 
-        all_variables = all(isinstance(v, Variable) and not isinstance(v, Attribute)
-                            for v in selected)
+        all_variables = all(
+            isinstance(v, Variable) and not isinstance(v, Attribute) for v in selected
+        )
 
         if all_variables:
             dao_classes = []
             for var in selected:
                 dao_class = get_dao_class(var._type_)
                 if dao_class is None:
-                    raise NoDAOFoundError(
-                        f"No DAO class found for {var._type_}"
-                    )
+                    raise NoDAOFoundError(f"No DAO class found for {var._type_}")
                 dao_classes.append(dao_class)
 
             self.sql_query = select(*dao_classes)
@@ -500,42 +506,39 @@ class EQLTranslator:
                 self.sql_query = self.sql_query.having(having)
 
         if self.eql_query._ordered_by_builder_ is not None:
-            col = self.translate_attribute(
-                self.eql_query._ordered_by_builder_.variable
-            )
+            col = self.translate_attribute(self.eql_query._ordered_by_builder_.variable)
             if self.eql_query._ordered_by_builder_.descending:
                 col = col.desc()
             self.sql_query = self.sql_query.order_by(col)
 
-        quantifier = self.eql_query._quantifier_expression_
-        if quantifier is not None and quantifier._limit_ is not None:
-            self.sql_query = self.sql_query.limit(quantifier._limit_)
+        if self.eql_query._limit_ is not None:
+            self.sql_query = self.sql_query.limit(self.eql_query._limit_)
 
         if self.eql_query._distinct_on:
             self.sql_query = self.sql_query.distinct()
 
     def evaluate(self) -> List[Any]:
         """
-    Evaluate the translated SQL query.
+        Evaluate the translated SQL query.
 
-    For entity() queries, returns a list of DAO objects.
-    For set_of() queries with multiple variables, returns a list of dicts
-    mapping each EQL variable to its corresponding DAO object.
+        For entity() queries, returns a list of DAO objects.
+        For set_of() queries with multiple variables, returns a list of dicts
+        mapping each EQL variable to its corresponding DAO object.
 
-    :return: Query results
+        :return: Query results
         """
         if isinstance(self.select_like, SetOf):
             return self._evaluate_set_of()
 
         bound_query = self.session.scalars(self.sql_query)
 
-        if isinstance(self.quantifier, The):
+        if issubclass(self.quantifier_type, The):
             return bound_query.one()
 
-        elif isinstance(self.quantifier, An):
+        elif issubclass(self.quantifier_type, An):
             return bound_query.all()
 
-        raise UnsupportedQuantifierError(f"Unknown quantifier: {type(self.quantifier)}")
+        raise UnsupportedQuantifierError(f"Unknown quantifier: {self.quantifier_type}")
 
     def _evaluate_set_of(self) -> List[Any]:
         """
@@ -550,8 +553,7 @@ class EQLTranslator:
         """
         selected = self.select_like._selected_variables_
         all_variables = all(
-            isinstance(v, Variable) and not isinstance(v, Attribute)
-            for v in selected
+            isinstance(v, Variable) and not isinstance(v, Attribute) for v in selected
         )
 
         rows = self.session.execute(self.sql_query).all()
@@ -568,9 +570,6 @@ class EQLTranslator:
             UnificationDict({var: value for var, value in zip(selected, row)})
             for row in rows
         ]
-
-
-
 
     def __iter__(self):
         """Iterate over evaluation results."""
@@ -620,7 +619,6 @@ class EQLTranslator:
             compiled_else = self._translate_comparator_operand(query.else_value)
 
         return case((compiled_condition, compiled_then), else_=compiled_else)
-
 
     def translate_and(self, query: AND) -> Optional[Any]:
         """
@@ -762,7 +760,11 @@ class EQLTranslator:
                 return None
 
             attribute_name = attribute_side._attribute_name_
-            relationship, foreign_key = rel_resolver.resolve_relationship_and_foreign_key(attribute_dao, attribute_name)
+            relationship, foreign_key = (
+                rel_resolver.resolve_relationship_and_foreign_key(
+                    attribute_dao, attribute_name
+                )
+            )
 
             if relationship is None:
                 return None
@@ -799,8 +801,10 @@ class EQLTranslator:
         left_rel, left_foreign_key = rel_resolver.resolve_relationship_and_foreign_key(
             left_dao, left_attribute_name
         )
-        right_rel, right_foreign_key = rel_resolver.resolve_relationship_and_foreign_key(
-            right_dao, right_attribute_name
+        right_rel, right_foreign_key = (
+            rel_resolver.resolve_relationship_and_foreign_key(
+                right_dao, right_attribute_name
+            )
         )
 
         if left_rel is None or right_rel is None:
@@ -812,14 +816,30 @@ class EQLTranslator:
             if selected_dao is None:
                 raise NoDAOFoundError("Selected variable has no DAO class")
             if left_dao is selected_dao:
-                target_dao, target_foreign_key, source_foreign_key = right_dao, right_foreign_key, left_foreign_key
+                target_dao, target_foreign_key, source_foreign_key = (
+                    right_dao,
+                    right_foreign_key,
+                    left_foreign_key,
+                )
             else:
-                target_dao, target_foreign_key, source_foreign_key = left_dao, left_foreign_key, right_foreign_key
+                target_dao, target_foreign_key, source_foreign_key = (
+                    left_dao,
+                    left_foreign_key,
+                    right_foreign_key,
+                )
         else:
             if not self.join_manager.is_table_joined(left_dao):
-                target_dao, target_foreign_key, source_foreign_key = left_dao, left_foreign_key, right_foreign_key
+                target_dao, target_foreign_key, source_foreign_key = (
+                    left_dao,
+                    left_foreign_key,
+                    right_foreign_key,
+                )
             elif not self.join_manager.is_table_joined(right_dao):
-                target_dao, target_foreign_key, source_foreign_key = right_dao, right_foreign_key, left_foreign_key
+                target_dao, target_foreign_key, source_foreign_key = (
+                    right_dao,
+                    right_foreign_key,
+                    left_foreign_key,
+                )
             else:
                 return None
 
@@ -1054,8 +1074,9 @@ class EQLTranslator:
         return aliased_target
 
 
-def eql_to_sql(query: Query, session: Session,
-               as_common_table_expression: Optional[str] = None) -> Union[EQLTranslator, Any]:
+def eql_to_sql(
+    query: Query, session: Session, as_common_table_expression: Optional[str] = None
+) -> Union[EQLTranslator, Any]:
     """
     Translate an EQL query to SQL.
 
