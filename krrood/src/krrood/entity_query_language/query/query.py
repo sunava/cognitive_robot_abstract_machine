@@ -57,6 +57,7 @@ from krrood.entity_query_language.core.base_expressions import (
     Selectable,
     UnificationDict,
 )
+from krrood.entity_query_language.evaluable import Evaluable
 from krrood.entity_query_language.cache_data import (
     SeenSet,
 )
@@ -140,7 +141,10 @@ class CachedResultStream:
 @monitored
 @dataclass(eq=False, repr=False)
 class Query(
-    MultiArityExpressionThatPerformsACartesianProduct, CanBehaveLikeAVariable[T], ABC
+    Evaluable,
+    MultiArityExpressionThatPerformsACartesianProduct,
+    CanBehaveLikeAVariable[T],
+    ABC,
 ):
     """
     Describes the queried object(s), could be a query over a single variable or a set of variables,
@@ -222,10 +226,24 @@ class Query(
         self.__dict__.pop("_group_", None)
         self.__dict__.pop("_distinct_on_ids_", None)
 
-    def evaluate(self) -> Iterator:
+    def evaluate(self, backend=None) -> Iterator:
         """
-        Build and evaluate the query, returning an iterator over its results (ordered and quantified
-        by the result pipeline).
+        Evaluate the query using the given backend, returning an iterator over the results.
+
+        Builds the query eagerly so that ``evaluate`` consistently marks it as built regardless of
+        when the returned iterator is consumed; ``build`` is idempotent.
+
+        :param backend: The query backend to evaluate with. Defaults to the
+            ``EntityQueryLanguageBackend`` (native python evaluation).
+        """
+        self.build()
+        return super().evaluate(backend)
+
+    def _evaluate_natively_(self) -> Iterator:
+        """
+        Evaluate the query in this python process, returning an iterator over its results (ordered
+        and quantified by the result pipeline). This is the engine used by the
+        ``EntityQueryLanguageBackend``.
         """
         self.build()
         if not self._is_compiled_product_:
