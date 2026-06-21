@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing_extensions import Iterable, List, Optional, Set
+from typing_extensions import Dict, Iterable, List, Optional, Set
 import uuid
 
 from krrood.entity_query_language.verbalization.fragments.base import (
@@ -62,6 +62,11 @@ class CoreferenceProcessor:
 
     discourse: DiscourseView = EMPTY_DISCOURSE
     """The focus-per-scope view, consulted to open a scope at a query-sourced fragment."""
+
+    numbered_labels: Dict[uuid.UUID, str] = field(default_factory=dict)
+    """Disambiguation numbers (*"Robot 1"*) for referents the rules cannot label themselves — a
+    relational referent's relative clause is built in the microplanner, with no access to the
+    referring service, so the number is stamped on here instead."""
 
     _seen: Set[uuid.UUID] = field(init=False, default_factory=set)
     """Referent ids already mentioned at the current point of the walk."""
@@ -149,33 +154,56 @@ class CoreferenceProcessor:
         )
 
     def _noun_phrase(self, noun_phrase: NounPhrase) -> Fragment:
-        """Every mention (singular or plural) marks its referent introduced.  Only a **repeat
-        singular** mention is downgraded to a definite reference — dropping the first-mention
-        modifiers and keeping the head label (*"a Robot, where …"* → *"the Robot"*).  A plural
-        mention (*"Robots"*) only introduces the referent (it never carries an article), and a
-        ``BARE`` numbered label (*"Robot 2"*) never downgrades.
+        """Every mention (singular or plural) marks its referent introduced.  A repeat **singular**
+        mention is reduced to its head — dropping the first-mention modifiers and keeping the head
+        label (*"a Robot, where …"* → *"the Robot"*, *"Robot 1 to which …"* → *"Robot 1"*).  A
+        plural mention (*"Robots"*) only introduces the referent (it never carries an article).
+        Relational referents are first numbered (*"Robot 1"*) when their type collides.
 
         :return: The resolved referring noun phrase (first / repeat), or the non-referring noun
             phrase rebuilt around its recursed children.
         """
         if noun_phrase.referent_id is None:
             return self._rebuilt(noun_phrase)
+        noun_phrase = self._numbered(noun_phrase)
         self._record_subject_number(noun_phrase)
         repeat = noun_phrase.referent_id in self._seen
         self._seen.add(noun_phrase.referent_id)
-        downgrade = (
-            repeat
-            and noun_phrase.number is Number.SINGULAR
-            and noun_phrase.definiteness is not Definiteness.BARE
-        )
-        if downgrade:
-            return NounPhrase(
-                head=self._walk(noun_phrase.head),
-                number=noun_phrase.number,
-                definiteness=Definiteness.DEFINITE,
-                referent_id=noun_phrase.referent_id,
-            )
+        if repeat and noun_phrase.number is Number.SINGULAR:
+            return self._reduced(noun_phrase)
         return self._rebuilt(noun_phrase)
+
+    def _numbered(self, noun_phrase: NounPhrase) -> NounPhrase:
+        """Stamp a disambiguation number on a referent the rules could not label themselves — a
+        relational referent arrives as a definite *"the Robot to which …"*, and becomes a bare
+        *"Robot 1"* clause when its type collides. A rule-labelled referent (already ``BARE``) is
+        left untouched, so this never re-numbers a variable.
+
+        :return: The numbered noun phrase, or *noun_phrase* unchanged when it has no number.
+        """
+        label = self.numbered_labels.get(noun_phrase.referent_id)
+        if label is None or noun_phrase.definiteness is Definiteness.BARE:
+            return noun_phrase
+        return replace(
+            noun_phrase,
+            head=replace(noun_phrase.head, text=label),
+            definiteness=Definiteness.BARE,
+        )
+
+    def _reduced(self, noun_phrase: NounPhrase) -> Fragment:
+        """:return: A repeat mention reduced to its head — the first-mention modifiers dropped — as a
+        bare label (*"Robot 1"*) when numbered, else a definite reference (*"the Robot"*).
+        """
+        return NounPhrase(
+            head=self._walk(noun_phrase.head),
+            number=noun_phrase.number,
+            definiteness=(
+                Definiteness.BARE
+                if noun_phrase.definiteness is Definiteness.BARE
+                else Definiteness.DEFINITE
+            ),
+            referent_id=noun_phrase.referent_id,
+        )
 
     def _record_subject_number(self, noun_phrase: NounPhrase) -> None:
         """If this noun phrase *is* an enclosing scope's subject, record its grammatical number on

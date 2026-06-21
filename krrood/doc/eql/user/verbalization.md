@@ -345,6 +345,23 @@ query_agg = an(entity(eql.average(emp.salary)).where(emp.starting_salary > 20000
 print(verbalize_expression(query_agg))
 ```
 
+It also counts the *related entity* a relational attribute introduces, so two missions assigned to
+two different robots read *"Robot 1"* / *"Robot 2"* rather than two indistinguishable *"the Robot"*s
+— and a repeat of either reduces to its numbered label:
+
+```{code-cell} ipython3
+pair = variable(Pair, domain=None)
+query = an(entity(pair).where(
+    pair.primary.assigned_to.battery > 5,
+    pair.primary.assigned_to.power > 1,
+    pair.secondary.assigned_to.battery > 3,
+))
+print(verbalize_expression(query))
+# Find a Pair such that the battery of Robot 1 to which its primary is assigned is
+# greater than 5, the power of Robot 1 is greater than 1, and the battery of Robot 2
+# to which its secondary is assigned is greater than 3
+```
+
 ## Custom Predicates
 
 A custom predicate can control its verbalization by implementing

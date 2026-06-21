@@ -346,6 +346,12 @@ class _NavMission:
 
 
 @dataclass
+class _NavPair:
+    primary: _NavMission
+    secondary: _NavMission  # two missions, so two distinct assigned_to robots
+
+
+@dataclass
 class _NavBook:
     owned_by: _NavPerson  # agentive "by"
 
@@ -508,6 +514,35 @@ def test_boolean_predicative_standalone_navigation_unchanged():
         verbalize_expression(m.assigned_to.operational)
         == "the _NavRobot to which a _NavMission is assigned is operational"
     )
+
+
+def test_two_distinct_relational_referents_are_numbered():
+    """Two distinct relational referents of the same type would both reduce to an ambiguous
+    *"the Robot"*; instead they are numbered *"Robot 1"* / *"Robot 2"* (bare, matching the variable
+    numbering convention), and a repeat of either reduces to its bare numbered label."""
+    p = variable(_NavPair, [])
+    text = verbalize_expression(
+        an(
+            entity(p).where(
+                p.primary.assigned_to.battery > 5,
+                p.primary.assigned_to.power > 1,
+                p.secondary.assigned_to.battery > 3,
+            )
+        )
+    )
+    assert text == (
+        "Find a _NavPair such that the battery of _NavRobot 1 to which its primary is "
+        "assigned is greater than 5, the power of _NavRobot 1 is greater than 1, and the "
+        "battery of _NavRobot 2 to which its secondary is assigned is greater than 3"
+    )
+
+
+def test_single_relational_referent_is_not_numbered():
+    """A lone relational referent (no same-type collision) keeps the plain definite form."""
+    m = variable(_NavMission, [])
+    text = verbalize_expression(an(entity(m).where(m.assigned_to.battery > 5)))
+    assert "_NavRobot 1" not in text
+    assert "the _NavRobot to which it is assigned" in text
 
 
 def test_pronominal_relative_clause_agrees_with_subject_number():
