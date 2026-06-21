@@ -56,12 +56,13 @@ from krrood.entity_query_language.core.base_expressions import (
 from krrood.entity_query_language.cache_data import (
     SeenSet,
 )
+from krrood.entity_query_language.evaluation_context import get_evaluation_context
 from krrood.entity_query_language.core.variable import (
     InstantiatedVariable,
     Variable,
     ExternallySetVariable,
 )
-from krrood.entity_query_language.enums import DomainSource
+from krrood.entity_query_language.enums import DomainSource, EvaluationContextKey
 from krrood.entity_query_language.exceptions import (
     UnsupportedNegation,
     NonPositiveLimitValue,
@@ -84,6 +85,53 @@ ResultMapping = Callable[[Iterator[OperationResult]], Iterator[OperationResult]]
 """
 A function that maps the results of a query to a new set of results.
 """
+
+_STREAM_EXHAUSTED = object()
+"""
+Sentinel distinguishing a genuinely exhausted source from a ``None`` result.
+"""
+
+
+@dataclass
+class CachedResultStream:
+    """
+    A lazily-filled, replayable view over a source iterator.
+
+    The source is advanced on demand and each produced item is buffered, so the stream can be
+    iterated many times — once per outer row that reaches an uncorrelated subquery — while the
+    underlying computation runs at most once. Filling lazily preserves short-circuiting for callers
+    that stop early.
+    """
+
+    _source: Iterator[OperationResult]
+    """
+    The underlying result iterator, advanced at most once per produced item.
+    """
+    _buffer: List[OperationResult] = field(default_factory=list)
+    """
+    The results produced so far, replayed to every iterator.
+    """
+    _exhausted: bool = field(default=False)
+    """
+    Whether the source has been fully consumed.
+    """
+
+    def __iter__(self) -> Iterator[OperationResult]:
+        index = 0
+        while True:
+            if index < len(self._buffer):
+                yield self._buffer[index]
+                index += 1
+                continue
+            if self._exhausted:
+                return
+            next_item = next(self._source, _STREAM_EXHAUSTED)
+            if next_item is _STREAM_EXHAUSTED:
+                self._exhausted = True
+                return
+            self._buffer.append(next_item)
+            yield next_item
+            index += 1
 
 
 @monitored
@@ -440,6 +488,27 @@ class Query(
             yield from self._compiled_product_node_._evaluate__(sources)
             return
 
+        evaluation_context = get_evaluation_context()
+        if evaluation_context is None:
+            yield from self._produce_results_(sources)
+            return
+
+        cache = evaluation_context.data.setdefault(
+            EvaluationContextKey.SUBQUERY_RESULT_CACHE_KEY, {}
+        )
+        cached_stream = cache.get(self._id_)
+        if cached_stream is None:
+            cached_stream = CachedResultStream(self._produce_results_(sources))
+            cache[self._id_] = cached_stream
+        yield from cached_stream
+
+    def _produce_results_(self, sources: OperationResult) -> Iterator[OperationResult]:
+        """
+        Produce this product's results: the projected, result-mapped rows of its cartesian product.
+
+        :param sources: The current bindings.
+        :return: An iterator over the query's result rows.
+        """
         yield from (
             self._get_operation_result_(result)
             for result in self._apply_results_mapping_(

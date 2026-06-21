@@ -39,25 +39,23 @@ def test_embedded_subquery_does_not_correlate_with_the_outer_row():
     assert query.tolist() == [1, 2]
 
 
-def test_constant_subquery_is_recomputed_once_per_outer_row(monkeypatch):
-    """A constant (uncorrelated) subquery is re-evaluated once for every outer row rather than being
-    computed a single time and cached. Pins the current cost the scoping change should remove.
-    """
-    product_evaluations = 0
-    original_evaluate = Query._evaluate__
+def test_constant_subquery_is_computed_once_per_evaluation(monkeypatch):
+    """A constant (uncorrelated) subquery is computed a single time per top-level evaluation and its
+    results reused across outer rows, rather than recomputed once per row."""
+    product_computations = 0
+    original_product = Query._evaluate_product_
 
-    def counting_evaluate(self, sources):
-        nonlocal product_evaluations
-        if self._is_compiled_product_:
-            product_evaluations += 1
-        return original_evaluate(self, sources)
+    def counting_product(self, sources):
+        nonlocal product_computations
+        product_computations += 1
+        return original_product(self, sources)
 
-    monkeypatch.setattr(Query, "_evaluate__", counting_evaluate)
+    monkeypatch.setattr(Query, "_evaluate_product_", counting_product)
 
     outer = variable(int, [1, 2, 3, 4, 5])
     constant_subquery = entity(eql.max(variable(int, [10, 20, 30])))
     query = entity(outer).where(outer < constant_subquery)
 
     assert query.tolist() == [1, 2, 3, 4, 5]
-    # One evaluation of the outer product plus one of the subquery product per outer row.
-    assert product_evaluations == 1 + 5
+    # One computation of the outer product plus one of the subquery product, reused across rows.
+    assert product_computations == 1 + 1
