@@ -27,10 +27,7 @@ from typing_extensions import (
     Iterator,
 )
 
-from krrood.entity_query_language.core.mapped_variable import (
-    CanBehaveLikeAVariable,
-    MappedVariable,
-)
+from krrood.entity_query_language.core.mapped_variable import CanBehaveLikeAVariable
 from krrood.entity_query_language.query.builders import (
     WhereBuilder,
     HavingBuilder,
@@ -602,14 +599,14 @@ class Query(
         own (partial) expression is returned.
 
         :param parent: The expression about to take this query as a child.
-        :return: The compiled product to embed; the inner product node for a derived reference (a
-            :class:`MappedVariable` such as ``query.name``) so it resolves against the query's own
-            bindings; or the in-place node during self-wrapping.
+        :return: The compiled product to embed; the inner product node (binding source) when the
+            parent reads this query's per-result bindings (a derived reference such as ``query.name``)
+            so it resolves against the query's own results; or the in-place node during self-wrapping.
         """
         if self._building_:
             return self._expression_
         self.build()
-        if isinstance(parent, MappedVariable):
+        if parent._reads_child_result_bindings_:
             return self._compiled_product_node_
         return self._expression_
 
