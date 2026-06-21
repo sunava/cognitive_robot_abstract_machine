@@ -287,6 +287,36 @@ print(verbalize_expression(query))
 # the battery is greater than 5
 ```
 
+## Reports (aggregating set-of queries)
+
+A `set_of` that *computes* an aggregate is a calculation, not a search, so it opens with **"Report"**
+rather than "Find", and drops the code-like parentheses:
+
+```{code-cell} ipython3
+employee = variable(Employee, domain=None)
+print(verbalize_expression(a(set_of(eql.sum(employee.salary)))))
+# Report the sum of salaries of Employees
+```
+
+When it is **grouped**, the grouping is stated first as a **"For each <key>"** frame (the natural
+reading of GROUP BY). The key is named once — as the bare group label — and is not restated as a
+column:
+
+```{code-cell} ipython3
+query = a(
+    set_of(employee.department, eql.sum(employee.salary)).grouped_by(employee.department)
+)
+print(verbalize_expression(query))
+# For each department, report the sum of salaries of Employees
+```
+
+A plain (non-aggregating) `set_of` stays a search and also drops the parentheses:
+
+```{code-cell} ipython3
+print(verbalize_expression(a(set_of(employee.department, employee.name))))
+# Find the department of an Employee and its name
+```
+
 ## Date Range Folding
 
 When a lower-bound and an upper-bound comparison on the same datetime attribute appear

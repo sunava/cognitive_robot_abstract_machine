@@ -52,22 +52,34 @@ class ProfitAndLossStatement:
 def test_set_of_drops_the_sets_of_head():
     e = variable(Employee, [])
     text = verbalize_expression(a(set_of(e.department, e.salary)))
-    assert text.startswith("Find (")
+    assert text == "Find the department of an Employee and its salary"
     assert "sets of" not in text
+    assert "(" not in text  # the code-like tuple parentheses are gone
 
 
 # ── single-root pronominalisation ─────────────────────────────────────────────
 
 
-def test_single_root_set_of_pronominalises():
-    """Every chain roots at one Employee → the repeated root collapses to "its"/"their"."""
+def test_non_grouped_aggregation_reads_as_a_report():
+    """An aggregation set-of with no GROUP BY is a calculation, so it opens with *"Report"* (not
+    *"Find"*) and carries no *"for each"* frame."""
+    e = variable(Employee, [])
+    text = verbalize_expression(a(set_of(eql.sum(e.salary))))
+    assert text == "Report the sum of salaries of Employees"
+    assert "For each" not in text and "Find" not in text
+
+
+def test_grouped_aggregation_reads_as_a_for_each_report():
+    """A grouped aggregation set-of is a report, not a search: it fronts the grouping as
+    *"For each <key>, report …"*, names the key bare (no *"of the Employee"*), and drops the
+    redundant key column."""
     e = variable(Employee, [])
     text = verbalize_expression(
         a(set_of(e.department, eql.sum(e.salary)).grouped_by(e.department))
     )
-    # the grouped-by key no longer restates "of the Employee"
-    assert "grouped by their department" in text
-    assert "grouped by the department of the Employee" not in text
+    assert text == "For each department, report the sum of salaries of Employees"
+    assert "grouped by" not in text  # fronted, not a trailing SQL-ish clause
+    assert "of the Employee" not in text  # the key is the bare group label
 
 
 def test_multi_root_set_of_does_not_pronominalise():
@@ -82,7 +94,7 @@ def test_multi_root_set_of_does_not_pronominalise():
 def test_unlimited_ordered_set_of_keeps_clause_pronominalised():
     e = variable(Employee, [])
     text = verbalize_expression(a(set_of(e).ordered_by(e.salary, descending=True)))
-    assert text == "Find (an Employee) ordered by its salary (descending)"
+    assert text == "Find an Employee ordered by its salary (descending)"
 
 
 # ── limit on a set_of → ranking, ordered-by suppressed ───────────────────────

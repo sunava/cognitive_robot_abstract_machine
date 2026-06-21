@@ -1244,7 +1244,8 @@ def test_verbalize_complex_having(departments_and_employees_fixture):
     assert "department" in text
     assert "average" in text
     assert "salaries" in text
-    assert "grouped by" in text
+    assert "For each department, report" in text  # a report, fronted by its grouping
+    assert "grouped by" not in text
     assert "having" in text
     assert "30000" in text
 
@@ -1534,8 +1535,12 @@ def test_having_negated_comparator_compact(departments_and_employees_fixture):
     assert "not greater than" in having_part
 
 
-def test_set_of_grouped_by_no_double_find(departments_and_employees_fixture):
-    """SetOf query with grouped_by must not produce 'Find Find' or redundant restatement."""
+def test_set_of_grouped_by_reports_without_restating_the_key(
+    departments_and_employees_fixture,
+):
+    """A grouped aggregation reads as a single fronted report — no double header, no trailing
+    'grouped by', and the group key named once (in 'For each …'), not restated as a column.
+    """
     _, _ = departments_and_employees_fixture
     employee = variable(Employee, domain=None)
     avg_salary = eql.average(employee.salary)
@@ -1546,22 +1551,16 @@ def test_set_of_grouped_by_no_double_find(departments_and_employees_fixture):
     )
     text = verbalize_expression(query)
 
-    # Must not have duplicated "Find"
-    assert text.count("Find") == 1, f"Expected one 'Find' in: {text!r}"
+    assert text.startswith("For each department, report ")
+    assert text.count("report") == 1  # no double header
+    assert "Find" not in text and "grouped by" not in text
+    assert (
+        text.count("department") == 1
+    )  # named once in "For each department", not restated
+    assert "having" in text and "30000" in text
 
-    # "grouped by" must appear between the parenthesised selection and "having"
-    # — not before a restatement of the aggregated columns.
-    open_paren = text.index("(")
-    grouped_pos = text.index("grouped by")
-    having_pos = text.index("having")
-    assert (
-        open_paren < grouped_pos < having_pos
-    ), f"Expected (…) < grouped by < having in: {text!r}"
-    # No second copy of the selected variable names before "grouped by"
-    between_paren_and_grouped = text[text.index(")") : grouped_pos]
-    assert (
-        "department" not in between_paren_and_grouped
-    ), f"Unexpected restatement before 'grouped by' in: {text!r}"  # ── Comparator "is" form ──────────────────────────────────────────────────────
+
+# ── Comparator "is" form ──────────────────────────────────────────────────────
 
 
 def test_verbalize_comparator_eq_uses_is():

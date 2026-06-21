@@ -119,6 +119,27 @@ class AggregationData:
 
 
 @dataclass(frozen=True)
+class ReportPlan:
+    """A set-of selection that *computes* aggregates — a calculation/report, not a search.
+
+    Rendered *"Report <columns>"*, or *"For each <group keys>, report <columns>"* when grouped. The
+    group keys are dropped from *columns*: the *"for each"* frame already names them, so re-listing
+    them would be redundant.
+    """
+
+    group_keys: List[SymbolicExpression]
+    """The GROUP BY keys, rendered as the *"for each <key>"* frame (empty ⇒ no frame)."""
+
+    columns: List[SymbolicExpression]
+    """The reported selections (the aggregates and any non-key columns), group keys removed."""
+
+    @property
+    def is_grouped(self) -> bool:
+        """:return: ``True`` when the report has a GROUP BY (the *"for each …"* frame applies)."""
+        return bool(self.group_keys)
+
+
+@dataclass(frozen=True)
 class QueryPlan:
     """Complete *what to say* decomposition of a query (the plan)."""
 
@@ -155,6 +176,10 @@ class QueryPlan:
     restriction subject (e.g. a ``set_of``); kept separate from :attr:`subject` so it never triggers
     *"whose"*-folding."""
 
+    report: Optional[ReportPlan]
+    """The report decomposition when the set-of selection computes aggregates, else ``None`` (a
+    plain *"Find …"* search)."""
+
 
 @dataclass
 class QueryPlanner(Planner[Query, QueryPlan]):
@@ -173,6 +198,7 @@ class QueryPlanner(Planner[Query, QueryPlan]):
     def plan(self) -> QueryPlan:
         """:return: The plan: selection shape, definiteness, restriction partition, aggregation."""
         self.node.build()
+        ranking = self._ranking()
         return QueryPlan(
             kind=self._kind(),
             is_the=self._is_the(),
@@ -182,9 +208,28 @@ class QueryPlanner(Planner[Query, QueryPlan]):
             where_condition=self._where_condition(),
             is_aggregation_subquery=is_aggregation_subquery(self.node),
             aggregation_data=self._aggregation_data(),
-            ranking=self._ranking(),
+            ranking=ranking,
             discourse_root=self._discourse_root(),
+            report=self._report(ranking),
         )
+
+    def _report(self, ranking: Optional[RankingPlan]) -> Optional[ReportPlan]:
+        """:return: The report decomposition when this is a set-of selecting at least one aggregate
+        (a calculation), else ``None``. The GROUP BY keys are split out of the reported columns.
+
+        A ranked set-of (``limit``) keeps the parenthesised *"Find the top three (…)"* form — the
+        ranking pre-head needs the tuple as a unit — so it is not treated as a report.
+        """
+        if ranking is not None or not isinstance(self.node, SetOf):
+            return None
+        selections = list(self.node._selected_variables_)
+        if not any(isinstance(selection, Aggregator) for selection in selections):
+            return None
+        grouped = self.node._grouped_by_expression_
+        keys = list(grouped.variables_to_group_by) if grouped is not None else []
+        key_ids = {key._id_ for key in keys}
+        columns = [s for s in selections if s._id_ not in key_ids]
+        return ReportPlan(group_keys=keys, columns=columns)
 
     # ── selection shape ──────────────────────────────────────────────────────
 
