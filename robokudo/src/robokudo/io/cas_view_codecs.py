@@ -322,11 +322,6 @@ class Open3DPinholeCameraIntrinsicCodec(ViewCodec):
 
     def decode(self, payload: ViewPayload) -> Any:
         """Decode payload data to an Open3D pinhole intrinsic object."""
-        if o3d is None:  # pragma: no cover - guarded by optional dependency
-            raise RuntimeError(
-                "Open3D is not available but Open3D camera intrinsic payload was provided."
-            )
-
         payload_data: Dict[str, Any] = payload.payload
         width = int(payload_data["width"])
         height = int(payload_data["height"])
