@@ -11,10 +11,18 @@ if TYPE_CHECKING:
     from robokudo.world_descriptor import BaseWorldDescriptor
 
 
+class WorldDescriptorLoadError(RuntimeError):
+    """Raised when loading a world descriptor from annotator parameters fails."""
+
+
 def load_world_descriptor(annotator: BaseAnnotator) -> BaseWorldDescriptor:
     """Load world descriptor from annotator parameters."""
+    ros_package = annotator.descriptor.parameters.world_descriptor_ros_package
+    module_name = annotator.descriptor.parameters.world_descriptor_name
     loader = module_loader.ModuleLoader()
-    return loader.load_world_descriptor(
-        annotator.descriptor.parameters.world_descriptor_ros_package,
-        annotator.descriptor.parameters.world_descriptor_name,
-    )
+    try:
+        return loader.load_world_descriptor(ros_package, module_name)
+    except Exception as error:
+        raise WorldDescriptorLoadError(
+            f"Failed to load world descriptor '{ros_package}.{module_name}'."
+        ) from error
