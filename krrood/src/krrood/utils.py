@@ -18,12 +18,19 @@ from inspect import isclass
 from os import PathLike
 from os.path import dirname
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Generic, Hashable
 from typing import Union, Any
 
-from typing_extensions import TypeVar, Type, List, Optional, Callable
 from typing_extensions import (
+    TypeVar,
+    Type,
+    List,
+    Optional,
+    Callable,
+    TypeVarTuple,
     _SpecialForm,
+)
+from typing_extensions import (
     Iterable,
     Dict,
     get_origin,
@@ -63,49 +70,6 @@ def get_full_class_name(cls):
     :return: The full name of the class
     """
     return cls.__module__ + "." + cls.__name__
-
-
-@lru_cache
-def inheritance_path_length(child_class: Type, parent_class: Type) -> Optional[int]:
-    """
-    Calculate the inheritance path length between two classes.
-    Every inheritance level that lies between `child_class` and `parent_class` increases the length by one.
-    In case of multiple inheritance, the path length is calculated for each branch and the minimum is returned.
-
-    :param child_class: The child class.
-    :param parent_class: The parent class.
-    :return: The minimum path length between `child_class` and `parent_class` or None if no path exists.
-    """
-    if not (
-        isclass(child_class)
-        and isclass(parent_class)
-        and issubclass(child_class, parent_class)
-    ):
-        return None
-
-    return _inheritance_path_length(child_class, parent_class, 0)
-
-
-def _inheritance_path_length(
-    child_class: Type, parent_class: Type, current_length: int = 0
-) -> int:
-    """
-    Helper function for :func:`inheritance_path_length`.
-
-    :param child_class: The child class.
-    :param parent_class: The parent class.
-    :param current_length: The current length of the inheritance path.
-    :return: The minimum path length between `child_class` and `parent_class`.
-    """
-
-    if child_class == parent_class:
-        return current_length
-    else:
-        return min(
-            _inheritance_path_length(base, parent_class, current_length + 1)
-            for base in child_class.__bases__
-            if issubclass(base, parent_class)
-        )
 
 
 def module_and_class_name(t: Union[Type, _SpecialForm]) -> str:
@@ -614,29 +578,87 @@ def run_subprocess_on_file(command: List[str]):
         raise SubprocessExecutionError(command, e.returncode, e.stdout, e.stderr) from e
 
 
-def get_generic_type_param(cls, generic_base: Type[T]) -> Optional[List[Type[T]]]:
+def get_generic_type_params(
+    cls,
+    generic_base: Type,
+    include_root_generic_base: bool = True,
+    include_specialized_generic_base: bool = True,
+) -> List[Type[T]]:
     """
     Given a subclass and its generic base, return the concrete type parameter(s).
 
     Example:
-        get_generic_type_param(Employee, Role) -> (<class '__main__.Person'>,)
+        get_generic_type_params(Employee, Role) -> (<class '__main__.Person'>,)
 
     :param cls: The subclass to check.
     :param generic_base: The generic base class to check against.
-    :return: A list of concrete type parameters, or None if not found.
+    :param include_root_generic_base: Whether to include type parameters the class gets from its own typing.Generic directly.
+    :param include_specialized_generic_base: Whether to include type parameters from superclasses that are generic, which are not typing.Generic.
+    :return: A list of concrete type parameters
     """
-    for base in getattr(cls, "__orig_bases__", []):
-        base_origin = get_origin(base)
-        if base_origin is None:
-            if isclass(base) and issubclass(base, generic_base):
-                res = get_generic_type_param(base, generic_base)
-                if res:
-                    return res
-            continue
-        if issubclass(base_origin, generic_base):
-            args = get_args(base)
-            return list(args) if args else None
+    parameters = []
+    if include_root_generic_base:
+        # Use __parameters__ to get the class's own unbound TypeVars.
+        parameters.extend(list(getattr(cls, "__parameters__", [])))
+
+    if include_specialized_generic_base:
+        for base in getattr(cls, "__orig_bases__", []):
+            base_origin = get_origin(base)
+            if (
+                not base_origin
+                or base_origin is Generic
+                or not issubclass(base_origin, generic_base)
+            ):
+                continue
+            for argument in get_args(base):
+                if not isinstance(argument, (TypeVar, TypeVarTuple)):
+                    parameters.append(argument)
+                elif not include_root_generic_base:
+                    # If we specifically excluded root generic parameters, we might still want
+                    # TypeVars that are being passed to this specialized base
+                    # Example: For `class Child(Generic[T, U], Parent[T])`:
+                    # - `include_root_generic_base=True` returns `[T, U]` (captures all definitions, avoids duplicates).
+                    # - `include_root_generic_base=False` returns `[T]` (captures only what is specifically passed to `Parent`).
+                    parameters.append(argument)
+
+    return parameters
+
+
+def get_existing_field_by_name(cls, name: str) -> Optional[Field]:
+    """
+    Find the existing field in the MRO if it exists.
+
+    :param name: The name of the field.
+    :return: The existing field if found, otherwise None.
+    """
+    for base in cls.__mro__:
+        fields = getattr(base, "__dataclass_fields__", None)
+        if fields and name in fields:
+            return fields[name]
     return None
+
+
+def is_hashable(obj) -> bool:
+    """
+    Checks if an object is hashable by attempting to compute its hash.
+
+    :param obj: The object to check.
+    :return: True if the object is hashable, False otherwise.
+    """
+    try:
+        hash(obj)
+        return True
+    except TypeError:
+        return False
+
+
+def ensure_hashable(obj) -> Hashable:
+    """
+    :return: The object itself if it is hashable, otherwise its id.
+    """
+    if not is_hashable(obj):
+        return id(obj)
+    return obj
 
 
 def get_scope_from_imports(
@@ -683,15 +705,16 @@ def get_scope_from_imports(
     return scope
 
 
-def _import_module_safely(
+def get_and_import_module(
     module_name: str, package_name: Optional[str]
-) -> Optional[types.ModuleType]:
+) -> types.ModuleType:
     """
-    Attempt to import a module with an optional package context and return the module or None on failure.
+    Attempt to import a module with an optional package context and return the module or raise.
 
     :param module_name: The name of the module to import.
     :param package_name: The package name to use for relative imports, or None for absolute imports.
-    :return: The imported module or None if import fails.
+    :return: The imported module.
+    :raises ModuleNotFoundError: If the module cannot be found.
     """
     module = get_module_object(module_name, package_name)
     if module is not None:
@@ -699,21 +722,16 @@ def _import_module_safely(
 
     try:
         return importlib.import_module(module_name, package=package_name)
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as e:
         if not package_name:
-            return None
-        try:
-            if module_name.startswith(".") and package_name:
-                full_name = resolve_name(module_name, package_name)
-            else:
-                full_name = f"{package_name}.{module_name}"
-            if full_name in sys.modules:
-                return sys.modules[full_name]
-            return importlib.import_module(full_name)
-        except Exception:
-            return None
-    except ImportError:
-        return None
+            raise e
+        if module_name.startswith(".") and package_name:
+            full_name = resolve_name(module_name, package_name)
+        else:
+            full_name = f"{package_name}.{module_name}"
+        if full_name in sys.modules:
+            return sys.modules[full_name]
+        return importlib.import_module(full_name)
 
 
 def get_module_object(
@@ -792,11 +810,8 @@ def _handle_import_node(
     for alias in node.names:
         module_name = alias.name
         asname = alias.asname or alias.name
-        module = _import_module_safely(module_name, package_name)
-        if module is not None:
-            scope[asname] = module
-        else:
-            logger.warning(f"Could not import {module_name}")
+        module = get_and_import_module(module_name, package_name)
+        scope[asname] = module
 
 
 def _handle_import_from_node(
@@ -829,19 +844,13 @@ def _handle_import_from_node(
 
     module = None
     if resolved_module_name is not None:
-        module = _import_module_safely(resolved_module_name, package_name)
+        module = get_and_import_module(resolved_module_name, package_name)
 
     if module is None and resolved_package_name and resolved_module_name:
         # Fallback already attempted in _import_module_safely; keep for parity
-        module = _import_module_safely(
+        module = get_and_import_module(
             f"{resolved_package_name}.{resolved_module_name}", None
         )
-
-    if module is None:
-        logger.warning(
-            f"Could not import {resolved_module_name} while extracting imports from {file_path}"
-        )
-        return package_name
 
     for alias in node.names:
         name = alias.name
@@ -859,16 +868,16 @@ def _handle_import_from_node(
     return package_name
 
 
-T = TypeVar("T", bound=Callable[..., Any])
+TCallable = TypeVar("TCallable", bound=Callable[..., Any])
 
 
-def memoize(function: T) -> T:
+def memoize(function: TCallable) -> TCallable:
     """
     Caches the return value of a function call at the instance level.
     """
 
     @wraps(function)
-    def wrapper(self, *args: Any, **kwargs: Any) -> T:
+    def wrapper(self, *args: Any, **kwargs: Any) -> Any:
         if not hasattr(self, "__memo__"):
             self.__memo__ = {}
         memo = self.__memo__
@@ -884,7 +893,7 @@ def memoize(function: T) -> T:
     return wrapper  # type: ignore
 
 
-def copy_memoize(function: T) -> T:
+def copy_memoize(function: TCallable) -> TCallable:
     """
     Caches the return value of a function call at the instance level but returns a deepcopy of the value.
     """
@@ -912,3 +921,25 @@ def clear_memoization_cache(instance):
     """
     if hasattr(instance, "__memo__"):
         instance.__memo__.clear()
+
+
+def is_dynamic_class(cls: Type) -> bool:
+    """
+    Check if a class is dynamically created.
+
+    This is done by checking if the class is actually registered in that module under its own name
+    Normal classes will be found; classes created with  for instance make_dataclass  usually won't be
+    unless manually assigned.
+    :param cls: The class to check.
+    :return: True if the class is dynamically created, False otherwise.
+    """
+    # Ensure it is a class first
+    if not isclass(cls):
+        return False
+
+    # Get the module where the class claims to be defined
+    module = sys.modules.get(cls.__module__)
+    if module is None:
+        return True  # If module doesn't exist, it's likely dynamic
+
+    return getattr(module, cls.__name__, None) is not cls

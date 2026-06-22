@@ -62,6 +62,7 @@ class SimulatorRenderer:
 
     def close(self):
         """Close the renderer"""
+        atexit.unregister(self.close)
         self._is_running = False
 
 
@@ -120,6 +121,15 @@ class SimulatorCallback:
         self.__name__ = callback.__name__
 
     def __call__(self, *args, render: bool = True, **kwargs) -> SimulatorCallbackResult:
+        """
+        Call the callback function and return the result,
+        it also checks if the result is of type SimulatorCallbackResult and if the first argument is of type BaseSimulator.
+
+        :param render: Whether to trigger rendering, used for modification on the simulator.
+        :param kwargs: Additional keyword arguments for the callback function.
+
+        :return: The result of the callback function.
+        """
         result = self._call(*args, **kwargs)
         if not isinstance(result, SimulatorCallbackResult):
             raise TypeError("Callback function must return SimulatorCallbackResult")
@@ -311,6 +321,7 @@ class BaseSimulator:
         """
         Stop the simulator, close the renderer and join the simulation thread if it exists and is alive.
         """
+        atexit.unregister(self.stop)
         if self.renderer.is_running():
             self.renderer.close()
         if self.render_thread is not None and self.render_thread.is_alive():
