@@ -833,6 +833,10 @@ def copula_with(
     :param negated: Use the negative copula (*"is not"* / *"are not"*).
     :return: The copula leaf alone when *core* is empty, else a phrase of copula then core.
 
+    Its contribution is making the operator *agreeable*: the *is* leaf carries *number*, so the same
+    call with a plural number realises *are greater than*. The flatten here shows only the singular
+    composition.
+
     >>> from krrood.entity_query_language.verbalization.fragments.base import flatten_fragment_to_plain_text
     >>> flatten_fragment_to_plain_text(copula_with("greater than"))
     'is greater than'
@@ -860,6 +864,10 @@ def predicative_operator(text: str, number: Number = Number.SINGULAR) -> Fragmen
     :param text: The selected standard-register operator surface.
     :param number: The grammatical number the copula agrees with.
     :return: The factored operator fragment.
+
+    The work it does is the split, which this singular flatten does not reveal: it separates the
+    leading *is* (which agrees) from the invariant *greater than*, so a plural owner would inflect to
+    *are greater than*; *contains* has no leading copula and is returned un-agreed.
 
     >>> from krrood.entity_query_language.verbalization.fragments.base import flatten_fragment_to_plain_text
     >>> flatten_fragment_to_plain_text(predicative_operator("is greater than"))
