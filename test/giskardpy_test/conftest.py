@@ -215,7 +215,7 @@ def _make_prismatic_world(dof_limits: list[DegreeOfFreedomLimits]) -> World:
             world.add_degree_of_freedom(dof)
             world.add_connection(
                 PrismaticConnection(
-                    parent=map_body, child=child, dof_id=dof.id, axis=Vector3.Z()
+                    parent=map_body, child=child, raw_dof=dof, axis=Vector3.Z()
                 )
             )
     MinimalRobot.from_world(world)
