@@ -3,7 +3,6 @@ from __future__ import annotations
 from timeit import default_timer
 
 import numpy as np
-from line_profiler_pycharm import profile
 from py_trees.common import Status
 from scipy.optimize import linear_sum_assignment
 
