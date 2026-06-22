@@ -3,10 +3,11 @@ from __future__ import annotations
 import enum
 import inspect
 import logging
+import re
 import sys
 from collections.abc import Sequence
 from copy import copy
-from dataclasses import dataclass, Field, MISSING, field as dataclass_field
+from dataclasses import dataclass, Field, MISSING
 from datetime import datetime
 from functools import cached_property, lru_cache
 from inspect import isclass
@@ -67,7 +68,7 @@ class WrappedField:
     The dataclass field object that is wrapped.
     """
 
-    public_name: str = None
+    public_name: Optional[str] = None
     """
     If the field is a relationship managed field, this is public name of the relationship that manages the field.
     """
@@ -293,9 +294,6 @@ class WrappedField:
         """
         Return the string representation of the field's type.
         """
-        from typing import get_origin
-        import re
-
         if self.resolved_type is NoneType:
             return "None"
 
