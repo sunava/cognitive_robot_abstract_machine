@@ -214,3 +214,43 @@ def test_grouped_aggregation_limit_one_ascending_is_lowest():
     text = verbalize_expression(query)
     assert "the lowest sum of the amount of the money of its revenue" in text
     assert "grouped by" not in text
+
+
+def test_ranked_report_reduces_only_the_ranked_aggregate():
+    """With two aggregates selected, only the one the query is ranked by is named in the frame and so
+    reduces to 'the sum' in the body; the unranked aggregate keeps its full description."""
+    pnl = variable(ProfitAndLossStatement, domain=None)
+    ranked = eql.sum(pnl.revenue.money.amount)
+    other = eql.average(pnl.revenue.money.amount)
+    query = a(
+        set_of(pnl.period.begin.month, ranked, other)
+        .grouped_by(pnl.period.begin.month)
+        .ordered_by(ranked, descending=True)
+        .limit(1)
+    )
+    text = verbalize_expression(query)
+    assert text == (
+        "For the ProfitAndLossStatement "
+        "with the highest sum of the amount of the money of its revenue, "
+        "report the month of the begin of its period, the sum, "
+        "and the average of the amount of the money of its revenue"
+    )
+
+
+def test_ranked_report_generalises_to_the_average_aggregate():
+    """The aggregate-ranked framing is not sum-specific: ranking by an average names 'the highest
+    average …' and reduces it to 'the average' in the body."""
+    pnl = variable(ProfitAndLossStatement, domain=None)
+    average = eql.average(pnl.revenue.money.amount)
+    query = a(
+        set_of(pnl.period.begin.month, average)
+        .grouped_by(pnl.period.begin.month)
+        .ordered_by(average, descending=True)
+        .limit(1)
+    )
+    text = verbalize_expression(query)
+    assert text == (
+        "For the ProfitAndLossStatement "
+        "with the highest average of the amount of the money of its revenue, "
+        "report the month of the begin of its period and the average"
+    )
