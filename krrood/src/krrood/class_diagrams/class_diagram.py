@@ -834,11 +834,23 @@ class ClassDiagram:
 
         :raises: This method does not explicitly raise any exceptions.
         """
-        from krrood.patterns.role import Role
-
         for clazz in self.wrapped_classes:
+            # Handle GenericAlias in issubclass
+            origin = get_origin(clazz.clazz)
+            actual_cls = (
+                origin
+                if (origin is not None and not isinstance(clazz.clazz, type))
+                else clazz.clazz
+            )
             for wrapped_field in clazz.fields:
-                target_type = wrapped_field.type_endpoint
+                # The inherited ``role_taker`` field is annotated with an unbound ``TypeVar``, so its
+                # concrete target comes from the role's generic argument rather than the annotation.
+                if wrapped_field.is_role_taker:
+                    target_type = actual_cls.get_role_taker_type()
+                    association_type = HasRoleTaker
+                else:
+                    target_type = wrapped_field.type_endpoint
+                    association_type = Association
                 try:
                     if isinstance(target_type, TypeVar):
                         target_type = target_type.__bound__
@@ -847,25 +859,6 @@ class ClassDiagram:
                     wrapped_target_class = self.get_wrapped_class(target_type)
                 except ClassIsUnMappedInClassDiagram:
                     continue
-
-                association_type = Association
-                # Handle GenericAlias in issubclass
-                origin = get_origin(clazz.clazz)
-                actual_cls = (
-                    origin
-                    if (origin is not None and not isinstance(clazz.clazz, type))
-                    else clazz.clazz
-                )
-
-                try:
-                    is_role_subclass = issubclass(actual_cls, Role)
-                except TypeError:
-                    is_role_subclass = False
-
-                if wrapped_field.is_role_taker and is_role_subclass:
-                    role_taker_type = actual_cls.get_role_taker_type()
-                    if role_taker_type is target_type:
-                        association_type = HasRoleTaker
 
                 relation = association_type(
                     field=wrapped_field,

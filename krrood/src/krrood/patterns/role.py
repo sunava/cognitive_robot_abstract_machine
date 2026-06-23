@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from dataclasses import Field, dataclass, field, fields
+from dataclasses import dataclass, field, fields
 from functools import lru_cache
 
 from typing_extensions import (
@@ -20,46 +20,11 @@ from krrood.class_diagrams.utils import T
 from krrood.patterns.exceptions import (
     DelegatedFactoryMethodError,
     RoleAttributeNotDeclaredError,
-    RoleTakerFieldNotFound,
 )
 from krrood.patterns.role_registry import RoleRegistry
 from krrood.patterns.subclass_safe_generic import SubClassSafeGeneric
 from krrood.symbol_graph.symbol_graph import Symbol
 from krrood.utils import get_generic_type_params
-
-
-class RoleTakerField(Field):
-    """
-    Dataclass field that marks the role taker of a role.
-
-    Subclasses :class:`dataclasses.Field` as a type-level marker: the role pattern and the
-    class-diagram detection identify the role taker by ``isinstance`` against this type rather
-    than by inspecting field metadata. It adds no state, so it declares empty ``__slots__`` to
-    keep its memory layout identical to :class:`dataclasses.Field`; this lets
-    :func:`role_taker_field` produce one by reassigning the ``__class__`` of a field built by
-    :func:`dataclasses.field`.
-    """
-
-    __slots__ = ()
-
-
-def role_taker_field(*, kw_only: bool = True, **kwargs: Any) -> Any:
-    """
-    Declare the dataclass field that stores a role's role taker.
-
-    A thin wrapper around :func:`dataclasses.field` that produces a :class:`RoleTakerField` so
-    both the role pattern and the class diagram recognise it as the role taker.
-
-    :param kw_only: Whether the role-taker field is keyword-only in the generated constructor.
-    :param kwargs: Any other keyword arguments accepted by :func:`dataclasses.field`.
-    :return: A dataclass field marked as the role taker.
-    """
-    declared_field = field(kw_only=kw_only, **kwargs)
-    # Reassign __class__ instead of constructing RoleTakerField directly: this delegates all
-    # argument handling and validation to dataclasses.field(). RoleTakerField declares
-    # __slots__ = (), so its memory layout matches Field and the reassignment is safe.
-    declared_field.__class__ = RoleTakerField
-    return declared_field
 
 
 @dataclass(eq=False)
@@ -78,9 +43,10 @@ class Role(Symbol, SubClassSafeGeneric[T]):
     ``isinstance`` checks. Constructing a role always requires the role taker to be passed
     explicitly.
 
-    **Defining a role.** Inherit from ``Role[T]`` (where ``T`` is the role taker type),
-    decorate with ``@dataclass(eq=False)``, and mark exactly one field as the role taker with
-    :func:`role_taker_field`. Add any role-specific fields alongside it.
+    **Defining a role.** Inherit from ``Role[T]`` (where ``T`` is the role taker type) and
+    decorate with ``@dataclass(eq=False)``. The role taker is the inherited keyword-only
+    :attr:`role_taker` field; subclasses add only their role-specific fields and never
+    re-declare the taker.
 
     **Attribute access.** Reading an attribute that is not declared on the role is delegated
     to the role taker via ``__getattr__`` (role-native attributes are resolved first).
@@ -103,10 +69,9 @@ class Role(Symbol, SubClassSafeGeneric[T]):
     ...     name: str
     >>> @dataclass(eq=False)
     ... class Student(Role[Person]):
-    ...     person: Person = role_taker_field()
     ...     major: str = ""
     >>> person = Person(name="Alice")
-    >>> student = Student(person=person)
+    >>> student = Student(role_taker=person)
     >>> student.name is person.name
     True
     >>> person == student
@@ -134,39 +99,25 @@ class Role(Symbol, SubClassSafeGeneric[T]):
     queries (:meth:`has_role`, :meth:`roles_for`). Replace it with a fresh
     :class:`RoleRegistry <krrood.patterns.role_registry.RoleRegistry>` to isolate state."""
 
+    role_taker: T = field(kw_only=True)
+    """The role taker instance wrapped by this role. Keyword-only and required: constructing a
+    role always passes the taker explicitly as ``role_taker=...``. Reading an undeclared attribute
+    delegates to this taker; assigning ``role_taker`` rebinds the underlying entity."""
+
     @classmethod
-    @lru_cache
     def role_taker_field_name(cls) -> str:
         """
         :return: The name of the field that holds the role taker instance.
         """
-        for declared_field in fields(cls):
-            if isinstance(declared_field, RoleTakerField):
-                return declared_field.name
-        raise RoleTakerFieldNotFound(role_type=cls)
-
-    @property
-    def role_taker(self) -> T:
-        """
-        :return: The role taker instance wrapped by this role.
-        """
-        return object.__getattribute__(self, type(self).role_taker_field_name())
+        # Must match the :attr:`role_taker` field declared on :class:`Role`.
+        return "role_taker"
 
     @classmethod
     def get_role_taker_type(cls) -> Type[T]:
         """
         :return: The concrete type of this role's role taker.
         """
-        type_ = next(
-            (
-                declared_field.type
-                for declared_field in fields(cls)
-                if isinstance(declared_field, RoleTakerField)
-            ),
-            None,
-        )
-        if type_ is None:
-            type_ = get_generic_type_params(cls, Role)[0]
+        type_ = get_generic_type_params(cls, Role)[0]
         if isinstance(type_, str):
             module_namespace = sys.modules[cls.__module__].__dict__
             if type_ in module_namespace:
@@ -274,16 +225,6 @@ class Role(Symbol, SubClassSafeGeneric[T]):
             super().__setattr__(key, value)
             return
         raise RoleAttributeNotDeclaredError(role_type=type(self), attribute_name=key)
-
-    @classmethod
-    def from_role_taker(cls, role_taker: T) -> Role[T]:
-        """
-        Factory method to create a role instance for a given role taker.
-
-        :param role_taker: The role taker instance to create the role for.
-        :return: An instance of the role for the given role taker.
-        """
-        return cls(**{cls.role_taker_field_name(): role_taker})
 
     @classmethod
     def has_role(

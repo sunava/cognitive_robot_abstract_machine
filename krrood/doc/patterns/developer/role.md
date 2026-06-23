@@ -58,11 +58,11 @@ membership uses the `RoleRegistry` and persistence uses the role's own ORM mappi
 needs to be a graph node. Role *classes* still take part in the class diagram, which is built from
 `Symbol` subclasses, not from cached instances.
 
-**`role_taker_field()`** is a thin wrapper around `dataclasses.field()` that produces a
-`RoleTakerField` (a `dataclasses.Field` subclass) by building a field and reassigning its
-`__class__`. The field's type is the single source of truth that the role uses to identify
-which field is the role taker. It also allows the class diagram (`krrood.class_diagrams`) to
-recognise role-taker relationships during graph construction.
+**`role_taker`** is a keyword-only field declared once on `Role[T]` and inherited by every role
+class. Its annotation is the generic parameter `T`, so each concrete role binds it to that role's
+taker type through the `Role[Taker]` base. Because the field name is fixed, both the runtime
+delegation and the class diagram (`krrood.class_diagrams`) recognise the role taker by name rather
+than by a per-class marker.
 
 **`RoleRegistry`** (`role_registry.py`) is the runtime inverse index. When a role is constructed,
 `Role.__post_init__` calls `RoleRegistry.register`, which indexes the role under every taker in its
@@ -98,12 +98,15 @@ transformations.
 ### Explicit Construction Only
 
 A role is only created when calling code explicitly passes a role taker instance to the role
-constructor (or to `from_role_taker`).
+constructor.
 
-### Field-Type Discovery of the Role Taker
+### Fixed-Name Discovery of the Role Taker
 
-The role taker field is identified at runtime by an `isinstance` check against `RoleTakerField`.
-The name of that field is cached per class via `@lru_cache` on `role_taker_field_name()`.
+The role taker is the inherited `role_taker` field, so it is identified by its fixed name
+(`role_taker_field_name()`) on any `Role` subclass. The taker *type* comes from the role's
+`Role[Taker]` generic argument, resolved by `get_role_taker_type()` (a bounded `TypeVar`
+resolves to its bound). The class diagram derives the role-taker association from that generic
+argument because the inherited field's own annotation is the unbound generic parameter.
 
 ### Distinct Identity and the `IsSameEntity` Predicate
 
@@ -164,10 +167,10 @@ the class diagram and the property descriptors.
 
 ## Source References
 
-- `krrood/src/krrood/patterns/role.py` — `Role`, `role_taker_field`, `RoleTakerField`
+- `krrood/src/krrood/patterns/role.py` — `Role` (and its inherited `role_taker` field)
 - `krrood/src/krrood/patterns/role_registry.py` — `RoleRegistry`
-- `krrood/src/krrood/patterns/exceptions.py` — `RoleTakerFieldNotFound`,
-  `DelegatedFactoryMethodError`, `RoleAttributeNotDeclaredError`
+- `krrood/src/krrood/patterns/exceptions.py` — `DelegatedFactoryMethodError`,
+  `RoleAttributeNotDeclaredError`
 - `krrood/src/krrood/patterns/subclass_safe_generic.py` — `SubClassSafeGeneric`,
   `AbstractSubClassSafeGeneric`
 - `krrood/src/krrood/symbol_graph/symbol_graph.py` — `Symbol`

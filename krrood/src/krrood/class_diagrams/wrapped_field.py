@@ -283,11 +283,19 @@ class WrappedField:
 
     @cached_property
     def is_role_taker(self) -> bool:
-        # Imported lazily: RoleTakerField lives with the Role class, and importing it at module
-        # level would close an import cycle through symbol_graph -> class_diagram -> wrapped_field.
-        from krrood.patterns.role import RoleTakerField
+        # Imported lazily: Role lives in patterns, and importing it at module level would close an
+        # import cycle through symbol_graph -> class_diagram -> wrapped_field.
+        from krrood.patterns.role import Role
 
-        return isinstance(self.field, RoleTakerField)
+        owner = self.clazz.clazz
+        origin = get_origin(owner)
+        if origin is not None and not isinstance(owner, type):
+            owner = origin
+        # The base ``Role`` declares ``role_taker`` as an abstract, unbound-generic slot; only a
+        # concrete role subclass binds it to a real taker type.
+        if not (isinstance(owner, type) and issubclass(owner, Role) and owner is not Role):
+            return False
+        return self.field.name == Role.role_taker_field_name()
 
     @property
     def type_name(self) -> str:
