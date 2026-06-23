@@ -3,8 +3,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from typing_extensions import Union
+from typing_extensions import Iterable, Union
 
+from krrood.entity_query_language.verbalization import morphology
 from krrood.entity_query_language.verbalization.fragments.base import (
     Fragment,
     PhraseFragment,
@@ -13,7 +14,14 @@ from krrood.entity_query_language.verbalization.fragments.base import (
 )
 from krrood.entity_query_language.verbalization.fragments.features import Number
 from krrood.entity_query_language.verbalization.fragments.roles import SemanticRole
-from krrood.entity_query_language.verbalization.vocabulary.english import Copulas
+from krrood.entity_query_language.verbalization.microplanning.coordination import (
+    MAX_SET_MEMBERS,
+    one_of,
+)
+from krrood.entity_query_language.verbalization.vocabulary.english import (
+    Copulas,
+    SetMembership,
+)
 from krrood.entity_query_language.verbalization.vocabulary.words import (
     PlainWord,
     VocabEnum,
@@ -101,6 +109,46 @@ class Copula(ClauseElement):
         'is'
         """
         return Copulas.IS.as_fragment()
+
+
+@dataclass(frozen=True)
+class OneOf(ClauseElement):
+    """A bounded membership set — *"one of A, B, or C"* — over a collection of admissible values.
+
+    This is the high-level element for a "the subject is one of these" clause (a tuple of admissible
+    types, a small value domain), so an author never re-implements the listing: each member renders
+    as a linked type reference when it is a class, else as a literal value, and a set larger than the
+    cap is summarised by count (*"one of seven types"*) rather than spelled out — the same bounded
+    surface a domain-constrained variable uses.
+    """
+
+    members: Iterable
+    """The admissible values — classes (rendered as linked type references) or plain values."""
+
+    def as_fragment(self) -> Fragment:
+        """:return: the membership phrase, or a count summary past the cap.
+
+        >>> from krrood.entity_query_language.verbalization.fragments.base import (
+        ...     flatten_fragment_to_plain_text,
+        ... )
+        >>> flatten_fragment_to_plain_text(OneOf((int, str)).as_fragment())
+        'one of int or str'
+        """
+        members = list(self.members)
+        are_types = bool(members) and all(
+            isinstance(member, type) for member in members
+        )
+        render = RoleFragment.for_type if are_types else RoleFragment.for_literal
+        listed = one_of([render(member) for member in members[: MAX_SET_MEMBERS + 1]])
+        if listed is not None:
+            return listed
+        return PhraseFragment(
+            parts=[
+                SetMembership.ONE_OF.as_fragment(),
+                WordFragment(text=morphology.cardinal(len(members))),
+                WordFragment(text="types" if are_types else "values"),
+            ]
+        )
 
 
 class Preposition(VocabEnum):

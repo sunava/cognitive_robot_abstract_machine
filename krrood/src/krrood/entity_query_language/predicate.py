@@ -30,7 +30,11 @@ if TYPE_CHECKING:
     from krrood.entity_query_language.verbalization.fragments.base import Fragment
 
 from krrood.entity_query_language.utils import T, merge_args_and_kwargs
-from krrood.entity_query_language.core.variable import Variable, InstantiatedVariable
+from krrood.entity_query_language.core.variable import (
+    Variable,
+    InstantiatedVariable,
+    Literal,
+)
 from krrood.entity_query_language.core.base_expressions import (
     Selectable,
     SymbolicExpression,
@@ -94,6 +98,13 @@ class RenderedFields(Mapping):
 
     def __len__(self) -> int:
         return len(self.fragments)
+
+    def value(self, field_name: str) -> Any:
+        """:return: the raw Python value bound to *field_name* (a :class:`Literal`'s value), for a
+        predicate whose surface depends on the value itself — e.g. the admissible types of a
+        membership set — rather than only its rendered fragment."""
+        raw = self.raw[field_name]
+        return raw._value_ if isinstance(raw, Literal) else raw
 
 
 @dataclass(eq=False)
@@ -315,44 +326,21 @@ class HasTypes(HasType):
 
     @classmethod
     def _verbalization_fragment_(cls, fields: "RenderedFields") -> "Fragment":
-        """Say membership over the admissible types — *"<variable> is one of A, B, or C"* — reusing
-        the bounded ``one of …`` listing a domain-constrained variable uses. The types are read from
-        the *raw* field (a literal tuple) so the surface is membership (an ``isinstance`` over the
-        tuple), not the tuple value an equality would mean.
-        """
+        """Say membership over the admissible types — *"<variable> is one of A, B, or C"*. The
+        :class:`OneOf` element handles the bounded listing (linking, *"or"*, the count cap), so the
+        types are read from the field's value (an ``isinstance`` over the tuple is membership, not the
+        tuple value an equality would mean)."""
         # Imported locally to avoid the core → verbalization import cycle (see :class:`Triple`).
-        from krrood.entity_query_language.verbalization import morphology
-        from krrood.entity_query_language.verbalization.fragments.base import (
-            PhraseFragment,
-            RoleFragment,
-            WordFragment,
-        )
-        from krrood.entity_query_language.verbalization.microplanning.coordination import (
-            MAX_SET_MEMBERS,
-            one_of,
-        )
-        from krrood.entity_query_language.verbalization.vocabulary.english import (
-            SetMembership,
-        )
         from krrood.entity_query_language.verbalization.vocabulary.parts_of_speech import (
             clause,
             Copula,
             Noun,
+            OneOf,
         )
 
-        types = fields.raw["types_"]._value_
-        members = one_of(
-            [RoleFragment.for_type(member) for member in types[: MAX_SET_MEMBERS + 1]]
+        return clause(
+            Noun(fields["variable"]), Copula(), OneOf(fields.value("types_"))
         )
-        if members is None:  # past the cap: summarise by count rather than spell it out
-            members = PhraseFragment(
-                parts=[
-                    SetMembership.ONE_OF.as_fragment(),
-                    WordFragment(text=morphology.cardinal(len(types))),
-                    WordFragment(text="types"),
-                ]
-            )
-        return clause(Noun(fields["variable"]), Copula(), members)
 
 
 @symbolic_function
