@@ -9,6 +9,7 @@ from typing_extensions import (
     Sequence,
     Tuple,
     TYPE_CHECKING,
+    List,
 )
 from dataclasses import dataclass
 
@@ -50,7 +51,7 @@ class GraphVisualizer:
     """
 
     # attributes: Optional[Sequence[str]] = None # kroodd has problems with this
-    attributes = None
+    attributes: List[str] = None
     """
     Optional attribute names to display; ``None`` shows all parameters.
     """
@@ -343,7 +344,7 @@ def calculate_layout_positions(
 
 def build_nx_graph(graph: PyDiGraph, node_params, attributes, node_label) -> nx.Graph:
     """Convert a rustworkx graph to a networkx graph."""
-    nx_g = nx.DiGraph() if graph.is_directed() else nx.Graph()
+    nx_g = nx.DiGraph() if isinstance(graph, PyDiGraph) else nx.Graph()
 
     attributes = list(attributes) if attributes is not None else None
 
