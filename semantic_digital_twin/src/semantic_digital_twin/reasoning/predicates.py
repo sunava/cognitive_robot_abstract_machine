@@ -552,6 +552,23 @@ class ContainsType(Predicate):
     def __call__(self) -> bool:
         return any(isinstance(obj, self.obj_type) for obj in self.iterable)
 
+    @classmethod
+    def _verbalization_fragment_(cls, fields):
+        from krrood.entity_query_language.verbalization.vocabulary.parts_of_speech import (
+            clause,
+            Noun,
+            Preposition,
+            Verb,
+        )
+
+        return clause(
+            Noun(fields["iterable"]),
+            Verb("contain"),
+            Noun("an instance"),
+            Preposition.OF,
+            Noun(fields["obj_type"]),
+        )
+
 
 @symbolic_function
 def is_place_occupied(

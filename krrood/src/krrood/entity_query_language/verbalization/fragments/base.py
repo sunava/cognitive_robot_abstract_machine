@@ -54,6 +54,12 @@ class Fragment:
     side-channel a later pass can follow back to the read model (e.g. coreference reads the focus
     of a query-sourced fragment). Never participates in equality or rendering."""
 
+    def as_fragment(self) -> "Fragment":
+        """:return: this fragment itself — the identity that lets an already-rendered fragment be a
+        clause constituent on equal footing with the typed part-of-speech elements (see
+        ``vocabulary.parts_of_speech.ClauseConstituent``)."""
+        return self
+
 
 @dataclass
 class HasText:
@@ -73,6 +79,16 @@ class HasNumber:
 
 
 @dataclass
+class HasPolarity:
+    """Mixin contributing the grammatical ``negated`` field shared by fragments whose surface is
+    realised in the negative (a verb with do-support, a copula with its negative suppletion)."""
+
+    negated: bool = field(default=False, kw_only=True)
+    """Whether this leaf is realised negative — the morphology pass turns a ``VERB`` lemma into
+    *"does not <lemma>"* and a copula into *"is not"*. Affirmative by default."""
+
+
+@dataclass
 class WordFragment(HasText, HasNumber, Fragment):
     """
     Plain neutral text with no semantic role: articles, connectives, punctuation.
@@ -86,7 +102,7 @@ class WordFragment(HasText, HasNumber, Fragment):
 
 
 @dataclass
-class RoleFragment(HasText, HasNumber, Fragment):
+class RoleFragment(HasText, HasNumber, HasPolarity, Fragment):
     """
     Text carrying a semantic role — drives colour markup and optional source hyperlinking.
     """

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import operator
 from abc import abstractmethod
+from dataclasses import replace
 from itertools import islice
 
 from typing_extensions import TYPE_CHECKING, List, Optional, Set
@@ -32,6 +33,7 @@ from krrood.entity_query_language.verbalization.fragments.base import (
     RoleFragment,
 )
 from krrood.entity_query_language.verbalization.fragments.features import Number
+from krrood.entity_query_language.verbalization.fragments.roles import SemanticRole
 from krrood.entity_query_language.verbalization.grammar.chain.assembler import (
     ChainAssembler,
 )
@@ -58,13 +60,16 @@ from krrood.entity_query_language.verbalization.relational_attributes import (
 )
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Absence,
+    Copulas,
     Logicals,
     NonExistence,
     Operators,
     PassiveAbsence,
+    predicative_core,
     predicative_operator,
     Quantifiers,
 )
+from krrood.entity_query_language.verbalization.vocabulary.words import OperatorWord
 
 if TYPE_CHECKING:
     from krrood.entity_query_language.verbalization.context import MicroplanningServices
@@ -83,6 +88,9 @@ class PredicateTransform(SpecificityRule):
     applies, else the generic *"<left> <op> <right>"*). Adding a predicate-level transform is a new
     subclass; the ``predicate`` method does not change (open/closed) — mirroring the
     :class:`~…conditions.placement.ConditionForm` registry one level up.
+
+    >>> verbalize_expression(variable(Robot, []).battery > 50)
+    'the battery of a Robot is greater than 50'
     """
 
     @classmethod
@@ -95,10 +103,7 @@ class PredicateTransform(SpecificityRule):
 
         It is the gate each concrete transform overrides to claim a comparator; for the plain
         ``battery > 50`` no special case fires, so the unguarded :class:`GenericComparator` is
-        selected and the example renders as the value comparison *is greater than 50*.
-
-        >>> verbalize_expression(variable(Robot, []).battery > 50)
-        'the battery of a Robot is greater than 50'
+        selected and the class example renders as the value comparison *is greater than 50*.
         """
 
     @classmethod
@@ -114,25 +119,23 @@ class PredicateTransform(SpecificityRule):
 
         It emits the predicate text; here the selected :class:`GenericComparator` produces the whole
         *the battery of a Robot is greater than 50* sentence in value-comparison form.
-
-        >>> verbalize_expression(variable(Robot, []).battery > 50)
-        'the battery of a Robot is greater than 50'
         """
 
 
 class GenericComparator(PredicateTransform):
-    """The unguarded default: *"<left> <operator> <right>"* (the right side in value position)."""
+    """The unguarded default: *"<left> <operator> <right>"* (the right side in value position).
+
+    >>> verbalize_expression(variable(Robot, []).battery > 50)
+    'the battery of a Robot is greater than 50'
+    """
 
     @classmethod
     def applies(cls, comparator: Comparator, negated: bool) -> bool:
         """The unguarded base applies to every comparator.
 
         Returning ``True`` unconditionally, it is the catch-all gate that wins whenever no specific
-        transform fires — which is why the example takes the value-comparison form *is greater than
-        50* rather than an absence or boolean-polarity phrasing.
-
-        >>> verbalize_expression(variable(Robot, []).battery > 50)
-        'the battery of a Robot is greater than 50'
+        transform fires — which is why the class example takes the value-comparison form *is greater
+        than 50* rather than an absence or boolean-polarity phrasing.
         """
         return True
 
@@ -144,9 +147,6 @@ class GenericComparator(PredicateTransform):
 
         It owns the whole *the battery of a Robot is greater than 50* span, placing the left chain,
         the selected operator, and the right side in value position.
-
-        >>> verbalize_expression(variable(Robot, []).battery > 50)
-        'the battery of a Robot is greater than 50'
         """
         return PhraseFragment(
             parts=[
@@ -159,18 +159,19 @@ class GenericComparator(PredicateTransform):
 
 class AbsenceTransform(GenericComparator):
     """A non-negated ``<chain> == None`` comparison → the absence predicate (*"has no …"* / *"does
-    not exist"*) instead of a value comparison."""
+    not exist"*) instead of a value comparison.
+
+    >>> verbalize_expression(variable(Mission, []).priority == None)
+    'a Mission has no priority'
+    """
 
     @classmethod
     def applies(cls, comparator: Comparator, negated: bool) -> bool:
         """Fires on a non-negated ``<chain> == None`` comparison.
 
         Recognising the ``== None`` shape is the gate that selects this transform over the generic
-        comparator, which is why the example reads *has no priority* instead of a literal *is equal
-        to None* value comparison.
-
-        >>> verbalize_expression(variable(Mission, []).priority == None)
-        'a Mission has no priority'
+        comparator, which is why the class example reads *has no priority* instead of a literal *is
+        equal to None* value comparison.
         """
         return (
             not negated
@@ -186,9 +187,6 @@ class AbsenceTransform(GenericComparator):
 
         Delegating to :func:`render_absence` is what supplies the *a Mission has no priority* phrasing,
         flipping owner and attribute into the *has no* frame.
-
-        >>> verbalize_expression(variable(Mission, []).priority == None)
-        'a Mission has no priority'
         """
         return render_absence(comparator, context)
 
@@ -260,11 +258,8 @@ class BooleanPolarityTransform(GenericComparator):
         """Fires on a boolean attribute compared to a boolean value/domain.
 
         Recognising a boolean attribute against a boolean value is the gate that selects this
-        transform over the generic comparator, which is why the example folds to *is completed*
+        transform over the generic comparator, which is why the class example folds to *is completed*
         instead of the literal *is completed is True*.
-
-        >>> verbalize_expression(variable(Task, []).completed == True)
-        'a Task is completed'
         """
         return (
             comparator.operation in (operator.eq, operator.ne)
@@ -280,9 +275,6 @@ class BooleanPolarityTransform(GenericComparator):
 
         It owns the *is not completed* span, reading the ``False`` constraint to negate the
         predicative copula rather than appending the value as a separate term.
-
-        >>> verbalize_expression(variable(Task, []).completed == False)
-        'a Task is not completed'
         """
         constraint = _boolean_constraint(comparator.right)
         plan = context.microplan.plan_for(comparator.left, ChainPlanner)
@@ -307,6 +299,7 @@ def comparator_operator(
     negated: bool = False,
     compact: Optional[bool] = None,
     number: Number = Number.SINGULAR,
+    copula: bool = True,
 ) -> Fragment:
     """
     Select the operator fragment for *comparator* (e.g. *"is greater than"*,
@@ -328,6 +321,9 @@ def comparator_operator(
     :param compact: Copula-less variant (HAVING clauses).  Defaults to
         ``services.configuration.compact_predicates`` when ``None``.
     :param number: The grammatical number the predicative copula agrees with.
+    :param copula: Keep the leading copula on the predicative (non-compact) surface. Pass ``False``
+        for the bare core (*"greater than"*) when a shared copula is factored out across coordinated
+        tails (*"is either greater than 50 or less than 10"*); ignored when *compact*.
     :return: The operator fragment.
 
     Of the example sentence it supplies only the operator span *is greater than*; the surrounding
@@ -346,7 +342,7 @@ def comparator_operator(
     if is_calculation:
         calc_negated = (operation is operator.ne) ^ negated
         word = Operators.CALC_EQ.select(negated=calc_negated, compact=compact)
-        return word.as_fragment() if compact else predicative_operator(word.text, number)
+        return _operator_fragment(word, number, compact=compact, copula=copula)
 
     temporal = is_temporal(comparator.left) or is_temporal(comparator.right)
     operator_member = Operators.for_callable(operation)
@@ -356,7 +352,70 @@ def comparator_operator(
             f"{Logicals.NOT.text} {name}" if negated else name
         )
     word = operator_member.select(negated=negated, compact=compact, temporal=temporal)
-    return word.as_fragment() if compact else predicative_operator(word.text, number)
+    return _operator_fragment(word, number, compact=compact, copula=copula)
+
+
+def _operator_fragment(
+    word: OperatorWord, number: Number, *, compact: bool, copula: bool
+) -> Fragment:
+    """:return: the operator surface for a selected *word* — the bare compact verb when *compact*,
+    the bare predicative core (*"greater than"*) when ``not copula``, else the agreeing predicative
+    *"is greater than"*."""
+    if compact:
+        return word.as_fragment()
+    if not copula:
+        return RoleFragment.for_operator(predicative_core(word.text))
+    return predicative_operator(word.text, number)
+
+
+#: Copula surfaces a clause is negatable through (the leaf the ``negated`` feature attaches to).
+_COPULA_SURFACES = frozenset({Copulas.IS.text, Copulas.ARE.text})
+
+
+def _is_negatable_head(fragment: Fragment) -> bool:
+    """:return: whether *fragment* is a clause's negatable head — a ``VERB`` lemma (do-support) or a
+    copula (*"is"* / *"are"*)."""
+    return isinstance(fragment, RoleFragment) and (
+        fragment.role is SemanticRole.VERB
+        or (
+            fragment.role is SemanticRole.OPERATOR
+            and fragment.text in _COPULA_SURFACES
+        )
+    )
+
+
+def negate_clause(fragment: Fragment) -> Optional[Fragment]:
+    """
+    :param fragment: A predicate clause built from the typed clause vocabulary.
+    :return: *fragment* with its head verb or copula marked ``negated`` (so the morphology pass
+        realises *"does not work"* / *"is not reachable"*), or ``None`` when the clause has no verb
+        or copula head to negate — the caller then wraps it in *"not (…)"*.
+
+    Negation is set as a feature, not rewritten as text: marking the typed head leaf lets the
+    morphology pass realise do-support and copula suppletion uniformly with number agreement, so a
+    wrapping ``Not`` reads *"an Employee does not work in a Department"* in place rather than
+    *"not (an Employee works in a Department)"*.
+
+    >>> from krrood.entity_query_language.verbalization.fragments.base import (
+    ...     PhraseFragment, WordFragment,
+    ... )
+    >>> from krrood.entity_query_language.verbalization.vocabulary.parts_of_speech import Verb
+    >>> clause = PhraseFragment(parts=[WordFragment(text="an Employee"), Verb("work").as_fragment()])
+    >>> negate_clause(clause).parts[1].negated
+    True
+    >>> negate_clause(WordFragment(text="a Robot")) is None
+    True
+    """
+    if _is_negatable_head(fragment):
+        return replace(fragment, negated=True)
+    if isinstance(fragment, PhraseFragment):
+        for index, part in enumerate(fragment.parts):
+            negated_part = negate_clause(part)
+            if negated_part is not None:
+                parts = list(fragment.parts)
+                parts[index] = negated_part
+                return replace(fragment, parts=parts)
+    return None
 
 
 def coindexed_operator(operation) -> Fragment:

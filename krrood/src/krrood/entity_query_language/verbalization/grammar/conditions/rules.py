@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from krrood.entity_query_language.core.base_expressions import Filter
+from krrood.entity_query_language.core.variable import InstantiatedVariable
 from krrood.entity_query_language.operators.comparator import Comparator
 from krrood.entity_query_language.operators.core_logical_operators import (
     AND,
@@ -10,6 +11,7 @@ from krrood.entity_query_language.operators.core_logical_operators import (
 )
 from krrood.entity_query_language.operators.logical_quantifiers import Exists, ForAll
 from krrood.entity_query_language.verbalization.fragments.base import (
+    flatten_fragment_to_plain_text,
     Fragment,
     oxford_comma,
     PhraseFragment,
@@ -30,8 +32,14 @@ from krrood.entity_query_language.verbalization.grammar.conditions.assembler imp
 )
 from krrood.entity_query_language.verbalization.grammar.conditions.predication import (
     coindexed_operator,
+    comparator_operator,
+    negate_clause,
+)
+from krrood.entity_query_language.verbalization.grammar.instantiated.planner import (
+    InstantiatedPlanner,
 )
 from krrood.entity_query_language.verbalization.grammar.conditions.recognition import (
+    fold_shared_subject_comparisons,
     is_boolean_attribute_chain,
 )
 from krrood.entity_query_language.verbalization.grammar.framework.phrase_rule import (
@@ -43,11 +51,13 @@ from krrood.entity_query_language.verbalization.microplanning.coordination impor
     coindexed_natural_parts,
     CoindexedFold,
     RangeFold,
+    SharedSubjectComparisons,
 )
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Articles,
     CoindexedPhrases,
     Conjunctions,
+    copula_with,
     Keywords,
     Logicals,
     Prepositions,
@@ -222,29 +232,85 @@ class CoindexedFoldRule(PhraseRule):
         return RoleFragment.for_attribute(owner, name)
 
 
-class OrRule(PhraseRule):
-    """Disjunction *"either a, b, or c"*; flattens nested ORs.
+class SharedSubjectComparisonsRule(PhraseRule):
+    """Factored disjunction *"the <subject> is either <tail>, …, or <tail>"* — the
+    :class:`SharedSubjectComparisons` artifact produced when every disjunct of an ``OR`` is a value
+    comparison on one shared subject chain.
+
+    Saying the subject and its copula once and coordinating only the operator-and-value tails is
+    coordination reduction over the shared subject (the disjunctive analogue of the *"between"* range
+    fold). Making it a first-class verbalizable means a caller that has folded its disjuncts renders
+    the result through the normal recursion (``context.child``) and never has to know a folding helper
+    exists.
 
     >>> robot = variable(Robot, [])
     >>> verbalize_expression(or_(robot.battery > 50, robot.battery < 10))
-    'either the battery of a Robot is greater than 50, or the battery of the Robot is less than 10'
+    'the battery of a Robot is either greater than 50 or less than 10'
+    """
+
+    construct = SharedSubjectComparisons
+    name = "shared-subject-comparisons"
+
+    def build(self, node: SharedSubjectComparisons, context: RuleContext) -> Fragment:
+        """Say the factored disjunction — subject and copula once, tails coordinated under *either … or*.
+
+        It owns the *is either … or …* framing: the shared subject and its copula are stated once and
+        each comparator contributes only its copula-less operator-and-value tail (*greater than 50*),
+        so the disjuncts read as one clause rather than repeating the subject per disjunct.
+        """
+        tails = [self._tail(comparator, context) for comparator in node.comparators]
+        return PhraseFragment(
+            parts=[
+                context.child(node.subject_expression),
+                copula_with("", Number.SINGULAR),
+                Logicals.EITHER.as_fragment(),
+                oxford_comma(tails, Conjunctions.OR.as_fragment()),
+            ]
+        )
+
+    @staticmethod
+    def _tail(comparator: Comparator, context: RuleContext) -> Fragment:
+        """:return: a comparator's copula-less operator-and-value tail (*"greater than 50"*) — the
+        differing piece coordinated under the shared subject. A bare equality has an empty operator
+        core (*"is 30"* → *"30"*), so only the value is kept."""
+        operator = comparator_operator(
+            comparator, context.services, compact=False, copula=False
+        )
+        value = context.child(comparator.right, as_value=True)
+        if not flatten_fragment_to_plain_text(operator).strip():
+            return value
+        return PhraseFragment(parts=[operator, value])
+
+
+class OrRule(PhraseRule):
+    """Disjunction *"either a, b, or c"*; flattens nested ORs. When every disjunct is a value
+    comparison on one shared subject chain it factors to *"the <subject> is either … or …"* via the
+    :class:`SharedSubjectComparisons` fold.
+
+    >>> robot = variable(Robot, [])
+    >>> verbalize_expression(or_(robot.battery > 50, robot.name == 'x'))
+    "either the battery of a Robot is greater than 50, or the name of the Robot is 'x'"
+    >>> verbalize_expression(or_(robot.battery > 50, robot.battery < 10))
+    'the battery of a Robot is either greater than 50 or less than 10'
     """
 
     construct = OR
     name = "or"
 
     def build(self, node: OR, context: RuleContext) -> Fragment:
-        """Say the flattened disjuncts as *"either a, b, or c"*.
+        """Say the flattened disjuncts as *"either a, b, or c"*, or the factored *"… is either … or …"*
+        when they share a subject.
 
-        It owns the *either …, or …* framing around the disjuncts of the example — the leading
+        It owns the *either …, or …* framing around the disjuncts of the class example — the leading
         *either* and the comma-*or* before the last — while the disjunct clauses come from the
-        recursion.
-
-        >>> robot = variable(Robot, [])
-        >>> verbalize_expression(or_(robot.battery > 50, robot.battery < 10))
-        'either the battery of a Robot is greater than 50, or the battery of the Robot is less than 10'
+        recursion; a shared-subject disjunction is delegated to the :class:`SharedSubjectComparisons`
+        fold instead.
         """
-        parts = [context.child(conjunct) for conjunct in flatten_operands(node, OR)]
+        operands = flatten_operands(node, OR)
+        shared_subject = fold_shared_subject_comparisons(operands)
+        if shared_subject is not None:
+            return context.child(shared_subject)
+        parts = [context.child(conjunct) for conjunct in operands]
         if len(parts) == 1:
             return parts[0]
         # "either a, b, or c": the head items are comma-joined, then a trailing comma that the
@@ -264,8 +330,9 @@ class OrRule(PhraseRule):
 class NotRule(PhraseRule):
     """Generic negation *"not (<child>)"* (specialised by the guarded Not rules below).
 
-    >>> verbalize_expression(Not(IsReachable(variable(Location, []))))
-    'not (a Location is reachable)'
+    >>> robot = variable(Robot, [])
+    >>> verbalize_expression(Not(or_(robot.battery > 50, robot.name == 'x')))
+    "not (either the battery of a Robot is greater than 50, or the name of the Robot is 'x')"
     """
 
     construct = Not
@@ -274,22 +341,66 @@ class NotRule(PhraseRule):
     def build(self, node: Not, context: RuleContext) -> Fragment:
         """Wrap the child in *"not (<child>)"* via the orthography pass.
 
-        It owns the *not (…)* wrapper of the example — the leading *not* and the parentheses — around
-        the *a Location is reachable* child the recursion renders.
-
-        >>> verbalize_expression(Not(IsReachable(variable(Location, []))))
-        'not (a Location is reachable)'
+        It owns the *not (…)* wrapper of the class example — the leading *not* and the parentheses —
+        around the disjunction child the recursion renders.
         """
-        child_fragment = context.child(node._child_)
-        # The parens glue to the child via the orthography pass → "not (child)".
-        return PhraseFragment(
-            parts=[
-                Logicals.NOT.as_fragment(),
-                Punctuation.OPEN_PAREN.as_fragment(),
-                child_fragment,
-                Punctuation.CLOSE_PAREN.as_fragment(),
-            ]
-        )
+        return _negation_wrap(context.child(node._child_))
+
+
+def _negation_wrap(child_fragment: Fragment) -> Fragment:
+    """:return: *child_fragment* wrapped as *"not (<child>)"* — the fallback negation for a clause
+    that cannot be negated in place. The parens glue to the child via the orthography pass."""
+    return PhraseFragment(
+        parts=[
+            Logicals.NOT.as_fragment(),
+            Punctuation.OPEN_PAREN.as_fragment(),
+            child_fragment,
+            Punctuation.CLOSE_PAREN.as_fragment(),
+        ]
+    )
+
+
+class NotVerbalizablePredicateRule(PhraseRule):
+    """Inline-negated verbalizable predicate (Not over a predicate whose type builds its own
+    verbalization fragment).
+
+    Because the predicate states its clause with the typed clause vocabulary, the negation is set as
+    a feature on the clause's head verb or copula — realised by the morphology pass as do-support
+    (*"does not work"*) or copula suppletion (*"is not reachable"*) — rather than wrapping the whole
+    clause in *"not (...)"*. A clause with no verb or copula head has nothing to negate, so it falls
+    back to the wrapped form.
+
+    >>> verbalize_expression(Not(IsReachable(variable(Location, []))))
+    'a Location is not reachable'
+    >>> employee, department = variable(StaffMember, []), variable(Department, [])
+    >>> verbalize_expression(Not(WorksIn(employee, department)))
+    'a StaffMember does not work in a Department'
+    """
+
+    construct = Not
+    name = "not-verbalizable-predicate"
+
+    def when(self, node: Not, context: RuleContext) -> bool:
+        """Fires when the negation wraps a predicate that builds its own verbalization fragment.
+
+        Detecting a verbalizable-predicate child is the gate that selects this rule over the generic
+        :class:`NotRule`, so the class example negates the predicate's head verb / copula in place
+        instead of wrapping it in *not (…)*.
+        """
+        return isinstance(
+            node._child_, InstantiatedVariable
+        ) and InstantiatedPlanner.has_fragment(node._child_)
+
+    def build(self, node: Not, context: RuleContext) -> Fragment:
+        """Say the predicate with its head verb / copula negated, or wrap it when it has neither.
+
+        Marking the clause's verb or copula negated is what yields the inline *does not work in* /
+        *is not reachable*; a clause with no such head has nothing to negate, so it falls back to the
+        *not (…)* wrapper.
+        """
+        clause = context.child(node._child_)
+        negated = negate_clause(clause)
+        return negated if negated is not None else _negation_wrap(clause)
 
 
 class NotComparatorRule(PhraseRule):

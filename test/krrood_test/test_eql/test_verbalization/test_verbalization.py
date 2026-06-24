@@ -9,8 +9,8 @@ Coverage:
     test_complex_having_success, test_nested_rule_explanation,
     test_explanation_condition_graph_and_visualize,
     test_equivalent_to_contains_type_using_exists.
-- Predicate template tests: HasType, ContainsType, custom predicates,
-  and graceful fallback when no template is set.
+- Predicate fragment tests: HasType, ContainsType, custom predicates,
+  and the required fragment (verbalizing one without it is an error).
 """
 
 from __future__ import annotations
@@ -40,7 +40,18 @@ from krrood.entity_query_language.factories import (
     and_,
     or_,
 )
-from krrood.entity_query_language.predicate import HasType, Predicate, Triple
+from krrood.entity_query_language.predicate import HasType, HasTypes, Predicate, Triple
+from krrood.entity_query_language.verbalization.exceptions import (
+    PredicateFragmentRequiredError,
+)
+from krrood.entity_query_language.verbalization.vocabulary.parts_of_speech import (
+    Adjective,
+    clause,
+    Copula,
+    Noun,
+    Preposition,
+    Verb,
+)
 from krrood.entity_query_language.verbalization.pipeline import (
     VerbalizationPipeline,
     verbalize_expression,
@@ -200,10 +211,34 @@ def test_verbalize_literal_type_object():
     assert verbalize_expression(literal_value) == "Apple"
 
 
-def test_verbalize_literal_tuple_of_types():
-    literal_value = Literal(_value_=(Apple, Body))
-    text = verbalize_expression(literal_value)
-    assert "Apple" in text and "Body" in text
+def test_verbalize_literal_tuple_of_types_is_a_value_not_membership():
+    """A bare tuple literal is a *value* — its classes are listed and joined, not read as *"one of"*
+    (which would mean membership). Membership is the consuming predicate's call, so an equality with
+    a tuple is never mis-read as membership."""
+    assert verbalize_expression(Literal(_value_=(Apple, Body))) == "Apple and Body"
+    assert (
+        verbalize_expression(variable(_Robot, []).name == (Apple, Body))
+        == "the name of a _Robot is Apple and Body"
+    )
+
+
+def test_verbalize_has_types_is_membership():
+    """The type-membership predicate reads as the bounded *"one of A, B, or C"* set — the same
+    surface a domain-constrained variable uses — over its admissible types."""
+    subject = variable(Body, [])
+    assert (
+        verbalize_expression(HasTypes(subject, (Apple, Cabinet)))
+        == "a Body is one of Apple or Cabinet"
+    )
+
+
+def test_verbalize_has_types_too_many_is_not_spelled():
+    """Past the membership cap the admissible types are summarised by count, not spelled out."""
+    subject = variable(Body, [])
+    many = (Apple, Cabinet, Container, Drawer, FixedConnection, Handle, PrismaticConnection)
+    text = verbalize_expression(HasTypes(subject, many))
+    assert "Apple" not in text
+    assert text == "a Body is one of seven types"
 
 
 # ── Unit tests: MappedVariable chain ──────────────────────────────────────────
@@ -1412,10 +1447,10 @@ def test_verbalize_has_type_with_exists():
     assert "is of type" in text
 
 
-# ── Predicate template tests ───────────────────────────────────────────────────
+# ── Predicate fragment tests ────────────────────────────────────────────────────
 
 
-def test_verbalize_has_type_template():
+def test_verbalize_has_type():
     fruit = variable(Body, [])
     predicate = HasType(fruit, Apple)
     text = verbalize_expression(predicate)
@@ -1433,7 +1468,7 @@ def test_verbalize_has_type_tuple_of_types():
     assert "Body" in text
 
 
-def test_verbalize_contains_type_template():
+def test_verbalize_contains_type():
     fruit_box = variable(FruitBox, [])
     predicate = ContainsType(fruit_box.fruits, Apple)
     text = verbalize_expression(predicate)
@@ -1451,8 +1486,8 @@ def test_verbalize_custom_predicate_robotics_domain(handles_and_containers_world
             return True
 
         @classmethod
-        def _verbalization_template_(cls) -> str:
-            return "{body} is reachable"
+        def _verbalization_fragment_(cls, fields):
+            return clause(Noun(fields["body"]), Copula(), Adjective("reachable"))
 
     world = handles_and_containers_world
     handle = variable(Handle, world.bodies)
@@ -1472,8 +1507,13 @@ def test_verbalize_custom_predicate_employee_domain():
             return self.employee.department == self.department
 
         @classmethod
-        def _verbalization_template_(cls) -> str:
-            return "{employee} works in {department}"
+        def _verbalization_fragment_(cls, fields):
+            return clause(
+                Noun(fields["employee"]),
+                Verb("work"),
+                Preposition.IN,
+                Noun(fields["department"]),
+            )
 
     employee = variable(Employee, [])
     department = variable(Department, [])
@@ -1484,7 +1524,10 @@ def test_verbalize_custom_predicate_employee_domain():
     assert "Department" in text
 
 
-def test_verbalize_predicate_no_template_fallback():
+def test_verbalize_predicate_without_fragment_raises():
+    """A predicate that supplies no verbalization fragment is an error — there is no name-based
+    string fallback; fragments are required."""
+
     @dataclass(eq=False)
     class HasHighSalary(Predicate):
         employee: Any
@@ -1494,14 +1537,11 @@ def test_verbalize_predicate_no_template_fallback():
             return self.employee.salary > self.threshold
 
     employee = variable(Employee, [])
-    predicate = HasHighSalary(employee, 50000.0)
-    text = verbalize_expression(predicate)
-    assert "Employee" in text
-    assert "HasHighSalary" in text
-    assert "50000.0" in text
+    with pytest.raises(PredicateFragmentRequiredError):
+        verbalize_expression(HasHighSalary(employee, 50000.0))
 
 
-def test_verbalize_predicate_no_template_no_args_fallback():
+def test_verbalize_predicate_without_fragment_no_args_raises():
     @dataclass(eq=False)
     class IsActive(Predicate):
         entity: Any
@@ -1510,9 +1550,8 @@ def test_verbalize_predicate_no_template_no_args_fallback():
             return True
 
     employee = variable(Employee, [])
-    predicate = IsActive(employee)
-    text = verbalize_expression(predicate)
-    assert "IsActive" in text
+    with pytest.raises(PredicateFragmentRequiredError):
+        verbalize_expression(IsActive(employee))
 
 
 # ── Aggregator coreference & HAVING compact form ──────────────────────────────
@@ -1815,8 +1854,9 @@ def test_verbalize_triple():
     assert text.index("Body") < text.index("Handle")
 
 
-def test_verbalize_1arg_predicate_generic_fallback():
-    """1-arg Predicate without template still uses generic constructor-like fallback."""
+def test_verbalize_1arg_predicate_without_fragment_raises():
+    """A 1-arg predicate without a verbalization fragment is an error — fragments are required, with
+    no generic name-based fallback."""
 
     @dataclass(eq=False)
     class IsActive(Predicate):
@@ -1826,10 +1866,8 @@ def test_verbalize_1arg_predicate_generic_fallback():
             return True
 
     employee = variable(Employee, [])
-    predicate = IsActive(employee)
-    text = verbalize_expression(predicate)
-    assert "IsActive" in text
-    assert "Employee" in text
+    with pytest.raises(PredicateFragmentRequiredError):
+        verbalize_expression(IsActive(employee))
 
 
 # ── Same-type variable disambiguation ─────────────────────────────────────────

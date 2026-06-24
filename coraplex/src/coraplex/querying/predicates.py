@@ -48,6 +48,17 @@ class GripperIsFree(GripperOccupancy, Predicate):
     def __call__(self) -> bool:
         return self.check_man_occupancy(lambda bodies: len(bodies) == 0)
 
+    @classmethod
+    def _verbalization_fragment_(cls, fields):
+        from krrood.entity_query_language.verbalization.vocabulary.parts_of_speech import (
+            Adjective,
+            clause,
+            Copula,
+            Noun,
+        )
+
+        return clause(Noun(fields["end_effector"]), Copula(), Adjective("free"))
+
 
 @dataclass
 class GripperIsNotFree(GripperOccupancy, Predicate):
@@ -58,3 +69,14 @@ class GripperIsNotFree(GripperOccupancy, Predicate):
 
     def __call__(self) -> bool:
         return self.check_man_occupancy(lambda bodies: len(bodies) != 0)
+
+    @classmethod
+    def _verbalization_fragment_(cls, fields):
+        from krrood.entity_query_language.verbalization.vocabulary.parts_of_speech import (
+            Adjective,
+            clause,
+            Copula,
+            Noun,
+        )
+
+        return clause(Noun(fields["end_effector"]), Copula(), Adjective("occupied"))

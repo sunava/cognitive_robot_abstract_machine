@@ -45,6 +45,7 @@ from krrood.entity_query_language.verbalization.fragments.features import Number
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Conjunctions,
     RangePhrases,
+    SetMembership,
     copula_with,
 )
 
@@ -106,6 +107,27 @@ class CoindexedFold:
 
     right_prefix_expression: SymbolicExpression
     """An exemplar of the right chain minus its terminal hop (e.g. ``p.end``)."""
+
+
+@dataclass
+class SharedSubjectComparisons:
+    """Two or more value comparators on the *same* subject chain, factored so the subject and its
+    copula are said once and only the predicate tails are coordinated — *"the battery of a Robot is
+    either greater than 50 or less than 10"* instead of repeating *"the battery of … is …"* per
+    disjunct.
+
+    This is coordination reduction over a shared subject: the disjunctive analogue of
+    :class:`RangeFold` (which is itself the special case of two complementary bounds folded to
+    *"between"*), generalised to any comparison operators.
+    """
+
+    subject_expression: SymbolicExpression
+    """The shared left-hand attribute chain (e.g. ``robot.battery``), rendered once via the normal
+    recursion."""
+
+    comparators: List[Comparator]
+    """The comparators in source order; each contributes its operator-and-value tail (*"greater than
+    50"*), coordinated under the shared subject."""
 
 
 @dataclass(frozen=True)
@@ -229,14 +251,14 @@ class _Bound(Enum):
     UPPER = auto()
 
 
-def _chain_key(expression: SymbolicExpression) -> Optional[ChainKey]:
+def chain_key(expression: SymbolicExpression) -> Optional[ChainKey]:
     """:return: The hashable identity of a pure attribute chain — ``(root_id, ((name, owner),
     …))`` — or ``None``.
 
     >>> robot = variable(Robot, [])
-    >>> _chain_key(robot.battery) == _chain_key(robot.battery)
+    >>> chain_key(robot.battery) == chain_key(robot.battery)
     True
-    >>> _chain_key(robot) is None
+    >>> chain_key(robot) is None
     True
     """
     if not isinstance(expression, MappedVariable):
@@ -265,7 +287,7 @@ def _classify(conjunct: SymbolicExpression) -> Optional[Tuple[ChainKey, _Bound]]
     """
     if not isinstance(conjunct, Comparator):
         return None
-    key = _chain_key(conjunct.left)
+    key = chain_key(conjunct.left)
     if key is None:
         return None
     if conjunct.operation in (operator.gt, operator.ge):
@@ -401,8 +423,8 @@ def coindexed_signature(
     leaf = (left_terminal._attribute_name_, left_terminal._owner_class_)
     if leaf != (right_terminal._attribute_name_, right_terminal._owner_class_):
         return None  # the compared leaves must be the same (co-indexed) attribute
-    left_prefix_key = _chain_key(conjunct.left._child_)
-    right_prefix_key = _chain_key(conjunct.right._child_)
+    left_prefix_key = chain_key(conjunct.left._child_)
+    right_prefix_key = chain_key(conjunct.right._child_)
     if left_prefix_key is None or right_prefix_key is None:
         return None
     return (conjunct.operation, left_prefix_key, right_prefix_key), leaf
@@ -671,3 +693,44 @@ def _between_operator(compact: bool, number: Number) -> Fragment:
     if compact:
         return RangePhrases.BETWEEN.as_fragment()
     return copula_with(RangePhrases.BETWEEN.text, number)
+
+
+#: The largest candidate set spelled out as *"one of A, B, …, or F"*; an empty or larger set
+#: falls back to a non-enumerated surface (a type name, a count) the caller chooses.
+MAX_SET_MEMBERS = 6
+
+
+def one_of(candidates: List[Fragment]) -> Optional[Fragment]:
+    """
+    Render a small, bounded candidate set as a membership phrase — the shared *"one of A, B, or C"*
+    surface used both for a domain-constrained variable's candidate values and for a tuple of
+    admissible types.
+
+    The candidates are already-rendered fragments, so each caller decides how a candidate is
+    lexicalised (a value via :meth:`RoleFragment.for_literal`, a type via
+    :meth:`RoleFragment.for_type`) and only the coordination is shared here.
+
+    :param candidates: The rendered candidate fragments (the caller materialises at most
+        :data:`MAX_SET_MEMBERS` ``+ 1`` so an over-cap set is detectable).
+    :return: the lone candidate for a singleton, *"one of …, or …"* for two-to-:data:`MAX_SET_MEMBERS`
+        candidates, or ``None`` when the set is empty or exceeds the cap (the caller then falls back).
+
+    >>> from krrood.entity_query_language.verbalization.fragments.base import (
+    ...     flatten_fragment_to_plain_text, RoleFragment,
+    ... )
+    >>> options = [RoleFragment.for_literal(value) for value in ("a", "b", "c")]
+    >>> flatten_fragment_to_plain_text(one_of(options))
+    "one of 'a', 'b', or 'c'"
+    >>> one_of([]) is None
+    True
+    """
+    if not candidates or len(candidates) > MAX_SET_MEMBERS:
+        return None
+    if len(candidates) == 1:
+        return candidates[0]
+    return PhraseFragment(
+        parts=[
+            SetMembership.ONE_OF.as_fragment(),
+            oxford_comma(candidates, Conjunctions.OR.as_fragment()),
+        ]
+    )

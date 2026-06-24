@@ -35,8 +35,19 @@ import datetime
 from dataclasses import dataclass
 from typing import List
 
+from typing_extensions import Mapping
+
 from krrood.entity_query_language.factories import Symbol
 from krrood.entity_query_language.predicate import Predicate
+from krrood.entity_query_language.verbalization.fragments.base import Fragment
+from krrood.entity_query_language.verbalization.vocabulary.parts_of_speech import (
+    Adjective,
+    clause,
+    Copula,
+    Noun,
+    Preposition,
+    Verb,
+)
 
 # ── Robots & missions (the quick-start + cross-variable examples) ────────────
 
@@ -133,7 +144,7 @@ class Employee:
     """Salary at hiring time."""
 
 
-# ── Custom predicates (template-driven verbalization examples) ───────────────
+# ── Custom predicates (fragment-built verbalization examples) ────────────────
 
 
 @dataclass(eq=False)
@@ -155,8 +166,8 @@ class IsReachable(Predicate):
         return True
 
     @classmethod
-    def _verbalization_template_(cls):
-        return "{body} is reachable"
+    def _verbalization_fragment_(cls, fields: Mapping[str, Fragment]) -> Fragment:
+        return clause(Noun(fields["body"]), Copula(), Adjective("reachable"))
 
 
 @dataclass(eq=False)
@@ -183,17 +194,22 @@ class WorksIn(Predicate):
     """Multi-field custom predicate: *"<employee> works in <department>"*."""
 
     employee: object
-    """The employee (first positional argument of the template)."""
+    """The employee (first positional field of the predicate)."""
 
     department: object
-    """The department (second positional argument of the template)."""
+    """The department (second positional field of the predicate)."""
 
     def __call__(self):
         return True
 
     @classmethod
-    def _verbalization_template_(cls):
-        return "{employee} works in {department}"
+    def _verbalization_fragment_(cls, fields: Mapping[str, Fragment]) -> Fragment:
+        return clause(
+            Noun(fields["employee"]),
+            Verb("work"),
+            Preposition.IN,
+            Noun(fields["department"]),
+        )
 
 
 # ── Birds (rule-tree / inference verbalization examples) ─────────────────────

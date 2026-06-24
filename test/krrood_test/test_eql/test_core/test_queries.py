@@ -40,6 +40,12 @@ from krrood.entity_query_language.predicate import (
     symbolic_function,
     Predicate,
 )
+from krrood.entity_query_language.verbalization.fragments.features import Number
+from krrood.entity_query_language.verbalization.vocabulary.parts_of_speech import (
+    clause,
+    Noun,
+    Verb,
+)
 from krrood.entity_query_language.query.quantifiers import (
     ResultQuantificationConstraint,
     Exactly,
@@ -606,6 +612,17 @@ def test_generate_with_using_inherited_predicate(handles_and_containers_world):
         def __call__(self):
             return self.body1.name[0] == self.body2.name[0] == self.body3.name[0]
 
+        @classmethod
+        def _verbalization_fragment_(cls, fields):
+            return clause(
+                Noun(fields["body1"]),
+                Verb("share", number=Number.PLURAL),
+                Noun("a first character with"),
+                Noun(fields["body2"]),
+                Noun("and"),
+                Noun(fields["body3"]),
+            )
+
     body1 = variable(Body, world.bodies)
     body2 = variable(Body, world.bodies)
     body3 = variable(Body, world.bodies)
@@ -658,6 +675,15 @@ def test_select_predicate(handles_and_containers_world):
         def __call__(self):
             return self.body.name == self.name
 
+        @classmethod
+        def _verbalization_fragment_(cls, fields):
+            return clause(
+                Noun(fields["body"]),
+                Verb("have"),
+                Noun("the name"),
+                Noun(fields["name"]),
+            )
+
     body = variable(Body, world.bodies)
     has_name = HasName(body, "Handle1")
     query = the(entity(has_name).where(has_name))
@@ -679,6 +705,15 @@ def test_literal_predicate(handles_and_containers_world):
 
         def __call__(self):
             return self.body.name == self.name
+
+        @classmethod
+        def _verbalization_fragment_(cls, fields):
+            return clause(
+                Noun(fields["body"]),
+                Verb("have"),
+                Noun("the name"),
+                Noun(fields["name"]),
+            )
 
     has_name = HasName(world.bodies[0], world.bodies[0].name)
     with pytest.raises(LiteralConditionError):

@@ -2,9 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from typing_extensions import ClassVar, List, Optional, Type, Iterable
+from typing_extensions import ClassVar, List, Mapping, Optional, Type, Iterable
 
 from krrood.entity_query_language.predicate import Symbol, Predicate
+from krrood.entity_query_language.verbalization.fragments.base import Fragment
+from krrood.entity_query_language.verbalization.vocabulary.parts_of_speech import (
+    clause,
+    Noun,
+    Preposition,
+    Verb,
+)
 
 
 @dataclass(unsafe_hash=True)
@@ -144,8 +151,14 @@ class ContainsType(Predicate):
         return any(isinstance(obj, self.obj_type) for obj in self.iterable)
 
     @classmethod
-    def _verbalization_template_(cls) -> str:
-        return "{iterable} contains an instance of {obj_type}"
+    def _verbalization_fragment_(cls, fields: Mapping[str, Fragment]) -> Fragment:
+        return clause(
+            Noun(fields["iterable"]),
+            Verb("contain"),
+            Noun("an instance"),
+            Preposition.OF,
+            Noun(fields["obj_type"]),
+        )
 
 
 @dataclass(unsafe_hash=True)

@@ -159,3 +159,25 @@ class PoseValidator(Predicate):
     @abstractmethod
     def __call__(self, *args, **kwargs) -> bool:
         pass
+
+    @classmethod
+    def _verbalization_fragment_(cls, fields):
+        """Default clause for a pose validator — *"<robot> validates a pose candidate in <world>"*.
+
+        Concrete validators (visibility / reachability) inherit this generic surface unless they
+        override it; both ``world`` and ``robot`` are present on every :class:`PoseValidator`.
+        """
+        from krrood.entity_query_language.verbalization.vocabulary.parts_of_speech import (
+            clause,
+            Noun,
+            Preposition,
+            Verb,
+        )
+
+        return clause(
+            Noun(fields["robot"]),
+            Verb("validate"),
+            Noun("a pose candidate"),
+            Preposition.IN,
+            Noun(fields["world"]),
+        )
