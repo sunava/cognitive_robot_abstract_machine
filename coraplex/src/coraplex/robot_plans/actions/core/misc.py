@@ -149,7 +149,7 @@ class MoveToReach(ActionDescription):
         """
         Calculates the pose where the robot should stand to reach the target.
 
-        :return: The calculated standing pose.
+        :return: The calculated standing pose on the floor.
         """
         reference_T_target = self.target_pose_end_effector.to_homogeneous_matrix()
         target_V_robot = -Vector3(
@@ -165,10 +165,17 @@ class MoveToReach(ActionDescription):
             point=Point3(
                 x=self.target_pose_offset_robot.x,
                 y=self.target_pose_offset_robot.y,
-                z=-self.target_pose_end_effector.z,
             ),
             rotation_matrix=target_R_robot_pointing_to_target,
             reference_frame=self.target_pose_end_effector.reference_frame,
         )
         reference_T_robot = reference_T_target @ target_T_robot
-        return reference_T_robot.to_pose()
+        world_T_robot = self.world.transform(
+            reference_T_robot.to_pose(), self.world.root
+        )
+        return Pose.from_xyz_rpy(
+            x=world_T_robot.x,
+            y=world_T_robot.y,
+            yaw=world_T_robot.yaw,
+            reference_frame=self.world.root,
+        )
