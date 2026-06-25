@@ -46,6 +46,11 @@ class CollisionVisualizationMarkerPublisher(CollisionConsumer):
     The name of the topic to which the closest-points marker should be published.
     """
 
+    namespace: str = "__closest_points__"
+    """
+    The namespace of the marker.
+    """
+
     throttle: int = field(kw_only=True, default=1)
     """
     Publish only on every nth collision check to reduce ROS traffic.
@@ -118,7 +123,7 @@ class CollisionVisualizationMarkerPublisher(CollisionConsumer):
         marker = Marker()
         marker.type = Marker.LINE_LIST
         marker.action = Marker.ADD
-        marker.ns = "__closest_points__"
+        marker.ns = self.namespace
         marker.id = 0
         marker.header.frame_id = self._root_frame_name
         marker.frame_locked = True
