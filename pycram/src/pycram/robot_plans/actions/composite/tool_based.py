@@ -11,6 +11,10 @@ from semantic_digital_twin.spatial_types import Point3
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.world_entity import Body
 
+# body_local_aabb stays in a lightweight leaf module: it is a cross-package
+# helper also imported by semantic_digital_twin (viz_marker), so it must not
+# live in this heavy module (would risk circular imports).
+from .thesis_math.world_utils import body_local_aabb
 from ... import MoveTCPWaypointsAlignedMotion
 
 from ....datastructures.enums import (
@@ -37,41 +41,6 @@ def _lerp(a, b, tau):
 # ---------------------------------------------------------------------------
 # Self-contained motion math (previously the thesis_math package).
 # ---------------------------------------------------------------------------
-
-
-def _shape_scale_xyz(shape):
-    """Extract an (x,y,z) scale array from a shape if present."""
-    scale = getattr(shape, "scale", None)
-    if scale is None:
-        return None
-    if hasattr(scale, "x") and hasattr(scale, "y") and hasattr(scale, "z"):
-        return np.array([scale.x, scale.y, scale.z], dtype=float)
-    try:
-        arr = np.asarray(scale, dtype=float).reshape(3)
-    except Exception:
-        return None
-    return arr
-
-
-def body_local_aabb(body, use_visual=False, apply_shape_scale=False):
-    """Compute the local AABB for a body."""
-    geom = body.visual if use_visual else body.collision
-    bbc = geom.as_bounding_box_collection_in_frame(body)
-    mins = np.array([np.inf, np.inf, np.inf], dtype=float)
-    maxs = np.array([-np.inf, -np.inf, -np.inf], dtype=float)
-    for bb in bbc.bounding_boxes:
-        mins = np.minimum(mins, [bb.min_x, bb.min_y, bb.min_z])
-        maxs = np.maximum(maxs, [bb.max_x, bb.max_y, bb.max_z])
-    if apply_shape_scale:
-        max_scale = np.ones(3, dtype=float)
-        for shape in getattr(geom, "shapes", []):
-            scale = _shape_scale_xyz(shape)
-            if scale is not None:
-                max_scale = np.maximum(max_scale, np.abs(scale))
-        if not np.allclose(max_scale, 1.0):
-            mins = mins * max_scale
-            maxs = maxs * max_scale
-    return mins, maxs
 
 
 class MotionSegment:
