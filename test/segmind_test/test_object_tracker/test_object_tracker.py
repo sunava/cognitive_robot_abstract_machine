@@ -184,3 +184,172 @@ def test_get_events_sorted_by_nearest(tracker):
     sorted_events_with_diff = tracker.get_events_sorted_by_nearest_to_timestamp(21.0)
     assert [e for e, dt in sorted_events_with_diff] == [e2, e3, e1]
     assert sorted_events_with_diff[0][1] == 1.0
+
+
+def test_time_stamps(tracker):
+    e1 = MockEvent(timestamp=10.0)
+    e2 = MockEvent(timestamp=20.0)
+
+    tracker.add_event(e1)
+    tracker.add_event(e2)
+
+    assert tracker.time_stamps == [10.0, 20.0]
+
+
+def test_get_all_events_of_type_latest_first(tracker):
+    contact_event = MagicMock(spec=ContactEvent)
+    contact_event.timestamp = 10.0
+    contact_event2 = MagicMock(spec=ContactEvent)
+    contact_event2.timestamp = 20.0
+    pickup_event = MagicMock(spec=PickUpEvent)
+    pickup_event.timestamp = 15.0
+
+    tracker.add_event(contact_event)
+    tracker.add_event(contact_event2)
+    tracker.add_event(pickup_event)
+
+    result = tracker.get_all_events_of_type(ContactEvent, latest_first=True)
+    assert result == [contact_event2, contact_event]
+
+
+def test_get_all_events_of_type_oldest_first(tracker):
+    contact_event = MagicMock(spec=ContactEvent)
+    contact_event.timestamp = 10.0
+    contact_event2 = MagicMock(spec=ContactEvent)
+    contact_event2.timestamp = 20.0
+
+    tracker.add_event(contact_event)
+    tracker.add_event(contact_event2)
+
+    result = tracker.get_all_events_of_type(ContactEvent, latest_first=False)
+    assert result == [contact_event, contact_event2]
+
+
+def test_get_nearest_event_of_type_to_timestamp(tracker):
+    contact_event = MagicMock(spec=ContactEvent)
+    contact_event.timestamp = 10.0
+    pickup_event = MagicMock(spec=PickUpEvent)
+    pickup_event.timestamp = 20.0
+
+    tracker.add_event(contact_event)
+    tracker.add_event(pickup_event)
+
+    assert tracker.get_nearest_event_of_type_to_timestamp(12.0, ContactEvent) == contact_event
+    assert tracker.get_nearest_event_of_type_to_timestamp(18.0, PickUpEvent) == pickup_event
+    assert tracker.get_nearest_event_of_type_to_timestamp(12.0, ContactEvent, tolerance=timedelta(seconds=1)) is None
+
+
+def test_get_nearest_event_of_type_to_event(tracker):
+    contact_event = MagicMock(spec=ContactEvent)
+    contact_event.timestamp = 10.0
+    pickup_event = MagicMock(spec=PickUpEvent)
+    pickup_event.timestamp = 20.0
+    reference_event = MockEvent(timestamp=12.0)
+
+    tracker.add_event(contact_event)
+    tracker.add_event(pickup_event)
+
+    assert tracker.get_nearest_event_of_type_to_event(reference_event, ContactEvent) == contact_event
+    assert tracker.get_nearest_event_of_type_to_event(reference_event, PickUpEvent) == pickup_event
+
+
+def test_get_first_event_of_type_after_timestamp(tracker):
+    contact_event = MagicMock(spec=ContactEvent)
+    contact_event.timestamp = 10.0
+    pickup_event = MagicMock(spec=PickUpEvent)
+    pickup_event.timestamp = 20.0
+    contact_event2 = MagicMock(spec=ContactEvent)
+    contact_event2.timestamp = 30.0
+
+    tracker.add_event(contact_event)
+    tracker.add_event(pickup_event)
+    tracker.add_event(contact_event2)
+
+    assert tracker.get_first_event_of_type_after_timestamp(ContactEvent, 15.0) == contact_event2
+    assert tracker.get_first_event_of_type_after_timestamp(PickUpEvent, 5.0) == pickup_event
+    assert tracker.get_first_event_of_type_after_timestamp(ContactEvent, 30.0) is None
+
+
+def test_get_first_event_of_type_after_event(tracker):
+    contact_event = MagicMock(spec=ContactEvent)
+    contact_event.timestamp = 10.0
+    contact_event2 = MagicMock(spec=ContactEvent)
+    contact_event2.timestamp = 20.0
+    reference_event = MockEvent(timestamp=15.0)
+
+    tracker.add_event(contact_event)
+    tracker.add_event(contact_event2)
+
+    assert tracker.get_first_event_of_type_after_event(ContactEvent, reference_event) == contact_event2
+
+
+def test_get_first_event_of_type_before_timestamp(tracker):
+    contact_event = MagicMock(spec=ContactEvent)
+    contact_event.timestamp = 10.0
+    contact_event2 = MagicMock(spec=ContactEvent)
+    contact_event2.timestamp = 20.0
+    pickup_event = MagicMock(spec=PickUpEvent)
+    pickup_event.timestamp = 30.0
+
+    tracker.add_event(contact_event)
+    tracker.add_event(contact_event2)
+    tracker.add_event(pickup_event)
+
+    assert tracker.get_first_event_of_type_before_timestamp(ContactEvent, 25.0) == contact_event2
+    assert tracker.get_first_event_of_type_before_timestamp(PickUpEvent, 35.0) == pickup_event
+    assert tracker.get_first_event_of_type_before_timestamp(ContactEvent, 5.0) is None
+
+
+def test_get_first_event_of_type_before_event(tracker):
+    contact_event = MagicMock(spec=ContactEvent)
+    contact_event.timestamp = 10.0
+    contact_event2 = MagicMock(spec=ContactEvent)
+    contact_event2.timestamp = 20.0
+    reference_event = MockEvent(timestamp=15.0)
+
+    tracker.add_event(contact_event)
+    tracker.add_event(contact_event2)
+
+    assert tracker.get_first_event_of_type_before_event(ContactEvent, reference_event) == contact_event
+
+
+def test_get_index_of_first_event_after(tracker):
+    e1 = MockEvent(timestamp=10.0)
+    e2 = MockEvent(timestamp=20.0)
+    e3 = MockEvent(timestamp=30.0)
+
+    tracker.add_event(e1)
+    tracker.add_event(e2)
+    tracker.add_event(e3)
+
+    assert tracker.get_index_of_first_event_after(15.0) == 1
+    assert tracker.get_index_of_first_event_after(25.0) == 2
+    assert tracker.get_index_of_first_event_after(30.0) is None
+
+
+def test_get_index_of_first_event_before(tracker):
+    e1 = MockEvent(timestamp=10.0)
+    e2 = MockEvent(timestamp=20.0)
+    e3 = MockEvent(timestamp=30.0)
+
+    tracker.add_event(e1)
+    tracker.add_event(e2)
+    tracker.add_event(e3)
+
+    assert tracker.get_index_of_first_event_before(25.0) == 1
+    assert tracker.get_index_of_first_event_before(15.0) == 0
+    assert tracker.get_index_of_first_event_before(10.0) is None
+
+
+def test_get_events_sorted_by_nearest_to_event(tracker):
+    e1 = MockEvent(timestamp=10.0)
+    e2 = MockEvent(timestamp=20.0)
+    e3 = MockEvent(timestamp=22.0)
+    reference_event = MockEvent(timestamp=21.0)
+
+    tracker.add_event(e1)
+    tracker.add_event(e2)
+    tracker.add_event(e3)
+
+    sorted_events = tracker.get_events_sorted_by_nearest_to_event(reference_event)
+    assert [e for e, _ in sorted_events] == [e2, e3, e1]

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import timedelta
@@ -152,61 +154,59 @@ class PickUpDetector(AbstractInteractionDetector):
             ),
         )
 
-    @dataclass(eq=False, repr=False)
-    class InsertionDetector(AbstractInteractionDetector):
+
+
+@dataclass(eq=False, repr=False)
+class InsertionDetector(AbstractInteractionDetector):
+    """
+    Detects insertion events based on object interaction context.
+
+    Analyzes contact and containment events to identify when an object
+    has been inserted through a hole. Generates an :class:`~segmind.datastructures.events.InsertionEvent`
+    when a contact with a hole and a containment event occur within
+    :attr:`~segmind.detectors.base.AbstractInteractionDetector.shift_threshold` of each other.
+    """
+
+    def update_context_and_events(self, context: MotionStatechartContext, segmind_context: SegmindContext,
+                                  tracked_objs: List[Body]) -> List[DetectionEvent]:
         """
-        Detects insertion events based on object interaction context.
+        Updates context and processes tracked objects to generate a list of events.
 
-        The InsertionDetector class is used to analyze the interaction between tracked
-        objects and identify insertion events. It tracks specific events such as
-        contacts and containment, and generates an InsertionEvent when specific
-        conditions are met. The class leverages a context that holds relevant
-        event logs and tracked objects.
+        Analyzes contact and containment events within the tracked objects,
+        compares their timestamps with a threshold, and generates insertion events if
+        specific conditions are met.
+
+        :param context: The current motion statechart context.
+        :param segmind_context: The shared SegmindContext containing the information required to track events.
+        :param tracked_objs: List of Body objects to analyze for insertion events.
+        :return: List of InsertionEvent objects representing detected insertions.
         """
+        events = []
+        contact_events = [i for i in segmind_context.logger.get_events() if isinstance(i, ContactEvent)]
+        contact_events_with_holes = [i for i in contact_events if i.with_object in segmind_context.holes]
+        containment_events = [i for i in segmind_context.logger.get_events() if isinstance(i, ContainmentEvent)]
 
-        def update_context_and_events(self, context: MotionStatechartContext, segmind_context: SegmindContext,
-                                      tracked_objs: List[Body]) -> List[DetectionEvent]:
-            """
-            Updates context and processes tracked objects to generate a list of events.
+        by_object = defaultdict(list)
+        for contact in contact_events_with_holes:
+            by_object[contact.tracked_object].append(contact)
 
-            This method analyzes contact and containment events within the tracked objects,
-            compares their timestamps with a threshold, and generates insertion events if
-            specific conditions are met. It modifies the context state to track insertion
-            pairs that have already been processed and ensures exclusivity during event
-            generation.
+        for containment in containment_events:
+            for contact in by_object.get(containment.tracked_object, []):
+                if abs(contact.timestamp - containment.timestamp) >= self.shift_threshold:
+                    continue
 
-            :param context: The current motion statechart context.
-            :param segmind_context: The shared SegmindContext containing the information required to track events.
-            :param tracked_objs: List of Body objects to analyze for insertion events.
-            :return List of InsertionEvent objects representing detected insertions.
-            """
-            events = []
-            contact_events = [i for i in segmind_context.logger.get_events() if isinstance(i, ContactEvent)]
-            contact_events_with_holes = [i for i in contact_events if i.with_object in segmind_context.holes]
-            containment_event = [i for i in segmind_context.logger.get_events() if isinstance(i, ContainmentEvent)]
+                key = (contact.tracked_object.id, contact.with_object.id)
+                if key in segmind_context.insertion_pairs:
+                    continue
 
-            by_object = defaultdict(list)
-            for i in contact_events_with_holes:
-                by_object[i.tracked_object].append(i)
-
-            for j in containment_event:
-                for i in by_object.get(j.tracked_object, []):
-                    if abs(i.timestamp - j.timestamp) >= self.shift_threshold:
-                        continue
-
-                    key = (i.tracked_object.id, i.with_object.id)
-                    if key in segmind_context.insertion_pairs:
-                        continue
-
-                    segmind_context.insertion_pairs.add(key)
-
-                    events.append(
-                        InsertionEvent(
-                            tracked_object=i.tracked_object,
-                            with_object=i.with_object,
-                            inserted_into_objects=[j.with_object],
-                        )
+                segmind_context.insertion_pairs.add(key)
+                events.append(
+                    InsertionEvent(
+                        tracked_object=contact.tracked_object,
+                        with_object=contact.with_object,
+                        inserted_into_objects=[containment.with_object],
                     )
-                    break
+                )
+                break
 
-            return events
+        return events

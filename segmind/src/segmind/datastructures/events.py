@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class DetectionEvent(ABC):
-    timestamp: datetime = field(default=datetime.now())
+    timestamp: datetime = field(default_factory=datetime.now)
     """
     The time at which the event occurred, defaults to current time.
     """
@@ -285,11 +285,11 @@ class InsertionEvent(EventWithTrackedObjects):
     """
 
 
-    def ___post__init__(self):
+    def __post_init__(self):
         super().__post_init__()
 
         if self.inserted_into_objects:
-            self.inserted_into_objects_frozen_cp = [obj for obj in self.inserted_into_objects]
+            self.inserted_into_objects_frozen_copy = list(self.inserted_into_objects)
 
 
     @property
@@ -297,9 +297,9 @@ class InsertionEvent(EventWithTrackedObjects):
         return self.with_object.get_semantic_annotations_by_type(type_=Aperture)[0]
 
 
-    def __str__(self):
-        with_object_name = " - " + f" - ".join([obj.name.name for obj in self.inserted_into_objects])
-        return f"{self.__class__.__name__}: {self.tracked_object.name.name}{with_object_name} - {self.timestamp}"
+    def __str__(self) -> str:
+        with_object_name = " - " + " - ".join([str(obj.name) for obj in self.inserted_into_objects])
+        return f"{self.__class__.__name__}: {self.tracked_object.name}{with_object_name} - {self.timestamp}"
 
 @dataclass(unsafe_hash=True)
 class ContainmentEvent(EventWithTrackedObjects):

@@ -85,6 +85,10 @@ class EventLogger:
     """
     A thread for annotating events.
     """
+    timeline_per_thread: Dict[str, List[DetectionEvent]] = field(default_factory=dict, init=False)
+    """
+    A mapping from thread identifier to the events logged on that thread.
+    """
 
     def __post_init__(self):
         """
@@ -111,7 +115,8 @@ class EventLogger:
         :param event_type: The type of the event.
         :param callback: The callback to add.
         """
-        condition = lambda event: True if condition is None else condition
+        if condition is None:
+            condition = lambda event: True
         with self.event_callbacks_lock:
             self.event_callbacks[event_type] = [(condition, callback)]
 

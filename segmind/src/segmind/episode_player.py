@@ -174,9 +174,9 @@ class EpisodePlayer(PropagatingThread, ABC):
         """
         if delta_time is None:
             delta_time = self.time_between_frames
-        time_to_wait = datetime.timedelta(seconds=time.time() - last_processing_time)
-        if delta_time < time_to_wait:
-            time.sleep((time_to_wait - delta_time).total_seconds())
+        elapsed_time = datetime.timedelta(seconds=time.time() - last_processing_time)
+        if delta_time > elapsed_time:
+            time.sleep((delta_time - elapsed_time).total_seconds())
 
     @classmethod
     def get_instance(cls) -> EpisodePlayer:

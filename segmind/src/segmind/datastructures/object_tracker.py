@@ -54,7 +54,7 @@ class ObjectEventTracker:
         """
         filtered_events = self.get_event_where(lambda e: isinstance(e, type_))
         if latest_first:
-            return reversed(filtered_events)
+            return list(reversed(filtered_events))
         return filtered_events
 
     def add_event(self, event: DetectionEvent):

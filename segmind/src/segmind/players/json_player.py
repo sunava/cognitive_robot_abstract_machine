@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import json
 import logging
@@ -132,8 +134,5 @@ class JSONPlayer(FilePlayer):
                     path,
                     os.path.splitext(filename)[0] + ".stl"
                 )
-                try:
-                    mesh = trimesh.load(ply_path)
-                    mesh.export(stl_path)
-                except Exception as e:
-                    logger.debug(f"Failed: {filename} ({e})")
+                mesh = trimesh.load(ply_path)
+                mesh.export(stl_path)

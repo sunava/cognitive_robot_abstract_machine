@@ -10,7 +10,7 @@ from collections import defaultdict
 import pandas as pd
 import plotly.express as px
 
-from segmind.datastructures.events import DetectionEvent
+from segmind.datastructures.events import DetectionEvent, EventWithTrackedObjects
 from semantic_digital_twin.world_description.world_entity import Body
 
 logger = logging.getLogger(__name__)
@@ -50,13 +50,17 @@ class EventPlotter:
         data_dict = defaultdict(list)
         for event in events:
             data_dict['event'].append(event.__class__.__name__)
+            data_dict['start'].append(event.timestamp.timestamp())
+            data_dict['end'].append(event.timestamp.timestamp())
 
-            tracked_objects = getattr(event, 'tracked_objects', [])
-            object_name = ", ".join([str(obj.name) for obj in tracked_objects]) if tracked_objects else "None"
+            if isinstance(event, EventWithTrackedObjects):
+                object_name = ", ".join([str(obj.name) for obj in event.tracked_objects])
+                with_object_name = str(event.with_object.name) if event.with_object is not None else None
+            else:
+                object_name = "None"
+                with_object_name = None
             data_dict['object'].append(object_name)
-
-            with_object = getattr(event, 'with_object', None)
-            data_dict['with_object'].append(str(with_object.name) if with_object else None)
+            data_dict['with_object'].append(with_object_name)
 
         return data_dict
 
