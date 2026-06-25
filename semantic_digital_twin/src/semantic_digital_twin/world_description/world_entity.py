@@ -1058,8 +1058,9 @@ class Connection(WorldEntity, HasSimulatorProperties, SubclassJSONSerializer, AB
             parent = world.get_kinematic_structure_entity_by_id(self.parent.id)
             self.parent = parent
 
-        child = world.get_kinematic_structure_entity_by_id(self.child.id)
-        self.child = child
+        if world.is_kinematic_structure_entity_in_world(self.child):
+            child = world.get_kinematic_structure_entity_by_id(self.child.id)
+            self.child = child
         self.parent_T_connection_expression.reference_frame = self.parent
         self.parent_T_connection_expression.child_frame = self.child
 
