@@ -12,7 +12,6 @@ import objgraph
 import pytest
 from numpy.testing import assert_raises
 
-from conftest import apartment_world_copy
 from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.exceptions import (
