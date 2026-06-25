@@ -3,6 +3,7 @@ from pycram.locations.locations import CostmapLocation
 from pycram.motion_executor import (
     simulated_robot_without_collision,
 )
+from pycram.datastructures.enums import CuttingTechnique
 from pycram.plans.factories import sequential
 from pycram.robot_plans.actions.composite.tool_based import CuttingAction
 from pycram.robot_plans.actions.core.navigation import NavigateAction
@@ -119,7 +120,7 @@ def _try_cut(context, bread, arm, tool):
                     container=bread,
                     arm=arm,
                     tool=tool,
-                    technique="saw",
+                    technique=CuttingTechnique.SAW,
                     pointer_stride=13,
                     num_cuts_x=1,
                 ),

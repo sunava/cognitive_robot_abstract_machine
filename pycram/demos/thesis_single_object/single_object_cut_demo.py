@@ -4,118 +4,26 @@ from contextlib import redirect_stderr, redirect_stdout
 
 import numpy as np
 
-from krrood.entity_query_language.factories import an, entity, variable, variable_from
-import pycram.motion_executor as motion_executor_module
-from pycram.datastructures.dataclasses import Context
-from pycram.datastructures.enums import Arms
-from pycram.motion_executor import (
-    simulated_robot_without_collision,
-    simulated_robot_with_collision,
-)
+from demos.thesis_new import resolve_robot_name
+from demos.thesis_new.src.demo_cut_all_breads_retry import CUTTING_SLICE_THICKNESS_M, CUTTING_POINTER_STRIDE, _parse_stl
+from demos.thesis_new.src.spawn_random_breads import get_cut_object_config, _set_uniform_scale, _pose_xyz
+from demos.thesis_new.src.tool_mounts import get_tool_mount_pose_kwargs
+from demos.thesis_new.src.utils.demo_utils import get_park_arms_argument, get_available_arm_tool_frames, \
+    setup_experiment_runtime, attach_available_tools, collect_named_targets
+from demos.thesis_new.src.world_setup import resolve_environment_name, setup_thesis_world
+from krrood.entity_query_language.factories import variable, an, entity
+from pycram.datastructures.enums import CuttingTechnique, WipingTechnique, Arms
+from pycram.motion_executor import simulated_robot_without_collision, simulated_robot_with_collision
 from pycram.plans.factories import sequential
-from pycram.robot_plans.actions.composite.tool_based import (
-    CuttingAction,
-    SimplePouringAction,
-    WipingAction,
-)
 from pycram.robot_plans.actions.core.navigation import NavigateAction
-from pycram.robot_plans.actions.core.robot_body import SetGripperAction
-from pycram.robot_plans.actions.core.robot_body import (
-    MoveTorsoAction,
-    ParkArmsAction,
-)
-
-from semantic_digital_twin.datastructures.definitions import (
-    GripperState,
-    StaticJointState,
-)
-from semantic_digital_twin.datastructures.definitions import TorsoState
-from semantic_digital_twin.semantic_annotations.semantic_annotations import (
-    Apple,
-    Bowl,
-    Bread,
-    CuttingAffordance,
-    CuttingBoard,
-    CuttingToolAffordance,
-    Cup,
-    Food,
-    Knife,
-    StableCuttingSupport,
-    Whisk,
-)
+from pycram.robot_plans.actions.core.robot_body import ParkArmsAction, MoveTorsoAction
+from semantic_digital_twin.datastructures.definitions import StaticJointState, TorsoState
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Bread, Apple, Food, CuttingBoard, \
+    StableCuttingSupport, CuttingAffordance, Knife, CuttingToolAffordance
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.connections import FixedConnection
-from ..thesis_new.src.utils.demo_utils import (
-    attach_available_tools,
-    collect_named_targets,
-    get_available_arm_tool_frames,
-    get_park_arms_argument,
-    publish_demo_camera_target,
-    setup_experiment_runtime,
-    shutdown_experiment_runtime,
-)
-
-try:
-    from thesis_new.src.demo_cut_all_breads_retry import (
-        CUTTING_NUM_CUTS_X,
-        CUTTING_POINTER_STRIDE,
-        CUTTING_SLICE_THICKNESS_M,
-        CUTTING_TECHNIQUE,
-        _body_name,
-        _cut_object_execution_config,
-        _parse_stl,
-    )
-    from thesis_new.src.demo_mix_all_bowls_retry import _try_mix
-    from thesis_new.src.demo_wipe_all_spaces_retry import (
-        _attach_sponges_for_available_arms,
-        _create_target_pose_marker_publisher,
-        _publish_target_pose_markers,
-        _try_wipe,
-    )
-    from thesis_new.src.spawn_random_bowls import _parse_stl as _parse_bowl_stl
-    from thesis_new.src.spawn_random_breads import (
-        _pose_xyz,
-        _set_uniform_scale,
-        get_cut_object_config,
-    )
-    from thesis_new.src.tool_mounts import get_tool_mount_pose_kwargs
-    from thesis_new.src.world_setup import (
-        resolve_environment_name,
-        resolve_robot_name,
-        setup_thesis_world,
-    )
-except ImportError:
-    from ..thesis_new.src.demo_cut_all_breads_retry import (
-        CUTTING_NUM_CUTS_X,
-        CUTTING_POINTER_STRIDE,
-        CUTTING_SLICE_THICKNESS_M,
-        CUTTING_TECHNIQUE,
-        _body_name,
-        _cut_object_execution_config,
-        _parse_stl,
-    )
-    from ..thesis_new.src.demo_mix_all_bowls_retry import _try_mix
-    from ..thesis_new.src.demo_wipe_all_spaces_retry import (
-        _attach_sponges_for_available_arms,
-        _create_target_pose_marker_publisher,
-        _publish_target_pose_markers,
-        _try_wipe,
-    )
-    from ..thesis_new.src.spawn_random_bowls import _parse_stl as _parse_bowl_stl
-    from ..thesis_new.src.spawn_random_breads import (
-        _pose_xyz,
-        _set_uniform_scale,
-        get_cut_object_config,
-    )
-    from ..thesis_new.src.tool_mounts import get_tool_mount_pose_kwargs
-    from ..thesis_new.src.world_setup import (
-        resolve_environment_name,
-        resolve_robot_name,
-        setup_thesis_world,
-    )
-from pycram.robot_plans.actions.composite.thesis_math import body_local_aabb
-
 from semantic_digital_twin.world_description.geometry import Color
+from tool_based import CuttingAction, WipingAction, SimplePouringAction, body_local_aabb
 
 HANDPICKED_PICKUP_POSES = {
     "g1": {
@@ -186,7 +94,7 @@ CUTTING_BOARD_COLOR = Color(R=0.50, G=0.36, B=0.22)
 MIXING_BOWL_COLOR = Color(R=0.78, G=0.80, B=0.86)
 
 
-def _suppress_demo_noise():
+def _suppress_demo_noise(motion_executor_module=None):
     logging.getLogger("pycram.motion_executor").setLevel(logging.ERROR)
     logging.getLogger("pycram.robot_plans.actions.base").setLevel(logging.WARNING)
     motion_executor_module.DEBUG_PROFILE_MOTION_EXECUTOR = False
@@ -240,7 +148,7 @@ def _add_single_cutting_knowledge(world, *, object_kind, target, arm_tools):
             preferred_support_type=CuttingBoard,
             tool_affordance="cutting",
             support_affordance="stable_cutting_surface",
-            default_cutting_technique="sawing",
+            default_cutting_technique=CuttingTechnique.SAW,
             default_slice_thickness=CUTTING_SLICE_THICKNESS_M,
             requires_stable_support=True,
             cutting_axis_policy="longest_object_axis",
@@ -375,7 +283,6 @@ def _try_cut(
                     arm=arm,
                     tool=tool,
                     technique=cutting_technique,
-                    clear_viz=True,
                     pointer_stride=CUTTING_POINTER_STRIDE,
                     num_cuts_x=num_cuts_x,
                     slice_thickness=slice_thickness,
@@ -419,8 +326,7 @@ def _try_surface_contact(
                     target_pose=target_pose,
                     arm=arm,
                     tool=tool,
-                    technique=technique,
-                    clear_viz=True,
+                    technique=WipingTechnique(technique),
                 ),
                 ParkArmsAction(get_park_arms_argument(context.world)),
             ],
@@ -822,7 +728,7 @@ def run_single_object_cut_demo(
         print("[resolved cutting task]")
         print(f"  target: {target}")
         print(f"  support: {stable_support.support if stable_support else None}")
-        print(f"  technique: {cutting_affordance.default_cutting_technique}")
+        print(f"  technique: {cutting_affordance.default_cutting_technique.value}")
         print(f"  slice thickness: {cutting_affordance.default_slice_thickness}")
         print(f"  cutting axis policy: {cutting_affordance.cutting_axis_policy}")
         print(
@@ -840,9 +746,11 @@ def run_single_object_cut_demo(
                         pickup_pose,
                         arm,
                         tool,
-                        cutting_technique=cut_cfg.get(
-                            "technique",
-                            cutting_affordance.default_cutting_technique,
+                        cutting_technique=CuttingTechnique(
+                            cut_cfg.get(
+                                "technique",
+                                cutting_affordance.default_cutting_technique,
+                            )
                         ),
                         num_cuts_x=cut_cfg.get("num_cuts_x", CUTTING_NUM_CUTS_X),
                         slice_thickness=cut_cfg.get(
@@ -1064,7 +972,7 @@ def run_single_object_wipe_demo(
     robot_name=None,
     environment_name=None,
     object_kind="wipe",
-    technique="wipe",
+    technique=WipingTechnique.WIPE,
     spawn_position=None,
     spawn_yaw=None,
     spawn_scale=1.0,
@@ -1095,8 +1003,8 @@ def run_single_object_wipe_demo(
     )
 
     try:
-        resolved_technique = str(technique).strip().lower()
-        if resolved_technique == "spread":
+        resolved_technique = WipingTechnique(technique)
+        if resolved_technique == WipingTechnique.SPREAD:
             resolved_robot_name = resolve_robot_name(robot_name)
             slice_preview = _parse_stl("pycram_object_gap_demo", "slice_of_bread.stl")
             _set_uniform_scale(
@@ -1198,7 +1106,7 @@ def run_single_object_wipe_demo(
             pickup_yaw=pickup_yaw,
         )
 
-        if resolved_technique == "spread":
+        if resolved_technique == WipingTechnique.SPREAD:
             _perform_attempt_quietly(
                 lambda: _try_surface_contact(
                     context,
@@ -1206,7 +1114,7 @@ def run_single_object_wipe_demo(
                     pickup_pose,
                     Arms.RIGHT,
                     right_tool,
-                    technique="spread",
+                    technique=WipingTechnique.SPREAD,
                     target_container=target_container,
                 )
             )
@@ -1240,7 +1148,7 @@ def run_single_object_spread_demo(
     **kwargs,
 ):
     return run_single_object_wipe_demo(
-        technique="spread",
+        technique=WipingTechnique.SPREAD,
         object_kind="bread",
         **kwargs,
     )
@@ -1256,11 +1164,11 @@ def run_single_object_demo(*, action="cut", technique=None, **kwargs):
         return run_single_object_pour_demo(**kwargs)
     if normalized_action == "wipe":
         return run_single_object_wipe_demo(
-            technique="wipe" if technique is None else technique,
+            technique=WipingTechnique.WIPE if technique is None else technique,
             **kwargs,
         )
     if normalized_action == "spread":
-        return run_single_object_wipe_demo(technique="spread", **kwargs)
+        return run_single_object_wipe_demo(technique=WipingTechnique.SPREAD, **kwargs)
     raise ValueError(
         f"Unsupported single-object action '{action}'. Supported: cut, mix, pour, wipe, spread"
     )

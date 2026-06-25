@@ -237,7 +237,6 @@ def main():
             arm=Arms.RIGHT,
             tool=knife,
             technique="saw",
-            clear_viz=True,
             pointer_stride=10,
             num_cuts_x=4,
         ),

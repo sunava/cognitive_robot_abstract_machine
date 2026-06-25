@@ -8,6 +8,7 @@ from pycram.motion_executor import (
 
 from pycram.external_interfaces.sparql_queries.cutting import safe_get_cutting_knowledge
 from pycram.plans.factories import sequential
+from pycram.datastructures.enums import CuttingTechnique
 from pycram.robot_plans.actions.composite.tool_based import CuttingAction
 from pycram.robot_plans.actions.core.navigation import NavigateAction
 from pycram.robot_plans.actions.core.robot_body import (
@@ -28,7 +29,7 @@ from .spawn_random_breads import (
     setup_random_bread_world,
 )
 from .spawn_random_breads import build_cutting_reachability_costmaps
-from pycram.robot_plans.actions.composite.thesis_math import body_local_aabb
+from pycram.robot_plans.actions.composite.tool_based import body_local_aabb
 from .tool_mounts import get_tool_mount_pose_kwargs
 from .world_setup import resolve_robot_name
 from .utils.demo_utils import (
@@ -98,7 +99,7 @@ CUTTING_COSTMAP_WIDTH = 140
 CUTTING_COSTMAP_HEIGHT = 140
 CUTTING_COSTMAP_RESOLUTION = 0.03
 DEBUG_PROFILE_CUTTING = True
-CUTTING_TECHNIQUE = "saw"
+CUTTING_TECHNIQUE = CuttingTechnique.SAW
 CUTTING_POINTER_STRIDE = 13
 CUTTING_NUM_CUTS_X = 4
 CUTTING_SLICE_THICKNESS_M = 0.03
@@ -157,13 +158,13 @@ def _cut_object_execution_config(object_kind):
     if normalized == "apple":
         return {
             "query_verb": "cut:Halving",
-            "technique": "halving",
+            "technique": CuttingTechnique.HALVE,
             "num_cuts_x": 1,
         }
     if normalized == "cucumber":
         return {
             "query_verb": "cut:Slicing",
-            "technique": "slice",
+            "technique": CuttingTechnique.SLICE,
             "num_cuts_x": CUTTING_NUM_CUTS_X,
         }
     return {
@@ -665,7 +666,7 @@ def _build_cut_geometry_binding(bread, *, cutting_technique, num_cuts_x, robot=N
             if np.isfinite(cut_normal_approach_perpendicular_score)
             else ""
         ),
-        "technique_name": cutting_technique,
+        "technique_name": cutting_technique.value,
         "slice_thickness_m": round(float(CUTTING_SLICE_THICKNESS_M), 6),
         "num_cuts_x": int(num_cuts_x),
         "pointer_stride": int(CUTTING_POINTER_STRIDE),

@@ -16,7 +16,7 @@ from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world_description.geometry import Color, Scale
 
 
-from pycram.robot_plans.actions.composite.thesis_math import body_local_aabb
+from pycram.robot_plans.actions.composite.tool_based import body_local_aabb
 from .world_setup import resolve_environment_name, setup_thesis_world
 
 RESOURCES_DIR = os.path.abspath(

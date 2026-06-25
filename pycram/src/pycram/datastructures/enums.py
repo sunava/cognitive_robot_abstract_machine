@@ -275,3 +275,34 @@ class MonitorBehavior(Enum):
     """
     Resume the task when the condition is met.
     """
+
+
+class CuttingTechnique(str, Enum):
+    """Cutting trajectory variants for CuttingAction."""
+
+    SAW = "saw"
+    """Back-and-forth sawing motion."""
+    SLICE = "slice"
+    """Single straight downward slicing motion."""
+    HALVE = "halve"
+    """Single cut through the object center."""
+
+
+class WipingTechnique(str, Enum):
+    """Surface-contact variants for WipingAction."""
+
+    WIPE = "wipe"
+    """Planar spiral wipe over the surface."""
+    SHEAR = "shear"
+    """Oscillatory shear over the surface."""
+    SPREAD = "spread"
+    """Raster/sweep pattern covering the surface."""
+
+
+class MixingPattern(str, Enum):
+    """Stir-loop pattern variants for MixingAction's container sequence."""
+
+    SPIRAL = "spiral"
+    """Single planar spiral inside the container."""
+    STIR = "stir"
+    """Continuous connected stir loop for a fixed duration."""

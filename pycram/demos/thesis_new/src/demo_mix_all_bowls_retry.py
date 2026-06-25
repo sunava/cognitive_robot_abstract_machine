@@ -46,7 +46,7 @@ except ModuleNotFoundError:
     )
     from .tool_mounts import get_tool_mount_pose_kwargs
     from .world_setup import resolve_robot_name
-from pycram.robot_plans.actions.composite.thesis_math import body_local_aabb
+from pycram.robot_plans.actions.composite.tool_based import body_local_aabb
 from .utils.demo_utils import (
     attach_available_tools,
     collect_named_targets,
@@ -362,7 +362,6 @@ def _try_mix(context, bowl, pickup_pose, arm, tool, *, environment_name=None):
                 container=bowl,
                 arm=arm,
                 tool=tool,
-                clear_viz=True,
                 pointer_stride=POINTER_STRIDE,
                 mix_duration_s=MIX_DURATION_S,
             )

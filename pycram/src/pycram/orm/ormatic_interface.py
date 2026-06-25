@@ -5173,23 +5173,7 @@ class GeneralizedActionPlanDAO(
         use_existing_column=True,
     )
 
-    clear_viz: Mapped[builtins.bool] = mapped_column(use_existing_column=True)
     pointer_stride: Mapped[builtins.int] = mapped_column(use_existing_column=True)
-    logged_target_intersection_success: Mapped[typing.Optional[builtins.bool]] = (
-        mapped_column(use_existing_column=True)
-    )
-    logged_tool_root_name: Mapped[typing.Optional[builtins.str]] = mapped_column(
-        sqlalchemy.sql.sqltypes.Text, use_existing_column=True
-    )
-    logged_container_name: Mapped[typing.Optional[builtins.str]] = mapped_column(
-        sqlalchemy.sql.sqltypes.Text, use_existing_column=True
-    )
-    logged_action_name: Mapped[typing.Optional[builtins.str]] = mapped_column(
-        sqlalchemy.sql.sqltypes.Text, use_existing_column=True
-    )
-    logged_technique: Mapped[typing.Optional[builtins.str]] = mapped_column(
-        sqlalchemy.sql.sqltypes.Text, use_existing_column=True
-    )
 
     arm: Mapped[pycram.datastructures.enums.Arms] = mapped_column(
         krrood.ormatic.custom_types.PolymorphicEnumType,
@@ -5226,17 +5210,11 @@ class CuttingActionDAO(
         use_existing_column=True,
     )
 
-    technique: Mapped[builtins.str] = mapped_column(
-        sqlalchemy.sql.sqltypes.Text, use_existing_column=True
+    technique: Mapped[pycram.datastructures.enums.CuttingTechnique] = mapped_column(
+        krrood.ormatic.custom_types.PolymorphicEnumType, use_existing_column=True
     )
     slice_thickness: Mapped[builtins.float] = mapped_column(use_existing_column=True)
     num_cuts_x: Mapped[builtins.int] = mapped_column(use_existing_column=True)
-    db_debug_waypoint_count: Mapped[typing.Optional[builtins.float]] = mapped_column(
-        use_existing_column=True
-    )
-    has_entry_from_above: Mapped[typing.Optional[builtins.bool]] = mapped_column(
-        use_existing_column=True
-    )
 
     container_id: Mapped[int] = mapped_column(
         ForeignKey("BodyDAO.database_id", use_alter=True),
@@ -15570,8 +15548,8 @@ class WipingActionDAO(
         use_existing_column=True,
     )
 
-    technique: Mapped[builtins.str] = mapped_column(
-        sqlalchemy.sql.sqltypes.Text, use_existing_column=True
+    technique: Mapped[pycram.datastructures.enums.WipingTechnique] = mapped_column(
+        krrood.ormatic.custom_types.PolymorphicEnumType, use_existing_column=True
     )
     length: Mapped[builtins.float] = mapped_column(use_existing_column=True)
     cycles: Mapped[builtins.float] = mapped_column(use_existing_column=True)

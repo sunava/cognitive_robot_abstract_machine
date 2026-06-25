@@ -1,734 +1,341 @@
 from __future__ import annotations
 
-import logging
 import math
 from dataclasses import dataclass, field
 
 import numpy as np
-from geometry_msgs.msg import Point
-from rclpy.qos import DurabilityPolicy, QoSProfile
-from visualization_msgs.msg import Marker
-from std_msgs.msg import ColorRGBA
-from typing_extensions import Optional, Any
-from visualization_msgs.msg import MarkerArray
+from typing_extensions import Optional
 
-
-from pycram.robot_plans.actions.composite.thesis_math.metrics import (
-    points_world_to_body,
-    cutting_depth_metrics,
-    mixing_bowl_metrics,
-)
-from pycram.robot_plans.actions.composite.thesis_math.motion_models import (
-    MotionSegment,
-    MotionSequence,
-)
 from semantic_digital_twin.semantic_annotations.mixins import HasRootBody
-from semantic_digital_twin.spatial_types import Point3, Vector3
-from semantic_digital_twin.spatial_types.spatial_types import (
-    Pose,
-    HomogeneousTransformationMatrix,
-)
+from semantic_digital_twin.spatial_types import Point3
+from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.world_entity import Body
 
-from .thesis_math.motion_presets import (
-    build_container_sequence,
-    build_surface_sequence,
-    build_cutting_sequence,
-    build_pouring_sequence,
-)
-from .thesis_math.motion_profiles import planar_spiral_xy, planar_sweep_x
-from .thesis_math.world_utils import body_local_aabb
-from ... import (
-    MoveTCPWaypointsAlignedMotion,
-    MoveTCPWaypointsMotion,
-)
+from ... import MoveTCPWaypointsAlignedMotion
 
 from ....datastructures.enums import (
     Arms,
+    CuttingTechnique,
+    MixingPattern,
     MovementType,
-    ApproachDirection,
-    VerticalAlignment,
+    WipingTechnique,
 )
-from ....datastructures.grasp import GraspDescription
 from ....plans.factories import sequential
 from ....robot_plans.actions.base import ActionDescription
 from ....robot_plans.motions.gripper import MoveToolCenterPointMotion
-from ....tf_transformations import quaternion_from_matrix
 from ....view_manager import ViewManager
 
-logger = logging.getLogger(__name__)
 DEFAULT_SAMPLE_DT = 0.01
-
-_MARKER_GROUP_COUNTER = 0
-
-
-def _norm_topic(topic: str) -> str:
-    """Ensure the topic name starts with a slash."""
-    t = str(topic)
-    return t if t.startswith("/") else "/" + t
+APPROACH_Z_EXTRA_CLEARANCE_M = 0.02
 
 
-def _color(r, g, b, a=1.0):
-    """Create a ColorRGBA message."""
-    c = ColorRGBA()
-    c.r = float(r)
-    c.g = float(g)
-    c.b = float(b)
-    c.a = float(a)
-    return c
+def _lerp(a, b, tau):
+    """Linear interpolation from a to b for tau in [0, 1]."""
+    return a + (b - a) * float(tau)
 
 
-def _marker_qos():
-    return QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL)
+# ---------------------------------------------------------------------------
+# Self-contained motion math (previously the thesis_math package).
+# ---------------------------------------------------------------------------
 
 
-def _as_points(P):
-    """Convert an array of points into a list of ROS Point messages."""
-    P = np.asarray(P, dtype=float).reshape(-1, 3)
-    pts = []
-    for i in range(P.shape[0]):
-        p = Point()
-        p.x = float(P[i, 0])
-        p.y = float(P[i, 1])
-        p.z = float(P[i, 2])
-        pts.append(p)
-    return pts
+def _shape_scale_xyz(shape):
+    """Extract an (x,y,z) scale array from a shape if present."""
+    scale = getattr(shape, "scale", None)
+    if scale is None:
+        return None
+    if hasattr(scale, "x") and hasattr(scale, "y") and hasattr(scale, "z"):
+        return np.array([scale.x, scale.y, scale.z], dtype=float)
+    try:
+        arr = np.asarray(scale, dtype=float).reshape(3)
+    except Exception:
+        return None
+    return arr
 
 
-def _point_from_xyz(xyz):
-    point = Point()
-    values = np.asarray(xyz, dtype=float).reshape(-1)
-    point.x = float(values[0])
-    point.y = float(values[1])
-    point.z = float(values[2])
-    return point
+def body_local_aabb(body, use_visual=False, apply_shape_scale=False):
+    """Compute the local AABB for a body."""
+    geom = body.visual if use_visual else body.collision
+    bbc = geom.as_bounding_box_collection_in_frame(body)
+    mins = np.array([np.inf, np.inf, np.inf], dtype=float)
+    maxs = np.array([-np.inf, -np.inf, -np.inf], dtype=float)
+    for bb in bbc.bounding_boxes:
+        mins = np.minimum(mins, [bb.min_x, bb.min_y, bb.min_z])
+        maxs = np.maximum(maxs, [bb.max_x, bb.max_y, bb.max_z])
+    if apply_shape_scale:
+        max_scale = np.ones(3, dtype=float)
+        for shape in getattr(geom, "shapes", []):
+            scale = _shape_scale_xyz(shape)
+            if scale is not None:
+                max_scale = np.maximum(max_scale, np.abs(scale))
+        if not np.allclose(max_scale, 1.0):
+            mins = mins * max_scale
+            maxs = maxs * max_scale
+    return mins, maxs
 
 
-def _phase_color(k, a=1.0):
-    """Pick a color from a fixed palette for a phase index."""
-    palette = [
-        (1.0, 0.2, 0.2),
-        (0.2, 1.0, 0.2),
-        (0.2, 0.2, 1.0),
-        (1.0, 0.8, 0.2),
-        (0.8, 0.2, 1.0),
-        (0.2, 1.0, 1.0),
-    ]
-    r, g, b = palette[int(k) % len(palette)]
-    return _color(r, g, b, a)
+class MotionSegment:
+    def __init__(self, name, duration_s, local_curve):
+        """Define a local motion curve over a fixed duration."""
+        self.name = str(name)
+        self.duration_s = float(duration_s)
+        self.local_curve = local_curve
 
+    def sample(self, frame, dt, t0=0.0):
+        n = max(2, int(np.ceil(self.duration_s / float(dt))) + 1)
+        times = np.linspace(t0, t0 + self.duration_s, n)
+        tau = (times - t0) / self.duration_s
 
-def _heat_color(value, alpha=0.85):
-    """Map a normalized scalar in [0, 1] to a readable heatmap color."""
-    v = float(np.clip(value, 0.0, 1.0))
-    if v <= 0.25:
-        t = v / 0.25
-        return _color(0.10, 0.25 + 0.55 * t, 0.95, alpha)
-    if v <= 0.50:
-        t = (v - 0.25) / 0.25
-        return _color(0.10, 0.80 + 0.15 * t, 0.95 - 0.55 * t, alpha)
-    if v <= 0.75:
-        t = (v - 0.50) / 0.25
-        return _color(0.10 + 0.90 * t, 0.95, 0.40 - 0.30 * t, alpha)
-    t = (v - 0.75) / 0.25
-    return _color(1.00, 0.95 - 0.70 * t, 0.10, alpha)
+        F = np.asarray(frame, dtype=float)
+        R = F[:3, :3]
+        t = F[:3, 3]
 
-
-def _quaternion_to_rotation_matrix(quaternion):
-    """Convert an xyzw quaternion to a 3x3 rotation matrix."""
-    x, y, z, w = np.asarray(quaternion, dtype=float)
-    xx, yy, zz = x * x, y * y, z * z
-    xy, xz, yz = x * y, x * z, y * z
-    wx, wy, wz = w * x, w * y, w * z
-    return np.array(
-        [
-            [1.0 - 2.0 * (yy + zz), 2.0 * (xy - wz), 2.0 * (xz + wy)],
-            [2.0 * (xy + wz), 1.0 - 2.0 * (xx + zz), 2.0 * (yz - wx)],
-            [2.0 * (xz - wy), 2.0 * (yz + wx), 1.0 - 2.0 * (xx + yy)],
-        ],
-        dtype=float,
-    )
-
-
-def _transform_point(position, orientation, local_point):
-    """Apply a pose defined by position and quaternion to a local 3D point."""
-    position_vec = np.asarray(position, dtype=float).reshape(-1)
-    if position_vec.size == 4:
-        position_vec = position_vec[:3]
-    elif position_vec.size != 3:
-        raise ValueError(
-            f"position must contain 3 values (xyz) or 4 homogeneous values, got {position_vec.size}"
+        q = np.array([self.local_curve(float(u)) for u in tau], dtype=float).reshape(
+            -1, 3
         )
-
-    local_point_vec = np.asarray(local_point, dtype=float).reshape(-1)
-    if local_point_vec.size != 3:
-        raise ValueError(
-            f"local_point must contain exactly 3 values, got {local_point_vec.size}"
-        )
-
-    world_point = (
-        position_vec + _quaternion_to_rotation_matrix(orientation) @ local_point_vec
-    )
-    point = Point()
-    point.x = float(world_point[0])
-    point.y = float(world_point[1])
-    point.z = float(world_point[2])
-    return point
+        pts = q @ R.T + t
+        return times, pts
 
 
-def _pose_to_position_and_orientation_lists(pose):
-    """Extract xyz and xyzw lists from pose-like objects with either old or new APIs."""
-    if pose is None:
-        raise ValueError("pose must not be None")
+class MotionSequence:
+    def __init__(self, phases):
+        """Store an ordered list of phases."""
+        self.phases = list(phases)
 
-    position = getattr(pose, "position", None)
-    if position is None and hasattr(pose, "to_position"):
-        position = pose.to_position()
+    @property
+    def duration_s(self):
+        """Total duration across all phases."""
+        return float(sum(p.duration_s for p in self.phases))
 
-    orientation = getattr(pose, "orientation", None)
-    if orientation is None and hasattr(pose, "to_quaternion"):
-        orientation = pose.to_quaternion()
+    def sample(self, frame, dt, t0=0.0):
+        """Sample all phases into one concatenated sequence."""
+        all_t, all_p, all_id = [], [], []
+        t = float(t0)
 
-    if position is None or orientation is None:
-        raise AttributeError(
-            "pose must provide position/orientation attributes or "
-            "to_position()/to_quaternion() methods"
-        )
-    if hasattr(position, "to_np"):
-        position_values = position.to_np()
-    elif hasattr(position, "to_list"):
-        position_values = position.to_list()
+        for k, ph in enumerate(self.phases):
+            tt, pp = ph.sample(frame.to_np(), dt=dt, t0=t)
+            if all_t:
+                tt = tt[1:]
+                pp = pp[1:]
+
+            all_t.append(tt)
+            all_p.append(pp)
+            all_id.append(np.full(len(tt), k, dtype=int))
+            t += ph.duration_s
+
+        return np.concatenate(all_t), np.vstack(all_p), np.concatenate(all_id)
+
+
+def ramp(tau, tau_end, d_max):
+    """Linear ramp from 0 to d_max over tau_end."""
+    if tau <= 0.0:
+        return 0.0
+    if tau >= tau_end:
+        return float(d_max)
+    return float(d_max) * (tau / tau_end)
+
+
+def planar_spiral_xy(tau, r0, r1, cycles):
+    """Planar spiral in XY with linearly growing radius."""
+    r = r0 + (r1 - r0) * tau
+    ang = 2.0 * np.pi * cycles * tau
+    return np.array([r * np.cos(ang), r * np.sin(ang), 0.0], dtype=float)
+
+
+def planar_sweep_x(tau, length, cycles):
+    """Sinusoidal sweep along the X axis."""
+    s = float(length) * np.sin(2.0 * np.pi * float(cycles) * tau)
+    return np.array([s, 0.0, 0.0], dtype=float)
+
+
+def planar_raster_xy(tau, width, height, lanes):
+    """Raster scan covering a rectangle in XY."""
+    w = float(width)
+    h = float(height)
+    n = max(2, int(lanes))
+    u = float(np.clip(tau, 0.0, 1.0)) * n
+    lane = int(np.floor(u))
+    if lane >= n:
+        lane = n - 1
+    local_t = u - lane
+
+    x0 = -0.5 * w
+    x1 = 0.5 * w
+    if (lane % 2) == 0:
+        x = x0 + (x1 - x0) * local_t
     else:
-        position_values = [
-            getattr(position, axis)
-            for axis in ("x", "y", "z")
-            if hasattr(position, axis)
-        ]
+        x = x1 - (x1 - x0) * local_t
 
-    if hasattr(orientation, "to_np"):
-        orientation_values = orientation.to_np()
-    elif hasattr(orientation, "to_list"):
-        orientation_values = orientation.to_list()
-    else:
-        orientation_values = [
-            getattr(orientation, axis)
-            for axis in ("x", "y", "z", "w")
-            if hasattr(orientation, axis)
-        ]
-
-    position_values = np.asarray(position_values, dtype=float).reshape(-1)
-    orientation_values = np.asarray(orientation_values, dtype=float).reshape(-1)
-
-    if position_values.size == 4:
-        position_values = position_values[:3]
-    elif position_values.size != 3:
-        raise ValueError(
-            f"pose position must contain 3 values (xyz) or 4 homogeneous values, got {position_values.size}"
-        )
-
-    if orientation_values.size != 4:
-        raise ValueError(
-            f"pose orientation must contain 4 quaternion values (xyzw), got {orientation_values.size}"
-        )
-
-    return position_values.tolist(), orientation_values.tolist()
+    y = -0.5 * h + (h * lane / float(n - 1))
+    return np.array([x, y, 0.0], dtype=float)
 
 
-def _next_marker_group(prefix="rviz"):
-    global _MARKER_GROUP_COUNTER
-    _MARKER_GROUP_COUNTER += 1
-    return f"{prefix}_{_MARKER_GROUP_COUNTER}"
+@dataclass(frozen=True)
+class ShearProfile:
+    depth_max: float
+    depth_ramp_end: float
+    shear_amp: float
+    shear_cycles: float
 
 
-class MotionSequenceRviz:
-    def __init__(
-        self,
-        P,
-        phase_id=None,
-        frame_id="map",
-        topic="phase_sequence_markers",
-        node=None,
-        line_width=0.01,
-        alpha=1.0,
-        republish_hz=2.0,
-        marker_ns=None,
-    ):
-        """
-        Initialization method of the MotionSequenceRviz class.
-
-        This method initializes a MotionSequenceRviz object with attributes related
-        to markers' visualization in RViz. It subscribes to a specific ROS topic,
-        sets up a publisher for MarkerArray messages, and optionally starts a timer
-        to regularly republish the markers. The input data for markers, including
-        their positions, ids, and visualization properties (such as line width
-        and transparency), are configured through the parameters.
-
-        Raises
-        ------
-        ValueError
-            If the `node` parameter is not provided because the MotionSequenceRviz
-            class requires a ROS node to operate.
-
-        Parameters
-        ----------
-        P : numpy.ndarray
-            A NumPy array representing the set of 3D points for visualization.
-            It must have a shape (-1, 3) indicating that it's a list of XYZ
-            coordinates.
-        phase_id : numpy.ndarray, optional
-            An optional NumPy array of integers representing IDs associated with
-            the phases of the points. Default is None.
-        frame_id : str, optional
-            The coordinate frame in which the markers are defined. Defaults to "map".
-        topic : str, optional
-            The ROS topic on which MarkerArray messages will be published. Defaults
-            to "phase_sequence_markers".
-        node : Any
-            The ROS node used to create the MarkerArray publisher and other required
-            functionality. This must be provided explicitly.
-        line_width : float, optional
-            The width of the lines between points, used for visualization. Defaults
-            to 0.01.
-        alpha : float, optional
-            The transparency of the markers, defined between 0 (completely
-            transparent) and 1 (fully opaque). Defaults to 1.0.
-        republish_hz : float, optional
-            Frequency in Hz for republishing markers to the topic. If None or set to
-            a non-positive value, the markers are not republished. Defaults to 2.0.
-        """
-        self.P = np.asarray(P, dtype=float).reshape(-1, 3)
-        self.phase_id = (
-            None if phase_id is None else np.asarray(phase_id, dtype=int).reshape(-1)
-        )
-        self.frame_id = str(frame_id)
-        self.topic = _norm_topic(topic)
-        self.line_width = float(line_width)
-        self.alpha = float(alpha)
-        self.marker_ns = (
-            str(marker_ns) if marker_ns is not None else _next_marker_group("phase_seq")
-        )
-
-        if node is None:
-            raise ValueError(
-                "node must be provided when using MotionSequenceRviz directly in your system"
-            )
-
-        self.node = node
-        self.pub = self.node.create_publisher(MarkerArray, self.topic, 10)
-
-        self.node.get_logger().info(
-            f"Publishing MarkerArray on {self.topic} in frame '{self.frame_id}'"
-        )
-
-        self.publish_once()
-
-        self._timer = None
-        if republish_hz is not None and float(republish_hz) > 0.0:
-            period = 1.0 / float(republish_hz)
-            self._timer = self.node.create_timer(period, self.publish_once)
-
-    def publish_once(self):
-        """Publish the current sequence once."""
-        now = self.node.get_clock().now().to_msg()
-        arr = MarkerArray()
-
-        if self.phase_id is None:
-            m = Marker()
-            m.header.frame_id = self.frame_id
-            m.header.stamp = now
-            m.ns = self.marker_ns
-            m.id = 0
-            m.type = Marker.LINE_STRIP
-            m.action = Marker.ADD
-            m.pose.orientation.w = 1.0
-            m.scale.x = self.line_width
-            m.color = _color(1.0, 1.0, 1.0, self.alpha)
-            m.points = _as_points(self.P)
-            arr.markers.append(m)
-        else:
-            start = 0
-            mid = 0
-            while start < self.P.shape[0]:
-                pid = int(self.phase_id[start])
-                end = start + 1
-                while end < self.P.shape[0] and int(self.phase_id[end]) == pid:
-                    end += 1
-
-                m = Marker()
-                m.header.frame_id = self.frame_id
-                m.header.stamp = now
-                m.ns = self.marker_ns
-                m.id = mid
-                m.type = Marker.LINE_STRIP
-                m.action = Marker.ADD
-                m.pose.orientation.w = 1.0
-                m.scale.x = self.line_width
-                m.color = _phase_color(pid, a=self.alpha)
-                m.points = _as_points(self.P[start:end, :])
-                arr.markers.append(m)
-
-                mid += 1
-                start = end
-
-        self.pub.publish(arr)
+@dataclass(frozen=True)
+class ShearXYProfile:
+    shear_amp: float
+    shear_cycles: float
 
 
-def publish_points_sequence(
-    node,
-    points,
-    frame_id="map",
-    topic="points_sequence",
-    line_width=0.01,
-    color=(1.0, 1.0, 1.0),
-    alpha=1.0,
-    phase_id=None,
-    republish_hz=None,
-    clear_existing=False,
-    marker_ns=None,
+def oscillatory_shear_local_profiled(tau, prof: ShearProfile):
+    """Oscillatory shear with a monotone depth profile."""
+    d = ramp(tau, tau_end=prof.depth_ramp_end, d_max=prof.depth_max)
+    s = float(prof.shear_amp) * np.sin(2.0 * np.pi * float(prof.shear_cycles) * tau)
+    return np.array([s, 0.0, -d], dtype=float)
+
+
+def oscillatory_shear_xy_profiled(tau, prof: ShearXYProfile):
+    """Oscillatory shear in XY plane with no depth change."""
+    ang = 2.0 * np.pi * float(prof.shear_cycles) * tau
+    s = float(prof.shear_amp)
+    return np.array([s * np.sin(ang), s * np.cos(ang), 0.0], dtype=float)
+
+
+def clamp_to_cylinder_xy(q_local, radius, z_min, z_max, margin=0.0):
+    """Clamp a point to a vertical cylinder in XY and Z bounds."""
+    q = np.asarray(q_local, dtype=float).reshape(3)
+    r = float(radius) - float(margin)
+    xy = q[:2]
+    r_xy = np.linalg.norm(xy)
+    if r_xy > r and r_xy > 1e-9:
+        xy = (r / r_xy) * xy
+    z = np.clip(q[2], float(z_min) + float(margin), float(z_max) - float(margin))
+    return np.array([xy[0], xy[1], z], dtype=float)
+
+
+def make_constrained_curve(local_curve, constraint_fn):
+    """Wrap a curve so it respects a constraint function."""
+    return lambda tau: constraint_fn(local_curve(float(tau)))
+
+
+def duration_scale_from_body(
+    body,
+    reference_size=0.10,
+    use_visual_aabb=False,
+    apply_shape_scale=False,
 ):
-    """
-    Publish a single LINE_STRIP marker for a sequence of points.
+    """Compute a scaling factor from the body's AABB size."""
+    mins, maxs = body_local_aabb(
+        body, use_visual=use_visual_aabb, apply_shape_scale=apply_shape_scale
+    )
+    diag = float(np.linalg.norm(maxs - mins))
+    ref = float(reference_size)
+    if ref <= 0.0:
+        raise ValueError("reference_size must be positive")
+    return max(diag, 1e-6) / ref
 
-    Parameters
-    ----------
-    node : Any
-        ROS node used to create the publisher.
-    points : array-like
-        Nx3 points in the given frame.
-    frame_id : str
-        Coordinate frame for the marker.
-    topic : str
-        Topic name for the MarkerArray.
-    line_width : float
-        Line width for the strip.
-    color : tuple
-        RGB tuple with values in [0, 1].
-    alpha : float
-        Transparency in [0, 1].
-    phase_id : array-like, optional
-        Per-point phase ids; consecutive equal ids are colored as segments.
-    """
-    if node is None:
+
+def _cross_2d(o, a, b):
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+
+def _convex_hull_xy(points_xy: np.ndarray) -> np.ndarray:
+    pts = np.asarray(points_xy, dtype=float).reshape(-1, 2)
+    if len(pts) <= 1:
+        return pts
+    pts = np.unique(np.round(pts, decimals=8), axis=0)
+    if len(pts) <= 2:
+        return pts
+    pts = pts[np.lexsort((pts[:, 1], pts[:, 0]))]
+
+    lower = []
+    for p in pts:
+        while len(lower) >= 2 and _cross_2d(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+
+    upper = []
+    for p in pts[::-1]:
+        while len(upper) >= 2 and _cross_2d(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+
+    return np.asarray(lower[:-1] + upper[:-1], dtype=float)
+
+
+def _point_in_convex_polygon_xy(point_xy: np.ndarray, hull_xy: np.ndarray) -> bool:
+    hull = np.asarray(hull_xy, dtype=float).reshape(-1, 2)
+    point = np.asarray(point_xy, dtype=float).reshape(2)
+    if len(hull) < 3:
+        return True
+    eps = 1e-9
+    prev_sign = 0.0
+    for i in range(len(hull)):
+        a = hull[i]
+        b = hull[(i + 1) % len(hull)]
+        cross = _cross_2d(a, b, point)
+        if abs(cross) <= eps:
+            continue
+        sign = np.sign(cross)
+        if prev_sign == 0.0:
+            prev_sign = sign
+        elif sign != prev_sign:
+            return False
+    return True
+
+
+def _project_point_to_segment_xy(
+    point_xy: np.ndarray, a_xy: np.ndarray, b_xy: np.ndarray
+) -> np.ndarray:
+    p = np.asarray(point_xy, dtype=float).reshape(2)
+    a = np.asarray(a_xy, dtype=float).reshape(2)
+    b = np.asarray(b_xy, dtype=float).reshape(2)
+    ab = b - a
+    denom = float(np.dot(ab, ab))
+    if denom <= 1e-12:
+        return a.copy()
+    t = float(np.dot(p - a, ab) / denom)
+    t = np.clip(t, 0.0, 1.0)
+    return a + t * ab
+
+
+def constrain_to_convex_hull_xy(q_local: np.ndarray, hull_xy: np.ndarray) -> np.ndarray:
+    q = np.asarray(q_local, dtype=float).reshape(3)
+    if len(hull_xy) < 3 or _point_in_convex_polygon_xy(q[:2], hull_xy):
+        return q
+
+    best_xy = None
+    best_dist = float("inf")
+    for i in range(len(hull_xy)):
+        a = hull_xy[i]
+        b = hull_xy[(i + 1) % len(hull_xy)]
+        candidate_xy = _project_point_to_segment_xy(q[:2], a, b)
+        dist = float(np.linalg.norm(q[:2] - candidate_xy))
+        if dist < best_dist:
+            best_dist = dist
+            best_xy = candidate_xy
+
+    return np.array([best_xy[0], best_xy[1], q[2]], dtype=float)
+
+
+def top_surface_hull_xy(surface_body, upward_threshold=0.6):
+    mesh = getattr(surface_body, "combined_mesh", None)
+    if mesh is None or getattr(mesh, "is_empty", True):
         return None
 
-    pts = _as_points(points)
-    phase_id_arr = (
-        None if phase_id is None else np.asarray(phase_id, dtype=int).reshape(-1)
-    )
-    topic = _norm_topic(topic)
-    marker_ns = (
-        str(marker_ns)
-        if marker_ns is not None
-        else _next_marker_group("points_sequence")
-    )
-
-    pub = node.create_publisher(MarkerArray, topic, _marker_qos())
-
-    # Keep publisher (and optional timer) alive by storing on the node.
-    if not hasattr(node, "_rviz_publishers"):
-        node._rviz_publishers = []
-
-    arr = MarkerArray()
-    markers = []
-
-    if phase_id_arr is None:
-        m = Marker()
-        m.header.frame_id = str(frame_id)
-        m.ns = marker_ns
-        m.id = 0
-        m.type = Marker.LINE_STRIP
-        m.action = Marker.ADD
-        m.pose.orientation.w = 1.0
-        m.scale.x = float(line_width)
-        m.color = _color(
-            float(color[0]), float(color[1]), float(color[2]), float(alpha)
-        )
-        m.points = pts
-        markers.append(m)
-    else:
-        start = 0
-        mid = 0
-        while start < len(pts):
-            pid = int(phase_id_arr[start])
-            end = start + 1
-            while end < len(pts) and int(phase_id_arr[end]) == pid:
-                end += 1
-
-            m = Marker()
-            m.header.frame_id = str(frame_id)
-            m.ns = marker_ns
-            m.id = mid
-            m.type = Marker.LINE_STRIP
-            m.action = Marker.ADD
-            m.pose.orientation.w = 1.0
-            m.scale.x = float(line_width)
-            m.color = _phase_color(pid, a=float(alpha))
-            m.points = pts[start:end]
-            markers.append(m)
-
-            mid += 1
-            start = end
-
-    if clear_existing:
-        clear = Marker()
-        clear.action = Marker.DELETEALL
-        arr.markers.append(clear)
-    arr.markers.extend(markers)
-
-    def _publish_once():
-        now = node.get_clock().now().to_msg()
-        for marker in markers:
-            marker.header.stamp = now
-        pub.publish(arr)
-
-    _publish_once()
-
-    timer = None
-    if republish_hz is not None and float(republish_hz) > 0.0:
-        period = 1.0 / float(republish_hz)
-        timer = node.create_timer(period, _publish_once)
-
-    node._rviz_publishers.append((pub, timer))
-    return pub
-
-
-def publish_pose_marker(
-    node,
-    pose,
-    frame_id="map",
-    topic="/simple_pouring_new_pose",
-    marker_ns="simple_pouring_new_pose",
-    marker_id=0,
-    color=(0.1, 0.9, 1.0),
-    alpha=1.0,
-    length=0.25,
-    shaft_diameter=0.025,
-    head_diameter=0.06,
-    republish_hz=2.0,
-    clear_existing=True,
-):
-    """Publish a single oriented arrow marker for a pose."""
-    if node is None:
+    normals = np.asarray(mesh.face_normals, dtype=float)
+    faces = np.asarray(mesh.faces, dtype=int)
+    vertices = np.asarray(mesh.vertices, dtype=float)
+    if len(normals) == 0 or len(faces) == 0 or len(vertices) == 0:
         return None
 
-    position, orientation = _pose_to_position_and_orientation_lists(pose)
-    topic = _norm_topic(topic)
-    pub = node.create_publisher(MarkerArray, topic, _marker_qos())
-
-    if not hasattr(node, "_rviz_publishers"):
-        node._rviz_publishers = []
-
-    arr = MarkerArray()
-    marker = Marker()
-    marker.header.frame_id = str(frame_id)
-    marker.ns = str(marker_ns)
-    marker.id = int(marker_id)
-    marker.type = Marker.ARROW
-    marker.action = Marker.ADD
-    marker.pose.position.x = float(position[0])
-    marker.pose.position.y = float(position[1])
-    marker.pose.position.z = float(position[2])
-    marker.pose.orientation.x = float(orientation[0])
-    marker.pose.orientation.y = float(orientation[1])
-    marker.pose.orientation.z = float(orientation[2])
-    marker.pose.orientation.w = float(orientation[3])
-    marker.scale.x = float(length)
-    marker.scale.y = float(shaft_diameter)
-    marker.scale.z = float(head_diameter)
-    marker.color = _color(
-        float(color[0]), float(color[1]), float(color[2]), float(alpha)
-    )
-
-    if clear_existing:
-        clear = Marker()
-        clear.action = Marker.DELETEALL
-        arr.markers.append(clear)
-    arr.markers.append(marker)
-
-    def _publish_once():
-        marker.header.stamp = node.get_clock().now().to_msg()
-        pub.publish(arr)
-
-    _publish_once()
-
-    timer = None
-    if republish_hz is not None and float(republish_hz) > 0.0:
-        period = 1.0 / float(republish_hz)
-        timer = node.create_timer(period, _publish_once)
-
-    node._rviz_publishers.append((pub, timer))
-    return pub
-
-
-def publish_pose_axes_marker(
-    node,
-    pose,
-    frame_id="map",
-    topic="/simple_pouring_pose_axes",
-    marker_ns="pose_axes",
-    marker_id_start=0,
-    axis_length=0.25,
-    shaft_diameter=0.018,
-    head_diameter=0.045,
-    alpha=1.0,
-    republish_hz=2.0,
-    clear_existing=True,
-):
-    """Publish RGB xyz axes for a pose as three oriented arrow markers."""
-    if node is None:
+    upward_mask = normals[:, 2] > float(upward_threshold)
+    if not upward_mask.any():
         return None
 
-    position, orientation = _pose_to_position_and_orientation_lists(pose)
-    rotation = _quaternion_to_rotation_matrix(orientation)
-    topic = _norm_topic(topic)
-    pub = node.create_publisher(MarkerArray, topic, _marker_qos())
+    upward_faces = faces[upward_mask]
+    top_vertices = vertices[np.unique(upward_faces.reshape(-1))]
+    if len(top_vertices) < 3:
+        return None
 
-    if not hasattr(node, "_rviz_publishers"):
-        node._rviz_publishers = []
-
-    arr = MarkerArray()
-    markers = []
-    axes = [
-        ("x", rotation[:, 0], _color(1.0, 0.1, 0.1, alpha)),
-        ("y", rotation[:, 1], _color(0.1, 0.9, 0.1, alpha)),
-        ("z", rotation[:, 2], _color(0.1, 0.35, 1.0, alpha)),
-    ]
-
-    for axis_index, (axis_name, direction, color) in enumerate(axes):
-        marker = Marker()
-        marker.header.frame_id = str(frame_id)
-        marker.ns = f"{marker_ns}_{axis_name}"
-        marker.id = int(marker_id_start) + axis_index
-        marker.type = Marker.ARROW
-        marker.action = Marker.ADD
-        marker.pose.orientation.w = 1.0
-        marker.scale.x = float(shaft_diameter)
-        marker.scale.y = float(head_diameter)
-        marker.scale.z = float(head_diameter)
-        marker.color = color
-        marker.points = [
-            _point_from_xyz(position),
-            _point_from_xyz(
-                np.asarray(position, dtype=float) + axis_length * direction
-            ),
-        ]
-        markers.append(marker)
-
-    if clear_existing:
-        clear = Marker()
-        clear.action = Marker.DELETEALL
-        arr.markers.append(clear)
-    arr.markers.extend(markers)
-
-    def _publish_once():
-        now = node.get_clock().now().to_msg()
-        for marker in markers:
-            marker.header.stamp = now
-        pub.publish(arr)
-
-    _publish_once()
-
-    timer = None
-    if republish_hz is not None and float(republish_hz) > 0.0:
-        period = 1.0 / float(republish_hz)
-        timer = node.create_timer(period, _publish_once)
-
-    node._rviz_publishers.append((pub, timer))
-    return pub
-
-
-def _logging_helper_apply_fields(action: Any, fields: dict) -> None:
-    for key, value in fields.items():
-        setattr(action, key, value)
-
-
-def _logging_helper_collect_identity_fields(action: Any) -> dict:
-    tool_root_name = None
-    if action.tool is not None and getattr(action.tool, "root", None) is not None:
-        tool_root_name = str(getattr(action.tool.root, "name", action.tool.root))
-
-    container_obj = getattr(action, "container", None)
-    container_name = (
-        "no container given"
-        if container_obj is None
-        else str(getattr(container_obj, "name", container_obj))
-    )
-
-    return {
-        "logged_tool_root_name": tool_root_name,
-        "logged_container_name": container_name,
-    }
-
-
-def _logging_helper_collect_target_intersection_fields(
-    action: Any, points_world: np.ndarray
-) -> dict:
-    container = getattr(action, "container", None)
-    if container is None:
-        return {}
-
-    points_body = points_world_to_body(points_world, action.world, container)
-    mins, maxs = body_local_aabb(container, use_visual=False, apply_shape_scale=True)
-    inside = (
-        (points_body[:, 0] >= mins[0])
-        & (points_body[:, 0] <= maxs[0])
-        & (points_body[:, 1] >= mins[1])
-        & (points_body[:, 1] <= maxs[1])
-        & (points_body[:, 2] >= mins[2])
-        & (points_body[:, 2] <= maxs[2])
-    )
-    inside_ratio = float(np.mean(inside)) if len(inside) > 0 else 0.0
-    return {"logged_target_intersection_success": bool(inside_ratio >= 0.5)}
-
-
-def _logging_helper_collect_cutting_fields(
-    action: Any, points_world: np.ndarray
-) -> dict:
-    if (
-        action.__class__.__name__ != "CuttingAction"
-        or getattr(action, "container", None) is None
-    ):
-        return {}
-
-    metrics = cutting_depth_metrics(
-        points_world=points_world,
-        world=action.world,
-        bread_body=action.container,
-        apply_shape_scale=True,
-    )
-    return {
-        "has_entry_from_above": metrics.get("has_entry_from_above"),
-    }
-
-
-def _logging_helper_collect_mixing_fields(
-    action: Any, points_world: np.ndarray
-) -> dict:
-    if (
-        action.__class__.__name__ != "MixingAction"
-        or getattr(action, "container", None) is None
-    ):
-        return {}
-
-    metrics = mixing_bowl_metrics(
-        points_world=points_world,
-        world=action.world,
-        bowl_body=action.container,
-        apply_shape_scale=True,
-    )
-    return {"mixing_bowl_metrics": metrics}
-
-
-def _logging_helper_collect_container_fields(
-    action: Any, points_world: np.ndarray
-) -> dict:
-    fields = {}
-    fields.update(
-        _logging_helper_collect_target_intersection_fields(action, points_world)
-    )
-    fields.update(_logging_helper_collect_cutting_fields(action, points_world))
-    fields.update(_logging_helper_collect_mixing_fields(action, points_world))
-    return fields
+    return _convex_hull_xy(top_vertices[:, :2])
 
 
 @dataclass
@@ -736,6 +343,9 @@ class GeneralizedActionPlan(ActionDescription):
     """
     Base class for tool-based motion sequences over a container.
     """
+
+    #: Reference object size (m) used to scale motion duration to object size.
+    REFERENCE_SIZE_M = 0.10
 
     arm: Arms = None
     """
@@ -747,176 +357,23 @@ class GeneralizedActionPlan(ActionDescription):
     Tool body used to estimate the tip offset.
     """
 
-    clear_viz: Optional[bool] = True
-    """
-    If viz should be cleared
-    """
-
     pointer_stride: Optional[int] = 1
     """
     Keep every Nth waypoint for execution (testing downsampling).
     """
 
-    logged_target_intersection_success: Optional[bool] = None
-    """
-    Optional DB-logged boolean derived from target_intersection_success.
-    """
-
-    logged_tool_root_name: Optional[str] = None
-    """
-    Optional DB-logged tool root name captured during execute().
-    """
-
-    logged_container_name: Optional[str] = None
-    """
-    Optional DB-logged container name captured during execute().
-    Uses "no container given" if no container is present.
-    """
-
-    logged_action_name: Optional[str] = None
-    """
-    Optional DB-logged concrete action class name captured during execute().
-    """
-
-    logged_technique: Optional[str] = None
-    """
-    Optional DB-logged technique value captured during execute() when available.
-    """
-
-    logged_waypoint_count: Optional[int] = None
-    """
-    Number of TCP waypoints generated for this action.
-    """
-
-    logged_stopped_waypoint_index: Optional[int] = None
-    """
-    Nearest waypoint index to the tool frame after execution or failure.
-    """
-
-    logged_stopped_waypoint_fraction: Optional[float] = None
-    """
-    Nearest waypoint index normalized by the final waypoint index.
-    """
-
-    logged_stopped_waypoint_x: Optional[float] = None
-    logged_stopped_waypoint_y: Optional[float] = None
-    logged_stopped_waypoint_z: Optional[float] = None
-    logged_stopped_distance_m: Optional[float] = None
-    logged_motion_progress_note: Optional[str] = None
-
     def execute(self) -> None:
         sampled = self._sample_motion()
-        P = self._extract_points_for_logging(sampled)
-        self.logged_action_name = self.__class__.__name__
-        self.logged_technique = self._logged_technique_value()
-        _logging_helper_apply_fields(
-            self, _logging_helper_collect_identity_fields(self)
-        )
-
-        publish_points_sequence(
-            node=self.plan.context.ros_node,
-            points=P,
-            frame_id="map",
-            topic="/point_sequence",
-            phase_id=self._extract_phase_ids_for_logging(sampled),
-            republish_hz=2.0,
-            clear_existing=self.clear_viz,
-        )
         self.robot.full_body_controlled = True
         waypoints = self._build_waypoints(sampled)
         self._last_waypoints = waypoints
-        self._postprocess_waypoints_for_logging(waypoints)
-        self._update_waypoint_progress_for_logging(
-            waypoints, note="planned_not_started"
-        )
-
-        _logging_helper_apply_fields(
-            self, _logging_helper_collect_container_fields(self, P)
-        )
 
         try:
             self.add_subplan(sequential([self._build_motion(waypoints)])).perform()
-            self._update_waypoint_progress_for_logging(waypoints, note="completed")
         except Exception as exc:
-            self._update_waypoint_progress_for_logging(waypoints, note="failed")
             if self._accept_execution_failure_as_success(waypoints, exc):
-                self.logged_motion_progress_note = "accepted_failure_as_success"
                 return
-
-            collision_contacts = None
-            try:
-                collision_contacts = len(
-                    self.world.collision_manager.compute_collisions().contacts
-                )
-            except Exception:
-                collision_contacts = None
-
-            msg = str(exc)
-            if (
-                "No waypoints provided to MoveTCPWaypointsAlignedMotion" in msg
-                or "No aligned waypoint tasks generated" in msg
-                or "No waypoints left after applying pointer_stride" in msg
-                or "No pose waypoints left after applying pointer_stride" in msg
-            ):
-                raise ValueError(
-                    "Aligned motion failed: no waypoint sequence to execute "
-                    f"(waypoints={len(waypoints)}, collisions_now={collision_contacts})."
-                ) from exc
-
-            raise RuntimeError(
-                "Aligned motion failed during execution "
-                f"(waypoints={len(waypoints)}, collisions_now={collision_contacts}): "
-                f"{type(exc).__name__}: {exc}"
-            ) from exc
-
-    def _update_waypoint_progress_for_logging(self, waypoints, note: str) -> None:
-        self.logged_waypoint_count = len(waypoints) if waypoints is not None else 0
-        self.logged_motion_progress_note = note
-        if not waypoints:
-            return
-
-        try:
-            tool_xyz = self._current_tool_xyz()
-            waypoint_xyz = np.asarray(
-                [self._waypoint_xyz(waypoint) for waypoint in waypoints],
-                dtype=float,
-            )
-            distances = np.linalg.norm(waypoint_xyz - tool_xyz, axis=1)
-            stopped_index = int(np.argmin(distances))
-            stopped_xyz = waypoint_xyz[stopped_index]
-            final_index = max(1, len(waypoints) - 1)
-            self.logged_stopped_waypoint_index = stopped_index
-            self.logged_stopped_waypoint_fraction = float(stopped_index / final_index)
-            self.logged_stopped_waypoint_x = float(stopped_xyz[0])
-            self.logged_stopped_waypoint_y = float(stopped_xyz[1])
-            self.logged_stopped_waypoint_z = float(stopped_xyz[2])
-            self.logged_stopped_distance_m = float(distances[stopped_index])
-        except Exception as exc:
-            self.logged_motion_progress_note = (
-                f"{note}:progress_lookup_failed:{type(exc).__name__}"
-            )
-
-    def _current_tool_xyz(self) -> np.ndarray:
-        tool_frame = None
-        if self.tool is not None:
-            try:
-                tool_frame = self.tool.get_tool_frame()
-            except Exception:
-                tool_frame = None
-        if tool_frame is None:
-            tool_frame = (
-                ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
-            )
-        tool_point = self.world.transform(
-            tool_frame.global_pose.to_position(), self.world.root
-        )
-        return np.asarray(tool_point.to_np(), dtype=float).reshape(-1)[:3]
-
-    def _waypoint_xyz(self, waypoint) -> np.ndarray:
-        if hasattr(waypoint, "to_position"):
-            waypoint = waypoint.to_position()
-        world_point = self.world.transform(waypoint, self.world.root)
-        return np.asarray(world_point.to_np(), dtype=float).reshape(-1)[:3]
+            raise
 
     def _accept_execution_failure_as_success(self, waypoints, exc: Exception) -> bool:
         return False
@@ -924,25 +381,19 @@ class GeneralizedActionPlan(ActionDescription):
     def _sample_motion(self):
         return self._sample_points()
 
-    def _extract_points_for_logging(self, sampled) -> np.ndarray:
-        _, points, _ = sampled
-        return np.asarray(points, dtype=float)
-
-    def _extract_phase_ids_for_logging(self, sampled) -> np.ndarray:
-        _, _, ids = sampled
-        return ids
-
-    def _logged_technique_value(self):
-        return getattr(self, "technique", None)
+    def _duration_scale(self, body, *, use_visual_aabb=False):
+        """Scale a motion's duration to the size of the given body."""
+        return duration_scale_from_body(
+            body,
+            reference_size=self.REFERENCE_SIZE_M,
+            use_visual_aabb=use_visual_aabb,
+            apply_shape_scale=True,
+        )
 
     def _build_waypoints(self, sampled):
         _, points, _ = sampled
         stride = max(1, int(self.pointer_stride))
         return self._to_waypoints(points, stride)
-
-    def _postprocess_waypoints_for_logging(self, waypoints) -> None:
-        if self.__class__.__name__ == "CuttingAction":
-            self.db_debug_waypoint_count = float(len(waypoints))
 
     def _build_motion(self, waypoints):
         alignment_target = self._resolve_alignment_target()
@@ -965,7 +416,7 @@ class GeneralizedActionPlan(ActionDescription):
             tip=tip,
         )
 
-    def _sample_points(selfs):
+    def _sample_points(self):
         raise NotImplementedError
 
     def _to_waypoints(self, points: np.ndarray, stride: int) -> list[Point3]:
@@ -1006,22 +457,85 @@ class MixingAction(GeneralizedActionPlan):
     If <= 0, the default short pattern is used.
     """
 
-    mixing_bowl_metrics: Optional[dict] = None
-    """
-    Optional DB-logged metrics dict populated during execute().
-    """
+    def build_container_sequence(self):
+        """Build a spiral/stir sequence sized to the bowl-like container."""
+        pattern = (
+            MixingPattern.STIR
+            if float(self.mix_duration_s) > 0.0
+            else MixingPattern.SPIRAL
+        )
+        mix_duration_s = (
+            self.mix_duration_s if float(self.mix_duration_s) > 0.0 else None
+        )
 
-    def _sample_points(self):
-        pattern = "stir" if float(self.mix_duration_s) > 0.0 else "spiral"
-        seq = build_container_sequence(
-            self.container,
-            use_visual_aabb=True,
-            apply_shape_scale=True,
-            pattern=pattern,
-            mix_duration_s=(
-                self.mix_duration_s if float(self.mix_duration_s) > 0.0 else None
+        mins, maxs = body_local_aabb(
+            self.container, use_visual=False, apply_shape_scale=True
+        )
+        size_x = maxs[0] - mins[0]
+        size_y = maxs[1] - mins[1]
+        radius_xy = 0.5 * min(size_x, size_y)
+        z_min, z_max = mins[2], maxs[2]
+
+        center_y = 0.5 * (mins[1] + maxs[1])
+        surface_margin = 0.005
+        start_offset = np.array(
+            [0.0, center_y, maxs[2] + APPROACH_Z_EXTRA_CLEARANCE_M - surface_margin],
+            dtype=float,
+        )
+        duration_scale = self._duration_scale(self.container)
+        spiral_r1 = 0.75 * radius_xy
+
+        # Keep points inside a bowl-shaped vertical cylinder.
+        def _bowl_constraint(q_local):
+            return clamp_to_cylinder_xy(
+                q_local, radius=radius_xy, z_min=z_min, z_max=z_max, margin=0.005
+            )
+
+        # Offset the local curve and apply the bowl constraint.
+        def _with_offset(curve):
+            return make_constrained_curve(
+                lambda tau: curve(tau) + start_offset, _bowl_constraint
+            )
+
+        phase_spiral_container = MotionSegment(
+            name="planar_spiral_bowl",
+            duration_s=2.0 * duration_scale,
+            local_curve=_with_offset(
+                lambda tau: planar_spiral_xy(tau, r0=0.00, r1=spiral_r1, cycles=2.0)
             ),
         )
+
+        stir_amp = max(0.005, 0.55 * radius_xy)
+        stir_base_duration = max(1.0, 2.0 * duration_scale)
+        if mix_duration_s is not None and float(mix_duration_s) > 0.0:
+            total_duration = float(mix_duration_s)
+        else:
+            total_duration = stir_base_duration
+        stir_loops = max(1, int(np.ceil(total_duration / stir_base_duration)))
+
+        phase_stir_container = MotionSegment(
+            name="continuous_stir_bowl",
+            duration_s=total_duration,
+            local_curve=_with_offset(
+                lambda tau: oscillatory_shear_xy_profiled(
+                    tau,
+                    ShearXYProfile(
+                        shear_amp=stir_amp,
+                        shear_cycles=stir_loops,
+                    ),
+                )
+            ),
+        )
+
+        if pattern == MixingPattern.SPIRAL:
+            return MotionSequence([phase_spiral_container])
+        if pattern == MixingPattern.STIR:
+            return MotionSequence([phase_stir_container])
+
+        raise ValueError(f"Unknown pattern '{pattern}'")
+
+    def _sample_points(self):
+        seq = self.build_container_sequence()
         return seq.sample(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
 
 
@@ -1046,7 +560,7 @@ class WipingAction(GeneralizedActionPlan):
     """
     Center pose for the wiping patch.
     """
-    technique: str = "wipe"
+    technique: WipingTechnique = WipingTechnique.WIPE
     """
     Surface-contact technique variant.
     """
@@ -1068,14 +582,8 @@ class WipingAction(GeneralizedActionPlan):
         if self.target_pose is None:
             return None
         if getattr(self.target_pose, "frame_id", None) is None:
-            logger.warning(
-                "WipingAction target_pose has no frame_id; defaulting to world root."
-            )
             self.target_pose.frame_id = self.world.root
         return self.target_pose
-
-    def _resolved_technique(self) -> str:
-        return str(self.technique).lower().strip()
 
     def _resolve_surface_body(self) -> Body:
         if self._resolved_surface_body is not None:
@@ -1103,24 +611,92 @@ class WipingAction(GeneralizedActionPlan):
     def _resolve_pose_alignment_target(self):
         return self.target_pose
 
-    def _sample_points(self):
-        if self.container is not None:
-            seq = build_surface_sequence(
-                self.container,
-                use_visual_aabb=True,
-                apply_shape_scale=True,
-                technique=self._resolved_technique(),
-            )
-            return seq.sample(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
+    def build_surface_sequence(self):
+        """Build a planar wiping/spreading sequence over the surface body."""
+        technique = self.technique
 
-        if self.target_pose is None:
-            raise ValueError(
-                "WipingAction requires either container or target_pose for sampling."
+        mins, maxs = body_local_aabb(
+            self.container, use_visual=True, apply_shape_scale=True
+        )
+        size_x = maxs[0] - mins[0]
+        size_y = maxs[1] - mins[1]
+        radius_xy = 0.45 * min(size_x, size_y)
+
+        center_x = 0.5 * (mins[0] + maxs[0])
+        center_y = 0.5 * (mins[1] + maxs[1])
+        surface_margin = 0.005
+        start_offset = np.array(
+            [
+                center_x,
+                center_y,
+                maxs[2] + APPROACH_Z_EXTRA_CLEARANCE_M - surface_margin,
+            ],
+            dtype=float,
+        )
+        duration_scale = self._duration_scale(self.container, use_visual_aabb=True)
+        spiral_r1 = 0.9 * radius_xy
+        shear_amp = 0.35 * radius_xy
+        raster_width = 0.9 * size_x
+        raster_height = 0.9 * size_y
+        lane_spacing = max(0.02, 0.25 * float(self.REFERENCE_SIZE_M))
+        raster_lanes = max(4, int(np.ceil(raster_height / max(lane_spacing, 1e-6))))
+
+        hull_xy = top_surface_hull_xy(self.container)
+
+        def _with_hull_constraint(curve):
+            if hull_xy is None:
+                return lambda tau: curve(tau) + start_offset
+            return make_constrained_curve(
+                lambda tau: curve(tau) + start_offset,
+                lambda q_local: constrain_to_convex_hull_xy(q_local, hull_xy),
             )
 
-        t_pose = self._target_pose_to_spatial()
-        technique = self._resolved_technique()
-        if technique == "spread":
+        phase_spiral_surface = MotionSegment(
+            name="planar_spiral_surface",
+            duration_s=2.0 * duration_scale,
+            local_curve=_with_hull_constraint(
+                lambda tau: planar_spiral_xy(tau, r0=0.00, r1=spiral_r1, cycles=2.0)
+            ),
+        )
+
+        phase_shear_surface = MotionSegment(
+            name="oscillatory_shear_surface",
+            duration_s=1.5 * duration_scale,
+            local_curve=_with_hull_constraint(
+                lambda tau: oscillatory_shear_xy_profiled(
+                    tau,
+                    ShearXYProfile(
+                        shear_amp=shear_amp,
+                        shear_cycles=5.0,
+                    ),
+                )
+            ),
+        )
+
+        phase_raster_surface = MotionSegment(
+            name="planar_raster_surface",
+            duration_s=2.0 * duration_scale,
+            local_curve=_with_hull_constraint(
+                lambda tau: planar_raster_xy(
+                    tau,
+                    width=raster_width,
+                    height=raster_height,
+                    lanes=raster_lanes,
+                )
+            ),
+        )
+
+        if technique == WipingTechnique.WIPE:
+            return MotionSequence([phase_spiral_surface])
+        if technique == WipingTechnique.SHEAR:
+            return MotionSequence([phase_shear_surface])
+        if technique == WipingTechnique.SPREAD:
+            return MotionSequence([phase_raster_surface])
+
+        raise ValueError(f"Unknown surface technique '{technique}'")
+
+    def build_patch_sequence(self):
+        if self.technique == WipingTechnique.SPREAD:
             segment = MotionSegment(
                 name="spread_patch",
                 duration_s=2.0,
@@ -1136,7 +712,20 @@ class WipingAction(GeneralizedActionPlan):
                     tau, r0=0.00, r1=0.12, cycles=2.5
                 ),
             )
-        seq = MotionSequence([segment])
+        return MotionSequence([segment])
+
+    def _sample_points(self):
+        if self.container is not None:
+            seq = self.build_surface_sequence()
+            return seq.sample(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
+
+        if self.target_pose is None:
+            raise ValueError(
+                "WipingAction requires either container or target_pose for sampling."
+            )
+
+        t_pose = self._target_pose_to_spatial()
+        seq = self.build_patch_sequence()
         return seq.sample(frame=t_pose, dt=DEFAULT_SAMPLE_DT)
 
     def _accept_execution_failure_as_success(self, waypoints, exc: Exception) -> bool:
@@ -1145,21 +734,9 @@ class WipingAction(GeneralizedActionPlan):
 
         sponge = getattr(getattr(self, "tool", None), "root", None)
         if sponge is None:
-            print("[wipe timeout check] no sponge root on WipingAction.tool")
             return False
 
         try:
-            raw_last_xyz = np.asarray(waypoints[-1].to_np(), dtype=float).reshape(-1)[
-                :3
-            ]
-            raw_sponge_xyz = np.asarray(
-                sponge.global_pose.to_position().to_np(), dtype=float
-            ).reshape(-1)[:3]
-            print(
-                "[wipe timeout check] raw last_point_xyz="
-                f"{np.round(raw_last_xyz, 4).tolist()} "
-                f"sponge_global_xyz={np.round(raw_sponge_xyz, 4).tolist()}"
-            )
             tip_point = self.world.transform(
                 sponge.global_pose.to_position(), self.world.root
             )
@@ -1167,37 +744,10 @@ class WipingAction(GeneralizedActionPlan):
             goal_point = self.world.transform(waypoints[-1], self.world.root)
             goal_xyz = np.asarray(goal_point.to_np(), dtype=float).reshape(-1)[:3]
             distance = float(np.linalg.norm(tip_xyz - goal_xyz))
-        except Exception as transform_exc:
-            print(
-                "[wipe timeout check] failed to compare sponge and last point: "
-                f"{type(transform_exc).__name__}: {transform_exc}"
-            )
+        except Exception:
             return False
 
-        print(
-            "[wipe timeout check] transformed last_point_xyz="
-            f"{np.round(goal_xyz, 4).tolist()} "
-            f"sponge_xyz={np.round(tip_xyz, 4).tolist()} "
-            f"distance={distance:.3f}m "
-            f"tolerance={float(self.final_waypoint_success_tolerance_m):.3f}m"
-        )
-        logger.warning(
-            "WipingAction timeout check: last_point_xyz=%s sponge_xyz=%s distance=%.3fm",
-            np.round(goal_xyz, 4).tolist(),
-            np.round(tip_xyz, 4).tolist(),
-            distance,
-        )
-
-        if distance > float(self.final_waypoint_success_tolerance_m):
-            return False
-
-        logger.warning(
-            "Accepting WipingAction timeout as success because sponge reached final waypoint "
-            "(distance=%.3fm, tolerance=%.3fm).",
-            distance,
-            self.final_waypoint_success_tolerance_m,
-        )
-        return True
+        return distance <= float(self.final_waypoint_success_tolerance_m)
 
     def _accept_motion_timeout_as_success(self, exc: Exception) -> bool:
         waypoints = getattr(self, "_last_waypoints", [])
@@ -1232,7 +782,7 @@ class CuttingAction(GeneralizedActionPlan):
     """
     The object to cut.
     """
-    technique: str = "saw"
+    technique: CuttingTechnique = CuttingTechnique.SAW
     """
     Cutting trajectory variant.
     """
@@ -1247,25 +797,109 @@ class CuttingAction(GeneralizedActionPlan):
     Number of repeated cut passes distributed across local X.
     """
 
-    db_debug_waypoint_count: Optional[float] = None
-    """
-    Optional DB-logged test metric set during execute().
-    """
+    def build_cutting_sequence(self):
+        """Build a cutting sequence sized to the food object."""
+        technique = self.technique
 
-    has_entry_from_above: Optional[bool] = None
-    """
-    Optional DB-logged cutting flag populated during execute().
-    """
+        mins, maxs = body_local_aabb(
+            self.container, use_visual=True, apply_shape_scale=True
+        )
+        size_x, size_y, size_z = maxs - mins
+        duration_scale = self._duration_scale(self.container)
+
+        margin_x = min(0.01, 0.15 * size_x)
+        margin_y = min(0.01, 0.10 * size_y)
+        z_clearance = max(0.01, 0.25 * size_z) + APPROACH_Z_EXTRA_CLEARANCE_M
+        z_top = maxs[2] + z_clearance
+        z_cut = mins[2] + max(0.003, 0.05 * size_z)
+        center_y = 0.5 * (mins[1] + maxs[1])
+
+        usable_x = max(0.0, size_x - 2.0 * margin_x)
+        requested_thickness = max(float(self.slice_thickness), 1e-4)
+        x_anchor = mins[0] + margin_x + min(0.5 * requested_thickness, 0.5 * usable_x)
+        x_max_anchor = (
+            maxs[0] - margin_x - min(0.5 * requested_thickness, 0.5 * usable_x)
+        )
+
+        n_cuts = max(1, int(self.num_cuts_x))
+        if technique == CuttingTechnique.HALVE:
+            x_anchors = [0.5 * (mins[0] + maxs[0])]
+            z_cut = 0.5 * (mins[2] + maxs[2])
+        elif n_cuts == 1:
+            x_anchors = [x_anchor]
+        elif x_max_anchor <= x_anchor:
+            x_anchors = [x_anchor] * n_cuts
+        else:
+            x_anchors = np.linspace(x_anchor, x_max_anchor, n_cuts).tolist()
+
+        y_min = mins[1] + margin_y
+        y_max = maxs[1] - margin_y
+        saw_cycles = max(2.0, round(size_y / max(self.REFERENCE_SIZE_M, 1e-6)))
+        shear_depth_max = maxs[2] - z_cut
+        shear_amp = 0.5 * max(y_max - y_min, 0.0)
+
+        # Straight vertical move at a fixed x (approach / descend / retract).
+        def vertical_segment(name, x_val, z_from, z_to, duration_s):
+            return MotionSegment(
+                name=name,
+                duration_s=duration_s,
+                local_curve=lambda tau, x_val=x_val, z_from=z_from, z_to=z_to: np.array(
+                    [x_val, center_y, _lerp(z_from, z_to, tau)], dtype=float
+                ),
+            )
+
+        # Back-and-forth sawing in the y/z plane at a fixed x.
+        def saw_segment(name, x_val):
+            profile = ShearProfile(
+                depth_max=shear_depth_max,
+                depth_ramp_end=0.7,
+                shear_amp=shear_amp,
+                shear_cycles=saw_cycles,
+            )
+
+            def curve(tau, x_val=x_val):
+                q = oscillatory_shear_local_profiled(tau, profile)
+                return np.array(
+                    [x_val, center_y + q[0], maxs[2] + q[2]], dtype=float
+                )
+
+            return MotionSegment(
+                name=name, duration_s=5.0 * duration_scale, local_curve=curve
+            )
+
+        if technique in (CuttingTechnique.SLICE, CuttingTechnique.HALVE):
+
+            def cut_segment(idx, x_val):
+                return vertical_segment(
+                    f"cut_descend_x{idx}", x_val, maxs[2], z_cut, 1.0 * duration_scale
+                )
+
+        elif technique == CuttingTechnique.SAW:
+
+            def cut_segment(idx, x_val):
+                return saw_segment(f"oscillatory_shear_x{idx}", x_val)
+
+        else:
+            raise ValueError(f"Unknown cutting technique '{technique}'")
+
+        phases = []
+        for idx, x_val in enumerate(x_anchors):
+            phases.append(
+                vertical_segment(
+                    f"cut_approach_x{idx}", x_val, z_top, maxs[2], 0.8 * duration_scale
+                )
+            )
+            phases.append(cut_segment(idx, x_val))
+            phases.append(
+                vertical_segment(
+                    f"cut_retract_x{idx}", x_val, z_cut, z_top, 0.8 * duration_scale
+                )
+            )
+
+        return MotionSequence(phases)
 
     def _sample_points(self):
-        seq = build_cutting_sequence(
-            self.container,
-            use_visual_aabb=True,
-            apply_shape_scale=True,
-            technique=self.technique,
-            slice_thickness=self.slice_thickness,
-            num_cuts_x=self.num_cuts_x,
-        )
+        seq = self.build_cutting_sequence()
         return seq.sample(frame=self.container.global_pose, dt=DEFAULT_SAMPLE_DT)
 
 
@@ -1321,22 +955,6 @@ class SimplePouringAction(ActionDescription):
     offset_y: float = 0.0
     offset_z: float = 0.0
     tilt_degrees: float = 0.0
-    pour_ray_origin_xyz: Optional[list[float]] = None
-    pour_ray_direction_xyz: Optional[list[float]] = None
-
-    logged_target_intersection_success: Optional[bool] = None
-    logged_tool_root_name: Optional[str] = None
-    logged_container_name: Optional[str] = None
-    logged_action_name: Optional[str] = None
-    logged_technique: Optional[str] = None
-    logged_waypoint_count: Optional[int] = None
-    logged_stopped_waypoint_index: Optional[int] = None
-    logged_stopped_waypoint_fraction: Optional[float] = None
-    logged_stopped_waypoint_x: Optional[float] = None
-    logged_stopped_waypoint_y: Optional[float] = None
-    logged_stopped_waypoint_z: Optional[float] = None
-    logged_stopped_distance_m: Optional[float] = None
-    logged_motion_progress_note: Optional[str] = None
 
     def _held_object_height_m(self) -> float:
         held_body = getattr(self.source_object_designator, "root", None)
@@ -1358,67 +976,8 @@ class SimplePouringAction(ActionDescription):
     def _effective_pour_side(self) -> Arms:
         return self.pour_side or self.arm
 
-    def _set_pose_progress_for_logging(
-        self,
-        poses: list[Pose],
-        note: str,
-    ) -> None:
-        self.logged_waypoint_count = len(poses)
-        self.logged_motion_progress_note = note
-        if not poses:
-            return
-
-        try:
-            tool_frame = (
-                ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
-            )
-            tool_point = self.world.transform(
-                tool_frame.global_pose.to_position(), self.world.root
-            )
-            tool_xyz = np.asarray(tool_point.to_np(), dtype=float).reshape(-1)[:3]
-            pose_xyz = np.asarray(
-                [
-                    [
-                        float(pose.x),
-                        float(pose.y),
-                        float(pose.z),
-                    ]
-                    for pose in poses
-                ],
-                dtype=float,
-            )
-            distances = np.linalg.norm(pose_xyz - tool_xyz, axis=1)
-            stopped_index = int(np.argmin(distances))
-            stopped_xyz = pose_xyz[stopped_index]
-            final_index = max(1, len(poses) - 1)
-            self.logged_stopped_waypoint_index = stopped_index
-            self.logged_stopped_waypoint_fraction = float(stopped_index / final_index)
-            self.logged_stopped_waypoint_x = float(stopped_xyz[0])
-            self.logged_stopped_waypoint_y = float(stopped_xyz[1])
-            self.logged_stopped_waypoint_z = float(stopped_xyz[2])
-            self.logged_stopped_distance_m = float(distances[stopped_index])
-        except Exception as exc:
-            self.logged_motion_progress_note = (
-                f"{note}:progress_lookup_failed:{type(exc).__name__}"
-            )
-
     def execute(self) -> None:
-        self.tool = self.source_object_designator
-        self.container = self.object_designator
-        self.logged_action_name = self.__class__.__name__
-        self.logged_technique = "simple_pour"
-        _logging_helper_apply_fields(
-            self, _logging_helper_collect_identity_fields(self)
-        )
-
         pour_side = self._effective_pour_side()
-        print(
-            "[simple pour execute] "
-            f"arm={self.arm.name} "
-            f"pour_side={pour_side.name} "
-            f"object={getattr(getattr(self.object_designator, 'name', None), 'name', self.object_designator)}",
-            flush=True,
-        )
 
         from scipy.spatial.transform import Rotation as R
 
@@ -1456,12 +1015,6 @@ class SimplePouringAction(ActionDescription):
             approach_x /= approach_norm
             approach_y /= approach_norm
 
-        print(
-            "[simple pour bowl snap] "
-            f"snapped_approach_xy={[round(approach_x, 4), round(approach_y, 4)]}",
-            flush=True,
-        )
-
         robot_right_x = approach_y
         robot_right_y = -approach_x
         side_sign = 1.0 if pour_side == Arms.RIGHT else -1.0
@@ -1489,7 +1042,6 @@ class SimplePouringAction(ActionDescription):
         self.tilt_degrees = math.degrees(float(angle))
 
         # Raise Z so cup opening lands at correct height after tilting
-        tilt_reach = self._held_object_height_m() * math.sin(abs(angle))
         pour_z = float(object_pose.z) + float(self.pour_height_m)
 
         # Build orientation from yaw_to_bowl, not robot_quat,
@@ -1516,117 +1068,25 @@ class SimplePouringAction(ActionDescription):
             new_mat[:3, :3] = z180_mat[:3, :3] @ new_mat[:3, :3]
             new_pose = new_mat.to_pose()
 
-        print(
-            "[simple pour pose] "
-            f"arm={self.arm.name} "
-            f"pour_side={pour_side.name} "
-            f"robot_xy={[round(robot_x, 4), round(robot_y, 4)]} "
-            f"bowl_xy={[round(bowl_x, 4), round(bowl_y, 4)]} "
-            f"side_xy={[round(side_x, 4), round(side_y, 4)]} "
-            f"target_xy={[round(target_x, 4), round(target_y, 4)]} "
-            f"side_offset={side_offset:.3f} "
-            f"approach_offset={approach_offset:.3f} "
-            f"tilt_reach={tilt_reach:.3f} "
-            f"pour_z={pour_z:.3f} "
-            f"yaw_to_bowl={yaw_to_bowl:.3f}",
-            flush=True,
-        )
-
-        publish_pose_marker(
-            node=self.plan.context.ros_node,
-            pose=new_pose,
-            frame_id="map",
-            topic="/simple_pouring_new_pose",
-            marker_ns="simple_pouring_new_pose",
-            color=(0.1, 0.9, 1.0),
-            republish_hz=2.0,
-        )
-        publish_pose_axes_marker(
-            node=self.plan.context.ros_node,
-            pose=new_pose,
-            frame_id="map",
-            topic="/simple_pouring_pose_axes",
-            marker_ns="simple_pouring_new_pose_axes",
-            marker_id_start=0,
-            republish_hz=2.0,
-            clear_existing=True,
-        )
-
         rot = Pose.from_xyz_rpy(pitch=angle)
         rot_new_pose = new_pose.to_homogeneous_matrix() @ rot.to_homogeneous_matrix()
-        rot_pose = rot_new_pose.to_pose()
-        rot_position, rot_quaternion = _pose_to_position_and_orientation_lists(rot_pose)
-        qx, qy, qz, qw = [float(value) for value in rot_quaternion[:4]]
-        z_dir = np.array(
-            [
-                2 * (qx * qz + qw * qy),
-                2 * (qy * qz - qw * qx),
-                1 - 2 * (qx * qx + qy * qy),
-            ],
-            dtype=float,
-        )
-        z_norm = float(np.linalg.norm(z_dir))
-        if z_norm > 1e-9:
-            z_dir = z_dir / z_norm
-        self.pour_ray_origin_xyz = [float(value) for value in rot_position[:3]]
-        self.pour_ray_direction_xyz = [float(value) for value in z_dir[:3]]
-        pour_poses = [new_pose, rot_pose]
-        self._set_pose_progress_for_logging(pour_poses, note="planned_not_started")
-        _logging_helper_apply_fields(
-            self,
-            _logging_helper_collect_container_fields(
-                self,
-                np.asarray(
-                    [
-                        [float(pose.x), float(pose.y), float(pose.z)]
-                        for pose in pour_poses
-                    ],
-                    dtype=float,
-                ),
-            ),
-        )
-
-        publish_pose_marker(
-            node=self.plan.context.ros_node,
-            pose=rot_new_pose.to_pose(),
-            frame_id="map",
-            topic="/simple_pouring_rot_new_pose",
-            marker_ns="simple_pouring_rot_new_pose",
-            color=(0.1, 0.9, 0.5),
-            republish_hz=2.0,
-        )
-        publish_pose_axes_marker(
-            node=self.plan.context.ros_node,
-            pose=rot_new_pose.to_pose(),
-            frame_id="map",
-            topic="/simple_pouring_pose_axes",
-            marker_ns="simple_pouring_rot_new_pose_axes",
-            marker_id_start=10,
-            republish_hz=2.0,
-            clear_existing=False,
-        )
 
         self.robot.full_body_controlled = True
-        try:
-            self.add_subplan(
-                sequential(
-                    [
-                        MoveToolCenterPointMotion(
-                            new_pose,
-                            self.arm,
-                            allow_gripper_collision=True,
-                            movement_type=MovementType.CARTESIAN,
-                        ),
-                        MoveToolCenterPointMotion(
-                            rot_new_pose.to_pose(),
-                            self.arm,
-                            allow_gripper_collision=True,
-                            movement_type=MovementType.CARTESIAN,
-                        ),
-                    ],
-                )
-            ).perform()
-            self._set_pose_progress_for_logging(pour_poses, note="completed")
-        except Exception:
-            self._set_pose_progress_for_logging(pour_poses, note="failed")
-            raise
+        self.add_subplan(
+            sequential(
+                [
+                    MoveToolCenterPointMotion(
+                        new_pose,
+                        self.arm,
+                        allow_gripper_collision=True,
+                        movement_type=MovementType.CARTESIAN,
+                    ),
+                    MoveToolCenterPointMotion(
+                        rot_new_pose.to_pose(),
+                        self.arm,
+                        allow_gripper_collision=True,
+                        movement_type=MovementType.CARTESIAN,
+                    ),
+                ],
+            )
+        ).perform()

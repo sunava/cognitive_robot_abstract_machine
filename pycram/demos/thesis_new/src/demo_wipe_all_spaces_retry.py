@@ -535,7 +535,6 @@ def _try_wipe(context, target_pose, pickup_pose, arm, tool, *, environment_name=
                 target_pose=target_pose,
                 arm=arm,
                 tool=tool,
-                clear_viz=True,
                 pointer_stride=POINTER_STRIDE,
             )
             current_plan = sequential(

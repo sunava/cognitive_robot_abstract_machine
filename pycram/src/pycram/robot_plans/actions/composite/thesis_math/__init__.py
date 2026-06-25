@@ -1,15 +1,6 @@
-from .world_utils import (
-    Rp_from_spatial,
-    body_local_aabb,
-    make_identity_pose_stamped,
-    sample_semantic_yz,
-    try_get_body,
-)
+"""Remaining thesis_math members.
 
-__all__ = [
-    "Rp_from_spatial",
-    "body_local_aabb",
-    "make_identity_pose_stamped",
-    "sample_semantic_yz",
-    "try_get_body",
-]
+The motion math (sequences, profiles, presets, AABB helpers) was consolidated
+into ``pycram.robot_plans.actions.composite.tool_based``. Only ``oaam`` (used by
+the ORM) remains here.
+"""
