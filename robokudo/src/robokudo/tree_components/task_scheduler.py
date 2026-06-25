@@ -13,6 +13,7 @@ The module supports:
 """
 
 import logging
+from abc import ABC, abstractmethod
 
 from py_trees.behaviour import Behaviour
 from py_trees.common import Status
@@ -28,7 +29,7 @@ from robokudo.utils.tree import (
 )
 
 
-class TaskSchedulerBase(Behaviour):
+class TaskSchedulerBase(Behaviour, ABC):
     """Base class for task scheduling behaviors.
 
     This Behaviour enables a dynamic arrangement of known Behaviours.
@@ -77,6 +78,7 @@ class TaskSchedulerBase(Behaviour):
 
         assert parent.children[0] == self
 
+    @abstractmethod
     def plan_new_job(self) -> Optional[Sequence]:
         """Get the new job that should be applied by the JobScheduler.
 
@@ -87,7 +89,7 @@ class TaskSchedulerBase(Behaviour):
 
         :return: py_trees.Sequence if it can be computed or None if no plan could be found.
         """
-        return None
+        raise NotImplementedError
 
     @catch_and_raise_to_blackboard
     def update(self) -> Status:
