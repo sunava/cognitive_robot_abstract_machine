@@ -95,7 +95,7 @@ class InferenceAssembler(Assembler[Entity, RuleStructure]):
             antecedent.aggregation_status == AggregationStatus.AGGREGATED
         )
 
-    # ── IF clause ───────────────────────────────────────────────────────────────
+    # %% IF clause
 
     def _if_items(self, structure: RuleStructure) -> List[VerbalizationFragment]:
         """
@@ -208,7 +208,7 @@ class InferenceAssembler(Assembler[Entity, RuleStructure]):
             return selected_variable._id_ if selected_variable is not None else None
         return root._id_
 
-    # ── THEN clause ───────────────────────────────────────────────────────────
+    # %% THEN clause
 
     def _then_items(self, structure: RuleStructure) -> List[VerbalizationFragment]:
         """:return: The consequent as a single bulleted entry — *"there's a <Consequent>"* with its
