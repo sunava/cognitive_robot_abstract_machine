@@ -18,7 +18,7 @@ from krrood.entity_query_language.core.base_expressions import (
 from krrood.entity_query_language.verbalization.fragments.features import (
     Definiteness,
     Spacing,
-    Number,
+    GrammaticalNumber,
     Separator,
 )
 from krrood.entity_query_language.verbalization.fragments.roles import SemanticRole
@@ -52,12 +52,11 @@ class Fragment:
     source: Optional[FoldNode] = field(
         default=None, kw_only=True, compare=False, repr=False
     )
-    """Provenance: the EQL node (or synthetic coordination artifact) this fragment was built from,
-    stamped by the fold. A lossless
-    side-channel a later pass can follow back to the read model (e.g. coreference reads the focus
-    of a query-sourced fragment). Never participates in equality or rendering."""
+    """The EQL node (or synthetic coordination artifact) this fragment was built from, recorded so a
+    later pass can trace the fragment back to the query it came from (for example, coreference looks
+    up the focus of a query-sourced fragment). It is never used for equality or rendering."""
 
-    def as_fragment(self) -> "Fragment":
+    def as_fragment(self) -> Fragment:
         """:return: this fragment itself — the identity that lets an already-rendered fragment be a
         clause constituent on equal footing with the typed part-of-speech elements (see
         ``vocabulary.parts_of_speech.ClauseConstituent``)."""
@@ -77,7 +76,7 @@ class HasNumber:
     """Mixin contributing the grammatical ``number`` field shared by fragments whose own
     surface text is inflected for number."""
 
-    number: Number = field(default=Number.SINGULAR, kw_only=True)
+    number: GrammaticalNumber = field(default=GrammaticalNumber.SINGULAR, kw_only=True)
     """Grammatical number of this fragment's surface text."""
 
 
@@ -122,7 +121,7 @@ class RoleFragment(HasText, HasNumber, HasPolarity, Fragment):
         cls,
         label: str,
         expression: SymbolicExpression,
-        number: Number = Number.SINGULAR,
+        number: GrammaticalNumber = GrammaticalNumber.SINGULAR,
     ) -> RoleFragment:
         """
         Build a fragment for a variable, instantiated variable, or entity, linked to its type.
@@ -149,7 +148,7 @@ class RoleFragment(HasText, HasNumber, HasPolarity, Fragment):
         cls,
         owner: Optional[type],
         attribute_name: str,
-        number: Number = Number.SINGULAR,
+        number: GrammaticalNumber = GrammaticalNumber.SINGULAR,
         *,
         text: Optional[str] = None,
     ) -> RoleFragment:
@@ -185,7 +184,7 @@ class RoleFragment(HasText, HasNumber, HasPolarity, Fragment):
     def for_type(
         cls,
         type_: object,
-        number: Number = Number.SINGULAR,
+        number: GrammaticalNumber = GrammaticalNumber.SINGULAR,
         *,
         text: Optional[str] = None,
     ) -> RoleFragment:

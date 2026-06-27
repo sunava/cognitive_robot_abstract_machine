@@ -22,7 +22,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing_extensions import (
-    TYPE_CHECKING,
     Callable,
     Dict,
     List,
@@ -32,6 +31,7 @@ from typing_extensions import (
     Union,
 )
 
+from krrood.entity_query_language.core.base_expressions import SymbolicExpression
 from krrood.entity_query_language.core.mapped_variable import Attribute, MappedVariable
 from krrood.entity_query_language.core.variable import Literal, Variable
 from krrood.entity_query_language.operators.comparator import Comparator
@@ -41,16 +41,15 @@ from krrood.entity_query_language.verbalization.fragments.base import (
     PhraseFragment,
     Fragment,
 )
-from krrood.entity_query_language.verbalization.fragments.features import Number
+from krrood.entity_query_language.verbalization.fragments.features import (
+    GrammaticalNumber,
+)
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Conjunctions,
     RangePhrases,
     SetMembership,
     copula_with,
 )
-
-if TYPE_CHECKING:
-    from krrood.entity_query_language.core.base_expressions import SymbolicExpression
 
 #: Hashable identity of a pure attribute chain: ``(root variable id, ((name, owner), …))``.
 ChainKey = Tuple
@@ -166,7 +165,7 @@ class CoindexedNaturalParts:
 
 # ── the conjunct-reduction pass (high-level entry) ──────────────────────────
 
-FoldNode = Union["SymbolicExpression", RangeFold, CoindexedFold]
+FoldNode = Union[SymbolicExpression, RangeFold, CoindexedFold]
 """A node the verbalization fold dispatches over: either a real EQL expression or a synthetic
 coordination artifact (:class:`RangeFold` / :class:`CoindexedFold`) produced by conjunct reduction."""
 
@@ -697,7 +696,7 @@ def build_between(
     upper_fragment: Fragment,
     *,
     compact: bool,
-    number: Number = Number.SINGULAR,
+    number: GrammaticalNumber = GrammaticalNumber.SINGULAR,
 ) -> Fragment:
     """
     Build *"<left> is between <low> and <high>"* (or copula-less *"<left> between …"* when *compact*).
@@ -731,7 +730,7 @@ def between_phrase(
     upper_fragment: Fragment,
     *,
     compact: bool,
-    number: Number = Number.SINGULAR,
+    number: GrammaticalNumber = GrammaticalNumber.SINGULAR,
 ) -> Fragment:
     """
     Build the subject-less range predicate *"is between <low> and <high>"* (or the copula-less
@@ -758,14 +757,14 @@ def between_phrase(
     )
 
 
-def _between_operator(compact: bool, number: Number) -> Fragment:
+def _between_operator(compact: bool, number: GrammaticalNumber) -> Fragment:
     """:return: the *between* operator fragment — the copula-less core when *compact*, else an
     agreeing copula plus *"between"* (*"is between"* / *"are between"*).
 
     >>> from krrood.entity_query_language.verbalization.fragments.base import flatten_fragment_to_plain_text
-    >>> flatten_fragment_to_plain_text(_between_operator(True, Number.SINGULAR))
+    >>> flatten_fragment_to_plain_text(_between_operator(True, GrammaticalNumber.SINGULAR))
     'between'
-    >>> flatten_fragment_to_plain_text(_between_operator(False, Number.SINGULAR))
+    >>> flatten_fragment_to_plain_text(_between_operator(False, GrammaticalNumber.SINGULAR))
     'is between'
     """
     if compact:
