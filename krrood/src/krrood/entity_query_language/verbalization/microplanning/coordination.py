@@ -11,7 +11,7 @@ Two stages live here, top to bottom:
 * **VerbalizationFragment-level coordination builders** — :func:`build_between` and :func:`oxford_comma`
   (re-exported from the fragment layer) assemble already-rendered pieces into a coordinated phrase.
 
-References: Reiter & Dale (2000) and Dalianis (1999) — aggregation realised via coordination /
+References: :cite:t:`reiter2000building` and :cite:t:`dalianis1999aggregation` — aggregation realised via coordination /
 conjunction reduction.
 """
 

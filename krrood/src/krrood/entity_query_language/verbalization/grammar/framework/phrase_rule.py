@@ -147,10 +147,9 @@ class PhraseRule(ABC):
 
     References:
 
-    * Montague, R. (1970), "Universal Grammar", *Theoria* 36 — syntax algebra → semantics
-      algebra as a homomorphism.
-    * Bach, E. (1976) — the rule-to-rule hypothesis (one syntactic rule ↔ one semantic rule).
-    * Stanford Encyclopedia of Philosophy, "Montague Semantics" / "Compositionality".
+    * :cite:t:`montague1970universal` — syntax algebra → semantics algebra as a homomorphism.
+    * :cite:t:`bach1976extension` — the rule-to-rule hypothesis (one syntactic rule ↔ one semantic rule).
+    * :cite:t:`janssen2021montague`, :cite:t:`szabo2022compositionality` — Montague semantics and compositionality.
     """
 
     construct: ClassVar[type]

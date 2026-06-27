@@ -45,6 +45,51 @@ html = pipeline.verbalize(query)
 
 Pass a shared {py:class}`~krrood.entity_query_language.verbalization.context.MicroplanningServices` to `verbalize` across calls to get cross-mention coreference (*"a Robot"* … *"the Robot"*).  A construct with no grammar rule raises {py:class}`~krrood.entity_query_language.verbalization.exceptions.UnverbalizableExpressionError` — coverage gaps fail loudly rather than degrading to a bare class name.
 
+## Glossary
+
+The subsystem borrows standard terms from functional programming and from the natural-language
+generation (NLG) literature. They are defined once here.
+
+```{glossary}
+catamorphism
+  A fold that collapses a recursive structure to a single value by replacing each node with a
+  handler. The verbalizer folds the EQL tree into a fragment tree, and the renderer folds the
+  fragment tree into a string.
+
+F-algebra
+  The bundle of per-node handlers a catamorphism applies — the grammar rules over EQL nodes, or
+  the four ``word`` / ``role`` / ``phrase`` / ``block`` handlers over the fragment tree.
+
+homomorphism (Montague)
+  The structure-preserving map from the syntax algebra (EQL constructs) to the semantics algebra
+  (English phrases): one rule per construct, which is what {py:class}`~krrood.entity_query_language.verbalization.grammar.framework.phrase_rule.PhraseRule` realises.
+
+microplanning
+  The NLG stage that decides *content and structure* — what to say and in what shape — before
+  surface realisation. Here, the planners.
+
+surface realisation
+  The NLG stage that turns a planned structure into grammatical text (agreement, determiners,
+  inflection, spacing). Here, the assemblers plus the ordered realisation passes.
+
+coreference
+  Referring to an already-introduced entity with a reduced form (*"a Robot"* … *"the Robot"* /
+  *"its …"*).
+
+referring expression
+  The noun phrase chosen to identify an entity — indefinite, definite, numbered, or pronoun.
+
+morphology
+  Word-form inflection: pluralisation and verb agreement.
+
+orthography
+  Surface spelling concerns: punctuation spacing and capitalisation cleanup.
+
+coordination (aggregation)
+  Combining several conditions into one coordinated phrase — Oxford-comma lists,
+  *"between … and …"* ranges, or *"… have the same …"* co-indexed comparisons.
+```
+
 ---
 
 ## Architecture: build → realise → render
@@ -502,3 +547,11 @@ text = VerbalizationPipeline(ParagraphRenderer(MarkdownFormatter())).verbalize(q
 
 - {py:class}`~krrood.entity_query_language.verbalization.vocabulary.english.Keywords` / `Logicals` / `Aggregations` / `Copulas` / `Operators` / `Articles` / `Prepositions` / `Conjunctions` / `Punctuation` / `Pronouns` / `RangePhrases` / `CoindexedOperators` / `CoindexedPhrases` / `Absence` / `NonExistence` / `SetMembership` / `Specificity` / `ExistentialPhrase` / `FallbackNouns`
 - {py:class}`~krrood.entity_query_language.verbalization.vocabulary.words.PlainWord` / `RoleWord` / `VocabEnum`
+
+## References
+
+The reference notes throughout the verbalization source (the `:cite:` annotations on the grammar
+rules, planners, assemblers, and realisation passes) resolve to the works below.
+
+```{bibliography}
+```
