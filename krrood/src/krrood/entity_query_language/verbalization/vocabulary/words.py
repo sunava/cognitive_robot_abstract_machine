@@ -184,17 +184,23 @@ class OperatorPhrase:
         >>> phrase.select(compact=True).text
         'greater than'
         """
-        by_flags = {
-            (False, False, False): self.standard,
-            (False, False, True): self.compact,
-            (False, True, False): self.negated,
-            (False, True, True): self.negated_compact,
-            (True, False, False): self.temporal,
-            (True, False, True): self.temporal_compact,
-            (True, True, False): self.temporal_negated,
-            (True, True, True): self.temporal_negated_compact,
-        }
-        text = by_flags[(temporal, negated, compact)]
+        match (temporal, negated, compact):
+            case (False, False, False):
+                text = self.standard
+            case (False, False, True):
+                text = self.compact
+            case (False, True, False):
+                text = self.negated
+            case (False, True, True):
+                text = self.negated_compact
+            case (True, False, False):
+                text = self.temporal
+            case (True, False, True):
+                text = self.temporal_compact
+            case (True, True, False):
+                text = self.temporal_negated
+            case _:
+                text = self.temporal_negated_compact
         return OperatorWord(text=text or self.standard)
 
 
