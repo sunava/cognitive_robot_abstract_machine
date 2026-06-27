@@ -1,9 +1,40 @@
 name: krrood Docs Preview
 
-# Builds ONLY the krrood Jupyter-Book docs for this feature branch and deploys them to the fork's
-# GitHub Pages, so reviewers can read the rendered documentation instead of raw markdown. This is
-# independent of the 5-library `Build Documentation` aggregate so it does not depend on the heavier
-# (ROS-container) legs.
+# Purpose
+# -------
+# Builds ONLY the krrood Jupyter-Book docs and deploys them to this fork's GitHub Pages, so a
+# reviewer can read the *rendered* documentation — executed notebooks, cross-references, the
+# verbalization examples — instead of raw Markdown while reviewing a pull request.
+#
+# Why a separate workflow (not the aggregate `Build Documentation` / build_all_docs.yml):
+#   * It builds krrood's book on its own, so it does NOT pull in the other workspace packages or
+#     their heavy (ROS / container) dependencies — it is fast and self-contained.
+#   * It gives a per-branch live preview URL for doc review, which the aggregate deploy (run on the
+#     default branch) does not provide.
+#
+# Pointing it at your branch
+# --------------------------
+# A krrood PR that adds or changes docs should build *its own* branch. Either:
+#   * trigger a one-off run from the Actions tab (workflow_dispatch) and pick your branch — no file
+#     edit needed; or
+#   * change the branch under `on.push.branches` below to your PR branch.
+#
+# Can the branch be auto-detected so nobody edits this file?
+#   Partly. You can trigger on `pull_request` (which runs on whatever branch the PR is from) or on
+#   `push` to `'**'`. BUT GitHub Pages serves a SINGLE site per repository, so any trigger that fires
+#   for several branches makes each run overwrite the same site — there is no per-branch live URL.
+#   The clobber-free automatic alternative is to replace the two Pages steps with
+#   `actions/upload-artifact` (reviewers download the built HTML zip) and trigger on `pull_request`.
+#   This file deliberately stays scoped to one branch so the live URL is stable; flip to the artifact
+#   variant if you want hands-off per-PR previews.
+#
+# Conflict with the upstream (cram2) CI
+# -------------------------------------
+# Do NOT merge this upstream as a Pages deployer: cram2's `build_all_docs.yml` already deploys the
+# aggregate docs to the same single GitHub Pages site via `actions/deploy-pages`, so two deployers
+# would race and overwrite each other. Scoped to a fork-only branch name it stays inert on cram2 (no
+# such branch exists there, so it never fires) — but the safe form to actually merge upstream is the
+# `upload-artifact` variant described above, which never touches Pages.
 #
 # One-time setup: enable Pages on the fork — Settings → Pages → Source: "GitHub Actions".
 # After a successful run the docs are at:
@@ -13,7 +44,7 @@ name: krrood Docs Preview
 on:
   push:
     branches:
-      - claude/eql-verbalization-refactor-OHd8j
+      - eql_verbalization
   workflow_dispatch: {}
 
 # Serialize Pages deployments so concurrent runs do not race.
