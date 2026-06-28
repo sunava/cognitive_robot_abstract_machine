@@ -53,7 +53,7 @@ class InferenceAssembler(Assembler[Entity, RuleStructure]):
     >>> connection = variable(FixedConnection, [])
     >>> drawer = inference(Drawer)(container=connection.parent, handle=connection.child)
     >>> verbalize_expression(entity(drawer).where(connection.parent == variable(Container, [])))
-    "If there's a FixedConnection whose parent is a Container, then there's a Drawer whose container is the parent of the FixedConnection, and handle is the child of the FixedConnection"
+    "If there's a FixedConnection whose parent is a Container, then there's a Drawer whose container is the parent of the FixedConnection, and whose handle is the child of the FixedConnection"
 
     Reference: :cite:t:`gatt2009simplenlg` — surface realisation.
     """
@@ -161,7 +161,7 @@ class InferenceAssembler(Assembler[Entity, RuleStructure]):
             )
         if not items:
             return header
-        return BlockFragment(header=header, items=items, bulleted_header=True)
+        return BlockFragment(header=header, items=items, bulleted_header=False)
 
     def _antecedent_intro(
         self, antecedent: AntecedentInformation
@@ -228,18 +228,22 @@ class InferenceAssembler(Assembler[Entity, RuleStructure]):
         intro: VerbalizationFragment = ExistentialPhrase.for_number(
             GrammaticalNumber.SINGULAR
         ).build_phrase(structure.consequent_type)
-        bindings = [
-            self._binding_predicate(binding)
+        whose_clauses = [
+            PhraseFragment(
+                parts=[Keywords.WHOSE.as_fragment(), self._binding_predicate(binding)]
+            )
             for binding in structure.consequent_bindings
         ]
-        if not bindings:
+        if not whose_clauses:
             return [intro]
-        whose = BlockFragment(
-            header=Keywords.WHOSE.as_fragment(),
-            items=bindings,
-            conjunction=Conjunctions.AND.as_fragment(),
-        )
-        return [BlockFragment(header=intro, items=[whose], bulleted_header=True)]
+        return [
+            BlockFragment(
+                header=intro,
+                items=whose_clauses,
+                conjunction=Conjunctions.AND.as_fragment(),
+                bulleted_header=False,
+            )
+        ]
 
     def _binding_predicate(self, binding: ConsequentBinding) -> VerbalizationFragment:
         """:return: The bare *"<field> is/are <value>"* predicate for one consequent binding (the
@@ -270,7 +274,7 @@ class InferenceAssembler(Assembler[Entity, RuleStructure]):
         >>> container = variable(Container, [])
         >>> cabinet = inference(Cabinet)(container=container, drawers=variable(Drawer, []))
         >>> verbalize_expression(entity(cabinet).grouped_by(container))
-        "If true, then there's a Cabinet whose container is a Container, and drawers are the Drawers"
+        "If true, then there's a Cabinet whose container is a Container, and whose drawers are the Drawers"
         """
         if (
             binding.is_plural_field
