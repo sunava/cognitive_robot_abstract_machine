@@ -21,13 +21,22 @@ from krrood.entity_query_language.verbalization.grammar.clauses.planner import (
     GroupedByPlanner,
     GroupPlan,
 )
+from krrood.entity_query_language.verbalization.grammar.query.planner import (
+    SortDirection,
+)
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Articles,
     Conjunctions,
     Copulas,
     Keywords,
-    SortDirections,
+    OrderingRangeWords,
 )
+
+_ORDERING_RANGE_WORDS = {
+    SortDirection.ASCENDING: OrderingRangeWords.LOWEST_TO_HIGHEST,
+    SortDirection.DESCENDING: OrderingRangeWords.HIGHEST_TO_LOWEST,
+}
+"""Maps a :class:`SortDirection` to the ORDER BY range prose it surfaces as."""
 
 
 class GroupedByAssembler(Assembler[Query, GroupPlan]):
@@ -146,13 +155,13 @@ class OrderedByAssembler(Assembler[OrderedByBuilder, None]):
         query.
         """
         direction = (
-            SortDirections.DESCENDING if node.descending else SortDirections.ASCENDING
+            SortDirection.DESCENDING if node.descending else SortDirection.ASCENDING
         )
         return PhraseFragment(
             parts=[
                 Keywords.ORDERED_BY.as_fragment(),
                 self.context.child(node.variable),
-                direction.as_fragment(),
+                _ORDERING_RANGE_WORDS[direction].as_fragment(),
             ]
         )
 
