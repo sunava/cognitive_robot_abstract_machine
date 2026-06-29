@@ -8,9 +8,8 @@ from timeit import default_timer
 
 from py_trees.common import Status
 
-from robokudo import world as rk_world
 from robokudo.annotators.core import BaseAnnotator
-from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
+from robokudo.io.camera_interface import CameraInterface
 
 
 class StaticCameraTransformAnnotator(BaseAnnotator):
@@ -44,43 +43,12 @@ class StaticCameraTransformAnnotator(BaseAnnotator):
         cas = self.get_cas()
         params = self.descriptor.parameters
 
-        if len(params.translation) != 3:
-            raise ValueError("translation must contain exactly 3 values")
-        if len(params.rotation_xyzw) != 4:
-            raise ValueError("rotation_xyzw must contain exactly 4 values")
-
-        rk_world.setup_world_for_camera_frame(
+        CameraInterface.store_camera_to_world_transform_in_cas(
+            cas=cas,
             world_frame=params.world_frame,
             camera_frame=params.camera_frame,
-        )
-
-        sem_world = rk_world.world_instance()
-        world_body = sem_world.get_body_by_name(params.world_frame)
-        camera_body = sem_world.get_body_by_name(params.camera_frame)
-
-        translation = tuple(float(value) for value in params.translation)
-        rotation = tuple(float(value) for value in params.rotation_xyzw)
-
-        camera_to_world_transform = HomogeneousTransformationMatrix.from_xyz_quaternion(
-            pos_x=translation[0],
-            pos_y=translation[1],
-            pos_z=translation[2],
-            quat_x=rotation[0],
-            quat_y=rotation[1],
-            quat_z=rotation[2],
-            quat_w=rotation[3],
-            reference_frame=world_body,
-            child_frame=camera_body,
-        )
-
-        cas.world_frame = params.world_frame
-        cas.cam_frame = params.camera_frame
-        cas.cam_to_world_transform = camera_to_world_transform
-
-        rk_world.update_connection_transform(
-            to_name=world_body.name,
-            from_name=camera_body.name,
-            transform=camera_to_world_transform,
+            translation=params.translation,
+            rotation_xyzw=params.rotation_xyzw,
         )
 
         end_timer = default_timer()

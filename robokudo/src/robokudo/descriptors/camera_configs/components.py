@@ -49,6 +49,26 @@ class TfComponent:
 
 
 @dataclass(kw_only=True)
+class StaticCameraTransformComponent:
+    """Camera component with configuration for a fixed camera transform."""
+
+    static_camera_transform_enabled: bool = False
+    """Whether to write a configured static camera transform into each CAS."""
+
+    static_world_frame: str = "map"
+    """World frame ID for the configured static camera transform."""
+
+    static_camera_frame: str = "camera"
+    """Camera frame ID for the configured static camera transform."""
+
+    static_translation: Tuple[float, float, float] = (0.0, 0.0, 0.0)
+    """Translation from camera frame to world frame."""
+
+    static_rotation_xyzw: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 1.0)
+    """Rotation from camera frame to world frame as x/y/z/w quaternion."""
+
+
+@dataclass(kw_only=True)
 class StableViewpointComponent:
     """Camera component with configuration for viewpoint stabilization."""
 

@@ -27,7 +27,6 @@ from robokudo.annotators.pointcloud_cluster_extractor import PointCloudClusterEx
 from robokudo.annotators.pointcloud_crop import PointcloudCropAnnotator
 from robokudo.annotators.semantic_world_connector import SemanticDigitalTwinConnector
 from robokudo.annotators.shape_estimator import ShapeEstimatorAnnotator
-from robokudo.annotators.static_camera_transform import StaticCameraTransformAnnotator
 from robokudo.descriptors.factories.cr_descriptor_factory import CrDescriptorFactory
 
 
@@ -51,6 +50,9 @@ class TestFullAEExecution(object):
             target_dir=robokudo.utils.data_downloader.test_data_path() / Path("data"),
             kinect_height_fix_mode=True,
             color2depth_ratio=(0.5, 0.5),
+            static_camera_transform_enabled=True,
+            static_world_frame="map",
+            static_camera_frame="camera",
         )
 
         # Restrict FOV of pointcloud to robustly get only one object
@@ -91,6 +93,9 @@ class TestFullAEExecution(object):
             target_dir=robokudo.utils.data_downloader.test_data_path() / Path("data"),
             kinect_height_fix_mode=True,
             color2depth_ratio=(0.5, 0.5),
+            static_camera_transform_enabled=True,
+            static_world_frame="map",
+            static_camera_frame="camera",
         )
 
         pc_crop_config = (
@@ -104,7 +109,6 @@ class TestFullAEExecution(object):
             [
                 robokudo.annotators.outputs.ClearAnnotatorOutputs(),
                 CollectionReaderAnnotator(descriptor=cr_fr_config),
-                StaticCameraTransformAnnotator(),
                 ImagePreprocessorAnnotator("ImagePreprocessor"),
                 PointcloudCropAnnotator(descriptor=pc_crop_config),
                 PlaneAnnotator(),

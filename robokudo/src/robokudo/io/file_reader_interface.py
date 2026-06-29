@@ -18,6 +18,7 @@ The module is primarily used for:
 import json
 import pathlib
 import re
+import warnings
 from pathlib import Path
 
 import ament_index_python.packages
@@ -126,6 +127,15 @@ class FileReaderInterface(CameraInterface):
         :raises Exception: If target directory or ROS package is invalid
         """
         super().__init__(camera_config)
+
+        if getattr(camera_config, "lookup_viewpoint", False):
+            warnings.warn(
+                "FileReaderInterface does not support live TF transform lookup. "
+                "lookup_viewpoint=True will be ignored; configure "
+                "static_camera_transform_enabled=True to write a transform into the CAS.",
+                UserWarning,
+                stacklevel=2,
+            )
 
         self.initialized: bool = False
         """Whether the interface was successfully initialized"""
@@ -283,3 +293,4 @@ class RGBDFileReaderInterface(FileReaderInterface):
             o3d_cam_intrinsics_from_ros_cam_info(data[CASViews.CAM_INFO]),
         )
         cas.set(CASViews.COLOR2DEPTH_RATIO, self.camera_config.color2depth_ratio)
+        self.store_static_camera_transform_if_configured(cas)

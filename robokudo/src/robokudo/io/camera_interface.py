@@ -21,7 +21,6 @@ The module handles:
 """
 
 from __future__ import annotations
-from robokudo.world import update_connection_transform
 
 import logging
 import struct
@@ -47,7 +46,11 @@ from robokudo.defs import PACKAGE_NAME
 from robokudo.io.tf_listener_proxy import TFListenerProxy
 from robokudo.types.tf import StampedTransform
 from robokudo.utils.cv_bridge_workaround import CVBridgeWorkaround
-from robokudo.world import setup_world_for_camera_frame, world_instance
+from robokudo.world import (
+    setup_world_for_camera_frame,
+    update_connection_transform,
+    world_instance,
+)
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 
 if TYPE_CHECKING:
@@ -83,6 +86,87 @@ class CameraInterface(object):
         :return: True if new data is available, False otherwise
         """
         return self._has_new_data
+
+    @staticmethod
+    def store_camera_to_world_transform_in_cas(
+        cas: CAS,
+        world_frame: str,
+        camera_frame: str,
+        translation: Tuple[float, float, float],
+        rotation_xyzw: Tuple[float, float, float, float],
+        timestamp_ns: Optional[int] = None,
+    ) -> None:
+        """Write a camera-to-world transform to the CAS and runtime world."""
+        if len(translation) != 3:
+            raise ValueError("translation must contain exactly 3 values")
+        if len(rotation_xyzw) != 4:
+            raise ValueError("rotation_xyzw must contain exactly 4 values")
+
+        setup_world_for_camera_frame(world_frame=world_frame, camera_frame=camera_frame)
+
+        world = world_instance()
+        camera_body = world.get_body_by_name(name=camera_frame)
+        world_body = world.get_body_by_name(name=world_frame)
+
+        world_T_camera = HomogeneousTransformationMatrix.from_xyz_quaternion(
+            pos_x=float(translation[0]),
+            pos_y=float(translation[1]),
+            pos_z=float(translation[2]),
+            quat_x=float(rotation_xyzw[0]),
+            quat_y=float(rotation_xyzw[1]),
+            quat_z=float(rotation_xyzw[2]),
+            quat_w=float(rotation_xyzw[3]),
+            reference_frame=world_body,
+            child_frame=camera_body,
+        )
+
+        cas.world_frame = world_frame
+        cas.cam_frame = camera_frame
+        cas.cam_to_world_transform = world_T_camera
+        if timestamp_ns is not None:
+            cas.data_timestamp = timestamp_ns
+
+        update_connection_transform(
+            to_name=world_body.name,
+            from_name=camera_body.name,
+            transform=world_T_camera,
+        )
+
+    def store_camera_to_world_transform(
+        self,
+        cas: CAS,
+        world_frame: str,
+        camera_frame: str,
+        translation: Tuple[float, float, float],
+        rotation_xyzw: Tuple[float, float, float, float],
+        timestamp_ns: Optional[int] = None,
+    ) -> None:
+        """Write a camera-to-world transform to the CAS and runtime world."""
+        self.store_camera_to_world_transform_in_cas(
+            cas=cas,
+            world_frame=world_frame,
+            camera_frame=camera_frame,
+            translation=translation,
+            rotation_xyzw=rotation_xyzw,
+            timestamp_ns=timestamp_ns,
+        )
+
+    def store_static_camera_transform_if_configured(
+        self, cas: CAS, timestamp_ns: Optional[int] = None
+    ) -> bool:
+        """Write the configured static camera transform, if enabled."""
+        if not getattr(self.camera_config, "static_camera_transform_enabled", False):
+            return False
+
+        self.store_camera_to_world_transform(
+            cas=cas,
+            world_frame=self.camera_config.static_world_frame,
+            camera_frame=self.camera_config.static_camera_frame,
+            translation=self.camera_config.static_translation,
+            rotation_xyzw=self.camera_config.static_rotation_xyzw,
+            timestamp_ns=timestamp_ns,
+        )
+        return True
 
     def set_data(self, cas: CAS) -> None:
         """
@@ -180,33 +264,13 @@ class ROSCameraInterface(CameraInterface):
         :param timestamp: The timestamp of the transform
         """
         if self.lookup_viewpoint:
-            setup_world_for_camera_frame(
-                world_frame=self.tf_to, camera_frame=self.tf_from
-            )
-
-            world = world_instance()
-
-            camera_body = world.get_body_by_name(name=self.tf_from)
-            world_body = world.get_body_by_name(name=self.tf_to)
-
-            world_T_camera = HomogeneousTransformationMatrix.from_xyz_quaternion(
-                pos_x=self.cam_translation[0],
-                pos_y=self.cam_translation[1],
-                pos_z=self.cam_translation[2],
-                quat_x=self.cam_quaternion[0],
-                quat_y=self.cam_quaternion[1],
-                quat_z=self.cam_quaternion[2],
-                quat_w=self.cam_quaternion[3],
-                reference_frame=world_body,
-                child_frame=camera_body,
-            )
-            cas.cam_to_world_transform = world_T_camera
-            cas.data_timestamp = timestamp.sec * 1_000_000_000 + timestamp.nanosec
-
-            update_connection_transform(
-                to_name=world_body.name,
-                from_name=camera_body.name,
-                transform=world_T_camera,
+            self.store_camera_to_world_transform(
+                cas=cas,
+                world_frame=self.tf_to,
+                camera_frame=self.tf_from,
+                translation=tuple(self.cam_translation),
+                rotation_xyzw=tuple(self.cam_quaternion),
+                timestamp_ns=timestamp.sec * 1_000_000_000 + timestamp.nanosec,
             )
 
     @staticmethod
