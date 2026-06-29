@@ -82,6 +82,34 @@ toggled on and off in RViz's display tree. `Vector3` expressions are anchored to
 This is the right tool for spatial reasoning: comparing a goal pose against the current pose,
 checking which way a normal points, or confirming a point is where you expect it in the world.
 
+Each spatial type renders as a different marker, and the `<task name>/goal` (green) /
+`<task name>/current` (red) convention makes the comparison easy to read:
+
+```{figure} img/pose_marker.png
+---
+width: 600px
+---
+A `Pose` is drawn as a coordinate frame. Here `CartesianPose/goal` and `CartesianPose/current`
+show the target and actual end-effector pose side by side.
+```
+
+```{figure} img/cartesian_position_marker.png
+---
+width: 600px
+---
+A `Point3` is drawn as a sphere — `CartesianPosition/goal` (green) and
+`CartesianPosition/current` (red).
+```
+
+```{figure} img/pointing_marker.png
+---
+width: 500px
+---
+A `Vector3` is drawn as an arrow anchored to its `visualisation_frame`. Here the green
+`Pointing/goal` and red `Pointing/current` arrows show where the robot should point versus
+where it currently points.
+```
+
 ## Plotting debug expressions
 
 To see how debug expressions evolve over an entire motion, attach a
@@ -115,6 +143,15 @@ The lifecycle is:
 The plot has one subplot per expression and one line per scalar component, sharing a common time
 axis — for example a `Point3` produces four lines (its homogeneous `x, y, z, w` components). The
 plotter exposes a few layout knobs: `subplot_height_in_cm`, `second_width_in_cm`, and `legend`.
+
+```{figure} img/test_pointing_debug_expressions.png
+---
+width: 600px
+---
+An example plot for a pointing task: the `Pointing/goal` and `Pointing/current` `Vector3`
+expressions, each split into their four homogeneous components, show the goal vector and the
+current vector converging over the motion.
+```
 
 For a runnable end-to-end example, see
 `test/giskardpy_test/test_motion_statechart/test_debug_expression_trajectory.py`.
