@@ -4,14 +4,20 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+import numpy as np
 import rerun
 from typing_extensions import Optional
 
+from krrood.symbolic_math.symbolic_math import (
+    CompiledFunction,
+    Matrix,
+    VariableParameters,
+)
 from semantic_digital_twin.callbacks.callback import (
     ModelChangeCallback,
     StateChangeCallback,
 )
-from semantic_digital_twin.world import World
+from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 
 
 class RerunMode(StrEnum):
@@ -42,10 +48,8 @@ class RerunMode(StrEnum):
 @dataclass(eq=False)
 class RerunModelCallback(ModelChangeCallback):
     """
-    Logs the world's static geometry, re-logging it whenever the model changes.
-
-    Separate from the state-change callback so geometry is re-sent only
-    on model changes, not on every state update.
+    Logs the world's static geometry and compiles the body forward kinematics
+    on every model change.
     """
 
     recording: rerun.RecordingStream = field(kw_only=True)
@@ -58,19 +62,53 @@ class RerunModelCallback(ModelChangeCallback):
     Entity path under which the kinematic tree is logged.
     """
 
-    def on_model_change(self, **kwargs) -> None:
-        self._log_model(self._world)
+    compiled_body_fks: CompiledFunction = field(init=False, repr=False)
+    """
+    Stacked forward kinematics of all bodies, evaluated in one call.
 
-    def _log_model(self, world: World) -> None:
+    The body at index ``i`` in ``world.bodies`` occupies rows ``i * 4`` to
+    ``i * 4 + 4``.
+    """
+
+    def on_model_change(self, **kwargs) -> None:
+        self._log_model()
+        self._compile_body_fks()
+
+    def _compile_body_fks(self) -> None:
+        """
+        Compile the stacked forward kinematics of all bodies into one function.
+        """
+        bodies = self._world.bodies
+        if not bodies:
+            return
+        body_fks = [
+            HomogeneousTransformationMatrix()
+            if body == self._world.root
+            else self._world.compose_forward_kinematics_expression(
+                self._world.root, body
+            )
+            for body in bodies
+        ]
+        stacked_body_fks = Matrix.vstack(body_fks)
+        self.compiled_body_fks = stacked_body_fks.compile(
+            parameters=VariableParameters.from_lists(
+                self._world.state.position_float_variables
+            )
+        )
+        if not stacked_body_fks.is_constant():
+            self.compiled_body_fks.bind_args_to_memory_view(
+                0, self._world.state.positions
+            )
+
+    def compute(self) -> np.ndarray:
+        """
+        Evaluate the stacked forward kinematics of all bodies.
+        """
+        return self.compiled_body_fks.evaluate()
+
+    def _log_model(self) -> None:
         """
         Log every body's static visual geometry to Rerun.
-
-        Each shape's mesh is logged as a static :class:`rerun.Mesh3D`
-        and its ``origin`` as a static :class:`rerun.Transform3D` on the
-        same entity, so only the per-body transforms need re-logging on
-        a state change.
-
-        :param world: The world whose geometry is logged.
         """
         rerun.log(
             self.root_entity_path,
@@ -78,7 +116,7 @@ class RerunModelCallback(ModelChangeCallback):
             static=True,
             recording=self.recording,
         )
-        for body in world.bodies:
+        for body in self._world.bodies:
             entity_path = f"{self.root_entity_path}/{body.name.name}"
             shapes = body.visual.shapes if body.visual.shapes else body.collision.shapes
             for index, shape in enumerate(shapes):
@@ -112,12 +150,7 @@ class RerunModelCallback(ModelChangeCallback):
 @dataclass(eq=False)
 class RerunAdapter(StateChangeCallback):
     """
-    Logs a world to Rerun and keeps the recording in sync as the world changes.
-
-    The state-change callback: re-logs the per-body transforms on every state change
-    and owns a :class:`RerunModelCallback` for the geometry. ``mode`` selects the
-    output (see :class:`RerunMode`). On construction it configures the output and
-    logs the initial geometry and state.
+    Logs a world to Rerun and keeps the recording in sync with its state.
     """
 
     root_entity_path: str = "world"
@@ -192,21 +225,18 @@ class RerunAdapter(StateChangeCallback):
         super().__post_init__()
         self.on_state_change()
 
-    def _log_state(self, world: World, *, static: bool = False) -> None:
+    def _log_state(self, static: bool = False) -> None:
         """
-        Log every body's current forward-kinematics transform to Rerun.
+        Log the current world-relative transform of every body to Rerun.
 
-        Logged at the same ``world/<body>`` path the geometry is
-        parented under, so the two compose. With ``static=True`` the
-        transforms overwrite in place (no timeline history), giving a
-        constant-memory current-state view.
-
-        :param world: The world whose state is logged.
-        :param static: Whether to log without timeline history
-            (overwrite in place).
+        :param static: Whether to overwrite in place without timeline history.
         """
-        for body in world.bodies:
-            world_transform_body = world.compute_forward_kinematics_np(world.root, body)
+        bodies = self._world.bodies
+        if not bodies:
+            return
+        batched_body_fks = self.model_cb.compute()
+        for index, body in enumerate(bodies):
+            world_transform_body = batched_body_fks[index * 4 : index * 4 + 4]
             rerun.log(
                 f"{self.root_entity_path}/{body.name.name}",
                 rerun.Transform3D(
@@ -224,9 +254,9 @@ class RerunAdapter(StateChangeCallback):
                 sequence=self._world.state.version,
                 recording=self.recording,
             )
-            self._log_state(self._world)
+            self._log_state()
         else:
-            self._log_state(self._world, static=True)
+            self._log_state(static=True)
 
     def stop(self) -> None:
         """

@@ -1,3 +1,5 @@
+import numpy as np
+
 from semantic_digital_twin.adapters.rerun import RerunMode, RerunAdapter
 from semantic_digital_twin.testing import world_setup_simple
 from semantic_digital_twin.world import World
@@ -43,3 +45,22 @@ def test_adapter_registers_handles_state_and_stops(world_setup_simple) -> None:
 
     adapter.stop()
     assert len(world.state.state_change_callbacks) == state_callbacks_before
+
+
+def test_batched_body_fks_match_per_body(world_setup_simple) -> None:
+    """
+    Each slice of the batched body forward kinematics matches the per-body
+    computation.
+    """
+    world: World = world_setup_simple[0]
+    adapter = RerunAdapter(_world=world, mode=RerunMode.NONE)
+
+    batched_body_fks = adapter.model_cb.compute()
+    for index, body in enumerate(world.bodies):
+        world_transform_body = batched_body_fks[index * 4 : index * 4 + 4]
+        assert np.allclose(
+            world_transform_body,
+            world.compute_forward_kinematics_np(world.root, body),
+        )
+
+    adapter.stop()
