@@ -1,5 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
+from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from typing_extensions import Tuple
 
 
@@ -61,11 +62,10 @@ class StaticCameraTransformComponent:
     static_camera_frame: str = "camera"
     """Camera frame ID for the configured static camera transform."""
 
-    static_translation: Tuple[float, float, float] = (0.0, 0.0, 0.0)
-    """Translation from camera frame to world frame."""
-
-    static_rotation_xyzw: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 1.0)
-    """Rotation from camera frame to world frame as x/y/z/w quaternion."""
+    static_world_T_camera: HomogeneousTransformationMatrix = field(
+        default_factory=HomogeneousTransformationMatrix
+    )
+    """Camera pose relative to the configured world frame."""
 
 
 @dataclass(kw_only=True)

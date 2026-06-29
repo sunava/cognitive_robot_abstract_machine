@@ -128,7 +128,7 @@ class FileReaderInterface(CameraInterface):
         """
         super().__init__(camera_config)
 
-        if getattr(camera_config, "lookup_viewpoint", False):
+        if camera_config.lookup_viewpoint:
             warnings.warn(
                 "FileReaderInterface does not support live TF transform lookup. "
                 "lookup_viewpoint=True will be ignored; configure "

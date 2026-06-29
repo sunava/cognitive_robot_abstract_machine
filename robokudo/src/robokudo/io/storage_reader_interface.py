@@ -100,7 +100,7 @@ class StorageReaderInterface(CameraInterface):
             cas.set(view_name, view_content)
 
         # Restore annotations
-        if getattr(self.camera_config, "restore_annotations", False):
+        if self.camera_config.restore_annotations:
             self.storage.load_annotations_from_mongo_in_cas(cas_frame, cas)
 
         if cas.depth_image is None:

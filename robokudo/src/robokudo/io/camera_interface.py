@@ -92,44 +92,32 @@ class CameraInterface(object):
         cas: CAS,
         world_frame: str,
         camera_frame: str,
-        translation: Tuple[float, float, float],
-        rotation_xyzw: Tuple[float, float, float, float],
+        world_T_camera: HomogeneousTransformationMatrix,
         timestamp_ns: Optional[int] = None,
     ) -> None:
         """Write a camera-to-world transform to the CAS and runtime world."""
-        if len(translation) != 3:
-            raise ValueError("translation must contain exactly 3 values")
-        if len(rotation_xyzw) != 4:
-            raise ValueError("rotation_xyzw must contain exactly 4 values")
-
         setup_world_for_camera_frame(world_frame=world_frame, camera_frame=camera_frame)
 
         world = world_instance()
         camera_body = world.get_body_by_name(name=camera_frame)
         world_body = world.get_body_by_name(name=world_frame)
 
-        world_T_camera = HomogeneousTransformationMatrix.from_xyz_quaternion(
-            pos_x=float(translation[0]),
-            pos_y=float(translation[1]),
-            pos_z=float(translation[2]),
-            quat_x=float(rotation_xyzw[0]),
-            quat_y=float(rotation_xyzw[1]),
-            quat_z=float(rotation_xyzw[2]),
-            quat_w=float(rotation_xyzw[3]),
+        runtime_world_T_camera = HomogeneousTransformationMatrix(
+            data=world_T_camera,
             reference_frame=world_body,
             child_frame=camera_body,
         )
 
         cas.world_frame = world_frame
         cas.cam_frame = camera_frame
-        cas.cam_to_world_transform = world_T_camera
+        cas.cam_to_world_transform = runtime_world_T_camera
         if timestamp_ns is not None:
             cas.data_timestamp = timestamp_ns
 
         update_connection_transform(
             to_name=world_body.name,
             from_name=camera_body.name,
-            transform=world_T_camera,
+            transform=runtime_world_T_camera,
         )
 
     def store_camera_to_world_transform(
@@ -137,8 +125,7 @@ class CameraInterface(object):
         cas: CAS,
         world_frame: str,
         camera_frame: str,
-        translation: Tuple[float, float, float],
-        rotation_xyzw: Tuple[float, float, float, float],
+        world_T_camera: HomogeneousTransformationMatrix,
         timestamp_ns: Optional[int] = None,
     ) -> None:
         """Write a camera-to-world transform to the CAS and runtime world."""
@@ -146,8 +133,7 @@ class CameraInterface(object):
             cas=cas,
             world_frame=world_frame,
             camera_frame=camera_frame,
-            translation=translation,
-            rotation_xyzw=rotation_xyzw,
+            world_T_camera=world_T_camera,
             timestamp_ns=timestamp_ns,
         )
 
@@ -155,15 +141,14 @@ class CameraInterface(object):
         self, cas: CAS, timestamp_ns: Optional[int] = None
     ) -> bool:
         """Write the configured static camera transform, if enabled."""
-        if not getattr(self.camera_config, "static_camera_transform_enabled", False):
+        if not self.camera_config.static_camera_transform_enabled:
             return False
 
         self.store_camera_to_world_transform(
             cas=cas,
             world_frame=self.camera_config.static_world_frame,
             camera_frame=self.camera_config.static_camera_frame,
-            translation=self.camera_config.static_translation,
-            rotation_xyzw=self.camera_config.static_rotation_xyzw,
+            world_T_camera=self.camera_config.static_world_T_camera,
             timestamp_ns=timestamp_ns,
         )
         return True
@@ -264,12 +249,20 @@ class ROSCameraInterface(CameraInterface):
         :param timestamp: The timestamp of the transform
         """
         if self.lookup_viewpoint:
+            world_T_camera = HomogeneousTransformationMatrix.from_xyz_quaternion(
+                pos_x=self.cam_translation[0],
+                pos_y=self.cam_translation[1],
+                pos_z=self.cam_translation[2],
+                quat_x=self.cam_quaternion[0],
+                quat_y=self.cam_quaternion[1],
+                quat_z=self.cam_quaternion[2],
+                quat_w=self.cam_quaternion[3],
+            )
             self.store_camera_to_world_transform(
                 cas=cas,
                 world_frame=self.tf_to,
                 camera_frame=self.tf_from,
-                translation=tuple(self.cam_translation),
-                rotation_xyzw=tuple(self.cam_quaternion),
+                world_T_camera=world_T_camera,
                 timestamp_ns=timestamp.sec * 1_000_000_000 + timestamp.nanosec,
             )
 

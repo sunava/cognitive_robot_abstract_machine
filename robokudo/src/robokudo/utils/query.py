@@ -1,12 +1,16 @@
+from collections.abc import Callable
+from dataclasses import dataclass
 from queue import Queue
 from typing_extensions import Any
 
 from py_trees.blackboard import Blackboard
+from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 
 from robokudo_msgs.action import Query
 from robokudo_msgs.msg import ObjectDesignator
 from robokudo.identifier import BBIdentifier
 from robokudo.types.annotation import (
+    BoundingBox3DAnnotation,
     Classification,
     LocationAnnotation,
     SemanticColor,
@@ -15,20 +19,55 @@ from robokudo.types.annotation import (
 from robokudo.types.scene import ObjectHypothesis
 
 
+@dataclass(frozen=True)
+class QueryAttributeMatcher:
+    """Connect an ObjectDesignator field extractor with its matcher."""
+
+    requested_values: Callable[[ObjectDesignator], Any]
+    """Function that extracts requested values from an ObjectDesignator."""
+
+    matches: Callable[[ObjectHypothesis, Any], bool]
+    """Function that checks if an ObjectHypothesis satisfies the requested values."""
+
+
 class ObjectHypothesisQueryMatcher:
     """Match ObjectHypotheses against requested ObjectDesignator attributes."""
 
     def __init__(self) -> None:
-        self.query_matchers = {
-            "uid": self.matches_uid,
-            "type": self.matches_type,
-            "shape": self.matches_shape,
-            "color": self.matches_color,
-            "location": self.matches_location,
-            "size": self.matches_size,
-            "attribute": self.matches_attribute,
-            "description": self.matches_description,
-        }
+        self.query_matchers = [
+            QueryAttributeMatcher(
+                requested_values=lambda requested_object: requested_object.uid,
+                matches=self.matches_uid,
+            ),
+            QueryAttributeMatcher(
+                requested_values=lambda requested_object: requested_object.type,
+                matches=self.matches_type,
+            ),
+            QueryAttributeMatcher(
+                requested_values=lambda requested_object: requested_object.shape,
+                matches=self.matches_shape,
+            ),
+            QueryAttributeMatcher(
+                requested_values=lambda requested_object: requested_object.color,
+                matches=self.matches_color,
+            ),
+            QueryAttributeMatcher(
+                requested_values=lambda requested_object: requested_object.location,
+                matches=self.matches_location,
+            ),
+            QueryAttributeMatcher(
+                requested_values=lambda requested_object: requested_object.size,
+                matches=self.matches_size,
+            ),
+            QueryAttributeMatcher(
+                requested_values=lambda requested_object: requested_object.attribute,
+                matches=self.matches_attribute,
+            ),
+            QueryAttributeMatcher(
+                requested_values=lambda requested_object: requested_object.description,
+                matches=self.matches_description,
+            ),
+        ]
 
     @staticmethod
     def normalize_query_value(value: Any) -> str:
@@ -71,12 +110,10 @@ class ObjectHypothesisQueryMatcher:
             return []
 
         variants = [value]
-        name = getattr(value, "name", None)
-        if name is not None:
-            variants.append(name)
-        prefix = getattr(value, "prefix", None)
-        if prefix is not None and name is not None:
-            variants.append(f"{prefix}:{name}")
+        if isinstance(value, PrefixedName):
+            variants.append(value.name)
+            if value.prefix is not None:
+                variants.append(f"{value.prefix}:{value.name}")
 
         return variants
 
@@ -100,11 +137,13 @@ class ObjectHypothesisQueryMatcher:
         self, object_hypothesis: ObjectHypothesis, requested_object: ObjectDesignator
     ) -> bool:
         """Return true if an object hypothesis satisfies all supported query fields."""
-        for field_name, matcher in self.query_matchers.items():
-            requested_values = getattr(requested_object, field_name, None)
+        for query_attribute_matcher in self.query_matchers:
+            requested_values = query_attribute_matcher.requested_values(
+                requested_object
+            )
             if len(self.normalized_values(requested_values)) == 0:
                 continue
-            if not matcher(object_hypothesis, requested_values):
+            if not query_attribute_matcher.matches(object_hypothesis, requested_values):
                 return False
         return True
 
@@ -162,42 +201,42 @@ class ObjectHypothesisQueryMatcher:
                 candidate_values.extend(self.value_variants(annotation.region.name))
         return self.any_requested_value_matches(requested_values, candidate_values)
 
-    def matches_generic_annotation_field(
-        self,
-        object_hypothesis: ObjectHypothesis,
-        requested_values: Any,
-        field_name: str,
-    ) -> bool:
-        """Match requested values against annotations exposing the given field."""
-        candidate_values = []
-        for annotation in object_hypothesis.annotations:
-            if hasattr(annotation, field_name):
-                candidate_values.append(getattr(annotation, field_name))
-        return self.any_requested_value_matches(requested_values, candidate_values)
-
     def matches_attribute(
         self, object_hypothesis: ObjectHypothesis, requested_values: Any
     ) -> bool:
-        """Match generic requested attributes when annotations expose an attribute field."""
-        return self.matches_generic_annotation_field(
-            object_hypothesis, requested_values, "attribute"
-        )
+        """Match generic requested attributes against known annotation fields."""
+        candidate_values = []
+        for annotation in object_hypothesis.annotations:
+            if isinstance(annotation, Classification):
+                candidate_values.append(annotation.classification_type)
+            if isinstance(annotation, SemanticColor):
+                candidate_values.append(annotation.color)
+            if isinstance(annotation, Shape):
+                candidate_values.append(annotation.shape_name)
+        return self.any_requested_value_matches(requested_values, candidate_values)
 
     def matches_size(
         self, object_hypothesis: ObjectHypothesis, requested_values: Any
     ) -> bool:
-        """Match semantic size requests when annotations expose a size field."""
-        return self.matches_generic_annotation_field(
-            object_hypothesis, requested_values, "size"
-        )
+        """Match semantic size requests against bounding-box dimensions."""
+        candidate_values = []
+        for annotation in object_hypothesis.annotations:
+            if isinstance(annotation, BoundingBox3DAnnotation):
+                candidate_values.extend(
+                    [annotation.x_length, annotation.y_length, annotation.z_length]
+                )
+        return self.any_requested_value_matches(requested_values, candidate_values)
 
     def matches_description(
         self, object_hypothesis: ObjectHypothesis, requested_values: Any
     ) -> bool:
-        """Match generic requested descriptions when annotations expose a description field."""
-        return self.matches_generic_annotation_field(
-            object_hypothesis, requested_values, "description"
-        )
+        """Match generic requested descriptions against classification labels."""
+        candidate_values = [
+            annotation.classname
+            for annotation in object_hypothesis.annotations
+            if isinstance(annotation, Classification)
+        ]
+        return self.any_requested_value_matches(requested_values, candidate_values)
 
 
 class QueryHandler(object):

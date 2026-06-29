@@ -335,7 +335,7 @@ class GenerateQueryResult(BaseAnnotator):
         requested_object = None
         if self.descriptor.parameters.filter_by_query and cas.contains(CASViews.QUERY):
             query = cas.get(CASViews.QUERY)
-            requested_object = getattr(query, "obj", None)
+            requested_object = query.obj
 
         for annotation in annotations:
             if not isinstance(annotation, ObjectHypothesis):

@@ -89,7 +89,7 @@ class ObjectHypothesisVisualizer(BaseAnnotator):
 
     def _mesh_cache_key(self, shape: Mesh) -> Tuple[object, ...]:
         """Create a stable cache key for mesh conversion results."""
-        filename = getattr(shape, "filename", "")
+        filename = shape.filename
         if filename:
             try:
                 filename = str(Path(filename).resolve())
