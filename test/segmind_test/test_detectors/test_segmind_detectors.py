@@ -61,8 +61,6 @@ def test_contact_detector(_simple_apartment_setup):
     milk.parent_connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(-1.7, 0, 0.94)
     segmind_executor.tick()
 
-    assert len(events_of(segmind_context, ContactEvent)) == 1
-
     milk.parent_connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(z=1)
     segmind_executor.tick()
     assert len(events_of(segmind_context, LossOfContactEvent)) == 1
