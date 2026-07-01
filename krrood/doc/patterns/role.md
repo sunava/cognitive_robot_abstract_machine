@@ -103,7 +103,8 @@ ceo = CEO(role_taker=alice, head_of=acme)
 print(ceo)
 ```
 
-The role registers itself with the `RoleRegistry` during `__post_init__`, which is what enables role lookup.
+Constructing a role registers it against its taker, which is what makes the role discoverable by the
+lookups below.
 
 ## Distinct Identity
 

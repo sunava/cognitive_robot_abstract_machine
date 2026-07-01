@@ -18,13 +18,8 @@ Role pattern as implemented in `krrood.patterns.role`.
 
 ## Architectural Goals and Constraints
 
-The Role pattern solves a modelling problem that arises in knowledge representation: a single
-real-world entity can participate in many different relationships and carry many different
-context-specific properties, but its *identity* remains constant throughout. Subclassing cannot
-express this because a subclass implies a permanent, type-level distinction. Association cannot
-express it because an associated object is a separate entity with its own identity.
-
-The design optimises for four properties:
+This guide assumes the {doc}`user guide <../role>`, which introduces what a role is and when to
+choose it over subclassing or association. The design optimises for four properties:
 
 1. **Distinct identity, explicit equivalence.** A role is an ordinary object with its own
    identity (equal only to itself), so multiple roles — even of the same type — on one taker stay
@@ -58,17 +53,11 @@ membership uses the `RoleRegistry` and persistence uses the role's own ORM mappi
 needs to be a graph node. Role *classes* still take part in the class diagram, which is built from
 `Symbol` subclasses, not from cached instances.
 
-**`role_taker`** is a keyword-only field declared once on `Role[T]` and inherited by every role
-class. Its annotation is the generic parameter `T`, so each concrete role binds it to that role's
-taker type through the `Role[Taker]` base. Because the field name is fixed, both the runtime
-delegation and the class diagram (`krrood.class_diagrams`) recognise the role taker by name rather
-than by a per-class marker.
+**`role_taker`** is the keyword-only field, declared once on `Role[T]` and inherited by every role
+class, that holds the entity the role is attached to (see *Fixed-Name Discovery of the Role Taker*).
 
-**`RoleRegistry`** (`role_registry.py`) is the runtime inverse index. When a role is constructed,
-`Role.__post_init__` calls `RoleRegistry.register`, which indexes the role under every taker in its
-chain. Querying whether a taker has a given role type then becomes a lookup in this index. The
-registry is held on `Role` as a shared class attribute and can be replaced with a fresh instance to
-isolate state.
+**`RoleRegistry`** (`role_registry.py`) is the runtime inverse index from a taker to its roles that
+backs all role lookup (see *The Role Registry*).
 
 ## Key Design Decisions and Rationale
 
@@ -94,11 +83,6 @@ This means that the constructor signature of every concrete role class is exactl
 `@dataclass` generates from its fields. A caller can always read a role class's field
 declarations and know exactly what arguments its constructor accepts, with no hidden
 transformations.
-
-### Explicit Construction Only
-
-A role is only created when calling code explicitly passes a role taker instance to the role
-constructor.
 
 ### Fixed-Name Discovery of the Role Taker
 
