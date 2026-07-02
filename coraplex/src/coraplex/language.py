@@ -45,7 +45,10 @@ class LanguageNode(PlanNode, ABC):
     way.
     """
 
-    msc_template: Type[Goal] = field(kw_only=True, default=Sequence)
+    motion_state_chart_template: Type[Goal] = field(kw_only=True, default=Sequence)
+    """
+    Giskard template which this language expression translates to
+    """
 
     def simplify(self):
         for child in self.children:
@@ -106,8 +109,6 @@ class ExecutesSequentially(LanguageNode):
     Base class for nodes that execute their children sequentially.
     """
 
-    ...
-
 
 @dataclass
 class ExecutesInParallel(LanguageNode, ABC):
@@ -140,7 +141,7 @@ class SequentialNode(ExecutesSequentially):
     Executes all children sequentially. Any failure is immediately raised.
     """
 
-    msc_template = Sequence
+    motion_state_chart_template = Sequence
 
 
 @dataclass
@@ -150,7 +151,7 @@ class ParallelNode(ExecutesInParallel):
     All exceptions are raised after all children have finished.
     """
 
-    msc_template = Parallel
+    motion_state_chart_template = Parallel
 
     def notify(self):
         self._perform_parallel(self.children)
@@ -244,7 +245,7 @@ class TryInOrderNode(ExecutesSequentially):
     Tries all children in order sequentially and fails if all children fail.
     """
 
-    msc_template = TryInOrder
+    motion_state_chart_template = TryInOrder
 
     def notify(self):
         for child in self.children:
@@ -264,7 +265,7 @@ class TryAllNode(ExecutesInParallel):
     Only raise a failure if all children fail.
     """
 
-    msc_template = TryAll
+    motion_state_chart_template = TryAll
 
     def notify(self):
         self._perform_parallel(self.children)

@@ -104,7 +104,7 @@ class ThreadedPredicateMonitor(MotionStatechartNode):
       observation becomes ``FALSE``.
 
     The predicate is a plain ``Callable[[], bool]`` so this class has no
-    dependency on whatever produces it (e.g. a PyCRAM/EQL condition is wrapped in
+    dependency on whatever produces it (e.g. a Coraplex/EQL condition is wrapped in
     a lambda by the caller).
 
     .. warning:: The predicate is not serializable, so this monitor only works in
@@ -116,9 +116,6 @@ class ThreadedPredicateMonitor(MotionStatechartNode):
     """The predicate to evaluate, passed as a constructor argument."""
 
     _thread: Optional[threading.Thread] = field(default=None, init=False, repr=False)
-    _lock: threading.Lock = field(
-        default_factory=threading.Lock, init=False, repr=False
-    )
     _result: Optional[bool] = field(default=None, init=False, repr=False)
     _done: bool = field(default=False, init=False, repr=False)
     _error: Optional[BaseException] = field(default=None, init=False, repr=False)
@@ -135,10 +132,9 @@ class ThreadedPredicateMonitor(MotionStatechartNode):
             result = bool(predicate())
         except BaseException as e:  # noqa: BLE001 - reported via observation/logging
             error = e
-        with self._lock:
-            self._result = result
-            self._error = error
-            self._done = True
+        self._result = result
+        self._error = error
+        self._done = True
 
     def on_start(self, context: MotionStatechartContext) -> None:
         """
@@ -150,10 +146,9 @@ class ThreadedPredicateMonitor(MotionStatechartNode):
                 self.unique_name,
             )
             return
-        with self._lock:
-            self._result = None
-            self._error = None
-            self._done = False
+        self._result = None
+        self._error = None
+        self._done = False
         self._thread = threading.Thread(
             target=self._worker,
             args=(self.predicate,),
@@ -170,26 +165,27 @@ class ThreadedPredicateMonitor(MotionStatechartNode):
         to ObservationStateValues.UNKNOWN if the thread is still working ObservationStateValues.TRUE if the Thread finished
         with true and ObservationStateValues.FALSE if the Thread finished with false or crashed with an exception.
         """
-        with self._lock:
-            if not self._done:
-                return ObservationStateValues.UNKNOWN
-            error = self._error
-            result = self._result
-        if error is not None:
+        if not self._done:
+            return ObservationStateValues.UNKNOWN
+        if self._error is not None:
             logger.warning(
                 "%s predicate raised %s; reporting FALSE.",
                 self.unique_name,
-                error,
+                self._error,
             )
-            return ObservationStateValues.FALSE
-        return ObservationStateValues.TRUE if result else ObservationStateValues.FALSE
+            raise self._error
+            # return ObservationStateValues.FALSE
+        return (
+            ObservationStateValues.TRUE
+            if self._result
+            else ObservationStateValues.FALSE
+        )
 
     def on_reset(self, context: MotionStatechartContext) -> None:
         self._join_thread()
-        with self._lock:
-            self._result = None
-            self._error = None
-            self._done = False
+        self._result = None
+        self._error = None
+        self._done = False
 
     def cleanup(self, context: MotionStatechartContext) -> None:
         self._join_thread()

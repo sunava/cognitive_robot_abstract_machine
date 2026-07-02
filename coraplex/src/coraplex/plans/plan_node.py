@@ -392,7 +392,7 @@ class UnderspecifiedNode(PlanNode):
     Only available after the first call to notify.
     """
 
-    _current_candidate: Optional[ActionNode] = field(
+    current_candidate: Optional[ActionNode] = field(
         default=None, init=False, repr=False
     )
     """
@@ -403,14 +403,6 @@ class UnderspecifiedNode(PlanNode):
     @property
     def designator_type(self) -> Type:
         return self.underspecified_action.type
-
-    @property
-    def current_candidate(self) -> Optional[ActionNode]:
-        """
-        :return: The action candidate this node currently resolves to, or None if it
-            has not been grounded yet.
-        """
-        return self._current_candidate
 
     def _next_candidate(self) -> Optional[ActionNode]:
         """
@@ -430,7 +422,7 @@ class UnderspecifiedNode(PlanNode):
 
         candidate = ActionNode(designator=grounded_action)
         self.add_child(candidate)
-        self._current_candidate = candidate
+        self.current_candidate = candidate
         return candidate
 
     def notify(self):
@@ -451,7 +443,7 @@ class UnderspecifiedNode(PlanNode):
         """
         if self._next_candidate() is None:
             return False
-        self._current_candidate.notify()
+        self.current_candidate.notify()
         return True
 
     def parse(self) -> Executable:
@@ -613,6 +605,9 @@ class MotionNode(DesignatorNode):
     """
 
     designator: BaseMotion = field(kw_only=True)
+    """
+    Reference to the motion designator which is linked to this node.    
+    """
 
     @property
     def motion(self) -> BaseMotion:

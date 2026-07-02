@@ -16,6 +16,8 @@ from dataclasses import dataclass
 import networkx as nx
 from rustworkx import PyDiGraph
 
+from coraplex.datastructures.enums import VisualizationLayout
+
 if TYPE_CHECKING:
     from bokeh.document import Document
     from bokeh.models import GraphRenderer
@@ -56,7 +58,7 @@ class GraphVisualizer:
     Optional attribute names to display; ``None`` shows all parameters.
     """
 
-    layout: str = "bfs"
+    layout: VisualizationLayout = VisualizationLayout.BFS
     """
     Layout algorithm to use: "spring", "kamada_kawai", or "bfs".
     """
@@ -99,7 +101,7 @@ class GraphVisualizer:
         from bokeh.plotting import figure, from_networkx
 
         nx_graph = self._build_current_nx_graph()
-        positions = calculate_layout_positions(self.layout, nx_graph, self.start)
+        positions = calculate_layout_positions(self.layout.value, nx_graph, self.start)
 
         plot = figure(
             title=self.title,
@@ -245,7 +247,7 @@ def plot_rustworkx_interactive(
     node_params: Optional[Dict[int, Dict[str, Any]]] = None,
     node_label: Optional[Callable[[int, Any], str]] = None,
     attributes: Optional[Sequence[str]] = None,
-    layout: str = "bfs",
+    layout: VisualizationLayout = VisualizationLayout.BFS,
     start: Optional[int] = None,
     title: str = "Rustworkx Graph",
     width: int = 1200,

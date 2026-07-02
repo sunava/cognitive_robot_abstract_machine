@@ -1,7 +1,19 @@
 """Module holding all enums of CoraPlex."""
 
 from enum import Enum, auto, IntEnum
+from functools import cached_property
 
+
+class VisualizationLayout(Enum):
+    BFS = "bfs"
+    """
+    Breath first search layout, used for tree structures.
+    """
+
+    SPRING = "spring"
+    """
+    Spring layout, root is in the center and nodes are ordered in circles around it 
+    """
 
 class AdjacentBodyMethod(Enum):
     ClosestPoints = auto()
@@ -89,7 +101,7 @@ class TaskStatus(int, Enum):
     INTERRUPTED = 4
     PAUSE = 5
 
-    @property
+    @cached_property
     def color(self) -> str:
         """
         :return: The color used to render this status in visualizations.

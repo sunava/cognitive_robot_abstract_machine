@@ -3,10 +3,20 @@ import time
 
 import pytest
 
+from coraplex.datastructures.dataclasses import Context
+from coraplex.datastructures.enums import (
+    ApproachDirection,
+    VerticalAlignment,
+    Arms,
+)
 from coraplex.datastructures.grasp import GraspDescription
-from coraplex.plans.executables import GiskardExecutable
-from coraplex.plans.failures import EmptyUnderspecified
+from coraplex.execution_environment import simulated_robot
+from coraplex.language import CodeNode
+from coraplex.orm.ormatic_interface import *  # type: ignore
 from coraplex.plans.condition_nodes import ConditionNode
+from coraplex.plans.executables import GiskardExecutable
+from coraplex.plans.factories import code, sequential, parallel, execute_single
+from coraplex.plans.failures import EmptyUnderspecified
 from coraplex.plans.plan import Plan
 from coraplex.plans.plan_node import PlanNode, ActionNode
 from coraplex.robot_plans.actions.core.navigation import NavigateAction
@@ -20,24 +30,9 @@ from krrood.entity_query_language.factories import (
     variable,
 )
 from krrood.parametrization.model_registries import (
-    DictRegistry,
     FullyFactorizedRegistry,
 )
 from krrood.parametrization.parameterizer import UnderspecifiedParameters
-from probabilistic_model.probabilistic_circuit.rx.helper import fully_factorized
-from coraplex.datastructures.dataclasses import Context
-from coraplex.datastructures.enums import (
-    TaskStatus,
-    ApproachDirection,
-    VerticalAlignment,
-    Arms,
-)
-from coraplex.exceptions import MotionDidNotFinish
-from coraplex.language import CodeNode
-from coraplex.execution_environment import simulated_robot
-from coraplex.orm.ormatic_interface import *  # type: ignore
-from coraplex.plans.factories import code, sequential, parallel, execute_single
-
 from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.orm.model import (

@@ -87,6 +87,11 @@ class Executable:
 
 @dataclass
 class GiskardExecutable(Executable):
+    """
+    Executable for everything that can be added to a Motion state chart, this includes the motions, pre -and postconditions
+    and the pause and interrupt calls.
+    """
+
     motion_mappings: Dict[MotionNode, Task] = field(kw_only=True)
     """
     Mapping from the motion nodes of the plan to their giskard tasks, in execution order.
@@ -120,6 +125,9 @@ class GiskardExecutable(Executable):
     """
 
     _current_motion_state_chart: MotionStatechart = field(init=False, default=None)
+    """
+    Currently build motion state chart, internal only for managing the building the msc
+    """
 
     @property
     def motion_state_chart(self) -> MotionStatechart:

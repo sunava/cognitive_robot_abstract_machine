@@ -3923,7 +3923,7 @@ class LanguageNodeDAO(PlanNodeDAO, DataAccessObject[coraplex.language.LanguageNo
         ForeignKey(PlanNodeDAO.database_id), primary_key=True, use_existing_column=True
     )
 
-    msc_template: Mapped[TypeType] = mapped_column(
+    motion_state_chart_template: Mapped[TypeType] = mapped_column(
         TypeType, nullable=False, use_existing_column=True
     )
 
@@ -6040,9 +6040,6 @@ class GraphVisualizerDAO(
         Integer, primary_key=True, use_existing_column=True
     )
 
-    layout: Mapped[builtins.str] = mapped_column(
-        sqlalchemy.sql.sqltypes.Text, use_existing_column=True
-    )
     start: Mapped[typing.Optional[builtins.int]] = mapped_column(
         use_existing_column=True
     )
@@ -6055,6 +6052,11 @@ class GraphVisualizerDAO(
 
     attributes: Mapped[typing.List[builtins.str]] = mapped_column(
         JSON, nullable=False, use_existing_column=True
+    )
+    layout: Mapped[coraplex.datastructures.enums.VisualizationLayout] = mapped_column(
+        krrood.ormatic.custom_types.PolymorphicEnumType,
+        nullable=False,
+        use_existing_column=True,
     )
 
 
