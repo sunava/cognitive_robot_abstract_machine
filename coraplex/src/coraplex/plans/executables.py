@@ -136,7 +136,7 @@ class GiskardExecutable(Executable):
           the motion if either condition is observed to be false.
         """
         self._current_motion_state_chart = MotionStatechart()
-        if self.execution_type.REAL:
+        if self.execution_type == ExecutionType.REAL:
             self._current_motion_state_chart.add_node(
                 seq := Sequence(list(self.motion_mappings.values()))
             )
