@@ -45,8 +45,8 @@ def _compile_and_tick(goal: MotionStatechartNode, ticks: int = SETTLE_TICKS) -> 
 
 def test_language_nodes_use_templates():
     """The parallel/sequential try-nodes point at the matching statechart templates."""
-    assert TryAllNode.msc_template is TryAll
-    assert TryInOrderNode.msc_template is TryInOrder
+    assert TryAllNode.motion_state_chart_template is TryAll
+    assert TryInOrderNode.motion_state_chart_template is TryInOrder
 
 
 # --------------------------------------------------------------------------- #

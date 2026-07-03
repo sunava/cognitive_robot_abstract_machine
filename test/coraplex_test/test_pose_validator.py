@@ -1,17 +1,24 @@
 import numpy as np
+import pytest
 
-from krrood.entity_query_language.factories import and_
+from coraplex.alternative_motion_mapping import AlternativeMotion
+from coraplex.datastructures.dataclasses import Context
 from coraplex.datastructures.enums import (
     Arms,
     ApproachDirection,
     VerticalAlignment,
 )
+from coraplex.datastructures.enums import ExecutionType
 from coraplex.datastructures.grasp import GraspDescription
+from coraplex.exceptions import TipLinkDoesNotMatchAnyArm
+from coraplex.execution_environment import simulated_robot
 from coraplex.locations.pose_validator import (
     IsReachableBy,
     AreReachableBy,
     IsObjectReachableBy,
 )
+from coraplex.robot_plans import MoveToolCenterPointMotion
+from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.spatial_types.spatial_types import Pose, Point3
 
@@ -22,8 +29,11 @@ def test_pose_reachable(immutable_model_world):
     pose = Pose(Point3.from_iterable([1.7, 1.4, 1]), reference_frame=world.root)
 
     assert IsReachableBy(
-        world=world,
-        robot=robot_view,
+        context=Context(
+            world=world,
+            robot=robot_view,
+            alternative_motion_mappings=context.alternative_motion_mappings,
+        ),
         pose=pose,
         tip_link=world.get_body_by_name("r_gripper_tool_frame"),
     )
@@ -35,8 +45,11 @@ def test_pose_not_reachable(immutable_model_world):
     pose = Pose(Point3.from_iterable([2.3, 2, 1]), reference_frame=world.root)
 
     assert not IsReachableBy(
-        world=world,
-        robot=robot_view,
+        context=Context(
+            world=world,
+            robot=robot_view,
+            alternative_motion_mappings=context.alternative_motion_mappings,
+        ),
         pose=pose,
         tip_link=world.get_body_by_name("r_gripper_tool_frame"),
     )
@@ -50,8 +63,11 @@ def test_pose_sequence_reachable(immutable_model_world):
     pose3 = Pose(Point3.from_iterable([1.7, 1.4, 1.1]), reference_frame=world.root)
 
     assert AreReachableBy(
-        world=world,
-        robot=robot_view,
+        context=Context(
+            world=world,
+            robot=robot_view,
+            alternative_motion_mappings=context.alternative_motion_mappings,
+        ),
         pose_sequence=[pose1, pose2, pose3],
         tip_link=world.get_body_by_name("r_gripper_tool_frame"),
     )
@@ -65,11 +81,39 @@ def test_pose_sequence_not_reachable(immutable_model_world):
     pose3 = Pose(Point3.from_iterable([2.7, 1.4, 1.1]), reference_frame=world.root)
 
     assert not AreReachableBy(
-        world=world,
-        robot=robot_view,
+        context=Context(
+            world=world,
+            robot=robot_view,
+            alternative_motion_mappings=context.alternative_motion_mappings,
+        ),
         pose_sequence=[pose1, pose2, pose3],
         tip_link=world.get_body_by_name("r_gripper_tool_frame"),
     )
+
+
+class _MoveTcpAlternativeForPr2(MoveToolCenterPointMotion, AlternativeMotion[PR2]):
+    """Minimal alternative used to exercise the unmatched-tip-link guard."""
+
+    execution_type = ExecutionType.SIMULATED
+
+
+def test_unmatched_tip_link_raises(immutable_model_world):
+    world, robot_view, context = immutable_model_world
+
+    pose = Pose(Point3.from_iterable([1.7, 1.4, 1]), reference_frame=world.root)
+
+    validator = AreReachableBy(
+        context=Context(
+            world=world,
+            robot=robot_view,
+            alternative_motion_mappings=[_MoveTcpAlternativeForPr2],
+        ),
+        pose_sequence=[pose],
+        tip_link=robot_view.root,
+    )
+
+    with simulated_robot, pytest.raises(TipLinkDoesNotMatchAnyArm):
+        validator.create_msc()
 
 
 def test_pose_sequence_one_not_reachable(immutable_model_world):
@@ -80,15 +124,21 @@ def test_pose_sequence_one_not_reachable(immutable_model_world):
     pose3 = Pose(Point3.from_iterable([2.7, 2.4, 1.5]), reference_frame=world.root)
 
     assert not IsReachableBy(
-        world=world,
-        robot=robot_view,
+        context=Context(
+            world=world,
+            robot=robot_view,
+            alternative_motion_mappings=context.alternative_motion_mappings,
+        ),
         pose=pose3,
         tip_link=world.get_body_by_name("r_gripper_tool_frame"),
     )
 
     assert not AreReachableBy(
-        world=world,
-        robot=robot_view,
+        context=Context(
+            world=world,
+            robot=robot_view,
+            alternative_motion_mappings=context.alternative_motion_mappings,
+        ),
         pose_sequence=[pose1, pose2, pose3],
         tip_link=world.get_body_by_name("r_gripper_tool_frame"),
     )
@@ -124,8 +174,10 @@ def test_is_object_reachable_by_copies_current_world_lazily(
     monkeypatch.setattr(AreReachableBy, "__call__", fake_call)
 
     predicate = IsObjectReachableBy(
-        robot=view,
-        world=world,
+        context=Context(
+            robot=view,
+            world=world,
+        ),
         arm=Arms.RIGHT,
         object_designator=milk,
         grasp_description=_right_front_grasp(view),
@@ -168,8 +220,10 @@ def test_is_object_reachable_by_uses_target_pose_sequence(
     )
 
     assert IsObjectReachableBy(
-        robot=view,
-        world=world,
+        context=Context(
+            robot=view,
+            world=world,
+        ),
         arm=Arms.RIGHT,
         object_designator=milk,
         grasp_description=_right_front_grasp(view),
@@ -202,8 +256,10 @@ def test_is_object_reachable_by_single_grasp_delegates_to_is_reachable_by(
     )
 
     assert IsObjectReachableBy(
-        robot=view,
-        world=world,
+        context=Context(
+            robot=view,
+            world=world,
+        ),
         arm=Arms.RIGHT,
         object_designator=milk,
         as_single_grasp=True,
@@ -227,8 +283,10 @@ def test_is_object_reachable_by_reachable(immutable_model_world):
     )
 
     assert IsObjectReachableBy(
-        robot=view,
-        world=world,
+        context=Context(
+            robot=view,
+            world=world,
+        ),
         arm=Arms.RIGHT,
         object_designator=milk,
         grasp_description=_right_front_grasp(view),
@@ -244,8 +302,10 @@ def test_is_object_reachable_by_not_reachable(immutable_model_world):
     )
 
     assert not IsObjectReachableBy(
-        robot=view,
-        world=world,
+        context=Context(
+            robot=view,
+            world=world,
+        ),
         arm=Arms.RIGHT,
         object_designator=milk,
         grasp_description=_right_front_grasp(view),

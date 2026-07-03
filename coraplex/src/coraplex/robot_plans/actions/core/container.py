@@ -90,8 +90,11 @@ class OpenAction(ActionDescription):
         return and_(
             GripperIsFree(end_effector),
             IsObjectReachableBy(
-                robot=context.robot,
-                world=context.world,
+                context=Context(
+                    robot=context.robot,
+                    world=context.world,
+                    alternative_motion_mappings=context.alternative_motion_mappings,
+                ),
                 arm=kwargs["arm"],
                 object_designator=kwargs["object_designator"],
                 as_single_grasp=True,

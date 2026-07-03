@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -16,6 +18,7 @@ from coraplex.alternative_motion_mapping import AlternativeMotion
 from coraplex.datastructures.dataclasses import Context
 from coraplex.datastructures.enums import Arms, ApproachDirection, VerticalAlignment
 from coraplex.datastructures.grasp import GraspDescription
+from coraplex.exceptions import TipLinkDoesNotMatchAnyArm
 from coraplex.locations.base import PoseValidator
 from coraplex.plans.plan import Plan
 from coraplex.plans.plan_node import PlanNode
@@ -137,8 +140,7 @@ class IsReachableBy(PoseValidator):
         return AreReachableBy(
             pose_sequence=[self.pose],
             tip_link=self.tip_link,
-            robot=self.robot,
-            world=self.world,
+            context=self.context,
             grasp_description=self.grasp_description,
         ).__call__()
 
@@ -171,7 +173,7 @@ class AreReachableBy(PoseValidator):
         if there are alternative motion mappings for moving the end effector to the given pose.
         """
         alternative_motion = AlternativeMotion.check_for_alternative(
-            self.robot, MoveToolCenterPointMotion
+            self.alternative_motion_mappings, self.robot, MoveToolCenterPointMotion
         )
         if alternative_motion:
             correct_arm = None
@@ -181,6 +183,8 @@ class AreReachableBy(PoseValidator):
                     == ViewManager.get_end_effector_view(arm, self.robot).tool_frame
                 ):
                     correct_arm = arm
+            if correct_arm is None:
+                raise TipLinkDoesNotMatchAnyArm(self.tip_link, self.robot)
             sequence = []
             for pose in self.pose_sequence:
 
@@ -194,7 +198,13 @@ class AreReachableBy(PoseValidator):
                 )
                 node = MotionNode(designator=motion)
                 # Imagine a plan for the motion node
-                plan = Plan(Context(self.world, self.robot))
+                plan = Plan(
+                    Context(
+                        self.world,
+                        self.robot,
+                        alternative_motion_mappings=self.alternative_motion_mappings,
+                    )
+                )
                 plan.add_node(node)
                 motion.plan_node = node
                 sequence.append(motion._motion_chart)
@@ -250,7 +260,9 @@ class AreReachableBy(PoseValidator):
             executor.compile(msc)
 
             try:
-                executor.tick_until_end()
+                # TimeoutError from tick_until_end is an expected outcome (planner
+                # cannot find a path), not an illegal state — no non-raising API exists.
+                executor.tick_until_end(timeout=1500)
             except TimeoutError:
                 logger.debug(
                     f"Timeout while executing pose sequence: {self.pose_sequence}"
@@ -312,8 +324,11 @@ class IsObjectReachableBy(PoseValidator):
 
         if self.as_single_grasp:
             return IsReachableBy(
-                world=world,
-                robot=robot,
+                context=Context(
+                    world=world,
+                    robot=robot,
+                    alternative_motion_mappings=self.alternative_motion_mappings,
+                ),
                 pose=self.object_designator.global_pose,
                 tip_link=end_effector.tool_frame,
                 grasp_description=GraspDescription(
@@ -333,8 +348,11 @@ class IsObjectReachableBy(PoseValidator):
             )
 
         return AreReachableBy(
-            world=world,
-            robot=robot,
+            context=Context(
+                world=world,
+                robot=robot,
+                alternative_motion_mappings=self.alternative_motion_mappings,
+            ),
             pose_sequence=pose_sequence,
             tip_link=end_effector.tool_frame,
         ).__call__()
