@@ -52,7 +52,6 @@ from krrood.entity_query_language.predicate import *  # type: ignore
 from krrood.entity_query_language.predicate import symbolic_function
 from krrood.entity_query_language.query.match import (
     Match,
-    MatchVariable,
 )
 from krrood.entity_query_language.query.quantifiers import (
     ResultQuantificationConstraint,
@@ -296,9 +295,8 @@ def _quantify_or_build_match(
     quantifier_type: Type[ResultQuantifier],
     quantification: Optional[ResultQuantificationConstraint] = None,
     *,
-    domain: Optional[DomainType] = None,
     target_type: Optional[Type[T]] = None,
-) -> Union[T, Query, Match[T], MatchVariable[T]]:
+) -> Union[T, Query, Match[T]]:
     """
     Shared implementation for :py:func:`an` and :py:func:`the`.
 
@@ -310,26 +308,23 @@ def _quantify_or_build_match(
       :class:`~krrood.entity_query_language.query.query.Query` are first wrapped with
       :py:func:`entity`.
     * Otherwise ``arg`` is treated as a type (or a callable factory) and a structural
-      :class:`~krrood.entity_query_language.query.match.Match` is built. If ``domain`` is
-      provided, a :class:`~krrood.entity_query_language.query.match.MatchVariable` bound to
-      that domain is built instead.
+      :class:`~krrood.entity_query_language.query.match.Match` is built — selectable by default
+      and generative-ready through a
+      :class:`~krrood.entity_query_language.backends.GenerativeBackend`. Restrict the search to
+      specific instances with :meth:`~krrood.entity_query_language.query.match.Match.from_`.
 
     :param arg: An entity/set/variable/attribute to quantify, or a type/callable to match.
     :param quantifier_type: The result quantifier to apply (``An`` or ``The``).
     :param quantification: Optional quantification constraint (quantify path only).
-    :param domain: Optional domain that turns the match into a ``MatchVariable``.
     :param target_type: Optional explicit type for callable factories (match path only).
-    :return: A quantified query, or a ``Match``/``MatchVariable`` builder.
+    :return: A quantified query, or a ``Match`` builder.
     """
     if isinstance(arg, SymbolicExpression):
         if not isinstance(arg, Query):
             arg = entity(arg)
         return arg._quantify_(quantifier_type, quantification_constraint=quantification)
 
-    if domain is not None:
-        match_ = MatchVariable(factory=arg, type_=target_type, domain=domain)
-    else:
-        match_ = Match(factory=arg, type_=target_type)
+    match_ = Match(factory=arg, type_=target_type)
     match_._quantifier_type_ = quantifier_type
     return match_
 
@@ -339,17 +334,6 @@ def an(
     entity_: Type[T],
     quantification: None = ...,
     *,
-    domain: DomainType,
-    target_type: None = ...,
-) -> MatchVariable[T]: ...
-
-
-@overload
-def an(
-    entity_: Type[T],
-    quantification: None = ...,
-    *,
-    domain: None = ...,
     target_type: None = ...,
 ) -> Match[T]: ...
 
@@ -359,7 +343,6 @@ def an(
     entity_: Callable[..., T],
     quantification: None = ...,
     *,
-    domain: None = ...,
     target_type: Type[T],
 ) -> Match[T]: ...
 
@@ -369,7 +352,6 @@ def an(
     entity_: T,
     quantification: Optional[ResultQuantificationConstraint] = ...,
     *,
-    domain: None = ...,
     target_type: None = ...,
 ) -> T: ...
 
@@ -378,7 +360,6 @@ def an(
     entity_,
     quantification=None,
     *,
-    domain=None,
     target_type=None,
 ):
     """
@@ -386,16 +367,17 @@ def an(
 
     Depending on ``entity_`` this either quantifies an existing symbolic expression with the
     ``An`` quantifier (zero or more results), or builds a structural ``Match`` when ``entity_``
-    is a type or a callable factory. See :py:func:`_quantify_or_build_match` for details.
+    is a type or a callable factory. See :py:func:`_quantify_or_build_match` for details;
+    restrict a match to specific instances with
+    :meth:`~krrood.entity_query_language.query.match.Match.from_`.
 
     :param entity_: An entity/set/variable/attribute to quantify, or a type/callable to match.
     :param quantification: Optional quantification constraint (quantify path only).
-    :param domain: Optional domain that turns a type into a ``MatchVariable``.
     :param target_type: Optional explicit type for callable factories (match path only).
     :return: The applied quantifier or the constructed match.
     """
     return _quantify_or_build_match(
-        entity_, An, quantification, domain=domain, target_type=target_type
+        entity_, An, quantification, target_type=target_type
     )
 
 
@@ -409,16 +391,6 @@ This is an alias to accommodate for words not starting with vowels.
 def the(
     entity_: Type[T],
     *,
-    domain: DomainType,
-    target_type: None = ...,
-) -> MatchVariable[T]: ...
-
-
-@overload
-def the(
-    entity_: Type[T],
-    *,
-    domain: None = ...,
     target_type: None = ...,
 ) -> Match[T]: ...
 
@@ -427,7 +399,6 @@ def the(
 def the(
     entity_: Callable[..., T],
     *,
-    domain: None = ...,
     target_type: Type[T],
 ) -> Match[T]: ...
 
@@ -436,7 +407,6 @@ def the(
 def the(
     entity_: T,
     *,
-    domain: None = ...,
     target_type: None = ...,
 ) -> T: ...
 
@@ -444,22 +414,21 @@ def the(
 def the(
     entity_,
     *,
-    domain=None,
     target_type=None,
 ):
     """
     Select the unique value satisfying the given description.
 
     Behaves like :py:func:`an` but applies the ``The`` quantifier, which expects exactly one
-    result when the expression is materialized (raising otherwise).
+    result when the expression is materialized (raising otherwise). Restrict a match to
+    specific instances with :meth:`~krrood.entity_query_language.query.match.Match.from_`.
 
     :param entity_: An entity/set/variable/attribute to quantify, or a type/callable to match.
-    :param domain: Optional domain that turns a type into a ``MatchVariable``.
     :param target_type: Optional explicit type for callable factories (match path only).
     :return: The applied quantifier or the constructed match.
     """
     return _quantify_or_build_match(
-        entity_, The, None, domain=domain, target_type=target_type
+        entity_, The, None, target_type=target_type
     )
 
 
