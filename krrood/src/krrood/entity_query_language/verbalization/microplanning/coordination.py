@@ -134,7 +134,7 @@ class SharedSubjectComparisons:
 class SharedSubjectConjunction:
     """The conjunctive analogue of :class:`SharedSubjectComparisons`: two or more value comparisons
     on the *same bare variable*, said once as one shared-subject main clause — *"an Integer is
-    between 1 and 10 and is not 5"* — rather than repeating the subject per conjunct.
+    between 1 and 10 and not 5"* — rather than repeating the subject per conjunct.
 
     Scoped to a *bare variable* subject (not an attribute chain), so the shared subject and copula
     lead a single clause; an attribute-chain conjunction (*"the battery of a Robot"*) names a
@@ -146,7 +146,7 @@ class SharedSubjectConjunction:
 
     tails: List[Union[Comparator, RangeFold]]
     """The predicate tails in source order — a value :class:`Comparator` (its operator-and-value
-    tail, *"is not 5"*) or a folded :class:`RangeFold` (a *"between low and high"* tail), so a
+    tail, *"not 5"*) or a folded :class:`RangeFold` (a *"between low and high"* tail), so a
     complementary bound pair reads *"between 1 and 10"* within the clause."""
 
 

@@ -104,7 +104,7 @@ class AndRule(PhraseRule):
     'the battery of a Robot is between 10 and 90'
     >>> x = variable(int, [])
     >>> verbalize_expression(and_(x > 1, x < 10, x != 5))
-    'an Integer is between 1 and 10 and is not 5'
+    'an Integer is between 1 and 10 and not 5'
     """
 
     construct = AND
@@ -304,7 +304,7 @@ class SharedSubjectConjunctionRule(PhraseRule):
 
     >>> x = variable(int, [])
     >>> verbalize_expression(and_(x > 1, x < 10, x != 5))
-    'an Integer is between 1 and 10 and is not 5'
+    'an Integer is between 1 and 10 and not 5'
     """
 
     construct = SharedSubjectConjunction
@@ -317,7 +317,7 @@ class SharedSubjectConjunctionRule(PhraseRule):
 
         >>> x = variable(int, [])
         >>> verbalize_expression(and_(x > 5, x != 5))
-        'an Integer is greater than 5 and is not 5'
+        'an Integer is greater than 5 and not 5'
         """
         tails = [
             self._tail(tail, context, lead=index == 0)
@@ -335,8 +335,9 @@ class SharedSubjectConjunctionRule(PhraseRule):
         """:return: one relative-clause tail. A folded :class:`RangeFold` reads *"between low and
         high"* (with the lead copula when it leads); a :class:`Comparator` reads its
         operator-and-value tail. The lead tail carries the clause's copula (*"is greater than 1"*); a
-        negation re-introduces it (*"is not 5"*); a bare equality has an empty core, so it too keeps
-        the copula (*"is 5"*); every other positive tail shares the lead copula and drops it
+        negation drops the shared copula but keeps its *"not"* (*"not 5"*, giving *"is between 1 and
+        10 and not 5"*); a bare equality has an empty core, so it keeps the copula (*"is 5"*) to stay
+        unambiguous; every other positive tail shares the lead copula and drops it
         (*"less than 10"*)."""
         if isinstance(tail, RangeFold):
             return between_phrase(
@@ -346,17 +347,30 @@ class SharedSubjectConjunctionRule(PhraseRule):
             )
         value = context.child(tail.right, as_value=True)
         core = comparator_operator(tail, context.services, compact=False, copula=False)
-        keeps_copula = (
-            lead
-            or tail.operation is operator.ne
-            or not flatten_fragment_to_plain_text(core).strip()
-        )
+        if not lead and tail.operation is operator.ne:
+            return cls._negated_tail(core, value)
+        keeps_copula = lead or not flatten_fragment_to_plain_text(core).strip()
         if keeps_copula:
             copular = comparator_operator(
                 tail, context.services, compact=False, copula=True
             )
             return PhraseFragment(parts=[copular, value])
         return PhraseFragment(parts=[core, value])
+
+    @staticmethod
+    def _negated_tail(
+        core: VerbalizationFragment, value: VerbalizationFragment
+    ) -> VerbalizationFragment:
+        """:return: a non-lead ``!=`` tail as *"not <core> <value>"* — the negation word is kept while
+        the shared lead copula is dropped, so *"is not 5"* reduces to *"not 5"* and the temporal
+        *"is not at <date>"* to *"not at <date>"*. The *core* is the copula-less operator remainder,
+        empty for the plain inequality."""
+        core_is_empty = not flatten_fragment_to_plain_text(core).strip()
+        parts = [Logicals.NOT.as_fragment()]
+        if not core_is_empty:
+            parts.append(core)
+        parts.append(value)
+        return PhraseFragment(parts=parts)
 
 
 class OrRule(PhraseRule):

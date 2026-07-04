@@ -769,8 +769,8 @@ def test_verbalize_and_chain_flattening():
     cond = and_(x > 1, x < 10, x != 5)
     text = verbalize_expression(cond)
     # The flattened conjuncts on one bare variable factor into one shared-subject main clause; the
-    # complementary bound pair folds to "between".
-    assert text == "an Integer is between 1 and 10 and is not 5"
+    # complementary bound pair folds to "between", and the inequality tail shares the lead copula.
+    assert text == "an Integer is between 1 and 10 and not 5"
 
 
 def test_verbalize_and_stops_at_or():
