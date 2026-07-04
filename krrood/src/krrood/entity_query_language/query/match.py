@@ -241,6 +241,12 @@ class Match(Evaluable, AbstractMatchExpression[T], HasFactoryAndKwargs[T]):
     Defaults to ``An`` (zero or more results); set to ``The`` when built via ``the(...)``.
     """
 
+    domain: Optional[DomainType] = field(default=None, kw_only=True)
+    """
+    The instances the match ranges over. ``None`` constructs from scratch (an underspecified,
+    generative request); a domain makes it a search over those existing instances.
+    """
+
     def __post_init__(self):
         if self.type_ is None:
             self._initialize_type_()
@@ -392,7 +398,7 @@ class Match(Evaluable, AbstractMatchExpression[T], HasFactoryAndKwargs[T]):
     def create_variable(self):
         from krrood.entity_query_language.factories import variable
 
-        self.variable = variable(self.type, domain=None)
+        self.variable = variable(self.type, domain=self.domain)
 
     def _evaluate_natively_(self) -> Iterator:
         """
@@ -457,23 +463,13 @@ class Match(Evaluable, AbstractMatchExpression[T], HasFactoryAndKwargs[T]):
 @dataclass(eq=False)
 class MatchVariable(Match[T]):
     """
-    Represents a match variable that operates within a specified domain.
+    An explicit search over a domain that eagerly resolves to its runnable query.
 
-    A class designed to create and manage a variable constrained by a defined
-    domain. It provides functionality to add additional constraints via
-    keyword arguments and return an expression representing the resolved
-    constraints.
+    Unlike a plain :class:`Match` (which describes a pattern and is only materialized when
+    evaluated), calling a match variable returns the resolved :class:`Entity` directly and
+    requires at least one keyword argument. The ``domain`` field is inherited from
+    :class:`Match`.
     """
-
-    domain: Optional[DomainType] = field(default=None, kw_only=True)
-    """
-    The domain to use for the variable created by the match.
-    """
-
-    def create_variable(self):
-        from krrood.entity_query_language.factories import variable
-
-        self.variable = variable(self.type, domain=self.domain)
 
     def __call__(self, **kwargs) -> Union[Entity[T], T]:
         """
@@ -671,6 +667,10 @@ def construct_graph_and_get_root(
 def is_underspecified(instance: Any) -> bool:
     """
     :param instance: The instance to check.
-    :return: Rather, it's an underspecified statement or not.
+    :return: Whether ``instance`` is an underspecified statement — a match that constructs from
+        scratch (no domain), rather than a search over existing instances (a domain, or an
+        explicit :class:`MatchVariable`).
     """
-    return isinstance(instance, Match) and not isinstance(instance, MatchVariable)
+    if not isinstance(instance, Match) or isinstance(instance, MatchVariable):
+        return False
+    return instance.domain is None

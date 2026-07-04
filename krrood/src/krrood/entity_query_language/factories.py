@@ -298,7 +298,7 @@ def _quantify_or_build_match(
     *,
     domain: Optional[DomainType] = None,
     target_type: Optional[Type[T]] = None,
-) -> Union[T, Query, Match[T], MatchVariable[T]]:
+) -> Union[T, Query, Match[T]]:
     """
     Shared implementation for :py:func:`an` and :py:func:`the`.
 
@@ -310,26 +310,24 @@ def _quantify_or_build_match(
       :class:`~krrood.entity_query_language.query.query.Query` are first wrapped with
       :py:func:`entity`.
     * Otherwise ``arg`` is treated as a type (or a callable factory) and a structural
-      :class:`~krrood.entity_query_language.query.match.Match` is built. If ``domain`` is
-      provided, a :class:`~krrood.entity_query_language.query.match.MatchVariable` bound to
-      that domain is built instead.
+      :class:`~krrood.entity_query_language.query.match.Match` is built. A ``domain``, when
+      given, binds the match to those instances (a search); without one the match constructs
+      from scratch. Either way it is one ``Match``: selectable by default and generative-ready
+      through a :class:`~krrood.entity_query_language.backends.GenerativeBackend`.
 
     :param arg: An entity/set/variable/attribute to quantify, or a type/callable to match.
     :param quantifier_type: The result quantifier to apply (``An`` or ``The``).
     :param quantification: Optional quantification constraint (quantify path only).
-    :param domain: Optional domain that turns the match into a ``MatchVariable``.
+    :param domain: Optional instances the match ranges over (search path only).
     :param target_type: Optional explicit type for callable factories (match path only).
-    :return: A quantified query, or a ``Match``/``MatchVariable`` builder.
+    :return: A quantified query, or a ``Match`` builder.
     """
     if isinstance(arg, SymbolicExpression):
         if not isinstance(arg, Query):
             arg = entity(arg)
         return arg._quantify_(quantifier_type, quantification_constraint=quantification)
 
-    if domain is not None:
-        match_ = MatchVariable(factory=arg, type_=target_type, domain=domain)
-    else:
-        match_ = Match(factory=arg, type_=target_type)
+    match_ = Match(factory=arg, type_=target_type, domain=domain)
     match_._quantifier_type_ = quantifier_type
     return match_
 
@@ -341,7 +339,7 @@ def an(
     *,
     domain: DomainType,
     target_type: None = ...,
-) -> MatchVariable[T]: ...
+) -> Match[T]: ...
 
 
 @overload
@@ -390,7 +388,7 @@ def an(
 
     :param entity_: An entity/set/variable/attribute to quantify, or a type/callable to match.
     :param quantification: Optional quantification constraint (quantify path only).
-    :param domain: Optional domain that turns a type into a ``MatchVariable``.
+    :param domain: Optional instances the match ranges over (turns construction into a search).
     :param target_type: Optional explicit type for callable factories (match path only).
     :return: The applied quantifier or the constructed match.
     """
@@ -411,7 +409,7 @@ def the(
     *,
     domain: DomainType,
     target_type: None = ...,
-) -> MatchVariable[T]: ...
+) -> Match[T]: ...
 
 
 @overload
@@ -454,7 +452,7 @@ def the(
     result when the expression is materialized (raising otherwise).
 
     :param entity_: An entity/set/variable/attribute to quantify, or a type/callable to match.
-    :param domain: Optional domain that turns a type into a ``MatchVariable``.
+    :param domain: Optional instances the match ranges over (turns construction into a search).
     :param target_type: Optional explicit type for callable factories (match path only).
     :return: The applied quantifier or the constructed match.
     """

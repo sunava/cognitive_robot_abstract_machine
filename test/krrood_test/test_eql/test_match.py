@@ -10,8 +10,8 @@ from krrood.entity_query_language.factories import (
     an,
     a,
 )
-from krrood.entity_query_language.exceptions import NoKwargsInMatchVar
 from krrood.entity_query_language.predicate import HasType
+from krrood.entity_query_language.query.match import Match, is_underspecified
 from krrood.entity_query_language.core.base_expressions import UnificationDict
 from krrood.parametrization.random_events_translator import is_literal_comparator
 from ..dataset.example_classes import KRROODPositions, KRROODPosition
@@ -40,7 +40,7 @@ def test_match(handles_and_containers_world):
         parent=an(Container)(name="Container1"),
         child=an(Handle)(name="Handle1"),
     )
-    fixed_connection_query = the(fixed_connection)
+    fixed_connection_query = the(fixed_connection.expression)
 
     fc = variable(FixedConnection, domain=None)
     fixed_connection_query_manual = the(
@@ -70,7 +70,10 @@ def test_select(handles_and_containers_world):
         parent=an(Container)(name="Container1"), child=an(Handle)(name="Handle1")
     )
     container_and_handle = the(
-        set_of(container := fixed_connection.parent, handle := fixed_connection.child)
+        set_of(
+            container := fixed_connection.expression.parent,
+            handle := fixed_connection.expression.child,
+        )
     )
 
     # Method 2
@@ -107,7 +110,8 @@ def test_select_where(handles_and_containers_world):
     )
     container_and_handle = a(
         set_of(
-            container := fixed_connection.parent, handle := fixed_connection.child
+            container := fixed_connection.expression.parent,
+            handle := fixed_connection.expression.child,
         ).where(container.size > 1)
     )
     # Method 2
@@ -134,10 +138,41 @@ def test_select_where(handles_and_containers_world):
     assert answers[0][handle].name == "Handle3"
 
 
-def test_empty_conditions_match_var(handles_and_containers_world):
+def test_domain_match_is_a_match():
+    @dataclass(unsafe_hash=True)
+    class Robot:
+        name: str
+        battery: int
+
+    robots = [Robot("R2D2", 100), Robot("C3PO", 0)]
+    # a domain-carrying an(...) is one Match: selectable now, generative-ready via a backend,
+    # not an eagerly collapsed Entity.
+    match = an(Robot, domain=robots)(name="R2D2", battery=100)
+    assert isinstance(match, Match)
+    assert match.tolist()[0].name == "R2D2"
+
+
+def test_is_underspecified_tracks_construction_not_object_type():
+    @dataclass(unsafe_hash=True)
+    class Robot:
+        name: str
+        battery: int
+
+    robots = [Robot("R2D2", 100)]
+    # A query constructs from scratch (underspecified) only when it carries no domain;
+    # a domain makes it a search over existing instances.
+    assert is_underspecified(an(Robot)(name="R2D2")) is True
+    assert is_underspecified(an(Robot, domain=robots)(name="R2D2")) is False
+
+
+def test_domain_match_without_kwargs_selects_all(handles_and_containers_world):
     world = handles_and_containers_world
-    with pytest.raises(NoKwargsInMatchVar):
-        an(FixedConnection, domain=world.connections)()
+    # an(Type, domain=X) with no kwargs is a valid "any Type in X" match.
+    match = an(FixedConnection, domain=world.connections)()
+    assert isinstance(match, Match)
+    selected = match.tolist()
+    assert selected
+    assert all(isinstance(connection, FixedConnection) for connection in selected)
 
 
 def test_match_with_list():
