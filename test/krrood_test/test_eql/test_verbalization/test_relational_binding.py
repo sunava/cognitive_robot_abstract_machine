@@ -18,6 +18,10 @@ from krrood.entity_query_language.verbalization.grammar.conditions.scoping impor
     RelationalBindingFold,
     bind_relational_entities,
 )
+from krrood.entity_query_language.verbalization.example_domain import (
+    Mission as DomainMission,
+    Robot as DomainRobot,
+)
 from krrood.entity_query_language.verbalization.microplanning.coordination import (
     reduce_conjuncts,
 )
@@ -84,6 +88,32 @@ def test_agentive_binding_stays_passive():
     book, base = variable(Book, []), variable(Base, [])
     query = an(entity(book).where(book.owned_by == base))
     assert verbalize_expression(query) == "Find a Book that is owned by a Base"
+
+
+# ── reverse direction (relation on the other entity, pointing at the subject) ──
+
+
+def test_reverse_binding_nests_when_entity_has_restriction():
+    """Ichumuh's example: the relation sits on the other entity (``mission.assigned_to == robot``)
+    and that entity carries a restriction — it folds into one relative clause on the subject.
+    """
+    robot, mission = variable(DomainRobot, []), variable(DomainMission, [])
+    query = an(entity(robot).where(mission.assigned_to == robot, mission.priority > 2))
+    assert (
+        verbalize_expression(query)
+        == "Find a Robot that is assigned to a Mission with priority greater than 2"
+    )
+
+
+def test_bare_reverse_binding_keeps_referent_unification():
+    """A reverse binding with no restriction on the entity keeps its existing *"it is assigned to a
+    Mission"* rendering — only a restriction to nest triggers the fold."""
+    robot, mission = variable(DomainRobot, []), variable(DomainMission, [])
+    query = an(entity(robot).where(mission.assigned_to == robot))
+    assert (
+        verbalize_expression(query)
+        == "Find a Robot such that it is assigned to a Mission"
+    )
 
 
 # ── negative guards (unchanged behaviour) ─────────────────────────────────────

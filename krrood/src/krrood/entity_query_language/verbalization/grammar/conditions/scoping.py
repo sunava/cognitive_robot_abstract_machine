@@ -67,22 +67,37 @@ BoundConjunct = Union[FoldNode, RelationalBindingFold]
 def bind_relational_entities(
     items: ConjunctList, subject: Variable
 ) -> List[BoundConjunct]:
-    """:return: *items* with each ``subject.<relational_attr> == entity`` binding replaced by a
-    :class:`RelationalBindingFold` that also absorbs the entity's own (transitively reachable)
-    conjuncts; order preserved, everything else untouched. A no-op when no such binding is present.
+    """:return: *items* with each relational binding between *subject* and another entity replaced by
+    a :class:`RelationalBindingFold` that also absorbs that entity's own (transitively reachable)
+    conjuncts; order preserved, everything else untouched. A no-op when no such binding folds.
+
+    A binding is recognised in either direction: ``subject.<relational_attr> == entity`` (the relation
+    on the subject) and ``entity.<relational_attr> == subject`` (the relation on the other entity,
+    pointing back — the referent-unification shape). A *reverse* binding only folds when the entity
+    actually carries a restriction to nest; a bare one keeps its existing *"it is <participle> …"*
+    rendering.
     """
-    bindings = {
-        index: (binding[0], binding[2])
-        for index, item in enumerate(items)
-        if (binding := _relational_binding(item)) is not None
-        and binding[1]._id_ == subject._id_
-    }
-    if not bindings:
+    candidates: Dict[int, Tuple[Attribute, Variable, bool]] = {}
+    for index, item in enumerate(items):
+        binding = _relational_binding(item)
+        if binding is None:
+            continue
+        relation_hop, owner, other = binding
+        if owner._id_ == subject._id_:
+            candidates[index] = (relation_hop, other, False)
+        elif other._id_ == subject._id_:
+            candidates[index] = (relation_hop, owner, True)
+    if not candidates:
         return list(items)
-    claimed: Set[int] = set(bindings)
+    claimed: Set[int] = set(candidates)
     folds: Dict[int, RelationalBindingFold] = {}
-    for index, (relation_hop, entity) in bindings.items():
+    for index, (relation_hop, entity, is_reverse) in candidates.items():
         nested_indices = _subtree_indices(items, entity, subject, claimed)
+        if is_reverse and not nested_indices:
+            # A bare reverse binding reads fine as "it is assigned to a Mission" already; only fold it
+            # when there is a restriction to nest onto the entity noun.
+            claimed.discard(index)
+            continue
         claimed.update(nested_indices)
         folds[index] = RelationalBindingFold(
             relation_hop=relation_hop,
