@@ -94,18 +94,17 @@ class Comparator(BinaryExpression, PerformsCartesianProduct):
             left_value = make_set(left_value)
             right_value = make_set(right_value)
         res = self.operation(left_value, right_value)
-        is_false = not res
         bindings = copy(child_result.bindings)
         bindings[self._id_] = res
-        return OperationResult(bindings, is_false, self, child_result)
+        return OperationResult(bindings, False, self, child_result)
 
     def _optimize_operands_order_(
         self, sources: Optional[OperationResult]
     ) -> Tuple[SymbolicExpression, SymbolicExpression]:
         from krrood.entity_query_language.query.quantifiers import The
 
-        left_has_the = any(isinstance(desc, The) for desc in self.left._descendants_)
-        right_has_the = any(isinstance(desc, The) for desc in self.right._descendants_)
+        left_has_the = self.left._subtree_contains_(The)
+        right_has_the = self.right._subtree_contains_(The)
         if left_has_the and not right_has_the:
             return self.left, self.right
         elif not left_has_the and right_has_the:

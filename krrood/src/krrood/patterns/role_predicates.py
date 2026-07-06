@@ -2,19 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from typing_extensions import Any
+from typing_extensions import TYPE_CHECKING, Any
 
-from krrood.entity_query_language.predicate import Predicate, RenderedFields
-from krrood.entity_query_language.verbalization.fragments.base import (
-    VerbalizationFragment,
-)
-from krrood.entity_query_language.verbalization.vocabulary.english import Prepositions
-from krrood.entity_query_language.verbalization.vocabulary.parts_of_speech import (
-    clause,
-    Copula,
-    Noun,
-)
+from krrood.entity_query_language.predicate import Predicate
 from krrood.patterns.role import Role
+
+if TYPE_CHECKING:
+    from krrood.entity_query_language.predicate import RenderedFields
+    from krrood.entity_query_language.verbalization.fragments.base import (
+        VerbalizationFragment,
+    )
 
 
 @dataclass(eq=False)
@@ -51,11 +48,20 @@ class IsSameSemanticEntity(Predicate):
 
     @classmethod
     def _verbalization_fragment_(cls, fields: RenderedFields) -> VerbalizationFragment:
-        """:return: the clause *"<entity_1> is the same entity as <entity_2>"*."""
+        """
+        Assert identity between the two operands — *"<entity_1> is the same entity as <entity_2>"*.
+        """
+        # Imported locally to avoid the core → verbalization import cycle.
+        from krrood.entity_query_language.verbalization.vocabulary.parts_of_speech import (
+            Adjective,
+            clause,
+            Copula,
+            Noun,
+        )
+
         return clause(
             Noun(fields["entity_1"]),
             Copula(),
-            Noun("the same entity"),
-            Prepositions.AS,
+            Adjective("the same entity as"),
             Noun(fields["entity_2"]),
         )

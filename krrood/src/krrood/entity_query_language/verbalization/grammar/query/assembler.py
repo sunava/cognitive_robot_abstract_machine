@@ -50,9 +50,6 @@ from krrood.entity_query_language.verbalization.grammar.query.selection import (
     SelectionAssembler,
     subject_referent_id,
 )
-from krrood.entity_query_language.verbalization.microplanning.referring import (
-    referring_noun_with_restrictions,
-)
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Articles,
     Conjunctions,
@@ -755,13 +752,8 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
         )
         if rendered is None:
             return selected, []
-        post_noun: List[VerbalizationFragment] = list(rendered.inline_modifiers)
-        if rendered.relative_clauses:
-            post_noun.append(
-                oxford_comma(rendered.relative_clauses, Conjunctions.AND.as_fragment())
-            )
-        if post_noun:
-            selected = PhraseFragment(parts=[selected, *post_noun])
+        if rendered.inline_modifiers:
+            selected = PhraseFragment(parts=[selected, *rendered.inline_modifiers])
         residual = (
             PhraseFragment(parts=[Keywords.SUCH_THAT.as_fragment(), rendered.residual])
             if rendered.residual is not None
@@ -791,15 +783,29 @@ class QueryAssembler(Assembler[Query, QueryPlan]):
         plan = self.plan(entity)
         variable = entity.selected_variable
         definiteness = Definiteness.UNIQUE if plan.is_the else Definiteness.INDEFINITE
+
+        modifiers: List[VerbalizationFragment] = []
+        rendered = ClauseComposer(self.context).restriction(plan)
+        if rendered is not None:
+            modifiers.extend(rendered.inline_modifiers)
+            # A nested noun is an inline phrase, so the "whose" block flattens to "whose a, and b"
+            # (the renderer expands a block into points only at the item level, not inside a phrase).
+            if rendered.whose is not None:
+                modifiers.append(rendered.whose)
+            if rendered.residual is not None:
+                modifiers.append(
+                    PhraseFragment(
+                        parts=[Keywords.WHERE.as_fragment(), rendered.residual]
+                    )
+                )
+
         # A referring noun phrase is the subject of its own modifiers (the coreference pass infers
-        # this from the modifiers slot), so no scope marker is emitted here. The "whose" block
-        # flattens to "whose a, and b" inline (the renderer expands a block into points only at the
-        # item level, not inside a phrase).
-        return referring_noun_with_restrictions(
-            variable,
-            plan.selected_type,
-            definiteness,
-            ClauseComposer(self.context).restriction(plan),
+        # this from the modifiers slot), so no scope marker is emitted here.
+        return NounPhrase(
+            head=RoleFragment.for_variable(plan.selected_type, variable),
+            definiteness=definiteness,
+            referent_id=subject_referent_id(variable),
+            modifiers=modifiers,
         )
 
     # %% query-body clauses

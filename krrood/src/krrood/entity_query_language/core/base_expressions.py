@@ -121,15 +121,26 @@ class SymbolicExpression(ABC):
         # Per-instance cache stored in _expression_id_cache_ so it is collected with the expression object.
         # A class-level @lru_cache would hold strong refs to `self` indefinitely, keeping
         # query trees (and their domain data) alive well beyond the query's lifetime.
-        if id_ not in self._expression_id_cache_:
-            try:
-                self._expression_id_cache_[id_] = next(
-                    expression
-                    for expression in self._all_expressions_
-                    if expression._id_ == id_
-                )
-            except StopIteration:
-                raise NoExpressionFoundForGivenID(self, id_)
+        if id_ in self._expression_id_cache_:
+            return self._expression_id_cache_[id_]
+
+        # During an evaluation the tree is immutable, so resolve against the id->node index built
+        # once per evaluation instead of re-scanning the whole graph on every (often failing) lookup.
+        evaluation_scoped_index = self._evaluation_scoped_expression_index_()
+        if evaluation_scoped_index is not None:
+            if id_ in evaluation_scoped_index:
+                self._expression_id_cache_[id_] = evaluation_scoped_index[id_]
+                return evaluation_scoped_index[id_]
+            raise NoExpressionFoundForGivenID(self, id_)
+
+        try:
+            self._expression_id_cache_[id_] = next(
+                expression
+                for expression in self._all_expressions_
+                if expression._id_ == id_
+            )
+        except StopIteration:
+            raise NoExpressionFoundForGivenID(self, id_)
         return self._expression_id_cache_[id_]
 
     def tolist(
@@ -306,7 +317,7 @@ class SymbolicExpression(ABC):
         """
         # Only evaluate the conclusions at the root condition expression (i.e. after all conditions have been evaluated)
         # and when the result truth value is True.
-        if not (self._conditions_root_ is self) or current_result.is_false:
+        if not (self._conditions_root_ is self) or current_result.is_condition_false:
             return current_result
         for conclusion in self._conclusions_:
             current_result.bindings = next(
@@ -372,6 +383,22 @@ class SymbolicExpression(ABC):
     def _conditions_root_(self) -> Optional[SymbolicExpression]:
         """
         :return: The root of the symbolic expression graph that contains conditions, or None if no conditions found.
+
+        The conditions root is a structural property of the whole tree, so within an active
+        evaluation it is memoized per tree to avoid re-scanning the graph on every evaluation step.
+        """
+        evaluation_context = get_evaluation_context()
+        if evaluation_context is None:
+            return self._compute_conditions_root_()
+        cache_key = ("conditions_root", self._root_._id_)
+        cache = evaluation_context.structural_cache
+        if cache_key not in cache:
+            cache[cache_key] = self._compute_conditions_root_()
+        return cache[cache_key]
+
+    def _compute_conditions_root_(self) -> Optional[SymbolicExpression]:
+        """
+        :return: The root of the symbolic expression graph that contains conditions, found by scanning the tree.
         """
         return next(
             (
@@ -423,14 +450,85 @@ class SymbolicExpression(ABC):
         yield self._root_
         yield from self._root_._descendants_
 
+    def _evaluation_scoped_expression_index_(
+        self,
+    ) -> Optional[Dict[uuid.UUID, SymbolicExpression]]:
+        """
+        :return: An ``id -> node`` index of the whole tree, built once per evaluation, or ``None``
+            when called outside an active evaluation.
+
+        The tree is immutable while it is being evaluated, so the index is memoized on the evaluation
+        context (keyed by the tree root) and reused for every id lookup instead of re-scanning.
+        """
+        evaluation_context = get_evaluation_context()
+        if evaluation_context is None:
+            return None
+        cache_key = ("expression_index", self._root_._id_)
+        cache = evaluation_context.structural_cache
+        if cache_key not in cache:
+            cache[cache_key] = {
+                expression._id_: expression for expression in self._all_expressions_
+            }
+        return cache[cache_key]
+
     @property
     def _descendants_(self) -> Iterator[SymbolicExpression]:
         """
         :return: All descendants of this symbolic expression in children first, then depth-first by subtree order.
+
+        A node reachable by more than one path (the expression graph is a DAG once conditions
+        share variables, and rule trees share whole subtrees) is yielded only on its first visit.
+        Without this a naive walk revisits shared subtrees once per path, which compounds into an
+        exponential traversal on deep rule trees.
         """
-        yield from self._children_
-        for child in self._children_:
-            yield from child._descendants_
+        yield from self._iter_descendants_(set())
+
+    def _iter_descendants_(
+        self, visited_ids: Set[uuid.UUID]
+    ) -> Iterator[SymbolicExpression]:
+        """
+        Yield descendants once each, tracking already-seen ``_id_`` values across the recursion.
+
+        :param visited_ids: The identifiers of nodes already yielded, shared across the whole walk.
+        """
+        fresh_children = [
+            child for child in self._children_ if child._id_ not in visited_ids
+        ]
+        for child in fresh_children:
+            visited_ids.add(child._id_)
+        yield from fresh_children
+        for child in fresh_children:
+            yield from child._iter_descendants_(visited_ids)
+
+    def _subtree_contains_(self, expression_type: Type[SymbolicExpression]) -> bool:
+        """
+        :return: Whether this expression's subtree contains a descendant of the given type.
+
+        Whether a subtree contains a node of some type is a structural fact that is constant for the
+        duration of an evaluation, so within an active evaluation it is memoized on the evaluation
+        context to avoid re-walking the subtree on every evaluation step. Outside an evaluation it is
+        computed directly.
+        """
+        evaluation_context = get_evaluation_context()
+        if evaluation_context is None:
+            return self._compute_subtree_contains_(expression_type)
+        cache_key = (self._id_, expression_type)
+        cache = evaluation_context.structural_cache
+        if cache_key not in cache:
+            cache[cache_key] = self._compute_subtree_contains_(expression_type)
+        return cache[cache_key]
+
+    def _compute_subtree_contains_(
+        self, expression_type: Type[SymbolicExpression]
+    ) -> bool:
+        """
+        :return: Whether this expression's subtree contains a descendant of the given type, computed
+            by walking the subtree.
+        """
+        return any(
+            isinstance(descendant, expression_type)
+            for descendant in self._descendants_
+        )
 
     @classmethod
     def _current_parent_in_context_stack_(cls) -> Optional[SymbolicExpression]:
@@ -612,13 +710,9 @@ class TruthValueOperator(SymbolicExpression, ABC):
         """
         for result in child._evaluate_(sources):
             if result.has_value:
-                value = result.value
-                is_false = not (len(value) > 0 if is_iterable(value) else bool(value))
                 yield OperationResult(
-                    result.bindings,
-                    is_false,
-                    result.operand,
-                    result.previous_operation_result,
+                    result.bindings, result.is_condition_false,
+                    result.operand, result.previous_operation_result,
                 )
             else:
                 yield result
@@ -701,12 +795,6 @@ class OperationResult:
     during this evaluation. Populated at the conditions root after all conditions have been evaluated.
     Only set when the overall condition result is True.
     """
-    evaluated_expression_ids: Optional[OrderedSet[UUID]] = None
-    """
-    A set of UUIDs of all expressions that were evaluated along the evaluation path that produced
-    this result. Populated by the EvaluationTracker observer. Unlike satisfied_condition_ids, this
-    includes all evaluated expressions regardless of truth value.
-    """
 
     @property
     def all_bindings(self) -> Bindings:
@@ -730,6 +818,21 @@ class OperationResult:
     @property
     def has_value(self) -> bool:
         return self.operand is not None and self.operand._id_ in self.bindings
+
+    @property
+    def is_condition_false(self) -> bool:
+        """Canonical condition-truth rule used by :meth:`~krrood.entity_query_language.core.base_expressions.TruthValueOperator._evaluate_child_as_condition_`
+        and :meth:`~krrood.entity_query_language.core.base_expressions.SymbolicExpression._evaluate_conclusions_and_update_bindings_`.
+
+        For expressions that bind a direct value (``Attribute``, ``Comparator``, ``Variable``, …)
+        truth is derived from the value's boolean content.  For logical operators
+        that manage their own ``is_false`` flag (``NOT``, ``AND``, ``OR``, …) and produce no
+        direct value, the flag is used as-is.
+        """
+        if self.has_value:
+            v = self.value
+            return not (len(v) > 0 if is_iterable(v) else bool(v))
+        return self.is_false
 
     @property
     def is_true(self) -> bool:
