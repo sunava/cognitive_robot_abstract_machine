@@ -76,6 +76,23 @@ def symbolic_function(
     return wrapper
 
 
+def functional_form(symbolic_callable: Type[T]) -> Callable[..., Any]:
+    """:return: a function that calls *symbolic_callable* -- the class-form counterpart of the
+    :func:`symbolic_function` decorator.
+
+    It returns a symbolic expression when any argument is a variable (so it composes in a query) and
+    the directly computed value otherwise. Binding an existing function name to
+    ``functional_form(TheClass)`` lets a migration to the class form keep that name's call behaviour
+    unchanged -- the logic moves into the class's :meth:`__call__` and the name just constructs it.
+    """
+
+    def call(*args: Any, **kwargs: Any) -> Any:
+        result = symbolic_callable(*args, **kwargs)
+        return result() if isinstance(result, symbolic_callable) else result
+
+    return call
+
+
 @dataclass(frozen=True)
 class VerbalizationField:
     """One predicate field as ``_verbalization_fragment_`` sees it.
@@ -213,6 +230,17 @@ class SymbolicCallable(Symbol, Verbalizable, ABC):
         instance.__init__(**kwargs)
         return instance
 
+    @classmethod
+    def _bound_value_(cls, **kwargs) -> Any:
+        """:return: the value this operation contributes to a query result when its arguments have
+        concrete values -- the constructed instance itself by default (a :class:`Predicate`'s truth is
+        then read from that instance). A value operation overrides this to its COMPUTED value.
+
+        ..note:: This is the class-form counterpart of calling a ``@symbolic_function``: for a function
+            the query binds ``function(**values)``; for a callable class it binds this.
+        """
+        return cls._construct_normally_(**kwargs)
+
     @abstractmethod
     def __call__(self) -> Any:
         """
@@ -249,6 +277,13 @@ class SymbolicFunction(SymbolicCallable, ABC):
     *"the <name> of <arguments>"* reading produced by the :func:`symbolic_function` decorator is not
     the surface you want; for a plain value function the decorator remains the simplest form.
     """
+
+    @classmethod
+    def _bound_value_(cls, **kwargs) -> Any:
+        """:return: the COMPUTED value -- a value operation is constructed AND called, so a query binds
+        what it computes (exactly as a ``@symbolic_function`` is called), not the instance.
+        """
+        return cls._construct_normally_(**kwargs)()
 
     @abstractmethod
     def __call__(self) -> Any:
@@ -400,13 +435,28 @@ class HasTypes(HasType):
         return clause(Noun(fields["variable"]), Copula(), OneOf(fields["types_"]))
 
 
-@symbolic_function
-def length(iterable: Sized) -> int:
-    """
-    :param iterable: The iterable.
-    :return: The length of the iterable.
-    """
-    return len(iterable)
+@dataclass(eq=False)
+class Length(SymbolicFunction):
+    """The number of items in an iterable, as a value operation."""
+
+    iterable: Sized
+    """The iterable whose length is computed."""
+
+    def __call__(self) -> int:
+        return len(self.iterable)
+
+    @classmethod
+    def _verbalization_fragment_(cls, fields: RenderedFields) -> VerbalizationFragment:
+        # Imported locally to avoid the core -> verbalization import cycle (as Triple does).
+        from krrood.entity_query_language.verbalization.vocabulary.parts_of_speech import (
+            value_function_phrase,
+        )
+
+        return value_function_phrase(cls.__name__, *fields.values())
+
+
+length = functional_form(Length)
+"""Backward-compatible functional form of :class:`Length` (keeps the ``length(iterable)`` call)."""
 
 
 def _any_of_the_kwargs_is_a_variable(bindings: Dict[str, Any]) -> bool:

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing_extensions import Iterable, Protocol, Union, runtime_checkable
 
 from krrood.entity_query_language.predicate import VerbalizationField
+from krrood.entity_query_language.utils import camel_case_to_words
 from krrood.entity_query_language.verbalization import morphology
 from krrood.entity_query_language.verbalization.fragments.base import (
     Clause,
@@ -14,6 +15,7 @@ from krrood.entity_query_language.verbalization.fragments.base import (
     PhraseFragment,
     RoleFragment,
     WordFragment,
+    oxford_comma,
 )
 from krrood.entity_query_language.verbalization.fragments.features import (
     Definiteness,
@@ -24,7 +26,12 @@ from krrood.entity_query_language.verbalization.microplanning.coordination impor
     MAX_SET_MEMBERS,
     one_of,
 )
+from krrood.entity_query_language.verbalization.microplanning.possessive import (
+    possessive_path,
+)
+from krrood.entity_query_language.verbalization.navigation_path import PathStep
 from krrood.entity_query_language.verbalization.vocabulary.english import (
+    Conjunctions,
     Copulas,
     Prepositions,
     SetMembership,
@@ -223,3 +230,56 @@ def clause(*constituents: ClauseConstituent) -> Clause:
     'an Employee work in a Department'
     """
     return Clause(parts=[constituent.as_fragment() for constituent in constituents])
+
+
+_VALUE_GETTER_PREFIX = "get"
+"""Leading imperative dropped when reading a getter's name as a noun (``get_quarter`` -> *"quarter"*)."""
+
+
+def value_function_noun(name: str) -> str:
+    """:return: a value (non-boolean) symbolic function class's name as noun words, dropping a leading
+    imperative ``get`` so ``GetQuarter`` reads as *"quarter"*; a plain-noun name is unchanged.
+
+    >>> value_function_noun("GetQuarter")
+    'quarter'
+    >>> value_function_noun("RemainingLoad")
+    'remaining load'
+    """
+    words = camel_case_to_words(name).split()
+    if len(words) > 1 and words[0].lower() == _VALUE_GETTER_PREFIX:
+        words = words[1:]
+    return " ".join(words)
+
+
+def value_function_phrase(
+    name: str, *operands: ClauseConstituent
+) -> VerbalizationFragment:
+    """Build *"the <noun> of <operands>"* for a value function — the value counterpart of a predicate
+    clause, for an operation that computes a value rather than a truth.
+
+    The *name* is read as the value's noun (a leading ``get`` dropped) and the operands are read out
+    as a genitive over it. A nullary function is just the noun. This is the default, name-based surface
+    a value :class:`~krrood.entity_query_language.predicate.SymbolicFunction` reuses, so the reading
+    lives in one place rather than being duplicated per class.
+
+    :param name: The function's identifier (or class name).
+    :param operands: The function's already-rendered arguments.
+    :return: The value noun phrase.
+
+    >>> from krrood.entity_query_language.verbalization.fragments.base import (
+    ...     flatten_fragment_to_plain_text, WordFragment,
+    ... )
+    >>> flatten_fragment_to_plain_text(value_function_phrase("GetQuarter"))
+    'quarter'
+    >>> flatten_fragment_to_plain_text(
+    ...     value_function_phrase("RemainingLoad", Noun(WordFragment(text="the capacity")))
+    ... )
+    'the remaining load of the capacity'
+    """
+    noun = value_function_noun(name)
+    if not operands:
+        return Noun(WordFragment(text=noun)).as_fragment()
+    owner = oxford_comma(
+        [operand.as_fragment() for operand in operands], Conjunctions.AND.as_fragment()
+    )
+    return possessive_path([PathStep(noun)], owner)

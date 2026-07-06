@@ -13,9 +13,11 @@ from dataclasses import dataclass
 
 from krrood.entity_query_language.factories import a, set_of, variable
 from krrood.entity_query_language.predicate import (
+    Length,
     Predicate,
     SymbolicCallable,
     SymbolicFunction,
+    length,
 )
 from krrood.entity_query_language.verbalization.fragments.base import WordFragment
 from krrood.entity_query_language.verbalization.pipeline import verbalize_expression
@@ -58,3 +60,37 @@ def test_symbolic_function_subclass_uses_its_custom_fragment():
 def test_symbolic_function_subclass_evaluates_via_call():
     """Its :meth:`__call__` computes the value directly when constructed with concrete arguments."""
     assert RemainingLoad._construct_normally_(capacity=10, load=3)() == 7
+
+
+@dataclass(eq=False)
+class Doubled(SymbolicFunction):
+    """A single-argument value ``SymbolicFunction``, exercising query evaluation."""
+
+    number: int
+    """The number it doubles."""
+
+    def __call__(self) -> int:
+        return self.number * 2
+
+    @classmethod
+    def _verbalization_fragment_(cls, fields):
+        return Noun(WordFragment(text="the doubled number")).as_fragment()
+
+
+def test_symbolic_function_binds_its_computed_value_in_a_query():
+    """In a query a value ``SymbolicFunction`` binds what it COMPUTES (constructed AND called),
+    exactly like a ``@symbolic_function`` — not the constructed instance."""
+    numbers = variable(int, domain=[1, 2, 3])
+    values = sorted(next(iter(row.values())) for row in a(set_of(Doubled(numbers))).tolist())
+    assert values == [2, 4, 6]
+
+
+def test_migrated_length_reads_as_a_noun_phrase_and_keeps_its_value():
+    """``length`` is now ``class Length(SymbolicFunction)`` behind a ``functional_form`` wrapper: it
+    reads through the default value surface (*"the length of ..."*) and still computes the length."""
+    assert issubclass(Length, SymbolicFunction)
+    assert length([1, 2, 3]) == 3
+    assert (
+        verbalize_expression(a(set_of(length(variable(list, [])))))
+        == "Find the length of a list"
+    )
