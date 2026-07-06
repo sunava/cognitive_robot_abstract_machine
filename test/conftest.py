@@ -175,36 +175,32 @@ def _report_world_leak(world_in_mem: int) -> None:
     emit(f"\n[world-leak] {world_in_mem} World objects survived gc.collect()")
 
     worlds = objgraph.by_type("World")
-    remaining_referrer_scans = 6
 
-    for index, world in enumerate(worlds[:2]):
-        if remaining_referrer_scans <= 0:
-            break
-        remaining_referrer_scans -= 1
-        referrers = [
-            referrer
-            for referrer in gc.get_referrers(world)
-            if referrer is not worlds
+    # objgraph returns worlds roughly oldest-first; session-fixture worlds (legitimately cached on
+    # pytest FixtureDefs) dominate the front, so inspect the most-recently-allocated worlds, which
+    # are the leaked function-scoped ones. Each gc.get_referrers scans the whole heap, so this stays
+    # hard-capped: three world scans below plus at most three container-owner scans.
+    containers_to_trace = []
+    for index, world in reversed(list(enumerate(worlds))[-3:]):
+        referrer_type_counts: dict[str, int] = {}
+        for referrer in gc.get_referrers(world):
+            if referrer is worlds:
+                continue
+            type_name = type(referrer).__name__
+            referrer_type_counts[type_name] = referrer_type_counts.get(type_name, 0) + 1
+            if isinstance(referrer, (list, dict, tuple, set)):
+                containers_to_trace.append((index, referrer))
+        emit(f"[world-leak] world #{index} held by (type: count) {referrer_type_counts}")
+
+    for index, container in containers_to_trace[:3]:
+        owners = [
+            type(owner).__name__
+            for owner in gc.get_referrers(container)
+            if owner is not containers_to_trace and owner is not worlds
         ]
         emit(
-            f"[world-leak] world #{index} held by "
-            f"{[type(referrer).__name__ for referrer in referrers]}"
+            f"[world-leak]   world #{index} {type(container).__name__} owned by {owners[:10]}"
         )
-        for referrer in referrers:
-            if remaining_referrer_scans <= 0:
-                break
-            if isinstance(referrer, types.FrameType):
-                emit(f"    frame: {referrer.f_code.co_qualname}")
-                continue
-            if not isinstance(referrer, (list, dict, tuple, set)):
-                continue
-            remaining_referrer_scans -= 1
-            owners = [
-                type(owner).__name__
-                for owner in gc.get_referrers(referrer)
-                if owner is not referrers and owner is not worlds
-            ]
-            emit(f"    {type(referrer).__name__} owned by {owners[:8]}")
 
 
 #############################################
