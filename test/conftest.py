@@ -159,65 +159,52 @@ def count_worlds():
 
 def _report_world_leak(world_in_mem: int) -> None:
     """
-    Print diagnostics that pin the object retaining the leaked worlds.
+    Print a cheap, bounded diagnostic naming what holds the leaked worlds.
 
-    For a small sample of surviving worlds this walks the reference graph back to the first
-    module/type it can reach — i.e. the process-global holder that keeps the world alive across
-    tests — so the leak can be traced from a single CI run.
+    ..warning::
+        :func:`gc.get_referrers` scans the whole heap on every call, so the number of calls is
+        hard-capped and each finding is streamed immediately. Never use ``objgraph`` graph walks
+        (``find_backref_chain``) here — they are effectively unbounded on the world graph.
     """
     import sys
     import types
 
-    print(
-        f"\n[world-leak] {world_in_mem} World objects survived gc.collect()",
-        file=sys.stderr,
-    )
+    def emit(message: str) -> None:
+        print(message, file=sys.stderr, flush=True)
+
+    emit(f"\n[world-leak] {world_in_mem} World objects survived gc.collect()")
 
     worlds = objgraph.by_type("World")
+    remaining_referrer_scans = 6
 
-    def owner_description(referrer) -> str:
-        """Describe *referrer*; for a bare container, describe what owns that container."""
-        if isinstance(referrer, types.FrameType):
-            return f"frame:{referrer.f_code.co_qualname}"
-        if not isinstance(referrer, (list, dict, tuple, set)):
-            return type(referrer).__name__
-        for owner in gc.get_referrers(referrer):
-            if owner is worlds or owner is referrer:
-                continue
-            if isinstance(owner, types.FrameType):
-                return f"{type(referrer).__name__} in frame:{owner.f_code.co_qualname}"
-            return f"{type(referrer).__name__} owned by {type(owner).__name__}"
-        return f"{type(referrer).__name__}(unowned)"
-
-    referrer_type_histogram: dict[str, int] = {}
-    for world in worlds:
-        for referrer in gc.get_referrers(world):
-            description = owner_description(referrer)
-            referrer_type_histogram[description] = (
-                referrer_type_histogram.get(description, 0) + 1
-            )
-    print(
-        "[world-leak] who holds the surviving worlds (container owned by):",
-        file=sys.stderr,
-    )
-    for description, count in sorted(
-        referrer_type_histogram.items(), key=lambda item: -item[1]
-    ):
-        print(f"    {count:5d}  {description}", file=sys.stderr)
-
-    def is_global_root(candidate) -> bool:
-        return isinstance(candidate, (types.ModuleType, type))
-
-    for index, world in enumerate(worlds[:3]):
-        chain = objgraph.find_backref_chain(
-            world, is_global_root, max_depth=25
+    for index, world in enumerate(worlds[:2]):
+        if remaining_referrer_scans <= 0:
+            break
+        remaining_referrer_scans -= 1
+        referrers = [
+            referrer
+            for referrer in gc.get_referrers(world)
+            if referrer is not worlds
+        ]
+        emit(
+            f"[world-leak] world #{index} held by "
+            f"{[type(referrer).__name__ for referrer in referrers]}"
         )
-        print(f"[world-leak] backref chain for world #{index}:", file=sys.stderr)
-        for link in chain:
-            print(
-                f"    {type(link).__module__}.{type(link).__name__}: {repr(link)[:100]}",
-                file=sys.stderr,
-            )
+        for referrer in referrers:
+            if remaining_referrer_scans <= 0:
+                break
+            if isinstance(referrer, types.FrameType):
+                emit(f"    frame: {referrer.f_code.co_qualname}")
+                continue
+            if not isinstance(referrer, (list, dict, tuple, set)):
+                continue
+            remaining_referrer_scans -= 1
+            owners = [
+                type(owner).__name__
+                for owner in gc.get_referrers(referrer)
+                if owner is not referrers and owner is not worlds
+            ]
+            emit(f"    {type(referrer).__name__} owned by {owners[:8]}")
 
 
 #############################################
