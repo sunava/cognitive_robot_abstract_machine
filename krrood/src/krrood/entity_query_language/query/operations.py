@@ -20,6 +20,8 @@ from typing_extensions import (
     Optional,
     Dict,
     FrozenSet,
+    Hashable,
+    Set,
 )
 
 from krrood.entity_query_language.operators.aggregators import (
@@ -45,6 +47,7 @@ from krrood.entity_query_language.operators.set_operations import (
 from krrood.entity_query_language.utils import is_iterable
 from krrood.utils import ensure_hashable
 from krrood.entity_query_language.core.mapped_variable import MappedVariable
+from krrood.entity_query_language.core.expression_structure import root_variable_ids
 from krrood.utils import memoize
 
 GroupKey = Tuple[Any, ...]
@@ -276,6 +279,14 @@ class GroupedBy(MultiArityExpressionThatPerformsACartesianProduct):
         :return: A tuple of the binding IDs of the variables to group by.
         """
         return tuple(var._id_ for var in self.variables_to_group_by)
+
+    @cached_property
+    def group_key_root_ids(self) -> Set[uuid.UUID]:
+        """
+        :return: The ids of the distinct ``Variable`` chain-roots of the group-by keys (e.g. for a
+            key ``employee.department`` the root is the ``employee`` variable).
+        """
+        return root_variable_ids(self.variables_to_group_by)
 
     @property
     def _name_(self) -> str:
