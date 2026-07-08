@@ -754,6 +754,24 @@ class Query(
         return self._expression_
 
     @property
+    def _root_(self) -> SymbolicExpression:
+        """
+        Resolve the root through the compiled product.
+
+        ``SatisfiedConditionTracker`` treats ``expression._conditions_root_ is expression._root_``
+        as "this query has no where/having condition" (both fall back to the same node when no
+        ``Filter`` exists). Since :attr:`_conditions_root_` already resolves within the compiled
+        product, :attr:`_root_` must too, or that comparison always sees two different objects (the
+        spec and its product) even when the product itself has no condition.
+
+        :return: The root of the compiled product's tree.
+        """
+        self.build()
+        if not self._is_compiled_product_:
+            return self._expression_._root_
+        return SymbolicExpression._root_.fget(self)
+
+    @property
     def _conditions_root_(self) -> Optional[SymbolicExpression]:
         """
         Resolve the conditions root within the compiled product, so rule definition (:meth:`__enter__`)
