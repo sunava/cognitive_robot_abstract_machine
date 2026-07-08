@@ -133,22 +133,6 @@ class EvaluatedExpressionIds:
 
 
 @dataclass
-class SatisfiedConditionIds:
-    """Holds the set of satisfied condition-expression ids for the current evaluation iteration."""
-
-    _ids: Optional[OrderedSet] = field(default=None, init=False)
-    """The satisfied condition ids for the current iteration, or ``None`` if unset."""
-
-    def set(self, ids: OrderedSet) -> None:
-        """Record *ids* as the satisfied condition ids for the current iteration."""
-        self._ids = ids
-
-    def get(self) -> Optional[OrderedSet]:
-        """:return: The satisfied condition ids for the current iteration, or ``None`` if unset."""
-        return self._ids
-
-
-@dataclass
 class EvaluationContext:
     """Carries observer state through the evaluation pipeline."""
 
@@ -164,10 +148,8 @@ class EvaluationContext:
         default_factory=EvaluatedExpressionIds
     )
     """Tracks every expression id evaluated so far during the current evaluation pass."""
-    satisfied_condition_ids: SatisfiedConditionIds = field(
-        default_factory=SatisfiedConditionIds
-    )
-    """Holds the set of satisfied condition-expression ids for the current evaluation iteration."""
+    satisfied_condition_ids: Optional[OrderedSet] = field(default=None)
+    """The satisfied condition-expression ids for the current evaluation iteration, or ``None`` if unset."""
 
     def on_evaluate_enter(
         self,

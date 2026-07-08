@@ -99,13 +99,13 @@ class SatisfiedConditionTracker(EvaluationObserver):
         if isinstance(sources, OperationResult):
             satisfied = sources.satisfied_condition_ids
         if satisfied is not None:
-            evaluation_context.satisfied_condition_ids.set(satisfied)
+            evaluation_context.satisfied_condition_ids = satisfied
 
     def on_result_yielded(self, expression, result):
         evaluation_context = get_evaluation_context()
         if evaluation_context is None:
             return
-        satisfied = evaluation_context.satisfied_condition_ids.get()
+        satisfied = evaluation_context.satisfied_condition_ids
         if satisfied is not None and result.satisfied_condition_ids is None:
             result.satisfied_condition_ids = satisfied
 
@@ -150,7 +150,7 @@ class SatisfiedConditionTracker(EvaluationObserver):
                     satisfied.add(expr_id)
 
         result.satisfied_condition_ids = satisfied
-        evaluation_context.satisfied_condition_ids.set(satisfied)
+        evaluation_context.satisfied_condition_ids = satisfied
 
 
 class InferenceRecorder(EvaluationObserver):

@@ -7,7 +7,6 @@ from ordered_set import OrderedSet
 from krrood.entity_query_language.evaluation_context import (
     ActiveConditionsRoot,
     EvaluatedExpressionIds,
-    SatisfiedConditionIds,
 )
 
 
@@ -93,14 +92,3 @@ def test_evaluated_expression_ids_snapshot_refreshes_after_growth():
 
     assert fresh_snapshot is not stale_snapshot
     assert len(fresh_snapshot) == 2
-
-
-def test_satisfied_condition_ids_defaults_to_none_until_set():
-    holder = SatisfiedConditionIds()
-
-    assert holder.get() is None
-
-    ids = OrderedSet([uuid.uuid4()])
-    holder.set(ids)
-
-    assert holder.get() is ids
