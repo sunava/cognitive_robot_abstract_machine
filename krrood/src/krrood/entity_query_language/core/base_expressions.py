@@ -316,22 +316,29 @@ class SymbolicExpression(ABC):
         # True. "Active" is an evaluation-scoped fact, not a structural one: a node reused as the
         # condition of more than one Filter has no single correct root, so this is resolved by
         # which evaluation is currently running (see ActiveConditionsRoot), not by the node's
-        # construction history.
+        # construction history. When no evaluation context is active (this method is only ever
+        # reached from inside _evaluate_'s own thread, but a caller may drive evaluation from a
+        # thread that never had one set up — contextvars.ContextVar values do not propagate into a
+        # plain threading.Thread), fall back to the structural check: it is the only signal left.
         evaluation_context = get_evaluation_context()
-        if (
-            not evaluation_context.active_conditions_root.is_active_root(self)
-            or current_result.is_false
-        ):
+        if evaluation_context is not None:
+            is_active_root = evaluation_context.active_conditions_root.is_active_root(
+                self
+            )
+        else:
+            is_active_root = self._conditions_root_ is self
+        if not is_active_root or current_result.is_false:
             return current_result
         for conclusion in self._conclusions_:
             current_result.bindings = next(
                 conclusion._evaluate_(current_result)
             ).bindings
 
-        evaluation_context.on_conclusions_processed(
-            expression=self,
-            result=current_result,
-        )
+        if evaluation_context is not None:
+            evaluation_context.on_conclusions_processed(
+                expression=self,
+                result=current_result,
+            )
         return current_result
 
     @abstractmethod
