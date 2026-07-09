@@ -1496,11 +1496,11 @@ def test_verbalize_custom_predicate_employee_domain():
 
 def test_verbalize_predicate_without_fragment_uses_name_based_default():
     """A predicate that supplies no verbalization fragment reads through the inherited name-based
-    default clause (``HasHighSalary`` → *"… has high salary …"*), so a sensible surface needs no
-    per-predicate fragment."""
+    default clause (``Exceeds`` → *"… exceeds …"*), so a sensible surface needs no per-predicate
+    fragment."""
 
     @dataclass(eq=False)
-    class HasHighSalary(Predicate):
+    class Exceeds(Predicate):
         employee: Any
         threshold: float
 
@@ -1509,8 +1509,8 @@ def test_verbalize_predicate_without_fragment_uses_name_based_default():
 
     employee = variable(Employee, [])
     assert (
-        verbalize_expression(HasHighSalary(employee, 50000.0))
-        == "an Employee has high salary 50000.0"
+        verbalize_expression(Exceeds(employee, 50000.0))
+        == "an Employee exceeds 50000.0"
     )
 
 
@@ -1835,7 +1835,8 @@ def test_verbalize_triple():
 
 def test_verbalize_1arg_predicate_without_fragment_uses_name_based_default():
     """A 1-arg predicate without a verbalization fragment reads through the inherited name-based
-    default clause rather than raising — fragments are optional, overriding only a wrong reading."""
+    default clause rather than raising — fragments are optional, overriding only a wrong reading.
+    """
 
     @dataclass(eq=False)
     class IsActive(Predicate):

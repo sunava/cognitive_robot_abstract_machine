@@ -314,25 +314,34 @@ def predicate_clause(
     :param objects: Any further operands, rendered as trailing objects.
     :return: The predicate clause.
 
+    A bare literal :class:`Noun` (e.g. ``Noun("Robot")``) still needs the lowering passes
+    (:func:`~…rendering.realization.realize_tree`) to choose its article before it can be flattened
+    to text — the examples below realize the clause first, the same as a full query render does.
+
     >>> from krrood.entity_query_language.verbalization.fragments.base import (
-    ...     flatten_fragment_to_plain_text, WordFragment,
+    ...     flatten_fragment_to_plain_text,
     ... )
-    >>> flatten_fragment_to_plain_text(
-    ...     predicate_clause("IsReachable", Noun(WordFragment(text="a Robot")))
+    >>> from krrood.entity_query_language.verbalization.rendering.realization import (
+    ...     realize_tree,
     ... )
+    >>> def render(fragment):
+    ...     return flatten_fragment_to_plain_text(realize_tree(fragment))
+    >>> render(predicate_clause("IsReachable", Noun("Robot")))
     'a Robot is reachable'
-    >>> flatten_fragment_to_plain_text(
-    ...     predicate_clause("ConnectsTo", Noun(WordFragment(text="a body")),
-    ...                      Noun(WordFragment(text="another body")))
-    ... )
-    'a body connect to another body'
+    >>> render(predicate_clause("ConnectsTo", Noun("body"), Noun("gripper")))
+    'a body connects to a gripper'
+    >>> render(predicate_clause("IsOneMonth", Noun.the("begin"), Noun.the("end")))
+    'one month holds for the begin and the end'
     """
     head, *rest = camel_case_to_words(name).split()
     complement = [WordFragment(text=word) for word in rest]
     is_copular = morphology.verb_lemma(head) == _COPULA_LEMMA
     if is_copular and objects and (not rest or rest[-1] not in _PREPOSITION_WORDS):
         operands = oxford_comma(
-            [Noun(subject).as_fragment(), *(Noun(obj).as_fragment() for obj in objects)],
+            [
+                Noun(subject).as_fragment(),
+                *(Noun(obj).as_fragment() for obj in objects),
+            ],
             Conjunctions.AND.as_fragment(),
         )
         return clause(
