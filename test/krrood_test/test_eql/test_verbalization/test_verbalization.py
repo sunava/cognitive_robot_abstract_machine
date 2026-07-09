@@ -1496,11 +1496,11 @@ def test_verbalize_custom_predicate_employee_domain():
 
 def test_verbalize_predicate_without_fragment_uses_name_based_default():
     """A predicate that supplies no verbalization fragment reads through the inherited name-based
-    default clause (``Exceeds`` → *"… exceeds …"*), so a sensible surface needs no per-predicate
-    fragment."""
+    default clause (``EarnsMoreThan`` → *"… earns more than …"*), so a sensible surface needs no
+    per-predicate fragment."""
 
     @dataclass(eq=False)
-    class Exceeds(Predicate):
+    class EarnsMoreThan(Predicate):
         employee: Any
         threshold: float
 
@@ -1509,8 +1509,8 @@ def test_verbalize_predicate_without_fragment_uses_name_based_default():
 
     employee = variable(Employee, [])
     assert (
-        verbalize_expression(Exceeds(employee, 50000.0))
-        == "an Employee exceeds 50000.0"
+        verbalize_expression(EarnsMoreThan(employee, 50000.0))
+        == "an Employee earns more than 50000.0"
     )
 
 
