@@ -83,6 +83,15 @@ class Noun(ClauseElement):
         """
         return cls(head, definiteness=Definiteness.DEFINITE)
 
+    @classmethod
+    def bare(cls, head: str) -> "Noun":
+        """:return: a bare literal noun with no article (*"of type"*, not *"of a type"*).
+
+        >>> Noun.bare("type").as_fragment().definiteness
+        <Definiteness.BARE: 'bare'>
+        """
+        return cls(head, definiteness=Definiteness.BARE)
+
 
 @dataclass(frozen=True)
 class Verb(ClauseElement):

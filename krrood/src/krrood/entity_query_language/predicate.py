@@ -317,9 +317,6 @@ class HasType(Triple):
         cls, fields: Mapping[str, VerbalizationFragment]
     ) -> VerbalizationFragment:
         # Imported locally to avoid the core → verbalization import cycle (see :class:`Triple`).
-        from krrood.entity_query_language.verbalization.fragments.features import (
-            Definiteness,
-        )
         from krrood.entity_query_language.verbalization.vocabulary.english import (
             Prepositions,
         )
@@ -338,7 +335,7 @@ class HasType(Triple):
             Noun(fields["variable"]),
             Copula(),
             Prepositions.OF,
-            Noun("type", definiteness=Definiteness.BARE),
+            Noun.bare("type"),
             Or(fields["types_"]),
         )
 
