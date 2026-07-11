@@ -10,7 +10,14 @@ Covers:
 
 import inspect
 
+from krrood.entity_query_language import factories
 from krrood.entity_query_language._stack import StackFrame
+from krrood.entity_query_language.rules.conclusion import Add
+from krrood.entity_query_language.rules.conclusion_selector import (
+    Alternative,
+    Next,
+    Refinement,
+)
 from krrood.entity_query_language.scope import (
     attach_definition_scope,
     capture_caller_scope,
@@ -81,25 +88,25 @@ def test_capture_caller_scope_sees_caller_locals_and_globals():
 def test_eql_factory_namespace_has_core_verbs():
     ns = eql_factory_namespace()
     for name in (
-        "entity",
-        "an",
-        "the",
-        "variable",
-        "and_",
-        "or_",
-        "not_",
-        "contains",
-        "add",
-        "refinement",
-        "alternative",
-        "next_rule",
-        "Add",
-        "Refinement",
-        "Alternative",
-        "Next",
+        factories.entity.__name__,
+        factories.an.__name__,
+        factories.the.__name__,
+        factories.variable.__name__,
+        factories.and_.__name__,
+        factories.or_.__name__,
+        factories.not_.__name__,
+        factories.contains.__name__,
+        factories.add.__name__,
+        factories.refinement.__name__,
+        factories.alternative.__name__,
+        factories.next_rule.__name__,
+        Add.__name__,
+        Refinement.__name__,
+        Alternative.__name__,
+        Next.__name__,
     ):
         assert name in ns, f"missing factory {name!r}"
-    assert callable(ns["entity"])
+    assert callable(ns[factories.entity.__name__])
 
 
 def test_eql_factory_namespace_picks_up_new_public_factories_automatically():
@@ -107,37 +114,37 @@ def test_eql_factory_namespace_picks_up_new_public_factories_automatically():
     # editing eql_factory_namespace() -- exercised here via one that was never
     # hand-listed (`a`, the `an` alias for words not starting with a vowel).
     ns = eql_factory_namespace()
-    assert "a" in ns
-    assert callable(ns["a"])
+    assert factories.a.__name__ in ns
+    assert callable(ns[factories.a.__name__])
 
 
 def test_eql_factory_namespace_excludes_names_shadowing_builtins():
     # `max`/`sum`/`min`/... are real public factories.py aggregators, but dumping
     # them into an interactive shell's flat namespace would shadow the builtins.
     ns = eql_factory_namespace()
-    assert "max" not in ns
-    assert "sum" not in ns
+    assert factories.max.__name__ not in ns
+    assert factories.sum.__name__ not in ns
 
 
 def test_eql_factory_namespace_exposes_module_for_builtin_shadowing_names():
     # The excluded names above stay reachable via the `eql` module object itself.
     ns = eql_factory_namespace()
-    assert ns["eql"].__name__ == "krrood.entity_query_language.factories"
+    assert ns["eql"].__name__ == factories.__name__
     assert callable(ns["eql"].max)
     assert callable(ns["eql"].sum)
 
 
 def test_eql_factory_namespace_excludes_private_names():
     ns = eql_factory_namespace()
-    assert "_quantify_or_build_match" not in ns
+    assert factories._quantify_or_build_match.__name__ not in ns
 
 
 def test_eql_factory_namespace_excludes_names_imported_into_factories():
     # Match/Entity/etc. are imported into factories.py for its own use, not
     # defined there -- they shouldn't leak into the flat verb namespace.
     ns = eql_factory_namespace()
-    assert "Match" not in ns
-    assert "Entity" not in ns
+    assert factories.Match.__name__ not in ns
+    assert factories.Entity.__name__ not in ns
 
 
 # ---------------------------------------------------------------------------
@@ -156,7 +163,7 @@ def test_attach_and_get_definition_scope_roundtrip():
     scope = get_definition_scope(obj)
     assert scope["x"] == 1 and scope["y"] == 2
     # Factory overlay present.
-    assert "entity" in scope and "refinement" in scope
+    assert factories.entity.__name__ in scope and factories.refinement.__name__ in scope
 
 
 def test_get_definition_scope_factory_overlay_wins():
@@ -165,9 +172,9 @@ def test_get_definition_scope_factory_overlay_wins():
 
     obj = Holder()
     # User shadows a factory name; the overlay must win so the shell has the verb.
-    attach_definition_scope(obj, {"entity": "shadowed"})
+    attach_definition_scope(obj, {factories.entity.__name__: "shadowed"})
     scope = get_definition_scope(obj)
-    assert callable(scope["entity"])
+    assert callable(scope[factories.entity.__name__])
 
 
 def test_get_definition_scope_without_factories():
@@ -184,7 +191,7 @@ def test_get_definition_scope_falls_back_to_live_caller():
     fallback_local = "present"  # noqa: F841
     scope = get_definition_scope(None)
     assert scope["fallback_local"] == "present"
-    assert "entity" in scope
+    assert factories.entity.__name__ in scope
 
 
 def test_get_definition_scope_ignores_objects_with_no_attached_scope():
