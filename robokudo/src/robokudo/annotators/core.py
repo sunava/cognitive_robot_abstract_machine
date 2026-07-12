@@ -314,7 +314,7 @@ class BaseAnnotator(Behaviour):
         for content in analysis_scope:
             # CASViews are string values
             if isinstance(content, str):
-                if content not in CASViews.__dict__.values():
+                if content not in CASViews:
                     self.rk_logger.warning(
                         "You have passed a string that is not defining a valid CASView from robokudo.cas.CASViews"
                     )

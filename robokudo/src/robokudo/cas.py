@@ -21,6 +21,7 @@ import time
 import warnings
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from enum import StrEnum
 
 import numpy as np
 import open3d as o3d
@@ -47,7 +48,7 @@ if TYPE_CHECKING:
     from robokudo.types.core import Annotation
 
 
-class CASViews:
+class CASViews(StrEnum):
     """Standard view definitions for the Common Analysis Structure.
 
     This class defines the standard keys used to store and access different types
@@ -55,67 +56,67 @@ class CASViews:
     like images, point clouds, and camera information.
     """
 
-    COLOR_IMAGE: str = "color_image"
+    COLOR_IMAGE = "color_image"
     """RGB image data"""
 
-    DEPTH_IMAGE: str = "depth_image"
+    DEPTH_IMAGE = "depth_image"
     """Depth image data"""
 
-    COLOR2DEPTH_RATIO: str = "color2depth_ratio"
+    COLOR2DEPTH_RATIO = "color2depth_ratio"
     """Scale factor to scale the `COLOR_IMAGE` to the resolution of the `DEPTH_IMAGE` in x, y format.
     
     Example: 1280x960 RGB, 640x480 DEPTH -> 0.5 along X and Y
     """
 
-    CAM_INFO: str = "cam_info"
+    CAM_INFO = "cam_info"
     """ROS camera info message coming from ROS"""
 
-    CAM_INTRINSIC: str = "cam_intrinsic"
+    CAM_INTRINSIC = "cam_intrinsic"
     """Open3D pinhole camera intrinsic model for RGB to be set by the camera driver."""
 
-    PC_CAM_INTRINSIC: str = "pc_cam_intrinsic"
+    PC_CAM_INTRINSIC = "pc_cam_intrinsic"
     """Camera intrinsic that has been used for point cloud generation. This can be different, 
     because depth and RGB resolutions might mismatch."""
 
-    CLOUD: str = "cloud"
+    CLOUD = "cloud"
     """Point cloud data"""
 
-    QUERY: str = "query"
+    QUERY = "query"
     """Query information"""
 
-    WORLD_FRAME: str = "world_frame"
+    WORLD_FRAME = "world_frame"
     """Name of the world frame."""
 
-    CAM_FRAME: str = "camera_frame"
+    CAM_FRAME = "camera_frame"
     """Name of the camera frame."""
 
-    VIEWPOINT_CAM_TO_WORLD: str = "viewpoint_cam_to_world"
+    VIEWPOINT_CAM_TO_WORLD = "viewpoint_cam_to_world"
     """Deprecated: Use CAM_TO_WORLD_TRANSFORM instead.
     Camera to world transform.
     Type: robokudo.types.tf.StampedTransform"""
 
-    CAM_TO_WORLD_TRANSFORM: str = "cam_to_world_transform"
+    CAM_TO_WORLD_TRANSFORM = "cam_to_world_transform"
     """Camera to world. 
     Type: semantic_digital_twin.spatial_types.spatial_types.HomogeneousTransformationMatrix"""
 
-    DATA_TIMESTAMP: str = "data_timestamp"
+    DATA_TIMESTAMP = "data_timestamp"
     """Nanoseconds since epoch at which the sensor data has been received.
     type: Int
     """
 
-    CAS_ID: str = "cas_id"
+    CAS_ID = "cas_id"
     """Monotonic ID of the CAS instance within a single pipeline run.
     type: Int
     """
 
-    OBJECT_IMAGE: str = "object_image"
+    OBJECT_IMAGE = "object_image"
     """Object image data. This view is used in imagistic reasoning pipelines where a 
     rendered scene can be fully segmented per object."""
 
-    OBJECT_COLOR_MAP: str = "object_color_map"
+    OBJECT_COLOR_MAP = "object_color_map"
     """Object color mapping data which assigns objects visible in OBJECT_IMAGE to entity names."""
 
-    GROUND_TRUTH_WORLD_REF: str = "ground_truth_world_ref"
+    GROUND_TRUTH_WORLD_REF = "ground_truth_world_ref"
     """Read-only reference to the SemDT ground-truth world used for this CAS frame.
 
     This view is intended for in-process consumers only and should be written
