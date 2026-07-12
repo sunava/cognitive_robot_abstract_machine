@@ -30,6 +30,8 @@ from robokudo.annotators.shape_estimator import ShapeEstimatorAnnotator
 from robokudo.descriptors.factories.cr_descriptor_factory import (
     CollectionReaderDescriptorFactory,
 )
+from robokudo.world_descriptor import PredefinedObject
+from semantic_digital_twin.world_description.geometry import Mesh
 
 
 @pytest.fixture
@@ -317,3 +319,42 @@ class TestFullAEExecution(object):
             for shapes in object_shapes
         )
         assert all(len(shapes[0].inliers) > 0 for shapes in object_shapes)
+
+    def test_run_semdt_raytracer_tabletop_ae_loads_mesh_world_descriptor(self, node):
+        raytracer_config = CollectionReaderDescriptorFactory.create_descriptor(
+            "semdt_raytracer",
+            world_descriptor_name="world_semdt_raytracer_tabletop",
+            resolution=128,
+        )
+
+        plane_desc = PlaneAnnotator.Descriptor()
+        plane_desc.parameters.distance_threshold = 0.01
+
+        cluster_desc = PointCloudClusterExtractor.Descriptor()
+        cluster_desc.parameters.dbscan_min_cluster_count = 8
+        cluster_desc.parameters.min_cluster_count = 20
+        cluster_desc.parameters.min_on_plane_point_count = 10
+        cluster_desc.parameters.eps = 0.05
+
+        seq = robokudo.pipeline.Pipeline("SemDTRayTracerTabletopTestPipeline")
+        seq.add_children(
+            [
+                robokudo.annotators.outputs.ClearAnnotatorOutputs(),
+                CollectionReaderAnnotator(descriptor=raytracer_config),
+                ImagePreprocessorAnnotator("ImagePreprocessor"),
+                PointcloudCropAnnotator(),
+                PlaneAnnotator(descriptor=plane_desc),
+                PointCloudClusterExtractor(descriptor=cluster_desc),
+                ClusterColorAnnotator(),
+                ClusterPoseBBAnnotator(),
+            ]
+        )
+
+        tree_result = robokudo.utils.tree_execution.run_tree_once(
+            seq, node, max_iterations=80, tick_rate=20
+        )
+        assert tree_result is py_trees.common.Status.SUCCESS
+
+        types_of_annotations = list(map(type, seq.cas.annotations))
+        assert types_of_annotations.count(robokudo.types.annotation.Plane) == 1
+        assert types_of_annotations.count(robokudo.types.scene.ObjectHypothesis) == 4

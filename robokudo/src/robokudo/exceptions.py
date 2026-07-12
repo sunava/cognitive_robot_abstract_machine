@@ -46,6 +46,20 @@ class UnknownMode(RoboKudoError, ValueError):
 
 
 @dataclass
+class CameraDataMissing(RoboKudoError):
+    """Raised when a camera callback requires a message that was not provided."""
+
+    data_name: str
+    context: str
+
+    def error_message(self) -> str:
+        return f"{self.data_name} is required for {self.context}, but was not provided."
+
+    def suggest_correction(self) -> str:
+        return "check the camera subscriptions and synchronization setup."
+
+
+@dataclass
 class AnalysisPreconditionError(RoboKudoError, ABC):
     """Base class for unmet analysis preconditions."""
 

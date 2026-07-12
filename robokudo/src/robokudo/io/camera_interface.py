@@ -43,6 +43,7 @@ from typing_extensions import Optional, List, Any, TYPE_CHECKING, Union, Tuple
 
 from robokudo.cas import CASViews, CAS
 from robokudo.defs import PACKAGE_NAME
+from robokudo.exceptions import CameraDataMissing
 from robokudo.io.tf_listener_proxy import TFListenerProxy
 from robokudo.types.tf import StampedTransform
 from robokudo.utils.cv_bridge_workaround import CVBridgeWorkaround
@@ -561,14 +562,16 @@ class KinectCameraInterface(ROSCameraInterface):
 
         if self.compressed_depth_configured():
             if depth_data is None:
-                raise ValueError(
-                    "Depth data is required when compressed depth is configured"
+                raise CameraDataMissing(
+                    data_name="Depth data",
+                    context="compressed depth conversion",
                 )
             self.depth = depth_convert_workaround(depth_data)
         else:
             if depth_data is None:
-                raise ValueError(
-                    "Depth data is required for uncompressed depth conversion"
+                raise CameraDataMissing(
+                    data_name="Depth data",
+                    context="uncompressed depth conversion",
                 )
             self.depth = self.bridge.imgmsg_to_cv2(depth_data, "32FC1")
 

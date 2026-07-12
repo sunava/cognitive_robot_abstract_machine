@@ -24,9 +24,9 @@ class WorldDescriptor(BaseWorldDescriptor):
 
         table_top_z = 0.78
         table_thickness = 0.06
-        pycram_spec = find_spec("pycram")
+        pycram_spec = find_spec("coraplex")
         if pycram_spec is None or pycram_spec.origin is None:
-            raise ImportError("Could not locate the pycram package for mesh loading.")
+            raise ImportError("Could not locate the coraplex package for mesh loading.")
         object_mesh_dir = (
             Path(pycram_spec.origin).resolve().parents[2] / "resources" / "objects"
         )

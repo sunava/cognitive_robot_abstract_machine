@@ -5,6 +5,7 @@ from robokudo.cas import CASViews
 from robokudo.exceptions import (
     CASCheckConfigurationError,
     CASCheckFailed,
+    CameraDataMissing,
     ColorToDepthRatioMissing,
     EmptyPointCloud,
     ImageContourMissing,
@@ -42,6 +43,19 @@ class TestRoboKudoExceptions:
 
         assert "TestAnnotator received an unknown mode" in str(exception)
         assert "not-a-mode" in str(exception)
+
+    def test_camera_data_missing_message(self):
+        exception = CameraDataMissing(
+            data_name="Depth data",
+            context="compressed depth conversion",
+        )
+
+        assert "Depth data is required for compressed depth conversion" in str(
+            exception
+        )
+        assert "check the camera subscriptions and synchronization setup" in str(
+            exception
+        )
 
     def test_cas_check_configuration_error_message(self):
         exception = CASCheckConfigurationError(component_name="CASCheckFunc")
