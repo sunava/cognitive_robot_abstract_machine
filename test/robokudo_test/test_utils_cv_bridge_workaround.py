@@ -5,6 +5,7 @@ from sensor_msgs.msg import Image
 from robokudo.exceptions import (
     CVBridgeImageConversionError,
     CVBridgeImageShapeError,
+    CVBridgeROSImageShapeError,
     CVBridgeUnsupportedEncoding,
     CVBridgeUnsupportedTargetEncoding,
 )
@@ -86,6 +87,19 @@ class TestCVBridgeWorkaround(object):
         assert decoded.dtype == np.uint16
         assert decoded.shape == (1, 2)
         assert np.array_equal(decoded, values)
+
+    def test_imgmsg_to_cv2_rejects_invalid_ros_image_shape(self) -> None:
+        bridge = CVBridgeWorkaround()
+        msg = _make_image_msg(
+            height=0,
+            width=1,
+            encoding="mono8",
+            step=1,
+            data=bytes([0]),
+        )
+
+        with pytest.raises(CVBridgeROSImageShapeError):
+            bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
 
     def test_imgmsg_to_cv2_casts_to_32fc1(self) -> None:
         bridge = CVBridgeWorkaround()

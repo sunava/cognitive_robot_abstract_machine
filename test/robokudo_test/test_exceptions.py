@@ -11,6 +11,7 @@ from robokudo.exceptions import (
     CVBridgeImageShapeError,
     CVBridgeUnsupportedEncoding,
     CVBridgeUnsupportedTargetEncoding,
+    CVBridgeROSImageShapeError,
     EmptyPointCloud,
     ImageContourMissing,
     PlaneModelMissing,
@@ -87,6 +88,11 @@ class TestRoboKudoExceptions:
         exception = CVBridgeUnsupportedTargetEncoding(target_encoding="rgb8")
 
         assert "Unsupported desired encoding 'rgb8'" in str(exception)
+
+    def test_cv_bridge_ros_image_shape_error_message(self):
+        exception = CVBridgeROSImageShapeError(height=0, width=640)
+
+        assert "Invalid ROS image shape height=0, width=640" in str(exception)
 
     def test_stored_camera_transform_frame_metadata_missing_message(self):
         exception = StoredCameraTransformFrameMetadataMissing()

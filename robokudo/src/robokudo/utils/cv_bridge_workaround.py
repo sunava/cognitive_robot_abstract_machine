@@ -26,6 +26,7 @@ from typing_extensions import TYPE_CHECKING, Tuple
 from robokudo.exceptions import (
     CVBridgeImageConversionError,
     CVBridgeImageShapeError,
+    CVBridgeROSImageShapeError,
     CVBridgeUnsupportedEncoding,
     CVBridgeUnsupportedTargetEncoding,
 )
@@ -183,9 +184,7 @@ class CVBridgeWorkaround:
     def _decode_image_message(cls, msg: Image) -> npt.NDArray:
         base_dtype, channels = cls._encoding_to_dtype_channels(msg.encoding)
         if msg.height <= 0 or msg.width <= 0:
-            raise ValueError(
-                f"Invalid ROS image shape height={msg.height}, width={msg.width}"
-            )
+            raise CVBridgeROSImageShapeError(height=msg.height, width=msg.width)
 
         msg_dtype = base_dtype.newbyteorder(">" if msg.is_bigendian else "<")
         row_bytes = int(msg.step)

@@ -103,6 +103,23 @@ class CVBridgeImageShapeError(RoboKudoError, ValueError):
 
 
 @dataclass
+class CVBridgeROSImageShapeError(RoboKudoError, ValueError):
+    """Raised when a ROS image message has invalid dimensions."""
+
+    height: int
+    """ROS image height."""
+
+    width: int
+    """ROS image width."""
+
+    def error_message(self) -> str:
+        return f"Invalid ROS image shape height={self.height}, width={self.width}."
+
+    def suggest_correction(self) -> str:
+        return "provide a ROS image with positive height and width."
+
+
+@dataclass
 class CVBridgeUnsupportedEncoding(RoboKudoError, ValueError):
     """Raised when the cv_bridge workaround receives an unknown encoding."""
 
