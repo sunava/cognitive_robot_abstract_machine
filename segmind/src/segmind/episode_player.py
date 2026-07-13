@@ -3,12 +3,13 @@ from __future__ import annotations
 import datetime
 import logging
 import time
-from abc import ABC, abstractmethod
+from abc import ABC, ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from functools import wraps
 from threading import RLock
 from typing import Any, Callable, ClassVar, Optional
 
+from krrood.singleton import SingletonMeta
 from segmind.datastructures.enums import PlayerStatus
 from segmind.utils import PropagatingThread
 from semantic_digital_twin.world import World
@@ -22,8 +23,17 @@ except ImportError:
     RDRCaseViewer = None
 
 
+class SingletonABCMeta(SingletonMeta, ABCMeta):
+    """
+    Combines :class:`SingletonMeta` with :class:`abc.ABCMeta`.
+
+    A class's metaclass must be a subclass of the metaclass of each of its bases, so
+    :class:`SingletonMeta` on its own cannot be used with an abstract base class.
+    """
+
+
 @dataclass(eq=False)
-class EpisodePlayer(PropagatingThread, ABC):
+class EpisodePlayer(PropagatingThread, ABC, metaclass=SingletonABCMeta):
     """
     The EpisodePlayer class is a base class for all episode players.
     It provides common functionality and properties for episode players.
@@ -54,11 +64,6 @@ class EpisodePlayer(PropagatingThread, ABC):
     The RDRCaseViewer instance.
     """
 
-    _instances: ClassVar[dict[type, EpisodePlayer]] = {}
-    """
-    The instances of the EpisodePlayer class, representing the running episode players.
-    """
-
     pause_resume_lock: ClassVar[RLock] = field(default=RLock(), init=False)
     """
     A lock for pausing and resuming the episode player.
@@ -73,19 +78,6 @@ class EpisodePlayer(PropagatingThread, ABC):
     """
     The status of the episode player.
     """
-
-    _initialized: bool = field(default=False, init=False)
-    """
-    Whether the episode player has been initialized.
-    """
-
-    def __new__(cls, *args, **kwargs):
-        if cls not in EpisodePlayer._instances:
-            instance = super().__new__(cls)
-            EpisodePlayer._instances[cls] = instance
-            instance._initialized = False
-        return EpisodePlayer._instances[cls]
-
 
     @property
     def status(self) -> PlayerStatus:
