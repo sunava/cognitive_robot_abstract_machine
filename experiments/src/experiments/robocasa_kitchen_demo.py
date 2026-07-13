@@ -5,13 +5,15 @@ RoboCasa ships kitchens as robosuite/MuJoCo assets. This demo drives the
 :class:`~semantic_digital_twin.adapters.robocasa_dataset.loader.RoboCasaDatasetLoader`
 adapter to compose one such kitchen, parse it into CRAM's semantic world model, and
 report the bodies and semantic annotations the adapter attached (cabinets, drawers,
-handles, doors, ...). When ROS 2 is available it also publishes the world as RViz
-markers so the kitchen can be inspected visually.
+handles, doors, ...). With ``--robot`` it also spawns a PR2 at a counter and has it pick
+up an apple resting on the counter surface, and with ``--visualize`` it publishes the
+world as RViz markers so the kitchen can be inspected visually.
 
 Run with (the ``experiments`` package must be importable)::
 
     python -m experiments.robocasa_kitchen_demo
     python -m experiments.robocasa_kitchen_demo --layout LAYOUT005 --style STYLE003
+    python -m experiments.robocasa_kitchen_demo --robot --visualize
 
 .. note::
     The kitchen assets must be downloaded once via
@@ -436,7 +438,7 @@ def _parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--robot",
         action="store_true",
-        help="Spawn a PR2 and have it pick up an apple (requires coraplex).",
+        help="Spawn a PR2 at a counter and have it pick up an apple off it (requires coraplex).",
     )
     return parser.parse_args()
 
@@ -444,7 +446,7 @@ def _parse_arguments() -> argparse.Namespace:
 def main() -> None:
     """
     Load a RoboCasa kitchen, print a summary of its bodies and semantic annotations, optionally
-    spawn a PR2 that picks up an apple, and optionally publish the scene to RViz.
+    spawn a PR2 that picks up an apple off a counter, and optionally publish the scene to RViz.
     """
     arguments = _parse_arguments()
     layout = LayoutType[arguments.layout]

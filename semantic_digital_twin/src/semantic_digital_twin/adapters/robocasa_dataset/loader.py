@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     import numpy
     from robocasa.models.scenes.scene_registry import LayoutType, StyleType
 
+from krrood.exceptions import DataclassException
 from semantic_digital_twin.adapters.mjcf import MJCFParser
 from semantic_digital_twin.adapters.robocasa_dataset.semantics import (
     RoboCasaKitchenApplianceCategory,
@@ -62,37 +63,142 @@ except ImportError:
     )
 
 
-class RoboCasaApplianceNotFoundError(LookupError):
+@dataclass
+class RoboCasaApplianceNotFoundError(DataclassException, LookupError):
     """
     Raised when no configured RoboCasa fixture matching a requested appliance category can be found
     in any kitchen layout.
     """
 
-    def __init__(self, category: RoboCasaKitchenApplianceCategory):
-        self.category = category
-        """
-        The appliance category that could not be found in any layout.
-        """
-        super().__init__(
-            f"No RoboCasa fixture for appliance category '{category}' was found in any kitchen layout."
+    category: RoboCasaKitchenApplianceCategory
+    """
+    The appliance category that could not be found in any layout.
+    """
+
+    def error_message(self) -> str:
+        return (
+            f"No RoboCasa fixture for appliance category '{self.category}' was found in any kitchen "
+            "layout."
         )
 
+    def suggest_correction(self) -> str:
+        return ""
 
-class RoboCasaTaskNotFoundError(LookupError):
+
+@dataclass
+class RoboCasaTaskNotFoundError(DataclassException, LookupError):
     """
     Raised when a requested task name does not correspond to a registered RoboCasa kitchen task
     environment.
     """
 
-    def __init__(self, task_name: str, available_task_names: List[str]):
-        self.task_name = task_name
-        """
-        The task name that could not be resolved to a registered RoboCasa kitchen task.
-        """
-        super().__init__(
-            f"No RoboCasa kitchen task named '{task_name}' is registered. Available tasks: "
-            f"{', '.join(available_task_names)}."
+    task_name: str
+    """
+    The task name that could not be resolved to a registered RoboCasa kitchen task.
+    """
+
+    available_task_names: List[str]
+    """
+    The names of the registered RoboCasa kitchen tasks.
+    """
+
+    def error_message(self) -> str:
+        return f"No RoboCasa kitchen task named '{self.task_name}' is registered."
+
+    def suggest_correction(self) -> str:
+        return f"Choose one of the registered tasks: {', '.join(self.available_task_names)}."
+
+
+@dataclass
+class RoboCasaObjectAssetsNotFoundError(DataclassException, FileNotFoundError):
+    """
+    Raised when no downloaded asset files can be found for a requested RoboCasa object category.
+    """
+
+    category: RoboCasaObjectCategory
+    """
+    The object category whose assets could not be found.
+    """
+
+    searched_object_groups: Tuple[str, ...]
+    """
+    The object asset groups that were searched.
+    """
+
+    objects_directory: Path
+    """
+    The directory the object asset groups were searched under.
+    """
+
+    def error_message(self) -> str:
+        return (
+            f"No downloaded assets found for object category '{self.category}' in groups "
+            f"{list(self.searched_object_groups)} under {self.objects_directory}."
         )
+
+    def suggest_correction(self) -> str:
+        return "Run 'python -m robocasa.scripts.download_kitchen_assets' first."
+
+
+@dataclass
+class RoboCasaObjectInstanceIndexError(DataclassException, IndexError):
+    """
+    Raised when a requested object instance index exceeds the number of downloaded instances of a
+    RoboCasa object category.
+    """
+
+    category: RoboCasaObjectCategory
+    """
+    The object category the instance was requested for.
+    """
+
+    requested_instance_index: int
+    """
+    The out-of-range instance index that was requested.
+    """
+
+    available_instance_count: int
+    """
+    The number of downloaded instances that were found.
+    """
+
+    searched_object_groups: Tuple[str, ...]
+    """
+    The object asset groups that were searched.
+    """
+
+    objects_directory: Path
+    """
+    The directory the object asset groups were searched under.
+    """
+
+    def error_message(self) -> str:
+        return (
+            f"Requested instance index {self.requested_instance_index} for object category "
+            f"'{self.category}', but only {self.available_instance_count} downloaded instance(s) "
+            f"were found in groups {list(self.searched_object_groups)} under {self.objects_directory}."
+        )
+
+    def suggest_correction(self) -> str:
+        return ""
+
+
+@dataclass
+class RoboCasaObjectHasNoCollisionError(DataclassException, ValueError):
+    """
+    Raised when a loaded RoboCasa object world contains no body with collision geometry to annotate.
+    """
+
+    category: RoboCasaObjectCategory
+    """
+    The object category whose loaded world lacked collision geometry.
+    """
+
+    def error_message(self) -> str:
+        return f"No body with collision geometry found for object category '{self.category}'."
+
+    def suggest_correction(self) -> str:
+        return ""
 
 
 @dataclass
@@ -559,16 +665,16 @@ class RoboCasaDatasetLoader:
             for model_file in (objects_directory / group).glob(f"{category}/**/model.xml")
         )
         if not model_files:
-            raise FileNotFoundError(
-                f"No downloaded assets found for object category '{category}' in groups "
-                f"{list(self.self_contained_object_groups)} under {objects_directory}. "
-                "Run 'python -m robocasa.scripts.download_kitchen_assets' first."
+            raise RoboCasaObjectAssetsNotFoundError(
+                category, self.self_contained_object_groups, objects_directory
             )
         if instance_index >= len(model_files):
-            raise IndexError(
-                f"Requested instance_index {instance_index} for object category '{category}', "
-                f"but only {len(model_files)} downloaded instance(s) were found in "
-                f"groups {list(self.self_contained_object_groups)} under {objects_directory}."
+            raise RoboCasaObjectInstanceIndexError(
+                category,
+                instance_index,
+                len(model_files),
+                self.self_contained_object_groups,
+                objects_directory,
             )
 
         world = MJCFParser(str(model_files[instance_index])).parse()
@@ -607,9 +713,7 @@ class RoboCasaDatasetLoader:
         """
         bodies_with_collision = world.bodies_with_collision
         if not bodies_with_collision:
-            raise ValueError(
-                f"No body with collision geometry found for object category '{category}'."
-            )
+            raise RoboCasaObjectHasNoCollisionError(category)
         self._attach_semantic_annotation(world, bodies_with_collision[0], category)
 
     def _attach_semantic_annotation(self, world: World, body: Body, category: str) -> None:
