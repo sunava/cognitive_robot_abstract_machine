@@ -60,6 +60,17 @@ class CameraDataMissing(RoboKudoError):
 
 
 @dataclass
+class StoredCameraTransformFrameMetadataMissing(RoboKudoError):
+    """Raised when stored camera transform frame metadata is missing."""
+
+    def error_message(self) -> str:
+        return "Stored CAMERA_TO_WORLD_TRANSFORM is missing frame-name metadata."
+
+    def suggest_correction(self) -> str:
+        return "Recreate the recording with the current storage format."
+
+
+@dataclass
 class AnalysisPreconditionError(RoboKudoError, ABC):
     """Base class for unmet analysis preconditions."""
 

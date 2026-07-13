@@ -13,6 +13,7 @@ from robokudo.exceptions import (
     PointCloudThresholdError,
     PointCloudThresholdRelation,
     PointCloudTooSmallForClustering,
+    StoredCameraTransformFrameMetadataMissing,
     UnknownMode,
     WorldDescriptorBootstrapError,
     WorldDescriptorLoadError,
@@ -54,6 +55,16 @@ class TestRoboKudoExceptions:
             exception
         )
         assert "check the camera subscriptions and synchronization setup" in str(
+            exception
+        )
+
+    def test_stored_camera_transform_frame_metadata_missing_message(self):
+        exception = StoredCameraTransformFrameMetadataMissing()
+
+        assert "CAMERA_TO_WORLD_TRANSFORM is missing frame-name metadata" in str(
+            exception
+        )
+        assert "Recreate the recording with the current storage format" in str(
             exception
         )
 

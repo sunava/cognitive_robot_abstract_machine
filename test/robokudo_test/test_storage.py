@@ -14,6 +14,7 @@ from robokudo.cas import CAS, CASViews
 from robokudo.descriptors.camera_configs.config_mongodb_playback import (
     MongoCameraConfig,
 )
+from robokudo.exceptions import StoredCameraTransformFrameMetadataMissing
 from robokudo.io.storage import Storage
 from robokudo.io.storage_reader_interface import StorageReaderInterface
 from robokudo.types.cv import ImageROI
@@ -418,3 +419,15 @@ class TestStorage:
         )
         assert len(running_world.get_bodies_by_name(stored_world_frame)) == 1
         assert len(running_world.get_bodies_by_name(stored_camera_frame)) == 1
+
+    def test_storage_reader_raises_custom_error_when_camera_transform_frame_metadata_is_missing(
+        self,
+    ):
+        reader = StorageReaderInterface.__new__(StorageReaderInterface)
+        view_document = {
+            "payload": {},
+            "metadata": {},
+        }
+
+        with pytest.raises(StoredCameraTransformFrameMetadataMissing):
+            reader._decode_stored_camera_to_world_transform(view_document, {})

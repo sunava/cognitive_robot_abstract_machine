@@ -25,6 +25,7 @@ from robokudo.descriptors.camera_configs.config_mongodb_playback import (
 import open3d as o3d
 from robokudo.annotator_parameters import AnnotatorPredefinedParameters
 from robokudo.cas import CAS, CASViews
+from robokudo.exceptions import StoredCameraTransformFrameMetadataMissing
 from robokudo.io.camera_interface import CameraInterface
 from robokudo.io.storage import Storage
 import robokudo.world as world
@@ -188,10 +189,7 @@ class StorageReaderInterface(CameraInterface):
         camera_frame = metadata.get("child_frame_name")
 
         if world_frame is None or camera_frame is None:
-            raise RuntimeError(
-                f"Stored {CASViews.CAMERA_TO_WORLD_TRANSFORM} is missing frame-name "
-                "metadata. Recreate the recording with the current storage format."
-            )
+            raise StoredCameraTransformFrameMetadataMissing()
 
         return (
             self._decode_transform_payload_without_frames(payload),
