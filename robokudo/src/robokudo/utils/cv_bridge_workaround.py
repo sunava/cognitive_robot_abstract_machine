@@ -23,6 +23,8 @@ import numpy as np
 from sensor_msgs.msg import Image
 from typing_extensions import TYPE_CHECKING, Tuple
 
+from robokudo.exceptions import CVBridgeImageConversionError
+
 if TYPE_CHECKING:
     import numpy.typing as npt
 
@@ -92,8 +94,10 @@ class CVBridgeWorkaround:
 
         if target_encoding == "32fc1":
             if image.ndim != 2:
-                raise ValueError(
-                    f"Cannot convert non-single-channel image '{img_msg.encoding}' to '{desired_encoding}'"
+                raise CVBridgeImageConversionError(
+                    source_encoding=img_msg.encoding,
+                    target_encoding=desired_encoding,
+                    reason="source image is not single-channel",
                 )
             if image.dtype == np.float32:
                 return image

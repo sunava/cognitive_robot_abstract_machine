@@ -7,6 +7,7 @@ from robokudo.exceptions import (
     CASCheckFailed,
     CameraDataMissing,
     ColorToDepthRatioMissing,
+    CVBridgeImageConversionError,
     EmptyPointCloud,
     ImageContourMissing,
     PlaneModelMissing,
@@ -57,6 +58,16 @@ class TestRoboKudoExceptions:
         assert "check the camera subscriptions and synchronization setup" in str(
             exception
         )
+
+    def test_cv_bridge_image_conversion_error_message(self):
+        exception = CVBridgeImageConversionError(
+            source_encoding="bgr8",
+            target_encoding="32FC1",
+            reason="source image is not single-channel",
+        )
+
+        assert "Cannot convert ROS image encoding 'bgr8' to '32FC1'" in str(exception)
+        assert "source image is not single-channel" in str(exception)
 
     def test_stored_camera_transform_frame_metadata_missing_message(self):
         exception = StoredCameraTransformFrameMetadataMissing()

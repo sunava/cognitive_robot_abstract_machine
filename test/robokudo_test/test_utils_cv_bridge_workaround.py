@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 from sensor_msgs.msg import Image
 
+from robokudo.exceptions import CVBridgeImageConversionError
 from robokudo.utils.cv_bridge_workaround import CVBridgeWorkaround
 
 
@@ -97,6 +98,20 @@ class TestCVBridgeWorkaround(object):
         assert decoded.dtype == np.float32
         assert decoded.shape == (2, 2)
         assert np.array_equal(decoded, depth_u16.astype(np.float32))
+
+    def test_imgmsg_to_cv2_rejects_multi_channel_image_for_32fc1(self) -> None:
+        bridge = CVBridgeWorkaround()
+        bgr = np.zeros((1, 1, 3), dtype=np.uint8)
+        msg = _make_image_msg(
+            height=1,
+            width=1,
+            encoding="bgr8",
+            step=3,
+            data=bgr.tobytes(),
+        )
+
+        with pytest.raises(CVBridgeImageConversionError):
+            bridge.imgmsg_to_cv2(msg, desired_encoding="32FC1")
 
     def test_cv2_to_imgmsg_passthrough_roundtrip(self) -> None:
         bridge = CVBridgeWorkaround()

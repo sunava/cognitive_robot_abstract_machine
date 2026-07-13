@@ -60,6 +60,29 @@ class CameraDataMissing(RoboKudoError):
 
 
 @dataclass
+class CVBridgeImageConversionError(RoboKudoError, ValueError):
+    """Raised when image conversion through the cv_bridge workaround fails."""
+
+    source_encoding: str
+    """Source ROS image encoding."""
+
+    target_encoding: str
+    """Requested target image encoding."""
+
+    reason: str
+    """Reason why the image conversion cannot be performed."""
+
+    def error_message(self) -> str:
+        return (
+            f"Cannot convert ROS image encoding '{self.source_encoding}' to "
+            f"'{self.target_encoding}': {self.reason}."
+        )
+
+    def suggest_correction(self) -> str:
+        return "request a compatible target encoding or provide an image with matching channels."
+
+
+@dataclass
 class StoredCameraTransformFrameMetadataMissing(RoboKudoError):
     """Raised when stored camera transform frame metadata is missing."""
 
