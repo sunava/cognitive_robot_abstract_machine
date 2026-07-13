@@ -8,7 +8,8 @@ from typing import Dict, Tuple
 
 import numpy as np
 import open3d as o3d
-from PIL import Image as PILImage
+from PIL import Image as PILImage, UnidentifiedImageError
+from pyglet.canvas.xlib import NoSuchDisplayException
 from sensor_msgs.msg import CameraInfo
 
 import robokudo.world as rk_world
@@ -368,7 +369,7 @@ class SemDTRayTracerCameraInterface(CameraInterface):
             )
             image = np.array(PILImage.open(io.BytesIO(png_data)).convert("RGB"))
             return image[:, :, ::-1].copy()
-        except Exception:
+        except (NoSuchDisplayException, UnidentifiedImageError, OSError, ValueError):
             return None
 
     def _render_semantic_rgb(
