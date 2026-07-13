@@ -160,6 +160,28 @@ class CVBridgeROSImagePayloadError(RoboKudoError, ValueError):
 
 
 @dataclass
+class CVBridgeUnsupportedImageData(RoboKudoError, ValueError):
+    """Raised when image data cannot be mapped to a ROS image encoding."""
+
+    dtype: str
+    """Image array data type."""
+
+    channel_count: int
+    """Number of image channels."""
+
+    def error_message(self) -> str:
+        return (
+            f"Unsupported dtype for ROS image conversion: dtype={self.dtype}, "
+            f"channels={self.channel_count}."
+        )
+
+    def suggest_correction(self) -> str:
+        return (
+            "provide an image dtype and channel count supported by ROS image encodings."
+        )
+
+
+@dataclass
 class CVBridgeUnsupportedEncoding(RoboKudoError, ValueError):
     """Raised when the cv_bridge workaround receives an unknown encoding."""
 

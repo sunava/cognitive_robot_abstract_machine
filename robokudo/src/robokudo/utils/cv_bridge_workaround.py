@@ -29,6 +29,7 @@ from robokudo.exceptions import (
     CVBridgeROSImagePayloadError,
     CVBridgeROSImageShapeError,
     CVBridgeROSImageStepError,
+    CVBridgeUnsupportedImageData,
     CVBridgeUnsupportedEncoding,
     CVBridgeUnsupportedTargetEncoding,
 )
@@ -257,6 +258,7 @@ class CVBridgeWorkaround:
         if dtype == np.float64:
             return f"64FC{channel_count}"
 
-        raise ValueError(
-            f"Unsupported dtype for ROS image conversion: dtype={dtype}, channels={channel_count}"
+        raise CVBridgeUnsupportedImageData(
+            dtype=str(dtype),
+            channel_count=channel_count,
         )
