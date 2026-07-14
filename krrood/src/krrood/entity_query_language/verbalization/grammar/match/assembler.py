@@ -46,9 +46,10 @@ _MAX_RESPECTIVELY = 3
 
 class MatchAssembler(Assembler[Match, MatchPlan]):
     """
-    Realise a match into *"Find/Generate <selection> [, and predict its … values]"* with a
-    *"given that"* block (the construction pattern, attributes aggregated per object) and a
-    *"where"* block (the free conditions), each condition its own point.
+    Realise a match into *"Find/Generate <selection> [, and predict its …
+    values]"* with a *"given that"* block (the construction pattern, attributes
+    aggregated per object) and a *"where"* block (the free conditions), each
+    condition its own point.
 
     The selection and every condition/value are recursed through ``context.child``, so the existing
     chain / comparator / coreference machinery renders them; this assembler only decides the
@@ -77,8 +78,7 @@ class MatchAssembler(Assembler[Match, MatchPlan]):
 
         header_parts: List[VerbalizationFragment] = [
             (
-                self.context.services.performative_override
-                or Directive.for_underspecified(plan.underspecified)
+                self.context.services.performative_override or Directive.GENERATE
             ).as_fragment(),
             self.context.child(plan.selection),
         ]

@@ -283,8 +283,8 @@ class Match(Evaluable, AbstractMatchExpression[T], HasFactoryAndKwargs[T]):
         elif ismethod(self.factory):
             self.type_ = self.factory.__class__
         elif isfunction(self.factory):
-            type_ = get_type_hints(self.factory)["return"]
-            if not isclass(type_):
+            type_ = get_type_hints(self.factory).get("return")
+            if type_ is None or not isclass(type_):
                 raise MatchTypeCannotBeDetermined(self)
             self.type_ = type_
         else:
@@ -445,8 +445,34 @@ class Match(Evaluable, AbstractMatchExpression[T], HasFactoryAndKwargs[T]):
         return self.expression._evaluate_natively_()
 
     @property
+    def has_ellipsis_attributes(self) -> bool:
+        """
+        :return: Whether any attribute anywhere in this match's pattern (including nested
+            matches, and ``...`` elements inside an otherwise-concrete list/tuple attribute)
+            is left fully unspecified via ``...``, requiring construction rather than search
+            to resolve.
+        """
+        return any(
+            self._is_or_contains_ellipsis(attribute_match.assigned_value)
+            for attribute_match in self.matches_with_variables
+        )
+
+    @staticmethod
+    def _is_or_contains_ellipsis(value: Any) -> bool:
+        """
+        :param value: An attribute match's assigned value.
+        :return: Whether ``value`` is ``...`` itself, or a list/tuple containing ``...`` as one
+            of its elements (a list with no nested :class:`Match` element is resolved as a
+            single literal attribute match, so its elements are never visited individually).
+        """
+        if isinstance(value, (list, tuple)):
+            return any(isinstance(element, type(Ellipsis)) for element in value)
+        return isinstance(value, type(Ellipsis))
+
+    @property
     def name(self) -> str:
-        return f"Match({self.type.__name__})"
+        type_name = self.type.__name__ if self.type is not None else "?"
+        return f"Match({type_name})"
 
     def __repr__(self):
         return self.name

@@ -344,7 +344,7 @@ def an(
     entity_: Callable[..., T],
     quantification: None = ...,
     *,
-    target_type: Type[T],
+    target_type: Type[T] = ...,
 ) -> Match[T]: ...
 
 
@@ -412,7 +412,7 @@ def the(
 def the(
     entity_: Callable[..., T],
     *,
-    target_type: Type[T],
+    target_type: Type[T] = ...,
 ) -> Match[T]: ...
 
 
@@ -440,9 +440,7 @@ def the(
     :param target_type: Optional explicit type for callable factories (match path only).
     :return: The applied quantifier or the constructed match.
     """
-    return _quantify_or_build_match(
-        entity_, The, None, target_type=target_type
-    )
+    return _quantify_or_build_match(entity_, The, None, target_type=target_type)
 
 
 # %% Rules

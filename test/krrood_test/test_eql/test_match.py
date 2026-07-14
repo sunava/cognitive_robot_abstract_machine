@@ -10,6 +10,7 @@ from krrood.entity_query_language.factories import (
     an,
     a,
 )
+from krrood.entity_query_language.exceptions import MatchTypeCannotBeDetermined
 from krrood.entity_query_language.predicate import HasType
 from krrood.entity_query_language.query.match import Match, is_underspecified
 from krrood.entity_query_language.core.base_expressions import UnificationDict
@@ -224,3 +225,80 @@ def test_match_with_list():
 
     r = q.tolist()
     assert r == [domain[0]]
+
+
+# ── an()/the() with a callable factory: target_type inference and default ────
+
+
+def test_an_infers_target_type_from_annotated_callable():
+    def make_position(x: float = 1.0, y: float = 2.0, z: float = 3.0) -> KRROODPosition:
+        return KRROODPosition(x, y, z)
+
+    match = an(make_position)
+    assert match.type is KRROODPosition
+
+
+def test_the_infers_target_type_from_annotated_callable():
+    def make_position(x: float = 1.0, y: float = 2.0, z: float = 3.0) -> KRROODPosition:
+        return KRROODPosition(x, y, z)
+
+    match = the(make_position)
+    assert match.type is KRROODPosition
+
+
+def test_an_uses_explicit_target_type_for_unannotated_callable():
+    def make_position(x, y, z):
+        return KRROODPosition(x, y, z)
+
+    match = an(make_position, target_type=KRROODPosition)
+    assert match.type is KRROODPosition
+
+
+def test_an_raises_when_callable_type_cannot_be_determined():
+    def make_position(x, y, z):
+        return KRROODPosition(x, y, z)
+
+    with pytest.raises(MatchTypeCannotBeDetermined):
+        an(make_position)
+
+
+# ── Match.has_ellipsis_attributes ─────────────────────────────────────────────
+
+
+def test_has_ellipsis_attributes_true_for_direct_ellipsis():
+    match = an(KRROODPosition)(x=..., y=2, z=3)
+    assert match.has_ellipsis_attributes is True
+
+
+def test_has_ellipsis_attributes_false_without_ellipsis():
+    match = an(KRROODPosition)(x=1, y=2, z=3)
+    assert match.has_ellipsis_attributes is False
+
+
+def test_has_ellipsis_attributes_true_for_nested_ellipsis():
+    match = an(KRROODPositions)(
+        positions=[an(KRROODPosition)(x=..., y=2, z=3)],
+        some_strings=["a"],
+    )
+    assert match.has_ellipsis_attributes is True
+
+
+def test_has_ellipsis_attributes_true_for_ellipsis_element_in_plain_list():
+    """
+    An ``...`` element sitting inside an otherwise-concrete list (no nested
+    ``Match`` elements) is still resolved as one literal-valued attribute
+    match, but is just as underspecified as a direct ``x=...`` assignment.
+    """
+    match = an(KRROODPositions)(
+        positions=[KRROODPosition(1, 2, 3)],
+        some_strings=["a", ..., "c"],
+    )
+    assert match.has_ellipsis_attributes is True
+
+
+def test_has_ellipsis_attributes_true_for_ellipsis_mixed_with_nested_match_in_list():
+    match = an(KRROODPositions)(
+        positions=[an(KRROODPosition)(x=1, y=2, z=3), ...],
+        some_strings=["a", "b"],
+    )
+    assert match.has_ellipsis_attributes is True

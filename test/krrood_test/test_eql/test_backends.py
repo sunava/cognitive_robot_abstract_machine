@@ -13,6 +13,9 @@ from krrood.entity_query_language.backends import (
     ProbabilisticBackend,
 )
 from krrood.entity_query_language.core.variable import Literal
+from krrood.entity_query_language.exceptions import (
+    SelectiveBackendCannotResolveEllipsisMatch,
+)
 from krrood.entity_query_language.factories import (
     variable,
     entity,
@@ -30,6 +33,7 @@ from random_events.variable import Symbolic
 from ..dataset.example_classes import (
     KRROODPose,
     KRROODPosition,
+    KRROODPositions,
     KRROODOrientation,
     Atom,
     Element,
@@ -222,3 +226,33 @@ def test_generative_eql_backend():
     for result in results:
         assert isinstance(result.element, Element)
         assert result.type > result.charge
+
+
+def test_selective_backend_rejects_match_with_ellipsis_attribute():
+    q = an(KRROODPosition)(x=..., y=1.0, z=2.0)
+    with pytest.raises(SelectiveBackendCannotResolveEllipsisMatch):
+        list(q.evaluate(backend=EntityQueryLanguageBackend()))
+
+
+def test_selective_backend_rejects_match_with_nested_ellipsis_attribute():
+    q = an(KRROODPose)(
+        position=an(KRROODPosition)(x=..., y=1.0, z=2.0),
+        orientation=KRROODOrientation(x=0.0, y=0.0, z=0.0, w=1.0),
+    )
+    with pytest.raises(SelectiveBackendCannotResolveEllipsisMatch):
+        list(q.evaluate(backend=EntityQueryLanguageBackend()))
+
+
+def test_selective_backend_rejects_match_with_ellipsis_element_in_plain_list():
+    q = an(KRROODPositions)(
+        positions=[KRROODPosition(1, 2, 3)],
+        some_strings=["a", ..., "c"],
+    )
+    with pytest.raises(SelectiveBackendCannotResolveEllipsisMatch):
+        list(q.evaluate(backend=EntityQueryLanguageBackend()))
+
+
+def test_selective_backend_accepts_match_without_ellipsis_attribute():
+    apple = Apple("apple", 7)
+    q = an(Apple)(name="apple", size=7).from_([apple])
+    assert list(q.evaluate(backend=EntityQueryLanguageBackend())) == [apple]
