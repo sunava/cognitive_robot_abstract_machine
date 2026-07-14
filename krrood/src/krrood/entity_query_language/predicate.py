@@ -485,10 +485,10 @@ class Length(SymbolicFunction):
     def _verbalization_fragment_(cls, fields: RenderedFields) -> VerbalizationFragment:
         # Imported locally to avoid the core -> verbalization import cycle (as Triple does).
         from krrood.entity_query_language.verbalization.vocabulary.parts_of_speech import (
-            value_function_phrase,
+            function_as_phrase,
         )
 
-        return value_function_phrase(cls.__name__, *fields.values())
+        return function_as_phrase(cls.__name__, *fields.values())
 
 
 length = symbolic_callable_to_function(Length)

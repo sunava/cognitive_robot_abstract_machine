@@ -348,7 +348,7 @@ def function_as_noun(name: str, getter_prefix: str = "get") -> str:
     return " ".join(words)
 
 
-def value_function_phrase(
+def function_as_phrase(
     name: str, *operands: ClauseConstituent
 ) -> VerbalizationFragment:
     """
@@ -368,10 +368,10 @@ def value_function_phrase(
     >>> from krrood.entity_query_language.verbalization.fragments.base import (
     ...     flatten_fragment_to_plain_text, WordFragment,
     ... )
-    >>> flatten_fragment_to_plain_text(value_function_phrase("GetQuarter"))
+    >>> flatten_fragment_to_plain_text(function_as_phrase("GetQuarter"))
     'quarter'
     >>> flatten_fragment_to_plain_text(
-    ...     value_function_phrase("RemainingLoad", Noun(WordFragment(text="the capacity")))
+    ...     function_as_phrase("RemainingLoad", Noun(WordFragment(text="the capacity")))
     ... )
     'the remaining load of the capacity'
     """
