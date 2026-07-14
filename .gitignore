@@ -157,11 +157,6 @@ class_diagram.pdf
 *_rdr.dot
 *_rdr.svg
 
-
-# segmind gitignore
-rgb/
-__pycache__/
-*.stl
-*.dae
-/.idea/*
-
+# Personal, per-user Claude Code memory (populated by .claude/hooks/session-start.sh
+# from the claude/personal-notes branch). Never committed on any branch.
+CLAUDE.local.md
