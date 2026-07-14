@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing_extensions import Iterable, Protocol, Union, runtime_checkable
 
 from krrood.entity_query_language.predicate import VerbalizationField
+from krrood.entity_query_language.utils import camel_case_to_words
 from krrood.entity_query_language.verbalization import morphology
 from krrood.entity_query_language.verbalization.fragments.base import (
     Clause,
@@ -25,6 +26,10 @@ from krrood.entity_query_language.verbalization.microplanning.coordination impor
     MAX_SET_MEMBERS,
     one_of,
 )
+from krrood.entity_query_language.verbalization.microplanning.possessive import (
+    possessive_path,
+)
+from krrood.entity_query_language.verbalization.navigation_path import PathStep
 from krrood.entity_query_language.verbalization.vocabulary.english import (
     Conjunctions,
     Copulas,
@@ -40,7 +45,7 @@ class ClauseElement(ABC):
     A predicate's ``_verbalization_fragment_`` builds its clause from these elements
     rather than raw fragments, so the author writes the affirmative, present-tense form
     once and the realisation passes inflect it (verb agreement, copula suppletion) and
-    negate it (do-support). The element only declares *what part of speech* a word is;
+    negate it (do- support). The element only declares *what part of speech* a word is;
     how it is realised is the morphology pass's job.
     """
 
@@ -176,12 +181,13 @@ class OneOf(ClauseElement):
     A bounded membership set — *"one of A, B, or C"* — over a collection of admissible
     values.
 
-    This is the high-level element for a "the subject is one of these" clause (a tuple
-    of admissible types, a small value domain), so an author never re-implements the
-    listing: each member renders as a linked type reference when it is a class, else as
-    a literal value, and a set larger than the cap is summarised by count (*"one of
-    seven types"*) rather than spelled out — the same bounded surface a domain-
-    constrained variable uses.
+    This is the high-level element for a "the subject is one of these"
+    clause (a tuple of admissible types, a small value domain), so an
+    author never re-implements the listing: each member renders as a
+    linked type reference when it is a class, else as a literal value,
+    and a set larger than the cap is summarised by count (*"one of seven
+    types"*) rather than spelled out — the same bounded surface a
+    domain-constrained variable uses.
     """
 
     members: Union[Iterable, VerbalizationField]
@@ -239,7 +245,7 @@ class Or(ClauseElement):
     type reference, any other value as a literal) and joined with *"or"*. An author
     writes ``Or(field)`` rather than reaching for the low-level
     :func:`~…fragments.base.oxford_comma` / :class:`Conjunctions` builders. A field
-    bound to a single (non-iterable) value keeps that value's own rendered fragment.
+    bound to a single (non- iterable) value keeps that value's own rendered fragment.
     """
 
     members: Union[Iterable, VerbalizationField]
@@ -317,3 +323,57 @@ def clause(*constituents: ClauseConstituent) -> Clause:
     'an Employee work in a Department'
     """
     return Clause(parts=[constituent.as_fragment() for constituent in constituents])
+
+
+def function_as_noun(name: str, getter_prefix: str = "get") -> str:
+    """:return: a value (non-boolean) symbolic function class's name as noun words, dropping a leading
+    imperative *getter_prefix* so ``GetQuarter`` reads as *"quarter"*; a plain-noun name is unchanged.
+
+    :param name: The function's identifier (or class name).
+    :param getter_prefix: A leading imperative word (default ``"get"``) dropped when reading a getter's
+        name as a noun (``get_quarter`` -> *"quarter"*).
+
+    >>> function_as_noun("GetQuarter")
+    'quarter'
+    >>> function_as_noun("RemainingLoad")
+    'remaining load'
+    """
+    words = camel_case_to_words(name).split()
+    if len(words) > 1 and words[0].lower() == getter_prefix:
+        words = words[1:]
+    return " ".join(words)
+
+
+def function_as_phrase(
+    name: str, *operands: ClauseConstituent
+) -> VerbalizationFragment:
+    """
+    Build *"the <noun> of <operands>"* for a value function — the value counterpart of a
+    predicate clause, for an operation that computes a value rather than a truth.
+
+    The *name* is read as the value's noun (a leading ``get`` dropped) and the operands are read out
+    as a genitive over it. A nullary function is just the noun. This is the default, name-based surface
+    a value :class:`~krrood.entity_query_language.predicate.SymbolicFunction` reuses, so the reading
+    lives in one place rather than being duplicated per class.
+
+    :param name: The function's identifier (or class name).
+    :param operands: The function's already-rendered arguments.
+    :return: The value noun phrase.
+
+    >>> from krrood.entity_query_language.verbalization.fragments.base import (
+    ...     flatten_fragment_to_plain_text, WordFragment,
+    ... )
+    >>> flatten_fragment_to_plain_text(function_as_phrase("GetQuarter"))
+    'quarter'
+    >>> flatten_fragment_to_plain_text(
+    ...     function_as_phrase("RemainingLoad", Noun(WordFragment(text="the capacity")))
+    ... )
+    'the remaining load of the capacity'
+    """
+    noun = function_as_noun(name)
+    if not operands:
+        return Noun(WordFragment(text=noun)).as_fragment()
+    owner = oxford_comma(
+        [operand.as_fragment() for operand in operands], Conjunctions.AND.as_fragment()
+    )
+    return possessive_path([PathStep(noun)], owner)

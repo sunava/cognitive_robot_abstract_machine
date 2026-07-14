@@ -42,6 +42,7 @@ from krrood.entity_query_language.core.base_expressions import (
     SymbolicExpression,
 )
 from krrood.entity_query_language.core.base_expressions import Selectable
+from krrood.entity_query_language.core.bound_value import HasBoundValue
 from krrood.entity_query_language.utils import camel_case_to_words
 from krrood.patterns.code_parsing_utils import (
     get_accessed_attribute_name_in_return_statement_of_property,
@@ -75,6 +76,25 @@ def symbolic_function(
         return function(*args, **kwargs)
 
     return wrapper
+
+
+def symbolic_callable_to_function(
+    symbolic_callable: Type[SymbolicCallable],
+) -> Callable[..., Any]:
+    """:return: a function that calls *symbolic_callable* -- the class-form counterpart of the
+    :func:`symbolic_function` decorator.
+
+    It returns a symbolic expression when any argument is a variable (so it composes in a query) and
+    the directly computed value otherwise. Binding an existing function name to
+    ``symbolic_callable_to_function(TheClass)`` lets a migration to the class form keep that name's call behaviour
+    unchanged -- the logic moves into the class's :meth:`__call__` and the name just constructs it.
+    """
+
+    def call(*args: Any, **kwargs: Any) -> Any:
+        result = symbolic_callable(*args, **kwargs)
+        return result() if isinstance(result, symbolic_callable) else result
+
+    return call
 
 
 @dataclass(frozen=True)
@@ -184,7 +204,7 @@ class Verbalizable(ABC):
 
 
 @dataclass(eq=False)
-class SymbolicCallable(Symbol, Verbalizable, ABC):
+class SymbolicCallable(Symbol, Verbalizable, HasBoundValue, ABC):
     """
     A user-defined, self-verbalizing symbolic operation.
 
@@ -234,6 +254,17 @@ class SymbolicCallable(Symbol, Verbalizable, ABC):
         instance.__init__(**kwargs)
         return instance
 
+    @classmethod
+    def _bound_value_(cls, **kwargs) -> Any:
+        """:return: the value this operation contributes to a query result when its arguments have
+        concrete values -- the constructed instance itself by default (a :class:`Predicate`'s truth is
+        then read from that instance). A value operation overrides this to its COMPUTED value.
+
+        ..note:: This is the class-form counterpart of calling a ``@symbolic_function``: for a function
+            the query binds ``function(**values)``; for a callable class it binds this.
+        """
+        return cls._construct_normally_(**kwargs)
+
     @abstractmethod
     def __call__(self) -> Any:
         """
@@ -274,6 +305,13 @@ class SymbolicFunction(SymbolicCallable, ABC):
     want; for a plain value function the decorator remains the simplest form.
     """
 
+    @classmethod
+    def _bound_value_(cls, **kwargs) -> Any:
+        """:return: the COMPUTED value -- a value operation is constructed AND called, so a query binds
+        what it computes (exactly as a ``@symbolic_function`` is called), not the instance.
+        """
+        return cls._construct_normally_(**kwargs)()
+
     @abstractmethod
     def __call__(self) -> Any:
         """
@@ -286,9 +324,9 @@ class Triple(Predicate):
     """
     A Triple is a type predicate that represents a relation between two entities.
 
-    To know if your predicate is a Triple or not ask yourself can I say "subject"
-    "predicate_name" "object" and it makes sense? if so then yes. Check the
-    verbalization function below as a reference.
+    To know if your predicate is a Triple or not ask yourself can I say
+    "subject" "predicate_name" "object" and it makes sense? if so then
+    yes. Check the verbalization function below as a reference.
     """
 
     @property
@@ -420,13 +458,35 @@ class HasTypes(HasType):
     """
 
 
-@symbolic_function
-def length(iterable: Sized) -> int:
+@dataclass(eq=False)
+class Length(SymbolicFunction):
     """
-    :param iterable: The iterable.
-    :return: The length of the iterable.
+    The number of items in an iterable, as a value operation.
     """
-    return len(iterable)
+
+    iterable: Sized
+    """
+    The iterable whose length is computed.
+    """
+
+    def __call__(self) -> int:
+        return len(self.iterable)
+
+    @classmethod
+    def _verbalization_fragment_(cls, fields: RenderedFields) -> VerbalizationFragment:
+        # Imported locally to avoid the core -> verbalization import cycle (as Triple does).
+        from krrood.entity_query_language.verbalization.vocabulary.parts_of_speech import (
+            function_as_phrase,
+        )
+
+        return function_as_phrase(cls.__name__, *fields.values())
+
+
+length = symbolic_callable_to_function(Length)
+"""
+Backward-compatible functional form of :class:`Length` (keeps the ``length(iterable)``
+call).
+"""
 
 
 def _any_of_the_kwargs_is_a_variable(bindings: Dict[str, Any]) -> bool:
