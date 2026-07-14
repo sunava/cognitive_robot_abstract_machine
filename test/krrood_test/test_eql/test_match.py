@@ -302,3 +302,11 @@ def test_has_ellipsis_attributes_true_for_ellipsis_mixed_with_nested_match_in_li
         some_strings=["a", "b"],
     )
     assert match.has_ellipsis_attributes is True
+
+
+def test_has_ellipsis_attributes_true_for_ellipsis_element_in_plain_set():
+    match = an(KRROODPositions)(
+        positions=[KRROODPosition(1, 2, 3)],
+        some_strings={"a", ..., "c"},
+    )
+    assert match.has_ellipsis_attributes is True

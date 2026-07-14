@@ -283,7 +283,7 @@ class Match(Evaluable, AbstractMatchExpression[T], HasFactoryAndKwargs[T]):
         elif ismethod(self.factory):
             self.type_ = self.factory.__class__
         elif isfunction(self.factory):
-            type_ = get_type_hints(self.factory).get("return")
+            type_ = get_type_hints_of_object(self.factory).get("return")
             if type_ is None or not isclass(type_):
                 raise MatchTypeCannotBeDetermined(self)
             self.type_ = type_
@@ -461,11 +461,14 @@ class Match(Evaluable, AbstractMatchExpression[T], HasFactoryAndKwargs[T]):
     def _is_or_contains_ellipsis(value: Any) -> bool:
         """
         :param value: An attribute match's assigned value.
-        :return: Whether ``value`` is ``...`` itself, or a list/tuple containing ``...`` as one
-            of its elements (a list with no nested :class:`Match` element is resolved as a
-            single literal attribute match, so its elements are never visited individually).
+        :return: Whether ``value`` is ``...`` itself, or a list/tuple/set containing ``...`` as
+            one of its elements (such a collection with no nested :class:`Match` element is
+            resolved as a single literal attribute match, so its elements are never visited
+            individually). Deliberately not any ``Iterable``: a generator would be exhausted by
+            this check, and a plain iterable is not a container kind the rest of this class
+            resolves or is tested against.
         """
-        if isinstance(value, (list, tuple)):
+        if isinstance(value, (list, tuple, set)):
             return any(isinstance(element, type(Ellipsis)) for element in value)
         return isinstance(value, type(Ellipsis))
 

@@ -140,8 +140,9 @@ class MatchPlanner(Planner[Match, MatchPlan]):
 
     Reference: :cite:t:`reiter2000building` — content determination + aggregation (microplanning).
 
-    >>> type(MatchPlanner(an(Robot)(name="R2", battery=80)).plan().selection).__name__
-    'Variable'
+    >>> plan = MatchPlanner(an(Robot)(name="R2", battery=80)).plan()
+    >>> len(plan.groups), len(plan.groups[0].assignments)
+    (1, 2)
     """
 
     def plan(self) -> MatchPlan:
