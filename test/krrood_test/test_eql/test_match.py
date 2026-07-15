@@ -183,6 +183,27 @@ def test_from_restricts_the_search():
     assert {robot.name for robot in selected} == {"R2D2", "C3PO"}
 
 
+def test_from_after_where_still_restricts_the_search():
+    """
+    ``from_`` must still scope the search to its domain even when ``where`` (which
+    triggers resolution) is called first: the expression built while resolving ``where``
+    must not stay permanently cached against the domain-less subject ``__call__``
+    eagerly created.
+    """
+
+    @dataclass(unsafe_hash=True)
+    class Robot:
+        name: str
+        battery: int
+
+    subset = [Robot("R2D2", 100), Robot("C3PO", 0)]
+    query = a(Robot)()
+    query.where(query.variable.battery >= 0)
+    query.from_(subset)
+    selected = query.tolist()
+    assert {robot.name for robot in selected} == {"R2D2", "C3PO"}
+
+
 def test_from_without_kwargs_selects_all(handles_and_containers_world):
     world = handles_and_containers_world
     # an(Type)().from_(X) with no kwargs is a valid "any Type in X" select.

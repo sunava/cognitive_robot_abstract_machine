@@ -416,9 +416,22 @@ class Match(Evaluable, AbstractMatchExpression[T], HasFactoryAndKwargs[T]):
         self.parent = parent
 
     def create_variable(self):
+        """
+        Create the subject variable from this match's current type and domain.
+
+        If a subject variable already exists (``from_`` re-scoping the domain after
+        ``__call__`` eagerly created one), its domain is updated in place instead of
+        replacing the variable outright: conditions built earlier against ``self.variable``
+        (for example from an already-recorded ``where``) reference that same object, so
+        replacing it would silently orphan them from the re-scoped domain.
+        """
         from krrood.entity_query_language.factories import variable
 
-        self.variable = variable(self.type, domain=self.domain)
+        resolved = variable(self.type, domain=self.domain)
+        if self.variable is None:
+            self.variable = resolved
+            return
+        self.variable._update_domain_(resolved._re_enterable_domain_generator_)
 
     def _evaluate_natively_(self) -> Iterator:
         """
@@ -496,8 +509,10 @@ class Match(Evaluable, AbstractMatchExpression[T], HasFactoryAndKwargs[T]):
 
         .. note::
             ``__call__`` eagerly creates a subject variable before the domain is known (and with
-            no domain that is a SymbolGraph-wide variable for Symbol types). The subject is rebuilt
-            here so the ``variable`` factory re-scopes the domain to instances of the match's type.
+            no domain that is a SymbolGraph-wide variable for Symbol types). ``create_variable``
+            re-scopes that same variable's domain in place (see its docstring) rather than
+            replacing it, so a ``where`` recorded before this call keeps referencing the correct,
+            now domain-scoped, variable.
 
         :param domain: The instances the match ranges over.
         :return: This match, for chaining.
