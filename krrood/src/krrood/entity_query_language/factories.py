@@ -9,7 +9,7 @@ import operator
 from inspect import isclass
 from uuid import UUID
 
-from typing_extensions import Iterable, List, overload
+from typing_extensions import Iterable, List, TypeVar, overload
 
 from krrood.entity_query_language.core.base_expressions import (
     SymbolicExpression,
@@ -330,6 +330,21 @@ def _quantify_or_build_match(
     return match_
 
 
+SymbolicExpressionT = TypeVar("SymbolicExpressionT", bound=SymbolicExpression)
+"""
+Bound to the concrete symbolic-expression subtype (``Entity[...]``,
+``Query[...]``, ``SetOf``, an ``Attribute`` chain, ...) passed to
+:py:func:`an`/:py:func:`the`/:py:func:`a`, so their quantify-path overload
+returns that same type instead of falling through to the ``Callable[..., T]``
+match-building overload.
+
+.. note::
+    Every symbolic expression is itself callable (see
+    :class:`~krrood.entity_query_language.core.mapped_variable.CanBehaveLikeAVariable`), so without
+    this overload taking priority it would structurally match ``Callable[..., T]`` first.
+"""
+
+
 @overload
 def an(
     entity_: Type[T],
@@ -337,6 +352,15 @@ def an(
     *,
     target_type: None = ...,
 ) -> Match[T]: ...
+
+
+@overload
+def an(
+    entity_: SymbolicExpressionT,
+    quantification: Optional[ResultQuantificationConstraint] = ...,
+    *,
+    target_type: None = ...,
+) -> SymbolicExpressionT: ...
 
 
 @overload
@@ -393,6 +417,15 @@ def a(
 
 @overload
 def a(
+    entity_: SymbolicExpressionT,
+    quantification: Optional[ResultQuantificationConstraint] = ...,
+    *,
+    target_type: None = ...,
+) -> SymbolicExpressionT: ...
+
+
+@overload
+def a(
     entity_: Callable[..., T],
     quantification: None = ...,
     *,
@@ -436,6 +469,14 @@ def the(
     *,
     target_type: None = ...,
 ) -> Match[T]: ...
+
+
+@overload
+def the(
+    entity_: SymbolicExpressionT,
+    *,
+    target_type: None = ...,
+) -> SymbolicExpressionT: ...
 
 
 @overload
