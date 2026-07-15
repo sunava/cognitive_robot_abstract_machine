@@ -101,6 +101,28 @@ def set_of(*selected_variables: Union[Selectable[T], Any]) -> SetOf:
 # %% Variable Declaration
 
 
+def _resolve_domain(type_: Type[T], domain: Optional[DomainType]) -> DomainType:
+    """
+    Resolve a variable's domain: what :func:`variable` and
+    :meth:`~krrood.entity_query_language.query.match.Match.create_variable` both range a
+    variable's values over.
+
+    :param type_: The type of the variable the domain is for.
+    :param domain: Iterable of potential values for the variable, or None. If None, the
+        domain is inferred from the SymbolGraph for Symbol types, else should not be
+        evaluated by EQL but by another evaluator (e.g., EQL To SQL converter in
+        Ormatic).
+    :return: The given ``domain`` filtered to instances of ``type_``. For a Symbol type
+        with no domain given, the ``SymbolGraph``'s instances of ``type_`` instead.
+        Otherwise ``domain`` unchanged.
+    """
+    if is_iterable(domain):
+        return InstanceFilteredDomain(type_, domain)
+    if domain is None and issubclass(type_, Symbol):
+        return SymbolGraph().get_instances_of_type(type_)
+    return domain
+
+
 def variable(
     type_: Type[T],
     domain: Optional[DomainType] = None,
@@ -121,20 +143,10 @@ def variable(
       but by another evaluator (e.g., EQL To SQL converter in Ormatic).
     :return: A Variable that can be queried for.
     """
-    # Determine the domain source
-    if is_iterable(domain):
-        domain = InstanceFilteredDomain(type_, domain)
-    elif domain is None and issubclass(type_, Symbol):
-        domain = SymbolGraph().get_instances_of_type(type_)
-    else:
-        domain = domain
-
-    result = Variable(
+    return Variable(
         _type_=type_,
-        _domain_=domain,
+        _domain_=_resolve_domain(type_, domain),
     )
-
-    return result
 
 
 def deduced_variable(

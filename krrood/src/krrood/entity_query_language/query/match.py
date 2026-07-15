@@ -425,13 +425,15 @@ class Match(Evaluable, AbstractMatchExpression[T], HasFactoryAndKwargs[T]):
         (for example from an already-recorded ``where``) reference that same object, so
         replacing it would silently orphan them from the re-scoped domain.
         """
-        from krrood.entity_query_language.factories import variable
-
-        resolved = variable(self.type, domain=self.domain)
         if self.variable is None:
-            self.variable = resolved
+            from krrood.entity_query_language.factories import variable
+
+            self.variable = variable(self.type, domain=self.domain)
             return
-        self.variable._update_domain_(resolved._re_enterable_domain_generator_)
+
+        from krrood.entity_query_language.factories import _resolve_domain
+
+        self.variable._update_domain_(_resolve_domain(self.type, self.domain))
 
     def _evaluate_natively_(self) -> Iterator:
         """
