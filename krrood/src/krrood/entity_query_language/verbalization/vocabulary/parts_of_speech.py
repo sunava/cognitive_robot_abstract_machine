@@ -236,14 +236,15 @@ class OneOf(ClauseElement):
 
 
 @dataclass(frozen=True)
-class Or(ClauseElement):
+class DisjunctivePhrase(ClauseElement):
     """
-    A disjunctive listing of admissible values — *"A, B, or C"* — over a collection.
+    A disjunctive coordination of admissible values — *"A, B, or C"* — over a
+    collection.
 
     The vocabulary-level oxford-comma disjunction over any iterable of members, each
     rendered by :meth:`~…fragments.base.RoleFragment.for_value` (a class as a linked
     type reference, any other value as a literal) and joined with *"or"*. An author
-    writes ``Or(field)`` rather than reaching for the low-level
+    writes ``DisjunctivePhrase(field)`` rather than reaching for the low-level
     :func:`~…fragments.base.oxford_comma` / :class:`Conjunctions` builders. A field
     bound to a single (non- iterable) value keeps that value's own rendered fragment.
     """
@@ -261,7 +262,7 @@ class Or(ClauseElement):
         >>> from krrood.entity_query_language.verbalization.fragments.base import (
         ...     flatten_fragment_to_plain_text,
         ... )
-        >>> flatten_fragment_to_plain_text(Or((int, str)).as_fragment())
+        >>> flatten_fragment_to_plain_text(DisjunctivePhrase((int, str)).as_fragment())
         'Integer or Text'
         """
         value = (
@@ -278,14 +279,15 @@ class Or(ClauseElement):
 
 
 @dataclass(frozen=True)
-class And(ClauseElement):
+class ConjunctivePhrase(ClauseElement):
     """
-    A conjunctive listing of clause constituents — *"A, B, and C"* — the counterpart of
-    :class:`Or` for constituents that already know how to render themselves.
+    A conjunctive coordination of clause constituents — *"A, B, and C"* — the
+    counterpart of :class:`DisjunctivePhrase` for constituents that already know how to
+    render themselves.
 
     Each item is rendered through its ``as_fragment`` and the parts are joined with
     *"and"* (an oxford comma before the final conjunct). An author writes
-    ``And(operands)`` rather than reaching for the low- level
+    ``ConjunctivePhrase(operands)`` rather than reaching for the low- level
     :func:`~…fragments.base.oxford_comma` / :class:`Conjunctions` builders, so the
     conjunction pattern lives in one place.
     """
@@ -303,7 +305,9 @@ class And(ClauseElement):
         ...     WordFragment,
         ... )
         >>> flatten_fragment_to_plain_text(
-        ...     And([WordFragment(text="a"), WordFragment(text="b")]).as_fragment()
+        ...     ConjunctivePhrase(
+        ...         [WordFragment(text="a"), WordFragment(text="b")]
+        ...     ).as_fragment()
         ... )
         'a and b'
         """
@@ -431,7 +435,9 @@ class FunctionVerbalizationTemplates:
         noun = function_as_noun(function_class.__name__)
         if not operands:
             return Noun.bare(noun).as_fragment()
-        return possessive_path([PathStep(noun)], And(operands).as_fragment())
+        return possessive_path(
+            [PathStep(noun)], ConjunctivePhrase(operands).as_fragment()
+        )
 
     @staticmethod
     def custom_relation(
@@ -471,7 +477,7 @@ class FunctionVerbalizationTemplates:
             parts=[
                 Noun.the(function_as_noun(function_class.__name__)).as_fragment(),
                 relation.as_fragment(),
-                And(operands).as_fragment(),
+                ConjunctivePhrase(operands).as_fragment(),
             ]
         )
 
@@ -480,12 +486,6 @@ _COPULA_LEMMA = "be"
 """
 The lemma a copular predicate name's leading word reduces to (``is`` / ``are`` ->
 ``be``).
-"""
-
-_PREPOSITION_WORDS = frozenset(preposition.text for preposition in Prepositions)
-"""
-The one-word prepositions, so a copular name ending in one attaches its object
-(``is_supported_by``).
 """
 
 
@@ -534,8 +534,10 @@ def predicate_clause(
     head, *rest = camel_case_to_words(name).split()
     complement = [WordFragment(text=word) for word in rest]
     is_copular = morphology.verb_lemma(head) == _COPULA_LEMMA
-    if is_copular and objects and (not rest or rest[-1] not in _PREPOSITION_WORDS):
-        operands = And([Noun(subject), *(Noun(obj) for obj in objects)]).as_fragment()
+    if is_copular and objects and (not rest or rest[-1] not in Prepositions.texts()):
+        operands = ConjunctivePhrase(
+            [Noun(subject), *(Noun(obj) for obj in objects)]
+        ).as_fragment()
         return clause(
             Noun(PhraseFragment(parts=complement)),
             Verb("hold"),

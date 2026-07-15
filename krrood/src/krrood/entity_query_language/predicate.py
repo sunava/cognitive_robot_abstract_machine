@@ -423,19 +423,19 @@ class HasType(Triple):
             clause,
             Copula,
             Noun,
-            Or,
+            DisjunctivePhrase,
         )
 
         # "<variable> is of type A, B, or C" -- the admissible types are said DISJUNCTIVELY
         # (``isinstance`` over a tuple holds for ANY one of them, so "and" would claim an impossible
-        # conjunction). The listing is the vocabulary's :class:`Or` element, not a bespoke tail;
-        # "type" is a bare noun ("of type", not "of a type").
+        # conjunction). The listing is the vocabulary's :class:`DisjunctivePhrase` element, not a
+        # bespoke tail; "type" is a bare noun ("of type", not "of a type").
         return clause(
             Noun(fields["variable"]),
             Copula(),
             Prepositions.OF,
             Noun.bare("type"),
-            Or(fields["types_"]),
+            DisjunctivePhrase(fields["types_"]),
         )
 
 

@@ -247,7 +247,7 @@ def test_verbalize_has_types_is_membership():
 
 def test_verbalize_has_types_lists_all_admissible_types():
     """Every admissible type is listed disjunctively -- ``isinstance`` over the tuple holds for ANY of
-    them -- joined by the :class:`Or` element with an oxford comma before the final *"or"*.
+    them -- joined by the :class:`DisjunctivePhrase` element with an oxford comma before the final *"or"*.
     """
     subject = variable(Body, [])
     many = (
