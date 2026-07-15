@@ -5,7 +5,9 @@ Every concrete :class:`~krrood.entity_query_language.predicate.Predicate` /
 :class:`~krrood.entity_query_language.predicate.SymbolicFunction` defined in krrood's source is
 rendered with placeholder operands and compared against the committed snapshot
 (``verbalization_surfaces.yaml``, one ``qualified class name: sentence`` entry per class). A class
-that does not implement a fragment is recorded as fragment-less rather than rendered.
+that decides no surface (implements no fragment) must be declared explicitly in
+``UNDECIDED_SURFACES``; a forgotten surface fails the suite rather than slipping into the snapshot as
+a silent marker.
 
 The point is review visibility: adding or renaming a symbolic callable, or changing the shared
 surface builders, makes the affected sentences appear as diff lines in the snapshot file, so the
@@ -43,7 +45,9 @@ from krrood.entity_query_language.verbalization.pipeline import verbalize_expres
 from krrood.utils import recursive_subclasses
 
 SNAPSHOT_PATH = Path(__file__).parent / "verbalization_surfaces.yaml"
-"""The committed snapshot mapping each symbolic callable to its rendered surface."""
+"""
+The committed snapshot mapping each symbolic callable to its rendered surface.
+"""
 
 COVERED_MODULES = frozenset(
     {
@@ -54,25 +58,46 @@ COVERED_MODULES = frozenset(
         "krrood.patterns.role_predicates",
     }
 )
-"""The source modules the snapshot covers — an explicit list (matching the imports above) so the
-population is deterministic regardless of what other tests import. A new module that defines
-symbolic callables is added here (and imported above) to join the snapshot."""
+"""
+The source modules the snapshot covers — an explicit list (matching the imports above)
+so the population is deterministic regardless of what other tests import.
+
+A new module that defines symbolic callables is added here (and imported above) to join
+the snapshot.
+"""
 
 UPDATE_SNAPSHOT = False
-"""Flip to ``True`` in this file to regenerate the snapshot instead of asserting against it."""
+"""
+Flip to ``True`` in this file to regenerate the snapshot instead of asserting against
+it.
+"""
 
-FRAGMENT_LESS_MARKER = (
-    "(no fragment -- verbalizing raises PredicateFragmentRequiredError)"
+UNDECIDED_SURFACES = frozenset(
+    {
+        "krrood.entity_query_language.predicate.Is",
+    }
 )
-"""Snapshot entry for a class that made no surface decision yet."""
+"""
+Covered symbolic callables that deliberately have no verbalization surface yet — a
+tracked, reviewed gap, each of which must be justified.
+
+A fragment-less class *not* listed here fails
+:func:`test_every_covered_surface_is_decided_or_explicitly_undecided`, so a forgotten surface is a
+red test; a listed class that has since gained a fragment fails the same test, so the list cannot go
+stale.
+"""
 
 OPERAND_OVERRIDES: Dict[str, Dict[str, Any]] = {
     "HasType": {"types_": int},
     "HasTypes": {"types_": (int, str)},
 }
-"""Concrete operands for classes whose fragments read a field's raw VALUE, keyed by class name;
-every other field defaults to a fresh placeholder variable of its annotated type. ``HasType`` gets
-the SINGLE type its contract declares (``types_: Type``) — the tuple form belongs to ``HasTypes``."""
+"""
+Concrete operands for classes whose fragments read a field's raw VALUE, keyed by class
+name; every other field defaults to a fresh placeholder variable of its annotated type.
+
+``HasType`` gets the SINGLE type its contract declares (``types_: Type``) — the tuple
+form belongs to ``HasTypes``.
+"""
 
 
 def _source_symbolic_callables() -> List[Type[SymbolicCallable]]:
@@ -86,8 +111,7 @@ def _source_symbolic_callables() -> List[Type[SymbolicCallable]]:
             cls
             for cls in recursive_subclasses(SymbolicCallable)
             if cls.__module__ in COVERED_MODULES
-            and set(getattr(cls, "__abstractmethods__", ()))
-            <= {"_verbalization_fragment_"}
+            and set(cls.__abstractmethods__) <= {"_verbalization_fragment_"}
         ),
         key=_qualified_name,
     )
@@ -129,23 +153,50 @@ def _placeholder_operands(cls: Type[SymbolicCallable]) -> Dict[str, Any]:
 
 
 def _surface_of(cls: Type[SymbolicCallable]) -> str:
-    """:return: the sentence *cls* renders with placeholder operands, or the fragment-less marker."""
-    if not _has_fragment(cls):
-        return FRAGMENT_LESS_MARKER
+    """:return: the sentence *cls* renders with placeholder operands."""
     return verbalize_expression(cls(**_placeholder_operands(cls)))
 
 
 def _render_surfaces() -> Dict[str, str]:
-    """:return: the snapshot mapping — ``qualified class name -> rendered surface``."""
+    """:return: the snapshot mapping — ``qualified class name -> rendered surface`` — over the covered
+    callables that decided a surface (a fragment-less class belongs in :data:`UNDECIDED_SURFACES`,
+    not the snapshot)."""
     return {
-        _qualified_name(cls): _surface_of(cls) for cls in _source_symbolic_callables()
+        _qualified_name(cls): _surface_of(cls)
+        for cls in _source_symbolic_callables()
+        if _has_fragment(cls)
     }
 
 
+def test_every_covered_surface_is_decided_or_explicitly_undecided():
+    """
+    Every covered symbolic callable either renders a surface (and so appears in the
+    snapshot) or is a deliberate, justified entry in :data:`UNDECIDED_SURFACES`.
+
+    A new fragment-less class is a red test until it gets a fragment or is listed; a
+    listed class that has since gained a fragment is also red, so the list cannot go
+    stale.
+    """
+    fragment_less = {
+        _qualified_name(cls)
+        for cls in _source_symbolic_callables()
+        if not _has_fragment(cls)
+    }
+    missing = fragment_less - UNDECIDED_SURFACES
+    stale = UNDECIDED_SURFACES - fragment_less
+    assert fragment_less == UNDECIDED_SURFACES, (
+        f"Undecided verbalization surfaces are out of sync. Classes with no fragment that must "
+        f"either implement one or be added to UNDECIDED_SURFACES (with justification): {sorted(missing)}. "
+        f"Entries in UNDECIDED_SURFACES that now have a fragment and must be removed: {sorted(stale)}."
+    )
+
+
 def test_every_symbolic_callable_surface_matches_the_snapshot():
-    """The rendered surface of every source symbolic callable matches the committed snapshot, so
-    any new class or changed wording must be re-approved by regenerating the file (see module
-    docstring) and reviewing its diff."""
+    """
+    The rendered surface of every source symbolic callable matches the committed
+    snapshot, so any new class or changed wording must be re-approved by regenerating
+    the file (see module docstring) and reviewing its diff.
+    """
     actual = _render_surfaces()
     if UPDATE_SNAPSHOT:
         SNAPSHOT_PATH.write_text(
