@@ -12,6 +12,6 @@ repos:
           otherwise oscillate forever against black.
         entry: python scripts/format_docstrings.py
         language: python
-        additional_dependencies: ["black==25.11.0", "docformatter==1.7.8", "typing_extensions"]
+        additional_dependencies: ["black==25.11.0", "docformatter==1.7.8", "typing_extensions", "tqdm"]
         files: \.py$
         exclude: (?x)^(.*/ormatic_interface\.py)$

@@ -19,6 +19,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from tqdm import tqdm
 from typing_extensions import Sequence
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
@@ -146,7 +147,7 @@ def main(file_arguments: Sequence[str]) -> int:
     """
     any_file_changed = False
 
-    for file_argument in file_arguments:
+    for file_argument in tqdm(file_arguments, desc="Formatting"):
         outcome = _format_file(Path(file_argument))
         if outcome.final_content == outcome.original_content:
             continue
