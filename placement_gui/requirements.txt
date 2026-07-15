@@ -1,0 +1,2 @@
+# Only needed for the PostgreSQL backend; demo mode (--demo) is pure stdlib.
+psycopg>=3.1

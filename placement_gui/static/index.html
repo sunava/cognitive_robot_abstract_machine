@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Placement Pattern</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="title">
+      <h1>Placement Pattern</h1>
+      <span id="demo-badge" class="demo-badge" hidden>Demo data</span>
+    </div>
+    <nav class="tabs">
+      <button id="tab-button-placement" class="active">Placement</button>
+      <button id="tab-button-editor">Pattern Editor</button>
+    </nav>
+  </header>
+
+  <!-- Tab 1: view a stored pattern and nudge it via X/Y offset. -->
+  <main id="tab-placement" class="tab-page">
+    <section class="stage">
+      <div id="pattern-buttons" class="pattern-buttons"><!-- filled by JS --></div>
+      <canvas id="canvas"></canvas>
+    </section>
+
+    <aside class="panel">
+      <div class="readout">
+        <div class="big" id="count">–</div>
+        <div class="sub">Parts in the box</div>
+      </div>
+
+      <div class="control">
+        <label>Offset X <span id="offset-x-value" class="val">0 mm</span></label>
+        <input id="offset-x" type="range" min="0" max="0" value="0" step="1">
+      </div>
+
+      <div class="control">
+        <label>Offset Y <span id="offset-y-value" class="val">0 mm</span></label>
+        <input id="offset-y" type="range" min="0" max="0" value="0" step="1">
+      </div>
+
+      <button id="reset" class="reset">Reset</button>
+
+      <div class="meta" id="meta"></div>
+    </aside>
+  </main>
+
+  <!-- Tab 2: pick a shape from the catalog and define a new pattern. -->
+  <main id="tab-editor" class="tab-page" hidden>
+    <aside class="panel shapes-panel">
+      <div class="panel-heading">Shapes</div>
+      <div class="panel-subheading">from the shape catalog</div>
+      <div id="shape-list" class="shape-list"><!-- filled by JS --></div>
+    </aside>
+
+    <section class="stage">
+      <canvas id="editor-canvas"></canvas>
+    </section>
+
+    <aside class="panel">
+      <div class="readout">
+        <div class="big" id="editor-count">–</div>
+        <div class="sub">Parts in the box</div>
+      </div>
+
+      <div class="control">
+        <label for="pattern-name">Pattern name</label>
+        <input id="pattern-name" type="text" class="field" placeholder="My pattern">
+      </div>
+
+      <div class="control pair">
+        <div>
+          <label for="box-width">Box W <span class="unit">mm</span></label>
+          <input id="box-width" type="number" class="field" min="1" step="10" value="600">
+        </div>
+        <div>
+          <label for="box-height">Box H <span class="unit">mm</span></label>
+          <input id="box-height" type="number" class="field" min="1" step="10" value="400">
+        </div>
+      </div>
+
+      <div class="control pair">
+        <div>
+          <label for="rows">Rows <span class="unit">0 = fit</span></label>
+          <input id="rows" type="number" class="field" min="0" step="1" value="0">
+        </div>
+        <div>
+          <label for="columns">Columns <span class="unit">0 = fit</span></label>
+          <input id="columns" type="number" class="field" min="0" step="1" value="0">
+        </div>
+      </div>
+
+      <div class="control">
+        <label for="gap">Gap <span class="unit">mm</span></label>
+        <input id="gap" type="number" class="field" min="0" step="1" value="12">
+      </div>
+
+      <button id="save-pattern" class="save">Save pattern</button>
+      <div id="editor-message" class="message"></div>
+    </aside>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
