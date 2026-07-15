@@ -10,7 +10,16 @@ from dataclasses import dataclass
 from inspect import isclass
 from uuid import UUID
 
-from typing_extensions import Any, Iterable, List, Optional, Tuple, Type, overload
+from typing_extensions import (
+    Any,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    overload,
+)
 
 from krrood.entity_query_language.core.base_expressions import (
     Selectable,
@@ -334,6 +343,22 @@ def _quantify_or_build_match(
     return match_
 
 
+TSymbolicExpression = TypeVar("TSymbolicExpression", bound=SymbolicExpression)
+"""
+Bound to the concrete symbolic-expression subtype (``Entity[...]``, ``Query[...]``,
+``SetOf``, an ``Attribute`` chain, ...) passed to
+:py:func:`an`/:py:func:`the`/:py:func:`a`, so their quantify-path overload returns that
+same type instead of falling through to the ``Callable[..., T]`` match-building
+overload.
+
+.. note::
+    Not every symbolic expression is affected, but the ones that inherit ``__call__`` from
+    :class:`~krrood.entity_query_language.core.mapped_variable.CanBehaveLikeAVariable` (``Entity``,
+    ``Query``, ``Match``, ``Attribute``, ...) are, so without this overload taking priority they
+    would structurally match ``Callable[..., T]`` first.
+"""
+
+
 @overload
 def an(
     entity_: Type[T],
@@ -341,6 +366,15 @@ def an(
     *,
     target_type: None = ...,
 ) -> Match[T]: ...
+
+
+@overload
+def an(
+    entity_: TSymbolicExpression,
+    quantification: Optional[ResultQuantificationConstraint] = ...,
+    *,
+    target_type: None = ...,
+) -> TSymbolicExpression: ...
 
 
 @overload
@@ -397,6 +431,15 @@ def a(
 
 @overload
 def a(
+    entity_: TSymbolicExpression,
+    quantification: Optional[ResultQuantificationConstraint] = ...,
+    *,
+    target_type: None = ...,
+) -> TSymbolicExpression: ...
+
+
+@overload
+def a(
     entity_: Callable[..., T],
     quantification: None = ...,
     *,
@@ -440,6 +483,14 @@ def the(
     *,
     target_type: None = ...,
 ) -> Match[T]: ...
+
+
+@overload
+def the(
+    entity_: TSymbolicExpression,
+    *,
+    target_type: None = ...,
+) -> TSymbolicExpression: ...
 
 
 @overload
