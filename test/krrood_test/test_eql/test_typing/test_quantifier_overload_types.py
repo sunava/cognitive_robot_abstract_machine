@@ -19,14 +19,6 @@ from mypy import api as mypy_api
 
 import krrood
 
-_FIXTURE_PATH = Path(__file__).parent / "quantifier_overloads_fixture.py"
-
-#: krrood ships no ``py.typed`` marker, so mypy resolves it through its editable install and skips
-#: analysing it ("missing library stubs or py.typed marker") by default. Pointing MYPYPATH at the
-#: source root (derived from the installed package's own location, not a hardcoded relative path)
-#: makes mypy resolve it as first-party source instead, exactly as it would once py.typed is added.
-_KRROOD_SRC = Path(krrood.__file__).resolve().parent.parent
-
 
 @dataclass
 class MypyCheckResult:
@@ -60,19 +52,29 @@ class MypyCheckResult:
 
 def _run_mypy_on_fixture(cache_dir: Path) -> MypyCheckResult:
     """
-    Type-check :data:`_FIXTURE_PATH` with ``mypy``, resolving ``krrood`` as
-    first-party source.
+    Type-check the fixture module with ``mypy``, resolving ``krrood`` as first-
+    party source.
+
+    ``krrood`` ships no ``py.typed`` marker, so mypy resolves it through
+    its editable install and skips analysing it ("missing library stubs
+    or py.typed marker") by default. Pointing MYPYPATH at the source
+    root (derived from the already-imported package's own file, not a
+    hardcoded relative path) makes mypy resolve it as first-party source
+    instead, exactly as it would once py.typed is added.
 
     :param cache_dir: A scratch directory for mypy's incremental cache,
         so repeated runs never write ``.mypy_cache`` into the
         repository.
     :return: The check's outcome.
     """
+    fixture_path = Path(__file__).parent / "quantifier_overloads_fixture.py"
+    krrood_src = Path(krrood.__file__).resolve().parent.parent
+
     previous_mypypath = os.environ.get("MYPYPATH")
-    os.environ["MYPYPATH"] = str(_KRROOD_SRC)
+    os.environ["MYPYPATH"] = str(krrood_src)
     try:
         stdout, stderr, exit_status = mypy_api.run(
-            ["--cache-dir", str(cache_dir), str(_FIXTURE_PATH)]
+            ["--cache-dir", str(cache_dir), str(fixture_path)]
         )
     finally:
         if previous_mypypath is None:
