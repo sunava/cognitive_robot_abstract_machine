@@ -16,6 +16,7 @@ from krrood.entity_query_language.core.base_expressions import (
     TruthValueOperator,
     OperationResult,
 )
+from krrood.entity_query_language.core.helpers import _resolve_domain
 from krrood.entity_query_language.core.mapped_variable import (
     FlatVariable,
     CanBehaveLikeAVariable,
@@ -23,10 +24,8 @@ from krrood.entity_query_language.core.mapped_variable import (
 )
 from krrood.entity_query_language.core.variable import (
     DomainType,
-    Literal,
     ExternallySetVariable,
 )
-from krrood.entity_query_language.cache_data import InstanceFilteredDomain
 from krrood.entity_query_language.enums import DomainSource
 from krrood.entity_query_language.exceptions import UnsupportedExpressionTypeForDistinct
 from krrood.entity_query_language.operators.aggregators import (
@@ -67,8 +66,6 @@ from krrood.entity_query_language.rules.conclusion_selector import (
     Alternative,
     Next,
 )
-from krrood.entity_query_language.utils import is_iterable
-from krrood.symbol_graph.symbol_graph import Symbol, SymbolGraph
 
 ConditionType = Union[SymbolicExpression, bool, Predicate, TruthValueOperator]
 """
@@ -99,28 +96,6 @@ def set_of(*selected_variables: Union[Selectable[T], Any]) -> SetOf:
 
 
 # %% Variable Declaration
-
-
-def _resolve_domain(type_: Type[T], domain: Optional[DomainType]) -> DomainType:
-    """
-    Resolve a variable's domain: what :func:`variable` and
-    :meth:`~krrood.entity_query_language.query.match.Match.create_or_update_variable`
-    both range a variable's values over.
-
-    :param type_: The type of the variable the domain is for.
-    :param domain: Iterable of potential values for the variable, or None. If None, the
-        domain is inferred from the SymbolGraph for Symbol types, else should not be
-        evaluated by EQL but by another evaluator (e.g., EQL To SQL converter in
-        Ormatic).
-    :return: The given ``domain`` filtered to instances of ``type_``. For a Symbol type
-        with no domain given, the ``SymbolGraph``'s instances of ``type_`` instead.
-        Otherwise ``domain`` unchanged.
-    """
-    if is_iterable(domain):
-        return InstanceFilteredDomain(type_, domain)
-    if domain is None and issubclass(type_, Symbol):
-        return SymbolGraph().get_instances_of_type(type_)
-    return domain
 
 
 def variable(
