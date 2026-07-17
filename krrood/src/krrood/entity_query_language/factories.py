@@ -741,14 +741,10 @@ def node_children(node: CanBehaveLikeAVariable) -> Iterable[SymbolicExpression]:
     return node._children_
 
 
-@symbolic_function
-def attribute_owner_class(node: Attribute) -> Type:
-    return node._owner_class_
 
 
-@symbolic_function
-def node_parents(node: SymbolicExpression) -> Iterable[SymbolicExpression]:
-    return node._parents_
+
+
 
 
 @symbolic_function
