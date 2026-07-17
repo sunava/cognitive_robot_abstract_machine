@@ -33,53 +33,61 @@ from coraplex.robot_plans.actions.core.robot_body import (
 )
 from coraplex.testing import setup_world
 
-world = setup_world()
+def main() -> None:
+    """
+    Build the demo world and run the plan on the simulated robot.
+    """
+    world = setup_world()
 
-bowl_world = parse_object("bowl.stl", color=BOWL_COLOR)
-with world.modify_world():
-    world.merge_world_at_pose(
-        bowl_world,
-        HomogeneousTransformationMatrix.from_xyz_quaternion(
-            *TARGET_POSITION_XYZ, reference_frame=world.root
-        ),
-    )
-try:
-    import rclpy
+    bowl_world = parse_object("bowl.stl", color=BOWL_COLOR)
+    with world.modify_world():
+        world.merge_world_at_pose(
+            bowl_world,
+            HomogeneousTransformationMatrix.from_xyz_quaternion(
+                *TARGET_POSITION_XYZ, reference_frame=world.root
+            ),
+        )
+    try:
+        import rclpy
 
-    rclpy.init()
-    from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
-        VizMarkerPublisher,
-    )
+        rclpy.init()
+        from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
+            VizMarkerPublisher,
+        )
 
-    node = rclpy.create_node("viz_marker")
-    v = VizMarkerPublisher(_world=world, node=node).with_tf_publisher()
-except ImportError:
-    node = None
+        node = rclpy.create_node("viz_marker")
+        v = VizMarkerPublisher(_world=world, node=node).with_tf_publisher()
+    except ImportError:
+        node = None
 
-pr2 = PR2.from_world(world)
-context = Context(world=world, robot=pr2, _debug=False, ros_node=None)
+    pr2 = PR2.from_world(world)
+    context = Context(world=world, robot=pr2, _debug=False, ros_node=None)
 
-whisk_body = attach_tool(world, pr2, Arms.RIGHT, parse_object("whisk.stl"), MIX_MOUNT)
-bowl_body = world.get_body_by_name("bowl.stl")
+    whisk_body = attach_tool(world, pr2, Arms.RIGHT, parse_object("whisk.stl"), MIX_MOUNT)
+    bowl_body = world.get_body_by_name("bowl.stl")
 
-whisk = Whisk(root=whisk_body)
-with world.modify_world():
-    world.add_semantic_annotations([Bowl(root=bowl_body), whisk])
+    whisk = Whisk(root=whisk_body)
+    with world.modify_world():
+        world.add_semantic_annotations([Bowl(root=bowl_body), whisk])
 
-context.evaluate_conditions = False
+    context.evaluate_conditions = False
 
-plan = sequential(
-    [
-        SetGripperAction(Arms.RIGHT, GripperState.CLOSE),
-        ParkArmsAction(Arms.BOTH),
-        MoveTorsoAction(TorsoState.HIGH),
-        NavigateAction(
-            Pose.from_xyz_rpy(*BASE_POSITION_XYZ, reference_frame=world.root)
-        ),
-        MixingAction(container=bowl_body, arm=Arms.RIGHT, tool=whisk),
-    ],
-    context=context,
-).plan
+    plan = sequential(
+        [
+            SetGripperAction(Arms.RIGHT, GripperState.CLOSE),
+            ParkArmsAction(Arms.BOTH),
+            MoveTorsoAction(TorsoState.HIGH),
+            NavigateAction(
+                Pose.from_xyz_rpy(*BASE_POSITION_XYZ, reference_frame=world.root)
+            ),
+            MixingAction(container=bowl_body, arm=Arms.RIGHT, tool=whisk),
+        ],
+        context=context,
+    ).plan
 
-with simulated_robot:
-    plan.perform()
+    with simulated_robot:
+        plan.perform()
+
+
+if __name__ == "__main__":
+    main()

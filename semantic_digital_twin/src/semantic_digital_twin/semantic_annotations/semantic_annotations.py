@@ -1373,3 +1373,32 @@ class Sponge(Tool):
             rotation @ np.array([0.0, 0.0, 1.0]),
             reference_frame=reference_frame,
         )
+
+
+@dataclass(eq=False)
+class Microwave(IsStorageSpace, HasDoors):
+    """
+    A microwave oven, a kitchen appliance with a door that heats food placed inside it using
+    microwave radiation.
+    """
+
+
+@dataclass(eq=False)
+class Hood(HasRootBody):
+    """
+    A range hood mounted above a cooktop that vents cooking fumes.
+    """
+
+
+@dataclass(eq=False)
+class Toaster(HasRootBody):
+    """
+    A countertop appliance for toasting slices of bread.
+    """
+
+
+@dataclass(eq=False)
+class CoffeeMachine(HasRootBody):
+    """
+    A countertop appliance that brews coffee.
+    """

@@ -31,54 +31,62 @@ from coraplex.robot_plans.actions.core.robot_body import (
 )
 from coraplex.testing import setup_world
 
-world = setup_world()
+def main() -> None:
+    """
+    Build the demo world and run the plan on the simulated robot.
+    """
+    world = setup_world()
 
-bowl_world = parse_object("bowl.stl", color=BOWL_COLOR)
-with world.modify_world():
-    world.merge_world_at_pose(
-        bowl_world,
-        HomogeneousTransformationMatrix.from_xyz_quaternion(
-            *TARGET_POSITION_XYZ, reference_frame=world.root
-        ),
+    bowl_world = parse_object("bowl.stl", color=BOWL_COLOR)
+    with world.modify_world():
+        world.merge_world_at_pose(
+            bowl_world,
+            HomogeneousTransformationMatrix.from_xyz_quaternion(
+                *TARGET_POSITION_XYZ, reference_frame=world.root
+            ),
+        )
+    try:
+        import rclpy
+
+        rclpy.init()
+        from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
+            VizMarkerPublisher,
+        )
+
+        node = rclpy.create_node("viz_marker")
+        v = VizMarkerPublisher(_world=world, node=node).with_tf_publisher()
+    except ImportError:
+        node = None
+    pr2 = PR2.from_world(world)
+    context = Context(world=world, robot=pr2, _debug=False, ros_node=None)
+
+    cup_body = attach_tool(
+        world, pr2, Arms.RIGHT, parse_object("jeroen_cup.stl", color=CUP_COLOR), POUR_MOUNT
     )
-try:
-    import rclpy
+    bowl_body = world.get_body_by_name("bowl.stl")
 
-    rclpy.init()
-    from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
-        VizMarkerPublisher,
-    )
+    cup = Cup(root=cup_body)
+    with world.modify_world():
+        world.add_semantic_annotations([Bowl(root=bowl_body), cup])
 
-    node = rclpy.create_node("viz_marker")
-    v = VizMarkerPublisher(_world=world, node=node).with_tf_publisher()
-except ImportError:
-    node = None
-pr2 = PR2.from_world(world)
-context = Context(world=world, robot=pr2, _debug=False, ros_node=None)
+    context.evaluate_conditions = False
 
-cup_body = attach_tool(
-    world, pr2, Arms.RIGHT, parse_object("jeroen_cup.stl", color=CUP_COLOR), POUR_MOUNT
-)
-bowl_body = world.get_body_by_name("bowl.stl")
+    plan = sequential(
+        [
+            SetGripperAction(Arms.RIGHT, GripperState.CLOSE),
+            ParkArmsAction(Arms.BOTH),
+            MoveTorsoAction(TorsoState.HIGH),
+            NavigateAction(
+                Pose.from_xyz_rpy(*BASE_POSITION_XYZ, reference_frame=world.root)
+            ),
+            PouringAction(target_container=bowl_body, source_container=cup, arm=Arms.RIGHT),
+        ],
+        context=context,
+    ).plan
 
-cup = Cup(root=cup_body)
-with world.modify_world():
-    world.add_semantic_annotations([Bowl(root=bowl_body), cup])
+    with simulated_robot:
+        plan.perform()
 
-context.evaluate_conditions = False
 
-plan = sequential(
-    [
-        SetGripperAction(Arms.RIGHT, GripperState.CLOSE),
-        ParkArmsAction(Arms.BOTH),
-        MoveTorsoAction(TorsoState.HIGH),
-        NavigateAction(
-            Pose.from_xyz_rpy(*BASE_POSITION_XYZ, reference_frame=world.root)
-        ),
-        PouringAction(target_container=bowl_body, source_container=cup, arm=Arms.RIGHT),
-    ],
-    context=context,
-).plan
-
-with simulated_robot:
-    plan.perform()
+if __name__ == "__main__":
+    main()
