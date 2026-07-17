@@ -4,12 +4,14 @@ import numpy as np
 from typing_extensions import Callable, List, Optional, Tuple
 
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
+from semantic_digital_twin.world_description.geometry import BoundingBox
 from semantic_digital_twin.world_description.world_entity import Body
 
 from coraplex.datastructures.enums import (
     CuttingTechnique,
     MixingPattern,
     SlicingPriority,
+    ToolPathSegmentKind,
     WipingTechnique,
 )
 from dataclasses import dataclass
@@ -17,7 +19,7 @@ from typing_extensions import ClassVar
 
 DEFAULT_SAMPLE_DT = 0.01
 """
-Default sampling period in seconds for motion sequences.
+Default sampling period in seconds for tool paths.
 """
 
 APPROACH_Z_EXTRA_CLEARANCE_M = 0.02
@@ -31,35 +33,31 @@ A curve mapping a normalized time in [0, 1] to a local 3D point.
 """
 
 
-def body_local_aabb(
-    body: Body, use_visual: bool = False
-) -> Tuple[np.ndarray, np.ndarray]:
+def _local_bounding_box(body: Body, use_visual: bool = False) -> BoundingBox:
     """
     :param body: The body whose bounding box is computed.
     :param use_visual: Use the visual geometry instead of the collision geometry.
-    :return: The local axis-aligned bounding box ``(mins, maxs)`` of the body in its
-        own frame.
+    :return: The local axis-aligned bounding box of the body in its own frame.
     """
     geometry = body.visual if use_visual else body.collision
-    bounding_box = geometry.as_bounding_box_collection_in_frame(body).bounding_box()
-    mins = np.array(
-        [bounding_box.min_x, bounding_box.min_y, bounding_box.min_z], dtype=float
-    )
-    maxs = np.array(
-        [bounding_box.max_x, bounding_box.max_y, bounding_box.max_z], dtype=float
-    )
-    return mins, maxs
+    return geometry.as_bounding_box_collection_in_frame(body).bounding_box()
 
 
-class MotionSegment:
+class ToolPathSegment:
     """
-    A local motion curve over a fixed duration.
+    A local curve of one geometric pattern over a fixed duration.
     """
 
-    def __init__(self, name: str, duration_s: float, local_curve: LocalCurve):
-        self.name = str(name)
+    def __init__(
+        self,
+        kind: ToolPathSegmentKind,
+        duration_s: float,
+        local_curve: LocalCurve,
+        cut_index: Optional[int] = None,
+    ):
+        self.kind = kind
         """
-        Name of the segment.
+        The geometric pattern this segment follows.
         """
         self.duration_s = float(duration_s)
         """
@@ -68,6 +66,11 @@ class MotionSegment:
         self.local_curve = local_curve
         """
         Curve mapping normalized time to a local 3D point.
+        """
+        self.cut_index = cut_index
+        """
+        Index of the cut this segment belongs to, if the segment is part of a
+        multi-cut path.
         """
 
     def sample(
@@ -98,54 +101,54 @@ class MotionSegment:
         return times, points
 
 
-class MotionSequence:
+class ToolPath:
     """
-    An ordered list of motion segments forming one continuous motion.
+    An ordered list of tool path segments forming one continuous path.
     """
 
-    def __init__(self, phases: List[MotionSegment]):
-        self.phases = list(phases)
+    def __init__(self, segments: List[ToolPathSegment]):
+        self.segments = list(segments)
         """
-        The ordered motion segments of this sequence.
+        The ordered segments of this path.
         """
 
     @property
     def duration_s(self) -> float:
         """
-        :return: Total duration across all phases in seconds.
+        :return: Total duration across all segments in seconds.
         """
-        return float(sum(phase.duration_s for phase in self.phases))
+        return float(sum(segment.duration_s for segment in self.segments))
 
     def sample(
         self, frame: HomogeneousTransformationMatrix, dt: float, t0: float = 0.0
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Sample all phases into one concatenated sequence.
+        Sample all segments into one concatenated path.
 
-        :param frame: The frame the sequence's curves are expressed in.
+        :param frame: The frame the path's curves are expressed in.
         :param dt: Sampling period in seconds.
-        :param t0: Start time of the sequence.
-        :return: Sample times, sampled points as an Nx3 array, and the phase index of
-            every sample.
+        :param t0: Start time of the path.
+        :return: Sample times, sampled points as an Nx3 array, and the segment index
+            of every sample.
         """
-        all_times, all_points, all_phase_ids = [], [], []
+        all_times, all_points, all_segment_ids = [], [], []
         t = float(t0)
 
-        for phase_index, phase in enumerate(self.phases):
-            times, points = phase.sample(frame.to_np(), dt=dt, t0=t)
+        for segment_index, segment in enumerate(self.segments):
+            times, points = segment.sample(frame.to_np(), dt=dt, t0=t)
             if all_times:
                 times = times[1:]
                 points = points[1:]
 
             all_times.append(times)
             all_points.append(points)
-            all_phase_ids.append(np.full(len(times), phase_index, dtype=int))
-            t += phase.duration_s
+            all_segment_ids.append(np.full(len(times), segment_index, dtype=int))
+            t += segment.duration_s
 
         return (
             np.concatenate(all_times),
             np.vstack(all_points),
-            np.concatenate(all_phase_ids),
+            np.concatenate(all_segment_ids),
         )
 
 
@@ -418,41 +421,40 @@ def _duration_scale_from_body(
     :return: A duration scaling factor derived from the body's bounding box diagonal
         relative to a reference size.
     """
-    mins, maxs = body_local_aabb(body, use_visual=use_visual_aabb)
-    extents = maxs - mins
-    diagonal = float(np.linalg.norm(extents))
+    bounding_box = _local_bounding_box(body, use_visual=use_visual_aabb)
+    diagonal = float(
+        np.linalg.norm([bounding_box.depth, bounding_box.width, bounding_box.height])
+    )
     reference = float(reference_size)
     if reference <= 0.0:
         raise ValueError("reference_size must be positive")
     return max(diagonal, 1e-6) / reference
 
 
-def build_container_sequence(
+def build_container_path(
     container_body: Body,
     pattern: MixingPattern = MixingPattern.SPIRAL,
     mix_duration_s: Optional[float] = None,
     reference_size: float = 0.10,
-) -> MotionSequence:
+) -> ToolPath:
     """
-    Build a mixing sequence sized to a container-like object.
+    Build a mixing tool path sized to a container-like object.
 
     :param container_body: The container whose contents are mixed.
     :param pattern: The mixing pattern to use.
     :param mix_duration_s: Total duration of the stirring pattern; only used for
         :attr:`MixingPattern.STIR`.
     :param reference_size: Reference size in meters that scales the motion duration.
-    :return: The mixing motion sequence in the container's frame.
+    :return: The mixing tool path in the container's frame.
     """
-    mins, maxs = body_local_aabb(container_body)
-    size_x = maxs[0] - mins[0]
-    size_y = maxs[1] - mins[1]
-    radius_xy = 0.5 * min(size_x, size_y)
-    z_min, z_max = mins[2], maxs[2]
+    bounding_box = _local_bounding_box(container_body)
+    radius_xy = 0.5 * min(bounding_box.depth, bounding_box.width)
+    z_min, z_max = bounding_box.min_z, bounding_box.max_z
 
-    center_y = 0.5 * (mins[1] + maxs[1])
+    center_y = 0.5 * (bounding_box.min_y + bounding_box.max_y)
     surface_margin = 0.005
     start_offset = np.array(
-        [0.0, center_y, maxs[2] + APPROACH_Z_EXTRA_CLEARANCE_M - surface_margin],
+        [0.0, center_y, z_max + APPROACH_Z_EXTRA_CLEARANCE_M - surface_margin],
         dtype=float,
     )
     duration_scale = _duration_scale_from_body(
@@ -471,10 +473,10 @@ def build_container_sequence(
         )
 
     if pattern is MixingPattern.SPIRAL:
-        return MotionSequence(
+        return ToolPath(
             [
-                MotionSegment(
-                    name="planar_spiral_container",
+                ToolPathSegment(
+                    kind=ToolPathSegmentKind.SPIRAL,
                     duration_s=2.0 * duration_scale,
                     local_curve=_with_offset(
                         lambda tau: planar_spiral_xy(
@@ -493,10 +495,10 @@ def build_container_sequence(
         total_duration = stir_base_duration
     stir_loops = max(1, int(np.ceil(total_duration / stir_base_duration)))
 
-    return MotionSequence(
+    return ToolPath(
         [
-            MotionSegment(
-                name="continuous_stir_container",
+            ToolPathSegment(
+                kind=ToolPathSegmentKind.STIR,
                 duration_s=total_duration,
                 local_curve=_with_offset(
                     lambda tau: oscillatory_shear_xy_profiled(
@@ -512,32 +514,32 @@ def build_container_sequence(
     )
 
 
-def build_surface_sequence(
+def build_surface_path(
     surface_body: Body,
     technique: WipingTechnique = WipingTechnique.WIPE,
     reference_size: float = 0.10,
-) -> MotionSequence:
+) -> ToolPath:
     """
-    Build a planar wiping sequence on a surface.
+    Build a planar wiping tool path on a surface.
 
     :param surface_body: The surface to act on.
     :param technique: The wiping technique to use.
     :param reference_size: Reference size in meters that scales the motion duration.
-    :return: The wiping motion sequence in the surface's frame.
+    :return: The wiping tool path in the surface's frame.
     """
-    mins, maxs = body_local_aabb(surface_body, use_visual=True)
-    size_x = maxs[0] - mins[0]
-    size_y = maxs[1] - mins[1]
+    bounding_box = _local_bounding_box(surface_body, use_visual=True)
+    size_x = bounding_box.depth
+    size_y = bounding_box.width
     radius_xy = 0.45 * min(size_x, size_y)
 
-    center_x = 0.5 * (mins[0] + maxs[0])
-    center_y = 0.5 * (mins[1] + maxs[1])
+    center_x = 0.5 * (bounding_box.min_x + bounding_box.max_x)
+    center_y = 0.5 * (bounding_box.min_y + bounding_box.max_y)
     surface_margin = 0.005
     start_offset = np.array(
         [
             center_x,
             center_y,
-            maxs[2] + APPROACH_Z_EXTRA_CLEARANCE_M - surface_margin,
+            bounding_box.max_z + APPROACH_Z_EXTRA_CLEARANCE_M - surface_margin,
         ],
         dtype=float,
     )
@@ -562,10 +564,10 @@ def build_surface_sequence(
         )
 
     if technique is WipingTechnique.WIPE:
-        return MotionSequence(
+        return ToolPath(
             [
-                MotionSegment(
-                    name="planar_spiral_surface",
+                ToolPathSegment(
+                    kind=ToolPathSegmentKind.SPIRAL,
                     duration_s=2.0 * duration_scale,
                     local_curve=_with_hull_constraint(
                         lambda tau: planar_spiral_xy(
@@ -576,10 +578,10 @@ def build_surface_sequence(
             ]
         )
     if technique is WipingTechnique.SHEAR:
-        return MotionSequence(
+        return ToolPath(
             [
-                MotionSegment(
-                    name="oscillatory_shear_surface",
+                ToolPathSegment(
+                    kind=ToolPathSegmentKind.SHEAR,
                     duration_s=1.5 * duration_scale,
                     local_curve=_with_hull_constraint(
                         lambda tau: oscillatory_shear_xy_profiled(
@@ -593,10 +595,10 @@ def build_surface_sequence(
                 )
             ]
         )
-    return MotionSequence(
+    return ToolPath(
         [
-            MotionSegment(
-                name="planar_raster_surface",
+            ToolPathSegment(
+                kind=ToolPathSegmentKind.RASTER,
                 duration_s=2.0 * duration_scale,
                 local_curve=_with_hull_constraint(
                     lambda tau: planar_raster_xy(
@@ -696,16 +698,16 @@ class SliceAnchorPlacement:
         return thickness, count
 
 
-def build_cutting_sequence(
+def build_cutting_path(
     food_body: Body,
     technique: CuttingTechnique = CuttingTechnique.SAW,
     slice_thickness: Optional[float] = None,
     num_cuts_x: Optional[int] = None,
     reference_size: float = 0.10,
     slicing_priority: SlicingPriority = SlicingPriority.THICKNESS,
-) -> MotionSequence:
+) -> ToolPath:
     """
-    Build a cutting sequence sized to a food object.
+    Build a cutting tool path sized to a food object.
 
     :param food_body: The object to cut.
     :param technique: The cutting technique to use.
@@ -716,70 +718,75 @@ def build_cutting_sequence(
     :param reference_size: Reference size in meters that scales the motion duration.
     :param slicing_priority: Parameter that is kept when ``slice_thickness`` and
         ``num_cuts_x`` do not both fit the object.
-    :return: The cutting motion sequence in the food object's frame.
+    :return: The cutting tool path in the food object's frame.
     """
-    mins, maxs = body_local_aabb(food_body, use_visual=True)
-    size_x = maxs[0] - mins[0]
-    size_y = maxs[1] - mins[1]
-    size_z = maxs[2] - mins[2]
+    bounding_box = _local_bounding_box(food_body, use_visual=True)
+    size_x = bounding_box.depth
+    size_y = bounding_box.width
+    size_z = bounding_box.height
+    z_surface = bounding_box.max_z
 
     duration_scale = _duration_scale_from_body(food_body, reference_size=reference_size)
 
     margin_x = min(0.01, 0.15 * size_x)
     margin_y = min(0.01, 0.10 * size_y)
     z_clearance = max(0.01, 0.25 * size_z) + APPROACH_Z_EXTRA_CLEARANCE_M
-    z_top = maxs[2] + z_clearance
+    z_top = z_surface + z_clearance
     cut_floor_clearance = max(0.015, 0.20 * size_z)
     cut_floor_clearance = min(cut_floor_clearance, max(0.003, size_z - 0.005))
-    z_cut = mins[2] + cut_floor_clearance
-    center_y = 0.5 * (mins[1] + maxs[1])
+    z_cut = bounding_box.min_z + cut_floor_clearance
+    center_y = 0.5 * (bounding_box.min_y + bounding_box.max_y)
 
     if technique is CuttingTechnique.HALVING:
-        x_anchors = [0.5 * (mins[0] + maxs[0])]
-        z_cut = 0.5 * (mins[2] + maxs[2])
+        x_anchors = [0.5 * (bounding_box.min_x + bounding_box.max_x)]
+        z_cut = 0.5 * (bounding_box.min_z + bounding_box.max_z)
     else:
         x_anchors = SliceAnchorPlacement(
-            interval_start=mins[0] + margin_x,
-            interval_end=maxs[0] - margin_x,
+            interval_start=bounding_box.min_x + margin_x,
+            interval_end=bounding_box.max_x - margin_x,
             slice_thickness=slice_thickness,
             number_of_cuts=num_cuts_x,
             priority=slicing_priority,
         ).compute_anchor_positions()
 
-    y_min = mins[1] + margin_y
-    y_max = maxs[1] - margin_y
+    y_min = bounding_box.min_y + margin_y
+    y_max = bounding_box.max_y - margin_y
     saw_cycles = max(2.0, round(size_y / max(reference_size, 1e-6)))
-    shear_depth_max = maxs[2] - z_cut
+    shear_depth_max = z_surface - z_cut
     shear_amplitude = 0.5 * max(y_max - y_min, 0.0)
 
-    def _approach_segment(cut_index: int, x_val: float) -> MotionSegment:
-        return MotionSegment(
-            name=f"cut_approach_x{cut_index}",
+    def _approach_segment(cut_index: int, x_val: float) -> ToolPathSegment:
+        return ToolPathSegment(
+            kind=ToolPathSegmentKind.APPROACH,
             duration_s=0.8 * duration_scale,
             local_curve=lambda tau, x=x_val: np.array(
-                [x, center_y, z_top + (maxs[2] - z_top) * float(tau)], dtype=float
+                [x, center_y, z_top + (z_surface - z_top) * float(tau)], dtype=float
             ),
+            cut_index=cut_index,
         )
 
-    def _retract_segment(cut_index: int, x_val: float) -> MotionSegment:
-        return MotionSegment(
-            name=f"cut_retract_x{cut_index}",
+    def _retract_segment(cut_index: int, x_val: float) -> ToolPathSegment:
+        return ToolPathSegment(
+            kind=ToolPathSegmentKind.RETRACT,
             duration_s=0.8 * duration_scale,
             local_curve=lambda tau, x=x_val: np.array(
                 [x, center_y, z_cut + (z_top - z_cut) * float(tau)], dtype=float
             ),
+            cut_index=cut_index,
         )
 
-    def _descend_segment(cut_index: int, x_val: float) -> MotionSegment:
-        return MotionSegment(
-            name=f"cut_descend_x{cut_index}",
+    def _descend_segment(cut_index: int, x_val: float) -> ToolPathSegment:
+        return ToolPathSegment(
+            kind=ToolPathSegmentKind.DESCEND,
             duration_s=1.0 * duration_scale,
             local_curve=lambda tau, x=x_val: np.array(
-                [x, center_y, maxs[2] + (z_cut - maxs[2]) * float(tau)], dtype=float
+                [x, center_y, z_surface + (z_cut - z_surface) * float(tau)],
+                dtype=float,
             ),
+            cut_index=cut_index,
         )
 
-    def _saw_segment(cut_index: int, x_val: float) -> MotionSegment:
+    def _saw_segment(cut_index: int, x_val: float) -> ToolPathSegment:
         def _saw_curve(tau: float, x: float = x_val) -> np.ndarray:
             shear_point = oscillatory_shear_local_profiled(
                 tau,
@@ -791,22 +798,24 @@ def build_cutting_sequence(
                 ),
             )
             return np.array(
-                [x, center_y + shear_point[0], maxs[2] + shear_point[2]], dtype=float
+                [x, center_y + shear_point[0], z_surface + shear_point[2]],
+                dtype=float,
             )
 
-        return MotionSegment(
-            name=f"oscillatory_shear_x{cut_index}",
+        return ToolPathSegment(
+            kind=ToolPathSegmentKind.SAW,
             duration_s=5.0 * duration_scale,
             local_curve=_saw_curve,
+            cut_index=cut_index,
         )
 
-    phases: List[MotionSegment] = []
+    segments: List[ToolPathSegment] = []
     for cut_index, x_val in enumerate(x_anchors):
-        phases.append(_approach_segment(cut_index, x_val))
+        segments.append(_approach_segment(cut_index, x_val))
         if technique is CuttingTechnique.SAW:
-            phases.append(_saw_segment(cut_index, x_val))
+            segments.append(_saw_segment(cut_index, x_val))
         else:
-            phases.append(_descend_segment(cut_index, x_val))
-        phases.append(_retract_segment(cut_index, x_val))
+            segments.append(_descend_segment(cut_index, x_val))
+        segments.append(_retract_segment(cut_index, x_val))
 
-    return MotionSequence(phases)
+    return ToolPath(segments)

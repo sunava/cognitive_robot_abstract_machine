@@ -33,6 +33,7 @@ from coraplex.robot_plans.actions.core.robot_body import (
 )
 from coraplex.testing import setup_world
 
+
 def main() -> None:
     """
     Build the demo world and run the plan on the simulated robot.
@@ -63,7 +64,9 @@ def main() -> None:
     pr2 = PR2.from_world(world)
     context = Context(world=world, robot=pr2, _debug=False, ros_node=None)
 
-    whisk_body = attach_tool(world, pr2, Arms.RIGHT, parse_object("whisk.stl"), MIX_MOUNT)
+    whisk_body = attach_tool(
+        world, pr2, Arms.RIGHT, parse_object("whisk.stl"), MIX_MOUNT
+    )
     bowl_body = world.get_body_by_name("bowl.stl")
 
     whisk = Whisk(root=whisk_body)

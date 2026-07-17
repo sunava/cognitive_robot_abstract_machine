@@ -33,6 +33,7 @@ from coraplex.robot_plans.actions.core.robot_body import (
 )
 from coraplex.testing import setup_world
 
+
 def main() -> None:
     """
     Build the demo world and run the plan on the simulated robot.

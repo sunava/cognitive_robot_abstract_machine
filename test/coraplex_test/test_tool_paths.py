@@ -5,19 +5,21 @@ from coraplex.datastructures.enums import (
     CuttingTechnique,
     MixingPattern,
     SlicingPriority,
+    ToolPathSegmentKind,
     WipingTechnique,
 )
-from coraplex.robot_plans.actions.composite.tool_motion_sequences import (
+from coraplex.robot_plans.actions.composite.tool_paths import (
     DEFAULT_SAMPLE_DT,
-    MotionSegment,
-    MotionSequence,
     SliceAnchorPlacement,
+    ToolPath,
+    ToolPathSegment,
     _constrain_to_convex_hull_xy,
-    body_local_aabb,
-    build_container_sequence,
-    build_cutting_sequence,
-    build_surface_sequence,
+    _local_bounding_box,
+    build_container_path,
+    build_cutting_path,
+    build_surface_path,
     clamp_to_cylinder_xy,
+    ramp,
 )
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
@@ -34,7 +36,7 @@ def box_body():
     world = World()
     shape_collection = ShapeCollection([Box(scale=Scale(*BOX_SIZE))])
     body = Body(
-        name=PrefixedName("tool_motion_test_box"),
+        name=PrefixedName("tool_path_test_box"),
         collision=shape_collection,
         visual=shape_collection,
     )
@@ -43,61 +45,90 @@ def box_body():
     return body
 
 
-def _sample(sequence):
-    return sequence.sample(
-        frame=HomogeneousTransformationMatrix(), dt=DEFAULT_SAMPLE_DT
-    )
+def _sample(path):
+    return path.sample(frame=HomogeneousTransformationMatrix(), dt=DEFAULT_SAMPLE_DT)
 
 
-def test_body_local_aabb_returns_box_extents(box_body):
-    mins, maxs = body_local_aabb(box_body)
-    np.testing.assert_allclose(mins, [-0.1, -0.1, -0.05])
-    np.testing.assert_allclose(maxs, [0.1, 0.1, 0.05])
+def test_local_bounding_box_returns_box_extents(box_body):
+    bounding_box = _local_bounding_box(box_body)
+    assert bounding_box.min_x == pytest.approx(-0.1)
+    assert bounding_box.min_y == pytest.approx(-0.1)
+    assert bounding_box.min_z == pytest.approx(-0.05)
+    assert bounding_box.max_x == pytest.approx(0.1)
+    assert bounding_box.max_y == pytest.approx(0.1)
+    assert bounding_box.max_z == pytest.approx(0.05)
 
 
-def test_container_sequence_spiral_stays_inside_cylinder(box_body):
-    sequence = build_container_sequence(box_body, pattern=MixingPattern.SPIRAL)
-    _, points, _ = _sample(sequence)
+def test_ramp_is_linear_and_saturates():
+    assert ramp(0.0, tau_end=0.5, d_max=2.0) == 0.0
+    assert ramp(0.25, tau_end=0.5, d_max=2.0) == pytest.approx(1.0)
+    assert ramp(0.5, tau_end=0.5, d_max=2.0) == pytest.approx(2.0)
+    assert ramp(0.9, tau_end=0.5, d_max=2.0) == pytest.approx(2.0)
+
+
+def test_container_path_spiral_stays_inside_cylinder(box_body):
+    path = build_container_path(box_body, pattern=MixingPattern.SPIRAL)
+    _, points, _ = _sample(path)
 
     radius_xy = 0.5 * min(BOX_SIZE[0], BOX_SIZE[1])
     radii = np.linalg.norm(points[:, :2], axis=1)
     assert np.all(radii <= radius_xy + 1e-9)
     assert np.all(points[:, 2] >= -0.05)
     assert np.all(points[:, 2] <= 0.05)
+    assert [segment.kind for segment in path.segments] == [ToolPathSegmentKind.SPIRAL]
 
 
-def test_container_sequence_stir_matches_requested_duration(box_body):
+def test_container_path_stir_matches_requested_duration(box_body):
     mix_duration_s = 5.0
-    sequence = build_container_sequence(
+    path = build_container_path(
         box_body, pattern=MixingPattern.STIR, mix_duration_s=mix_duration_s
     )
-    assert sequence.duration_s == pytest.approx(mix_duration_s)
+    assert path.duration_s == pytest.approx(mix_duration_s)
+    assert [segment.kind for segment in path.segments] == [ToolPathSegmentKind.STIR]
 
 
-def test_cutting_sequence_descends_to_cut_depth(box_body):
-    sequence = build_cutting_sequence(box_body, technique=CuttingTechnique.SLICE)
-    times, points, phase_ids = _sample(sequence)
+def test_cutting_path_descends_to_cut_depth(box_body):
+    path = build_cutting_path(box_body, technique=CuttingTechnique.SLICE)
+    times, points, segment_ids = _sample(path)
 
     size_z = BOX_SIZE[2]
     expected_cut_depth = -0.05 + max(0.015, 0.20 * size_z)
     assert points[:, 2].min() == pytest.approx(expected_cut_depth)
-    assert phase_ids.max() == 2
+    assert segment_ids.max() == 2
 
 
-def test_cutting_sequence_has_three_phases_per_cut(box_body):
-    sequence = build_cutting_sequence(
-        box_body, technique=CuttingTechnique.SAW, num_cuts_x=2
-    )
-    assert len(sequence.phases) == 6
+def test_cutting_path_has_three_segments_per_cut(box_body):
+    path = build_cutting_path(box_body, technique=CuttingTechnique.SAW, num_cuts_x=2)
+    assert len(path.segments) == 6
+    assert [segment.kind for segment in path.segments] == [
+        ToolPathSegmentKind.APPROACH,
+        ToolPathSegmentKind.SAW,
+        ToolPathSegmentKind.RETRACT,
+        ToolPathSegmentKind.APPROACH,
+        ToolPathSegmentKind.SAW,
+        ToolPathSegmentKind.RETRACT,
+    ]
+    assert [segment.cut_index for segment in path.segments] == [0, 0, 0, 1, 1, 1]
+
+
+def test_cutting_path_halving_cuts_center_at_half_height(box_body):
+    path = build_cutting_path(box_body, technique=CuttingTechnique.HALVING)
+    _, points, _ = _sample(path)
+
+    assert [segment.kind for segment in path.segments] == [
+        ToolPathSegmentKind.APPROACH,
+        ToolPathSegmentKind.DESCEND,
+        ToolPathSegmentKind.RETRACT,
+    ]
+    np.testing.assert_allclose(np.unique(points[:, 0]), [0.0], atol=1e-9)
+    assert points[:, 2].min() == pytest.approx(0.0)
 
 
 def test_slice_anchors_thickness_only_derives_cut_count():
     placement = SliceAnchorPlacement(
         interval_start=0.0, interval_end=0.18, slice_thickness=0.05
     )
-    np.testing.assert_allclose(
-        placement.compute_anchor_positions(), [0.05, 0.10, 0.15]
-    )
+    np.testing.assert_allclose(placement.compute_anchor_positions(), [0.05, 0.10, 0.15])
 
 
 def test_slice_anchors_cut_count_only_fills_interval():
@@ -127,9 +158,7 @@ def test_slice_anchors_thickness_priority_reduces_cut_count():
         number_of_cuts=20,
         priority=SlicingPriority.THICKNESS,
     )
-    np.testing.assert_allclose(
-        placement.compute_anchor_positions(), [0.05, 0.10, 0.15]
-    )
+    np.testing.assert_allclose(placement.compute_anchor_positions(), [0.05, 0.10, 0.15])
 
 
 def test_slice_anchors_cut_count_priority_shrinks_thickness():
@@ -156,31 +185,33 @@ def test_slice_anchors_oversized_thickness_clamps_to_single_cut():
     np.testing.assert_allclose(placement.compute_anchor_positions(), [0.18])
 
 
-def test_cutting_sequence_spaces_cuts_by_slice_thickness(box_body):
-    sequence = build_cutting_sequence(
+def test_cutting_path_spaces_cuts_by_slice_thickness(box_body):
+    path = build_cutting_path(
         box_body,
         technique=CuttingTechnique.SLICE,
         slice_thickness=0.05,
         num_cuts_x=2,
     )
-    _, points, _ = _sample(sequence)
+    _, points, _ = _sample(path)
 
     # usable X interval starts at -0.1 + margin of 0.01
     np.testing.assert_allclose(np.unique(points[:, 0]), [-0.04, 0.01], atol=1e-9)
 
 
-def test_surface_sequence_stays_inside_xy_bounds(box_body):
-    for technique in (
-        WipingTechnique.WIPE,
-        WipingTechnique.SHEAR,
-        WipingTechnique.SPREAD,
-    ):
-        sequence = build_surface_sequence(box_body, technique=technique)
-        _, points, _ = _sample(sequence)
+def test_surface_path_stays_inside_xy_bounds(box_body):
+    expected_kinds = {
+        WipingTechnique.WIPE: ToolPathSegmentKind.SPIRAL,
+        WipingTechnique.SHEAR: ToolPathSegmentKind.SHEAR,
+        WipingTechnique.SPREAD: ToolPathSegmentKind.RASTER,
+    }
+    for technique, expected_kind in expected_kinds.items():
+        path = build_surface_path(box_body, technique=technique)
+        _, points, _ = _sample(path)
         assert np.all(points[:, 0] >= -0.1 - 1e-9)
         assert np.all(points[:, 0] <= 0.1 + 1e-9)
         assert np.all(points[:, 1] >= -0.1 - 1e-9)
         assert np.all(points[:, 1] <= 0.1 + 1e-9)
+        assert [segment.kind for segment in path.segments] == [expected_kind]
 
 
 def test_clamp_to_cylinder_xy_clamps_radius_and_height():
@@ -204,22 +235,22 @@ def test_constrain_to_convex_hull_moves_outside_points_onto_hull():
     np.testing.assert_allclose(unchanged, inside_point)
 
 
-def test_motion_sequence_sample_stitches_phases_without_duplicates():
-    first = MotionSegment(
-        name="first",
+def test_tool_path_sample_stitches_segments_without_duplicates():
+    first = ToolPathSegment(
+        kind=ToolPathSegmentKind.SWEEP,
         duration_s=1.0,
         local_curve=lambda tau: np.array([tau, 0.0, 0.0]),
     )
-    second = MotionSegment(
-        name="second",
+    second = ToolPathSegment(
+        kind=ToolPathSegmentKind.SPIRAL,
         duration_s=1.0,
         local_curve=lambda tau: np.array([1.0, tau, 0.0]),
     )
-    sequence = MotionSequence([first, second])
+    path = ToolPath([first, second])
 
-    times, points, phase_ids = _sample(sequence)
+    times, points, segment_ids = _sample(path)
 
     assert np.all(np.diff(times) > 0)
-    assert set(np.unique(phase_ids)) == {0, 1}
-    assert sequence.duration_s == pytest.approx(2.0)
+    assert set(np.unique(segment_ids)) == {0, 1}
+    assert path.duration_s == pytest.approx(2.0)
     assert times[-1] == pytest.approx(2.0)

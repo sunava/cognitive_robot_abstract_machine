@@ -44,7 +44,7 @@ import coraplex.plans.plan_node
 import coraplex.robot_plans.actions.base
 import coraplex.robot_plans.actions.composite.facing
 import coraplex.robot_plans.actions.composite.tool_based
-import coraplex.robot_plans.actions.composite.tool_motion_sequences
+import coraplex.robot_plans.actions.composite.tool_paths
 import coraplex.robot_plans.actions.composite.transporting
 import coraplex.robot_plans.actions.core.container
 import coraplex.robot_plans.actions.core.misc
@@ -4730,9 +4730,7 @@ class WipingActionDAO(
 
 class ShearProfileDAO(
     Base,
-    DataAccessObject[
-        coraplex.robot_plans.actions.composite.tool_motion_sequences.ShearProfile
-    ],
+    DataAccessObject[coraplex.robot_plans.actions.composite.tool_paths.ShearProfile],
 ):
     __tablename__ = "ShearProfileDAO"
 
@@ -4748,9 +4746,7 @@ class ShearProfileDAO(
 
 class ShearXYProfileDAO(
     Base,
-    DataAccessObject[
-        coraplex.robot_plans.actions.composite.tool_motion_sequences.ShearXYProfile
-    ],
+    DataAccessObject[coraplex.robot_plans.actions.composite.tool_paths.ShearXYProfile],
 ):
     __tablename__ = "ShearXYProfileDAO"
 
@@ -4765,7 +4761,7 @@ class ShearXYProfileDAO(
 class SliceAnchorPlacementDAO(
     Base,
     DataAccessObject[
-        coraplex.robot_plans.actions.composite.tool_motion_sequences.SliceAnchorPlacement
+        coraplex.robot_plans.actions.composite.tool_paths.SliceAnchorPlacement
     ],
 ):
     __tablename__ = "SliceAnchorPlacementDAO"

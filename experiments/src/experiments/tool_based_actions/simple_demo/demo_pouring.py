@@ -31,6 +31,7 @@ from coraplex.robot_plans.actions.core.robot_body import (
 )
 from coraplex.testing import setup_world
 
+
 def main() -> None:
     """
     Build the demo world and run the plan on the simulated robot.
@@ -61,7 +62,11 @@ def main() -> None:
     context = Context(world=world, robot=pr2, _debug=False, ros_node=None)
 
     cup_body = attach_tool(
-        world, pr2, Arms.RIGHT, parse_object("jeroen_cup.stl", color=CUP_COLOR), POUR_MOUNT
+        world,
+        pr2,
+        Arms.RIGHT,
+        parse_object("jeroen_cup.stl", color=CUP_COLOR),
+        POUR_MOUNT,
     )
     bowl_body = world.get_body_by_name("bowl.stl")
 
@@ -79,7 +84,9 @@ def main() -> None:
             NavigateAction(
                 Pose.from_xyz_rpy(*BASE_POSITION_XYZ, reference_frame=world.root)
             ),
-            PouringAction(target_container=bowl_body, source_container=cup, arm=Arms.RIGHT),
+            PouringAction(
+                target_container=bowl_body, source_container=cup, arm=Arms.RIGHT
+            ),
         ],
         context=context,
     ).plan

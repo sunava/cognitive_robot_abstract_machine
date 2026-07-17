@@ -360,6 +360,49 @@ class SlicingPriority(Enum):
     """
 
 
+class ToolPathSegmentKind(Enum):
+    """
+    Enum for the geometric pattern a tool path segment follows.
+    """
+
+    APPROACH = auto()
+    """
+    Vertical approach from above onto the object.
+    """
+    DESCEND = auto()
+    """
+    Straight downward cut into the object.
+    """
+    SAW = auto()
+    """
+    Oscillatory shear motion with increasing depth.
+    """
+    RETRACT = auto()
+    """
+    Vertical retraction away from the object.
+    """
+    SPIRAL = auto()
+    """
+    Planar spiral with growing radius.
+    """
+    STIR = auto()
+    """
+    Continuous circular stirring loop.
+    """
+    SHEAR = auto()
+    """
+    Planar oscillatory shear at constant depth.
+    """
+    RASTER = auto()
+    """
+    Planar raster scan covering a rectangle.
+    """
+    SWEEP = auto()
+    """
+    Sinusoidal sweep along one axis.
+    """
+
+
 class WipingTechnique(Enum):
     """
     Enum for the techniques of wiping a surface.

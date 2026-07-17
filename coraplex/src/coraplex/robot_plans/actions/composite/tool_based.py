@@ -25,6 +25,7 @@ from coraplex.datastructures.enums import (
     MixingPattern,
     MovementType,
     SlicingPriority,
+    ToolPathSegmentKind,
     WipingTechnique,
 )
 from coraplex.exceptions import (
@@ -36,14 +37,13 @@ from coraplex.plans.factories import sequential
 from coraplex.plans.plan_node import PlanNode
 from coraplex.robot_plans.actions.base import ActionDescription
 from coraplex.view_manager import ViewManager
-from coraplex.robot_plans.actions.composite.tool_motion_sequences import (
+from coraplex.robot_plans.actions.composite.tool_paths import (
     DEFAULT_SAMPLE_DT,
-    MotionSegment,
-    MotionSequence,
-    body_local_aabb,
-    build_container_sequence,
-    build_cutting_sequence,
-    build_surface_sequence,
+    ToolPath,
+    ToolPathSegment,
+    build_container_path,
+    build_cutting_path,
+    build_surface_path,
     planar_spiral_xy,
     planar_sweep_x,
 )
@@ -90,8 +90,8 @@ class FullBodyControlledAction(ActionDescription, ABC):
 @dataclass(kw_only=True)
 class ToolMotionAction(FullBodyControlledAction, ABC):
     """
-    An action that moves a tool along a sampled motion sequence while keeping the
-    tool aligned with its target.
+    An action that moves a tool along a sampled tool path while keeping the tool
+    aligned with its target.
     """
 
     arm: Arms
@@ -108,15 +108,15 @@ class ToolMotionAction(FullBodyControlledAction, ABC):
     """
 
     @abstractmethod
-    def _build_motion_sequence(self) -> MotionSequence:
+    def _build_tool_path(self) -> ToolPath:
         """
-        :return: The motion sequence of this action in its local frame.
+        :return: The tool path of this action in its local frame.
         """
 
     @abstractmethod
-    def _motion_frame(self) -> HomogeneousTransformationMatrix:
+    def _path_frame(self) -> HomogeneousTransformationMatrix:
         """
-        :return: The frame the motion sequence is expressed in.
+        :return: The frame the tool path is expressed in.
         """
 
     @property
@@ -129,10 +129,10 @@ class ToolMotionAction(FullBodyControlledAction, ABC):
     @cached_property
     def _waypoints(self) -> List[Point3]:
         """
-        :return: The sampled waypoints of the motion sequence in the world frame.
+        :return: The sampled waypoints of the tool path in the world frame.
         """
-        _, points, _ = self._build_motion_sequence().sample(
-            frame=self._motion_frame(), dt=DEFAULT_SAMPLE_DT
+        _, points, _ = self._build_tool_path().sample(
+            frame=self._path_frame(), dt=DEFAULT_SAMPLE_DT
         )
         stride = max(1, int(self.pointer_stride))
         waypoints = [
@@ -181,16 +181,16 @@ class MixingAction(ToolMotionAction):
     spiral pattern is used instead.
     """
 
-    def _build_motion_sequence(self) -> MotionSequence:
+    def _build_tool_path(self) -> ToolPath:
         if self.mix_duration_s > 0.0:
-            return build_container_sequence(
+            return build_container_path(
                 self.container,
                 pattern=MixingPattern.STIR,
                 mix_duration_s=self.mix_duration_s,
             )
-        return build_container_sequence(self.container, pattern=MixingPattern.SPIRAL)
+        return build_container_path(self.container, pattern=MixingPattern.SPIRAL)
 
-    def _motion_frame(self) -> HomogeneousTransformationMatrix:
+    def _path_frame(self) -> HomogeneousTransformationMatrix:
         return self.container.global_pose.to_homogeneous_matrix()
 
     @property
@@ -228,8 +228,8 @@ class CuttingAction(ToolMotionAction):
     fit the object.
     """
 
-    def _build_motion_sequence(self) -> MotionSequence:
-        return build_cutting_sequence(
+    def _build_tool_path(self) -> ToolPath:
+        return build_cutting_path(
             self.container,
             technique=self.technique,
             slice_thickness=self.slice_thickness,
@@ -237,7 +237,7 @@ class CuttingAction(ToolMotionAction):
             slicing_priority=self.slicing_priority,
         )
 
-    def _motion_frame(self) -> HomogeneousTransformationMatrix:
+    def _path_frame(self) -> HomogeneousTransformationMatrix:
         return self.container.global_pose.to_homogeneous_matrix()
 
     @property
@@ -281,14 +281,14 @@ class WipingAction(ToolMotionAction):
         if self.container is None and self.target_pose is None:
             raise WipingTargetMissing(self)
 
-    def _build_motion_sequence(self) -> MotionSequence:
+    def _build_tool_path(self) -> ToolPath:
         if self.container is not None:
-            return build_surface_sequence(self.container, technique=self.technique)
+            return build_surface_path(self.container, technique=self.technique)
         if self.technique is WipingTechnique.SPREAD:
-            return MotionSequence(
+            return ToolPath(
                 [
-                    MotionSegment(
-                        name="spread_patch",
+                    ToolPathSegment(
+                        kind=ToolPathSegmentKind.SWEEP,
                         duration_s=2.0,
                         local_curve=lambda tau: planar_sweep_x(
                             tau,
@@ -298,10 +298,10 @@ class WipingAction(ToolMotionAction):
                     )
                 ]
             )
-        return MotionSequence(
+        return ToolPath(
             [
-                MotionSegment(
-                    name="wipe_patch",
+                ToolPathSegment(
+                    kind=ToolPathSegmentKind.SPIRAL,
                     duration_s=2.0,
                     local_curve=lambda tau: planar_spiral_xy(
                         tau, r0=0.00, r1=0.12, cycles=2.5
@@ -310,7 +310,7 @@ class WipingAction(ToolMotionAction):
             ]
         )
 
-    def _motion_frame(self) -> HomogeneousTransformationMatrix:
+    def _path_frame(self) -> HomogeneousTransformationMatrix:
         if self.container is not None:
             return self.container.global_pose.to_homogeneous_matrix()
         if self.target_pose.reference_frame is None:
@@ -404,9 +404,18 @@ class PouringAction(FullBodyControlledAction):
         tool_frame_T_source = self.world.compute_forward_kinematics_np(
             tool_frame, self.source_container.root
         )
-        mins, maxs = body_local_aabb(self.source_container.root, use_visual=True)
+        bounding_box = (
+            self.source_container.root.visual.as_bounding_box_collection_in_frame(
+                self.source_container.root
+            ).bounding_box()
+        )
         mouth_in_source = np.array(
-            [0.5 * (mins[0] + maxs[0]), 0.5 * (mins[1] + maxs[1]), maxs[2], 1.0]
+            [
+                0.5 * (bounding_box.min_x + bounding_box.max_x),
+                0.5 * (bounding_box.min_y + bounding_box.max_y),
+                bounding_box.max_z,
+                1.0,
+            ]
         )
         return float((tool_frame_T_source @ mouth_in_source)[2])
 
