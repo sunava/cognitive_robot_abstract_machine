@@ -50,9 +50,16 @@ class _InferredForms:
     """
 
     milk: bool = False
+    """A noun-shaped name — inferred as possessive (*"has milk"*)."""
+
     backbone: bool = False
+    """A noun-shaped name — inferred as possessive (*"has backbone"*)."""
+
     completed: bool = False
+    """A past-participle name — inferred as adjectival (*"is completed"*)."""
+
     operational: bool = False
+    """An adjective-suffix name — inferred as adjectival (*"is operational"*)."""
 
 
 @dataclass
@@ -62,15 +69,26 @@ class _DeclaredForms:
     """
 
     milk: bool = _predicate(PossessivePredicate())
+    """A bare-noun possessive (*"has milk"*)."""
+
     backbone: bool = _predicate(
         PossessivePredicate(definiteness=Definiteness.INDEFINITE)
     )
+    """A count-noun possessive taking an article (*"has a backbone"*)."""
+
     glands: bool = _predicate(PossessivePredicate(noun="mammary glands"))
+    """A possessive overriding the noun (*"has mammary glands"*)."""
+
     reachable: bool = _predicate(AdjectivalPredicate(adjective="within reach"))
+    """An adjectival predicate overriding the adjective (*"is within reach"*)."""
+
     secretes_milk: bool = _predicate(
         VerbalPredicate(verb="secrete", object_noun="milk")
     )
+    """A transitive verbal predicate (*"secretes milk"*)."""
+
     breathes: bool = _predicate(VerbalPredicate(verb="breathe"))
+    """An intransitive verbal predicate (*"breathes"*)."""
 
 
 # %% Heuristic default resolution

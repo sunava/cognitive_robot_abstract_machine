@@ -62,8 +62,8 @@ def default_boolean_predicate(attribute_name: str) -> BooleanPredicate:
     adjective (*"airborne"*) falls through to possessive. A verbal reading (*"produces milk"*) is
     never inferred — a lexical verb cannot be told from a noun by shape — so it requires an explicit
     :class:`~krrood.entity_query_language.verbalization.boolean_predicate.VerbalPredicate`. The
-    reliable source of the classification is per-field metadata, which an offline language model can
-    author from the field's meaning.
+    reliable source of the classification is an explicit definition through the field's grammar
+    metadata.
     """
     last = attribute_name.split("_")[-1]
     if morphology.is_past_participle(last) or morphology.is_likely_adjective(last):
