@@ -1176,19 +1176,31 @@ class MujocoMeshConverter(MujocoGeomConverter, MeshConverter):
         if isinstance(entity.mesh.visual, TextureVisuals) and isinstance(
             entity.mesh.visual.material.name, str
         ):
-            texture_file_path = entity.mesh.visual.material.name
-            if not os.path.isfile(texture_file_path):
-                texture_file_path = entity.mesh.visual.material.image.filename
-            if not os.path.isfile(texture_file_path):
-                texture_file_path = entity.mesh.visual.material.image.info.get(
-                    "file_path", ""
-                )
-            if not os.path.isfile(texture_file_path):
-                raise FileNotFoundError(
-                    f"Texture file not found for mesh. Checked paths: '{entity.mesh.visual.material.name}', '{entity.mesh.visual.material.image.filename}', '{entity.mesh.visual.material.image.info.get('file_path', '')}'"
-                )
-            shape_props["texture_file_path"] = texture_file_path
+            texture_file_path = self._resolve_texture_file_path(
+                entity.mesh.visual.material
+            )
+            if texture_file_path is not None:
+                shape_props["texture_file_path"] = texture_file_path
         return shape_props
+
+    @staticmethod
+    def _resolve_texture_file_path(material: Any) -> Optional[str]:
+        """
+        Resolves the on-disk file backing a mesh's texture.
+
+        :param material: The trimesh material (``TextureVisuals.material``) to resolve.
+        :return: The texture's file path, or ``None`` if the texture is a programmatically
+            generated image (for example a flat "glass" material) with no backing file.
+        """
+        if os.path.isfile(material.name):
+            return material.name
+        image = material.image
+        if hasattr(image, "filename") and os.path.isfile(image.filename):
+            return image.filename
+        file_path = image.info.get("file_path", "")
+        if os.path.isfile(file_path):
+            return file_path
+        return None
 
 
 @dataclass
