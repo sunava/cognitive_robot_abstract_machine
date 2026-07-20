@@ -76,7 +76,6 @@ SPONGE_COLOR = Color(0.95, 0.85, 0.3)
 Yellowish color for the sponge.
 """
 
-
 def parse_object(stl_file_name: str, color: Optional[Color] = None) -> World:
     """
     :param stl_file_name: Name of the mesh file in the demo resources.
@@ -88,50 +87,6 @@ def parse_object(stl_file_name: str, color: Optional[Color] = None) -> World:
     if color is not None:
         object_world.root.visual.dye_shapes(color)
     return object_world
-
-
-def attach_tool(
-    world: World, robot: AbstractRobot, arm: Arms, tool_world: World, mount: dict
-) -> Body:
-    """
-    Rigidly attach a tool mesh to the arm's tool frame.
-
-    :param world: The world the robot lives in.
-    :param robot: The robot holding the tool.
-    :param arm: The arm the tool is mounted on.
-    :param tool_world: The world containing the parsed tool mesh.
-    :param mount: Keyword arguments describing the mount transform.
-    :return: The tool's root body inside ``world``.
-    """
-    tool_frame = ViewManager.get_end_effector_view(arm, robot).tool_frame
-    connection = FixedConnection(
-        parent=tool_frame,
-        child=tool_world.root,
-        parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(
-            reference_frame=tool_frame, **mount
-        ),
-    )
-    with world.modify_world():
-        world.merge_world(tool_world, connection)
-    return connection.child
-
-
-def start_visualization(world: World) -> None:
-    """
-    Publish the world to RViz.
-
-    Does nothing if ROS is not available.
-    """
-    try:
-        import rclpy
-        from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
-            VizMarkerPublisher,
-        )
-    except ImportError:
-        return
-    rclpy.init()
-    node = rclpy.create_node("viz_marker")
-    VizMarkerPublisher(_world=world, node=node).with_tf_publisher()
 
 
 def attach_sponge(world: World, robot: AbstractRobot, arm: Arms) -> Body:
