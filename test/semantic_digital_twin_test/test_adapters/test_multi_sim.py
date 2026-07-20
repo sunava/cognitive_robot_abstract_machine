@@ -24,14 +24,24 @@ from semantic_digital_twin.world_description.connections import (
     RevoluteConnection,
 )
 from semantic_digital_twin.world_description.degree_of_freedom import DegreeOfFreedom
-from semantic_digital_twin.world_description.geometry import Box, Scale, Color, Cylinder
+from semantic_digital_twin.world_description.geometry import (
+    Box,
+    Scale,
+    Color,
+    Cylinder,
+    Mesh,
+)
 from semantic_digital_twin.world_description.shape_collection import ShapeCollection
 from semantic_digital_twin.world_description.world_entity import Body, Region, Actuator
 
 from physics_simulators.mujoco_simulator import MujocoSimulator
 from physics_simulators.base_simulator import SimulatorState
 from semantic_digital_twin.adapters.mjcf import MJCFParser
-from semantic_digital_twin.adapters.multi_sim import MujocoSim, MujocoActuator
+from semantic_digital_twin.adapters.multi_sim import (
+    MujocoSim,
+    MujocoActuator,
+    MujocoBuilder,
+)
 
 urdf_dir = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -299,6 +309,63 @@ def test_mesh_scale_and_equality(test_mjcf_2_world):
         assert time.time() - start_time >= 5.0
     finally:
         stop_multisim_if_running(multi_sim)
+
+
+def test_builder_assigns_material_to_every_geom_sharing_a_texture(tmp_path):
+    """
+    Regression test: MujocoBuilder._parse_geom used to return early - without ever setting
+    geom_props["material"] - whenever a geom's texture was already registered by an earlier
+    geom. Since most textures in a scene are shared across many geoms (a real RoboCasa
+    kitchen reuses a handful of textures across ~90 meshes), this meant only the first geom
+    to use a given texture ever got a material; every later reuse silently rendered with
+    MuJoCo's default (untextured, gray) material instead.
+    """
+    from PIL import Image
+
+    texture_file = tmp_path / "wood.png"
+    Image.new("RGB", (4, 4), color=(120, 60, 20)).save(texture_file)
+
+    mesh_file = tmp_path / "tetra.obj"
+    mesh_file.write_text(
+        "mtllib tetra.mtl\n"
+        "o tetra\n"
+        "v 0.0 0.0 0.0\n"
+        "v 1.0 0.0 0.0\n"
+        "v 0.0 1.0 0.0\n"
+        "v 0.0 0.0 1.0\n"
+        "vt 0.0 0.0\n"
+        "vt 1.0 0.0\n"
+        "vt 0.0 1.0\n"
+        "vt 0.5 0.5\n"
+        "usemtl wood\n"
+        "f 1/1 2/2 3/3\n"
+        "f 1/1 2/2 4/4\n"
+        "f 1/1 3/3 4/4\n"
+        "f 2/2 3/3 4/4\n"
+    )
+    (tmp_path / "tetra.mtl").write_text("newmtl wood\nmap_Kd wood.png\n")
+
+    world = World()
+    with world.modify_world():
+        root = Body(name=PrefixedName("root"))
+        world.add_body(root)
+        for i in range(2):
+            mesh_shape = Mesh(filename=str(mesh_file), scale=Scale(1, 1, 1))
+            body = Body(
+                name=PrefixedName(f"quad_{i}"),
+                visual=ShapeCollection([mesh_shape]),
+                collision=ShapeCollection([mesh_shape]),
+            )
+            world.add_kinematic_structure_entity(body)
+            world.add_connection(FixedConnection(parent=root, child=body))
+
+    builder = MujocoBuilder()
+    builder.build_world(world=world, file_path=str(tmp_path / "scene.xml"))
+
+    materials = {
+        body.name: geom.material for body in builder.spec.bodies for geom in body.geoms
+    }
+    assert materials == {"quad_0": "M_wood", "quad_1": "M_wood"}
 
 
 def test_mujoco_with_tracy_dae_files():

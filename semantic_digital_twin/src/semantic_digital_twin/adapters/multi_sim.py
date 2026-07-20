@@ -1692,18 +1692,22 @@ class MujocoBuilder(MultiSimBuilder):
         texture_file_path = geom_props.pop("texture_file_path", None)
         if isinstance(texture_file_path, str):
             texture_name = os.path.splitext(os.path.basename(texture_file_path))[0]
-            if texture_name in [
-                self.spec.textures[i].name for i in range(len(self.spec.textures))
-            ]:
-                return True
             material_name = texture_name
             if material_name.startswith("T_"):
                 material_name = material_name[2:]
             material_name = f"M_{material_name}"
+            # Assign the material name to this geom before any of the dedup checks below:
+            # a texture/material reused by a later geom (the common case - most textures in a
+            # scene are shared across many geoms) must still be referenced by that later geom,
+            # not just by the first geom that happened to register it.
             geom_props["material"] = material_name
-            if material_name in [
+            texture_already_registered = texture_name in [
+                self.spec.textures[i].name for i in range(len(self.spec.textures))
+            ]
+            material_already_registered = material_name in [
                 self.spec.materials[i].name for i in range(len(self.spec.materials))
-            ]:
+            ]
+            if texture_already_registered or material_already_registered:
                 return True
             if not os.path.exists(texture_file_path):
                 return True
