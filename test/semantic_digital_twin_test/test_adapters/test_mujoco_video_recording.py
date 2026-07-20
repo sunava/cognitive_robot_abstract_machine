@@ -12,11 +12,11 @@ import os
 import numpy as np
 import pytest
 
+from semantic_digital_twin.adapters.multi_sim import MujocoCamera
 from semantic_digital_twin.adapters.mujoco_video_recording import (
     MujocoVideoRecorder,
     RecordedVideo,
     VideoResolution,
-    overview_camera_pose,
 )
 from semantic_digital_twin.exceptions import (
     EmptyVideoRecordingError,
@@ -35,13 +35,13 @@ requires_mujoco_ci = pytest.mark.skipif(
 )
 
 
-# %% overview_camera_pose - pure math, no simulator needed
+# %% MujocoCamera.overview_pose - pure math, no simulator needed
 
 
 def test_overview_camera_pose_applies_distance_floor_for_a_degenerate_box():
     point_bounds = np.array([[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]])
 
-    position, _ = overview_camera_pose(point_bounds)
+    position, _ = MujocoCamera.overview_pose(point_bounds)
 
     assert np.linalg.norm(position - np.array([1.0, 1.0, 1.0])) == pytest.approx(1.5)
 
@@ -50,8 +50,8 @@ def test_overview_camera_pose_scales_with_the_bounding_diagonal():
     small_bounds = np.array([[-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]])
     large_bounds = np.array([[-2.0, -2.0, -2.0], [2.0, 2.0, 2.0]])
 
-    small_position, _ = overview_camera_pose(small_bounds)
-    large_position, _ = overview_camera_pose(large_bounds)
+    small_position, _ = MujocoCamera.overview_pose(small_bounds)
+    large_position, _ = MujocoCamera.overview_pose(large_bounds)
 
     small_distance = np.linalg.norm(small_position)
     large_distance = np.linalg.norm(large_position)
@@ -61,7 +61,7 @@ def test_overview_camera_pose_scales_with_the_bounding_diagonal():
 def test_overview_camera_pose_looks_at_the_bounding_box_center():
     bounds = np.array([[-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]])
 
-    position, quaternion = overview_camera_pose(bounds)
+    position, quaternion = MujocoCamera.overview_pose(bounds)
 
     from scipy.spatial.transform import Rotation
 

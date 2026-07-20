@@ -7,8 +7,7 @@ from pathlib import Path
 import imageio.v2 as imageio
 import mujoco
 import numpy as np
-from scipy.spatial.transform import Rotation
-from typing_extensions import List, Optional, Tuple
+from typing_extensions import List, Optional
 
 from semantic_digital_twin.adapters.multi_sim import (
     MujocoCamera,
@@ -79,58 +78,6 @@ class RecordedVideo:
             for frame in self.frames:
                 writer.append_data(frame)
         return output_path
-
-
-def _look_at_quaternion(
-    camera_position: np.ndarray, target_position: np.ndarray
-) -> np.ndarray:
-    """
-    Computes the world-frame orientation of a camera at ``camera_position`` that looks at
-    ``target_position``, following MuJoCo's camera convention (camera looks down its local
-    -Z axis, +Y is up).
-
-    :param camera_position: The world-frame position of the camera.
-    :param target_position: The world-frame position the camera should look at.
-    :return: A ``[w, x, y, z]`` quaternion.
-    """
-    forward = target_position - camera_position
-    forward = forward / np.linalg.norm(forward)
-    up_hint = np.array([0.0, 0.0, 1.0])
-    if np.abs(np.dot(forward, up_hint)) > 0.99:
-        up_hint = np.array([0.0, 1.0, 0.0])
-
-    z_axis = -forward
-    x_axis = np.cross(up_hint, z_axis)
-    x_axis = x_axis / np.linalg.norm(x_axis)
-    y_axis = np.cross(z_axis, x_axis)
-
-    rotation_matrix = np.column_stack([x_axis, y_axis, z_axis])
-    return Rotation.from_matrix(rotation_matrix).as_quat(scalar_first=True)
-
-
-def overview_camera_pose(
-    bounds: np.ndarray,
-    minimum_distance: float = 1.0,
-    distance_factor: float = 1.5,
-) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Computes a fixed diagonal viewpoint that frames an axis-aligned bounding box.
-
-    :param bounds: A ``(2, 3)`` array of the scene's ``[minimum, maximum]`` corners.
-    :param minimum_distance: Floor (in meters) for the camera's distance to the box center,
-        so a box that collapses to a point still gets a sensibly framed camera.
-    :param distance_factor: Multiplier applied to the box's bounding diagonal to place the camera.
-    :return: A ``(position, quaternion)`` tuple in world frame; the quaternion is ``[w, x, y, z]``.
-    """
-    minimum, maximum = bounds
-    center = (minimum + maximum) / 2.0
-    diagonal = float(np.linalg.norm(maximum - minimum))
-    distance = max(diagonal, minimum_distance) * distance_factor
-    direction = np.array([1.0, -1.0, 1.0])
-    direction = direction / np.linalg.norm(direction)
-    position = center + direction * distance
-    quaternion = _look_at_quaternion(position, center)
-    return position, quaternion
 
 
 @dataclass(eq=False)
@@ -368,7 +315,7 @@ class MujocoVideoRecorder:
         if bounds is None:
             raise EmptyWorldVideoRecordingError(world=self.world)
 
-        position, quaternion = overview_camera_pose(np.asarray(bounds))
+        position, quaternion = MujocoCamera.overview_pose(np.asarray(bounds))
         camera = MujocoCamera(
             name="cram_video_overview_camera",
             body=self.world.root,
