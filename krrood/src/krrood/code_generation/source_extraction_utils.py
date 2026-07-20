@@ -11,7 +11,6 @@ import ast
 import inspect
 import logging
 import os
-import textwrap
 import types
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -291,7 +290,6 @@ def extract_function_source(
     names: List[str],
     file_path: Optional[str] = None,
     source: Optional[str] = None,
-    join_lines: bool = True,
     include_signature: bool = True,
 ) -> ExtractedSource:
     """
@@ -300,7 +298,6 @@ def extract_function_source(
     :param names: The names of the functions to extract; empty extracts all.
     :param file_path: The path to the file to read the source from.
     :param source: The source code to extract from, when no file is given.
-    :param join_lines: Whether to strip the definition's common leading whitespace.
     :param include_signature: Whether to include the function signature.
     :returns: The extracted function definitions.
     """
@@ -309,7 +306,6 @@ def extract_function_source(
         names,
         file_path=file_path,
         source=source,
-        join_lines=join_lines,
         include_signature=include_signature,
     )
 
@@ -318,7 +314,6 @@ def extract_class_source(
     names: List[str],
     file_path: Optional[str] = None,
     source: Optional[str] = None,
-    join_lines: bool = True,
     include_signature: bool = True,
 ) -> ExtractedSource:
     """
@@ -327,7 +322,6 @@ def extract_class_source(
     :param names: The names of the classes to extract; empty extracts all.
     :param file_path: The path to the file to read the source from.
     :param source: The source code to extract from, when no file is given.
-    :param join_lines: Whether to strip the definition's common leading whitespace.
     :param include_signature: Whether to include the class signature.
     :returns: The extracted class definitions.
     """
@@ -336,7 +330,6 @@ def extract_class_source(
         names,
         file_path=file_path,
         source=source,
-        join_lines=join_lines,
         include_signature=include_signature,
     )
 
@@ -346,7 +339,6 @@ def _extract_definitions(
     names: List[str],
     file_path: Optional[str],
     source: Optional[str],
-    join_lines: bool,
     include_signature: bool,
 ) -> ExtractedSource:
     """
@@ -356,7 +348,6 @@ def _extract_definitions(
     :param names: The names to collect; empty collects every matching node.
     :param file_path: The file to read the source from, when *source* is absent.
     :param source: The source code to walk.
-    :param join_lines: Whether to strip each definition's common leading whitespace.
     :param include_signature: Whether to include the definition signature.
     :raises SourceDataNotProvided: If neither a file path nor source is given.
     :returns: The extracted definitions in source order.
@@ -379,8 +370,6 @@ def _extract_definitions(
         definition_lines = lines[node.lineno - 1 : node.end_lineno]
         if not include_signature:
             definition_lines = definition_lines[1:]
-        if join_lines:
-            definition_lines = textwrap.dedent("\n".join(definition_lines)).splitlines()
         extracted.definitions.append(
             ExtractedDefinition(
                 name=node.name,
