@@ -1454,7 +1454,11 @@ class MujocoLightConverter(LightConverter, ABC):
         self, entity: MujocoLight, light_props: Dict[str, Any], **kwargs
     ) -> Dict[str, Any]:
         light_props["mode"] = entity.mode
-        light_props["directional"] = entity.directional
+        light_props["type"] = (
+            mujoco.mjtLightType.mjLIGHT_DIRECTIONAL
+            if entity.directional
+            else mujoco.mjtLightType.mjLIGHT_SPOT
+        )
         light_props["active"] = entity.active
         light_props["castshadow"] = entity.cast_shadow
         light_props["pos"] = entity.position
@@ -2017,6 +2021,11 @@ class MujocoBuilder(MultiSimBuilder):
             )
 
     def _build_light(self, light: MultiSimLight):
+        """
+        Builds a light in the Mujoco spec, attached to its parent body.
+
+        :param light: The light to build.
+        """
         light_name = light.name
         light_props = MujocoLightConverter.convert(light)
         body_name = light_props.pop("body")

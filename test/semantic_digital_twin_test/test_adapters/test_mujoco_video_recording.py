@@ -35,9 +35,7 @@ requires_mujoco_ci = pytest.mark.skipif(
 )
 
 
-# --------------------------------------------------------------------------- #
-# overview_camera_pose - pure math, no simulator needed
-# --------------------------------------------------------------------------- #
+# %% overview_camera_pose - pure math, no simulator needed
 
 
 def test_overview_camera_pose_applies_distance_floor_for_a_degenerate_box():
@@ -73,9 +71,7 @@ def test_overview_camera_pose_looks_at_the_bounding_box_center():
     assert np.allclose(view_direction, expected_direction, atol=1e-6)
 
 
-# --------------------------------------------------------------------------- #
-# RecordedVideo - encoding and derived timestamps, no simulator needed
-# --------------------------------------------------------------------------- #
+# %% RecordedVideo - encoding and derived timestamps, no simulator needed
 
 
 def test_recorded_video_write_round_trips_frame_count_and_shape(tmp_path):
@@ -104,9 +100,7 @@ def test_recorded_video_frame_timestamps_are_derived_from_frames_per_second():
     assert recorded_video.frame_timestamps == pytest.approx([0.0, 0.125, 0.25, 0.375])
 
 
-# --------------------------------------------------------------------------- #
-# MujocoVideoRecorder guard clauses - cheap, no simulator started
-# --------------------------------------------------------------------------- #
+# %% MujocoVideoRecorder guard clauses - cheap, no simulator started
 
 
 def test_stop_without_start_raises(ray_test_world):
@@ -149,9 +143,7 @@ def test_non_positive_capture_decimation_raises(ray_test_world):
         MujocoVideoRecorder(world=world, capture_every_n_state_changes=0)
 
 
-# --------------------------------------------------------------------------- #
-# MujocoVideoRecorder lifecycle - spins up a real headless MuJoCo simulation
-# --------------------------------------------------------------------------- #
+# %% MujocoVideoRecorder lifecycle - spins up a real headless MuJoCo simulation
 
 
 @requires_mujoco_ci

@@ -5,6 +5,7 @@ import time
 import mujoco
 import pytest
 import numpy
+from PIL import Image
 
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.adapters.urdf import URDFParser
@@ -320,8 +321,6 @@ def _write_textured_tetrahedron(directory, texture_color) -> str:
     the OBJ file's path. Always named "tetra.obj"/"tetra.mtl"/"wood.png", so callers writing
     into different directories can reproduce a texture basename collision between them.
     """
-    from PIL import Image
-
     directory.mkdir(parents=True, exist_ok=True)
     Image.new("RGB", (4, 4), color=texture_color).save(directory / "wood.png")
     (directory / "tetra.mtl").write_text("newmtl wood\nmap_Kd wood.png\n")
@@ -456,8 +455,6 @@ def test_builder_assigns_material_to_a_textured_primitive_shape(tmp_path):
     material referencing a marble/wood texture, so this whole texture reference was silently
     discarded on every round-trip and they rendered flat-colored instead of textured.
     """
-    from PIL import Image
-
     texture_directory = tmp_path / "textures"
     texture_directory.mkdir()
     texture_file = texture_directory / "marble.png"

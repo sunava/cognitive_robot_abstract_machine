@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -236,6 +237,12 @@ class MujocoVideoRecorder:
         """
         if self._multi_sim is not None:
             raise VideoRecordingAlreadyStartedError(world=self.world)
+
+        # Offscreen frame capture needs a headless MuJoCo GL backend; without a rendering
+        # backend selected, mujoco.Renderer aborts because no OpenGL context exists (e.g. on
+        # a display-less CI machine). EGL renders headlessly without a window; setdefault
+        # leaves an explicit MUJOCO_GL choice (e.g. a working display, or osmesa) untouched.
+        os.environ.setdefault("MUJOCO_GL", "egl")
 
         self._multi_sim = MujocoSim(world=self.world, headless=True)
         # The synchronizer throttles its own sim -> world sync (and thus notify_state_change)
