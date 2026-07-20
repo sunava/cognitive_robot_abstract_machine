@@ -1303,7 +1303,7 @@ class Whisk(ToolWithHandle):
 
 
 @dataclass(eq=False)
-class Knife(ToolWithHandle):
+class CuttingKnife(ToolWithHandle):
     """
     A knife for cutting food objects.
     """
@@ -1322,7 +1322,7 @@ class Knife(ToolWithHandle):
 
 
 @dataclass(eq=False)
-class Cup(Tool):
+class PouringCup(Tool):
     """
     A cup for pouring liquids into containers.
     """
@@ -1340,6 +1340,9 @@ class Cup(Tool):
 class Sponge(Tool):
     """
     A sponge for wiping surfaces.
+
+    .. note:: The sponge is grasped so its local Z axis points away from the gripper,
+        which is why its alignments use negative Z normals unlike the other tools.
     """
 
     def tool_alignment(self, target: Union[Body, Pose]) -> List[AlignmentPair]:
