@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 from typing_extensions import Callable, List, Optional, Tuple
 
@@ -14,18 +16,6 @@ from coraplex.datastructures.enums import (
     ToolPathSegmentKind,
     WipingTechnique,
 )
-from dataclasses import dataclass
-from typing_extensions import ClassVar
-
-DEFAULT_SAMPLE_DT = 0.01
-"""
-Default sampling period in seconds for tool paths.
-"""
-
-APPROACH_Z_EXTRA_CLEARANCE_M = 0.02
-"""
-Extra vertical clearance in meters when approaching a surface from above.
-"""
 
 LocalCurve = Callable[[float], np.ndarray]
 """
@@ -43,35 +33,32 @@ def _local_bounding_box(body: Body, use_visual: bool = False) -> BoundingBox:
     return geometry.as_bounding_box_collection_in_frame(body).bounding_box()
 
 
+@dataclass
 class ToolPathSegment:
     """
     A local curve of one geometric pattern over a fixed duration.
     """
 
-    def __init__(
-        self,
-        kind: ToolPathSegmentKind,
-        duration_s: float,
-        local_curve: LocalCurve,
-        cut_index: Optional[int] = None,
-    ):
-        self.kind = kind
-        """
-        The geometric pattern this segment follows.
-        """
-        self.duration_s = float(duration_s)
-        """
-        Duration of the segment in seconds.
-        """
-        self.local_curve = local_curve
-        """
-        Curve mapping normalized time to a local 3D point.
-        """
-        self.cut_index = cut_index
-        """
-        Index of the cut this segment belongs to, if the segment is part of a
-        multi-cut path.
-        """
+    kind: ToolPathSegmentKind
+    """
+    The geometric pattern this segment follows.
+    """
+
+    duration: float
+    """
+    Duration of the segment in seconds.
+    """
+
+    local_curve: LocalCurve
+    """
+    Curve mapping normalized time to a local 3D point.
+    """
+
+    cut_index: Optional[int] = None
+    """
+    Index of the cut this segment belongs to, if the segment is part of a multi-cut
+    path.
+    """
 
     def sample(
         self, frame_np: np.ndarray, dt: float, t0: float = 0.0
@@ -85,9 +72,9 @@ class ToolPathSegment:
         :param t0: Start time of the segment.
         :return: Sample times and the sampled points as an Nx3 array.
         """
-        number_of_samples = max(2, int(np.ceil(self.duration_s / float(dt))) + 1)
-        times = np.linspace(t0, t0 + self.duration_s, number_of_samples)
-        tau = (times - t0) / self.duration_s
+        number_of_samples = max(2, int(np.ceil(self.duration / float(dt))) + 1)
+        times = np.linspace(t0, t0 + self.duration, number_of_samples)
+        tau = (times - t0) / self.duration
 
         frame = np.asarray(frame_np, dtype=float)
         rotation = frame[:3, :3]
@@ -101,26 +88,26 @@ class ToolPathSegment:
         return times, points
 
 
+@dataclass
 class ToolPath:
     """
     An ordered list of tool path segments forming one continuous path.
     """
 
-    def __init__(self, segments: List[ToolPathSegment]):
-        self.segments = list(segments)
-        """
-        The ordered segments of this path.
-        """
+    segments: List[ToolPathSegment]
+    """
+    The ordered segments of this path.
+    """
 
     @property
-    def duration_s(self) -> float:
+    def duration(self) -> float:
         """
         :return: Total duration across all segments in seconds.
         """
-        return float(sum(segment.duration_s for segment in self.segments))
+        return float(sum(segment.duration for segment in self.segments))
 
     def sample(
-        self, frame: HomogeneousTransformationMatrix, dt: float, t0: float = 0.0
+        self, frame: HomogeneousTransformationMatrix, dt: float = 0.01, t0: float = 0.0
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Sample all segments into one concatenated path.
@@ -128,8 +115,8 @@ class ToolPath:
         :param frame: The frame the path's curves are expressed in.
         :param dt: Sampling period in seconds.
         :param t0: Start time of the path.
-        :return: Sample times, sampled points as an Nx3 array, and the segment index
-            of every sample.
+        :return: Sample times, sampled points as an Nx3 array, and the segment index of
+            every sample.
         """
         all_times, all_points, all_segment_ids = [], [], []
         t = float(t0)
@@ -143,7 +130,7 @@ class ToolPath:
             all_times.append(times)
             all_points.append(points)
             all_segment_ids.append(np.full(len(times), segment_index, dtype=int))
-            t += segment.duration_s
+            t += segment.duration
 
         return (
             np.concatenate(all_times),
@@ -207,7 +194,6 @@ class ShearProfile:
     """
     Parameters for an oscillatory shear motion with a monotone depth profile.
     """
-
     depth_max: float
     """
     Maximum depth of the shear motion.
@@ -216,10 +202,12 @@ class ShearProfile:
     """
     Normalized time at which the maximum depth is reached.
     """
+
     shear_amp: float
     """
     Amplitude of the shear oscillation.
     """
+
     shear_cycles: float
     """
     Number of shear oscillations over the motion.
@@ -236,6 +224,7 @@ class ShearXYProfile:
     """
     Amplitude of the shear oscillation.
     """
+
     shear_cycles: float
     """
     Number of shear oscillations over the motion.
@@ -434,17 +423,20 @@ def _duration_scale_from_body(
 def build_container_path(
     container_body: Body,
     pattern: MixingPattern = MixingPattern.SPIRAL,
-    mix_duration_s: Optional[float] = None,
+    mix_duration: Optional[float] = None,
     reference_size: float = 0.10,
+    approach_clearance: float = 0.02,
 ) -> ToolPath:
     """
     Build a mixing tool path sized to a container-like object.
 
     :param container_body: The container whose contents are mixed.
     :param pattern: The mixing pattern to use.
-    :param mix_duration_s: Total duration of the stirring pattern; only used for
-        :attr:`MixingPattern.STIR`.
+    :param mix_duration: Total duration in seconds of the stirring pattern; only used
+        for :attr:`MixingPattern.STIR`.
     :param reference_size: Reference size in meters that scales the motion duration.
+    :param approach_clearance: Extra vertical clearance in meters when approaching the
+        container from above.
     :return: The mixing tool path in the container's frame.
     """
     bounding_box = _local_bounding_box(container_body)
@@ -454,7 +446,7 @@ def build_container_path(
     center_y = 0.5 * (bounding_box.min_y + bounding_box.max_y)
     surface_margin = 0.005
     start_offset = np.array(
-        [0.0, center_y, z_max + APPROACH_Z_EXTRA_CLEARANCE_M - surface_margin],
+        [0.0, center_y, z_max + approach_clearance - surface_margin],
         dtype=float,
     )
     duration_scale = _duration_scale_from_body(
@@ -477,7 +469,7 @@ def build_container_path(
             [
                 ToolPathSegment(
                     kind=ToolPathSegmentKind.SPIRAL,
-                    duration_s=2.0 * duration_scale,
+                    duration=2.0 * duration_scale,
                     local_curve=_with_offset(
                         lambda tau: planar_spiral_xy(
                             tau, r0=0.00, r1=spiral_r1, cycles=2.0
@@ -489,8 +481,8 @@ def build_container_path(
 
     stir_amplitude = max(0.005, 0.55 * radius_xy)
     stir_base_duration = max(1.0, 2.0 * duration_scale)
-    if mix_duration_s is not None and float(mix_duration_s) > 0.0:
-        total_duration = float(mix_duration_s)
+    if mix_duration is not None and float(mix_duration) > 0.0:
+        total_duration = float(mix_duration)
     else:
         total_duration = stir_base_duration
     stir_loops = max(1, int(np.ceil(total_duration / stir_base_duration)))
@@ -499,7 +491,7 @@ def build_container_path(
         [
             ToolPathSegment(
                 kind=ToolPathSegmentKind.STIR,
-                duration_s=total_duration,
+                duration=total_duration,
                 local_curve=_with_offset(
                     lambda tau: oscillatory_shear_xy_profiled(
                         tau,
@@ -518,6 +510,7 @@ def build_surface_path(
     surface_body: Body,
     technique: WipingTechnique = WipingTechnique.WIPE,
     reference_size: float = 0.10,
+    approach_clearance: float = 0.02,
 ) -> ToolPath:
     """
     Build a planar wiping tool path on a surface.
@@ -525,6 +518,8 @@ def build_surface_path(
     :param surface_body: The surface to act on.
     :param technique: The wiping technique to use.
     :param reference_size: Reference size in meters that scales the motion duration.
+    :param approach_clearance: Extra vertical clearance in meters when approaching the
+        surface from above.
     :return: The wiping tool path in the surface's frame.
     """
     bounding_box = _local_bounding_box(surface_body, use_visual=True)
@@ -539,7 +534,7 @@ def build_surface_path(
         [
             center_x,
             center_y,
-            bounding_box.max_z + APPROACH_Z_EXTRA_CLEARANCE_M - surface_margin,
+            bounding_box.max_z + approach_clearance - surface_margin,
         ],
         dtype=float,
     )
@@ -568,7 +563,7 @@ def build_surface_path(
             [
                 ToolPathSegment(
                     kind=ToolPathSegmentKind.SPIRAL,
-                    duration_s=2.0 * duration_scale,
+                    duration=2.0 * duration_scale,
                     local_curve=_with_hull_constraint(
                         lambda tau: planar_spiral_xy(
                             tau, r0=0.00, r1=spiral_r1, cycles=2.0
@@ -582,7 +577,7 @@ def build_surface_path(
             [
                 ToolPathSegment(
                     kind=ToolPathSegmentKind.SHEAR,
-                    duration_s=1.5 * duration_scale,
+                    duration=1.5 * duration_scale,
                     local_curve=_with_hull_constraint(
                         lambda tau: oscillatory_shear_xy_profiled(
                             tau,
@@ -599,7 +594,7 @@ def build_surface_path(
         [
             ToolPathSegment(
                 kind=ToolPathSegmentKind.RASTER,
-                duration_s=2.0 * duration_scale,
+                duration=2.0 * duration_scale,
                 local_curve=_with_hull_constraint(
                     lambda tau: planar_raster_xy(
                         tau,
@@ -611,8 +606,6 @@ def build_surface_path(
             )
         ]
     )
-
-
 @dataclass
 class SliceAnchorPlacement:
     """
@@ -632,34 +625,39 @@ class SliceAnchorPlacement:
     """
     Lower bound of the usable cutting interval in meters.
     """
+
     interval_end: float
     """
     Upper bound of the usable cutting interval in meters.
     """
     slice_thickness: Optional[float] = None
     """
-    Requested thickness of each slice in meters. Derived from :attr:`number_of_cuts`
-    if None.
+    Requested thickness of each slice in meters.
+
+    Derived from :attr:`number_of_cuts` if None.
     """
+
     number_of_cuts: Optional[int] = None
     """
-    Requested number of cuts. Derived from :attr:`slice_thickness` if None.
+    Requested number of cuts.
+
+    Derived from :attr:`slice_thickness` if None.
     """
+
     priority: SlicingPriority = SlicingPriority.THICKNESS
     """
     Parameter that is kept when the requested thickness and number of cuts conflict.
     """
 
-    DEFAULT_SLICE_THICKNESS: ClassVar[float] = 0.03
+    default_slice_thickness: float = 0.03
     """
     Slice thickness in meters used when neither parameter is requested.
     """
 
-    MINIMUM_SLICE_THICKNESS: ClassVar[float] = 1e-4
+    minimum_slice_thickness: float = 1e-4
     """
     Lower bound on the slice thickness in meters to keep anchors distinct.
     """
-
     def compute_anchor_positions(self) -> List[float]:
         """
         :return: The anchor positions along the axis, ordered from interval start to
@@ -681,13 +679,13 @@ class SliceAnchorPlacement:
         thickness = self.slice_thickness
         count = self.number_of_cuts
         if thickness is None and count is None:
-            thickness = self.DEFAULT_SLICE_THICKNESS
+            thickness = self.default_slice_thickness
             count = 1
         if count is None:
-            count = int(usable_length / max(thickness, self.MINIMUM_SLICE_THICKNESS))
+            count = int(usable_length / max(thickness, self.minimum_slice_thickness))
         if thickness is None:
             thickness = usable_length / max(count, 1)
-        thickness = max(float(thickness), self.MINIMUM_SLICE_THICKNESS)
+        thickness = max(float(thickness), self.minimum_slice_thickness)
         count = max(1, int(count))
         if count * thickness > usable_length + 1e-9:
             if self.priority is SlicingPriority.THICKNESS:
@@ -702,9 +700,10 @@ def build_cutting_path(
     food_body: Body,
     technique: CuttingTechnique = CuttingTechnique.SAW,
     slice_thickness: Optional[float] = None,
-    num_cuts_x: Optional[int] = None,
+    number_of_cuts_on_local_x_axis: Optional[int] = None,
     reference_size: float = 0.10,
     slicing_priority: SlicingPriority = SlicingPriority.THICKNESS,
+    approach_clearance: float = 0.02,
 ) -> ToolPath:
     """
     Build a cutting tool path sized to a food object.
@@ -712,12 +711,14 @@ def build_cutting_path(
     :param food_body: The object to cut.
     :param technique: The cutting technique to use.
     :param slice_thickness: Thickness of each slice in meters. Derived from
-        ``num_cuts_x`` if None.
-    :param num_cuts_x: Number of cuts along the object's X axis. Derived from
-        ``slice_thickness`` if None.
+        ``number_of_cuts_on_local_x_axis`` if None.
+    :param number_of_cuts_on_local_x_axis: Number of cuts along the object's local X
+        axis. Derived from ``slice_thickness`` if None.
     :param reference_size: Reference size in meters that scales the motion duration.
     :param slicing_priority: Parameter that is kept when ``slice_thickness`` and
-        ``num_cuts_x`` do not both fit the object.
+        ``number_of_cuts_on_local_x_axis`` do not both fit the object.
+    :param approach_clearance: Extra vertical clearance in meters when approaching the
+        object from above.
     :return: The cutting tool path in the food object's frame.
     """
     bounding_box = _local_bounding_box(food_body, use_visual=True)
@@ -730,7 +731,7 @@ def build_cutting_path(
 
     margin_x = min(0.01, 0.15 * size_x)
     margin_y = min(0.01, 0.10 * size_y)
-    z_clearance = max(0.01, 0.25 * size_z) + APPROACH_Z_EXTRA_CLEARANCE_M
+    z_clearance = max(0.01, 0.25 * size_z) + approach_clearance
     z_top = z_surface + z_clearance
     cut_floor_clearance = max(0.015, 0.20 * size_z)
     cut_floor_clearance = min(cut_floor_clearance, max(0.003, size_z - 0.005))
@@ -745,7 +746,7 @@ def build_cutting_path(
             interval_start=bounding_box.min_x + margin_x,
             interval_end=bounding_box.max_x - margin_x,
             slice_thickness=slice_thickness,
-            number_of_cuts=num_cuts_x,
+            number_of_cuts=number_of_cuts_on_local_x_axis,
             priority=slicing_priority,
         ).compute_anchor_positions()
 
@@ -758,7 +759,7 @@ def build_cutting_path(
     def _approach_segment(cut_index: int, x_val: float) -> ToolPathSegment:
         return ToolPathSegment(
             kind=ToolPathSegmentKind.APPROACH,
-            duration_s=0.8 * duration_scale,
+            duration=0.8 * duration_scale,
             local_curve=lambda tau, x=x_val: np.array(
                 [x, center_y, z_top + (z_surface - z_top) * float(tau)], dtype=float
             ),
@@ -768,7 +769,7 @@ def build_cutting_path(
     def _retract_segment(cut_index: int, x_val: float) -> ToolPathSegment:
         return ToolPathSegment(
             kind=ToolPathSegmentKind.RETRACT,
-            duration_s=0.8 * duration_scale,
+            duration=0.8 * duration_scale,
             local_curve=lambda tau, x=x_val: np.array(
                 [x, center_y, z_cut + (z_top - z_cut) * float(tau)], dtype=float
             ),
@@ -778,7 +779,7 @@ def build_cutting_path(
     def _descend_segment(cut_index: int, x_val: float) -> ToolPathSegment:
         return ToolPathSegment(
             kind=ToolPathSegmentKind.DESCEND,
-            duration_s=1.0 * duration_scale,
+            duration=1.0 * duration_scale,
             local_curve=lambda tau, x=x_val: np.array(
                 [x, center_y, z_surface + (z_cut - z_surface) * float(tau)],
                 dtype=float,
@@ -804,7 +805,7 @@ def build_cutting_path(
 
         return ToolPathSegment(
             kind=ToolPathSegmentKind.SAW,
-            duration_s=5.0 * duration_scale,
+            duration=5.0 * duration_scale,
             local_curve=_saw_curve,
             cut_index=cut_index,
         )

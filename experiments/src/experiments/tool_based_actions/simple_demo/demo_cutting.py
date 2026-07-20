@@ -1,6 +1,6 @@
 """
-Cutting demo: a PR2 slices a bread on the apartment kitchen counter with a knife
-mounted on its right gripper.
+Cutting demo: a PR2 slices a bread on the apartment kitchen counter with a knife mounted
+on its right gripper.
 """
 
 from experiments.tool_based_actions.simple_demo.demo_world import (
@@ -84,11 +84,11 @@ def main() -> None:
                 Pose.from_xyz_rpy(*BASE_POSITION_XYZ, reference_frame=world.root)
             ),
             CuttingAction(
-                container=bread_body,
+                object_to_cut=bread_body,
                 arm=Arms.RIGHT,
                 tool=knife,
                 technique=CuttingTechnique.SLICE,
-                num_cuts_x=3,
+                number_of_cuts_on_local_x_axis=3,
                 slice_thickness=0.03,
             ),
         ],

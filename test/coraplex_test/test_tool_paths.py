@@ -9,7 +9,6 @@ from coraplex.datastructures.enums import (
     WipingTechnique,
 )
 from coraplex.robot_plans.actions.composite.tool_paths import (
-    DEFAULT_SAMPLE_DT,
     SliceAnchorPlacement,
     ToolPath,
     ToolPathSegment,
@@ -46,7 +45,7 @@ def box_body():
 
 
 def _sample(path):
-    return path.sample(frame=HomogeneousTransformationMatrix(), dt=DEFAULT_SAMPLE_DT)
+    return path.sample(frame=HomogeneousTransformationMatrix())
 
 
 def test_local_bounding_box_returns_box_extents(box_body):
@@ -79,11 +78,11 @@ def test_container_path_spiral_stays_inside_cylinder(box_body):
 
 
 def test_container_path_stir_matches_requested_duration(box_body):
-    mix_duration_s = 5.0
+    mix_duration = 5.0
     path = build_container_path(
-        box_body, pattern=MixingPattern.STIR, mix_duration_s=mix_duration_s
+        box_body, pattern=MixingPattern.STIR, mix_duration=mix_duration
     )
-    assert path.duration_s == pytest.approx(mix_duration_s)
+    assert path.duration == pytest.approx(mix_duration)
     assert [segment.kind for segment in path.segments] == [ToolPathSegmentKind.STIR]
 
 
@@ -98,7 +97,9 @@ def test_cutting_path_descends_to_cut_depth(box_body):
 
 
 def test_cutting_path_has_three_segments_per_cut(box_body):
-    path = build_cutting_path(box_body, technique=CuttingTechnique.SAW, num_cuts_x=2)
+    path = build_cutting_path(
+        box_body, technique=CuttingTechnique.SAW, number_of_cuts_on_local_x_axis=2
+    )
     assert len(path.segments) == 6
     assert [segment.kind for segment in path.segments] == [
         ToolPathSegmentKind.APPROACH,
@@ -190,7 +191,7 @@ def test_cutting_path_spaces_cuts_by_slice_thickness(box_body):
         box_body,
         technique=CuttingTechnique.SLICE,
         slice_thickness=0.05,
-        num_cuts_x=2,
+        number_of_cuts_on_local_x_axis=2,
     )
     _, points, _ = _sample(path)
 
@@ -238,12 +239,12 @@ def test_constrain_to_convex_hull_moves_outside_points_onto_hull():
 def test_tool_path_sample_stitches_segments_without_duplicates():
     first = ToolPathSegment(
         kind=ToolPathSegmentKind.SWEEP,
-        duration_s=1.0,
+        duration=1.0,
         local_curve=lambda tau: np.array([tau, 0.0, 0.0]),
     )
     second = ToolPathSegment(
         kind=ToolPathSegmentKind.SPIRAL,
-        duration_s=1.0,
+        duration=1.0,
         local_curve=lambda tau: np.array([1.0, tau, 0.0]),
     )
     path = ToolPath([first, second])
@@ -252,5 +253,5 @@ def test_tool_path_sample_stitches_segments_without_duplicates():
 
     assert np.all(np.diff(times) > 0)
     assert set(np.unique(segment_ids)) == {0, 1}
-    assert path.duration_s == pytest.approx(2.0)
+    assert path.duration == pytest.approx(2.0)
     assert times[-1] == pytest.approx(2.0)

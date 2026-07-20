@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import ClassVar, Iterable, Optional, Self, Tuple, TYPE_CHECKING, Union
+from typing import Iterable, Optional, Self, Tuple, TYPE_CHECKING, Union
 
 import numpy as np
 from typing_extensions import List, Type
@@ -1211,17 +1211,13 @@ class Tool(HasRootBody, ABC):
     A tool that is held by a robot's end effector to act on other bodies.
     """
 
-    _END_EFFECTOR_SUFFIX: ClassVar[str] = "_end_effector"
-    """
-    Name suffix of the body that acts as the tool's tip.
-    """
-
     def _end_effector_name(self) -> PrefixedName:
+        """
+        :return: The name of the body that acts as the tool's tip, derived from the
+            tool's root name.
+        """
         root_name = self.root.name
-        return PrefixedName(
-            f"{root_name.name}{self._END_EFFECTOR_SUFFIX}",
-            root_name.prefix,
-        )
+        return PrefixedName(f"{root_name.name}_end_effector", root_name.prefix)
 
     def _find_end_effector_body(self) -> Optional[Body]:
         if self.root._world is None:

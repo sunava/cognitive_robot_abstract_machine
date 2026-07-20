@@ -386,6 +386,25 @@ class PlanMappingDAO_edges_association(Base, AssociationDataAccessObject):
     )
 
 
+class ToolPathDAO_segments_association(Base, AssociationDataAccessObject):
+    __tablename__ = "_11436993959234082656313943825452832024986235879504094089525499"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    source_toolpathdao_id: Mapped[int] = mapped_column(
+        ForeignKey("ToolPathDAO.database_id")
+    )
+    target_toolpathsegmentdao_id: Mapped[int] = mapped_column(
+        ForeignKey("ToolPathSegmentDAO.database_id")
+    )
+
+    target: Mapped[ToolPathSegmentDAO] = relationship(
+        "ToolPathSegmentDAO",
+        foreign_keys=[target_toolpathsegmentdao_id],
+        lazy="selectin",
+    )
+
+
 class MoveTCPWaypointsAlignedMotionDAO_waypoints_association(
     Base, AssociationDataAccessObject
 ):
@@ -4489,11 +4508,12 @@ class PouringActionDAO(
         use_existing_column=True,
     )
 
-    pour_side_offset_m: Mapped[builtins.float] = mapped_column(use_existing_column=True)
-    pour_approach_offset_m: Mapped[builtins.float] = mapped_column(
+    tilt_angle: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+    pour_side_offset: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+    pour_approach_offset: Mapped[builtins.float] = mapped_column(
         use_existing_column=True
     )
-    pour_height_m: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+    pour_height: Mapped[builtins.float] = mapped_column(use_existing_column=True)
 
     arm: Mapped[coraplex.datastructures.enums.Arms] = mapped_column(
         krrood.ormatic.custom_types.PolymorphicEnumType,
@@ -4587,8 +4607,8 @@ class CuttingActionDAO(
     slice_thickness: Mapped[typing.Optional[builtins.float]] = mapped_column(
         use_existing_column=True
     )
-    num_cuts_x: Mapped[typing.Optional[builtins.int]] = mapped_column(
-        use_existing_column=True
+    number_of_cuts_on_local_x_axis: Mapped[typing.Optional[builtins.int]] = (
+        mapped_column(use_existing_column=True)
     )
 
     technique: Mapped[coraplex.datastructures.enums.CuttingTechnique] = mapped_column(
@@ -4604,14 +4624,14 @@ class CuttingActionDAO(
         )
     )
 
-    container_id: Mapped[int] = mapped_column(
+    object_to_cut_id: Mapped[int] = mapped_column(
         ForeignKey("BodyDAO.database_id", use_alter=True),
         nullable=True,
         use_existing_column=True,
     )
 
-    container: Mapped[BodyDAO] = relationship(
-        "BodyDAO", uselist=False, foreign_keys=[container_id], post_update=True
+    object_to_cut: Mapped[BodyDAO] = relationship(
+        "BodyDAO", uselist=False, foreign_keys=[object_to_cut_id], post_update=True
     )
 
     __mapper_args__ = {
@@ -4633,7 +4653,7 @@ class MixingActionDAO(
         use_existing_column=True,
     )
 
-    mix_duration_s: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+    mix_duration: Mapped[builtins.float] = mapped_column(use_existing_column=True)
 
     container_id: Mapped[int] = mapped_column(
         ForeignKey("BodyDAO.database_id", use_alter=True),
@@ -4666,7 +4686,7 @@ class WipingActionDAO(
 
     length: Mapped[builtins.float] = mapped_column(use_existing_column=True)
     cycles: Mapped[builtins.float] = mapped_column(use_existing_column=True)
-    final_waypoint_success_tolerance_m: Mapped[builtins.float] = mapped_column(
+    final_waypoint_success_tolerance: Mapped[builtins.float] = mapped_column(
         use_existing_column=True
     )
 
@@ -4676,7 +4696,7 @@ class WipingActionDAO(
         use_existing_column=True,
     )
 
-    container_id: Mapped[typing.Optional[builtins.int]] = mapped_column(
+    surface_id: Mapped[typing.Optional[builtins.int]] = mapped_column(
         ForeignKey("BodyDAO.database_id", use_alter=True),
         nullable=True,
         use_existing_column=True,
@@ -4687,8 +4707,8 @@ class WipingActionDAO(
         use_existing_column=True,
     )
 
-    container: Mapped[BodyDAO] = relationship(
-        "BodyDAO", uselist=False, foreign_keys=[container_id], post_update=True
+    surface: Mapped[BodyDAO] = relationship(
+        "BodyDAO", uselist=False, foreign_keys=[surface_id], post_update=True
     )
     target_pose: Mapped[PoseMappingDAO] = relationship(
         "PoseMappingDAO", uselist=False, foreign_keys=[target_pose_id], post_update=True
@@ -4751,8 +4771,54 @@ class SliceAnchorPlacementDAO(
     number_of_cuts: Mapped[typing.Optional[builtins.int]] = mapped_column(
         use_existing_column=True
     )
+    default_slice_thickness: Mapped[builtins.float] = mapped_column(
+        use_existing_column=True
+    )
+    minimum_slice_thickness: Mapped[builtins.float] = mapped_column(
+        use_existing_column=True
+    )
 
     priority: Mapped[coraplex.datastructures.enums.SlicingPriority] = mapped_column(
+        krrood.ormatic.custom_types.PolymorphicEnumType,
+        nullable=False,
+        use_existing_column=True,
+    )
+
+
+class ToolPathDAO(
+    Base, DataAccessObject[coraplex.robot_plans.actions.composite.tool_paths.ToolPath]
+):
+    __tablename__ = "ToolPathDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        Integer, primary_key=True, use_existing_column=True
+    )
+
+    segments: Mapped[builtins.list[ToolPathDAO_segments_association]] = relationship(
+        "ToolPathDAO_segments_association",
+        collection_class=builtins.list,
+        cascade="all, delete-orphan",
+        foreign_keys="[ToolPathDAO_segments_association.source_toolpathdao_id]",
+        lazy="selectin",
+    )
+
+
+class ToolPathSegmentDAO(
+    Base,
+    DataAccessObject[coraplex.robot_plans.actions.composite.tool_paths.ToolPathSegment],
+):
+    __tablename__ = "ToolPathSegmentDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        Integer, primary_key=True, use_existing_column=True
+    )
+
+    duration: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+    cut_index: Mapped[typing.Optional[builtins.int]] = mapped_column(
+        use_existing_column=True
+    )
+
+    kind: Mapped[coraplex.datastructures.enums.ToolPathSegmentKind] = mapped_column(
         krrood.ormatic.custom_types.PolymorphicEnumType,
         nullable=False,
         use_existing_column=True,

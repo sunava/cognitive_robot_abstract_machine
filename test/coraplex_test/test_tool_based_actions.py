@@ -91,13 +91,13 @@ def test_cutting_action_pointer_stride_reduces_waypoints(tool_action_world):
     knife = Knife(root=tool_body)
 
     dense_action = CuttingAction(
-        container=container,
+        object_to_cut=container,
         arm=Arms.RIGHT,
         tool=knife,
         technique=CuttingTechnique.SLICE,
     )
     strided_action = CuttingAction(
-        container=container,
+        object_to_cut=container,
         arm=Arms.RIGHT,
         tool=knife,
         technique=CuttingTechnique.SLICE,
@@ -157,7 +157,7 @@ def test_pouring_action_poses_tilt_and_mirror(tool_action_world):
         [float(value) for value in right_pour_pose.to_quaternion().to_np()]
     )
     tilt_magnitude = (pre_rotation.inv() * pour_rotation).magnitude()
-    assert tilt_magnitude == pytest.approx(PouringAction.TILT_ANGLE_RAD, abs=1e-6)
+    assert tilt_magnitude == pytest.approx(right_action.tilt_angle, abs=1e-6)
     assert float(right_pre_pose.x) == pytest.approx(float(right_pour_pose.x))
     assert float(right_pre_pose.y) == pytest.approx(float(right_pour_pose.y))
 
