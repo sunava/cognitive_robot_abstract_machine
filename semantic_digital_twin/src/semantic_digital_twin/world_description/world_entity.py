@@ -974,10 +974,21 @@ class Connection(WorldEntity, HasSimulatorProperties, SubclassJSONSerializer, AB
             f"Origin can not be set for Connection: {self.__class__.__name__}"
         )
 
-    def origin_as_position_quaternion(self) -> Matrix:
-        position = self.origin_expression.to_position()[:3]
-        orientation = self.origin_expression.to_quaternion()
+    @staticmethod
+    def _as_position_quaternion(
+        parent_T_child: HomogeneousTransformationMatrix,
+    ) -> Matrix:
+        """
+        Stack a transform's translation and rotation into a single row.
+
+        :return: A 1x7 matrix of ``[x, y, z, qx, qy, qz, qw]``.
+        """
+        position = parent_T_child.to_position()[:3]
+        orientation = parent_T_child.to_quaternion()
         return Matrix.vstack([position, orientation]).T
+
+    def origin_as_position_quaternion(self) -> Matrix:
+        return self._as_position_quaternion(self.origin_expression)
 
     @property
     def dofs(self) -> list[DegreeOfFreedom]:
