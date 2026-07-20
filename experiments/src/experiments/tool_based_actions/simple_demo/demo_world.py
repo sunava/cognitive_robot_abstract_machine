@@ -1,6 +1,6 @@
 """
-Shared world and tool setup for the tool-based action demos (cutting, pouring,
-mixing, wiping).
+Shared world and tool setup for the tool-based action demos (cutting, pouring, mixing,
+wiping).
 """
 
 import math
@@ -114,6 +114,24 @@ def attach_tool(
     with world.modify_world():
         world.merge_world(tool_world, connection)
     return connection.child
+
+
+def start_visualization(world: World) -> None:
+    """
+    Publish the world to RViz.
+
+    Does nothing if ROS is not available.
+    """
+    try:
+        import rclpy
+        from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
+            VizMarkerPublisher,
+        )
+    except ImportError:
+        return
+    rclpy.init()
+    node = rclpy.create_node("viz_marker")
+    VizMarkerPublisher(_world=world, node=node).with_tf_publisher()
 
 
 def attach_sponge(world: World, robot: AbstractRobot, arm: Arms) -> Body:
