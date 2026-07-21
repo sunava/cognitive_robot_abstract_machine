@@ -23,6 +23,7 @@ from semantic_digital_twin.utils import (
     robot_name_from_urdf_string,
 )
 from semantic_digital_twin.world import World
+from semantic_digital_twin.world_description.connection_properties import JointDynamics
 from semantic_digital_twin.world_description.connections import (
     RevoluteConnection,
     PrismaticConnection,
@@ -275,8 +276,30 @@ class URDFParser:
             offset=offset,
             axis=Vector3(*map(int, joint.axis), reference_frame=parent),
             raw_dof=dof,
+            dynamics=self.parse_dynamics(joint),
         )
         return result
+
+    def parse_dynamics(self, joint: urdfpy.Joint) -> JointDynamics:
+        """
+        Parses the dynamic properties of a URDF joint.
+
+        Properties the joint leaves undeclared keep their default. URDF has no notion of
+        an armature, which models the rotor inertia of a transmission, so that one is
+        always left to the simulator.
+
+        :param joint: The URDF joint whose ``dynamics`` element is parsed.
+        :return: The dynamic properties of the joint.
+        """
+        if joint.dynamics is None:
+            return JointDynamics()
+
+        damping = joint.dynamics.damping
+        dry_friction = joint.dynamics.friction
+        return JointDynamics(
+            damping=damping if damping is not None else 0.0,
+            dry_friction=dry_friction if dry_friction is not None else 0.0,
+        )
 
     def parse_link(self, link: urdfpy.Link, parent_frame: PrefixedName) -> Body:
         """

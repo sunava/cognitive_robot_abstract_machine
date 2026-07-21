@@ -5,6 +5,7 @@ import pytest
 
 from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.robots.pr2 import PR2
+from semantic_digital_twin.robots.tiago import Tiago
 from semantic_digital_twin.world_description.connections import FixedConnection
 
 
@@ -74,6 +75,14 @@ def pr2_parser():
     return URDFParser.from_file(file_path=PR2.get_ros_file_path())
 
 
+@pytest.fixture
+def tiago_parser():
+    """
+    Fixture providing a URDFParser for the Tiago model.
+    """
+    return URDFParser.from_file(file_path=Tiago.get_ros_file_path())
+
+
 def test_table_parsing(table_parser):
     world = table_parser.parse()
     world.validate()
@@ -113,6 +122,21 @@ def test_mimic_joints(pr2_parser):
     mimic_joint = world.get_connection_by_name("l_gripper_r_finger_joint")
 
     assert joint_to_be_mimicked.dofs == mimic_joint.dofs
+
+
+def test_declared_joint_dynamics_are_imported(tiago_parser):
+    world = tiago_parser.parse()
+    dynamics = world.get_connection_by_name("arm_left_1_joint").dynamics
+    assert dynamics.damping == 40.0
+    assert dynamics.dry_friction == 1.0
+
+
+def test_undeclared_joint_dynamics_default_to_zero(pr2_parser):
+    world = pr2_parser.parse()
+    dynamics = world.get_connection_by_name("r_gripper_motor_slider_joint").dynamics
+    assert dynamics.damping == 0.0
+    assert dynamics.dry_friction == 0.0
+    assert dynamics.armature == 0.0
 
 
 def test_xacro():
