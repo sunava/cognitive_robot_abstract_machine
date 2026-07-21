@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from scipy.spatial.transform import Rotation
 from typing_extensions import Dict, Optional, Tuple, Union, List
 from urdf_parser_py import urdf as urdfpy
 from xacro import process_file
@@ -17,6 +16,7 @@ from semantic_digital_twin.spatial_types.derivatives import Derivatives, Derivat
 from semantic_digital_twin.spatial_types.spatial_types import (
     HomogeneousTransformationMatrix,
     Point3,
+    RotationMatrix,
     Vector3,
 )
 from semantic_digital_twin.utils import (
@@ -354,12 +354,9 @@ class URDFParser:
             ixz=urdf_inertia.ixz,
             iyz=urdf_inertia.iyz,
         )
-        link_R_inertial = Rotation.from_euler("xyz", roll_pitch_yaw).as_matrix()
-        inertia_in_link_frame = InertiaTensor(
-            data=link_R_inertial
-            @ inertia_in_inertial_frame.data
-            @ link_R_inertial.transpose()
-        )
+        link_R_inertial = RotationMatrix.from_rpy(*roll_pitch_yaw).to_np()[:3, :3]
+        inertia = link_R_inertial @ inertia_in_inertial_frame.data @ link_R_inertial.T
+        inertia_in_link_frame = InertiaTensor(data=inertia)
 
         return Inertial(
             mass=link.inertial.mass,
