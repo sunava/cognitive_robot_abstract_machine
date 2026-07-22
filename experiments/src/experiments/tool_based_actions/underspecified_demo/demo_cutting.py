@@ -14,8 +14,11 @@ from krrood.entity_query_language.factories import a
 from experiments.tool_based_actions.simple_demo.demo_world import (
     BREAD_COLOR,
     CUT_MOUNT,
-    TARGET_POSITION_XYZ,
     parse_object,
+)
+from experiments.tool_based_actions.underspecified_demo.demo_setup import (
+    build_underspecified_navigation,
+    place_target_on_counter,
 )
 from semantic_digital_twin.datastructures.definitions import GripperState, TorsoState
 from semantic_digital_twin.robots.pr2 import PR2
@@ -23,15 +26,12 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Bread,
     CuttingKnife,
 )
-from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
-from semantic_digital_twin.spatial_types.spatial_types import Pose
 
 from coraplex.datastructures.dataclasses import Context
 from coraplex.datastructures.enums import Arms
 from coraplex.execution_environment import simulated_robot
 from coraplex.plans.factories import sequential
 from coraplex.robot_plans.actions.composite.tool_based import CuttingAction
-from coraplex.robot_plans.actions.core.navigation import NavigateAction
 from coraplex.robot_plans.actions.core.robot_body import (
     MoveTorsoAction,
     ParkArmsAction,
@@ -50,14 +50,7 @@ def main() -> None:
 
     world = setup_world()
 
-    bread_world = parse_object("bread.stl", color=BREAD_COLOR)
-    with world.modify_world():
-        world.merge_world_at_pose(
-            bread_world,
-            HomogeneousTransformationMatrix.from_xyz_quaternion(
-                *TARGET_POSITION_XYZ, reference_frame=world.root
-            ),
-        )
+    bread_body = place_target_on_counter(world, "bread.stl", BREAD_COLOR)
     start_visualization(world)
 
     pr2 = PR2.from_world(world)
@@ -67,7 +60,6 @@ def main() -> None:
     knife_body = attach_tool(
         world, pr2, Arms.RIGHT, parse_object("big-knife.stl"), CUT_MOUNT
     )
-    bread_body = world.get_body_by_name("bread.stl")
 
     knife = CuttingKnife(root=knife_body)
     with world.modify_world():
@@ -75,24 +67,7 @@ def main() -> None:
 
     context.evaluate_conditions = False
 
-    navigate = a(NavigateAction)(
-        target_location=a(Pose.from_xyz_rpy)(
-            x=...,
-            y=...,
-            z=0.0,
-            roll=0.0,
-            pitch=0.0,
-            yaw=0.0,
-            reference_frame=world.root,
-        ),
-        keep_joint_states=...,
-    )
-    navigate.where(
-        navigate.variable.target_location.x > 1.7,
-        navigate.variable.target_location.x < 1.95,
-        navigate.variable.target_location.y > 2.1,
-        navigate.variable.target_location.y < 2.35,
-    )
+    navigate = build_underspecified_navigation(world)
 
     cutting = a(CuttingAction)(
         object_to_cut=bread_body,

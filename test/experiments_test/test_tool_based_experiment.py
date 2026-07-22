@@ -1,5 +1,6 @@
 import json
 import math
+import subprocess
 
 import pytest
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
@@ -24,6 +25,8 @@ from experiments.tool_based_actions.experiment.results import (
     ResultRecorder,
     TargetResult,
 )
+from experiments.tool_based_actions.experiment import run_experiment
+from experiments.tool_based_actions.experiment.run_experiment import ExperimentRunner
 from experiments.tool_based_actions.experiment.scene import (
     MissingSpawnSurfaces,
     ObjectFootprint,
@@ -531,3 +534,82 @@ def test_result_recorder_is_empty_without_file(tmp_path):
     recorder = ResultRecorder(results_file=tmp_path / "missing.jsonl")
     assert recorder.load_results() == []
     assert recorder.completed_trial_identifiers() == set()
+
+
+def _campaign_configuration(tmp_path) -> ExperimentConfiguration:
+    return ExperimentConfiguration(
+        tasks=(ToolBasedTask.CUTTING,),
+        seeds=(1, 2),
+        results_file=tmp_path / "results.jsonl",
+    )
+
+
+def test_experiment_runner_skips_completed_trials_and_builds_trial_commands(
+    tmp_path, monkeypatch
+):
+    configuration = _campaign_configuration(tmp_path)
+    ResultRecorder(configuration.results_file).record(
+        _result("cutting:apartment:pr2:1", "cutting_1_0", True)
+    )
+    executed_commands = []
+
+    def record_command(command, timeout):
+        executed_commands.append(command)
+        return subprocess.CompletedProcess(command, returncode=0)
+
+    monkeypatch.setattr(subprocess, "run", record_command)
+    ExperimentRunner(configuration=configuration).run()
+
+    assert len(executed_commands) == 1
+    command = executed_commands[0]
+    assert command[1:3] == [
+        "-m",
+        "experiments.tool_based_actions.experiment.single_trial",
+    ]
+    assert command[command.index("--task") + 1] == "cutting"
+    assert command[command.index("--seed") + 1] == "2"
+    assert command[command.index("--configuration-json") + 1] == configuration.to_json()
+
+
+def test_experiment_runner_survives_timeouts_and_failing_trials(tmp_path, monkeypatch):
+    configuration = _campaign_configuration(tmp_path)
+    outcomes = iter(
+        [
+            subprocess.TimeoutExpired(cmd="trial", timeout=1.0),
+            subprocess.CompletedProcess([], returncode=3),
+        ]
+    )
+    attempted_commands = []
+
+    def flaky_run(command, timeout):
+        attempted_commands.append(command)
+        outcome = next(outcomes)
+        if isinstance(outcome, subprocess.TimeoutExpired):
+            raise outcome
+        return outcome
+
+    monkeypatch.setattr(subprocess, "run", flaky_run)
+    ExperimentRunner(configuration=configuration).run()
+
+    assert len(attempted_commands) == 2
+
+
+def test_experiment_runner_summarizes_recorded_results(tmp_path, monkeypatch):
+    configuration = _campaign_configuration(tmp_path)
+    recorder = ResultRecorder(configuration.results_file)
+    recorder.record(_result("cutting:apartment:pr2:1", "cutting_1_0", True))
+    recorder.record(_result("cutting:apartment:pr2:2", "cutting_2_0", False))
+
+    def unexpected_run(command, timeout):
+        raise AssertionError("No trial should run when all trials are completed.")
+
+    monkeypatch.setattr(subprocess, "run", unexpected_run)
+    logged_messages = []
+    monkeypatch.setattr(
+        run_experiment.logger,
+        "info",
+        lambda message, *arguments: logged_messages.append(message % arguments),
+    )
+    ExperimentRunner(configuration=configuration).run()
+
+    assert "cutting: 1/2 targets succeeded" in logged_messages

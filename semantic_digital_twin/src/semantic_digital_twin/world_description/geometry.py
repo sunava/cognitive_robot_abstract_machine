@@ -207,20 +207,26 @@ class Color:
 class Texture:
     """
     A 2D image texture applied to a geometric primitive's surface (for example a MuJoCo
-    box/cylinder/sphere geom's ``material``). Mesh shapes carry their own texture as part of
-    their own trimesh visual instead, and do not use this.
+    box/cylinder/sphere geom's ``material``).
+
+    Mesh shapes carry their own texture as part of their own trimesh visual instead, and
+    do not use this.
     """
 
     file_path: str
-    """The texture image's file path."""
+    """
+    The texture image's file path.
+    """
 
     repeat: Tuple[float, float] = (1.0, 1.0)
-    """How many times the texture tiles across the surface, along each of its two axes."""
+    """
+    How many times the texture tiles across the surface, along each of its two axes.
+    """
 
     uniform: bool = False
     """
-    Whether the texture is scaled uniformly across the surface, independent of the surface's
-    own size, rather than scaled to fit it.
+    Whether the texture is scaled uniformly across the surface, independent of the
+    surface's own size, rather than scaled to fit it.
     """
 
     def __post_init__(self):
@@ -343,9 +349,11 @@ class Shape(ABC, SubclassJSONSerializer, HasSimulatorProperties):
 
     texture: Optional[Texture] = None
     """
-    A texture applied to this shape's surface, or ``None`` for a flat ``color``. Only
-    meaningful for primitive shapes (:class:`Box`, :class:`Cylinder`, :class:`Sphere`);
-    :class:`Mesh` shapes carry their own texture as part of their trimesh visual instead.
+    A texture applied to this shape's surface, or ``None`` for a flat ``color``.
+
+    Only meaningful for primitive shapes (:class:`Box`, :class:`Cylinder`,
+    :class:`Sphere`); :class:`Mesh` shapes carry their own texture as part of their
+    trimesh visual instead.
     """
 
     @property
@@ -434,6 +442,10 @@ class Mesh(Shape):
     """
 
     def __setattr__(self, name: str, value: Any) -> None:
+        """
+        Set an attribute, evicting the cached :attr:`mesh` when :attr:`scale` is
+        assigned so the geometry is reloaded at the new scale.
+        """
         if name == "scale":
             self.__dict__.pop("mesh", None)
         super().__setattr__(name, value)

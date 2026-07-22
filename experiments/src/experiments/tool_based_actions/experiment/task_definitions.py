@@ -26,7 +26,7 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import (
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world import World
-from semantic_digital_twin.world_description.geometry import Scale
+from semantic_digital_twin.world_description.geometry import Color, Scale
 from semantic_digital_twin.world_description.world_entity import Body
 from typing_extensions import Dict, Optional, Tuple
 
@@ -78,7 +78,6 @@ class ExperimentTarget:
     The spawned body, or None for targets that are pure poses (e.g. wiping patches).
     """
 
-
 @dataclass
 class ToolTaskDefinition(ABC):
     """
@@ -90,7 +89,7 @@ class ToolTaskDefinition(ABC):
     The arm the tool is mounted on.
     """
 
-    pointer_stride: int = 15
+    pointer_stride: int = 10
     """
     Keep every Nth sampled tool path waypoint for execution.
     """
@@ -168,7 +167,7 @@ class ToolTaskDefinition(ABC):
         world: World,
         placement: TargetPlacement,
         mesh_file_name: str,
-        color,
+        color: Color,
     ) -> Body:
         """
         Spawn a mesh object at the placement, at the placement's scale, under the

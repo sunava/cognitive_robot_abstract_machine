@@ -14,6 +14,7 @@ import time
 from dataclasses import dataclass
 
 from krrood.entity_query_language.factories import a, variable
+from krrood.entity_query_language.query.match import Match
 from semantic_digital_twin.datastructures.definitions import GripperState, TorsoState
 from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Tool
@@ -278,7 +279,7 @@ class TrialRunner:
         context: Context,
         definition: ToolTaskDefinition,
         target: ExperimentTarget,
-    ):
+    ) -> Match[NavigateAction]:
         """
         :param context: The plan context of the trial.
         :param definition: The task definition providing the acting arm.

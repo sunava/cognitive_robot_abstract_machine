@@ -11,7 +11,12 @@ from krrood.entity_query_language.backends import ProbabilisticBackend
 from krrood.entity_query_language.factories import a
 
 from experiments.tool_based_actions.simple_demo.demo_world import (
+    TARGET_POSITION_XYZ,
     attach_sponge,
+)
+from experiments.tool_based_actions.underspecified_demo.demo_setup import (
+    SampledRegion,
+    build_underspecified_navigation,
 )
 from semantic_digital_twin.datastructures.definitions import GripperState, TorsoState
 from semantic_digital_twin.robots.pr2 import PR2
@@ -23,13 +28,19 @@ from coraplex.datastructures.enums import Arms
 from coraplex.execution_environment import simulated_robot
 from coraplex.plans.factories import sequential
 from coraplex.robot_plans.actions.composite.tool_based import WipingAction
-from coraplex.robot_plans.actions.core.navigation import NavigateAction
 from coraplex.robot_plans.actions.core.robot_body import (
     MoveTorsoAction,
     ParkArmsAction,
     SetGripperAction,
 )
 from coraplex.testing import setup_world, start_visualization
+
+WIPE_PATCH_REGION = SampledRegion(
+    minimum_x=2.3, maximum_x=2.5, minimum_y=2.1, maximum_y=2.3
+)
+"""
+Patch on the kitchen counter the wiping target pose is sampled from.
+"""
 
 
 def main() -> None:
@@ -55,25 +66,9 @@ def main() -> None:
 
     context.evaluate_conditions = False
 
-    navigate = a(NavigateAction)(
-        target_location=a(Pose.from_xyz_rpy)(
-            x=...,
-            y=...,
-            z=0.0,
-            roll=0.0,
-            pitch=0.0,
-            yaw=0.0,
-            reference_frame=world.root,
-        ),
-        keep_joint_states=...,
-    )
-    navigate.where(
-        navigate.variable.target_location.x > 1.7,
-        navigate.variable.target_location.x < 1.95,
-        navigate.variable.target_location.y > 2.1,
-        navigate.variable.target_location.y < 2.35,
-    )
+    navigate = build_underspecified_navigation(world)
 
+    counter_height = TARGET_POSITION_XYZ[2]
     wiping = a(WipingAction)(
         arm=Arms.RIGHT,
         tool=sponge,
@@ -81,7 +76,7 @@ def main() -> None:
         target_pose=a(Pose.from_xyz_rpy)(
             x=...,
             y=...,
-            z=1.0,
+            z=counter_height,
             roll=0.0,
             pitch=0.0,
             yaw=0.0,
@@ -89,10 +84,10 @@ def main() -> None:
         ),
     )
     wiping.where(
-        wiping.variable.target_pose.x > 2.3,
-        wiping.variable.target_pose.x < 2.5,
-        wiping.variable.target_pose.y > 2.1,
-        wiping.variable.target_pose.y < 2.3,
+        wiping.variable.target_pose.x > WIPE_PATCH_REGION.minimum_x,
+        wiping.variable.target_pose.x < WIPE_PATCH_REGION.maximum_x,
+        wiping.variable.target_pose.y > WIPE_PATCH_REGION.minimum_y,
+        wiping.variable.target_pose.y < WIPE_PATCH_REGION.maximum_y,
     )
 
     plan = sequential(

@@ -13,8 +13,11 @@ from krrood.entity_query_language.factories import a
 from experiments.tool_based_actions.simple_demo.demo_world import (
     BOWL_COLOR,
     MIX_MOUNT,
-    TARGET_POSITION_XYZ,
     parse_object,
+)
+from experiments.tool_based_actions.underspecified_demo.demo_setup import (
+    build_underspecified_navigation,
+    place_target_on_counter,
 )
 from semantic_digital_twin.datastructures.definitions import GripperState, TorsoState
 from semantic_digital_twin.robots.pr2 import PR2
@@ -22,21 +25,28 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Bowl,
     Whisk,
 )
-from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
-from semantic_digital_twin.spatial_types.spatial_types import Pose
 
 from coraplex.datastructures.dataclasses import Context
 from coraplex.datastructures.enums import Arms
 from coraplex.execution_environment import simulated_robot
 from coraplex.plans.factories import sequential
 from coraplex.robot_plans.actions.composite.tool_based import MixingAction
-from coraplex.robot_plans.actions.core.navigation import NavigateAction
 from coraplex.robot_plans.actions.core.robot_body import (
     MoveTorsoAction,
     ParkArmsAction,
     SetGripperAction,
 )
 from coraplex.testing import attach_tool, setup_world, start_visualization
+
+MINIMUM_MIX_DURATION = 2.0
+"""
+Lower bound in seconds of the sampled mixing duration.
+"""
+
+MAXIMUM_MIX_DURATION = 6.0
+"""
+Upper bound in seconds of the sampled mixing duration.
+"""
 
 
 def main() -> None:
@@ -49,14 +59,7 @@ def main() -> None:
 
     world = setup_world()
 
-    bowl_world = parse_object("bowl.stl", color=BOWL_COLOR)
-    with world.modify_world():
-        world.merge_world_at_pose(
-            bowl_world,
-            HomogeneousTransformationMatrix.from_xyz_quaternion(
-                *TARGET_POSITION_XYZ, reference_frame=world.root
-            ),
-        )
+    bowl_body = place_target_on_counter(world, "bowl.stl", BOWL_COLOR)
     start_visualization(world)
 
     pr2 = PR2.from_world(world)
@@ -66,7 +69,6 @@ def main() -> None:
     whisk_body = attach_tool(
         world, pr2, Arms.RIGHT, parse_object("whisk.stl"), MIX_MOUNT
     )
-    bowl_body = world.get_body_by_name("bowl.stl")
 
     whisk = Whisk(root=whisk_body)
     with world.modify_world():
@@ -74,24 +76,7 @@ def main() -> None:
 
     context.evaluate_conditions = False
 
-    navigate = a(NavigateAction)(
-        target_location=a(Pose.from_xyz_rpy)(
-            x=...,
-            y=...,
-            z=0.0,
-            roll=0.0,
-            pitch=0.0,
-            yaw=0.0,
-            reference_frame=world.root,
-        ),
-        keep_joint_states=...,
-    )
-    navigate.where(
-        navigate.variable.target_location.x > 1.7,
-        navigate.variable.target_location.x < 1.95,
-        navigate.variable.target_location.y > 2.1,
-        navigate.variable.target_location.y < 2.35,
-    )
+    navigate = build_underspecified_navigation(world)
 
     mixing = a(MixingAction)(
         container=bowl_body,
@@ -100,8 +85,8 @@ def main() -> None:
         mix_duration=...,
     )
     mixing.where(
-        mixing.variable.mix_duration > 2.0,
-        mixing.variable.mix_duration < 6.0,
+        mixing.variable.mix_duration > MINIMUM_MIX_DURATION,
+        mixing.variable.mix_duration < MAXIMUM_MIX_DURATION,
     )
 
     plan = sequential(
