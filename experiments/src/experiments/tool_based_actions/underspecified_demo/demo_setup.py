@@ -8,8 +8,6 @@ are defined once here.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from krrood.entity_query_language.factories import a
 from krrood.entity_query_language.query.match import Match
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
@@ -17,58 +15,40 @@ from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.geometry import Color
 from semantic_digital_twin.world_description.world_entity import Body
+from typing_extensions import Optional
 
 from coraplex.robot_plans.actions.core.navigation import NavigateAction
 
+from experiments.tool_based_actions.experiment.configuration import SpawnRegion
 from experiments.tool_based_actions.simple_demo.demo_world import (
     TARGET_POSITION_XYZ,
-    parse_object,
+    spawn_mesh_body,
 )
 
 
-@dataclass(frozen=True)
-class SampledRegion:
+def default_base_pose_region() -> SpawnRegion:
     """
-    An axis-aligned XY rectangle the probabilistic backend samples poses from.
+    :return: The region in front of the kitchen counter the robot's base pose is sampled
+        from.
     """
-
-    minimum_x: float
-    """
-    Lower X bound of the region in the world frame.
-    """
-
-    maximum_x: float
-    """
-    Upper X bound of the region in the world frame.
-    """
-
-    minimum_y: float
-    """
-    Lower Y bound of the region in the world frame.
-    """
-
-    maximum_y: float
-    """
-    Upper Y bound of the region in the world frame.
-    """
+    return SpawnRegion(
+        minimum_x=1.7, maximum_x=1.95, minimum_y=2.1, maximum_y=2.35, height=0.0
+    )
 
 
-BASE_POSE_REGION = SampledRegion(
-    minimum_x=1.7, maximum_x=1.95, minimum_y=2.1, maximum_y=2.35
-)
-"""
-Region in front of the kitchen counter the robot's base pose is sampled from.
-"""
-
-
-def build_underspecified_navigation(world: World) -> Match[NavigateAction]:
+def build_underspecified_navigation(
+    world: World, region: Optional[SpawnRegion] = None
+) -> Match[NavigateAction]:
     """
-    Build a navigation whose base pose is a free variable bounded to
-    :data:`BASE_POSE_REGION`.
+    Build a navigation whose base pose is a free variable bounded to a region.
 
     :param world: The world the base pose is expressed in.
+    :param region: The region the base pose is sampled from, or None for
+        :func:`default_base_pose_region`.
     :return: The underspecified navigation.
     """
+    if region is None:
+        region = default_base_pose_region()
     navigate = a(NavigateAction)(
         target_location=a(Pose.from_xyz_rpy)(
             x=...,
@@ -81,10 +61,10 @@ def build_underspecified_navigation(world: World) -> Match[NavigateAction]:
         ),
     )
     navigate.where(
-        navigate.variable.target_location.x > BASE_POSE_REGION.minimum_x,
-        navigate.variable.target_location.x < BASE_POSE_REGION.maximum_x,
-        navigate.variable.target_location.y > BASE_POSE_REGION.minimum_y,
-        navigate.variable.target_location.y < BASE_POSE_REGION.maximum_y,
+        navigate.variable.target_location.x > region.minimum_x,
+        navigate.variable.target_location.x < region.maximum_x,
+        navigate.variable.target_location.y > region.minimum_y,
+        navigate.variable.target_location.y < region.maximum_y,
     )
     return navigate
 
@@ -99,12 +79,11 @@ def place_target_on_counter(world: World, mesh_file_name: str, color: Color) -> 
     :param color: Color the mesh's visual shapes are dyed with.
     :return: The spawned body inside ``world``.
     """
-    object_world = parse_object(mesh_file_name, color=color)
-    with world.modify_world():
-        world.merge_world_at_pose(
-            object_world,
-            HomogeneousTransformationMatrix.from_xyz_quaternion(
-                *TARGET_POSITION_XYZ, reference_frame=world.root
-            ),
-        )
-    return world.get_body_by_name(mesh_file_name)
+    return spawn_mesh_body(
+        world,
+        mesh_file_name,
+        HomogeneousTransformationMatrix.from_xyz_quaternion(
+            *TARGET_POSITION_XYZ, reference_frame=world.root
+        ),
+        color=color,
+    )

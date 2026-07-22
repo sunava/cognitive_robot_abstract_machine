@@ -8,19 +8,23 @@ end. Press Run — there are no command line arguments.
 
 from __future__ import annotations
 
+import json
 import logging
 import subprocess
 import sys
-from collections import Counter
 from dataclasses import dataclass, field
 
 from typing_extensions import List
 
+from experiments.experiment_definitions import ExperimentsTable, TypstRenderer
 from experiments.tool_based_actions.experiment.configuration import (
     ExperimentConfiguration,
     TrialSpecification,
 )
-from experiments.tool_based_actions.experiment.results import ResultRecorder
+from experiments.tool_based_actions.experiment.results import (
+    ResultRecorder,
+    TaskReliability,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +108,7 @@ class ExperimentRunner:
             "--seed",
             str(specification.seed),
             "--configuration-json",
-            self.configuration.to_json(),
+            json.dumps(self.configuration.to_json()),
         ]
 
     def _log_summary(self, recorder: ResultRecorder) -> None:
@@ -117,17 +121,13 @@ class ExperimentRunner:
         if not results:
             logger.info("No results recorded.")
             return
-        successes_by_task = Counter(
-            result.task.value for result in results if result.success
-        )
-        totals_by_task = Counter(result.task.value for result in results)
-        for task_name in sorted(totals_by_task):
+        rows = TaskReliability.from_results(results)
+        for row in rows:
             logger.info(
-                "%s: %d/%d targets succeeded",
-                task_name,
-                successes_by_task.get(task_name, 0),
-                totals_by_task[task_name],
+                "%s: %d/%d targets succeeded", row.task, row.successes, row.total
             )
+        table = TypstRenderer(ExperimentsTable(rows)).render_table()
+        logger.info("Result table:\n%s", table)
         logger.info("Results file: %s", self.configuration.results_file)
 
 

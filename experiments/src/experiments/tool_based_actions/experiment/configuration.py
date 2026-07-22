@@ -9,11 +9,12 @@ reproduces the exact same scene.
 from __future__ import annotations
 
 import enum
-import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 
-from typing_extensions import List, Tuple
+from krrood.adapters.json_serializer import SubclassJSONSerializer
+from semantic_digital_twin.world_description.geometry import BoundingBox
+from typing_extensions import Any, Dict, List, Tuple
 
 
 class ToolBasedTask(enum.Enum):
@@ -31,6 +32,10 @@ class ToolBasedTask(enum.Enum):
 class SpawnRegion:
     """
     An axis-aligned rectangle on a support surface in which targets are spawned.
+
+    Built from a measured :class:`~semantic_digital_twin.world_description.geometry.BoundingBox`
+    via :meth:`from_bounding_box`, but kept as a lightweight, world-frame numeric region so
+    the seeded sampler and its tests stay independent of a live world.
     """
 
     minimum_x: float
@@ -106,6 +111,27 @@ class SpawnRegion:
             return 0.0
         return (self.maximum_x - self.minimum_x) * (self.maximum_y - self.minimum_y)
 
+    @classmethod
+    def from_bounding_box(
+        cls, bounding_box: BoundingBox, margin: float, height_offset: float
+    ) -> SpawnRegion:
+        """
+        Build a spawn region from a measured world-frame bounding box.
+
+        :param bounding_box: The surface's bounding box in the world frame.
+        :param margin: Distance in meters kept from every surface edge.
+        :param height_offset: Height in meters above the surface top at which targets
+            are spawned.
+        :return: The inset spawnable region on top of the surface.
+        """
+        return cls(
+            minimum_x=bounding_box.min_x + margin,
+            maximum_x=bounding_box.max_x - margin,
+            minimum_y=bounding_box.min_y + margin,
+            maximum_y=bounding_box.max_y - margin,
+            height=bounding_box.max_z + height_offset,
+        )
+
 
 @dataclass(frozen=True)
 class TrialSpecification:
@@ -123,11 +149,6 @@ class TrialSpecification:
     Seed that fixes the sampled scene of this trial.
     """
 
-    robot_name: str
-    """
-    Name of the robot the trial runs with.
-    """
-
     environment_name: str
     """
     Name of the environment the trial runs in.
@@ -138,13 +159,11 @@ class TrialSpecification:
         """
         :return: A unique, human-readable identifier of this trial.
         """
-        return (
-            f"{self.task.value}:{self.environment_name}:{self.robot_name}:{self.seed}"
-        )
+        return f"{self.task.value}:{self.environment_name}:{self.seed}"
 
 
 @dataclass(frozen=True)
-class ExperimentConfiguration:
+class ExperimentConfiguration(SubclassJSONSerializer):
     """
     The full configuration of one experiment campaign.
     """
@@ -157,11 +176,6 @@ class ExperimentConfiguration:
     seeds: Tuple[int, ...] = (910001, 910002, 910003)
     """
     The seeds to run every task with.
-    """
-
-    robot_name: str = "pr2"
-    """
-    Name of the robot the trials run with, recorded with every result.
     """
 
     environment_name: str = "apartment"
@@ -270,33 +284,64 @@ class ExperimentConfiguration:
             TrialSpecification(
                 task=task,
                 seed=seed,
-                robot_name=self.robot_name,
                 environment_name=self.environment_name,
             )
             for task in self.tasks
             for seed in self.seeds
         ]
 
-    def to_json(self) -> str:
+    def to_json(self) -> Dict[str, Any]:
         """
-        :return: This configuration serialized as JSON, e.g. to hand it to a trial
-            subprocess.
+        :return: This configuration as a JSON-serializable dict, e.g. to hand it to a
+            trial subprocess.
         """
-        record = asdict(self)
-        record["tasks"] = [task.value for task in self.tasks]
-        record["results_file"] = str(self.results_file)
-        return json.dumps(record)
+        return {
+            **super().to_json(),
+            "tasks": [task.value for task in self.tasks],
+            "seeds": list(self.seeds),
+            "environment_name": self.environment_name,
+            "minimum_targets_per_trial": self.minimum_targets_per_trial,
+            "maximum_targets_per_trial": self.maximum_targets_per_trial,
+            "targets_per_square_meter": self.targets_per_square_meter,
+            "target_clearance": self.target_clearance,
+            "footprint_clearance": self.footprint_clearance,
+            "scale_choices": list(self.scale_choices),
+            "footprint_safety_factor": self.footprint_safety_factor,
+            "maximum_spawn_height": self.maximum_spawn_height,
+            "full_body_motion": self.full_body_motion,
+            "tool_path_pointer_stride": self.tool_path_pointer_stride,
+            "collision_avoidance": self.collision_avoidance,
+            "surface_names": list(self.surface_names),
+            "surface_margin": self.surface_margin,
+            "spawn_height_offset": self.spawn_height_offset,
+            "results_file": str(self.results_file),
+            "trial_timeout": self.trial_timeout,
+        }
 
     @classmethod
-    def from_json(cls, text: str) -> ExperimentConfiguration:
+    def _from_json(cls, data: Dict[str, Any], **kwargs) -> ExperimentConfiguration:
         """
-        :param text: JSON produced by :meth:`to_json`.
+        :param data: A dict produced by :meth:`to_json`.
         :return: The deserialized configuration.
         """
-        record = json.loads(text)
-        record["tasks"] = tuple(ToolBasedTask(task) for task in record["tasks"])
-        record["seeds"] = tuple(record["seeds"])
-        record["surface_names"] = tuple(record["surface_names"])
-        record["scale_choices"] = tuple(record["scale_choices"])
-        record["results_file"] = Path(record["results_file"])
-        return cls(**record)
+        return cls(
+            tasks=tuple(ToolBasedTask(task) for task in data["tasks"]),
+            seeds=tuple(data["seeds"]),
+            environment_name=data["environment_name"],
+            minimum_targets_per_trial=data["minimum_targets_per_trial"],
+            maximum_targets_per_trial=data["maximum_targets_per_trial"],
+            targets_per_square_meter=data["targets_per_square_meter"],
+            target_clearance=data["target_clearance"],
+            footprint_clearance=data["footprint_clearance"],
+            scale_choices=tuple(data["scale_choices"]),
+            footprint_safety_factor=data["footprint_safety_factor"],
+            maximum_spawn_height=data["maximum_spawn_height"],
+            full_body_motion=data["full_body_motion"],
+            tool_path_pointer_stride=data["tool_path_pointer_stride"],
+            collision_avoidance=data["collision_avoidance"],
+            surface_names=tuple(data["surface_names"]),
+            surface_margin=data["surface_margin"],
+            spawn_height_offset=data["spawn_height_offset"],
+            results_file=Path(data["results_file"]),
+            trial_timeout=data["trial_timeout"],
+        )

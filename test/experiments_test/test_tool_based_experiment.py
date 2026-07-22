@@ -24,6 +24,7 @@ from experiments.tool_based_actions.experiment.results import (
     IncompatibleResultRecord,
     ResultRecorder,
     TargetResult,
+    TaskReliability,
 )
 from experiments.tool_based_actions.experiment import run_experiment
 from experiments.tool_based_actions.experiment.run_experiment import ExperimentRunner
@@ -480,8 +481,8 @@ def _result(trial_identifier: str, target_name: str, success: bool) -> TargetRes
 
 def test_result_recorder_roundtrip_and_resume(tmp_path):
     recorder = ResultRecorder(results_file=tmp_path / "results.jsonl")
-    recorder.record(_result("cutting:apartment:pr2:1", "cutting_1_0", True))
-    recorder.record(_result("cutting:apartment:pr2:1", "cutting_1_1", False))
+    recorder.record(_result("cutting:apartment:1", "cutting_1_0", True))
+    recorder.record(_result("cutting:apartment:1", "cutting_1_1", False))
 
     results = recorder.load_results()
     assert len(results) == 2
@@ -493,13 +494,11 @@ def test_result_recorder_roundtrip_and_resume(tmp_path):
     completed_specification = TrialSpecification(
         task=ToolBasedTask.CUTTING,
         seed=1,
-        robot_name="pr2",
         environment_name="apartment",
     )
     pending_specification = TrialSpecification(
         task=ToolBasedTask.CUTTING,
         seed=2,
-        robot_name="pr2",
         environment_name="apartment",
     )
     assert recorder.is_completed(completed_specification)
@@ -530,6 +529,20 @@ def test_result_recorder_rejects_records_from_an_older_schema(tmp_path):
     assert "surface_name" in str(error_information.value)
 
 
+def test_task_reliability_aggregates_results_per_task():
+    results = [
+        _result("cutting:apartment:pr2:1", "cutting_1_0", True),
+        _result("cutting:apartment:pr2:1", "cutting_1_1", False),
+        _result("cutting:apartment:pr2:2", "cutting_2_0", True),
+    ]
+
+    rows = TaskReliability.from_results(results)
+
+    assert rows == [TaskReliability(task="cutting", successes=2, total=3)]
+    assert TaskReliability.get_column_names() == ["task", "successes", "total"]
+    assert rows[0].get_column_values() == ["cutting", 2, 3]
+
+
 def test_result_recorder_is_empty_without_file(tmp_path):
     recorder = ResultRecorder(results_file=tmp_path / "missing.jsonl")
     assert recorder.load_results() == []
@@ -549,7 +562,7 @@ def test_experiment_runner_skips_completed_trials_and_builds_trial_commands(
 ):
     configuration = _campaign_configuration(tmp_path)
     ResultRecorder(configuration.results_file).record(
-        _result("cutting:apartment:pr2:1", "cutting_1_0", True)
+        _result("cutting:apartment:1", "cutting_1_0", True)
     )
     executed_commands = []
 
@@ -568,7 +581,9 @@ def test_experiment_runner_skips_completed_trials_and_builds_trial_commands(
     ]
     assert command[command.index("--task") + 1] == "cutting"
     assert command[command.index("--seed") + 1] == "2"
-    assert command[command.index("--configuration-json") + 1] == configuration.to_json()
+    assert command[command.index("--configuration-json") + 1] == json.dumps(
+        configuration.to_json()
+    )
 
 
 def test_experiment_runner_survives_timeouts_and_failing_trials(tmp_path, monkeypatch):
@@ -597,8 +612,8 @@ def test_experiment_runner_survives_timeouts_and_failing_trials(tmp_path, monkey
 def test_experiment_runner_summarizes_recorded_results(tmp_path, monkeypatch):
     configuration = _campaign_configuration(tmp_path)
     recorder = ResultRecorder(configuration.results_file)
-    recorder.record(_result("cutting:apartment:pr2:1", "cutting_1_0", True))
-    recorder.record(_result("cutting:apartment:pr2:2", "cutting_2_0", False))
+    recorder.record(_result("cutting:apartment:1", "cutting_1_0", True))
+    recorder.record(_result("cutting:apartment:2", "cutting_2_0", False))
 
     def unexpected_run(command, timeout):
         raise AssertionError("No trial should run when all trials are completed.")

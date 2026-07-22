@@ -10,12 +10,12 @@ conditions and the technique is left as an ellipsis.
 from krrood.entity_query_language.backends import ProbabilisticBackend
 from krrood.entity_query_language.factories import a
 
+from experiments.tool_based_actions.experiment.configuration import SpawnRegion
 from experiments.tool_based_actions.simple_demo.demo_world import (
     TARGET_POSITION_XYZ,
     attach_sponge,
 )
 from experiments.tool_based_actions.underspecified_demo.demo_setup import (
-    SampledRegion,
     build_underspecified_navigation,
 )
 from semantic_digital_twin.datastructures.definitions import GripperState, TorsoState
@@ -34,13 +34,6 @@ from coraplex.robot_plans.actions.core.robot_body import (
     SetGripperAction,
 )
 from coraplex.testing import setup_world, start_visualization
-
-WIPE_PATCH_REGION = SampledRegion(
-    minimum_x=2.3, maximum_x=2.5, minimum_y=2.1, maximum_y=2.3
-)
-"""
-Patch on the kitchen counter the wiping target pose is sampled from.
-"""
 
 
 def main() -> None:
@@ -68,6 +61,9 @@ def main() -> None:
 
     navigate = build_underspecified_navigation(world)
 
+    wipe_patch_region = SpawnRegion(
+        minimum_x=2.3, maximum_x=2.5, minimum_y=2.1, maximum_y=2.3, height=0.0
+    )
     counter_height = TARGET_POSITION_XYZ[2]
     wiping = a(WipingAction)(
         arm=Arms.RIGHT,
@@ -84,10 +80,10 @@ def main() -> None:
         ),
     )
     wiping.where(
-        wiping.variable.target_pose.x > WIPE_PATCH_REGION.minimum_x,
-        wiping.variable.target_pose.x < WIPE_PATCH_REGION.maximum_x,
-        wiping.variable.target_pose.y > WIPE_PATCH_REGION.minimum_y,
-        wiping.variable.target_pose.y < WIPE_PATCH_REGION.maximum_y,
+        wiping.variable.target_pose.x > wipe_patch_region.minimum_x,
+        wiping.variable.target_pose.x < wipe_patch_region.maximum_x,
+        wiping.variable.target_pose.y > wipe_patch_region.minimum_y,
+        wiping.variable.target_pose.y < wipe_patch_region.maximum_y,
     )
 
     plan = sequential(

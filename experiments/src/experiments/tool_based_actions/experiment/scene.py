@@ -13,36 +13,66 @@ import math
 import random
 from dataclasses import dataclass, field
 
+from krrood.exceptions import DataclassException
 from semantic_digital_twin.world import World
+from semantic_digital_twin.world_description.geometry import BoundingBox
 from typing_extensions import ClassVar, List, Optional, Set, Tuple
 
 from experiments.tool_based_actions.experiment.configuration import SpawnRegion
 
 
-class MissingSpawnSurfaces(Exception):
+@dataclass
+class MissingSpawnSurfaces(DataclassException):
     """
     Raised when none of the configured spawn surfaces exist in the world.
     """
 
-    def __init__(self, surface_names: Tuple[str, ...]):
-        super().__init__(
-            f"None of the configured spawn surfaces {surface_names} exist in the "
-            "world. Check the surface names against the environment."
+    surface_names: Tuple[str, ...]
+    """
+    The configured surface names none of which were found.
+    """
+
+    def error_message(self) -> str:
+        return (
+            f"None of the configured spawn surfaces {self.surface_names} exist in the "
+            "world."
         )
 
+    def suggest_correction(self) -> str:
+        return "Check the surface names against the environment."
 
-class SpawnRegionExhausted(Exception):
+
+@dataclass
+class SpawnRegionExhausted(DataclassException):
     """
     Raised when the spawn surfaces cannot hold the requested targets at the requested
     clearance.
     """
 
-    def __init__(self, surfaces: List[SpawnSurface], clearance: float, count: int):
-        surface_names = [surface.name for surface in surfaces]
-        super().__init__(
-            f"Could not place {count} targets with clearance {clearance} m on the "
-            f"surfaces {surface_names}."
+    surfaces: List[SpawnSurface]
+    """
+    The surfaces sampling was attempted on.
+    """
+
+    clearance: float
+    """
+    Minimum center distance in meters between two targets that could not be met.
+    """
+
+    count: int
+    """
+    The number of targets that could not be placed.
+    """
+
+    def error_message(self) -> str:
+        surface_names = [surface.name for surface in self.surfaces]
+        return (
+            f"Could not place {self.count} targets with clearance {self.clearance} m "
+            f"on the surfaces {surface_names}."
         )
+
+    def suggest_correction(self) -> str:
+        return ""
 
 
 @dataclass(frozen=True)
@@ -108,6 +138,11 @@ class ObjectFootprint:
 class ObstacleBox:
     """
     The world-frame bounding box of a body placements must keep clear of.
+
+    Built from a measured :class:`~semantic_digital_twin.world_description.geometry.BoundingBox`
+    via :meth:`from_bounding_box`, but adds placement semantics (:attr:`vertical_margin`,
+    :attr:`top_epsilon`, :meth:`blocks`) and stays a lightweight, world-free numeric box so
+    the seeded sampler and its tests do not depend on a live world.
     """
 
     vertical_margin: ClassVar[float] = 0.03
@@ -179,6 +214,23 @@ class ObstacleBox:
             and self.minimum_y - radius <= y <= self.maximum_y + radius
         )
 
+    @classmethod
+    def from_bounding_box(cls, name: str, bounding_box: BoundingBox) -> ObstacleBox:
+        """
+        :param name: Name of the obstacle body in the world.
+        :param bounding_box: The body's bounding box in the world frame.
+        :return: The obstacle box wrapping the measured bounding box.
+        """
+        return cls(
+            name=name,
+            minimum_x=bounding_box.min_x,
+            maximum_x=bounding_box.max_x,
+            minimum_y=bounding_box.min_y,
+            maximum_y=bounding_box.max_y,
+            minimum_z=bounding_box.min_z,
+            maximum_z=bounding_box.max_z,
+        )
+
 
 def discover_obstacles(
     world: World, excluded_body_names: Set[str]
@@ -192,26 +244,14 @@ def discover_obstacles(
     :return: One obstacle box per collidable, non-excluded body.
     """
     obstacles = []
-    for body in world.bodies:
+    for body in world.bodies_with_collision:
         name = body.name.name
         if name in excluded_body_names:
-            continue
-        if not body.collision.shapes:
             continue
         bounding_box = body.collision.as_bounding_box_collection_in_frame(
             world.root
         ).bounding_box()
-        obstacles.append(
-            ObstacleBox(
-                name=name,
-                minimum_x=bounding_box.min_x,
-                maximum_x=bounding_box.max_x,
-                minimum_y=bounding_box.min_y,
-                maximum_y=bounding_box.max_y,
-                minimum_z=bounding_box.min_z,
-                maximum_z=bounding_box.max_z,
-            )
-        )
+        obstacles.append(ObstacleBox.from_bounding_box(name, bounding_box))
     return obstacles
 
 
@@ -244,12 +284,8 @@ def discover_spawn_surfaces(
         surfaces.append(
             SpawnSurface(
                 name=surface_name,
-                region=SpawnRegion(
-                    minimum_x=bounding_box.min_x + margin,
-                    maximum_x=bounding_box.max_x - margin,
-                    minimum_y=bounding_box.min_y + margin,
-                    maximum_y=bounding_box.max_y - margin,
-                    height=bounding_box.max_z + height_offset,
+                region=SpawnRegion.from_bounding_box(
+                    bounding_box, margin=margin, height_offset=height_offset
                 ),
             )
         )

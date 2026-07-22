@@ -9,6 +9,7 @@ hanging simulation never takes the campaign down with it.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import time
 from dataclasses import dataclass
@@ -243,7 +244,7 @@ class TrialRunner:
             trial_identifier=self.specification.identifier,
             task=self.specification.task,
             seed=self.specification.seed,
-            robot_name=self.specification.robot_name,
+            robot_name=context.robot.name.name,
             environment_name=self.specification.environment_name,
             target_name=placement.name,
             target_x=placement.x,
@@ -330,11 +331,12 @@ def main() -> None:
     parser.add_argument("--configuration-json", required=True)
     arguments = parser.parse_args()
 
-    configuration = ExperimentConfiguration.from_json(arguments.configuration_json)
+    configuration = ExperimentConfiguration.from_json(
+        json.loads(arguments.configuration_json)
+    )
     specification = TrialSpecification(
         task=ToolBasedTask(arguments.task),
         seed=arguments.seed,
-        robot_name=configuration.robot_name,
         environment_name=configuration.environment_name,
     )
     results = run_trial(specification, configuration)

@@ -12,7 +12,6 @@ import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.robots.robot_parts import AbstractRobot
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Bowl,
@@ -54,6 +53,7 @@ from experiments.tool_based_actions.simple_demo.demo_world import (
     POUR_MOUNT,
     attach_sponge,
     parse_object,
+    spawn_mesh_body,
 )
 
 
@@ -179,25 +179,20 @@ class ToolTaskDefinition(ABC):
         :param color: Color the mesh's visual shapes are dyed with.
         :return: The spawned body inside ``world``.
         """
-        object_world = parse_object(mesh_file_name, color=color)
-        object_world.root.name = PrefixedName(placement.name)
-        uniform_scale = Scale(placement.scale, placement.scale, placement.scale)
-        for shape in object_world.root.visual.shapes:
-            shape.scale = uniform_scale
-        for shape in object_world.root.collision.shapes:
-            shape.scale = uniform_scale
-        with world.modify_world():
-            world.merge_world_at_pose(
-                object_world,
-                HomogeneousTransformationMatrix.from_xyz_rpy(
-                    placement.x,
-                    placement.y,
-                    placement.z,
-                    yaw=placement.yaw,
-                    reference_frame=world.root,
-                ),
-            )
-        return world.get_body_by_name(placement.name)
+        return spawn_mesh_body(
+            world,
+            mesh_file_name,
+            HomogeneousTransformationMatrix.from_xyz_rpy(
+                placement.x,
+                placement.y,
+                placement.z,
+                yaw=placement.yaw,
+                reference_frame=world.root,
+            ),
+            color=color,
+            name=placement.name,
+            scale=Scale(placement.scale, placement.scale, placement.scale),
+        )
 
     def _placement_pose(self, world: World, placement: TargetPlacement) -> Pose:
         """

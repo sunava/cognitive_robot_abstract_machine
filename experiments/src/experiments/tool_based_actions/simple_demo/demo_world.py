@@ -90,6 +90,39 @@ def parse_object(stl_file_name: str, color: Optional[Color] = None) -> World:
     return object_world
 
 
+def spawn_mesh_body(
+    world: World,
+    stl_file_name: str,
+    transform: HomogeneousTransformationMatrix,
+    color: Optional[Color] = None,
+    name: Optional[str] = None,
+    scale: Optional[Scale] = None,
+) -> Body:
+    """
+    Spawn a mesh from the demo resources into the world at a pose.
+
+    :param world: The world to spawn into.
+    :param stl_file_name: Mesh file in the demo resources.
+    :param transform: Pose of the spawned body in the world frame.
+    :param color: Color the mesh's visual shapes are dyed with, or None to keep them.
+    :param name: Name for the spawned body, or None to keep the mesh's own name.
+    :param scale: Uniform scale applied to the mesh's shapes, or None to keep them.
+    :return: The spawned body inside ``world``.
+    """
+    object_world = parse_object(stl_file_name, color=color)
+    if name is not None:
+        object_world.root.name = PrefixedName(name)
+    if scale is not None:
+        for shape in object_world.root.visual.shapes:
+            shape.scale = scale
+        for shape in object_world.root.collision.shapes:
+            shape.scale = scale
+    spawned_body_name = object_world.root.name.name
+    with world.modify_world():
+        world.merge_world_at_pose(object_world, transform)
+    return world.get_body_by_name(spawned_body_name)
+
+
 def attach_sponge(world: World, robot: AbstractRobot, arm: Arms) -> Body:
     """
     Attach a primitive box sponge to the arm's tool frame.
