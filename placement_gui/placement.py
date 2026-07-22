@@ -14,12 +14,32 @@ layer.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from enum import Enum
 
 AUTO_FIT = 0
 """
 Sentinel for :attr:`Pattern.rows` / :attr:`Pattern.columns`: place as many
 shapes along that axis as fit into the box.
 """
+
+
+class Orientation(Enum):
+    """
+    How the shape footprint lies in the box grid.
+
+    ..note:: Rotating by 90 degrees swaps the footprint's width and height,
+        which changes how many shapes fit into the box.
+    """
+
+    ORIGINAL = "original"
+    """
+    The shape lies as defined in the catalog.
+    """
+
+    ROTATED = "rotated"
+    """
+    The shape is rotated by 90 degrees.
+    """
 
 @dataclass(frozen=True)
 class Size:
@@ -104,6 +124,17 @@ class Pattern:
     Minimum spacing between shapes and to the box wall, in millimetres.
     """
 
+    orientation: Orientation = Orientation.ORIGINAL
+    """
+    Whether every shape in the grid lies as defined or rotated by 90 degrees.
+    """
+
+    flipped_placements: tuple[int, ...] = ()
+    """
+    Indices (grid order, bottom-left to top-right) of placements that are
+    turned by 180 degrees, so their head end faces the other way.
+    """
+
 @dataclass(frozen=True)
 class Placement:
     """A single placed shape, position = lower-left corner in box
@@ -127,6 +158,12 @@ class Placement:
     height: float
     """
     Extent along the y axis.
+    """
+
+    flipped: bool = False
+    """
+    True when this shape is turned by 180 degrees (head end faces the other
+    way).
     """
 
 
@@ -153,6 +190,16 @@ def _clamp(value: float, lower: float, upper: float) -> float:
     return max(lower, min(upper, value))
 
 
+def _oriented_footprint(size: Size, orientation: Orientation) -> Size:
+    """
+    The footprint a shape occupies in the grid: as defined, or with width and
+    height swapped when rotated by 90 degrees.
+    """
+    if orientation is Orientation.ROTATED:
+        return Size(width=size.height, height=size.width)
+    return size
+
+
 def compute_placements(pattern: Pattern, offset_x: float = 0.0,
                        offset_y: float = 0.0) -> dict:
     """
@@ -163,7 +210,8 @@ def compute_placements(pattern: Pattern, offset_x: float = 0.0,
     grid and every placement, plus the allowed offset range so the UI
     can bound its sliders.
     """
-    box, shape, gap = pattern.box, pattern.shape.size, pattern.gap
+    box, gap = pattern.box, pattern.gap
+    shape = _oriented_footprint(pattern.shape.size, pattern.orientation)
 
     columns = _effective_count(pattern.columns,
                                _fitting_count(box.width, shape.width, gap))
@@ -182,6 +230,7 @@ def compute_placements(pattern: Pattern, offset_x: float = 0.0,
         clamped_x = _clamp(offset_x, -max_offset_x, max_offset_x)
         clamped_y = _clamp(offset_y, -max_offset_y, max_offset_y)
 
+        flipped = set(pattern.flipped_placements)
         for row in range(rows):
             for column in range(columns):
                 placements.append(Placement(
@@ -189,6 +238,7 @@ def compute_placements(pattern: Pattern, offset_x: float = 0.0,
                     y=base_y + clamped_y + row * (shape.height + gap),
                     width=shape.width,
                     height=shape.height,
+                    flipped=len(placements) in flipped,
                 ))
     else:
         max_offset_x = max_offset_y = 0.0
@@ -198,8 +248,9 @@ def compute_placements(pattern: Pattern, offset_x: float = 0.0,
         "pattern": {"id": pattern.id, "name": pattern.name},
         "box": asdict(box),
         "shape": {"id": pattern.shape.id, "name": pattern.shape.name,
-                  **asdict(shape)},
+                  **asdict(pattern.shape.size)},
         "gap": gap,
+        "orientation": pattern.orientation.value,
         "columns": columns,
         "rows": rows,
         "count": len(placements),

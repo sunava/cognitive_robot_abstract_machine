@@ -12,9 +12,12 @@ table. The GUI has two tabs:
 - **Placement** — pick a stored pattern, see the computed placements on an
   HTML canvas, and shift the whole pattern via **X/Y offset** sliders.
 - **Pattern Editor** — pick a shape from the catalog (with previews), define a
-  new pattern (box size, rows/columns — `0` means "as many as fit" — and gap)
-  with a live preview, and **save** it. Saved patterns immediately show up in
-  the Placement tab; saving under the same name updates the same pattern.
+  new pattern (box size, rows/columns — `0` means "as many as fit" — gap and
+  orientation) with a live preview, and **save** it. Saved patterns immediately
+  show up in the Placement tab; saving under the same name updates the same
+  pattern. The **0°/90° orientation** toggle rotates all parts and recomputes
+  how many fit; **tapping a single part** in the preview turns it by 180°, so
+  its head end faces the other way (like alternating rows in a real box).
 
 ---
 
@@ -109,7 +112,7 @@ HMI panel (Chromium)  --HTTP-->  app.py  (separate machine)
 | `GET /api/patterns` | Stored patterns: `id, name, box, shape_id, rows, columns, gap`. |
 | `POST /api/patterns` | Save a pattern (JSON body as above, id derived from the name). |
 | `GET /api/placements?pattern=ID&offset_x=0&offset_y=0` | Computed placements: box, shape, grid, count, positions, allowed offset range. |
-| `GET /api/preview?shape=ID&box_width=&box_height=&rows=&columns=&gap=` | Placements for an unsaved pattern (editor live preview). |
+| `GET /api/preview?shape=ID&box_width=&box_height=&rows=&columns=&gap=&orientation=&flipped=` | Placements for an unsaved pattern (editor live preview). |
 
 On a database error the API returns HTTP `503` with `{ "error": … }` instead of
 dropping the request, so the UI degrades gracefully.
@@ -127,14 +130,16 @@ CREATE TABLE shapes (
 );
 
 CREATE TABLE patterns (
-    id         TEXT PRIMARY KEY,
-    name       TEXT             NOT NULL,
-    box_width  DOUBLE PRECISION NOT NULL,
-    box_height DOUBLE PRECISION NOT NULL,
-    shape_id   TEXT             NOT NULL REFERENCES shapes(id),
-    rows       INTEGER          NOT NULL DEFAULT 0,  -- 0 = as many as fit
-    columns    INTEGER          NOT NULL DEFAULT 0,  -- 0 = as many as fit
-    gap        DOUBLE PRECISION NOT NULL DEFAULT 10.0
+    id                 TEXT PRIMARY KEY,
+    name               TEXT             NOT NULL,
+    box_width          DOUBLE PRECISION NOT NULL,
+    box_height         DOUBLE PRECISION NOT NULL,
+    shape_id           TEXT             NOT NULL REFERENCES shapes(id),
+    rows               INTEGER          NOT NULL DEFAULT 0,     -- 0 = as many as fit
+    columns            INTEGER          NOT NULL DEFAULT 0,     -- 0 = as many as fit
+    gap                DOUBLE PRECISION NOT NULL DEFAULT 10.0,
+    orientation        TEXT             NOT NULL DEFAULT 'original',  -- or 'rotated' (90°)
+    flipped_placements TEXT             NOT NULL DEFAULT '[]'   -- JSON list of 180°-turned indices
 );
 ```
 
@@ -156,3 +161,7 @@ pytest placement_gui
 - Default pattern = centred grid; offset clamped to the box walls.
 - Patterns repeat a single shape; mixed-shape patterns would extend
   `Pattern`/`compute_placements`.
+- Parts are packed as rectangular footprints. The 90° orientation genuinely
+  changes how many fit; the per-part 180° turn keeps the same footprint and is
+  stored for the placement process (real interlocking of head shapes needs the
+  actual part geometry from the SDT).

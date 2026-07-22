@@ -7,7 +7,7 @@ from __future__ import annotations
 import pytest
 
 from catalog import DemoCatalog, UnknownShapeError
-from placement import Pattern, Shape, Size
+from placement import Orientation, Pattern, Shape, Size
 
 
 @pytest.fixture
@@ -60,3 +60,16 @@ class TestPatternStorage:
                           shape=stranger)
         with pytest.raises(UnknownShapeError):
             demo_catalog.save_pattern(pattern)
+
+
+class TestOrientationStorage:
+    def test_orientation_and_flips_are_stored_with_the_pattern(
+            self, demo_catalog):
+        shape = demo_catalog.list_shapes()[0]
+        pattern = Pattern(id="rotated", name="Rotated", box=Size(500.0, 300.0),
+                          shape=shape, orientation=Orientation.ROTATED,
+                          flipped_placements=(0, 2))
+        demo_catalog.save_pattern(pattern)
+        stored = demo_catalog.get_pattern("rotated")
+        assert stored.orientation is Orientation.ROTATED
+        assert stored.flipped_placements == (0, 2)

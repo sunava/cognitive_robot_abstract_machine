@@ -6,20 +6,24 @@
 // nudge the whole pattern via X/Y offset sliders.
 //
 // Tab "Pattern Editor": lists the shapes from the shape catalog, lets the
-// operator pick one and define a new pattern (box size, rows/columns/gap) with
-// a live preview, then saves it to the data source.
+// operator pick one and define a new pattern (box size, rows/columns/gap,
+// orientation) with a live preview, then saves it to the data source.
+// Individual parts can be turned by 180° by tapping them in the preview.
 
 // ---------------------------------------------------------------------------
 // Shared drawing helpers (used by both tabs and the shape previews)
 // ---------------------------------------------------------------------------
 
 function roundRect(ctx, x, y, w, h, r) {
+  // Clamp the radius so degenerate sizes can never produce a negative value,
+  // which would make arcTo() throw and kill the calling code path.
+  const radius = Math.max(0, Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2));
   ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
   ctx.closePath();
 }
 
@@ -84,8 +88,9 @@ function drawRail(ctx, L, T) {
 }
 
 // Draw one shape inside its bounding box (canvas px). The shape runs along its
-// longer edge; vertical placements are drawn horizontally and rotated.
-function drawShape(ctx, px, py, pw, ph) {
+// longer edge; vertical placements are drawn horizontally and rotated. Flipped
+// parts are turned by 180°, so their head end faces the other way.
+function drawShape(ctx, px, py, pw, ph, flipped) {
   const horizontal = pw >= ph;
   const L = horizontal ? pw : ph;   // length (along the long edge)
   const T = horizontal ? ph : pw;   // thickness (across)
@@ -93,22 +98,25 @@ function drawShape(ctx, px, py, pw, ph) {
   ctx.save();
   ctx.translate(px + pw / 2, py + ph / 2);
   if (!horizontal) ctx.rotate(Math.PI / 2);
+  if (flipped) ctx.rotate(Math.PI);
   drawRail(ctx, L, T);
   ctx.restore();
 }
 
-// Draw a full placements result (box + shapes) onto a canvas.
+// Draw a full placements result (box + shapes) onto a canvas. Returns the
+// box-to-canvas transform for hit-testing, or null when the canvas has no
+// usable size (e.g. its tab is hidden).
 function drawPlacements(canvas, result) {
   const ctx = canvas.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
   const cw = canvas.clientWidth, ch = canvas.clientHeight;
+  const pad = 30;
+  if (!result || cw <= 2 * pad || ch <= 2 * pad) return null;
   canvas.width = cw * dpr; canvas.height = ch * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, cw, ch);
-  if (!result) return;
 
   const box = result.box;
-  const pad = 30;
   const scale = Math.min((cw - 2 * pad) / box.width, (ch - 2 * pad) / box.height);
   const ox = (cw - box.width * scale) / 2;
   const oy = (ch - box.height * scale) / 2;
@@ -128,8 +136,17 @@ function drawPlacements(canvas, result) {
   ctx.restore();
 
   result.placements.forEach((p) => {
-    drawShape(ctx, X(p.x), Y(p.y + p.height), p.width * scale, p.height * scale);
+    drawShape(ctx, X(p.x), Y(p.y + p.height),
+      p.width * scale, p.height * scale, p.flipped);
   });
+  return { scale, ox, oy, box };
+}
+
+async function fetchJson(url, options) {
+  const response = await fetch(url, options);
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+  return payload;
 }
 
 // ---------------------------------------------------------------------------
@@ -144,7 +161,7 @@ const tabEditor = document.getElementById("tab-editor");
 
 async function loadStatus() {
   try {
-    const s = await (await fetch("/api/status")).json();
+    const s = await fetchJson("/api/status");
     demoBadge.hidden = !s.demo;
     demoBadge.title = s.demo
       ? "Showing built-in sample data — no database connected."
@@ -158,7 +175,8 @@ function showTab(editor) {
   tabButtonPlacement.classList.toggle("active", !editor);
   tabButtonEditor.classList.toggle("active", editor);
   // Canvases have zero size while hidden; redraw the one that just appeared.
-  if (editor) refreshPreview(); else placements && drawPlacements(canvas, placements);
+  if (editor) refreshPreview();
+  else drawPlacements(canvas, placements);
 }
 tabButtonPlacement.onclick = () => showTab(false);
 tabButtonEditor.onclick = () => showTab(true);
@@ -181,7 +199,12 @@ let currentPattern = null;
 let placements = null;
 
 async function loadPatterns(selectId) {
-  patterns = await (await fetch("/api/patterns")).json();
+  try {
+    patterns = await fetchJson("/api/patterns");
+  } catch (error) {
+    metaEl.textContent = `Could not load patterns: ${error.message}`;
+    return;
+  }
   patternButtons.innerHTML = "";
   patterns.forEach(p => {
     const b = document.createElement("button");
@@ -202,6 +225,7 @@ async function selectPattern(id) {
   offsetXEl.value = 0;
   offsetYEl.value = 0;
   await refreshPlacements();
+  if (!placements) return;
   // Bound the sliders to the pattern's allowed offset range.
   const m = placements.offset_range;
   offsetXEl.min = -m.max_x; offsetXEl.max = m.max_x;
@@ -211,13 +235,22 @@ async function selectPattern(id) {
 async function refreshPlacements() {
   const url = `/api/placements?pattern=${encodeURIComponent(currentPattern)}`
             + `&offset_x=${offsetXEl.value}&offset_y=${offsetYEl.value}`;
-  placements = await (await fetch(url)).json();
+  try {
+    placements = await fetchJson(url);
+  } catch (error) {
+    countEl.textContent = "–";
+    metaEl.textContent =
+      `Server unreachable (${error.message}) — is app.py still running?`;
+    return;
+  }
   countEl.textContent = placements.count;
   offsetXValue.textContent = `${Math.round(placements.offset.x)} mm`;
   offsetYValue.textContent = `${Math.round(placements.offset.y)} mm`;
+  const rotated = placements.orientation === "rotated";
   metaEl.innerHTML =
     `Shape: ${placements.shape.name} `
-    + `(${placements.shape.width} × ${placements.shape.height} mm)<br>`
+    + `(${placements.shape.width} × ${placements.shape.height} mm)`
+    + `${rotated ? ", rotated 90°" : ""}<br>`
     + `Box: ${placements.box.width} × ${placements.box.height} mm<br>`
     + `Grid: ${placements.columns} × ${placements.rows}`;
   drawPlacements(canvas, placements);
@@ -254,14 +287,25 @@ const boxHeightEl = document.getElementById("box-height");
 const rowsEl = document.getElementById("rows");
 const columnsEl = document.getElementById("columns");
 const gapEl = document.getElementById("gap");
+const orientationOriginal = document.getElementById("orientation-original");
+const orientationRotated = document.getElementById("orientation-rotated");
 const saveButton = document.getElementById("save-pattern");
 const editorMessage = document.getElementById("editor-message");
 
 let shapes = [];
 let selectedShape = null;
+let editorOrientation = "original";
+let flippedPlacements = new Set();
+let editorResult = null;   // last preview from the server
+let editorView = null;     // box-to-canvas transform of the last preview draw
 
 async function loadShapes() {
-  shapes = await (await fetch("/api/shapes")).json();
+  try {
+    shapes = await fetchJson("/api/shapes");
+  } catch (error) {
+    showEditorMessage(`Could not load shapes: ${error.message}`, true);
+    return;
+  }
   shapeList.innerHTML = "";
   shapes.forEach(shape => {
     const card = document.createElement("button");
@@ -293,20 +337,31 @@ function drawShapePreview(preview, shape) {
   const scale = Math.min((cw - 16) / shape.width, (ch - 12) / shape.height, 1);
   drawShape(ctx,
     (cw - shape.width * scale) / 2, (ch - shape.height * scale) / 2,
-    shape.width * scale, shape.height * scale);
+    shape.width * scale, shape.height * scale, false);
 }
 
 function selectShape(id) {
   selectedShape = id;
+  flippedPlacements.clear();  // indices belong to the previous shape's grid
   [...shapeList.children].forEach(card =>
     card.classList.toggle("active", card.dataset.id === id));
   refreshPreview();
 }
 
+function selectOrientation(orientation) {
+  editorOrientation = orientation;
+  flippedPlacements.clear();  // the grid changes completely
+  orientationOriginal.classList.toggle("active", orientation === "original");
+  orientationRotated.classList.toggle("active", orientation === "rotated");
+  refreshPreview();
+}
+orientationOriginal.onclick = () => selectOrientation("original");
+orientationRotated.onclick = () => selectOrientation("rotated");
+
 // Live preview: same server-side geometry as the placement view, computed for
 // the (unsaved) pattern currently in the form.
 let pendingPreview = false;
-async function refreshPreview() {
+function refreshPreview() {
   if (!selectedShape) return;
   if (pendingPreview) return;
   pendingPreview = true;
@@ -314,15 +369,46 @@ async function refreshPreview() {
     pendingPreview = false;
     const url = `/api/preview?shape=${encodeURIComponent(selectedShape)}`
               + `&box_width=${boxWidthEl.value}&box_height=${boxHeightEl.value}`
-              + `&rows=${rowsEl.value}&columns=${columnsEl.value}&gap=${gapEl.value}`;
-    const result = await (await fetch(url)).json();
-    if (result.error) { editorCount.textContent = "–"; return; }
+              + `&rows=${rowsEl.value}&columns=${columnsEl.value}&gap=${gapEl.value}`
+              + `&orientation=${editorOrientation}`
+              + `&flipped=${[...flippedPlacements].join(",")}`;
+    let result;
+    try {
+      result = await fetchJson(url);
+    } catch (error) {
+      editorCount.textContent = "–";
+      showEditorMessage(
+        `Server unreachable (${error.message}) — is app.py still running?`,
+        true);
+      return;
+    }
+    editorResult = result;
     editorCount.textContent = result.count;
-    drawPlacements(editorCanvas, result);
+    editorView = drawPlacements(editorCanvas, result);
   });
 }
 [boxWidthEl, boxHeightEl, rowsEl, columnsEl, gapEl].forEach(el =>
   el.addEventListener("input", refreshPreview));
+
+// Select the current content on focus, so typing replaces the old value
+// instead of appending to it (important for touch panels and quick edits).
+[patternNameEl, boxWidthEl, boxHeightEl, rowsEl, columnsEl, gapEl].forEach(
+  el => el.addEventListener("focus", () => el.select()));
+
+// Tap a part in the preview to turn it by 180° (head end faces the other way).
+editorCanvas.addEventListener("click", (event) => {
+  if (!editorResult || !editorView) return;
+  const rect = editorCanvas.getBoundingClientRect();
+  const x = (event.clientX - rect.left - editorView.ox) / editorView.scale;
+  const y = editorView.box.height
+          - (event.clientY - rect.top - editorView.oy) / editorView.scale;
+  const index = editorResult.placements.findIndex(p =>
+    x >= p.x && x <= p.x + p.width && y >= p.y && y <= p.y + p.height);
+  if (index < 0) return;
+  if (flippedPlacements.has(index)) flippedPlacements.delete(index);
+  else flippedPlacements.add(index);
+  refreshPreview();
+});
 
 function showEditorMessage(text, isError) {
   editorMessage.textContent = text;
@@ -346,25 +432,28 @@ saveButton.onclick = async () => {
     rows: +rowsEl.value,
     columns: +columnsEl.value,
     gap: +gapEl.value,
+    orientation: editorOrientation,
+    flipped_placements: [...flippedPlacements],
   };
-  const response = await fetch("/api/patterns", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const result = await response.json();
-  if (!response.ok) {
-    showEditorMessage(result.error || "Saving failed.", true);
+  let saved;
+  try {
+    saved = await fetchJson("/api/patterns", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    showEditorMessage(`Saving failed: ${error.message}`, true);
     return;
   }
-  showEditorMessage(`Saved "${result.name}" ✓`);
-  await loadPatterns(result.id);
+  showEditorMessage(`Saved "${saved.name}" ✓`);
+  await loadPatterns(saved.id);
 };
 
 // ---------------------------------------------------------------------------
 
 window.addEventListener("resize", () => {
-  if (!tabPlacement.hidden && placements) drawPlacements(canvas, placements);
+  if (!tabPlacement.hidden) drawPlacements(canvas, placements);
   if (!tabEditor.hidden) refreshPreview();
 });
 

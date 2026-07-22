@@ -33,7 +33,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from catalog import Catalog, UnknownShapeError, create_catalog
-from placement import Pattern, Size, compute_placements
+from placement import Orientation, Pattern, Size, compute_placements
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 _CONTENT_TYPES = {
@@ -174,6 +174,11 @@ class Handler(BaseHTTPRequestHandler):
         if shape is None:
             return self._send_json({"error": f"unknown shape '{shape_id}'"},
                                    404)
+        try:
+            orientation = _to_orientation(_first(query, "orientation"))
+            flipped = _to_indices(_first(query, "flipped"))
+        except PatternRequestError as exc:
+            return self._send_json({"error": str(exc)}, 400)
         pattern = Pattern(
             id=_PREVIEW_PATTERN_ID,
             name=_first(query, "name") or "Preview",
@@ -183,6 +188,8 @@ class Handler(BaseHTTPRequestHandler):
             rows=_to_int(_first(query, "rows")),
             columns=_to_int(_first(query, "columns")),
             gap=_to_float(_first(query, "gap"), 10.0),
+            orientation=orientation,
+            flipped_placements=flipped,
         )
         return self._send_json(compute_placements(pattern))
 
@@ -220,6 +227,8 @@ def _pattern_to_json(pattern: Pattern) -> dict:
         "rows": pattern.rows,
         "columns": pattern.columns,
         "gap": pattern.gap,
+        "orientation": pattern.orientation.value,
+        "flipped_placements": list(pattern.flipped_placements),
     }
 
 
@@ -240,6 +249,9 @@ def _pattern_from_json(payload: dict, shape) -> Pattern:
     if pattern_id == _PREVIEW_PATTERN_ID:
         raise PatternRequestError(
             f"'{_PREVIEW_PATTERN_ID}' is a reserved pattern id")
+    flipped = payload.get("flipped_placements") or []
+    if not isinstance(flipped, list):
+        raise PatternRequestError("flipped_placements must be a list")
     return Pattern(
         id=pattern_id,
         name=name,
@@ -248,7 +260,38 @@ def _pattern_from_json(payload: dict, shape) -> Pattern:
         rows=max(_to_int(payload.get("rows")), 0),
         columns=max(_to_int(payload.get("columns")), 0),
         gap=max(_to_float(payload.get("gap"), 10.0), 0.0),
+        orientation=_to_orientation(str(payload.get("orientation", ""))),
+        flipped_placements=tuple(_to_int(index) for index in flipped),
     )
+
+
+def _to_orientation(value: str) -> Orientation:
+    """
+    Parse an orientation request value; empty means "original".
+
+    :raises PatternRequestError: for values that are no known
+        orientation.
+    """
+    if not value:
+        return Orientation.ORIGINAL
+    try:
+        return Orientation(value)
+    except ValueError:
+        raise PatternRequestError(f"unknown orientation '{value}'") from None
+
+
+def _to_indices(value: str) -> tuple[int, ...]:
+    """
+    Parse a comma-separated list of placement indices, e.g. ``"0,2,5"``.
+
+    :raises PatternRequestError: when an entry is not an integer.
+    """
+    entries = [entry for entry in value.split(",") if entry.strip()]
+    try:
+        return tuple(int(entry) for entry in entries)
+    except ValueError:
+        raise PatternRequestError(
+            f"invalid placement indices '{value}'") from None
 
 
 def _slug(name: str) -> str:

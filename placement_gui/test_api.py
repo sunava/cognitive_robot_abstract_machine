@@ -109,3 +109,41 @@ class TestPatternSaving:
                 "box": {"width": 500, "height": 350},
             })
         assert excinfo.value.code == 400
+
+
+class TestOrientationAndFlips:
+    def test_preview_honours_orientation_and_flipped_indices(
+            self, api_base_url):
+        result = get_json(
+            f"{api_base_url}/api/preview?shape=bracket"
+            f"&box_width=600&box_height=400&rows=0&columns=0&gap=15"
+            f"&orientation=rotated&flipped=0,2")
+        assert result["orientation"] == "rotated"
+        first = result["placements"][0]
+        assert (first["width"], first["height"]) == (80.0, 120.0)
+        assert first["flipped"] is True
+        assert result["placements"][1]["flipped"] is False
+
+    def test_preview_with_unknown_orientation_is_rejected(self, api_base_url):
+        with pytest.raises(urllib.error.HTTPError) as excinfo:
+            get_json(f"{api_base_url}/api/preview?shape=bracket"
+                     f"&orientation=diagonal")
+        assert excinfo.value.code == 400
+
+    def test_saved_orientation_and_flips_survive_the_roundtrip(
+            self, api_base_url):
+        status, saved = post_json(f"{api_base_url}/api/patterns", {
+            "name": "Rotated brackets",
+            "shape_id": "bracket",
+            "box": {"width": 600, "height": 400},
+            "gap": 15,
+            "orientation": "rotated",
+            "flipped_placements": [1, 3],
+        })
+        assert status == 201
+        assert saved["orientation"] == "rotated"
+        assert saved["flipped_placements"] == [1, 3]
+        result = get_json(
+            f"{api_base_url}/api/placements?pattern={saved['id']}")
+        assert result["orientation"] == "rotated"
+        assert result["placements"][1]["flipped"] is True

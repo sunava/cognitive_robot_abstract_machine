@@ -26,11 +26,12 @@ environment variables (``PGHOST``, ``PGPORT``, ``PGDATABASE``, ``PGUSER``,
 
 from __future__ import annotations
 
+import json
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-from placement import Pattern, Shape, Size
+from placement import Orientation, Pattern, Shape, Size
 
 
 class UnknownShapeError(Exception):
@@ -170,20 +171,24 @@ class DemoCatalog(Catalog):
 _SELECT_SHAPES = "SELECT id, name, width, height FROM shapes"
 _SELECT_PATTERNS = """
 SELECT p.id, p.name, p.box_width, p.box_height, p.rows, p.columns, p.gap,
+       p.orientation, p.flipped_placements,
        s.id, s.name, s.width, s.height
 FROM patterns p JOIN shapes s ON s.id = p.shape_id
 """
 _UPSERT_PATTERN = """
-INSERT INTO patterns (id, name, box_width, box_height, shape_id, rows, columns, gap)
-VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+INSERT INTO patterns (id, name, box_width, box_height, shape_id, rows, columns,
+                      gap, orientation, flipped_placements)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT (id) DO UPDATE SET
-    name       = EXCLUDED.name,
-    box_width  = EXCLUDED.box_width,
-    box_height = EXCLUDED.box_height,
-    shape_id   = EXCLUDED.shape_id,
-    rows       = EXCLUDED.rows,
-    columns    = EXCLUDED.columns,
-    gap        = EXCLUDED.gap;
+    name               = EXCLUDED.name,
+    box_width          = EXCLUDED.box_width,
+    box_height         = EXCLUDED.box_height,
+    shape_id           = EXCLUDED.shape_id,
+    rows               = EXCLUDED.rows,
+    columns            = EXCLUDED.columns,
+    gap                = EXCLUDED.gap,
+    orientation        = EXCLUDED.orientation,
+    flipped_placements = EXCLUDED.flipped_placements;
 """
 
 
@@ -222,6 +227,7 @@ class PostgresCatalog(Catalog):
     @staticmethod
     def _row_to_pattern(row) -> Pattern:
         (pattern_id, name, box_width, box_height, rows, columns, gap,
+         orientation, flipped_placements,
          shape_id, shape_name, shape_width, shape_height) = row
         return Pattern(
             id=pattern_id,
@@ -232,6 +238,8 @@ class PostgresCatalog(Catalog):
             rows=int(rows),
             columns=int(columns),
             gap=float(gap),
+            orientation=Orientation(orientation),
+            flipped_placements=tuple(json.loads(flipped_placements or "[]")),
         )
 
     def list_shapes(self) -> list[Shape]:
@@ -265,6 +273,8 @@ class PostgresCatalog(Catalog):
                 pattern.id, pattern.name,
                 pattern.box.width, pattern.box.height,
                 pattern.shape.id, pattern.rows, pattern.columns, pattern.gap,
+                pattern.orientation.value,
+                json.dumps(list(pattern.flipped_placements)),
             ))
 
 

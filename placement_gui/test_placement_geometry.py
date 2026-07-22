@@ -4,14 +4,24 @@ Tests for the grid geometry in ``placement.py``.
 
 from __future__ import annotations
 
-from placement import (AUTO_FIT, Pattern, Shape, Size, compute_placements)
+from placement import (AUTO_FIT, Orientation, Pattern, Shape, Size,
+                       compute_placements)
 
 
-def rail_pattern(rows: int = AUTO_FIT, columns: int = AUTO_FIT) -> Pattern:
+def rail_pattern(rows: int = AUTO_FIT, columns: int = AUTO_FIT,
+                 **overrides) -> Pattern:
     return Pattern(
         id="test", name="Test", box=Size(600.0, 400.0),
         shape=Shape(id="rail", name="Rail", size=Size(480.0, 40.0)),
-        rows=rows, columns=columns, gap=12.0,
+        rows=rows, columns=columns, gap=12.0, **overrides,
+    )
+
+
+def bracket_pattern(**overrides) -> Pattern:
+    return Pattern(
+        id="test", name="Test", box=Size(600.0, 400.0),
+        shape=Shape(id="bracket", name="Bracket", size=Size(120.0, 80.0)),
+        gap=15.0, **overrides,
     )
 
 
@@ -73,3 +83,41 @@ class TestOffset:
         for placement in result["placements"]:
             assert placement["x"] >= 0
             assert placement["y"] >= 0
+
+
+class TestOrientation:
+    def test_rotated_orientation_swaps_the_footprint(self):
+        result = compute_placements(
+            bracket_pattern(orientation=Orientation.ROTATED))
+        placement = result["placements"][0]
+        assert placement["width"] == 80.0
+        assert placement["height"] == 120.0
+
+    def test_rotation_changes_how_many_parts_fit(self):
+        # Bracket 120x80 in a 600x400 box, gap 15: 4x4 originally, 6x2 rotated.
+        original = compute_placements(bracket_pattern())
+        rotated = compute_placements(
+            bracket_pattern(orientation=Orientation.ROTATED))
+        assert original["count"] == 16
+        assert rotated["columns"] == 6
+        assert rotated["rows"] == 2
+        assert rotated["count"] == 12
+
+    def test_orientation_is_reported_in_the_result(self):
+        result = compute_placements(
+            bracket_pattern(orientation=Orientation.ROTATED))
+        assert result["orientation"] == "rotated"
+
+
+class TestFlippedPlacements:
+    def test_flipped_indices_are_marked_in_the_placements(self):
+        result = compute_placements(rail_pattern(flipped_placements=(0, 2)))
+        flags = [placement["flipped"] for placement in result["placements"]]
+        assert flags[0] is True
+        assert flags[1] is False
+        assert flags[2] is True
+
+    def test_indices_beyond_the_grid_are_ignored(self):
+        result = compute_placements(rail_pattern(flipped_placements=(999,)))
+        assert all(not placement["flipped"]
+                   for placement in result["placements"])

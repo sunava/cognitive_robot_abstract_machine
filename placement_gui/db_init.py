@@ -32,15 +32,23 @@ CREATE TABLE IF NOT EXISTS shapes (
 );
 
 CREATE TABLE IF NOT EXISTS patterns (
-    id         TEXT PRIMARY KEY,
-    name       TEXT             NOT NULL,
-    box_width  DOUBLE PRECISION NOT NULL,
-    box_height DOUBLE PRECISION NOT NULL,
-    shape_id   TEXT             NOT NULL REFERENCES shapes(id),
-    rows       INTEGER          NOT NULL DEFAULT 0,
-    columns    INTEGER          NOT NULL DEFAULT 0,
-    gap        DOUBLE PRECISION NOT NULL DEFAULT 10.0
+    id                 TEXT PRIMARY KEY,
+    name               TEXT             NOT NULL,
+    box_width          DOUBLE PRECISION NOT NULL,
+    box_height         DOUBLE PRECISION NOT NULL,
+    shape_id           TEXT             NOT NULL REFERENCES shapes(id),
+    rows               INTEGER          NOT NULL DEFAULT 0,
+    columns            INTEGER          NOT NULL DEFAULT 0,
+    gap                DOUBLE PRECISION NOT NULL DEFAULT 10.0,
+    orientation        TEXT             NOT NULL DEFAULT 'original',
+    flipped_placements TEXT             NOT NULL DEFAULT '[]'
 );
+
+-- Upgrade tables created before orientation support.
+ALTER TABLE patterns
+    ADD COLUMN IF NOT EXISTS orientation TEXT NOT NULL DEFAULT 'original';
+ALTER TABLE patterns
+    ADD COLUMN IF NOT EXISTS flipped_placements TEXT NOT NULL DEFAULT '[]';
 """
 
 # (id, name, width, height) — same values as the DemoCatalog samples.
@@ -50,11 +58,13 @@ _SHAPE_SEED = [
     ("bracket", "Bracket", 120.0, 80.0),
 ]
 
-# (id, name, box_width, box_height, shape_id, rows, columns, gap);
-# rows/columns 0 = as many as fit.
+# (id, name, box_width, box_height, shape_id, rows, columns, gap, orientation,
+# flipped_placements); rows/columns 0 = as many as fit.
 _PATTERN_SEED = [
-    ("rails-long", "Rails long", 600.0, 400.0, "rail-long", 0, 0, 12.0),
-    ("rails-slim", "Rails slim", 600.0, 400.0, "rail-slim", 0, 0, 12.0),
+    ("rails-long", "Rails long", 600.0, 400.0, "rail-long", 0, 0, 12.0,
+     "original", "[]"),
+    ("rails-slim", "Rails slim", 600.0, 400.0, "rail-slim", 0, 0, 12.0,
+     "original", "[]"),
 ]
 
 _UPSERT_SHAPE = """
@@ -67,16 +77,19 @@ ON CONFLICT (id) DO UPDATE SET
 """
 
 _UPSERT_PATTERN = """
-INSERT INTO patterns (id, name, box_width, box_height, shape_id, rows, columns, gap)
-VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+INSERT INTO patterns (id, name, box_width, box_height, shape_id, rows, columns,
+                      gap, orientation, flipped_placements)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT (id) DO UPDATE SET
-    name       = EXCLUDED.name,
-    box_width  = EXCLUDED.box_width,
-    box_height = EXCLUDED.box_height,
-    shape_id   = EXCLUDED.shape_id,
-    rows       = EXCLUDED.rows,
-    columns    = EXCLUDED.columns,
-    gap        = EXCLUDED.gap;
+    name               = EXCLUDED.name,
+    box_width          = EXCLUDED.box_width,
+    box_height         = EXCLUDED.box_height,
+    shape_id           = EXCLUDED.shape_id,
+    rows               = EXCLUDED.rows,
+    columns            = EXCLUDED.columns,
+    gap                = EXCLUDED.gap,
+    orientation        = EXCLUDED.orientation,
+    flipped_placements = EXCLUDED.flipped_placements;
 """
 
 

@@ -179,6 +179,24 @@ input[type=range]::-webkit-slider-thumb {
 }
 .save:active { transform: scale(0.97); }
 
+/* Orientation toggle (0° / 90°). */
+.segmented { display: flex; gap: 10px; }
+.segmented button {
+  flex: 1 1 0; font-size: 22px; padding: 12px;
+  border: 1px solid var(--glass-border); border-radius: 12px;
+  background: var(--glass-bg); color: var(--text); cursor: pointer;
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  transition: transform .12s ease, background .2s ease, box-shadow .2s ease;
+}
+.segmented button:active { transform: scale(0.96); }
+.segmented button.active {
+  background: linear-gradient(135deg, var(--accent), #1d4ed8);
+  border-color: var(--accent-2); color: #fff;
+  box-shadow: 0 4px 18px rgba(59, 130, 246, 0.45);
+}
+
+.hint { font-size: 15px; color: var(--muted); text-align: center; }
+
 /* Save confirmation / validation feedback. */
 .message {
   min-height: 26px; font-size: 18px; text-align: center; color: #9ff0b7;
