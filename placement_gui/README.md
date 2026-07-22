@@ -1,30 +1,21 @@
-# Placement Pattern GUI
+# Placement Pattern GUI (Anforderungsprofil 1)
 
-A web GUI that visualizes **placement patterns** of parts inside a box,
-intended for display in the browser of a **SIMATIC HMI MTP1500 Unified
-Comfort** panel.
+A web GUI that visualizes a **default placement pattern** for a part inside a
+box, intended for display in the browser of a **SIMATIC HMI MTP1500 Unified
+Comfort** panel (6AV2128-3QB06-0AX1).
 
-A **shape** is the footprint of a single part (one of the black rails) and
-lives in the **shape catalog** (database table `shapes`). A **pattern**
-arranges one catalog shape as a grid inside a box and lives in the `patterns`
-table. The GUI has two tabs:
-
-- **Placement** — pick a stored pattern, see the computed placements on an
-  HTML canvas, and shift the whole pattern via **X/Y offset** sliders.
-- **Pattern Editor** — pick a shape from the catalog (with previews), define a
-  new pattern (box size, rows/columns — `0` means "as many as fit" — gap and
-  orientation) with a live preview, and **save** it. Saved patterns immediately
-  show up in the Placement tab; saving under the same name updates the same
-  pattern. The **0°/90° orientation** toggle rotates all parts and recomputes
-  how many fit; **tapping a single part** in the preview turns it by 180°, so
-  its head end faces the other way (like alternating rows in a real box).
+The pattern is computed on the server, drawn on an HTML canvas, and can be
+shifted as a whole via **X/Y offset** sliders. The two objects from the
+requirements are switched via the recipe buttons in the header; both boxes
+have the same size. **No further editing is available — by design** (more
+editing capabilities can be sold later if the customer needs them).
 
 ---
 
 ## Quick start — Demo mode (no database)
 
-The fastest way to see the UI. Uses built-in sample shapes and patterns,
-**no database and no extra packages required** — only Python 3:
+The fastest way to see the UI. Uses built-in sample recipes, **no database and
+no extra packages required** — only Python 3:
 
 ```bash
 cd placement_gui
@@ -32,14 +23,13 @@ python3 app.py --demo
 ```
 
 Then open <http://localhost:8000/> in a browser. A **"Demo data"** badge appears
-next to the title so it's clear the data is sample data, not live data.
-Patterns saved in demo mode live in memory until the server stops.
+next to the title so it's clear the recipes are samples, not live data.
 
 ---
 
 ## Production — PostgreSQL backend
 
-The real backend reads shapes and patterns from PostgreSQL.
+The real backend reads recipes from a PostgreSQL `recipes` table.
 
 **1. Install the driver** (one time; needs pip):
 
@@ -57,7 +47,7 @@ export PGHOST=dbhost PGPORT=5432 PGDATABASE=placement PGUSER=app PGPASSWORD=secr
 
 No credentials are stored in code — they only come from the environment.
 
-**3. Create and seed the tables** (one time; safe to re-run):
+**3. Create and seed the table** (one time; safe to re-run):
 
 ```bash
 python3 db_init.py
@@ -78,90 +68,84 @@ backend is active (`[PostgreSQL]` or `[DEMO data …]`).
 
 ```
 HMI panel (Chromium)  --HTTP-->  app.py  (separate machine)
-       browser                   ├─ static/       HTML/CSS/JS canvas GUI (two tabs)
-                                  ├─ placement.py  pattern geometry (pure stdlib)
-                                  └─ catalog.py    shapes + patterns data source
-                                        ├─ DemoCatalog     : built-in samples (--demo)
-                                        └─ PostgresCatalog : shapes/patterns tables via psycopg
+       browser                   ├─ static/       HTML/CSS/JS canvas GUI
+                                  ├─ placement.py  pattern computation (pure stdlib)
+                                  └─ recipes.py    data source
+                                        ├─ DemoRecipes     : built-in samples (--demo)
+                                        └─ PostgresRecipes : recipes table via psycopg
 ```
-
-- **Web + geometry layer** is pure Python standard library (`http.server`).
-- **Only the data source** (`catalog.py`) touches a database, and only in the
-  PostgreSQL backend. The `psycopg` import is lazy, so demo mode needs no driver.
-- The editor preview and the placement view share **one geometry code path**
-  on the server (`placement.compute_placements`).
 
 ## Files
 
 | File | Purpose |
 |------|---------|
 | `app.py` | Stdlib HTTP server: serves `static/` and the JSON API. `--demo` flag. |
-| `placement.py` | `Shape`/`Pattern` dataclasses + centred grid computation and offset range. |
-| `catalog.py` | `Catalog` interface with `DemoCatalog` and `PostgresCatalog` backends. |
-| `db_init.py` | Creates and seeds the PostgreSQL `shapes` and `patterns` tables. |
+| `placement.py` | Computes the centred grid pattern + allowed offset range. |
+| `recipes.py` | `RecipeSource` interface with demo and PostgreSQL backends. |
+| `db_init.py` | Creates and seeds the PostgreSQL `recipes` table. |
 | `requirements.txt` | The one dependency: `psycopg` (PostgreSQL backend only). |
-| `static/` | `index.html`, `style.css`, `app.js` — the two-tab canvas GUI. |
-| `test_*.py` | Pytest suites for geometry, demo catalog, and the JSON API. |
+| `static/` | `index.html`, `style.css`, `app.js` — the canvas GUI. |
+| `test_*.py` | Pytest suites for geometry, recipe source, and the JSON API. |
 
 ## API
 
 | Endpoint | Description |
 |----------|-------------|
 | `GET /api/status` | `{ "demo": true \| false }` — which backend is active. |
-| `GET /api/shapes` | Shape catalog: `id, name, width, height`. |
-| `GET /api/patterns` | Stored patterns: `id, name, box, shape_id, rows, columns, gap`. |
-| `POST /api/patterns` | Save a pattern (JSON body as above, id derived from the name). |
-| `GET /api/placements?pattern=ID&offset_x=0&offset_y=0` | Computed placements: box, shape, grid, count, positions, allowed offset range. |
-| `GET /api/preview?shape=ID&box_width=&box_height=&rows=&columns=&gap=&orientation=&flipped=` | Placements for an unsaved pattern (editor live preview). |
+| `GET /api/recipes` | List of recipes: `id, name, box, part, gap`. |
+| `GET /api/pattern?recipe=A&offset_x=0&offset_y=0` | Computed pattern: box, part, grid, count, all placements, allowed offset range. |
 
 On a database error the API returns HTTP `503` with `{ "error": … }` instead of
-dropping the request, so the UI degrades gracefully.
+dropping the request, so the UI degrades gracefully and shows a clear message.
 
 ## Database schema
 
 `db_init.py` creates:
 
 ```sql
-CREATE TABLE shapes (
-    id     TEXT PRIMARY KEY,
-    name   TEXT             NOT NULL,
-    width  DOUBLE PRECISION NOT NULL,
-    height DOUBLE PRECISION NOT NULL
-);
-
-CREATE TABLE patterns (
-    id                 TEXT PRIMARY KEY,
-    name               TEXT             NOT NULL,
-    box_width          DOUBLE PRECISION NOT NULL,
-    box_height         DOUBLE PRECISION NOT NULL,
-    shape_id           TEXT             NOT NULL REFERENCES shapes(id),
-    rows               INTEGER          NOT NULL DEFAULT 0,     -- 0 = as many as fit
-    columns            INTEGER          NOT NULL DEFAULT 0,     -- 0 = as many as fit
-    gap                DOUBLE PRECISION NOT NULL DEFAULT 10.0,
-    orientation        TEXT             NOT NULL DEFAULT 'original',  -- or 'rotated' (90°)
-    flipped_placements TEXT             NOT NULL DEFAULT '[]'   -- JSON list of 180°-turned indices
+CREATE TABLE recipes (
+    id          TEXT PRIMARY KEY,
+    name        TEXT             NOT NULL,
+    box_width   DOUBLE PRECISION NOT NULL,
+    box_height  DOUBLE PRECISION NOT NULL,
+    part_width  DOUBLE PRECISION NOT NULL,
+    part_height DOUBLE PRECISION NOT NULL,
+    gap         DOUBLE PRECISION NOT NULL DEFAULT 10.0
 );
 ```
 
-…and seeds three shapes (two rails + a bracket) and two rail patterns in a
-600 × 400 mm box.
+…and seeds the two recipes (Part A and Part B) in a 600 × 400 mm box.
 
 ## Tests
 
-Pure stdlib, run with pytest from this directory:
+Pure stdlib, run with pytest:
 
 ```bash
 pytest placement_gui
 ```
 
+## The open technical questions (from the requirements)
+
+1. **Web server stack** → Python stdlib `http.server` — a zero-dependency web
+   layer that runs on any machine with Python 3. If auth, WebSockets or scale
+   are ever needed, only `app.py` is swapped (e.g. for FastAPI); geometry and
+   data source stay untouched.
+2. **SDT access vs. database for recipes** → **PostgreSQL**, fully encapsulated
+   behind the `RecipeSource` interface in `recipes.py` (+ `db_init.py`). If the
+   SDT should become the source later, only a new `RecipeSource` implementation
+   is added; web layer and geometry are untouched.
+3. **Writing inputs back** (offset → SDT/DB) → currently the offset is only
+   applied and the pattern returned. To persist it, add a `POST` endpoint in
+   `app.py` plus a `save_offset` method on `RecipeSource` — the seam is
+   prepared by the interface.
+
 ## Assumptions in the prototype (adjust as needed)
 
-- 2-D top-down view; rectangular shape footprints. Real geometries come later
-  from the SDT — swap `catalog.py` accordingly, the rest is untouched.
+- Box inner size **600 × 400 mm**; both boxes the same size (per requirements).
+- Part A 480 × 40 mm, Part B 520 × 34 mm, minimum spacing 12 mm.
+- 2-D top-down view; rectangular parts. Real geometries come later from the SDT.
 - Default pattern = centred grid; offset clamped to the box walls.
-- Patterns repeat a single shape; mixed-shape patterns would extend
-  `Pattern`/`compute_placements`.
-- Parts are packed as rectangular footprints. The 90° orientation genuinely
-  changes how many fit; the per-part 180° turn keeps the same footprint and is
-  stored for the placement process (real interlocking of head shapes needs the
-  actual part geometry from the SDT).
+
+..note:: An extended version with a shape catalog and a pattern editor tab
+(rotation of parts, saving patterns from the GUI) exists in the git history of
+this branch, should the customer buy more editing capabilities later.

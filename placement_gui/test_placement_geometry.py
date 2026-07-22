@@ -4,47 +4,34 @@ Tests for the grid geometry in ``placement.py``.
 
 from __future__ import annotations
 
-from placement import (AUTO_FIT, Orientation, Pattern, Shape, Size,
-                       compute_placements)
+from placement import Recipe, Size, compute_pattern
 
 
-def rail_pattern(rows: int = AUTO_FIT, columns: int = AUTO_FIT,
-                 **overrides) -> Pattern:
-    return Pattern(
-        id="test", name="Test", box=Size(600.0, 400.0),
-        shape=Shape(id="rail", name="Rail", size=Size(480.0, 40.0)),
-        rows=rows, columns=columns, gap=12.0, **overrides,
+def rail_recipe() -> Recipe:
+    return Recipe(
+        id="A", name="Part A", box=Size(600.0, 400.0),
+        part=Size(480.0, 40.0), gap=12.0,
     )
 
 
-def bracket_pattern(**overrides) -> Pattern:
-    return Pattern(
-        id="test", name="Test", box=Size(600.0, 400.0),
-        shape=Shape(id="bracket", name="Bracket", size=Size(120.0, 80.0)),
-        gap=15.0, **overrides,
-    )
-
-
-class TestAutoFitGrid:
-    def test_fits_as_many_shapes_as_the_box_allows(self):
-        result = compute_placements(rail_pattern())
+class TestDefaultGrid:
+    def test_fits_as_many_parts_as_the_box_allows(self):
+        result = compute_pattern(rail_recipe())
         # (600 - 12) // (480 + 12) = 1 column, (400 - 12) // (40 + 12) = 7 rows
         assert result["columns"] == 1
         assert result["rows"] == 7
         assert result["count"] == 7
         assert len(result["placements"]) == 7
 
-    def test_no_placements_when_the_shape_is_larger_than_the_box(self):
-        pattern = Pattern(
-            id="test", name="Test", box=Size(100.0, 100.0),
-            shape=Shape(id="huge", name="Huge", size=Size(200.0, 200.0)),
-        )
-        result = compute_placements(pattern)
+    def test_no_placements_when_the_part_is_larger_than_the_box(self):
+        recipe = Recipe(id="X", name="Huge", box=Size(100.0, 100.0),
+                        part=Size(200.0, 200.0))
+        result = compute_pattern(recipe)
         assert result["count"] == 0
         assert result["offset_range"] == {"max_x": 0.0, "max_y": 0.0}
 
     def test_grid_is_centred_in_the_box(self):
-        result = compute_placements(rail_pattern())
+        result = compute_pattern(rail_recipe())
         lowest = result["placements"][0]
         highest = result["placements"][-1]
         bottom_margin = lowest["y"]
@@ -53,71 +40,20 @@ class TestAutoFitGrid:
         assert abs(bottom_margin - top_margin) < 1e-9
 
 
-class TestExplicitGrid:
-    def test_requested_rows_and_columns_are_used(self):
-        result = compute_placements(rail_pattern(rows=3, columns=1))
-        assert result["rows"] == 3
-        assert result["columns"] == 1
-        assert result["count"] == 3
-
-    def test_requested_counts_are_clamped_to_what_fits(self):
-        result = compute_placements(rail_pattern(rows=100, columns=100))
-        assert result["rows"] == 7
-        assert result["columns"] == 1
-
-
 class TestOffset:
     def test_offset_is_applied_to_every_placement(self):
-        centred = compute_placements(rail_pattern())
-        shifted = compute_placements(rail_pattern(), offset_x=0.0, offset_y=5.0)
+        centred = compute_pattern(rail_recipe())
+        shifted = compute_pattern(rail_recipe(), offset_x=0.0, offset_y=5.0)
         for before, after in zip(centred["placements"],
                                  shifted["placements"]):
             assert after["y"] - before["y"] == 5.0
 
     def test_offset_is_clamped_to_the_box_walls(self):
-        result = compute_placements(rail_pattern(), offset_x=10_000.0,
-                                    offset_y=-10_000.0)
+        result = compute_pattern(rail_recipe(), offset_x=10_000.0,
+                                 offset_y=-10_000.0)
         limits = result["offset_range"]
         assert result["offset"]["x"] == limits["max_x"]
         assert result["offset"]["y"] == -limits["max_y"]
         for placement in result["placements"]:
             assert placement["x"] >= 0
             assert placement["y"] >= 0
-
-
-class TestOrientation:
-    def test_rotated_orientation_swaps_the_footprint(self):
-        result = compute_placements(
-            bracket_pattern(orientation=Orientation.ROTATED))
-        placement = result["placements"][0]
-        assert placement["width"] == 80.0
-        assert placement["height"] == 120.0
-
-    def test_rotation_changes_how_many_parts_fit(self):
-        # Bracket 120x80 in a 600x400 box, gap 15: 4x4 originally, 6x2 rotated.
-        original = compute_placements(bracket_pattern())
-        rotated = compute_placements(
-            bracket_pattern(orientation=Orientation.ROTATED))
-        assert original["count"] == 16
-        assert rotated["columns"] == 6
-        assert rotated["rows"] == 2
-        assert rotated["count"] == 12
-
-    def test_orientation_is_reported_in_the_result(self):
-        result = compute_placements(
-            bracket_pattern(orientation=Orientation.ROTATED))
-        assert result["orientation"] == "rotated"
-
-
-class TestFlippedPlacements:
-    def test_flipped_indices_are_marked_in_the_placements(self):
-        result = compute_placements(rail_pattern(flipped_placements=(0, 2)))
-        flags = [placement["flipped"] for placement in result["placements"]]
-        assert flags[0] is True
-        assert flags[1] is False
-        assert flags[2] is True
-
-    def test_indices_beyond_the_grid_are_ignored(self):
-        result = compute_placements(rail_pattern(flipped_placements=(999,)))
-        assert all(not placement["flipped"]
-                   for placement in result["placements"])

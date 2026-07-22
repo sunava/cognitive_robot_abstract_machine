@@ -1,35 +1,149 @@
 "use strict";
-// Frontend for the placement-pattern GUI.
-//
-// Tab "Placement": fetches the computed placements of a stored pattern from
-// the server, draws a top-down view of the box + shapes, and lets the operator
-// nudge the whole pattern via X/Y offset sliders.
-//
-// Tab "Pattern Editor": lists the shapes from the shape catalog, lets the
-// operator pick one and define a new pattern (box size, rows/columns/gap,
-// orientation) with a live preview, then saves it to the data source.
-// Individual parts can be turned by 180° by tapping them in the preview.
+// Frontend for Anforderungsprofil 1. Fetches the precomputed pattern from the
+// server, draws a top-down view of the box + parts, and lets the operator
+// nudge the whole pattern via X/Y offset sliders and switch between recipes.
 
-// ---------------------------------------------------------------------------
-// Shared drawing helpers (used by both tabs and the shape previews)
-// ---------------------------------------------------------------------------
+const canvas = document.getElementById("canvas");
+const offsetXEl = document.getElementById("offset-x");
+const offsetYEl = document.getElementById("offset-y");
+const offsetXValue = document.getElementById("offset-x-value");
+const offsetYValue = document.getElementById("offset-y-value");
+const countEl = document.getElementById("count");
+const metaEl = document.getElementById("meta");
+const recipeButtons = document.getElementById("recipe-buttons");
+const demoBadge = document.getElementById("demo-badge");
 
-function roundRect(ctx, x, y, w, h, r) {
-  // Clamp the radius so degenerate sizes can never produce a negative value,
-  // which would make arcTo() throw and kill the calling code path.
-  const radius = Math.max(0, Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2));
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.arcTo(x + w, y, x + w, y + h, radius);
-  ctx.arcTo(x + w, y + h, x, y + h, radius);
-  ctx.arcTo(x, y + h, x, y, radius);
-  ctx.arcTo(x, y, x + w, y, radius);
-  ctx.closePath();
+let recipes = [];
+let currentRecipe = null;
+let pattern = null;
+
+async function fetchJson(url) {
+  const response = await fetch(url);
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+  return payload;
+}
+
+async function loadStatus() {
+  try {
+    const s = await fetchJson("/api/status");
+    demoBadge.hidden = !s.demo;
+    demoBadge.title = s.demo
+      ? "Showing built-in sample recipes — no database connected."
+      : "";
+  } catch { /* status is optional; ignore if unavailable */ }
+}
+
+async function loadRecipes() {
+  try {
+    recipes = await fetchJson("/api/recipes");
+  } catch (error) {
+    metaEl.textContent = `Could not load recipes: ${error.message}`;
+    return;
+  }
+  recipeButtons.innerHTML = "";
+  recipes.forEach(r => {
+    const b = document.createElement("button");
+    b.textContent = r.name;
+    b.dataset.id = r.id;
+    b.onclick = () => selectRecipe(r.id);
+    recipeButtons.appendChild(b);
+  });
+  if (recipes.length) selectRecipe(recipes[0].id);
+}
+
+async function selectRecipe(id) {
+  currentRecipe = id;
+  [...recipeButtons.children].forEach(b =>
+    b.classList.toggle("active", b.dataset.id === id));
+  // New recipe -> reset offset to the default (centred) pattern.
+  offsetXEl.value = 0;
+  offsetYEl.value = 0;
+  await refreshPattern();
+  if (!pattern) return;
+  // Bound the sliders to the recipe's allowed offset range.
+  const m = pattern.offset_range;
+  offsetXEl.min = -m.max_x; offsetXEl.max = m.max_x;
+  offsetYEl.min = -m.max_y; offsetYEl.max = m.max_y;
+}
+
+async function refreshPattern() {
+  const url = `/api/pattern?recipe=${encodeURIComponent(currentRecipe)}`
+            + `&offset_x=${offsetXEl.value}&offset_y=${offsetYEl.value}`;
+  try {
+    pattern = await fetchJson(url);
+  } catch (error) {
+    countEl.textContent = "–";
+    metaEl.textContent =
+      `Server unreachable (${error.message}) — is app.py still running?`;
+    return;
+  }
+  countEl.textContent = pattern.count;
+  offsetXValue.textContent = `${Math.round(pattern.offset.x)} mm`;
+  offsetYValue.textContent = `${Math.round(pattern.offset.y)} mm`;
+  metaEl.innerHTML =
+    `Box: ${pattern.box.width} × ${pattern.box.height} mm<br>` +
+    `Part: ${pattern.part.width} × ${pattern.part.height} mm<br>` +
+    `Grid: ${pattern.columns} × ${pattern.rows}`;
+  draw();
+}
+
+function draw() {
+  // Fit the canvas to its CSS box at device resolution. Skip drawing while
+  // the canvas has no usable size (e.g. during layout).
+  const dpr = window.devicePixelRatio || 1;
+  const cw = canvas.clientWidth, ch = canvas.clientHeight;
+  const pad = 30;
+  if (!pattern || cw <= 2 * pad || ch <= 2 * pad) return;
+  canvas.width = cw * dpr; canvas.height = ch * dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cw, ch);
+
+  const box = pattern.box;
+  const scale = Math.min((cw - 2 * pad) / box.width,
+                         (ch - 2 * pad) / box.height);
+  const ox = (cw - box.width * scale) / 2;
+  const oy = (ch - box.height * scale) / 2;
+
+  // Box coords have origin lower-left; canvas y grows downward -> flip y.
+  const X = x => ox + x * scale;
+  const Y = y => oy + (box.height - y) * scale;
+
+  // Box wall — frosted glass surface.
+  ctx.save();
+  ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
+  ctx.lineWidth = 2;
+  roundRect(ctx, X(0), Y(box.height), box.width * scale, box.height * scale, 16);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  // Parts — drawn in the shape of the real black rail parts from the
+  // requirements doc. See drawPart().
+  pattern.placements.forEach((p) => {
+    drawPart(ctx, X(p.x), Y(p.y + p.height), p.width * scale, p.height * scale);
+  });
+}
+
+// Draw one part inside its bounding box (canvas px). The part runs along its
+// longer edge, with a wider "head" block (two square holes) at one end and a
+// glossy sheen + groove along the body — a stylised top-down view of the black
+// parts shown in the requirements doc.
+function drawPart(ctx, px, py, pw, ph) {
+  const horizontal = pw >= ph;
+  const L = horizontal ? pw : ph;   // length (along the long edge)
+  const T = horizontal ? ph : pw;   // thickness (across)
+
+  ctx.save();
+  ctx.translate(px + pw / 2, py + ph / 2);
+  if (!horizontal) ctx.rotate(Math.PI / 2);  // draw horizontally, then rotate
+  drawRail(ctx, L, T);
+  ctx.restore();
 }
 
 // Rail centred at the current origin: length L along x, thickness T along y.
-// A stylised top-down view of the black rail/bracket parts: long glossy dark
-// body, wider head block with two holes at one end, groove down the length.
 function drawRail(ctx, L, T) {
   const x0 = -L / 2, y0 = -T / 2;
   const bodyT = T * 0.60;            // slim shaft, thinner than the head
@@ -87,376 +201,34 @@ function drawRail(ctx, L, T) {
   ctx.stroke();
 }
 
-// Draw one shape inside its bounding box (canvas px). The shape runs along its
-// longer edge; vertical placements are drawn horizontally and rotated. Flipped
-// parts are turned by 180°, so their head end faces the other way.
-function drawShape(ctx, px, py, pw, ph, flipped) {
-  const horizontal = pw >= ph;
-  const L = horizontal ? pw : ph;   // length (along the long edge)
-  const T = horizontal ? ph : pw;   // thickness (across)
-
-  ctx.save();
-  ctx.translate(px + pw / 2, py + ph / 2);
-  if (!horizontal) ctx.rotate(Math.PI / 2);
-  if (flipped) ctx.rotate(Math.PI);
-  drawRail(ctx, L, T);
-  ctx.restore();
-}
-
-// Draw a full placements result (box + shapes) onto a canvas. Returns the
-// box-to-canvas transform for hit-testing, or null when the canvas has no
-// usable size (e.g. its tab is hidden).
-function drawPlacements(canvas, result) {
-  const ctx = canvas.getContext("2d");
-  const dpr = window.devicePixelRatio || 1;
-  const cw = canvas.clientWidth, ch = canvas.clientHeight;
-  const pad = 30;
-  if (!result || cw <= 2 * pad || ch <= 2 * pad) return null;
-  canvas.width = cw * dpr; canvas.height = ch * dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, cw, ch);
-
-  const box = result.box;
-  const scale = Math.min((cw - 2 * pad) / box.width, (ch - 2 * pad) / box.height);
-  const ox = (cw - box.width * scale) / 2;
-  const oy = (ch - box.height * scale) / 2;
-
-  // Box coords have origin lower-left; canvas y grows downward -> flip y.
-  const X = x => ox + x * scale;
-  const Y = y => oy + (box.height - y) * scale;
-
-  // Box wall — frosted glass surface.
-  ctx.save();
-  ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
-  ctx.lineWidth = 2;
-  roundRect(ctx, X(0), Y(box.height), box.width * scale, box.height * scale, 16);
-  ctx.fill();
-  ctx.stroke();
-  ctx.restore();
-
-  result.placements.forEach((p) => {
-    drawShape(ctx, X(p.x), Y(p.y + p.height),
-      p.width * scale, p.height * scale, p.flipped);
-  });
-  return { scale, ox, oy, box };
-}
-
-async function fetchJson(url, options) {
-  const response = await fetch(url, options);
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
-  return payload;
-}
-
-// ---------------------------------------------------------------------------
-// Header: status + tab switching
-// ---------------------------------------------------------------------------
-
-const demoBadge = document.getElementById("demo-badge");
-const tabButtonPlacement = document.getElementById("tab-button-placement");
-const tabButtonEditor = document.getElementById("tab-button-editor");
-const tabPlacement = document.getElementById("tab-placement");
-const tabEditor = document.getElementById("tab-editor");
-
-async function loadStatus() {
-  try {
-    const s = await fetchJson("/api/status");
-    demoBadge.hidden = !s.demo;
-    demoBadge.title = s.demo
-      ? "Showing built-in sample data — no database connected."
-      : "";
-  } catch { /* status is optional; ignore if unavailable */ }
-}
-
-function showTab(editor) {
-  tabPlacement.hidden = editor;
-  tabEditor.hidden = !editor;
-  tabButtonPlacement.classList.toggle("active", !editor);
-  tabButtonEditor.classList.toggle("active", editor);
-  // Canvases have zero size while hidden; redraw the one that just appeared.
-  if (editor) refreshPreview();
-  else drawPlacements(canvas, placements);
-}
-tabButtonPlacement.onclick = () => showTab(false);
-tabButtonEditor.onclick = () => showTab(true);
-
-// ---------------------------------------------------------------------------
-// Tab 1: placement view
-// ---------------------------------------------------------------------------
-
-const canvas = document.getElementById("canvas");
-const offsetXEl = document.getElementById("offset-x");
-const offsetYEl = document.getElementById("offset-y");
-const offsetXValue = document.getElementById("offset-x-value");
-const offsetYValue = document.getElementById("offset-y-value");
-const countEl = document.getElementById("count");
-const metaEl = document.getElementById("meta");
-const patternButtons = document.getElementById("pattern-buttons");
-
-let patterns = [];
-let currentPattern = null;
-let placements = null;
-
-async function loadPatterns(selectId) {
-  try {
-    patterns = await fetchJson("/api/patterns");
-  } catch (error) {
-    metaEl.textContent = `Could not load patterns: ${error.message}`;
-    return;
-  }
-  patternButtons.innerHTML = "";
-  patterns.forEach(p => {
-    const b = document.createElement("button");
-    b.textContent = p.name;
-    b.dataset.id = p.id;
-    b.onclick = () => selectPattern(p.id);
-    patternButtons.appendChild(b);
-  });
-  const initial = selectId || (patterns.length ? patterns[0].id : null);
-  if (initial) await selectPattern(initial);
-}
-
-async function selectPattern(id) {
-  currentPattern = id;
-  [...patternButtons.children].forEach(b =>
-    b.classList.toggle("active", b.dataset.id === id));
-  // New pattern -> reset offset to the default (centred) placements.
-  offsetXEl.value = 0;
-  offsetYEl.value = 0;
-  await refreshPlacements();
-  if (!placements) return;
-  // Bound the sliders to the pattern's allowed offset range.
-  const m = placements.offset_range;
-  offsetXEl.min = -m.max_x; offsetXEl.max = m.max_x;
-  offsetYEl.min = -m.max_y; offsetYEl.max = m.max_y;
-}
-
-async function refreshPlacements() {
-  const url = `/api/placements?pattern=${encodeURIComponent(currentPattern)}`
-            + `&offset_x=${offsetXEl.value}&offset_y=${offsetYEl.value}`;
-  try {
-    placements = await fetchJson(url);
-  } catch (error) {
-    countEl.textContent = "–";
-    metaEl.textContent =
-      `Server unreachable (${error.message}) — is app.py still running?`;
-    return;
-  }
-  countEl.textContent = placements.count;
-  offsetXValue.textContent = `${Math.round(placements.offset.x)} mm`;
-  offsetYValue.textContent = `${Math.round(placements.offset.y)} mm`;
-  const rotated = placements.orientation === "rotated";
-  metaEl.innerHTML =
-    `Shape: ${placements.shape.name} `
-    + `(${placements.shape.width} × ${placements.shape.height} mm)`
-    + `${rotated ? ", rotated 90°" : ""}<br>`
-    + `Box: ${placements.box.width} × ${placements.box.height} mm<br>`
-    + `Grid: ${placements.columns} × ${placements.rows}`;
-  drawPlacements(canvas, placements);
+function roundRect(ctx, x, y, w, h, r) {
+  // Clamp the radius so degenerate sizes can never produce a negative value,
+  // which would make arcTo() throw and kill the calling code path.
+  const radius = Math.max(0, Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
 }
 
 // Live drag without hammering the server: redraw locally, fetch on input.
-let pendingPlacements = false;
+let pending = false;
 function onSlide() {
   offsetXValue.textContent = `${Math.round(offsetXEl.value)} mm`;
   offsetYValue.textContent = `${Math.round(offsetYEl.value)} mm`;
-  if (pendingPlacements) return;
-  pendingPlacements = true;
-  requestAnimationFrame(async () => {
-    pendingPlacements = false;
-    await refreshPlacements();
-  });
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(async () => { pending = false; await refreshPattern(); });
 }
 offsetXEl.addEventListener("input", onSlide);
 offsetYEl.addEventListener("input", onSlide);
 document.getElementById("reset").onclick = () => {
-  offsetXEl.value = 0; offsetYEl.value = 0; refreshPlacements();
+  offsetXEl.value = 0; offsetYEl.value = 0; refreshPattern();
 };
-
-// ---------------------------------------------------------------------------
-// Tab 2: pattern editor (shape catalog + live preview + save)
-// ---------------------------------------------------------------------------
-
-const editorCanvas = document.getElementById("editor-canvas");
-const shapeList = document.getElementById("shape-list");
-const editorCount = document.getElementById("editor-count");
-const patternNameEl = document.getElementById("pattern-name");
-const boxWidthEl = document.getElementById("box-width");
-const boxHeightEl = document.getElementById("box-height");
-const rowsEl = document.getElementById("rows");
-const columnsEl = document.getElementById("columns");
-const gapEl = document.getElementById("gap");
-const orientationOriginal = document.getElementById("orientation-original");
-const orientationRotated = document.getElementById("orientation-rotated");
-const saveButton = document.getElementById("save-pattern");
-const editorMessage = document.getElementById("editor-message");
-
-let shapes = [];
-let selectedShape = null;
-let editorOrientation = "original";
-let flippedPlacements = new Set();
-let editorResult = null;   // last preview from the server
-let editorView = null;     // box-to-canvas transform of the last preview draw
-
-async function loadShapes() {
-  try {
-    shapes = await fetchJson("/api/shapes");
-  } catch (error) {
-    showEditorMessage(`Could not load shapes: ${error.message}`, true);
-    return;
-  }
-  shapeList.innerHTML = "";
-  shapes.forEach(shape => {
-    const card = document.createElement("button");
-    card.className = "shape-card";
-    card.dataset.id = shape.id;
-
-    const preview = document.createElement("canvas");
-    preview.className = "shape-preview";
-    card.appendChild(preview);
-
-    const label = document.createElement("div");
-    label.className = "shape-label";
-    label.innerHTML = `${shape.name}<span>${shape.width} × ${shape.height} mm</span>`;
-    card.appendChild(label);
-
-    card.onclick = () => selectShape(shape.id);
-    shapeList.appendChild(card);
-    drawShapePreview(preview, shape);
-  });
-  if (shapes.length) selectShape(shapes[0].id);
-}
-
-function drawShapePreview(preview, shape) {
-  const ctx = preview.getContext("2d");
-  const dpr = window.devicePixelRatio || 1;
-  const cw = preview.clientWidth || 200, ch = preview.clientHeight || 56;
-  preview.width = cw * dpr; preview.height = ch * dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const scale = Math.min((cw - 16) / shape.width, (ch - 12) / shape.height, 1);
-  drawShape(ctx,
-    (cw - shape.width * scale) / 2, (ch - shape.height * scale) / 2,
-    shape.width * scale, shape.height * scale, false);
-}
-
-function selectShape(id) {
-  selectedShape = id;
-  flippedPlacements.clear();  // indices belong to the previous shape's grid
-  [...shapeList.children].forEach(card =>
-    card.classList.toggle("active", card.dataset.id === id));
-  refreshPreview();
-}
-
-function selectOrientation(orientation) {
-  editorOrientation = orientation;
-  flippedPlacements.clear();  // the grid changes completely
-  orientationOriginal.classList.toggle("active", orientation === "original");
-  orientationRotated.classList.toggle("active", orientation === "rotated");
-  refreshPreview();
-}
-orientationOriginal.onclick = () => selectOrientation("original");
-orientationRotated.onclick = () => selectOrientation("rotated");
-
-// Live preview: same server-side geometry as the placement view, computed for
-// the (unsaved) pattern currently in the form.
-let pendingPreview = false;
-function refreshPreview() {
-  if (!selectedShape) return;
-  if (pendingPreview) return;
-  pendingPreview = true;
-  requestAnimationFrame(async () => {
-    pendingPreview = false;
-    const url = `/api/preview?shape=${encodeURIComponent(selectedShape)}`
-              + `&box_width=${boxWidthEl.value}&box_height=${boxHeightEl.value}`
-              + `&rows=${rowsEl.value}&columns=${columnsEl.value}&gap=${gapEl.value}`
-              + `&orientation=${editorOrientation}`
-              + `&flipped=${[...flippedPlacements].join(",")}`;
-    let result;
-    try {
-      result = await fetchJson(url);
-    } catch (error) {
-      editorCount.textContent = "–";
-      showEditorMessage(
-        `Server unreachable (${error.message}) — is app.py still running?`,
-        true);
-      return;
-    }
-    editorResult = result;
-    editorCount.textContent = result.count;
-    editorView = drawPlacements(editorCanvas, result);
-  });
-}
-[boxWidthEl, boxHeightEl, rowsEl, columnsEl, gapEl].forEach(el =>
-  el.addEventListener("input", refreshPreview));
-
-// Select the current content on focus, so typing replaces the old value
-// instead of appending to it (important for touch panels and quick edits).
-[patternNameEl, boxWidthEl, boxHeightEl, rowsEl, columnsEl, gapEl].forEach(
-  el => el.addEventListener("focus", () => el.select()));
-
-// Tap a part in the preview to turn it by 180° (head end faces the other way).
-editorCanvas.addEventListener("click", (event) => {
-  if (!editorResult || !editorView) return;
-  const rect = editorCanvas.getBoundingClientRect();
-  const x = (event.clientX - rect.left - editorView.ox) / editorView.scale;
-  const y = editorView.box.height
-          - (event.clientY - rect.top - editorView.oy) / editorView.scale;
-  const index = editorResult.placements.findIndex(p =>
-    x >= p.x && x <= p.x + p.width && y >= p.y && y <= p.y + p.height);
-  if (index < 0) return;
-  if (flippedPlacements.has(index)) flippedPlacements.delete(index);
-  else flippedPlacements.add(index);
-  refreshPreview();
-});
-
-function showEditorMessage(text, isError) {
-  editorMessage.textContent = text;
-  editorMessage.classList.toggle("error", !!isError);
-  editorMessage.classList.add("visible");
-  setTimeout(() => editorMessage.classList.remove("visible"), 4000);
-}
-
-saveButton.onclick = async () => {
-  if (!selectedShape) return;
-  const name = patternNameEl.value.trim();
-  if (!name) {
-    showEditorMessage("Please enter a pattern name.", true);
-    patternNameEl.focus();
-    return;
-  }
-  const body = {
-    name,
-    shape_id: selectedShape,
-    box: { width: +boxWidthEl.value, height: +boxHeightEl.value },
-    rows: +rowsEl.value,
-    columns: +columnsEl.value,
-    gap: +gapEl.value,
-    orientation: editorOrientation,
-    flipped_placements: [...flippedPlacements],
-  };
-  let saved;
-  try {
-    saved = await fetchJson("/api/patterns", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    showEditorMessage(`Saving failed: ${error.message}`, true);
-    return;
-  }
-  showEditorMessage(`Saved "${saved.name}" ✓`);
-  await loadPatterns(saved.id);
-};
-
-// ---------------------------------------------------------------------------
-
-window.addEventListener("resize", () => {
-  if (!tabPlacement.hidden) drawPlacements(canvas, placements);
-  if (!tabEditor.hidden) refreshPreview();
-});
+window.addEventListener("resize", draw);
 
 loadStatus();
-loadPatterns();
-loadShapes();
+loadRecipes();

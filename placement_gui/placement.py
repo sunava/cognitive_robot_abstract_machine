@@ -1,45 +1,21 @@
 """
-Placement-pattern geometry.
+Placement-pattern geometry for Anforderungsprofil 1.
 
-A :class:`Shape` is the footprint of a single part (for example one of the
-black rails) and comes from the shape catalog (:mod:`catalog`). A
-:class:`Pattern` arranges one shape as a grid inside a box; the resulting
-placements can be shifted by a global, clamped X/Y offset.
+Given a recipe (box and part geometry), compute the default grid pattern
+of parts laid out inside the box. The pattern is computed once and can
+then be shifted by a global, clamped X/Y offset. No further editing — by
+design.
 
-This module is intentionally self-contained (pure Python, no dependencies) so
-it can later be fed by the real SDT or a database without touching the web
-layer.
+This module is intentionally self-contained (pure Python, no
+dependencies) so it can later be fed by the real SDT or a database
+without touching the web layer. See :mod:`recipes` for the pluggable
+data source.
 """
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from enum import Enum
 
-AUTO_FIT = 0
-"""
-Sentinel for :attr:`Pattern.rows` / :attr:`Pattern.columns`: place as many
-shapes along that axis as fit into the box.
-"""
-
-
-class Orientation(Enum):
-    """
-    How the shape footprint lies in the box grid.
-
-    ..note:: Rotating by 90 degrees swaps the footprint's width and height,
-        which changes how many shapes fit into the box.
-    """
-
-    ORIGINAL = "original"
-    """
-    The shape lies as defined in the catalog.
-    """
-
-    ROTATED = "rotated"
-    """
-    The shape is rotated by 90 degrees.
-    """
 
 @dataclass(frozen=True)
 class Size:
@@ -59,39 +35,14 @@ class Size:
 
 
 @dataclass(frozen=True)
-class Shape:
+class Recipe:
     """
-    A single part footprint from the shape catalog.
-    """
-
-    id: str
-    """
-    Unique identifier of the shape.
-    """
-
-    name: str
-    """
-    Human-readable display name.
-    """
-
-    size: Size
-    """
-    Footprint of the part.
-    """
-
-
-@dataclass(frozen=True)
-class Pattern:
-    """
-    A placement pattern: one catalog shape repeated as a grid inside a box.
-
-    ..note:: ``rows``/``columns`` set to :data:`AUTO_FIT` mean "as many as
-        fit"; explicit values are clamped to what actually fits.
+    One placement recipe: a part placed into a box, with a packing gap.
     """
 
     id: str
     """
-    Unique identifier of the pattern.
+    Unique identifier of the recipe.
     """
 
     name: str
@@ -101,44 +52,24 @@ class Pattern:
 
     box: Size
     """
-    Inner size of the box the shapes are placed into.
+    Inner size of the box the parts are placed into.
     """
 
-    shape: Shape
+    part: Size
     """
-    The catalog shape this pattern repeats.
-    """
-
-    rows: int = AUTO_FIT
-    """
-    Requested number of rows, :data:`AUTO_FIT` for as many as fit.
-    """
-
-    columns: int = AUTO_FIT
-    """
-    Requested number of columns, :data:`AUTO_FIT` for as many as fit.
+    Footprint of the part.
     """
 
     gap: float = 10.0
     """
-    Minimum spacing between shapes and to the box wall, in millimetres.
-    """
-
-    orientation: Orientation = Orientation.ORIGINAL
-    """
-    Whether every shape in the grid lies as defined or rotated by 90 degrees.
-    """
-
-    flipped_placements: tuple[int, ...] = ()
-    """
-    Indices (grid order, bottom-left to top-right) of placements that are
-    turned by 180 degrees, so their head end faces the other way.
+    Minimum spacing between parts and to the box wall, in millimetres.
     """
 
 @dataclass(frozen=True)
 class Placement:
-    """A single placed shape, position = lower-left corner in box
-    coordinates."""
+    """
+    A single placed part, position = lower-left corner in box coordinates.
+    """
 
     x: float
     """
@@ -160,12 +91,6 @@ class Placement:
     Extent along the y axis.
     """
 
-    flipped: bool = False
-    """
-    True when this shape is turned by 180 degrees (head end faces the other
-    way).
-    """
-
 
 def _fitting_count(span: float, item: float, gap: float) -> int:
     """
@@ -177,51 +102,29 @@ def _fitting_count(span: float, item: float, gap: float) -> int:
     return max(int((span - gap) // (item + gap)), 0)
 
 
-def _effective_count(requested: int, fitting: int) -> int:
-    """
-    Resolve a requested row/column count against what actually fits.
-    """
-    if requested == AUTO_FIT:
-        return fitting
-    return min(max(requested, 0), fitting)
-
-
 def _clamp(value: float, lower: float, upper: float) -> float:
     return max(lower, min(upper, value))
 
 
-def _oriented_footprint(size: Size, orientation: Orientation) -> Size:
+def compute_pattern(recipe: Recipe, offset_x: float = 0.0,
+                    offset_y: float = 0.0) -> dict:
     """
-    The footprint a shape occupies in the grid: as defined, or with width and
-    height swapped when rotated by 90 degrees.
-    """
-    if orientation is Orientation.ROTATED:
-        return Size(width=size.height, height=size.width)
-    return size
-
-
-def compute_placements(pattern: Pattern, offset_x: float = 0.0,
-                       offset_y: float = 0.0) -> dict:
-    """
-    Compute the centred grid of shapes for ``pattern`` and apply a clamped
+    Compute the default centred grid pattern for ``recipe`` and apply a clamped
     global offset.
 
-    Returns a JSON-serialisable dict describing the box, the shape, the
+    Returns a JSON-serialisable dict describing the box, the part, the
     grid and every placement, plus the allowed offset range so the UI
     can bound its sliders.
     """
-    box, gap = pattern.box, pattern.gap
-    shape = _oriented_footprint(pattern.shape.size, pattern.orientation)
+    box, part, gap = recipe.box, recipe.part, recipe.gap
 
-    columns = _effective_count(pattern.columns,
-                               _fitting_count(box.width, shape.width, gap))
-    rows = _effective_count(pattern.rows,
-                            _fitting_count(box.height, shape.height, gap))
+    columns = _fitting_count(box.width, part.width, gap)
+    rows = _fitting_count(box.height, part.height, gap)
 
     placements: list[Placement] = []
     if columns and rows:
-        block_width = columns * shape.width + (columns - 1) * gap
-        block_height = rows * shape.height + (rows - 1) * gap
+        block_width = columns * part.width + (columns - 1) * gap
+        block_height = rows * part.height + (rows - 1) * gap
         base_x = (box.width - block_width) / 2.0
         base_y = (box.height - block_height) / 2.0
 
@@ -230,27 +133,23 @@ def compute_placements(pattern: Pattern, offset_x: float = 0.0,
         clamped_x = _clamp(offset_x, -max_offset_x, max_offset_x)
         clamped_y = _clamp(offset_y, -max_offset_y, max_offset_y)
 
-        flipped = set(pattern.flipped_placements)
         for row in range(rows):
             for column in range(columns):
                 placements.append(Placement(
-                    x=base_x + clamped_x + column * (shape.width + gap),
-                    y=base_y + clamped_y + row * (shape.height + gap),
-                    width=shape.width,
-                    height=shape.height,
-                    flipped=len(placements) in flipped,
+                    x=base_x + clamped_x + column * (part.width + gap),
+                    y=base_y + clamped_y + row * (part.height + gap),
+                    width=part.width,
+                    height=part.height,
                 ))
     else:
         max_offset_x = max_offset_y = 0.0
         clamped_x = clamped_y = 0.0
 
     return {
-        "pattern": {"id": pattern.id, "name": pattern.name},
+        "recipe": {"id": recipe.id, "name": recipe.name},
         "box": asdict(box),
-        "shape": {"id": pattern.shape.id, "name": pattern.shape.name,
-                  **asdict(pattern.shape.size)},
+        "part": asdict(part),
         "gap": gap,
-        "orientation": pattern.orientation.value,
         "columns": columns,
         "rows": rows,
         "count": len(placements),
