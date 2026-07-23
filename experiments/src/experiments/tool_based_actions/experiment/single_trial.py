@@ -51,12 +51,11 @@ from experiments.tool_based_actions.experiment.results import (
     TargetResult,
 )
 from experiments.tool_based_actions.experiment.scene import (
-    SceneSampler,
-    discover_obstacles,
-    discover_spawn_surfaces,
+    ExperimentTarget,
+    SceneSpawner,
+    annotate_spawn_surfaces,
 )
 from experiments.tool_based_actions.experiment.task_definitions import (
-    ExperimentTarget,
     ToolTaskDefinition,
     tasks_by_name,
 )
@@ -128,7 +127,7 @@ class TrialRunner:
         definition = self.specification.task(
             pointer_stride=self.configuration.tool_path_pointer_stride
         )
-        targets = self._spawn_targets(world, robot, definition)
+        targets = self._spawn_targets(world, definition)
         tool = definition.attach_tool(world, robot)
 
         results = []
@@ -162,54 +161,41 @@ class TrialRunner:
             ).plan.perform()
 
     def _spawn_targets(
-        self, world: World, robot: PR2, definition: ToolTaskDefinition
+        self, world: World, definition: ToolTaskDefinition
     ) -> List[ExperimentTarget]:
         """
         :param world: The world to spawn into.
-        :param robot: The robot whose bodies must not act as spawn obstacles.
-        :param definition: The task definition spawning the targets.
+        :param definition: The task definition creating the targets.
         :return: The spawned targets of this trial's seeded scene.
         """
-        surfaces = discover_spawn_surfaces(
-            world,
-            surface_names=self.configuration.surface_names,
-            margin=self.configuration.surface_margin,
-            height_offset=self.configuration.spawn_height_offset,
-        )
-        obstacles = discover_obstacles(
-            world, excluded_body_names={body.name.name for body in robot.bodies}
-        )
-        sampler = SceneSampler(
+        surfaces = annotate_spawn_surfaces(world, self.configuration.surface_names)
+        spawner = SceneSpawner(
+            world=world,
             surfaces=surfaces,
-            clearance=self.configuration.target_clearance,
             seed=self.specification.seed,
-            footprint=definition.target_footprint(
-                self.configuration.scale_choices,
-                self.configuration.footprint_safety_factor,
-            ),
-            obstacles=obstacles,
-            footprint_clearance=self.configuration.footprint_clearance,
-            maximum_spawn_height=self.configuration.maximum_spawn_height,
+            scale_choices=self.configuration.scale_choices,
+            edge_clearance=self.configuration.surface_edge_clearance,
         )
-        count = sampler.target_count(
+        count = spawner.target_count(
             self.configuration.targets_per_square_meter,
             self.configuration.minimum_targets_per_trial,
             self.configuration.maximum_targets_per_trial,
         )
-        placements = sampler.sample_placements(
-            count,
+        targets = spawner.spawn_targets(
+            definition,
+            count=count,
+            minimum_count=self.configuration.minimum_targets_per_trial,
             name_prefix=(
                 f"{self.specification.task.task_name()}_{self.specification.seed}"
             ),
-            minimum_count=self.configuration.minimum_targets_per_trial,
         )
         logger.info(
             "Trial %s spawns %d of %d desired targets.",
             self.specification.identifier,
-            len(placements),
+            len(targets),
             count,
         )
-        return [definition.spawn_target(world, placement) for placement in placements]
+        return targets
 
     def _act_on_target(
         self,

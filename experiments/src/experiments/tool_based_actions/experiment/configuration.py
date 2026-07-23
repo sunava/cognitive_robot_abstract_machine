@@ -92,31 +92,11 @@ class ExperimentConfiguration:
     Target density on the spawn surfaces, clamped to the per-trial minimum and maximum.
     """
 
-    target_clearance: float = 0.35
-    """
-    Minimum center distance in meters between two spawned targets.
-    """
-
-    footprint_clearance: float = 0.03
-    """
-    Minimum free gap in meters between the footprints of two spawned targets.
-    """
-
     scale_choices: List[float] = field(
         default_factory=lambda: [0.8, 1.0, 1.2, 1.4, 1.6]
     )
     """
     Uniform scale factors a spawned target is randomly sized with.
-    """
-
-    footprint_safety_factor: float = 1.08
-    """
-    Factor the measured target footprint radius is inflated by during placement.
-    """
-
-    maximum_spawn_height: float = 1.35
-    """
-    Highest surface top in meters, in the world frame, targets are spawned on.
     """
 
     full_body_motion: bool = True
@@ -149,14 +129,9 @@ class ExperimentConfiguration:
     Names of the support surface bodies targets are spawned on.
     """
 
-    surface_margin: float = 0.15
+    surface_edge_clearance: float = 0.15
     """
-    Distance in meters kept from every surface edge when spawning.
-    """
-
-    spawn_height_offset: float = 0.05
-    """
-    Height in meters above a surface top at which targets are spawned.
+    Minimum distance in meters kept from every surface edge when spawning.
     """
 
     results_file: Path = field(

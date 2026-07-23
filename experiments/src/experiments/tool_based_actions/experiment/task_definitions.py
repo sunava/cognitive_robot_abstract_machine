@@ -2,17 +2,18 @@
 Per-task scene and action construction for the tool-based action experiment.
 
 Every :class:`ToolTaskDefinition` knows how to attach its tool to the robot, how to
-spawn one target at a sampled placement, and how to build the action acting on that
-target. The trial runner stays task-agnostic.
+create its target objects, and how to build the action acting on a target. The trial
+runner and the scene spawner stay task-agnostic.
 """
 
 from __future__ import annotations
 
-import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from krrood.utils import recursive_subclasses
 from semantic_digital_twin.robots.robot_parts import AbstractRobot
+from semantic_digital_twin.semantic_annotations.mixins import HasRootBody
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Bowl,
     Bread,
@@ -23,11 +24,9 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Whisk,
 )
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
-from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.geometry import Color, Scale
-from semantic_digital_twin.world_description.world_entity import Body
-from typing_extensions import Dict, List, Optional, Type
+from typing_extensions import Dict, Optional, Type
 
 from coraplex.datastructures.enums import Arms, CuttingTechnique
 from coraplex.robot_plans.actions.base import ActionDescription
@@ -38,12 +37,8 @@ from coraplex.robot_plans.actions.composite.tool_based import (
     WipingAction,
 )
 from coraplex.testing import attach_tool
-from krrood.utils import recursive_subclasses
 
-from experiments.tool_based_actions.experiment.scene import (
-    ObjectFootprint,
-    TargetPlacement,
-)
+from experiments.tool_based_actions.experiment.scene import ExperimentTarget
 from experiments.tool_based_actions.simple_demo.demo_world import (
     BOWL_COLOR,
     BREAD_COLOR,
@@ -56,27 +51,6 @@ from experiments.tool_based_actions.simple_demo.demo_world import (
     spawn_mesh_body,
 )
 
-
-@dataclass(frozen=True)
-class ExperimentTarget:
-    """
-    One spawned target of a trial, addressable by the tool action.
-    """
-
-    placement: TargetPlacement
-    """
-    The sampled placement the target was spawned at.
-    """
-
-    pose: Pose
-    """
-    Pose of the target in the world frame.
-    """
-
-    body: Optional[Body] = None
-    """
-    The spawned body, or None for targets that are pure poses (e.g. wiping patches).
-    """
 
 @dataclass
 class ToolTaskDefinition(ABC):
@@ -113,15 +87,17 @@ class ToolTaskDefinition(ABC):
         """
 
     @abstractmethod
-    def spawn_target(
-        self, world: World, placement: TargetPlacement
-    ) -> ExperimentTarget:
+    def create_target(
+        self, world: World, name: str, scale: float
+    ) -> Optional[HasRootBody]:
         """
-        Spawn one target at the given placement.
+        Create one target object of this task, ready to be placed by the scene spawner.
 
         :param world: The world to spawn into.
-        :param placement: The sampled placement of the target.
-        :return: The spawned target.
+        :param name: Unique name of the target within its trial.
+        :param scale: Uniform scale factor the target is sized with.
+        :return: The created target annotation, or None for targets that are pure poses
+            (e.g. wiping patches).
         """
 
     @abstractmethod
@@ -132,89 +108,38 @@ class ToolTaskDefinition(ABC):
         :return: The tool action acting on the target.
         """
 
-    @abstractmethod
-    def target_footprint(
-        self, scale_choices: List[float], safety_factor: float
-    ) -> ObjectFootprint:
-        """
-        :param scale_choices: Uniform scale factors targets may be spawned with.
-        :param safety_factor: Factor the footprint radius is inflated by.
-        :return: The footprint of this task's targets, for scene sampling.
-        """
-
-    def _mesh_footprint(
-        self,
-        mesh_file_name: str,
-        scale_choices: List[float],
-        safety_factor: float,
-    ) -> ObjectFootprint:
-        """
-        Measure a mesh's XY footprint in its own frame.
-
-        :param mesh_file_name: Mesh file in the demo resources.
-        :param scale_choices: Uniform scale factors targets may be spawned with.
-        :param safety_factor: Factor the footprint radius is inflated by.
-        :return: The measured footprint of the mesh.
-        """
-        object_world = parse_object(mesh_file_name)
-        bounding_box = object_world.root.collision.as_bounding_box_collection_in_frame(
-            object_world.root
-        ).bounding_box()
-        base_radius = 0.5 * math.hypot(
-            bounding_box.max_x - bounding_box.min_x,
-            bounding_box.max_y - bounding_box.min_y,
-        )
-        return ObjectFootprint(
-            base_radius=base_radius,
-            scale_choices=scale_choices,
-            safety_factor=safety_factor,
-        )
-
-    def _spawn_mesh_body(
+    def _create_mesh_target(
         self,
         world: World,
-        placement: TargetPlacement,
+        name: str,
+        scale: float,
         mesh_file_name: str,
         color: Color,
-    ) -> Body:
+        annotation_type: Type[HasRootBody],
+    ) -> HasRootBody:
         """
-        Spawn a mesh object at the placement, at the placement's scale, under the
-        placement's unique name.
+        Spawn a mesh object at the world origin and annotate it, ready to be placed.
 
         :param world: The world to spawn into.
-        :param placement: The sampled placement of the object.
+        :param name: Unique name of the target.
+        :param scale: Uniform scale factor the mesh is sized with.
         :param mesh_file_name: Mesh file in the demo resources.
         :param color: Color the mesh's visual shapes are dyed with.
-        :return: The spawned body inside ``world``.
+        :param annotation_type: The semantic annotation the target body is wrapped in.
+        :return: The created target annotation.
         """
-        return spawn_mesh_body(
+        body = spawn_mesh_body(
             world,
             mesh_file_name,
-            HomogeneousTransformationMatrix.from_xyz_rpy(
-                placement.pose.x,
-                placement.pose.y,
-                placement.z,
-                yaw=placement.pose.yaw,
-                reference_frame=world.root,
-            ),
+            HomogeneousTransformationMatrix.from_xyz_rpy(reference_frame=world.root),
             color=color,
-            name=placement.name,
-            scale=Scale(placement.scale, placement.scale, placement.scale),
+            name=name,
+            scale=Scale(scale, scale, scale),
         )
-
-    def _placement_pose(self, world: World, placement: TargetPlacement) -> Pose:
-        """
-        :param world: The world the pose is expressed in.
-        :param placement: The sampled placement.
-        :return: The placement as a pose in the world frame.
-        """
-        return Pose.from_xyz_rpy(
-            placement.pose.x,
-            placement.pose.y,
-            placement.z,
-            yaw=placement.pose.yaw,
-            reference_frame=world.root,
-        )
+        annotation = annotation_type(root=body)
+        with world.modify_world():
+            world.add_semantic_annotations([annotation])
+        return annotation
 
 
 @dataclass
@@ -232,14 +157,11 @@ class CuttingTaskDefinition(ToolTaskDefinition):
             world.add_semantic_annotations([knife])
         return knife
 
-    def spawn_target(
-        self, world: World, placement: TargetPlacement
-    ) -> ExperimentTarget:
-        body = self._spawn_mesh_body(world, placement, "bread.stl", BREAD_COLOR)
-        with world.modify_world():
-            world.add_semantic_annotations([Bread(root=body)])
-        return ExperimentTarget(
-            placement=placement, pose=self._placement_pose(world, placement), body=body
+    def create_target(
+        self, world: World, name: str, scale: float
+    ) -> Optional[HasRootBody]:
+        return self._create_mesh_target(
+            world, name, scale, "bread.stl", BREAD_COLOR, Bread
         )
 
     def build_action(self, target: ExperimentTarget, tool: Tool) -> ActionDescription:
@@ -252,11 +174,6 @@ class CuttingTaskDefinition(ToolTaskDefinition):
             slice_thickness=0.07,
             pointer_stride=self.pointer_stride,
         )
-
-    def target_footprint(
-        self, scale_choices: List[float], safety_factor: float
-    ) -> ObjectFootprint:
-        return self._mesh_footprint("bread.stl", scale_choices, safety_factor)
 
 
 @dataclass
@@ -274,14 +191,11 @@ class MixingTaskDefinition(ToolTaskDefinition):
             world.add_semantic_annotations([whisk])
         return whisk
 
-    def spawn_target(
-        self, world: World, placement: TargetPlacement
-    ) -> ExperimentTarget:
-        body = self._spawn_mesh_body(world, placement, "bowl.stl", BOWL_COLOR)
-        with world.modify_world():
-            world.add_semantic_annotations([Bowl(root=body)])
-        return ExperimentTarget(
-            placement=placement, pose=self._placement_pose(world, placement), body=body
+    def create_target(
+        self, world: World, name: str, scale: float
+    ) -> Optional[HasRootBody]:
+        return self._create_mesh_target(
+            world, name, scale, "bowl.stl", BOWL_COLOR, Bowl
         )
 
     def build_action(self, target: ExperimentTarget, tool: Tool) -> ActionDescription:
@@ -291,11 +205,6 @@ class MixingTaskDefinition(ToolTaskDefinition):
             tool=tool,
             pointer_stride=self.pointer_stride,
         )
-
-    def target_footprint(
-        self, scale_choices: List[float], safety_factor: float
-    ) -> ObjectFootprint:
-        return self._mesh_footprint("bowl.stl", scale_choices, safety_factor)
 
 
 @dataclass
@@ -317,25 +226,17 @@ class PouringTaskDefinition(ToolTaskDefinition):
             world.add_semantic_annotations([cup])
         return cup
 
-    def spawn_target(
-        self, world: World, placement: TargetPlacement
-    ) -> ExperimentTarget:
-        body = self._spawn_mesh_body(world, placement, "bowl.stl", BOWL_COLOR)
-        with world.modify_world():
-            world.add_semantic_annotations([Bowl(root=body)])
-        return ExperimentTarget(
-            placement=placement, pose=self._placement_pose(world, placement), body=body
+    def create_target(
+        self, world: World, name: str, scale: float
+    ) -> Optional[HasRootBody]:
+        return self._create_mesh_target(
+            world, name, scale, "bowl.stl", BOWL_COLOR, Bowl
         )
 
     def build_action(self, target: ExperimentTarget, tool: Tool) -> ActionDescription:
         return PouringAction(
             target_container=target.body, source_container=tool, arm=self.arm
         )
-
-    def target_footprint(
-        self, scale_choices: List[float], safety_factor: float
-    ) -> ObjectFootprint:
-        return self._mesh_footprint("bowl.stl", scale_choices, safety_factor)
 
 
 @dataclass
@@ -351,12 +252,10 @@ class WipingTaskDefinition(ToolTaskDefinition):
             world.add_semantic_annotations([sponge])
         return sponge
 
-    def spawn_target(
-        self, world: World, placement: TargetPlacement
-    ) -> ExperimentTarget:
-        return ExperimentTarget(
-            placement=placement, pose=self._placement_pose(world, placement)
-        )
+    def create_target(
+        self, world: World, name: str, scale: float
+    ) -> Optional[HasRootBody]:
+        return None
 
     def build_action(self, target: ExperimentTarget, tool: Tool) -> ActionDescription:
         return WipingAction(
@@ -365,12 +264,6 @@ class WipingTaskDefinition(ToolTaskDefinition):
             target_pose=target.pose,
             pointer_stride=self.pointer_stride,
         )
-
-    def target_footprint(
-        self, scale_choices: List[float], safety_factor: float
-    ) -> ObjectFootprint:
-        return ObjectFootprint.point()
-
 
 
 def tasks_by_name() -> Dict[str, Type[ToolTaskDefinition]]:

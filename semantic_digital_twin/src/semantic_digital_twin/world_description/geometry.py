@@ -1134,6 +1134,35 @@ class BoundingBox:
             self.origin,
         )
 
+    def shrink(
+        self, x_amount: float = 0.0, y_amount: float = 0.0, z_amount: float = 0.0
+    ) -> BoundingBox:
+        """
+        Shrinks the bounding box by a given amount per axis.
+
+        Every amount is clamped just below half of its axis extent, so the shrunken box
+        never inverts.
+
+        :param x_amount: The amount to move minimum and maximum x-coordinates inward.
+        :param y_amount: The amount to move minimum and maximum y-coordinates inward.
+        :param z_amount: The amount to move minimum and maximum z-coordinates inward.
+        :return: New shrunken bounding box
+        """
+        return self.bloat(
+            x_amount=-self._clamped_shrink_amount(x_amount, self.max_x - self.min_x),
+            y_amount=-self._clamped_shrink_amount(y_amount, self.max_y - self.min_y),
+            z_amount=-self._clamped_shrink_amount(z_amount, self.max_z - self.min_z),
+        )
+
+    @staticmethod
+    def _clamped_shrink_amount(amount: float, extent: float) -> float:
+        """
+        :param amount: The requested shrink amount along one axis.
+        :param extent: The extent of the bounding box along that axis.
+        :return: The amount clamped just below half the extent.
+        """
+        return min(amount, np.nextafter(extent / 2, 0.0))
+
     def contains(self, point: Point3) -> bool:
         """
         Check if the bounding box contains a point.

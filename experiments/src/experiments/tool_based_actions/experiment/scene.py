@@ -1,10 +1,12 @@
 """
-Seeded random scene sampling for the tool-based action experiment.
+Region-based scene spawning for the tool-based action experiment.
 
-Targets are spawned on the support surfaces named in the configuration, at random
-positions, sizes, and orientations. Placements keep their whole footprint on the
-surface, keep clear of each other and of every other body in the world, and the same
-seed always yields the same scene.
+The configured spawn surfaces are annotated as supporting surfaces
+(:class:`~semantic_digital_twin.semantic_annotations.mixins.HasSupportingSurface`) and
+target placements are drawn from their computed supporting-surface regions via
+:meth:`~semantic_digital_twin.semantic_annotations.mixins.HasSupportingSurface.sample_points_from_surface`.
+Sampled placements keep clear of the surface edges and of everything already placed on
+the surface, and the same seed always yields the same scene.
 """
 
 from __future__ import annotations
@@ -13,9 +15,21 @@ import math
 import random
 from dataclasses import dataclass, field
 
+import numpy as np
+from semantic_digital_twin.semantic_annotations.mixins import (
+    HasRootBody,
+    HasSupportingSurface,
+)
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Table
+from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
+from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.geometry import BoundingBox
-from typing_extensions import ClassVar, List, Optional, Set, Tuple
+from semantic_digital_twin.world_description.shape_collection import (
+    BoundingBoxCollection,
+)
+from semantic_digital_twin.world_description.world_entity import Body
+from typing_extensions import TYPE_CHECKING, List, Optional
 
 from experiments.tool_based_actions.experiment.exceptions import (
     InvalidSpawnRegion,
@@ -23,15 +37,17 @@ from experiments.tool_based_actions.experiment.exceptions import (
     SpawnRegionExhausted,
 )
 
+if TYPE_CHECKING:
+    from experiments.tool_based_actions.experiment.task_definitions import (
+        ToolTaskDefinition,
+    )
+
 
 @dataclass(frozen=True)
 class SpawnRegion:
     """
-    An axis-aligned rectangle on a support surface in which targets are spawned.
-
-    Built from a measured :class:`~semantic_digital_twin.world_description.geometry.BoundingBox`
-    via :meth:`from_bounding_box`, but kept as a lightweight, world-frame numeric region so
-    the seeded sampler and its tests stay independent of a live world.
+    An axis-aligned rectangle in the world's XY plane, used by the underspecified demos
+    to bound free variables such as the robot's base pose.
     """
 
     minimum_x: float
@@ -56,7 +72,7 @@ class SpawnRegion:
 
     height: float
     """
-    Z coordinate in the world frame at which targets are spawned.
+    Z coordinate of the region in the world frame.
     """
 
     def __post_init__(self) -> None:
@@ -78,258 +94,6 @@ class SpawnRegion:
             self.minimum_x <= x <= self.maximum_x
             and self.minimum_y <= y <= self.maximum_y
         )
-
-    def grid_capacity(self, clearance: float) -> int:
-        """
-        :param clearance: Minimum distance in meters between two targets.
-        :return: A conservative number of targets that provably fit into the region,
-            based on an axis-aligned grid packing.
-        """
-        columns = int((self.maximum_x - self.minimum_x) / clearance) + 1
-        rows = int((self.maximum_y - self.minimum_y) / clearance) + 1
-        return columns * rows
-
-    def inset(self, margin: float) -> Optional[SpawnRegion]:
-        """
-        :param margin: Distance in meters to shrink the region by on every side.
-        :return: The shrunken region at the same height, or None if the margin consumes
-            the region.
-        """
-        return self._create_if_valid(
-            minimum_x=self.minimum_x + margin,
-            maximum_x=self.maximum_x - margin,
-            minimum_y=self.minimum_y + margin,
-            maximum_y=self.maximum_y - margin,
-            height=self.height,
-        )
-
-    def area(self) -> float:
-        """
-        :return: The area of the region in square meters.
-        """
-        return (self.maximum_x - self.minimum_x) * (self.maximum_y - self.minimum_y)
-
-    @classmethod
-    def from_bounding_box(
-        cls, bounding_box: BoundingBox, margin: float, height_offset: float
-    ) -> Optional[SpawnRegion]:
-        """
-        Build a spawn region from a measured world-frame bounding box.
-
-        :param bounding_box: The surface's bounding box in the world frame.
-        :param margin: Distance in meters kept from every surface edge.
-        :param height_offset: Height in meters above the surface top at which targets
-            are spawned.
-        :return: The inset spawnable region on top of the surface, or None if the margin
-            consumes the surface.
-        """
-        return cls._create_if_valid(
-            minimum_x=bounding_box.min_x + margin,
-            maximum_x=bounding_box.max_x - margin,
-            minimum_y=bounding_box.min_y + margin,
-            maximum_y=bounding_box.max_y - margin,
-            height=bounding_box.max_z + height_offset,
-        )
-
-    @classmethod
-    def _create_if_valid(
-        cls,
-        minimum_x: float,
-        maximum_x: float,
-        minimum_y: float,
-        maximum_y: float,
-        height: float,
-    ) -> Optional[SpawnRegion]:
-        """
-        :return: The region, or None if the bounds contain no points.
-        """
-        if maximum_x <= minimum_x or maximum_y <= minimum_y:
-            return None
-        return cls(
-            minimum_x=minimum_x,
-            maximum_x=maximum_x,
-            minimum_y=minimum_y,
-            maximum_y=maximum_y,
-            height=height,
-        )
-
-
-@dataclass(frozen=True)
-class SpawnSurface:
-    """
-    A named support surface targets can be spawned on.
-    """
-
-    name: str
-    """
-    Name of the surface body in the world.
-    """
-
-    region: SpawnRegion
-    """
-    The spawnable rectangle on top of the surface, in the world frame.
-    """
-
-
-@dataclass(frozen=True)
-class ObjectFootprint:
-    """
-    The circular XY footprint of a spawnable object, over its allowed scales.
-
-    The sampler uses it to keep every placement's whole footprint on its surface and to
-    enforce a free gap between neighboring targets, so spawned meshes never overlap each
-    other or hang off surface edges.
-    """
-
-    base_radius: float
-    """
-    Footprint radius in meters at scale 1.0.
-    """
-
-    scale_choices: List[float]
-    """
-    Uniform scale factors an object may be spawned with.
-    """
-
-    safety_factor: float = 1.0
-    """
-    Factor the radius is inflated by to absorb mesh irregularities.
-    """
-
-    @classmethod
-    def point(cls) -> ObjectFootprint:
-        """
-        :return: The footprint of a dimensionless target, e.g. a wiping pose.
-        """
-        return cls(base_radius=0.0, scale_choices=[1.0])
-
-    def radius_for_scale(self, scale: float) -> float:
-        """
-        :param scale: The uniform scale the object is spawned with.
-        :return: The inflated footprint radius in meters at that scale.
-        """
-        return self.base_radius * scale * self.safety_factor
-
-    def largest_radius(self) -> float:
-        """
-        :return: The inflated footprint radius in meters at the largest scale.
-        """
-        return self.radius_for_scale(max(self.scale_choices))
-
-
-@dataclass(frozen=True)
-class ObstacleBox:
-    """
-    The world-frame bounding box of a body placements must keep clear of, plus the
-    placement semantics deciding what counts as a collision (:attr:`vertical_margin`,
-    :attr:`top_epsilon`, :meth:`blocks`).
-    """
-
-    vertical_margin: ClassVar[float] = 0.03
-    """
-    Distance in meters a placement may sit below an obstacle's bottom before the
-    obstacle stops blocking it.
-    """
-
-    top_epsilon: ClassVar[float] = 0.01
-    """
-    Band in meters below an obstacle's top within which a placement counts as resting on
-    the obstacle instead of colliding with it.
-    """
-
-    name: str
-    """
-    Name of the obstacle body in the world.
-    """
-
-    bounding_box: BoundingBox
-    """
-    The body's bounding box, measured in the world frame.
-    """
-
-    def blocks(self, x: float, y: float, z: float, radius: float) -> bool:
-        """
-        Decide whether a placement collides with this obstacle.
-
-        Placements below the obstacle or resting on its top do not collide; anything
-        whose footprint disc overlaps the box within its vertical band does.
-
-        :param x: X coordinate of the placement in the world frame.
-        :param y: Y coordinate of the placement in the world frame.
-        :param z: Z coordinate of the placement in the world frame.
-        :param radius: Footprint radius of the placement in meters.
-        :return: True if the placement collides with this obstacle.
-        """
-        if z < self.bounding_box.min_z - self.vertical_margin:
-            return False
-        if z >= self.bounding_box.max_z - self.top_epsilon:
-            return False
-        return (
-            self.bounding_box.min_x - radius <= x <= self.bounding_box.max_x + radius
-            and self.bounding_box.min_y - radius
-            <= y
-            <= self.bounding_box.max_y + radius
-        )
-
-
-def discover_obstacles(
-    world: World, excluded_body_names: Set[str]
-) -> List[ObstacleBox]:
-    """
-    Measure every collidable body in the world as a placement obstacle.
-
-    :param world: The world to search in.
-    :param excluded_body_names: Names of bodies that must not act as obstacles, e.g. the
-        robot's.
-    :return: One obstacle box per collidable, non-excluded body.
-    """
-    obstacles = []
-    for body in world.bodies_with_collision:
-        name = body.name.name
-        if name in excluded_body_names:
-            continue
-        bounding_box = body.collision.as_bounding_box_collection_in_frame(
-            world.root
-        ).bounding_box()
-        obstacles.append(ObstacleBox(name=name, bounding_box=bounding_box))
-    return obstacles
-
-
-def discover_spawn_surfaces(
-    world: World,
-    surface_names: Tuple[str, ...],
-    margin: float,
-    height_offset: float,
-) -> List[SpawnSurface]:
-    """
-    Measure the configured support surfaces in the world.
-
-    :param world: The world to search in.
-    :param surface_names: Names of the surface bodies to use.
-    :param margin: Distance in meters kept from every surface edge.
-    :param height_offset: Height in meters above the surface top at which targets are
-        spawned.
-    :return: One spawn surface per found name whose margins leave a spawnable region.
-    :raises MissingSpawnSurfaces: If none of the names exist in the world.
-    """
-    surfaces = []
-    body_names = {body.name.name for body in world.bodies}
-    for surface_name in surface_names:
-        if surface_name not in body_names:
-            continue
-        body = world.get_body_by_name(surface_name)
-        bounding_box = body.collision.as_bounding_box_collection_in_frame(
-            world.root
-        ).bounding_box()
-        region = SpawnRegion.from_bounding_box(
-            bounding_box, margin=margin, height_offset=height_offset
-        )
-        if region is None:
-            continue
-        surfaces.append(SpawnSurface(name=surface_name, region=region))
-    if not surfaces:
-        raise MissingSpawnSurfaces(surface_names)
-    return surfaces
 
 
 @dataclass(frozen=True)
@@ -377,7 +141,7 @@ class TargetPlacement:
 
     surface_name: str
     """
-    Name of the surface the target is spawned on.
+    Name of the surface body the target is spawned on.
     """
 
     pose: PlanarPose
@@ -395,11 +159,6 @@ class TargetPlacement:
     Uniform scale factor the target is spawned with.
     """
 
-    footprint_radius: float = 0.0
-    """
-    Inflated footprint radius in meters of the target at its scale.
-    """
-
     def distance_to(self, other: TargetPlacement) -> float:
         """
         :param other: The placement to measure against.
@@ -408,61 +167,104 @@ class TargetPlacement:
         return self.pose.distance_to(other.pose)
 
 
+@dataclass(frozen=True)
+class ExperimentTarget:
+    """
+    One spawned target of a trial, addressable by the tool action.
+    """
+
+    placement: TargetPlacement
+    """
+    The sampled placement the target was spawned at.
+    """
+
+    pose: Pose
+    """
+    Pose of the target in the world frame.
+    """
+
+    body: Optional[Body] = None
+    """
+    The spawned body, or None for targets that are pure poses (e.g. wiping patches).
+    """
+
+
+def annotate_spawn_surfaces(
+    world: World, surface_names: List[str]
+) -> List[HasSupportingSurface]:
+    """
+    Annotate the configured surface bodies as supporting surfaces and compute their
+    spawnable regions.
+
+    :param world: The world to search in.
+    :param surface_names: Names of the surface bodies to use.
+    :return: One supporting-surface annotation per found name whose region could be
+        computed.
+    :raises MissingSpawnSurfaces: If no surface yields a supporting-surface region.
+    """
+    surfaces = []
+    body_names = {body.name.name for body in world.bodies}
+    with world.modify_world():
+        for surface_name in surface_names:
+            if surface_name not in body_names:
+                continue
+            surface = Table(root=world.get_body_by_name(surface_name))
+            world.add_semantic_annotations([surface])
+            if surface.calculate_supporting_surface() is None:
+                continue
+            surfaces.append(surface)
+    if not surfaces:
+        raise MissingSpawnSurfaces(tuple(surface_names))
+    return surfaces
+
+
 @dataclass
-class SceneSampler:
+class SceneSpawner:
     """
-    Samples reproducible, collision-free target placements on the spawn surfaces.
+    Spawns reproducible trial targets on annotated supporting surfaces.
 
-    Placements keep their whole footprint on the surface, keep clear of each other and
-    of the given obstacles, and the same seed always yields the same placements.
+    Placements are drawn from the surfaces' supporting-surface regions, which keep
+    clear of the surface edges and of everything already placed on the surface. The
+    same seed always yields the same scene.
+
+    .. note:: The region sampling draws from numpy's global random generator, so the
+        spawner seeds it. Sampling is reproducible as long as no other numpy random
+        draws interleave.
     """
 
-    surfaces: List[SpawnSurface]
+    world: World
     """
-    The surfaces placements are sampled on.
+    The world targets are spawned into.
     """
 
-    clearance: float
+    surfaces: List[HasSupportingSurface]
     """
-    Minimum center distance in meters between two placements.
+    The annotated surfaces targets are placed on.
     """
 
     seed: int
     """
-    Seed of the random number generator.
+    Seed that fixes the sampled scene.
     """
 
-    footprint: ObjectFootprint = field(default_factory=ObjectFootprint.point)
+    scale_choices: List[float] = field(default_factory=lambda: [1.0])
     """
-    Footprint of the spawned objects, driving their scales and required space.
-    """
-
-    obstacles: List[ObstacleBox] = field(default_factory=list)
-    """
-    Bodies placements must keep clear of.
+    Uniform scale factors a spawned target is randomly sized with.
     """
 
-    footprint_clearance: float = 0.03
+    edge_clearance: float = 0.15
     """
-    Minimum free gap in meters between the footprints of two placements.
-    """
-
-    maximum_spawn_height: float = math.inf
-    """
-    Highest surface top in meters, in the world frame, placements are sampled on.
+    Minimum distance in meters kept from every surface edge when placing.
     """
 
-    maximum_attempts_per_target: int = 100
+    _generator: random.Random = field(init=False)
     """
-    Number of rejection-sampling attempts per target before the whole scene is resampled
-    from scratch.
+    Seeded generator for the surface, scale, and yaw draws.
     """
 
-    maximum_scene_restarts: int = 20
-    """
-    Number of from-scratch resampling rounds before giving up, so early placements that
-    block all remaining space do not fail an otherwise feasible scene.
-    """
+    def __post_init__(self) -> None:
+        self._generator = random.Random(self.seed)
+        np.random.seed(self.seed)
 
     def target_count(
         self, targets_per_square_meter: float, minimum: int, maximum: int
@@ -474,154 +276,154 @@ class SceneSampler:
         :return: The density-based number of targets, clamped to
             ``[minimum, maximum]``.
         """
-        area = sum(surface.region.area() for surface in self._usable_surfaces())
+        area = sum(self._surface_area(surface) for surface in self.surfaces)
         return max(minimum, min(maximum, round(area * targets_per_square_meter)))
 
-    def sample_placements(
-        self, count: int, name_prefix: str, minimum_count: Optional[int] = None
-    ) -> List[TargetPlacement]:
-        """
-        Sample up to ``count`` collision-free placements spread over the surfaces.
-
-        :param count: Desired number of placements.
-        :param name_prefix: Prefix of the generated target names.
-        :param minimum_count: Smallest acceptable number of placements when the surfaces
-            cannot hold all ``count``, or None to require all of them.
-        :return: The sampled placements, at least ``minimum_count`` many.
-        :raises SpawnRegionExhausted: If the surfaces provably cannot hold the required
-            placements, or sampling stays unsuccessful within the restart budget.
-        """
-        required_count = count if minimum_count is None else minimum_count
-        surfaces = self._usable_surfaces()
-        if not surfaces or self._capacity(surfaces) < required_count:
-            raise SpawnRegionExhausted(self.surfaces, self.clearance, required_count)
-        generator = self._random_generator()
-        best_placements: List[TargetPlacement] = []
-        for _ in range(self.maximum_scene_restarts):
-            placements = self._sample_scene(generator, surfaces, count, name_prefix)
-            if len(placements) == count:
-                return placements
-            if len(placements) > len(best_placements):
-                best_placements = placements
-        if len(best_placements) >= required_count:
-            return best_placements
-        raise SpawnRegionExhausted(self.surfaces, self.clearance, required_count)
-
-    def _usable_surfaces(self) -> List[SpawnSurface]:
-        """
-        :return: The surfaces whose top lies below the maximum spawn height.
-        """
-        return [
-            surface
-            for surface in self.surfaces
-            if surface.region.height <= self.maximum_spawn_height
-        ]
-
-    def _capacity(self, surfaces: List[SpawnSurface]) -> int:
-        """
-        :param surfaces: The surfaces available for sampling.
-        :return: A conservative number of targets that provably fit on all surfaces
-            together, assuming every target has the largest footprint.
-        """
-        largest_radius = self.footprint.largest_radius()
-        cell = max(self.clearance, 2.0 * largest_radius + self.footprint_clearance)
-        capacity = 0
-        for surface in surfaces:
-            region = surface.region.inset(largest_radius)
-            if region is None:
-                continue
-            capacity += region.grid_capacity(cell)
-        return capacity
-
-    def _random_generator(self) -> random.Random:
-        """
-        :return: A fresh generator so every sampling call is independent of call
-            order.
-        """
-        return random.Random(self.seed)
-
-    def _sample_scene(
+    def spawn_targets(
         self,
-        generator: random.Random,
-        surfaces: List[SpawnSurface],
+        definition: ToolTaskDefinition,
         count: int,
+        minimum_count: int,
         name_prefix: str,
-    ) -> List[TargetPlacement]:
+    ) -> List[ExperimentTarget]:
         """
-        :param generator: The random number generator to draw from.
-        :param surfaces: The surfaces available for sampling.
-        :param count: Desired number of placements.
-        :param name_prefix: Prefix of the generated target names.
-        :return: The collision-free placements of this round, ending at the first
-            target no free spot was found for.
-        """
-        placements: List[TargetPlacement] = []
-        for target_index in range(count):
-            placement = self._sample_free_placement(
-                generator, surfaces, placements, f"{name_prefix}_{target_index}"
-            )
-            if placement is None:
-                return placements
-            placements.append(placement)
-        return placements
+        Spawn up to ``count`` targets of the given task, spread over the surfaces.
 
-    def _sample_free_placement(
-        self,
-        generator: random.Random,
-        surfaces: List[SpawnSurface],
-        existing: List[TargetPlacement],
-        name: str,
+        :param definition: The task definition creating the targets.
+        :param count: Desired number of targets.
+        :param minimum_count: Smallest acceptable number of targets when the surfaces
+            cannot hold all ``count``.
+        :param name_prefix: Prefix of the generated target names.
+        :return: The spawned targets, at least ``minimum_count`` many.
+        :raises SpawnRegionExhausted: If the surfaces cannot hold ``minimum_count``
+            targets.
+        """
+        targets = []
+        for target_index in range(count):
+            name = f"{name_prefix}_{target_index}"
+            scale = self._generator.choice(self.scale_choices)
+            annotation = definition.create_target(self.world, name, scale)
+            placement = self._place(annotation, name, scale)
+            if placement is None:
+                if annotation is not None:
+                    self._remove_target(annotation)
+                break
+            targets.append(
+                ExperimentTarget(
+                    placement=placement,
+                    pose=self._placement_pose(placement),
+                    body=annotation.root if annotation is not None else None,
+                )
+            )
+        if len(targets) < minimum_count:
+            raise SpawnRegionExhausted(self._surface_names(), minimum_count)
+        return targets
+
+    def _place(
+        self, annotation: Optional[HasRootBody], name: str, scale: float
     ) -> Optional[TargetPlacement]:
         """
-        :param generator: The random number generator to draw from.
-        :param surfaces: The surfaces available for sampling.
-        :param existing: Placements the new one must keep clear of.
-        :param name: Name of the new placement.
-        :return: A placement keeping its footprint on the surface and clear of all
-            obstacles and existing placements, or None if no free spot was found
-            within the attempt budget.
+        Draw a placement from the surfaces' regions and move the target there.
+
+        :param annotation: The target to place, or None for a pure pose target.
+        :param name: Name of the placement.
+        :param scale: Uniform scale factor the target was created with.
+        :return: The placement, or None if no surface has free space left.
         """
-        for _ in range(self.maximum_attempts_per_target):
-            surface = generator.choice(surfaces)
-            scale = generator.choice(self.footprint.scale_choices)
-            radius = self.footprint.radius_for_scale(scale)
-            region = surface.region.inset(radius)
-            if region is None:
-                continue
-            candidate = TargetPlacement(
-                name=name,
-                surface_name=surface.name,
-                pose=PlanarPose(
-                    x=generator.uniform(region.minimum_x, region.maximum_x),
-                    y=generator.uniform(region.minimum_y, region.maximum_y),
-                    yaw=generator.uniform(0.0, 2.0 * math.pi),
-                ),
-                z=region.height,
-                scale=scale,
-                footprint_radius=radius,
+        surfaces = self._generator.sample(self.surfaces, len(self.surfaces))
+        for surface in surfaces:
+            points = surface.sample_points_from_surface(
+                body_to_sample_for=annotation, edge_clearance=self.edge_clearance
             )
-            if any(
-                obstacle.blocks(candidate.pose.x, candidate.pose.y, candidate.z, radius)
-                for obstacle in self.obstacles
-            ):
+            if not points:
                 continue
-            if all(
-                candidate.distance_to(placement)
-                >= self._required_distance(candidate, placement)
-                for placement in existing
-            ):
-                return candidate
+            point = points[0]
+            yaw = self._generator.uniform(0.0, 2.0 * math.pi)
+            surface_T_target = HomogeneousTransformationMatrix.from_xyz_rpy(
+                x=point.x,
+                y=point.y,
+                z=point.z,
+                yaw=yaw,
+                reference_frame=point.reference_frame,
+            )
+            world_T_target = self.world.transform(surface_T_target, self.world.root)
+            if annotation is not None:
+                with self.world.modify_world():
+                    annotation.root.parent_connection.origin = world_T_target
+                    surface.add_object(annotation)
+            return TargetPlacement(
+                name=name,
+                surface_name=surface.root.name.name,
+                pose=self._world_planar_pose(world_T_target),
+                z=float(world_T_target.z),
+                scale=scale,
+            )
         return None
 
-    def _required_distance(
-        self, first: TargetPlacement, second: TargetPlacement
-    ) -> float:
+    def _placement_pose(self, placement: TargetPlacement) -> Pose:
         """
-        :param first: One placement.
-        :param second: Another placement.
-        :return: The minimum center distance in meters the two placements must keep.
+        :param placement: The sampled placement.
+        :return: The placement as a pose in the world frame.
         """
-        return max(
-            self.clearance,
-            first.footprint_radius + second.footprint_radius + self.footprint_clearance,
+        return Pose.from_xyz_rpy(
+            placement.pose.x,
+            placement.pose.y,
+            placement.z,
+            yaw=placement.pose.yaw,
+            reference_frame=self.world.root,
+        )
+
+    def _remove_target(self, annotation: HasRootBody) -> None:
+        """
+        Remove a target that could not be placed from the world.
+
+        :param annotation: The target to remove.
+        """
+        with self.world.modify_world():
+            self.world.remove_semantic_annotation(annotation)
+            self.world.remove_kinematic_structure_entity(annotation.root)
+
+    def _surface_names(self) -> List[str]:
+        """
+        :return: The names of the surface bodies targets are placed on.
+        """
+        return [surface.root.name.name for surface in self.surfaces]
+
+    @staticmethod
+    def _surface_area(surface: HasSupportingSurface) -> float:
+        """
+        :param surface: The annotated surface.
+        :return: The XY area in square meters of the surface's supporting region.
+        """
+        bounding_box = SceneSpawner._surface_bounding_box(surface)
+        return (bounding_box.max_x - bounding_box.min_x) * (
+            bounding_box.max_y - bounding_box.min_y
+        )
+
+    @staticmethod
+    def _surface_bounding_box(surface: HasSupportingSurface) -> BoundingBox:
+        """
+        :param surface: The annotated surface.
+        :return: The bounding box of the surface's supporting region, in the region's
+            own frame.
+        """
+        region_shapes = BoundingBoxCollection.from_shapes(
+            surface.supporting_surface.area
+        )
+        region_shapes.transform_all_shapes_to_own_frame()
+        return region_shapes.bounding_box()
+
+    @staticmethod
+    def _world_planar_pose(
+        world_T_target: HomogeneousTransformationMatrix,
+    ) -> PlanarPose:
+        """
+        :param world_T_target: The target's transform in the world frame.
+        :return: The target's planar pose in the world frame.
+        """
+        rotation = world_T_target.to_np()
+        return PlanarPose(
+            x=float(world_T_target.x),
+            y=float(world_T_target.y),
+            yaw=float(math.atan2(rotation[1, 0], rotation[0, 0])),
         )

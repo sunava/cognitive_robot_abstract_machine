@@ -7,10 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from krrood.exceptions import DataclassException
-from typing_extensions import TYPE_CHECKING, List, Tuple
-
-if TYPE_CHECKING:
-    from experiments.tool_based_actions.experiment.scene import SpawnSurface
+from typing_extensions import List, Tuple
 
 
 @dataclass
@@ -73,18 +70,12 @@ class MissingSpawnSurfaces(DataclassException):
 @dataclass
 class SpawnRegionExhausted(DataclassException):
     """
-    Raised when the spawn surfaces cannot hold the requested targets at the requested
-    clearance.
+    Raised when the spawn surfaces cannot hold the requested targets.
     """
 
-    surfaces: List[SpawnSurface]
+    surface_names: List[str]
     """
-    The surfaces sampling was attempted on.
-    """
-
-    clearance: float
-    """
-    Minimum center distance in meters between two targets that could not be met.
+    Names of the surfaces placement was attempted on.
     """
 
     count: int
@@ -93,10 +84,9 @@ class SpawnRegionExhausted(DataclassException):
     """
 
     def error_message(self) -> str:
-        surface_names = [surface.name for surface in self.surfaces]
         return (
-            f"Could not place {self.count} targets with clearance {self.clearance} m "
-            f"on the surfaces {surface_names}."
+            f"Could not place {self.count} targets on the surfaces "
+            f"{self.surface_names}."
         )
 
     def suggest_correction(self) -> str:
