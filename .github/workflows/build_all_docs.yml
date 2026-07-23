@@ -62,6 +62,9 @@ jobs:
 
   deploy-all-docs:
     needs: [build-docs]
+    # Deploying requires GitHub Pages to be enabled; forks without Pages skip
+    # this job instead of failing the whole workflow.
+    if: github.event.repository.has_pages
     runs-on: ubuntu-latest
     permissions:
       pages: write
