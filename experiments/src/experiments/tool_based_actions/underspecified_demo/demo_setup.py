@@ -19,7 +19,7 @@ from typing_extensions import Optional
 
 from coraplex.robot_plans.actions.core.navigation import NavigateAction
 
-from experiments.tool_based_actions.experiment.configuration import SpawnRegion
+from experiments.tool_based_actions.experiment.scene import SpawnRegion
 from experiments.tool_based_actions.simple_demo.demo_world import (
     TARGET_POSITION_XYZ,
     spawn_mesh_body,

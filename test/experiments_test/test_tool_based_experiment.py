@@ -1,8 +1,10 @@
 import json
 import math
 import subprocess
+from datetime import timedelta
 
 import pytest
+from krrood.adapters.json_serializer import from_json, to_json
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     CuttingKnife,
@@ -10,18 +12,22 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import (
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import FixedConnection
-from semantic_digital_twin.world_description.geometry import Box, Scale
+from semantic_digital_twin.world_description.geometry import BoundingBox, Box, Scale
 from semantic_digital_twin.world_description.shape_collection import ShapeCollection
 from semantic_digital_twin.world_description.world_entity import Body
 
 from experiments.tool_based_actions.experiment.configuration import (
     ExperimentConfiguration,
-    SpawnRegion,
-    ToolBasedTask,
     TrialSpecification,
 )
-from experiments.tool_based_actions.experiment.results import (
+from experiments.tool_based_actions.experiment.exceptions import (
     IncompatibleResultRecord,
+    InvalidSpawnRegion,
+    MissingSpawnSurfaces,
+    SpawnRegionExhausted,
+)
+from experiments.tool_based_actions.experiment.results import (
+    FailureDescription,
     ResultRecorder,
     TargetResult,
     TaskReliability,
@@ -29,11 +35,11 @@ from experiments.tool_based_actions.experiment.results import (
 from experiments.tool_based_actions.experiment import run_experiment
 from experiments.tool_based_actions.experiment.run_experiment import ExperimentRunner
 from experiments.tool_based_actions.experiment.scene import (
-    MissingSpawnSurfaces,
     ObjectFootprint,
     ObstacleBox,
+    PlanarPose,
     SceneSampler,
-    SpawnRegionExhausted,
+    SpawnRegion,
     SpawnSurface,
     TargetPlacement,
     discover_obstacles,
@@ -41,7 +47,10 @@ from experiments.tool_based_actions.experiment.scene import (
 )
 from experiments.tool_based_actions.experiment.task_definitions import (
     CuttingTaskDefinition,
-    definition_for_task,
+    MixingTaskDefinition,
+    PouringTaskDefinition,
+    WipingTaskDefinition,
+    tasks_by_name,
 )
 from experiments.tool_based_actions.experiment.visualization import TargetHighlight
 
@@ -78,9 +87,9 @@ def test_scene_sampler_respects_surfaces_clearance_and_yaw_range():
     surfaces_by_name = {surface.name: surface for surface in [COUNTER, TABLE]}
     for placement in placements:
         surface = surfaces_by_name[placement.surface_name]
-        assert surface.region.contains(placement.x, placement.y)
+        assert surface.region.contains(placement.pose.x, placement.pose.y)
         assert placement.z == surface.region.height
-        assert 0.0 <= placement.yaw < 2.0 * math.pi
+        assert 0.0 <= placement.pose.yaw < 2.0 * math.pi
     for first_index in range(len(placements)):
         for second_index in range(first_index + 1, len(placements)):
             assert placements[first_index].distance_to(placements[second_index]) >= 0.35
@@ -112,9 +121,24 @@ def test_target_count_follows_surface_area_density():
     assert sampler.target_count(targets_per_square_meter=0.1, minimum=2, maximum=30) == 2
 
 
+def test_spawn_region_rejects_bounds_without_points():
+    with pytest.raises(InvalidSpawnRegion):
+        SpawnRegion(
+            minimum_x=2.0, maximum_x=1.0, minimum_y=0.0, maximum_y=1.0, height=1.0
+        )
+
+
+def test_spawn_region_inset_returns_none_when_the_margin_consumes_it():
+    region = SpawnRegion(
+        minimum_x=0.0, maximum_x=1.0, minimum_y=0.0, maximum_y=1.0, height=1.0
+    )
+    assert region.inset(0.6) is None
+    assert region.inset(0.4) is not None
+
+
 def test_object_footprint_scales_base_radius():
     footprint = ObjectFootprint(
-        base_radius=0.1, scale_choices=(0.8, 1.6), safety_factor=1.08
+        base_radius=0.1, scale_choices=[0.8, 1.6], safety_factor=1.08
     )
     assert footprint.radius_for_scale(1.6) == pytest.approx(0.1 * 1.6 * 1.08)
     assert footprint.largest_radius() == pytest.approx(0.1 * 1.6 * 1.08)
@@ -122,7 +146,7 @@ def test_object_footprint_scales_base_radius():
 
 def test_scene_sampler_keeps_scaled_footprints_inside_surface_bounds():
     footprint = ObjectFootprint(
-        base_radius=0.1, scale_choices=(1.0, 1.6), safety_factor=1.0
+        base_radius=0.1, scale_choices=[1.0, 1.6], safety_factor=1.0
     )
     sampler = SceneSampler(
         surfaces=[TABLE], clearance=0.0, seed=910001, footprint=footprint
@@ -133,15 +157,15 @@ def test_scene_sampler_keeps_scaled_footprints_inside_surface_bounds():
     for placement in placements:
         assert placement.scale in (1.0, 1.6)
         assert placement.footprint_radius == pytest.approx(0.1 * placement.scale)
-        assert TABLE.region.minimum_x + placement.footprint_radius <= placement.x
-        assert placement.x <= TABLE.region.maximum_x - placement.footprint_radius
-        assert TABLE.region.minimum_y + placement.footprint_radius <= placement.y
-        assert placement.y <= TABLE.region.maximum_y - placement.footprint_radius
+        assert TABLE.region.minimum_x + placement.footprint_radius <= placement.pose.x
+        assert placement.pose.x <= TABLE.region.maximum_x - placement.footprint_radius
+        assert TABLE.region.minimum_y + placement.footprint_radius <= placement.pose.y
+        assert placement.pose.y <= TABLE.region.maximum_y - placement.footprint_radius
 
 
 def test_scene_sampler_places_best_effort_down_to_the_minimum_count():
     footprint = ObjectFootprint(
-        base_radius=0.25, scale_choices=(1.0,), safety_factor=1.0
+        base_radius=0.25, scale_choices=[1.0], safety_factor=1.0
     )
     sampler = SceneSampler(
         surfaces=[TABLE], clearance=0.35, seed=910001, footprint=footprint
@@ -156,7 +180,7 @@ def test_scene_sampler_places_best_effort_down_to_the_minimum_count():
 
 def test_scene_sampler_keeps_footprint_clearance_between_large_targets():
     footprint = ObjectFootprint(
-        base_radius=0.25, scale_choices=(1.0,), safety_factor=1.0
+        base_radius=0.25, scale_choices=[1.0], safety_factor=1.0
     )
     sampler = SceneSampler(
         surfaces=[TABLE],
@@ -171,15 +195,36 @@ def test_scene_sampler_keeps_footprint_clearance_between_large_targets():
     assert placements[0].distance_to(placements[1]) >= 0.25 + 0.25 + 0.05
 
 
+def _world_frame_bounding_box(
+    minimum_x: float,
+    maximum_x: float,
+    minimum_y: float,
+    maximum_y: float,
+    minimum_z: float,
+    maximum_z: float,
+) -> BoundingBox:
+    return BoundingBox(
+        min_x=minimum_x,
+        min_y=minimum_y,
+        min_z=minimum_z,
+        max_x=maximum_x,
+        max_y=maximum_y,
+        max_z=maximum_z,
+        origin=HomogeneousTransformationMatrix(),
+    )
+
+
 def _table_covering_obstacle(minimum_z: float, maximum_z: float) -> ObstacleBox:
     return ObstacleBox(
         name="blocking_box",
-        minimum_x=TABLE.region.minimum_x,
-        maximum_x=TABLE.region.maximum_x,
-        minimum_y=TABLE.region.minimum_y,
-        maximum_y=TABLE.region.maximum_y,
-        minimum_z=minimum_z,
-        maximum_z=maximum_z,
+        bounding_box=_world_frame_bounding_box(
+            minimum_x=TABLE.region.minimum_x,
+            maximum_x=TABLE.region.maximum_x,
+            minimum_y=TABLE.region.minimum_y,
+            maximum_y=TABLE.region.maximum_y,
+            minimum_z=minimum_z,
+            maximum_z=maximum_z,
+        ),
     )
 
 
@@ -207,12 +252,14 @@ def test_scene_sampler_ignores_obstacles_below_the_spawn_height():
 def test_scene_sampler_avoids_partial_obstacles():
     obstacle = ObstacleBox(
         name="tray",
-        minimum_x=TABLE.region.minimum_x,
-        maximum_x=TABLE.region.maximum_x,
-        minimum_y=TABLE.region.minimum_y,
-        maximum_y=4.0,
-        minimum_z=0.5,
-        maximum_z=1.2,
+        bounding_box=_world_frame_bounding_box(
+            minimum_x=TABLE.region.minimum_x,
+            maximum_x=TABLE.region.maximum_x,
+            minimum_y=TABLE.region.minimum_y,
+            maximum_y=4.0,
+            minimum_z=0.5,
+            maximum_z=1.2,
+        ),
     )
     sampler = SceneSampler(
         surfaces=[TABLE], clearance=0.35, seed=910001, obstacles=[obstacle]
@@ -221,7 +268,7 @@ def test_scene_sampler_avoids_partial_obstacles():
     placements = sampler.sample_placements(2, name_prefix="target")
 
     for placement in placements:
-        assert placement.y > 4.0
+        assert placement.pose.y > 4.0
 
 
 HIGH_SHELF = SpawnSurface(
@@ -317,13 +364,13 @@ def test_discover_obstacles_measures_collision_bodies_and_skips_excluded_names()
     obstacles = discover_obstacles(world, excluded_body_names=set())
 
     assert [obstacle.name for obstacle in obstacles] == ["side_table"]
-    obstacle = obstacles[0]
-    assert obstacle.minimum_x == pytest.approx(1.5)
-    assert obstacle.maximum_x == pytest.approx(2.5)
-    assert obstacle.minimum_y == pytest.approx(2.0)
-    assert obstacle.maximum_y == pytest.approx(4.0)
-    assert obstacle.minimum_z == pytest.approx(0.7)
-    assert obstacle.maximum_z == pytest.approx(0.8)
+    bounding_box = obstacles[0].bounding_box
+    assert bounding_box.min_x == pytest.approx(1.5)
+    assert bounding_box.max_x == pytest.approx(2.5)
+    assert bounding_box.min_y == pytest.approx(2.0)
+    assert bounding_box.max_y == pytest.approx(4.0)
+    assert bounding_box.min_z == pytest.approx(0.7)
+    assert bounding_box.max_z == pytest.approx(0.8)
 
     assert discover_obstacles(world, excluded_body_names={"side_table"}) == []
 
@@ -331,12 +378,14 @@ def test_discover_obstacles_measures_collision_bodies_and_skips_excluded_names()
 def test_obstacle_box_blocks_only_within_its_vertical_band():
     obstacle = ObstacleBox(
         name="crate",
-        minimum_x=0.0,
-        maximum_x=1.0,
-        minimum_y=0.0,
-        maximum_y=1.0,
-        minimum_z=0.5,
-        maximum_z=1.0,
+        bounding_box=_world_frame_bounding_box(
+            minimum_x=0.0,
+            maximum_x=1.0,
+            minimum_y=0.0,
+            maximum_y=1.0,
+            minimum_z=0.5,
+            maximum_z=1.0,
+        ),
     )
 
     assert obstacle.blocks(x=0.5, y=0.5, z=0.75, radius=0.0)
@@ -348,16 +397,25 @@ def test_obstacle_box_blocks_only_within_its_vertical_band():
 
 def test_cutting_targets_have_a_mesh_footprint():
     footprint = CuttingTaskDefinition().target_footprint(
-        scale_choices=(0.8, 1.0), safety_factor=1.08
+        scale_choices=[0.8, 1.0], safety_factor=1.08
     )
     assert footprint.base_radius > 0.02
-    assert footprint.scale_choices == (0.8, 1.0)
+    assert footprint.scale_choices == [0.8, 1.0]
     assert footprint.safety_factor == pytest.approx(1.08)
 
 
+def test_tasks_by_name_lists_every_task_definition():
+    assert tasks_by_name() == {
+        "cutting": CuttingTaskDefinition,
+        "mixing": MixingTaskDefinition,
+        "pouring": PouringTaskDefinition,
+        "wiping": WipingTaskDefinition,
+    }
+
+
 def test_task_definitions_forward_the_pointer_stride():
-    for task in ToolBasedTask:
-        definition = definition_for_task(task, pointer_stride=7)
+    for task in tasks_by_name().values():
+        definition = task(pointer_stride=7)
         assert definition.pointer_stride == 7
 
 
@@ -367,10 +425,8 @@ def test_cutting_actions_carry_the_definition_pointer_stride():
     placement = TargetPlacement(
         name="bread_target",
         surface_name="counter",
-        x=2.0,
-        y=3.0,
+        pose=PlanarPose(x=2.0, y=3.0, yaw=0.0),
         z=0.9,
-        yaw=0.0,
         scale=1.0,
         footprint_radius=0.1,
     )
@@ -416,10 +472,8 @@ def test_spawned_targets_carry_the_placement_scale():
     placement = TargetPlacement(
         name="bread_target",
         surface_name="counter",
-        x=2.0,
-        y=3.0,
+        pose=PlanarPose(x=2.0, y=3.0, yaw=0.0),
         z=0.9,
-        yaw=0.0,
         scale=1.4,
         footprint_radius=0.1,
     )
@@ -434,48 +488,56 @@ def test_spawned_targets_carry_the_placement_scale():
 
 def test_trial_grid_is_the_task_seed_product():
     configuration = ExperimentConfiguration(
-        tasks=(ToolBasedTask.CUTTING, ToolBasedTask.WIPING),
-        seeds=(1, 2, 3),
+        tasks=[CuttingTaskDefinition, WipingTaskDefinition],
+        seeds=[1, 2, 3],
     )
     specifications = configuration.build_trial_specifications()
 
     assert len(specifications) == 6
     assert {specification.task for specification in specifications} == {
-        ToolBasedTask.CUTTING,
-        ToolBasedTask.WIPING,
+        CuttingTaskDefinition,
+        WipingTaskDefinition,
     }
     assert len({specification.identifier for specification in specifications}) == 6
 
 
+def test_default_configuration_runs_every_task():
+    assert set(ExperimentConfiguration().tasks) == set(tasks_by_name().values())
+
+
 def test_configuration_json_roundtrip():
     configuration = ExperimentConfiguration(
-        tasks=(ToolBasedTask.MIXING,),
-        seeds=(7,),
-        surface_names=("island_countertop",),
-        scale_choices=(0.9, 1.1),
+        tasks=[MixingTaskDefinition],
+        seeds=[7],
+        surface_names=["island_countertop"],
+        scale_choices=[0.9, 1.1],
         full_body_motion=False,
         tool_path_pointer_stride=5,
         collision_avoidance=False,
+        trial_timeout=timedelta(minutes=45),
     )
-    assert ExperimentConfiguration.from_json(configuration.to_json()) == configuration
+    assert from_json(to_json(configuration)) == configuration
 
 
 def _result(trial_identifier: str, target_name: str, success: bool) -> TargetResult:
     return TargetResult(
         trial_identifier=trial_identifier,
-        task=ToolBasedTask.CUTTING,
+        task=CuttingTaskDefinition,
         seed=1,
         robot_name="pr2",
         environment_name="apartment",
         target_name=target_name,
-        target_x=2.4,
-        target_y=2.2,
-        target_yaw=1.57,
+        target_pose=PlanarPose(x=2.4, y=2.2, yaw=1.57),
         target_scale=1.2,
         surface_name="island_countertop",
-        success=success,
-        duration=1.5,
-        failure_reason=None if success else "MotionDidNotFinish: goal not reached",
+        duration=timedelta(seconds=1.5),
+        failure=(
+            None
+            if success
+            else FailureDescription(
+                exception_type=RuntimeError, message="goal not reached"
+            )
+        ),
     )
 
 
@@ -489,20 +551,31 @@ def test_result_recorder_roundtrip_and_resume(tmp_path):
     assert results[0].success is True
     assert results[0].surface_name == "island_countertop"
     assert results[0].target_scale == pytest.approx(1.2)
-    assert results[1].failure_reason.startswith("MotionDidNotFinish")
+    assert results[0].target_pose == PlanarPose(x=2.4, y=2.2, yaw=1.57)
+    assert results[0].duration == timedelta(seconds=1.5)
+    assert results[1].success is False
+    assert results[1].failure == FailureDescription(
+        exception_type=RuntimeError, message="goal not reached"
+    )
 
     completed_specification = TrialSpecification(
-        task=ToolBasedTask.CUTTING,
+        task=CuttingTaskDefinition,
         seed=1,
         environment_name="apartment",
     )
     pending_specification = TrialSpecification(
-        task=ToolBasedTask.CUTTING,
+        task=CuttingTaskDefinition,
         seed=2,
         environment_name="apartment",
     )
     assert recorder.is_completed(completed_specification)
     assert not recorder.is_completed(pending_specification)
+
+
+def test_failure_description_captures_type_and_message():
+    failure = FailureDescription.from_exception(ValueError("bad pose"))
+    assert failure.exception_type is ValueError
+    assert failure.message == "bad pose"
 
 
 def test_result_recorder_rejects_records_from_an_older_schema(tmp_path):
@@ -525,8 +598,8 @@ def test_result_recorder_rejects_records_from_an_older_schema(tmp_path):
 
     with pytest.raises(IncompatibleResultRecord) as error_information:
         recorder.load_results()
-    assert "target_yaw" in str(error_information.value)
-    assert "surface_name" in str(error_information.value)
+    assert "target_pose" in str(error_information.value)
+    assert "target_x" in str(error_information.value)
 
 
 def test_task_reliability_aggregates_results_per_task():
@@ -551,8 +624,8 @@ def test_result_recorder_is_empty_without_file(tmp_path):
 
 def _campaign_configuration(tmp_path) -> ExperimentConfiguration:
     return ExperimentConfiguration(
-        tasks=(ToolBasedTask.CUTTING,),
-        seeds=(1, 2),
+        tasks=[CuttingTaskDefinition],
+        seeds=[1, 2],
         results_file=tmp_path / "results.jsonl",
     )
 
@@ -582,7 +655,7 @@ def test_experiment_runner_skips_completed_trials_and_builds_trial_commands(
     assert command[command.index("--task") + 1] == "cutting"
     assert command[command.index("--seed") + 1] == "2"
     assert command[command.index("--configuration-json") + 1] == json.dumps(
-        configuration.to_json()
+        to_json(configuration)
     )
 
 
@@ -628,3 +701,31 @@ def test_experiment_runner_summarizes_recorded_results(tmp_path, monkeypatch):
     ExperimentRunner(configuration=configuration).run()
 
     assert "cutting: 1/2 targets succeeded" in logged_messages
+
+
+def test_parse_configuration_applies_command_line_overrides(tmp_path):
+    results_file = tmp_path / "results.jsonl"
+
+    configuration = run_experiment.parse_configuration(
+        [
+            "--tasks",
+            "cutting",
+            "wiping",
+            "--seeds",
+            "5",
+            "7",
+            "--results-file",
+            str(results_file),
+            "--trial-timeout-seconds",
+            "120",
+        ]
+    )
+
+    assert configuration.tasks == [CuttingTaskDefinition, WipingTaskDefinition]
+    assert configuration.seeds == [5, 7]
+    assert configuration.results_file == results_file
+    assert configuration.trial_timeout == timedelta(seconds=120)
+
+
+def test_parse_configuration_keeps_the_defaults_without_arguments():
+    assert run_experiment.parse_configuration([]) == ExperimentConfiguration()

@@ -7,10 +7,13 @@ or the wiping technique: the poses are sampled from regions described by where-
 conditions and the technique is left as an ellipsis.
 """
 
+# Importing the ORM interface registers the data access objects the probabilistic
+# backend needs to condition on the given literal values.
+import coraplex.orm.ormatic_interface
 from krrood.entity_query_language.backends import ProbabilisticBackend
 from krrood.entity_query_language.factories import a
 
-from experiments.tool_based_actions.experiment.configuration import SpawnRegion
+from experiments.tool_based_actions.experiment.scene import SpawnRegion
 from experiments.tool_based_actions.simple_demo.demo_world import (
     TARGET_POSITION_XYZ,
     attach_sponge,
@@ -40,10 +43,6 @@ def main() -> None:
     """
     Build the demo world and run the underspecified plan on the simulated robot.
     """
-    # Importing the ORM interface registers the data access objects the
-    # probabilistic backend needs to condition on the given literal values.
-    import coraplex.orm.ormatic_interface
-
     world = setup_world()
     start_visualization(world)
 

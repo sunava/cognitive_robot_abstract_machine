@@ -13,54 +13,60 @@ from __future__ import annotations
 import json
 from collections import Counter
 from dataclasses import MISSING, dataclass, fields
+from datetime import timedelta
 from pathlib import Path
 
-from krrood.adapters.json_serializer import JSON_TYPE_NAME, SubclassJSONSerializer
-from krrood.exceptions import DataclassException
-from typing_extensions import Any, Dict, List, Optional, Set
+from krrood.adapters.exceptions import JSON_TYPE_NAME
+from krrood.adapters.json_serializer import from_json, to_json
+from typing_extensions import Any, Dict, List, Optional, Set, Type
 
 from experiments.experiment_definitions import ExperimentResult
-from experiments.tool_based_actions.experiment.configuration import (
-    ToolBasedTask,
-    TrialSpecification,
+from experiments.tool_based_actions.experiment.configuration import TrialSpecification
+from experiments.tool_based_actions.experiment.exceptions import (
+    IncompatibleResultRecord,
+)
+from experiments.tool_based_actions.experiment.scene import PlanarPose
+from experiments.tool_based_actions.experiment.task_definitions import (
+    ToolTaskDefinition,
 )
 
 
-@dataclass
-class IncompatibleResultRecord(DataclassException):
+@dataclass(frozen=True)
+class FailureDescription:
     """
-    Raised when a stored result line does not match the current :class:`TargetResult`
-    schema, typically because the results file was written by an older version of the
-    experiment.
+    The recordable description of a failed action.
+
+    Holds the exception type and its message instead of the exception object itself, so
+    failures stay serializable regardless of what the raised exception carries.
     """
 
-    missing_fields: List[str]
+    exception_type: Type[Exception]
     """
-    Fields the current schema requires that the stored record does not carry.
-    """
-
-    unexpected_fields: List[str]
-    """
-    Fields the stored record carries that the current schema does not know.
+    Type of the exception that aborted the action.
     """
 
-    def error_message(self) -> str:
-        return (
-            f"Result record does not match the current TargetResult schema: missing "
-            f"fields {self.missing_fields}, unexpected fields {self.unexpected_fields}."
-        )
+    message: str
+    """
+    Message of the exception that aborted the action.
+    """
 
-    def suggest_correction(self) -> str:
-        return "Archive or delete the results file to start a fresh campaign."
+    @classmethod
+    def from_exception(cls, error: Exception) -> FailureDescription:
+        """
+        :param error: The exception that aborted the action.
+        :return: The recordable description of the failure.
+        """
+        return cls(exception_type=type(error), message=str(error))
 
 
 @dataclass(frozen=True)
-class TargetResult(SubclassJSONSerializer):
+class TargetResult:
     """
     The outcome of one tool action on one target of a trial.
 
-    Persisted as one JSON line; aggregated into :class:`TaskReliability` rows for the
-    campaign summary table.
+    A plain dataclass, so :func:`krrood.adapters.json_serializer.to_json` persists it as
+    one JSON line without custom serialization code; aggregated into
+    :class:`TaskReliability` rows for the campaign summary table.
     """
 
     trial_identifier: str
@@ -68,7 +74,7 @@ class TargetResult(SubclassJSONSerializer):
     Identifier of the trial the target belongs to.
     """
 
-    task: ToolBasedTask
+    task: Type[ToolTaskDefinition]
     """
     The task that was performed.
     """
@@ -93,19 +99,9 @@ class TargetResult(SubclassJSONSerializer):
     Name of the target the action acted on.
     """
 
-    target_x: float
+    target_pose: PlanarPose
     """
-    X coordinate of the target in the world frame.
-    """
-
-    target_y: float
-    """
-    Y coordinate of the target in the world frame.
-    """
-
-    target_yaw: float
-    """
-    Rotation in radians of the target around the world Z axis.
+    Position and orientation of the target in the world's XY plane.
     """
 
     target_scale: float
@@ -118,65 +114,22 @@ class TargetResult(SubclassJSONSerializer):
     Name of the surface the target was spawned on.
     """
 
-    success: bool
+    duration: timedelta
     """
-    True if the action completed without an error.
-    """
-
-    duration: float
-    """
-    Wall-clock duration of the action in seconds.
+    Wall-clock duration of the action.
     """
 
-    failure_reason: Optional[str] = None
+    failure: Optional[FailureDescription] = None
     """
-    Compact description of the failure, or None on success.
+    Description of the failure that aborted the action, or None on success.
     """
 
-    def to_json(self) -> Dict[str, Any]:
+    @property
+    def success(self) -> bool:
         """
-        :return: This result as a JSON-serializable dict.
+        :return: True if the action completed without an error.
         """
-        return {
-            **super().to_json(),
-            "trial_identifier": self.trial_identifier,
-            "task": self.task.value,
-            "seed": self.seed,
-            "robot_name": self.robot_name,
-            "environment_name": self.environment_name,
-            "target_name": self.target_name,
-            "target_x": self.target_x,
-            "target_y": self.target_y,
-            "target_yaw": self.target_yaw,
-            "target_scale": self.target_scale,
-            "surface_name": self.surface_name,
-            "success": self.success,
-            "duration": self.duration,
-            "failure_reason": self.failure_reason,
-        }
-
-    @classmethod
-    def _from_json(cls, data: Dict[str, Any], **kwargs) -> TargetResult:
-        """
-        :param data: A dict produced by :meth:`to_json`.
-        :return: The deserialized result.
-        """
-        return cls(
-            trial_identifier=data["trial_identifier"],
-            task=ToolBasedTask(data["task"]),
-            seed=data["seed"],
-            robot_name=data["robot_name"],
-            environment_name=data["environment_name"],
-            target_name=data["target_name"],
-            target_x=data["target_x"],
-            target_y=data["target_y"],
-            target_yaw=data["target_yaw"],
-            target_scale=data["target_scale"],
-            surface_name=data["surface_name"],
-            success=data["success"],
-            duration=data["duration"],
-            failure_reason=data["failure_reason"],
-        )
+        return self.failure is None
 
     @classmethod
     def _validate_record_matches_schema(cls, record: Dict[str, Any]) -> None:
@@ -229,8 +182,10 @@ class TaskReliability(ExperimentResult):
         :param results: The target results to aggregate.
         :return: One reliability row per task, ordered by task name.
         """
-        successes = Counter(result.task.value for result in results if result.success)
-        totals = Counter(result.task.value for result in results)
+        successes = Counter(
+            result.task.task_name() for result in results if result.success
+        )
+        totals = Counter(result.task.task_name() for result in results)
         return [
             cls(task=name, successes=successes.get(name, 0), total=totals[name])
             for name in sorted(totals)
@@ -256,7 +211,7 @@ class ResultRecorder:
         """
         self.results_file.parent.mkdir(parents=True, exist_ok=True)
         with self.results_file.open("a", encoding="utf-8") as stream:
-            stream.write(json.dumps(result.to_json()) + "\n")
+            stream.write(json.dumps(to_json(result)) + "\n")
 
     def load_results(self) -> List[TargetResult]:
         """
@@ -276,7 +231,7 @@ class ResultRecorder:
         """
         record = json.loads(line)
         TargetResult._validate_record_matches_schema(record)
-        return TargetResult.from_json(record)
+        return from_json(record)
 
     def completed_trial_identifiers(self) -> Set[str]:
         """

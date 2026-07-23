@@ -9,7 +9,7 @@ import os
 from typing_extensions import Optional
 
 import coraplex
-from semantic_digital_twin.adapters.mesh import STLParser
+from semantic_digital_twin.adapters.mesh import MeshParser
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.robots.robot_parts import AbstractRobot
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
@@ -77,14 +77,15 @@ Yellowish color for the sponge.
 """
 
 
-def parse_object(stl_file_name: str, color: Optional[Color] = None) -> World:
+def parse_object(mesh_file_name: str, color: Optional[Color] = None) -> World:
     """
-    :param stl_file_name: Name of the mesh file in the demo resources.
+    :param mesh_file_name: Name of the mesh file in the demo resources, in any format
+        :class:`~semantic_digital_twin.adapters.mesh.MeshParser` understands.
     :param color: Color to dye the mesh's visual shapes with. Keeps the mesh's own
         appearance if None.
     :return: A world containing the mesh from the demo resources.
     """
-    object_world = STLParser(os.path.join(OBJECTS_DIRECTORY, stl_file_name)).parse()
+    object_world = MeshParser(os.path.join(OBJECTS_DIRECTORY, mesh_file_name)).parse()
     if color is not None:
         object_world.root.visual.dye_shapes(color)
     return object_world
@@ -92,7 +93,7 @@ def parse_object(stl_file_name: str, color: Optional[Color] = None) -> World:
 
 def spawn_mesh_body(
     world: World,
-    stl_file_name: str,
+    mesh_file_name: str,
     transform: HomogeneousTransformationMatrix,
     color: Optional[Color] = None,
     name: Optional[str] = None,
@@ -102,14 +103,14 @@ def spawn_mesh_body(
     Spawn a mesh from the demo resources into the world at a pose.
 
     :param world: The world to spawn into.
-    :param stl_file_name: Mesh file in the demo resources.
+    :param mesh_file_name: Mesh file in the demo resources.
     :param transform: Pose of the spawned body in the world frame.
     :param color: Color the mesh's visual shapes are dyed with, or None to keep them.
     :param name: Name for the spawned body, or None to keep the mesh's own name.
     :param scale: Uniform scale applied to the mesh's shapes, or None to keep them.
     :return: The spawned body inside ``world``.
     """
-    object_world = parse_object(stl_file_name, color=color)
+    object_world = parse_object(mesh_file_name, color=color)
     if name is not None:
         object_world.root.name = PrefixedName(name)
     if scale is not None:

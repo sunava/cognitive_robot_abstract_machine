@@ -7,6 +7,9 @@ duration: both are left as ellipses and sampled from the probabilistic backend, 
 only by where-conditions.
 """
 
+# Importing the ORM interface registers the data access objects the probabilistic
+# backend needs to condition on the given literal values.
+import coraplex.orm.ormatic_interface
 from krrood.entity_query_language.backends import ProbabilisticBackend
 from krrood.entity_query_language.factories import a
 
@@ -53,10 +56,6 @@ def main() -> None:
     """
     Build the demo world and run the underspecified plan on the simulated robot.
     """
-    # Importing the ORM interface registers the data access objects the
-    # probabilistic backend needs to condition on the given literal values.
-    import coraplex.orm.ormatic_interface
-
     world = setup_world()
 
     bowl_body = place_target_on_counter(world, "bowl.stl", BOWL_COLOR)

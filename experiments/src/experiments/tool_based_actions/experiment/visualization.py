@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.geometry import Color, Shape
 from semantic_digital_twin.world_description.world_entity import Body
-from typing_extensions import List, Optional, Tuple
+from typing_extensions import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,23 @@ def start_visualization_with_collision_markers(world: World) -> None:
     VizMarkerPublisher(_world=world, node=node).with_tf_and_collision_visualization()
 
 
+@dataclass(frozen=True)
+class ShapeColor:
+    """
+    The color one shape had before it was dyed, so it can be restored.
+    """
+
+    shape: Shape
+    """
+    The shape whose color was replaced.
+    """
+
+    color: Color
+    """
+    The shape's color before the highlight.
+    """
+
+
 @dataclass
 class TargetHighlight:
     """
@@ -68,26 +85,34 @@ class TargetHighlight:
     The color the target is dyed with while it is highlighted.
     """
 
-    _original_colors: List[Tuple[Shape, Color]] = field(
-        init=False, default_factory=list
-    )
+    _original_colors: List[ShapeColor] = field(init=False, default_factory=list)
     """
     The shape colors to restore when the highlight ends.
     """
 
     def __enter__(self) -> TargetHighlight:
+        """
+        Dye the target body in the highlight color, remembering the original colors.
+
+        :return: This highlight.
+        """
         if self.body is None:
             return self
         with self.world.modify_world():
             for shape in self.body.visual.shapes:
-                self._original_colors.append((shape, shape.color))
+                self._original_colors.append(
+                    ShapeColor(shape=shape, color=shape.color)
+                )
                 shape.color = self.color
         return self
 
     def __exit__(self, exception_type, exception_value, exception_traceback) -> None:
+        """
+        Restore the original colors of the target body, also when the action failed.
+        """
         if self.body is None:
             return
         with self.world.modify_world():
-            for shape, original_color in self._original_colors:
-                shape.color = original_color
+            for original in self._original_colors:
+                original.shape.color = original.color
         self._original_colors.clear()

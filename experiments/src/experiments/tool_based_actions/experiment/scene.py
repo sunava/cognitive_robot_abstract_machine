@@ -13,66 +13,145 @@ import math
 import random
 from dataclasses import dataclass, field
 
-from krrood.exceptions import DataclassException
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.geometry import BoundingBox
 from typing_extensions import ClassVar, List, Optional, Set, Tuple
 
-from experiments.tool_based_actions.experiment.configuration import SpawnRegion
+from experiments.tool_based_actions.experiment.exceptions import (
+    InvalidSpawnRegion,
+    MissingSpawnSurfaces,
+    SpawnRegionExhausted,
+)
 
 
-@dataclass
-class MissingSpawnSurfaces(DataclassException):
+@dataclass(frozen=True)
+class SpawnRegion:
     """
-    Raised when none of the configured spawn surfaces exist in the world.
+    An axis-aligned rectangle on a support surface in which targets are spawned.
+
+    Built from a measured :class:`~semantic_digital_twin.world_description.geometry.BoundingBox`
+    via :meth:`from_bounding_box`, but kept as a lightweight, world-frame numeric region so
+    the seeded sampler and its tests stay independent of a live world.
     """
 
-    surface_names: Tuple[str, ...]
+    minimum_x: float
     """
-    The configured surface names none of which were found.
+    Lower X bound of the region in the world frame.
     """
 
-    def error_message(self) -> str:
+    maximum_x: float
+    """
+    Upper X bound of the region in the world frame.
+    """
+
+    minimum_y: float
+    """
+    Lower Y bound of the region in the world frame.
+    """
+
+    maximum_y: float
+    """
+    Upper Y bound of the region in the world frame.
+    """
+
+    height: float
+    """
+    Z coordinate in the world frame at which targets are spawned.
+    """
+
+    def __post_init__(self) -> None:
+        """
+        :raises InvalidSpawnRegion: If the bounds contain no points.
+        """
+        if self.maximum_x <= self.minimum_x or self.maximum_y <= self.minimum_y:
+            raise InvalidSpawnRegion(
+                self.minimum_x, self.maximum_x, self.minimum_y, self.maximum_y
+            )
+
+    def contains(self, x: float, y: float) -> bool:
+        """
+        :param x: X coordinate in the world frame.
+        :param y: Y coordinate in the world frame.
+        :return: True if the point lies inside the region.
+        """
         return (
-            f"None of the configured spawn surfaces {self.surface_names} exist in the "
-            "world."
+            self.minimum_x <= x <= self.maximum_x
+            and self.minimum_y <= y <= self.maximum_y
         )
 
-    def suggest_correction(self) -> str:
-        return "Check the surface names against the environment."
+    def grid_capacity(self, clearance: float) -> int:
+        """
+        :param clearance: Minimum distance in meters between two targets.
+        :return: A conservative number of targets that provably fit into the region,
+            based on an axis-aligned grid packing.
+        """
+        columns = int((self.maximum_x - self.minimum_x) / clearance) + 1
+        rows = int((self.maximum_y - self.minimum_y) / clearance) + 1
+        return columns * rows
 
-
-@dataclass
-class SpawnRegionExhausted(DataclassException):
-    """
-    Raised when the spawn surfaces cannot hold the requested targets at the requested
-    clearance.
-    """
-
-    surfaces: List[SpawnSurface]
-    """
-    The surfaces sampling was attempted on.
-    """
-
-    clearance: float
-    """
-    Minimum center distance in meters between two targets that could not be met.
-    """
-
-    count: int
-    """
-    The number of targets that could not be placed.
-    """
-
-    def error_message(self) -> str:
-        surface_names = [surface.name for surface in self.surfaces]
-        return (
-            f"Could not place {self.count} targets with clearance {self.clearance} m "
-            f"on the surfaces {surface_names}."
+    def inset(self, margin: float) -> Optional[SpawnRegion]:
+        """
+        :param margin: Distance in meters to shrink the region by on every side.
+        :return: The shrunken region at the same height, or None if the margin consumes
+            the region.
+        """
+        return self._create_if_valid(
+            minimum_x=self.minimum_x + margin,
+            maximum_x=self.maximum_x - margin,
+            minimum_y=self.minimum_y + margin,
+            maximum_y=self.maximum_y - margin,
+            height=self.height,
         )
 
-    def suggest_correction(self) -> str:
-        return ""
+    def area(self) -> float:
+        """
+        :return: The area of the region in square meters.
+        """
+        return (self.maximum_x - self.minimum_x) * (self.maximum_y - self.minimum_y)
+
+    @classmethod
+    def from_bounding_box(
+        cls, bounding_box: BoundingBox, margin: float, height_offset: float
+    ) -> Optional[SpawnRegion]:
+        """
+        Build a spawn region from a measured world-frame bounding box.
+
+        :param bounding_box: The surface's bounding box in the world frame.
+        :param margin: Distance in meters kept from every surface edge.
+        :param height_offset: Height in meters above the surface top at which targets
+            are spawned.
+        :return: The inset spawnable region on top of the surface, or None if the margin
+            consumes the surface.
+        """
+        return cls._create_if_valid(
+            minimum_x=bounding_box.min_x + margin,
+            maximum_x=bounding_box.max_x - margin,
+            minimum_y=bounding_box.min_y + margin,
+            maximum_y=bounding_box.max_y - margin,
+            height=bounding_box.max_z + height_offset,
+        )
+
+    @classmethod
+    def _create_if_valid(
+        cls,
+        minimum_x: float,
+        maximum_x: float,
+        minimum_y: float,
+        maximum_y: float,
+        height: float,
+    ) -> Optional[SpawnRegion]:
+        """
+        :return: The region, or None if the bounds contain no points.
+        """
+        if maximum_x <= minimum_x or maximum_y <= minimum_y:
+            return None
+        return cls(
+            minimum_x=minimum_x,
+            maximum_x=maximum_x,
+            minimum_y=minimum_y,
+            maximum_y=maximum_y,
+            height=height,
+        )
 
 
 @dataclass(frozen=True)
@@ -96,6 +175,10 @@ class SpawnSurface:
 class ObjectFootprint:
     """
     The circular XY footprint of a spawnable object, over its allowed scales.
+
+    The sampler uses it to keep every placement's whole footprint on its surface and to
+    enforce a free gap between neighboring targets, so spawned meshes never overlap each
+    other or hang off surface edges.
     """
 
     base_radius: float
@@ -103,7 +186,7 @@ class ObjectFootprint:
     Footprint radius in meters at scale 1.0.
     """
 
-    scale_choices: Tuple[float, ...]
+    scale_choices: List[float]
     """
     Uniform scale factors an object may be spawned with.
     """
@@ -118,7 +201,7 @@ class ObjectFootprint:
         """
         :return: The footprint of a dimensionless target, e.g. a wiping pose.
         """
-        return cls(base_radius=0.0, scale_choices=(1.0,))
+        return cls(base_radius=0.0, scale_choices=[1.0])
 
     def radius_for_scale(self, scale: float) -> float:
         """
@@ -137,12 +220,9 @@ class ObjectFootprint:
 @dataclass(frozen=True)
 class ObstacleBox:
     """
-    The world-frame bounding box of a body placements must keep clear of.
-
-    Built from a measured :class:`~semantic_digital_twin.world_description.geometry.BoundingBox`
-    via :meth:`from_bounding_box`, but adds placement semantics (:attr:`vertical_margin`,
-    :attr:`top_epsilon`, :meth:`blocks`) and stays a lightweight, world-free numeric box so
-    the seeded sampler and its tests do not depend on a live world.
+    The world-frame bounding box of a body placements must keep clear of, plus the
+    placement semantics deciding what counts as a collision (:attr:`vertical_margin`,
+    :attr:`top_epsilon`, :meth:`blocks`).
     """
 
     vertical_margin: ClassVar[float] = 0.03
@@ -162,34 +242,9 @@ class ObstacleBox:
     Name of the obstacle body in the world.
     """
 
-    minimum_x: float
+    bounding_box: BoundingBox
     """
-    Lower X bound of the box in the world frame.
-    """
-
-    maximum_x: float
-    """
-    Upper X bound of the box in the world frame.
-    """
-
-    minimum_y: float
-    """
-    Lower Y bound of the box in the world frame.
-    """
-
-    maximum_y: float
-    """
-    Upper Y bound of the box in the world frame.
-    """
-
-    minimum_z: float
-    """
-    Lower Z bound of the box in the world frame.
-    """
-
-    maximum_z: float
-    """
-    Upper Z bound of the box in the world frame.
+    The body's bounding box, measured in the world frame.
     """
 
     def blocks(self, x: float, y: float, z: float, radius: float) -> bool:
@@ -205,30 +260,15 @@ class ObstacleBox:
         :param radius: Footprint radius of the placement in meters.
         :return: True if the placement collides with this obstacle.
         """
-        if z < self.minimum_z - self.vertical_margin:
+        if z < self.bounding_box.min_z - self.vertical_margin:
             return False
-        if z >= self.maximum_z - self.top_epsilon:
+        if z >= self.bounding_box.max_z - self.top_epsilon:
             return False
         return (
-            self.minimum_x - radius <= x <= self.maximum_x + radius
-            and self.minimum_y - radius <= y <= self.maximum_y + radius
-        )
-
-    @classmethod
-    def from_bounding_box(cls, name: str, bounding_box: BoundingBox) -> ObstacleBox:
-        """
-        :param name: Name of the obstacle body in the world.
-        :param bounding_box: The body's bounding box in the world frame.
-        :return: The obstacle box wrapping the measured bounding box.
-        """
-        return cls(
-            name=name,
-            minimum_x=bounding_box.min_x,
-            maximum_x=bounding_box.max_x,
-            minimum_y=bounding_box.min_y,
-            maximum_y=bounding_box.max_y,
-            minimum_z=bounding_box.min_z,
-            maximum_z=bounding_box.max_z,
+            self.bounding_box.min_x - radius <= x <= self.bounding_box.max_x + radius
+            and self.bounding_box.min_y - radius
+            <= y
+            <= self.bounding_box.max_y + radius
         )
 
 
@@ -251,7 +291,7 @@ def discover_obstacles(
         bounding_box = body.collision.as_bounding_box_collection_in_frame(
             world.root
         ).bounding_box()
-        obstacles.append(ObstacleBox.from_bounding_box(name, bounding_box))
+        obstacles.append(ObstacleBox(name=name, bounding_box=bounding_box))
     return obstacles
 
 
@@ -269,7 +309,7 @@ def discover_spawn_surfaces(
     :param margin: Distance in meters kept from every surface edge.
     :param height_offset: Height in meters above the surface top at which targets are
         spawned.
-    :return: One spawn surface per found name.
+    :return: One spawn surface per found name whose margins leave a spawnable region.
     :raises MissingSpawnSurfaces: If none of the names exist in the world.
     """
     surfaces = []
@@ -281,17 +321,47 @@ def discover_spawn_surfaces(
         bounding_box = body.collision.as_bounding_box_collection_in_frame(
             world.root
         ).bounding_box()
-        surfaces.append(
-            SpawnSurface(
-                name=surface_name,
-                region=SpawnRegion.from_bounding_box(
-                    bounding_box, margin=margin, height_offset=height_offset
-                ),
-            )
+        region = SpawnRegion.from_bounding_box(
+            bounding_box, margin=margin, height_offset=height_offset
         )
+        if region is None:
+            continue
+        surfaces.append(SpawnSurface(name=surface_name, region=region))
     if not surfaces:
         raise MissingSpawnSurfaces(surface_names)
     return surfaces
+
+
+@dataclass(frozen=True)
+class PlanarPose:
+    """
+    A position and orientation in the world's XY plane, as plain floats.
+
+    Kept separate from the symbolic spatial types so seeded sampling and result records
+    stay value-comparable and serializable without a live world.
+    """
+
+    x: float
+    """
+    X coordinate in the world frame.
+    """
+
+    y: float
+    """
+    Y coordinate in the world frame.
+    """
+
+    yaw: float
+    """
+    Rotation in radians around the world Z axis.
+    """
+
+    def distance_to(self, other: PlanarPose) -> float:
+        """
+        :param other: The pose to measure against.
+        :return: The XY distance in meters between the two poses.
+        """
+        return math.hypot(self.x - other.x, self.y - other.y)
 
 
 @dataclass(frozen=True)
@@ -310,24 +380,14 @@ class TargetPlacement:
     Name of the surface the target is spawned on.
     """
 
-    x: float
+    pose: PlanarPose
     """
-    X coordinate of the target in the world frame.
-    """
-
-    y: float
-    """
-    Y coordinate of the target in the world frame.
+    Position and orientation of the target in the world's XY plane.
     """
 
     z: float
     """
     Z coordinate of the target in the world frame.
-    """
-
-    yaw: float
-    """
-    Rotation in radians of the target around the world Z axis.
     """
 
     scale: float = 1.0
@@ -345,7 +405,7 @@ class TargetPlacement:
         :param other: The placement to measure against.
         :return: The XY distance in meters between the two placements.
         """
-        return math.hypot(self.x - other.x, self.y - other.y)
+        return self.pose.distance_to(other.pose)
 
 
 @dataclass
@@ -464,13 +524,11 @@ class SceneSampler:
             together, assuming every target has the largest footprint.
         """
         largest_radius = self.footprint.largest_radius()
-        cell = max(
-            self.clearance, 2.0 * largest_radius + self.footprint_clearance
-        )
+        cell = max(self.clearance, 2.0 * largest_radius + self.footprint_clearance)
         capacity = 0
         for surface in surfaces:
             region = surface.region.inset(largest_radius)
-            if region.is_empty():
+            if region is None:
                 continue
             capacity += region.grid_capacity(cell)
         return capacity
@@ -528,20 +586,22 @@ class SceneSampler:
             scale = generator.choice(self.footprint.scale_choices)
             radius = self.footprint.radius_for_scale(scale)
             region = surface.region.inset(radius)
-            if region.is_empty():
+            if region is None:
                 continue
             candidate = TargetPlacement(
                 name=name,
                 surface_name=surface.name,
-                x=generator.uniform(region.minimum_x, region.maximum_x),
-                y=generator.uniform(region.minimum_y, region.maximum_y),
+                pose=PlanarPose(
+                    x=generator.uniform(region.minimum_x, region.maximum_x),
+                    y=generator.uniform(region.minimum_y, region.maximum_y),
+                    yaw=generator.uniform(0.0, 2.0 * math.pi),
+                ),
                 z=region.height,
-                yaw=generator.uniform(0.0, 2.0 * math.pi),
                 scale=scale,
                 footprint_radius=radius,
             )
             if any(
-                obstacle.blocks(candidate.x, candidate.y, candidate.z, radius)
+                obstacle.blocks(candidate.pose.x, candidate.pose.y, candidate.z, radius)
                 for obstacle in self.obstacles
             ):
                 continue

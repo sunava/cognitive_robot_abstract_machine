@@ -27,7 +27,7 @@ from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.geometry import Color, Scale
 from semantic_digital_twin.world_description.world_entity import Body
-from typing_extensions import Dict, Optional, Tuple
+from typing_extensions import Dict, List, Optional, Type
 
 from coraplex.datastructures.enums import Arms, CuttingTechnique
 from coraplex.robot_plans.actions.base import ActionDescription
@@ -38,8 +38,8 @@ from coraplex.robot_plans.actions.composite.tool_based import (
     WipingAction,
 )
 from coraplex.testing import attach_tool
+from krrood.utils import recursive_subclasses
 
-from experiments.tool_based_actions.experiment.configuration import ToolBasedTask
 from experiments.tool_based_actions.experiment.scene import (
     ObjectFootprint,
     TargetPlacement,
@@ -94,6 +94,14 @@ class ToolTaskDefinition(ABC):
     Keep every Nth sampled tool path waypoint for execution.
     """
 
+    @classmethod
+    def task_name(cls) -> str:
+        """
+        :return: A compact, human-readable name of the task, used in trial identifiers
+            and on the command line.
+        """
+        return cls.__name__.removesuffix("TaskDefinition").lower()
+
     @abstractmethod
     def attach_tool(self, world: World, robot: AbstractRobot) -> Tool:
         """
@@ -126,7 +134,7 @@ class ToolTaskDefinition(ABC):
 
     @abstractmethod
     def target_footprint(
-        self, scale_choices: Tuple[float, ...], safety_factor: float
+        self, scale_choices: List[float], safety_factor: float
     ) -> ObjectFootprint:
         """
         :param scale_choices: Uniform scale factors targets may be spawned with.
@@ -137,7 +145,7 @@ class ToolTaskDefinition(ABC):
     def _mesh_footprint(
         self,
         mesh_file_name: str,
-        scale_choices: Tuple[float, ...],
+        scale_choices: List[float],
         safety_factor: float,
     ) -> ObjectFootprint:
         """
@@ -183,10 +191,10 @@ class ToolTaskDefinition(ABC):
             world,
             mesh_file_name,
             HomogeneousTransformationMatrix.from_xyz_rpy(
-                placement.x,
-                placement.y,
+                placement.pose.x,
+                placement.pose.y,
                 placement.z,
-                yaw=placement.yaw,
+                yaw=placement.pose.yaw,
                 reference_frame=world.root,
             ),
             color=color,
@@ -201,10 +209,10 @@ class ToolTaskDefinition(ABC):
         :return: The placement as a pose in the world frame.
         """
         return Pose.from_xyz_rpy(
-            placement.x,
-            placement.y,
+            placement.pose.x,
+            placement.pose.y,
             placement.z,
-            yaw=placement.yaw,
+            yaw=placement.pose.yaw,
             reference_frame=world.root,
         )
 
@@ -246,7 +254,7 @@ class CuttingTaskDefinition(ToolTaskDefinition):
         )
 
     def target_footprint(
-        self, scale_choices: Tuple[float, ...], safety_factor: float
+        self, scale_choices: List[float], safety_factor: float
     ) -> ObjectFootprint:
         return self._mesh_footprint("bread.stl", scale_choices, safety_factor)
 
@@ -285,7 +293,7 @@ class MixingTaskDefinition(ToolTaskDefinition):
         )
 
     def target_footprint(
-        self, scale_choices: Tuple[float, ...], safety_factor: float
+        self, scale_choices: List[float], safety_factor: float
     ) -> ObjectFootprint:
         return self._mesh_footprint("bowl.stl", scale_choices, safety_factor)
 
@@ -325,7 +333,7 @@ class PouringTaskDefinition(ToolTaskDefinition):
         )
 
     def target_footprint(
-        self, scale_choices: Tuple[float, ...], safety_factor: float
+        self, scale_choices: List[float], safety_factor: float
     ) -> ObjectFootprint:
         return self._mesh_footprint("bowl.stl", scale_choices, safety_factor)
 
@@ -359,23 +367,17 @@ class WipingTaskDefinition(ToolTaskDefinition):
         )
 
     def target_footprint(
-        self, scale_choices: Tuple[float, ...], safety_factor: float
+        self, scale_choices: List[float], safety_factor: float
     ) -> ObjectFootprint:
         return ObjectFootprint.point()
 
 
-def definition_for_task(
-    task: ToolBasedTask, pointer_stride: int = 10
-) -> ToolTaskDefinition:
+
+def tasks_by_name() -> Dict[str, Type[ToolTaskDefinition]]:
     """
-    :param task: The task to run.
-    :param pointer_stride: Keep every Nth sampled tool path waypoint for execution.
-    :return: The definition constructing scenes and actions for the task.
+    :return: Every runnable tool-based task, keyed by its command line name.
     """
-    definitions: Dict[ToolBasedTask, ToolTaskDefinition] = {
-        ToolBasedTask.CUTTING: CuttingTaskDefinition(pointer_stride=pointer_stride),
-        ToolBasedTask.MIXING: MixingTaskDefinition(pointer_stride=pointer_stride),
-        ToolBasedTask.POURING: PouringTaskDefinition(pointer_stride=pointer_stride),
-        ToolBasedTask.WIPING: WipingTaskDefinition(pointer_stride=pointer_stride),
+    return {
+        definition.task_name(): definition
+        for definition in recursive_subclasses(ToolTaskDefinition)
     }
-    return definitions[task]

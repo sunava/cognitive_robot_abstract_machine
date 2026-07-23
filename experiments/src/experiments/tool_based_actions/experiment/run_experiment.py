@@ -3,18 +3,23 @@ Campaign orchestrator of the tool-based action experiment.
 
 Runs every trial of the configured grid in an isolated subprocess with a wall-clock
 timeout, skips trials that already have recorded results, and prints a summary at the
-end. Press Run — there are no command line arguments.
+end. All configuration defaults live in :class:`ExperimentConfiguration`; the command
+line only overrides them.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import logging
 import subprocess
 import sys
 from dataclasses import dataclass, field
+from datetime import timedelta
+from pathlib import Path
 
-from typing_extensions import List
+from krrood.adapters.json_serializer import to_json
+from typing_extensions import Any, Dict, List
 
 from experiments.experiment_definitions import ExperimentsTable, TypstRenderer
 from experiments.tool_based_actions.experiment.configuration import (
@@ -25,6 +30,7 @@ from experiments.tool_based_actions.experiment.results import (
     ResultRecorder,
     TaskReliability,
 )
+from experiments.tool_based_actions.experiment.task_definitions import tasks_by_name
 
 logger = logging.getLogger(__name__)
 
@@ -78,11 +84,11 @@ class ExperimentRunner:
         command = self._trial_command(specification)
         try:
             completed_process = subprocess.run(
-                command, timeout=self.configuration.trial_timeout
+                command, timeout=self.configuration.trial_timeout.total_seconds()
             )
         except subprocess.TimeoutExpired:
             logger.error(
-                "Trial %s hit the %.0f s timeout; continuing with the next trial.",
+                "Trial %s hit the %s timeout; continuing with the next trial.",
                 specification.identifier,
                 self.configuration.trial_timeout,
             )
@@ -104,11 +110,11 @@ class ExperimentRunner:
             "-m",
             "experiments.tool_based_actions.experiment.single_trial",
             "--task",
-            specification.task.value,
+            specification.task.task_name(),
             "--seed",
             str(specification.seed),
             "--configuration-json",
-            json.dumps(self.configuration.to_json()),
+            json.dumps(to_json(self.configuration)),
         ]
 
     def _log_summary(self, recorder: ResultRecorder) -> None:
@@ -131,12 +137,58 @@ class ExperimentRunner:
         logger.info("Results file: %s", self.configuration.results_file)
 
 
+def parse_configuration(argument_list: List[str]) -> ExperimentConfiguration:
+    """
+    Build the campaign configuration from command line overrides.
+
+    :param argument_list: The command line arguments, without the program name.
+    :return: The configuration with all given overrides applied.
+    """
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--tasks",
+        nargs="+",
+        choices=sorted(tasks_by_name()),
+        help="Tasks to run; all of them by default.",
+    )
+    parser.add_argument(
+        "--seeds",
+        nargs="+",
+        type=int,
+        help="Seeds to run every task with.",
+    )
+    parser.add_argument(
+        "--results-file",
+        type=Path,
+        help="File the trial results are appended to.",
+    )
+    parser.add_argument(
+        "--trial-timeout-seconds",
+        type=float,
+        help="Wall-clock limit for a single trial process.",
+    )
+    arguments = parser.parse_args(argument_list)
+
+    overrides: Dict[str, Any] = {}
+    if arguments.tasks is not None:
+        overrides["tasks"] = [tasks_by_name()[name] for name in arguments.tasks]
+    if arguments.seeds is not None:
+        overrides["seeds"] = arguments.seeds
+    if arguments.results_file is not None:
+        overrides["results_file"] = arguments.results_file
+    if arguments.trial_timeout_seconds is not None:
+        overrides["trial_timeout"] = timedelta(
+            seconds=arguments.trial_timeout_seconds
+        )
+    return ExperimentConfiguration(**overrides)
+
+
 def main() -> None:
     """
-    Run the default experiment campaign.
+    Run the experiment campaign described by the command line arguments.
     """
     logging.basicConfig(level=logging.INFO)
-    ExperimentRunner().run()
+    ExperimentRunner(configuration=parse_configuration(sys.argv[1:])).run()
 
 
 if __name__ == "__main__":

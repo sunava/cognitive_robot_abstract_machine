@@ -8,6 +8,9 @@ technique is left as an ellipsis, and slice thickness and cut count are omitted 
 so the action derives them from the bread's size.
 """
 
+# Importing the ORM interface registers the data access objects the probabilistic
+# backend needs to condition on the given literal values.
+import coraplex.orm.ormatic_interface
 from krrood.entity_query_language.backends import ProbabilisticBackend
 from krrood.entity_query_language.factories import a
 
@@ -44,10 +47,6 @@ def main() -> None:
     """
     Build the demo world and run the underspecified plan on the simulated robot.
     """
-    # Importing the ORM interface registers the data access objects the
-    # probabilistic backend needs to condition on the given literal values.
-    import coraplex.orm.ormatic_interface
-
     world = setup_world()
 
     bread_body = place_target_on_counter(world, "bread.stl", BREAD_COLOR)

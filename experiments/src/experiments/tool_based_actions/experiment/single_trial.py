@@ -13,7 +13,9 @@ import json
 import logging
 import time
 from dataclasses import dataclass
+from datetime import timedelta
 
+from krrood.adapters.json_serializer import from_json
 from krrood.entity_query_language.factories import a, variable
 from krrood.entity_query_language.query.match import Match
 from semantic_digital_twin.datastructures.definitions import GripperState, TorsoState
@@ -41,10 +43,10 @@ from coraplex.testing import setup_world
 
 from experiments.tool_based_actions.experiment.configuration import (
     ExperimentConfiguration,
-    ToolBasedTask,
     TrialSpecification,
 )
 from experiments.tool_based_actions.experiment.results import (
+    FailureDescription,
     ResultRecorder,
     TargetResult,
 )
@@ -56,7 +58,7 @@ from experiments.tool_based_actions.experiment.scene import (
 from experiments.tool_based_actions.experiment.task_definitions import (
     ExperimentTarget,
     ToolTaskDefinition,
-    definition_for_task,
+    tasks_by_name,
 )
 from experiments.tool_based_actions.experiment.visualization import (
     TargetHighlight,
@@ -123,8 +125,8 @@ class TrialRunner:
         context = Context(world=world, robot=robot, _debug=False, ros_node=None)
         context.evaluate_conditions = False
 
-        definition = definition_for_task(
-            self.specification.task, self.configuration.tool_path_pointer_stride
+        definition = self.specification.task(
+            pointer_stride=self.configuration.tool_path_pointer_stride
         )
         targets = self._spawn_targets(world, robot, definition)
         tool = definition.attach_tool(world, robot)
@@ -196,7 +198,9 @@ class TrialRunner:
         )
         placements = sampler.sample_placements(
             count,
-            name_prefix=f"{self.specification.task.value}_{self.specification.seed}",
+            name_prefix=(
+                f"{self.specification.task.task_name()}_{self.specification.seed}"
+            ),
             minimum_count=self.configuration.minimum_targets_per_trial,
         )
         logger.info(
@@ -236,8 +240,8 @@ class TrialRunner:
 
         with TargetHighlight(world=context.world, body=target.body):
             start = time.monotonic()
-            failure_reason = self._perform_and_capture_failure(plan)
-            duration = time.monotonic() - start
+            failure = self._perform_and_capture_failure(plan)
+            duration = timedelta(seconds=time.monotonic() - start)
 
         placement = target.placement
         return TargetResult(
@@ -247,32 +251,29 @@ class TrialRunner:
             robot_name=context.robot.name.name,
             environment_name=self.specification.environment_name,
             target_name=placement.name,
-            target_x=placement.x,
-            target_y=placement.y,
-            target_yaw=placement.yaw,
+            target_pose=placement.pose,
             target_scale=placement.scale,
             surface_name=placement.surface_name,
-            success=failure_reason is None,
             duration=duration,
-            failure_reason=failure_reason,
+            failure=failure,
         )
 
     @staticmethod
-    def _perform_and_capture_failure(plan: Plan) -> Optional[str]:
+    def _perform_and_capture_failure(plan: Plan) -> Optional[FailureDescription]:
         """
-        Perform the plan, translating any raised error into a recordable reason.
+        Perform the plan, translating any raised error into a recordable failure.
 
         The experiment must observe failures instead of aborting on them, so this is the
         one place a broad exception handler is justified.
 
         :param plan: The plan to perform.
-        :return: None on success, otherwise a compact failure description.
+        :return: None on success, otherwise the recordable failure description.
         """
         try:
             plan.perform()
         except Exception as error:
             logger.warning("Target failed: %s", error, exc_info=True)
-            return f"{type(error).__name__}: {error}"
+            return FailureDescription.from_exception(error)
         return None
 
     def _navigate_to_reachable_base_pose(
@@ -324,18 +325,14 @@ def main() -> None:
     """
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--task", required=True, choices=[task.value for task in ToolBasedTask]
-    )
+    parser.add_argument("--task", required=True, choices=sorted(tasks_by_name()))
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--configuration-json", required=True)
     arguments = parser.parse_args()
 
-    configuration = ExperimentConfiguration.from_json(
-        json.loads(arguments.configuration_json)
-    )
+    configuration = from_json(json.loads(arguments.configuration_json))
     specification = TrialSpecification(
-        task=ToolBasedTask(arguments.task),
+        task=tasks_by_name()[arguments.task],
         seed=arguments.seed,
         environment_name=configuration.environment_name,
     )
