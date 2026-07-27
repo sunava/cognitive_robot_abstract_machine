@@ -3,14 +3,18 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from rclpy.node import Node
+try:
+    from rclpy.node import Node
 
-from semantic_digital_twin.adapters.ros.visualization.spatial_type_marker_renderer import (
-    SpatialTypeVisualization,
-)
-from semantic_digital_twin.adapters.ros.visualization.spatial_type_publisher import (
-    SpatialTypePublisher,
-)
+    from semantic_digital_twin.adapters.ros.visualization.spatial_type_marker_renderer import (
+        SpatialTypeVisualization,
+    )
+    from semantic_digital_twin.adapters.ros.visualization.spatial_type_publisher import (
+        SpatialTypePublisher,
+    )
+except ImportError:
+    from semantic_digital_twin.utils import MockedNodeClass as Node
+
 from semantic_digital_twin.spatial_types.spatial_types import SpatialType, Vector3
 from semantic_digital_twin.world import World
 

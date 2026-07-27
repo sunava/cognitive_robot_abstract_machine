@@ -26,10 +26,6 @@ from coraplex.datastructures.dataclasses import Context
 
 if TYPE_CHECKING:
     from coraplex.alternative_motion_mapping import AlternativeMotion
-from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
-    VizMarkerPublisher,
-)
-
 try:
     from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
         VizMarkerPublisher,
