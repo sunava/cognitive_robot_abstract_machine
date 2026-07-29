@@ -39,11 +39,18 @@ class GraspDescription:
     Describes a grasp configuration for a end_effector the description consists of the
     approach direction (the side from which to grasp e.g. FRONT, LEFT, etc and the
     vertical alignment (TOP, BOTTOM).
+
+    The approach direction is interpreted relative to the robot: *FRONT* always denotes
+    the side of the target that faces the robot, independent of the target's own
+    orientation. It is resolved onto the target's frame via
+    :meth:`resolve_approach_direction` when poses are calculated.
     """
 
     approach_direction: ApproachDirection
     """
-    The direction from which the body should be grasped. These are the four directions in the x-y plane (FRONT, BACK, LEFT, RIGHT).
+    The robot-relative direction from which the body should be grasped. These are the
+    four directions in the x-y plane (FRONT, BACK, LEFT, RIGHT), where FRONT is the side
+    of the body facing the robot.
     """
 
     vertical_alignment: VerticalAlignment
@@ -66,8 +73,82 @@ class GraspDescription:
     The offset between the center of the pose in the grasp sequence.
     """
 
+    @classmethod
+    def robot_direction_in_pose_frame(
+        cls, end_effector: EndEffector, pose: Pose, robot_pose: Optional[Pose] = None
+    ) -> Vector3:
+        """
+        The direction from the pose origin towards the root of the robot owning the
+        end_effector, expressed in the pose's frame.
+
+        :param end_effector: The end_effector whose robot defines the direction.
+        :param pose: The pose whose frame the direction is expressed in.
+        :param robot_pose: An explicit robot root pose to measure from, for example a
+            standing pose the robot will navigate to. Defaults to the robot's current
+            root pose.
+        :return: The direction towards the robot in the pose's frame.
+        """
+        world = end_effector._world
+        map_T_pose = world.transform(pose.to_homogeneous_matrix(), world.root).to_pose()
+
+        if robot_pose is None:
+            map_T_robot = end_effector._robot.root.global_pose
+        else:
+            robot_world = robot_pose.reference_frame._world
+            map_T_robot = robot_world.transform(
+                robot_pose.to_homogeneous_matrix(), robot_world.root
+            ).to_pose()
+
+        map_V_towards_robot = map_T_robot.to_position() - map_T_pose.to_position()
+        pose_R_map = map_T_pose.to_rotation_matrix().inverse()
+
+        return pose_R_map @ map_V_towards_robot
+
+    def robot_facing_direction(
+        self, target_pose: Pose, robot_pose: Optional[Pose] = None
+    ) -> ApproachDirection:
+        """
+        The approach direction, expressed in the frame of the target pose, whose face
+        points towards the robot.
+
+        :param target_pose: The pose of the grasp target.
+        :param robot_pose: An explicit robot root pose to measure from. Defaults to the
+            robot's current root pose.
+        :return: The object-frame direction facing the robot.
+        """
+        direction_towards_robot = self.robot_direction_in_pose_frame(
+            self.end_effector, target_pose, robot_pose
+        )
+        side_vector = Vector3(
+            direction_towards_robot.x, direction_towards_robot.y, np.nan
+        )
+        return self.calculate_closest_faces(side_vector)[0]
+
+    def resolve_approach_direction(
+        self, target_pose: Pose, robot_pose: Optional[Pose] = None
+    ) -> ApproachDirection:
+        """
+        Translate the robot-relative approach direction into the frame of the target
+        pose.
+
+        *FRONT* always resolves to the side of the target that faces the robot.
+
+        :param target_pose: The pose of the grasp target.
+        :param robot_pose: An explicit robot root pose to resolve from, for example a
+            standing pose the robot will navigate to. Defaults to the robot's current
+            root pose.
+        :return: The approach direction in the target's frame.
+        """
+        return self.approach_direction.to_object_frame(
+            self.robot_facing_direction(target_pose, robot_pose)
+        )
+
     def pose_sequence(
-        self, target_T_grasp_pose: Pose, body: Body = None, reverse: bool = False
+        self,
+        target_T_grasp_pose: Pose,
+        body: Body = None,
+        reverse: bool = False,
+        robot_pose: Optional[Pose] = None,
     ) -> List[Pose]:
         """
         Calculates the pose sequence to grasp something at the pose if the body is given
@@ -78,13 +159,18 @@ class GraspDescription:
         :param target_T_grasp_pose: The pose of the grasp in the target frame.
         :param body: The body of the grasp.
         :param reverse: If the sequence should be reversed.
+        :param robot_pose: An explicit robot root pose to resolve the approach direction
+            from. Defaults to the robot's current root pose.
         :return: The pose sequence.
         """
         target = target_T_grasp_pose.reference_frame
 
         world = target._world
 
-        grasp_pose_R_gripper_goal = self.grasp_orientation()
+        resolved_approach_direction = self.resolve_approach_direction(
+            target_T_grasp_pose, robot_pose
+        )
+        grasp_pose_R_gripper_goal = self.grasp_orientation(resolved_approach_direction)
 
         # if we just did target_T_grasp_pose @ grasp_pose_R_gripper_goal we would also rotate the translation in the
         # global frame, which we dont want here. Thus we just multiply the rotations, and take the translation as is
@@ -103,7 +189,7 @@ class GraspDescription:
                 body
             ).bounding_box()
 
-            approach_axis = np.array(self.approach_direction.axis.value, dtype=bool)
+            approach_axis = np.array(resolved_approach_direction.axis.value, dtype=bool)
 
             # Pre-pose calculation
             offset = (
@@ -221,13 +307,21 @@ class GraspDescription:
 
         return t[:3, 3].astype(float).tolist()
 
-    def grasp_orientation(self) -> Quaternion:
+    def grasp_orientation(
+        self, approach_direction: Optional[ApproachDirection] = None
+    ) -> Quaternion:
         """
-        The orientation of the grasp.
+        The orientation of the grasp in the frame of the grasp target.
 
         Takes into account the approach direction and vertical alignment.
+
+        :param approach_direction: The approach direction expressed in the target's
+            frame, usually obtained via :meth:`resolve_approach_direction`. Falls back
+            to the raw approach direction of this description.
         """
-        rotation = Rotations.SIDE_ROTATIONS[self.approach_direction]
+        rotation = Rotations.SIDE_ROTATIONS[
+            approach_direction or self.approach_direction
+        ]
         rotation = quaternion_multiply(
             rotation, Rotations.VERTICAL_ROTATIONS[self.vertical_alignment]
         )
@@ -244,15 +338,22 @@ class GraspDescription:
 
         return Quaternion(*orientation)
 
-    def edge_offset(self, body: Body) -> float:
+    def edge_offset(
+        self, body: Body, approach_direction: Optional[ApproachDirection] = None
+    ) -> float:
         """
         The offset between the center of the body and its edge in the direction of the
         approach axis.
 
         :param body: The body to calculate the edge offset for.
+        :param approach_direction: The approach direction expressed in the body's frame.
+            Resolved from the robot-relative approach direction if omitted.
         :return: The edge offset.
         """
-        rim_direction_index = self.approach_direction.value[0].value.index(1)
+        approach_direction = approach_direction or self.resolve_approach_direction(
+            Pose(reference_frame=body)
+        )
+        rim_direction_index = approach_direction.axis.value.index(1)
 
         rim_offset = (
             body.collision.as_bounding_box_collection_in_frame(body)
@@ -271,8 +372,9 @@ class GraspDescription:
             the center.
         :return: The pose of the body in the body frame.
         """
-        edge_offset = -self.edge_offset(body) if grasp_edge else 0
-        orientation = self.grasp_orientation()
+        approach_direction = self.resolve_approach_direction(Pose(reference_frame=body))
+        edge_offset = -self.edge_offset(body, approach_direction) if grasp_edge else 0
+        orientation = self.grasp_orientation(approach_direction)
         grasp_pose = Pose(Point3(edge_offset, 0, 0), orientation, reference_frame=body)
 
         return grasp_pose
@@ -289,6 +391,9 @@ class GraspDescription:
         vertical alignment) of the body, taking into account the bodies orientation,
         position, and whether the gripper should be rotated by 90°.
 
+        The approach directions of the returned descriptions are robot-relative: the
+        best-aligned side of the body resolves to *FRONT*.
+
         :param end_effector: The end_effector to use.
         :param grasp_alignment: An optional PreferredGraspAlignment object that
             specifies preferred grasp axis,
@@ -296,13 +401,6 @@ class GraspDescription:
         :return: A sorted list of GraspDescription instances representing all grasp
             permutations.
         """
-        world = end_effector._world
-        map_T_object = world.transform(
-            pose.to_homogeneous_matrix(), world.root
-        ).to_pose()
-
-        map_T_robot = end_effector._robot.root.global_pose
-
         if grasp_alignment:
             side_axis = grasp_alignment.preferred_axis
             vertical = grasp_alignment.with_vertical_alignment
@@ -314,17 +412,16 @@ class GraspDescription:
                 False,
             )
 
-        map_P_object = map_T_object.to_position()
-        map_P_robot = map_T_robot.to_position()
-
-        map_V_robot_to_object = map_P_robot - map_P_object
-
-        object_R_map = map_T_object.to_rotation_matrix().inverse()
-
-        object_V_robot = object_R_map @ map_V_robot_to_object
+        object_V_robot = cls.robot_direction_in_pose_frame(end_effector, pose)
 
         vector_side = Vector3(object_V_robot.x, object_V_robot.y, np.nan)
-        side_faces = GraspDescription.calculate_closest_faces(vector_side, side_axis)
+        robot_facing_direction = GraspDescription.calculate_closest_faces(vector_side)[
+            0
+        ]
+        side_faces = [
+            face.to_robot_relative(robot_facing_direction)
+            for face in GraspDescription.calculate_closest_faces(vector_side, side_axis)
+        ]
 
         vector_vertical = Vector3(np.nan, np.nan, object_V_robot.z)
         if vertical:

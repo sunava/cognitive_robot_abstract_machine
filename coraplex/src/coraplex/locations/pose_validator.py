@@ -144,6 +144,7 @@ class IsReachableBy(PoseValidator):
             tip_link=self.tip_link,
             context=self.context,
             grasp_description=self.grasp_description,
+            single_grasp=True,
         ).__call__()
 
 
@@ -158,6 +159,9 @@ class AreReachableBy(PoseValidator):
     pose_sequence: List[Pose]
     """
     Sequence of poses that should be reached.
+
+    When a grasp description is given, these are raw grasp target poses that are
+    expanded into grasp poses at validation time.
     """
 
     tip_link: KinematicStructureEntity
@@ -169,6 +173,42 @@ class AreReachableBy(PoseValidator):
     """
     The grasp description that should be used for validation.
     """
+
+    grasp_body: Body = field(default=None)
+    """
+    Body whose geometry is taken into account when expanding the grasp pose sequence.
+    """
+
+    single_grasp: bool = field(default=False)
+    """
+    If set, only the grasp pose itself is validated for each target pose instead of the
+    full approach sequence.
+    """
+
+    def poses_to_validate(self) -> List[Pose]:
+        """
+        The poses the robot has to reach.
+
+        With a grasp description, each target pose is expanded at validation time so
+        that the robot-relative approach direction is resolved against the robot pose
+        that is currently being validated.
+        """
+        if not self.grasp_description:
+            return self.pose_sequence
+
+        robot_pose = self.robot.root.global_pose
+        if self.single_grasp:
+            return [
+                self.grasp_description.pose_sequence(pose, robot_pose=robot_pose)[1]
+                for pose in self.pose_sequence
+            ]
+        return [
+            expanded_pose
+            for pose in self.pose_sequence
+            for expanded_pose in self.grasp_description.pose_sequence(
+                pose, self.grasp_body, robot_pose=robot_pose
+            )
+        ]
 
     def create_msc(self) -> MotionStatechart:
         """
@@ -192,10 +232,7 @@ class AreReachableBy(PoseValidator):
             if correct_arm is None:
                 raise TipLinkDoesNotMatchAnyArm(self.tip_link, self.robot)
             sequence = []
-            for pose in self.pose_sequence:
-
-                if self.grasp_description:
-                    pose = self.grasp_description.pose_sequence(pose)[1]
+            for pose in self.poses_to_validate():
 
                 motion = alternative_motion(
                     pose,
@@ -226,18 +263,9 @@ class AreReachableBy(PoseValidator):
                 else self.world.root
             )
 
-            sequence = (
-                [
-                    self.grasp_description.pose_sequence(pose)[1]
-                    for pose in self.pose_sequence
-                ]
-                if self.grasp_description
-                else self.pose_sequence
-            )
-
             sequence = [
                 CartesianPose(root_link=root, tip_link=self.tip_link, goal_pose=pose)
-                for pose in sequence
+                for pose in self.poses_to_validate()
             ]
 
         msc = MotionStatechart()

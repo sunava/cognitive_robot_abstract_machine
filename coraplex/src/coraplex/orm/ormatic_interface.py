@@ -3175,6 +3175,8 @@ class AreReachableByDAO(
         use_existing_column=True,
     )
 
+    single_grasp: Mapped[builtins.bool] = mapped_column(use_existing_column=True)
+
     tip_link_id: Mapped[int] = mapped_column(
         ForeignKey("KinematicStructureEntityDAO.database_id", use_alter=True),
         nullable=True,
@@ -3182,6 +3184,11 @@ class AreReachableByDAO(
     )
     grasp_description_id: Mapped[int] = mapped_column(
         ForeignKey("GraspDescriptionDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
+    grasp_body_id: Mapped[int] = mapped_column(
+        ForeignKey("BodyDAO.database_id", use_alter=True),
         nullable=True,
         use_existing_column=True,
     )
@@ -3206,6 +3213,9 @@ class AreReachableByDAO(
         uselist=False,
         foreign_keys=[grasp_description_id],
         post_update=True,
+    )
+    grasp_body: Mapped[BodyDAO] = relationship(
+        "BodyDAO", uselist=False, foreign_keys=[grasp_body_id], post_update=True
     )
 
     __mapper_args__ = {
@@ -6666,10 +6676,6 @@ class ExecutorDAO(Base, DataAccessObject[giskardpy.executor.Executor]):
         Integer, primary_key=True, use_existing_column=True
     )
 
-    tmp_folder: Mapped[builtins.str] = mapped_column(
-        sqlalchemy.sql.sqltypes.Text, use_existing_column=True
-    )
-
     polymorphic_type: Mapped[str] = mapped_column(
         String(255), nullable=False, use_existing_column=True
     )
@@ -8481,6 +8487,12 @@ class EndMotionDAO(
         primary_key=True,
         use_existing_column=True,
     )
+
+    joint_convergence_threshold: Mapped[builtins.float] = mapped_column(
+        use_existing_column=True
+    )
+    minimum_threshold: Mapped[builtins.float] = mapped_column(use_existing_column=True)
+    maximum_threshold: Mapped[builtins.float] = mapped_column(use_existing_column=True)
 
     __mapper_args__ = {
         "polymorphic_identity": "EndMotionDAO",
