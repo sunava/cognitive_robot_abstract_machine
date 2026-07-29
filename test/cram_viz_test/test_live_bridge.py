@@ -14,6 +14,14 @@ import types
 import pytest
 
 from cram_viz.live.bridge import Bridge
+from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
+from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
+from semantic_digital_twin.world import World
+from semantic_digital_twin.world_description.connections import (
+    Connection6DoF,
+    FixedConnection,
+)
+from semantic_digital_twin.world_description.world_entity import Body
 
 
 class _Status:
@@ -178,6 +186,50 @@ def make_chart(life=(1, 1, 0), obs=(0.5, 0.5, 0.0)):
     chart.life_cycle_state = types.SimpleNamespace(data=list(life))
     chart.observation_state = types.SimpleNamespace(data=list(obs))
     return chart
+
+
+# ---- viewer -> world -----------------------------------------------------
+@pytest.fixture()
+def shelved_object_world():
+    """
+    A world with an offset-parent (``shelf``) and a free-floating object (``milk``)
+    attached to it via a :class:`Connection6DoF`.
+    """
+    world = World()
+    with world.modify_world():
+        table = Body(name=PrefixedName("table"))
+        shelf = Body(name=PrefixedName("shelf"))
+        world.add_connection(
+            FixedConnection(
+                parent=table,
+                child=shelf,
+                parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(
+                    x=1.0, y=0.5, z=0.2
+                ),
+            )
+        )
+        milk = Body(name=PrefixedName("milk.stl"))
+        connection = Connection6DoF.create_with_dofs(
+            world=world, parent=shelf, child=milk
+        )
+        world.add_connection(connection)
+    return world, milk
+
+
+class TestApplyMove:
+    def test_dragged_object_lands_at_the_dropped_world_position(
+        self, shelved_object_world
+    ):
+        world, milk = shelved_object_world
+        bridge = Bridge()
+        bridge.world = world
+        bridge._bodies = {"milk.stl": milk}
+        bridge.queue_move(
+            {"object": "milk.stl", "pos": [2.0, 1.0, 0.5], "quat": [0, 0, 0, 1]}
+        )
+        bridge.apply_moves()
+        position = milk.global_pose.to_position().to_np().flatten()
+        assert position[:3] == pytest.approx([2.0, 1.0, 0.5])
 
 
 class TestChartSnapshot:

@@ -288,7 +288,10 @@ class Bridge:
         )
         # ``origin`` is parent-relative; express the target in the parent
         # frame (a no-op while the parent is the world root)
-        parent_T_object = connection.parent.global_pose.inverse() @ world_T_object
+        parent_T_object = (
+            connection.parent.global_pose.to_homogeneous_matrix().inverse()
+            @ world_T_object
+        )
         connection.origin = parent_T_object
         logger.info(
             "moved %s -> world (%.3f, %.3f, %.3f) [final=%s]",
