@@ -180,6 +180,21 @@ def make_chart(life=(1, 1, 0), obs=(0.5, 0.5, 0.0)):
     return chart
 
 
+class TestApplyMove:
+    def test_dragged_object_lands_at_the_dropped_world_position(
+        self, shelved_object_world
+    ):
+        world, milk = shelved_object_world
+        bridge = Bridge()
+        bridge.world = world
+        bridge._bodies = {"milk.stl": milk}
+        bridge.queue_move(
+            {"object": "milk.stl", "pos": [2.0, 1.0, 0.5], "quat": [0, 0, 0, 1]}
+        )
+        bridge.apply_moves()
+        position = milk.global_pose.to_position().to_np().flatten()
+        assert position[:3] == pytest.approx([2.0, 1.0, 0.5])
+
 class TestChartSnapshot:
     def test_structure_and_states(self):
         bridge = Bridge()

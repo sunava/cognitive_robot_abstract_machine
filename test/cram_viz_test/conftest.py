@@ -12,6 +12,12 @@ import os
 
 import pytest
 
+from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
+from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
+from semantic_digital_twin.world import World
+from semantic_digital_twin.world_description.connections import Connection6DoF
+from semantic_digital_twin.world_description.world_entity import Body
+
 SCENE = {
     "name": "fixture",
     "fps": 30,
@@ -130,6 +136,25 @@ ARCH_FILES = {
     "krrood/src/krrood/eql.py": 'class Entity:\n    """An entity."""\n',
     "krrood/README.md": "# krrood\nknowledge representation\n",
 }
+
+
+@pytest.fixture()
+def shelved_object_world():
+    """
+    A world with a milk body free-floating on a shelf, connected via a
+    :class:`Connection6DoF` so it can be dragged like a viewer-moved object.
+    """
+    world = World()
+    shelf = Body(name=PrefixedName("shelf"))
+    milk = Body(name=PrefixedName("milk.stl"))
+    with world.modify_world():
+        world.add_body(shelf)
+        connection = Connection6DoF.create_with_dofs(world, parent=shelf, child=milk)
+        world.add_connection(connection)
+    connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(
+        2.37, 2.0, 1.05, reference_frame=shelf
+    )
+    return world, milk
 
 
 @pytest.fixture()
