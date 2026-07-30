@@ -8,14 +8,13 @@ import logging
 import runpy
 import signal
 import sys
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 
-from typing_extensions import Optional, TYPE_CHECKING
+from typing_extensions import TYPE_CHECKING
 
 from cram_viz.live import hooks
-from cram_viz.live.bridge import BRIDGE
-from cram_viz.live.http import DEFAULT_PORT, serve
+from cram_viz.live.bridge import Bridge
+from cram_viz.live.http import DEFAULT_PORT, BridgeHTTPServer, serve
 
 if TYPE_CHECKING:
     from semantic_digital_twin.world import World
@@ -23,9 +22,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def start(
-    world: Optional[World] = None, port: int = DEFAULT_PORT
-) -> ThreadingHTTPServer:
+# %% library entry point -----------------------------------------------------------
+def start(world: World | None = None, port: int = DEFAULT_PORT) -> BridgeHTTPServer:
     """
     Start the live bridge.
 
@@ -34,15 +32,17 @@ def start(
         executing world on the first executor tick.
     :param port: Port of the bridge's HTTP endpoints.
     :return: The running HTTP server (a daemon thread).
+    :raises HookAlreadyInstalledError: if a bridge is already running in this process.
     """
-    hooks.install_mesh_hook()  # before the demo parses its objects
-    hooks.install_plan_hooks()
+    bridge = Bridge()
+    hooks.install_mesh_hook(bridge)  # before the demo parses its objects
+    hooks.install_plan_hooks(bridge)
     if world is not None:
-        BRIDGE.world = world
-        BRIDGE._bind()
-        BRIDGE.snapshot()  # single-threaded here, before execution starts
-    hooks.install_tick_hook()
-    server = serve(port)
+        bridge.world = world
+        bridge._bind()
+        bridge.snapshot()  # single-threaded here, before execution starts
+    hooks.install_tick_hook(bridge)
+    server = serve(bridge, port)
     logger.info(
         "bridge on http://localhost:%d (the viewer shows a Live button "
         "while this runs)",
@@ -51,6 +51,7 @@ def start(
     return server
 
 
+# %% cli entry point ---------------------------------------------------------------
 def main() -> None:
     """
     ``cram-viz-live path/to/demo.py`` — run a demo with the live bridge.

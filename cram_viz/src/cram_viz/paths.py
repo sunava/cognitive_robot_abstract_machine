@@ -25,15 +25,20 @@ from pathlib import Path
 WEB_ROOT = Path(__file__).resolve().parent / "web"
 
 
+# %% data locations
+
+
 def data_dir() -> Path:
     """
     Writable per-user data directory (architecture scan cache, defaults).
     """
-    env = os.environ.get("CRAM_VIZ_DATA")
-    if env:
-        return Path(env).expanduser()
+    environment_override = os.environ.get("CRAM_VIZ_DATA")
+    if environment_override:
+        return Path(environment_override).expanduser()
     return Path.home() / ".cram_viz"
 
+
+# %% scene bundle discovery
 
 #: the optional cram-scenes submodule checkout (``<member dir>/scenes``)
 SCENES_SUBMODULE = WEB_ROOT.parents[2] / "scenes"
@@ -47,25 +52,31 @@ def scenes_dir() -> Path:
     cram-scenes submodule, then ``~/.cram_viz/scenes``. An un-initialized
     submodule is an empty directory and is skipped (index.json is the marker).
     """
-    env = os.environ.get("CRAM_VIZ_SCENES")
-    if env:
-        return Path(env).expanduser()
+    environment_override = os.environ.get("CRAM_VIZ_SCENES")
+    if environment_override:
+        return Path(environment_override).expanduser()
     if (SCENES_SUBMODULE / "index.json").is_file():
         return SCENES_SUBMODULE
     return data_dir() / "scenes"
 
 
-def architecture_root() -> Path:
+# %% architecture root discovery
+
+
+def architecture_root(start: Path | None = None) -> Path:
     """
     The CRAM repository whose packages/classes the knowledge graph shows.
 
     Defaults to the repository this package is checked out in, which is the common case
     inside the workspace; falls back to the conventional clone location otherwise.
+
+    :param start: search from this path's parents instead of this module's own location;
+        only meant for testing the walk-up search in isolation.
     """
-    env = os.environ.get("CRAM_VIZ_ARCHITECTURE")
-    if env:
-        return Path(env).expanduser()
-    here = Path(__file__).resolve()
+    environment_override = os.environ.get("CRAM_VIZ_ARCHITECTURE")
+    if environment_override:
+        return Path(environment_override).expanduser()
+    here = start if start is not None else Path(__file__).resolve()
     for parent in here.parents:
         if (parent / "coraplex").is_dir() and (parent / "krrood").is_dir():
             return parent

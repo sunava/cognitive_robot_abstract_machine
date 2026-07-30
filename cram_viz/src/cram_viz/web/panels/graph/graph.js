@@ -7,27 +7,18 @@
  * live updates never re-run the layout. Exposed as window.Graph.
  * ==========================================================================*/
 (function () {
-  // resolved lazily: the graph panel's DOM only exists once the panel mounts
+  // set once by the graph panel via mount(root); this module never queries
+  // the document itself, so it stays usable inside any root subtree
   let el = null, legendEl = null;
-  function resolveDom() {
-    el = el || document.getElementById('graph');
-    legendEl = legendEl || document.getElementById('legend');
+  function mount(root) {
+    el = root.querySelector('#graph');
+    legendEl = root.querySelector('#legend');
   }
 
-  const GROUP_STYLE = {
-    // ---- TBox ----
-    root:    { color: '#e8eefb', ring: '#ffffff', size: 24, label: 'Root concept' },
-    klass:   { color: '#5b8cff', ring: '#a9c2ff', size: 15, label: 'Subpackage' },
-    pyclass: { color: '#ffb648', ring: '#ffd89a', size: 13, label: 'Python class' },
-    upper:   { color: '#8c9bbd', ring: '#c3ccdf', size: 14, label: 'Upper ontology (DUL)' },
-    // ---- ABox individuals, bucketed by their asserted type ----
-    robot:   { color: '#ff7a9c', ring: '#ffb3c6', size: 20, label: 'Robot / body' },
-    object:  { color: '#39d5c8', ring: '#8ff0e7', size: 15, label: 'Object / substance' },
-    event:   { color: '#b98cff', ring: '#d9c2ff', size: 16, label: 'Event / episode' },
-    goal:    { color: '#ffb648', ring: '#ffd89a', size: 15, label: 'Goal' },
-    concept: { color: '#4bd38a', ring: '#a6ecc6', size: 14, label: 'Problem / phase / fluent' },
-    ind:     { color: '#7f8db0', ring: '#b6c0d8', size: 13, label: 'Individual' },
-  };
+  // group styling (colour, ring, size, label) comes from the shared palette
+  // (core/palette.js) so this file's nodes and the EQL panel's tags cannot
+  // drift apart the way two independent copies once did
+  const GROUP_STYLE = window.EntityPalette;
 
   // ---- execution status → node ring -------------------------------------------
   // One palette for both status vocabularies: coraplex TaskStatus on plan nodes
@@ -109,7 +100,6 @@
   }
 
   function build(data) {
-    resolveDom();
     const hier = data.layout === 'hier' || data.layout === 'hier-lr';
     viewKey = data.key || null;
     const cached = viewKey && !hier ? POS[viewKey] : null;
@@ -170,6 +160,7 @@
                           treeSpacing: hasStatus ? 280 : 160, shakeTowards: 'roots' } }
       : { improvedLayout: !bigGraph };   // improvedLayout pre-solve is expensive
 
+    if (network) { network.destroy(); network = null; }
     network = new vis.Network(el, { nodes: nodes, edges: edges }, {
       groups: groups,
       nodes: { scaling: hasStatus ? { min: 34, max: 56 } : { min: 12, max: 30 } },
@@ -253,7 +244,11 @@
         if (!st) return;
         const d = document.createElement('div');
         d.className = 'li';
-        d.innerHTML = '<span class="dot" style="background:' + st.color + '"></span>' + row.label;
+        // row.label is a server-supplied view label (e.g. a link/joint name) —
+        // append it as a text node rather than concatenating into innerHTML,
+        // so it can never be parsed as markup
+        d.innerHTML = '<span class="dot" style="background:' + st.color + '"></span>';
+        d.appendChild(document.createTextNode(row.label));
         legendEl.appendChild(d);
       });
       if (data.statusLegend) statusLegend();
@@ -322,6 +317,7 @@
   }
 
   window.Graph = {
+    mount: mount,
     build: build,
     setStatuses: setStatuses,
     highlight: highlight,

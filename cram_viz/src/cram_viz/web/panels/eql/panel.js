@@ -20,7 +20,7 @@ Panels.define('eql', function (root, bus) {
     '</div>' +
     '<div class="query-box">' +
     '  <div class="query-row">' +
-    '    <textarea id="query-input" rows="2" spellcheck="false" placeholder="the(entity(obj).where(obj.name == \'milk\'))   —  vars: obj, ep, arm, j, rob"></textarea>' +
+    '    <textarea id="query-input" rows="2" spellcheck="false" placeholder="the(entity(object).where(object.name == \'milk\'))   —  vars: object, episode, arm, joint, robot"></textarea>' +
     '    <button id="query-run">Run</button>' +
     '  </div>' +
     '  <div id="presets" class="presets"></div>' +
@@ -33,10 +33,10 @@ Panels.define('eql', function (root, bus) {
   const runBtn = root.querySelector('#query-run');
   const presetsEl = root.querySelector('#presets');
 
-  let kb = null;   // /api/kb overview (presets + entity details)
+  let knowledgeBase = null;   // /api/kb overview (presets + entity details)
 
   // ---- boot -----------------------------------------------------------------
-  fetch('/api/kb').then(function (r) { return r.json(); }).then(boot).catch(function (err) {
+  fetch('/api/kb').then(function (response) { return response.json(); }).then(boot).catch(function (err) {
     kbStatus.textContent = 'KB error';
     answerEl.innerHTML = '<div class="qerr">Failed to reach the EQL server:\n' + esc(String(err)) + '</div>';
   });
@@ -47,7 +47,7 @@ Panels.define('eql', function (root, bus) {
       answerEl.innerHTML = '<div class="qerr">' + esc(payload.error || 'unknown error') + '</div>';
       return;
     }
-    kb = payload;
+    knowledgeBase = payload;
     kbStatus.textContent = payload.status;
     kbStatus.classList.add('ready');
     buildPresets(payload.presets || []);
@@ -62,30 +62,30 @@ Panels.define('eql', function (root, bus) {
       '<b>rules</b> and <b>description-logic axioms / predicates</b>, and made explorable as a ' +
       '<b>graph</b> — queried with <b>EQL</b>, krrood’s pythonic entity query language from the ' +
       'CRAM architecture.</p>' +
-      '<p class="hint-txt">Ready-made variables: <code>obj</code> (bench objects), <code>ep</code> ' +
-      '(action episodes), <code>arm</code>, <code>j</code> (joint motion), <code>rob</code>, ' +
-      '<code>pkg</code> / <code>sub</code> / <code>cls</code> (CRAM packages, subpackages, classes). ' +
-      'Build queries like <code>the(entity(obj).where(obj.name == \'milk\'))</code> — ' +
+      '<p class="hint-txt">Ready-made variables: <code>object</code> (bench objects), <code>episode</code> ' +
+      '(action episodes), <code>arm</code>, <code>joint</code> (joint motion), <code>robot</code>, ' +
+      '<code>package</code> / <code>subpackage</code> / <code>python_class</code> (CRAM packages, subpackages, classes). ' +
+      'Build queries like <code>the(entity(object).where(object.name == \'milk\'))</code> — ' +
       'or click a preset below, or a node in the graph.</p>';
   }
 
   // ---- describe an entity in the answer panel --------------------------------
-  // Two sources: our own kb.details (scene clicks) and graph panels, which send
-  // the full detail payload of the node the user clicked (entity:select).
+  // Two sources: our own knowledgeBase.details (scene clicks) and graph panels,
+  // which send the full detail payload of the node the user clicked (entity:select).
   function describe(id, detail, relations) {
-    const d = detail || (kb && kb.details && kb.details[id]);
-    if (!d) return;
+    const entityDetail = detail || (knowledgeBase && knowledgeBase.details && knowledgeBase.details[id]);
+    if (!entityDetail) return;
     let html = '<div class="goal">entity · ' + esc(id) + '</div>';
-    html += '<div class="ansrow"><span class="tag" style="background:' + groupColor(d.group) + '">' +
-      esc(d.group) + '</span><div class="body"><span class="name">' + esc(d.label) + '</span></div></div>';
-    (d.lines || []).forEach(function (l) {
-      html += '<div class="ansrow"><div class="body"><span class="name">' + esc(l) + '</span></div></div>';
+    html += '<div class="ansrow"><span class="tag" style="background:' + groupColor(entityDetail.group) + '">' +
+      esc(entityDetail.group) + '</span><div class="body"><span class="name">' + esc(entityDetail.label) + '</span></div></div>';
+    (entityDetail.lines || []).forEach(function (line) {
+      html += '<div class="ansrow"><div class="body"><span class="name">' + esc(line) + '</span></div></div>';
     });
     if (relations && relations.length) {
       html += '<div class="ansub">Relations</div>';
-      relations.slice(0, 40).forEach(function (r) {
-        html += '<div class="ansrow"><div class="body"><span class="name">' + esc(r.s) +
-          ' <span class="rel">' + esc(r.p) + '</span> ' + esc(r.o) + '</span></div></div>';
+      relations.slice(0, 40).forEach(function (relation) {
+        html += '<div class="ansrow"><div class="body"><span class="name">' + esc(relation.s) +
+          ' <span class="rel">' + esc(relation.p) + '</span> ' + esc(relation.o) + '</span></div></div>';
       });
       if (relations.length > 40) {
         html += '<div class="ansrow"><div class="body"><span class="sub">… ' + (relations.length - 40) + ' more</span></div></div>';
@@ -95,24 +95,24 @@ Panels.define('eql', function (root, bus) {
     bus.emit('entity:highlight', { ids: [id], focus: id });
   }
 
-  bus.on('scene:part-clicked', function (p) { describe(p.id); });
-  bus.on('entity:select', function (p) { describe(p.id, p.detail, p.relations); });
-  bus.on('scene:step', function (p) {
-    if (p.step !== '__done__' && kb && kb.details && kb.details[p.step]) describe(p.step);
+  bus.on('scene:part-clicked', function (payload) { describe(payload.id); });
+  bus.on('entity:select', function (payload) { describe(payload.id, payload.detail, payload.relations); });
+  bus.on('scene:step', function (payload) {
+    if (payload.step !== '__done__' && knowledgeBase && knowledgeBase.details && knowledgeBase.details[payload.step]) describe(payload.step);
   });
 
   // ---- presets ----------------------------------------------------------------
   function buildPresets(presets) {
     presetsEl.innerHTML = '';
-    presets.forEach(function (p) {
-      const b = document.createElement('div');
-      b.className = 'preset'; b.textContent = p.text;
-      b.title = p.code;
-      b.addEventListener('click', function () {
-        input.value = p.code;
-        runQuery(p.code);
+    presets.forEach(function (preset) {
+      const presetButton = document.createElement('div');
+      presetButton.className = 'preset'; presetButton.textContent = preset.text;
+      presetButton.title = preset.code;
+      presetButton.addEventListener('click', function () {
+        input.value = preset.code;
+        runQuery(preset.code);
       });
-      presetsEl.appendChild(b);
+      presetsEl.appendChild(presetButton);
     });
   }
 
@@ -123,12 +123,12 @@ Panels.define('eql', function (root, bus) {
     running = true;
     runBtn.textContent = '…';
     try {
-      const r = await fetch('/api/eql', {
+      const response = await fetch('/api/eql', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: code }),
       });
-      render(code, await r.json());
+      render(code, await response.json());
     } catch (err) {
       render(code, { ok: false, error: String(err) });
     }
@@ -159,19 +159,19 @@ Panels.define('eql', function (root, bus) {
   }
 
   function entityRow(row) {
-    const g = groupOfType(row.__type__);
-    const sub = [];
-    for (const k in row) {
-      if (k.indexOf('__') === 0 || row[k] === null || row[k] === undefined) continue;
-      sub.push(k + ': ' + row[k]);
+    const group = groupOfType(row.__type__);
+    const subDetails = [];
+    for (const key in row) {
+      if (key.indexOf('__') === 0 || row[key] === null || row[key] === undefined) continue;
+      subDetails.push(key + ': ' + row[key]);
     }
-    return '<div class="ansrow"><span class="tag" style="background:' + groupColor(g) + '">' +
+    return '<div class="ansrow"><span class="tag" style="background:' + groupColor(group) + '">' +
       esc(row.__type__) + '</span><div class="body"><span class="name">' + esc(row.__entity__) +
-      '</span><span class="sub">' + esc(sub.join('  ·  ')) + '</span></div></div>';
+      '</span><span class="sub">' + esc(subDetails.join('  ·  ')) + '</span></div></div>';
   }
   function valueRow(row) {
-    const parts = Object.keys(row).map(function (k) {
-      return '<code>' + esc(k) + ' = ' + esc(String(row[k])) + '</code>';
+    const parts = Object.keys(row).map(function (key) {
+      return '<code>' + esc(key) + ' = ' + esc(String(row[key])) + '</code>';
     }).join(' ');
     return '<div class="ansrow"><div class="body">' + parts + '</div></div>';
   }
@@ -182,16 +182,14 @@ Panels.define('eql', function (root, bus) {
   });
 
   // ---- helpers ----------------------------------------------------------------
+  // group keys/colours come from the shared palette (core/palette.js) so this
+  // panel's tags and the graph panel's nodes can never drift apart again
   const TYPE_GROUP = {
     BenchObject: 'object', ActionEpisode: 'event', Arm: 'robot', Gripper: 'robot',
     Robot: 'robot', JointMotion: 'robot', Position: 'concept',
-    Package: 'concept', SubPackage: 'klass', PythonClass: 'klass',
+    Package: 'concept', SubPackage: 'klass', PythonClass: 'pyclass',
   };
-  function groupOfType(t) { return TYPE_GROUP[t] || 'ind'; }
-  const GROUP_COLOR = {
-    root: '#e8eefb', klass: '#5b8cff', upper: '#8c9bbd',
-    robot: '#ff7a9c', object: '#39d5c8', event: '#b98cff', goal: '#ffb648', concept: '#4bd38a', ind: '#7f8db0',
-  };
-  function groupColor(g) { return GROUP_COLOR[g] || '#5b8cff'; }
+  function groupOfType(type) { return TYPE_GROUP[type] || 'ind'; }
+  function groupColor(group) { return (window.EntityPalette[group] || window.EntityPalette.ind).color; }
   function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
 });

@@ -15,6 +15,7 @@
  *   listens  entity:highlight {ids, focus?}          spotlight matching nodes
  *   listens  scene:step {step}                       highlight the running episode
  *   listens  live:changed {on, url}                  start/stop the status poll
+ *   listens  kb:ready {payload}                      reuse the eql panel's /api/kb fetch
  *
  * Rendering is delegated to graph.js (window.Graph, vis-network wrapper).
  * ==========================================================================*/
@@ -46,6 +47,8 @@ Panels.define('graph', function (root, bus) {
   const tabsEl = root.querySelector('#graph-tabs');
   const liveBadge = root.querySelector('#gt-live');
 
+  Graph.mount(root);
+
   // ---- tabs -------------------------------------------------------------------
   const TABS = {
     knowledge:  { url: '/api/kb' },
@@ -61,9 +64,19 @@ Panels.define('graph', function (root, bus) {
   Object.keys(TABS).forEach(function (t) { stacks[t] = []; });
   let inGraphSet = {};
 
-  function setView(payload) {
+  // the eql panel already fetches /api/kb and emits it on the bus; the
+  // knowledge tab reuses that instead of firing its own redundant request
+  let knowledgeBasePayload = null;
+  bus.on('kb:ready', function (payload) { knowledgeBasePayload = payload.payload; });
+
+  // setView/drill/showTab/liveRefresh all cross an `await`, during which the
+  // user can switch tabs again — targetTab is the tab this call started for,
+  // captured before the await, so a superseded call can never write into (or
+  // render over) a newer tab's state. See setView's targetTab !== tab guard.
+  function setView(payload, targetTab) {
+    shown[targetTab] = payload;
+    if (targetTab !== tab) return;   // a newer tab switch has since superseded this one
     view = payload;
-    shown[tab] = payload;
     inGraphSet = {};
     payload.nodes.forEach(function (n) { inGraphSet[n.id] = 1; });
     if (emptyEl) {
@@ -74,7 +87,7 @@ Panels.define('graph', function (root, bus) {
     Graph.build({
       nodes: payload.nodes, edges: payload.edges, legend: payload.legend,
       layout: payload.layout, arrows: !!payload.arrows, statusLegend: !!payload.statusLegend,
-      key: (payload.key || tab) + '#' + stacks[tab].length,
+      key: (payload.key || targetTab) + '#' + stacks[targetTab].length,
     });
     updateNav();
   }
@@ -87,21 +100,23 @@ Panels.define('graph', function (root, bus) {
     }
   }
   async function drill(id) {
-    if (!view.details[id]) return;
+    const targetTab = tab;
+    const parentView = view;
+    if (!parentView.details[id]) return;
     try {
       const r = await fetch('/api/kb/expand?node=' + encodeURIComponent(id));
       const p = await r.json();
       if (!p.ok) return;                       // node has no inside view
-      stacks[tab].push(view);
-      setView(p);
-      select(id);
+      stacks[targetTab].push(parentView);
+      setView(p, targetTab);
+      if (targetTab === tab) select(id);
     } catch (err) { /* server unreachable — stay where we are */ }
   }
-  function goBack() { if (stacks[tab].length) setView(stacks[tab].pop()); }
+  function goBack() { if (stacks[tab].length) setView(stacks[tab].pop(), tab); }
   function goHome() {
     if (!stacks[tab].length) return;
     stacks[tab] = [];
-    setView(base[tab]);
+    setView(base[tab], tab);
   }
   navUp.addEventListener('click', goBack);
   navHome.addEventListener('click', goHome);
@@ -116,22 +131,27 @@ Panels.define('graph', function (root, bus) {
       emptyEl.style.display = '';
       emptyEl.textContent = 'loading…';
       try {
-        const r = await fetch(TABS[name].url);
-        if (r.status === 404) throw new Error('this build needs the /api/kb/view route — restart the server');
-        const p = await r.json();
+        let p;
+        if (name === 'knowledge' && knowledgeBasePayload) {
+          p = knowledgeBasePayload;
+        } else {
+          const r = await fetch(TABS[name].url);
+          if (r.status === 404) throw new Error('this build needs the /api/kb/view route — restart the server');
+          p = await r.json();
+        }
         if (!p.ok) {
-          emptyEl.textContent = p.error || 'view unavailable';
+          if (name === tab) emptyEl.textContent = p.error || 'view unavailable';
           return;
         }
         p.key = name;
         base[name] = p;
       } catch (err) {
-        emptyEl.textContent = 'Could not load this view: ' + ((err && err.message) || err);
+        if (name === tab) emptyEl.textContent = 'Could not load this view: ' + ((err && err.message) || err);
         return;
       }
     }
-    setView(shown[name] || base[name]);
-    liveRefresh(true);            // a live tab picks the bridge status up at once
+    setView(shown[name] || base[name], name);
+    if (name === tab) liveRefresh(true);   // a live tab picks the bridge status up at once
   }
   tabsEl.querySelectorAll('button').forEach(function (b) {
     b.addEventListener('click', function () { showTab(b.dataset.view); });
@@ -139,14 +159,14 @@ Panels.define('graph', function (root, bus) {
 
   // ---- node click → describe in whatever panel listens -------------------------
   function select(id) {
-    const d = view && view.details && view.details[id];
-    if (!d) return;
+    const entityDetail = view && view.details && view.details[id];
+    if (!entityDetail) return;
     const relations = (view.edges || [])
       .filter(function (e) { return e.from === id || e.to === id; })
       .map(function (e) {
         return { s: labelOf(e.from), p: e.label || e.kind, o: labelOf(e.to) };
       });
-    bus.emit('entity:select', { id: id, detail: d, relations: relations });
+    bus.emit('entity:select', { id: id, detail: entityDetail, relations: relations });
     spotlight({ ids: [id], focus: id });
   }
   function labelOf(id) { return (view.details[id] && view.details[id].label) || id; }
@@ -154,21 +174,21 @@ Panels.define('graph', function (root, bus) {
   Graph.onDoubleSelect(drill);
 
   // ---- highlights (from EQL results or our own selection) ----------------------
-  function spotlight(p) {
-    const ids = (p && p.ids) || [];
-    let hi = ids.filter(function (id) { return inGraphSet[id]; });
-    if (p && p.focus && inGraphSet[p.focus]) {
+  function spotlight(payload) {
+    const ids = (payload && payload.ids) || [];
+    let highlightIds = ids.filter(function (id) { return inGraphSet[id]; });
+    if (payload && payload.focus && inGraphSet[payload.focus]) {
       const neighbours = (view.edges || [])
-        .filter(function (e) { return e.from === p.focus || e.to === p.focus; })
-        .map(function (e) { return e.from === p.focus ? e.to : e.from; });
-      hi = hi.concat(neighbours.filter(function (id) { return inGraphSet[id]; }));
+        .filter(function (e) { return e.from === payload.focus || e.to === payload.focus; })
+        .map(function (e) { return e.from === payload.focus ? e.to : e.from; });
+      highlightIds = highlightIds.concat(neighbours.filter(function (id) { return inGraphSet[id]; }));
     }
-    if (hi.length) Graph.highlight(hi); else Graph.reset();
+    if (highlightIds.length) Graph.highlight(highlightIds); else Graph.reset();
   }
   bus.on('entity:highlight', spotlight);
-  bus.on('scene:step', function (p) {
-    if (p.step === '__done__') { Graph.reset(); return; }
-    if (tab === 'knowledge' && !stacks[tab].length && inGraphSet[p.step]) select(p.step);
+  bus.on('scene:step', function (payload) {
+    if (payload.step === '__done__') { Graph.reset(); return; }
+    if (tab === 'knowledge' && !stacks[tab].length && inGraphSet[payload.step]) select(payload.step);
   });
 
   // ---- live status overlay (Plan / Statechart tabs) -----------------------------
@@ -224,9 +244,9 @@ Panels.define('graph', function (root, bus) {
     (live.nodes || []).forEach(function (n) { if (n.parent) isParent[n.parent] = 1; });
     (live.nodes || []).forEach(function (n) {
       const group = isParent[n.id] ? 'klass'
-        : /EndMotion|CancelMotion/.test(n.cls) ? 'event'
-        : /Monitor|Reached|Observation|Condition/.test(n.cls + n.name) ? 'concept' : 'robot';
-      const lines = ['a ' + n.cls, 'life cycle: ' + n.life, 'observation: ' + n.obs];
+        : /EndMotion|CancelMotion/.test(n.class) ? 'event'
+        : /Monitor|Reached|Observation|Condition/.test(n.class + n.name) ? 'concept' : 'robot';
+      const lines = ['a ' + n.class, 'life cycle: ' + n.life, 'observation: ' + n.observation];
       nodes.push({ id: n.id, label: n.name, group: group,
                    title: [n.name].concat(lines).join('\n'), status: n.life });
       details[n.id] = { label: n.name, group: group, lines: lines };
@@ -242,11 +262,12 @@ Panels.define('graph', function (root, bus) {
   }
 
   async function liveRefresh(force) {
+    const targetTab = tab;
     const src = liveSource();
     const active = !!src && liveState.on;
     liveBadge.classList.toggle('on', active);
     if (!active) return;
-    if (stacks[tab].length) return;              // inside a drill-down: leave it alone
+    if (stacks[targetTab].length) return;         // inside a drill-down: leave it alone
     let live;
     try {
       live = await fetch(liveState.url + (src === 'plan' ? '/plan' : '/chart'))
@@ -254,22 +275,22 @@ Panels.define('graph', function (root, bus) {
     } catch (err) { return; }                    // bridge gone — the 3D side handles it
     if (!live || !live.nodes) return;
     const payload = src === 'plan' ? planPayload(live) : chartPayload(live);
-    if (force || live.sig !== liveSig[src]) {    // structure changed → rebuild
-      liveSig[src] = live.sig;
-      base[tab] = payload;
-      setView(payload);
+    if (force || live.signature !== liveSig[src]) {    // structure changed → rebuild
+      liveSig[src] = live.signature;
+      base[targetTab] = payload;
+      setView(payload, targetTab);
       return;
     }
     // same structure: only re-colour, and keep the detail lines in sync
     const map = {};
     payload.nodes.forEach(function (n) { map[n.id] = n.status; });
-    if (!Graph.setStatuses(map)) { base[tab] = payload; setView(payload); return; }
-    base[tab] = payload;
-    if (view && view.details) view.details = payload.details;
+    if (!Graph.setStatuses(map)) { base[targetTab] = payload; setView(payload, targetTab); return; }
+    base[targetTab] = payload;
+    if (targetTab === tab && view && view.details) view.details = payload.details;
   }
 
-  bus.on('live:changed', function (p) {
-    liveState = { on: !!p.on, url: p.url || '' };
+  bus.on('live:changed', function (payload) {
+    liveState = { on: !!payload.on, url: payload.url || '' };
     if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
     if (liveState.on) {
       liveTimer = setInterval(function () { liveRefresh(false); }, 700);

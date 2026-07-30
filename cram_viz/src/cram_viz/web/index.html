@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>CRAM Vizulation</title>
+<title>CRAM Visualization</title>
 <link rel="stylesheet" href="app.css" />
 </head>
 <body>
@@ -11,7 +11,7 @@
   <div class="brand">
     <img class="logo-img" src="img/aicor-logo.png" alt="AICOR — Artificial Intelligence Powered Cognition-Enabled Robotics" />
     <div class="brand-text">
-      <h1>CRAM Vizulation</h1>
+      <h1>CRAM Visualization</h1>
     </div>
   </div>
   <div class="topbar-actions">
@@ -43,12 +43,18 @@
 <script src="vendor/URDFLoader.js"></script>
 <script src="vendor/vis-network.min.js"></script>
 
-<!-- core: event bus, panel registry, layout config -->
+<!-- core: event bus, panel registry, shared entity palette, layout config -->
 <script src="core/bus.js"></script>
 <script src="core/registry.js"></script>
+<script src="core/palette.js"></script>
 <script src="config.js"></script>
 
 <!-- panels — each defines itself in the registry; config.js decides mounting -->
+<script src="panels/robot_scene/scene-setup.js"></script>
+<script src="panels/robot_scene/model-loader.js"></script>
+<script src="panels/robot_scene/playback.js"></script>
+<script src="panels/robot_scene/drag-controls.js"></script>
+<script src="panels/robot_scene/live-bridge.js"></script>
 <script src="panels/robot_scene/panel.js"></script>
 <script src="panels/eql/panel.js"></script>
 <script src="panels/graph/graph.js"></script>

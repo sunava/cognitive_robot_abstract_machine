@@ -20,7 +20,8 @@
   'use strict';
 
   const factories = {};   // id -> factory(root, bus)
-  const mounted = [];     // {id, instance}
+  let mounted = [];       // {id, instance, root}
+  let booted = false;
 
   function mountInto(slotEl, id) {
     const factory = factories[id];
@@ -34,11 +35,25 @@
     root.dataset.panel = id;
     slotEl.appendChild(root);
     try {
-      mounted.push({ id: id, instance: factory(root, window.Bus) || {} });
+      mounted.push({ id: id, instance: factory(root, window.Bus) || {}, root: root });
     } catch (err) {
       console.error('[panels] mounting "' + id + '" failed:', err);
       root.innerHTML = '<div class="panel-error">panel "' + id + '" failed to mount — see console</div>';
     }
+  }
+
+  // tears every mounted panel back down: calls its destroy() (if it declared
+  // one) and removes its root from the DOM. Lets boot() be called again
+  // (e.g. after a layout change) without leaking listeners/timers/DOM ids
+  // from the previous mount.
+  function unmountAll() {
+    mounted.forEach(function (m) {
+      if (typeof m.instance.destroy === 'function') {
+        try { m.instance.destroy(); } catch (err) { console.error('[panels] destroying "' + m.id + '" failed:', err); }
+      }
+      if (m.root.parentNode) m.root.parentNode.removeChild(m.root);
+    });
+    mounted = [];
   }
 
   window.Panels = {
@@ -47,16 +62,27 @@
       factories[id] = factory;
     },
     boot: function () {
+      if (booted) unmountAll();
+      booted = true;
       const layout = (window.CRAM_VIZ_CONFIG || {}).layout || {};
+      const seenThisBoot = {};
       Object.keys(layout).forEach(function (slotName) {
         const slotEl = document.querySelector('[data-slot="' + slotName + '"]');
         if (!slotEl) {
           console.error('[panels] no slot element for "' + slotName + '"');
           return;
         }
-        layout[slotName].forEach(function (id) { mountInto(slotEl, id); });
+        layout[slotName].forEach(function (id) {
+          if (seenThisBoot[id]) {
+            console.warn('[panels] "' + id + '" is mounted more than once this boot — ' +
+              'any global DOM ids inside its markup will collide');
+          }
+          seenThisBoot[id] = true;
+          mountInto(slotEl, id);
+        });
       });
     },
+    unmountAll: unmountAll,
     // introspection (used by tests and the console)
     defined: function () { return Object.keys(factories); },
     mounted: function () { return mounted.map(function (m) { return m.id; }); },

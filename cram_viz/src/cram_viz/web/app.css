@@ -145,21 +145,6 @@ body{
 .workflow-head em{font-style:normal;color:var(--action);font-size:11px;font-weight:600}
 .workflow-strip{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px}
 
-/* vial position panel (sliders + numbers, synced with dragging the vial) */
-.vial-ctl{display:flex;align-items:center;gap:14px;margin-top:10px;flex-wrap:wrap}
-.vc-title{font-size:11px;font-weight:600;color:var(--warn);white-space:nowrap}
-.vc-axis{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);font-weight:600}
-.vc-axis input[type=range]{width:130px;accent-color:var(--warn);cursor:pointer}
-.vc-axis input[type=number]{
-  width:62px;background:var(--bg2);color:var(--ink);border:1px solid var(--line2);
-  border-radius:var(--radius);padding:3px 6px;font-family:var(--mono);font-size:11.5px;
-}
-.vc-axis input[type=number]:focus{outline:none;border-color:var(--warn)}
-.vc-reset{
-  background:none;border:1px solid var(--line2);color:var(--muted);border-radius:var(--radius);
-  padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;
-}
-.vc-reset:hover{color:var(--ink);border-color:var(--warn)}
 .wstep{
   flex:0 0 auto;display:flex;align-items:center;gap:8px;cursor:pointer;
   padding:8px 12px;border-radius:4px;border:1px solid var(--line2);
@@ -248,11 +233,10 @@ body{
   text-align:center;font-size:12.5px;line-height:1.65;color:var(--muted);z-index:5;pointer-events:none
 }
 .legend{
-  position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:5px;
+  position:absolute;right:12px;top:46px;display:flex;flex-direction:column;gap:5px;
   background:rgba(10,17,32,.72);border:1px solid var(--line2);border-radius:4px;padding:9px 11px;
   backdrop-filter:blur(4px)
 }
-.legend{top:46px}
 .legend .li{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
 .legend .dot{width:11px;height:11px;border-radius:50%}
 /* execution status shows up as a node ring, so the legend uses rings too */
@@ -349,7 +333,7 @@ body.dash{overflow:auto}
 }
 .kg-max-btn:hover{background:#1c222d;color:#fff;border-color:var(--accent)}
 .split.kg-maximized{grid-template-columns:1fr}
-.split.kg-maximized .panel-left,
+.split.kg-maximized [data-slot="left"],
 .split.kg-maximized .split-divider{display:none}
 
 /* ---- drill-down breadcrumb (shown once you double-click into a node) ---- */

@@ -1,5 +1,6 @@
 /* Draggable splitter + maximize toggle for the knowledge-graph panel.
-   Include after the DOM (end of body). Works on every page with .split > .panel-left + .panel-right. */
+   Include after the DOM (end of body). Works on every page with
+   main.split > [data-slot="left"] + [data-slot="right"]. */
 (function () {
   'use strict';
 
@@ -10,10 +11,21 @@
 
   const storeKey = 'splitRight:' + location.pathname.split('/').pop();
 
+  // localStorage can throw (e.g. in a sandboxed iframe or a strict privacy
+  // mode); a memory fallback keeps the resize/maximize feature usable within
+  // the current page load even when persistence itself is unavailable.
+  const memoryStore = {};
+  function safeGetItem(key) {
+    try { return localStorage.getItem(key); } catch (err) { return memoryStore[key]; }
+  }
+  function safeSetItem(key, value) {
+    try { localStorage.setItem(key, value); } catch (err) { memoryStore[key] = value; }
+  }
+
   // ---- divider ------------------------------------------------------------
   const divider = document.createElement('div');
   divider.className = 'split-divider';
-  divider.title = 'Ziehen zum Vergrößern · Doppelklick = 50/50';
+  divider.title = 'Drag to resize · double-click = 50/50';
   split.insertBefore(divider, right);
   split.style.columnGap = '4px'; /* 4 + 8px divider + 4 = former 16px gap */
 
@@ -23,7 +35,7 @@
     return pct;
   }
 
-  let rightPct = parseFloat(localStorage.getItem(storeKey)) || 50;
+  let rightPct = parseFloat(safeGetItem(storeKey)) || 50;
   applyRight(rightPct);
 
   divider.addEventListener('pointerdown', e => {
@@ -39,7 +51,7 @@
       divider.classList.remove('dragging');
       divider.removeEventListener('pointermove', onMove);
       divider.removeEventListener('pointerup', onUp);
-      localStorage.setItem(storeKey, rightPct.toFixed(1));
+      safeSetItem(storeKey, rightPct.toFixed(1));
     }
     divider.addEventListener('pointermove', onMove);
     divider.addEventListener('pointerup', onUp);
@@ -47,7 +59,7 @@
 
   divider.addEventListener('dblclick', () => {
     rightPct = applyRight(50);
-    localStorage.setItem(storeKey, '50');
+    safeSetItem(storeKey, '50');
   });
 
   // ---- maximize button on the knowledge panel ------------------------------
@@ -55,14 +67,14 @@
   if (head) {
     const btn = document.createElement('button');
     btn.className = 'kg-max-btn';
-    btn.title = 'Knowledge graph maximieren';
+    btn.title = 'Maximize knowledge graph';
     btn.textContent = '⛶';
     head.appendChild(btn);
 
     btn.addEventListener('click', () => {
       const max = split.classList.toggle('kg-maximized');
       btn.textContent = max ? '⊟' : '⛶';
-      btn.title = max ? 'Zurück zur geteilten Ansicht' : 'Knowledge graph maximieren';
+      btn.title = max ? 'Back to split view' : 'Maximize knowledge graph';
       if (max) split.style.gridTemplateColumns = '';
       else applyRight(rightPct);
     });
@@ -80,7 +92,7 @@
   if (graphWrap) {
     const gbtn = document.createElement('button');
     gbtn.className = 'graph-max-btn';
-    gbtn.title = 'Graph auf Vollbild';
+    gbtn.title = 'Fullscreen graph';
     gbtn.textContent = '⛶';
     graphWrap.appendChild(gbtn);
 
@@ -93,7 +105,7 @@
     function toggleGraphFull() {
       const full = graphWrap.classList.toggle('graph-fullscreen');
       gbtn.textContent = full ? '⊟' : '⛶';
-      gbtn.title = full ? 'Vollbild verlassen (Esc)' : 'Graph auf Vollbild';
+      gbtn.title = full ? 'Exit fullscreen (Esc)' : 'Fullscreen graph';
       document.body.classList.toggle('graph-full-open', full);
       setTimeout(reflow, 60);
     }

@@ -13,14 +13,21 @@ const WEB = path.join(__dirname, '..', '..', '..', 'cram_viz', 'src', 'cram_viz'
 function freshDom() {
   const slots = {};
   function makeEl(tag) {
-    return {
+    const el = {
       tagName: tag,
       children: [],
       dataset: {},
       className: '',
       innerHTML: '',
-      appendChild(child) { this.children.push(child); },
+      parentNode: null,
+      appendChild(child) { child.parentNode = this; this.children.push(child); },
+      removeChild(child) {
+        const i = this.children.indexOf(child);
+        if (i >= 0) this.children.splice(i, 1);
+        child.parentNode = null;
+      },
     };
+    return el;
   }
   global.document = {
     createElement: makeEl,
@@ -104,7 +111,7 @@ test('an unknown configured panel is reported, not fatal', function () {
 });
 
 test('a panel that throws while mounting shows an error, others still mount', function () {
-  freshDom();
+  const slots = freshDom();
   load('core/bus.js');
   load('core/registry.js');
   window.Panels.define('broken', function () { throw new Error('nope'); });
@@ -114,4 +121,69 @@ test('a panel that throws while mounting shows an error, others still mount', fu
   window.Panels.boot();
   console.error = err;
   assert.ok(window.Panels.mounted().indexOf('fine') >= 0);
+  const brokenRoot = slots.left.children[0];
+  assert.ok(brokenRoot.innerHTML.indexOf('panel-error') >= 0, brokenRoot.innerHTML);
+  assert.ok(brokenRoot.innerHTML.indexOf('broken') >= 0, brokenRoot.innerHTML);
+});
+
+test('off() on an event with no listeners is a no-op', function () {
+  freshDom();
+  load('core/bus.js');
+  assert.doesNotThrow(function () { window.Bus.off('nobody:listens', function () {}); });
+});
+
+test('defined() lists every registered panel id', function () {
+  freshDom();
+  load('core/bus.js');
+  load('core/registry.js');
+  window.Panels.define('a', function () {});
+  window.Panels.define('b', function () {});
+  assert.deepStrictEqual(window.Panels.defined().sort(), ['a', 'b']);
+});
+
+test('mounting the same id twice in one boot warns (global ids inside it would collide)', function () {
+  freshDom();
+  load('core/bus.js');
+  load('core/registry.js');
+  window.Panels.define('a', function () {});
+  window.CRAM_VIZ_CONFIG = { layout: { left: ['a'], right: ['a'] } };
+  const warnings = [];
+  const warn = console.warn; console.warn = function (m) { warnings.push(String(m)); };
+  window.Panels.boot();
+  console.warn = warn;
+  assert.ok(warnings.some(function (m) { return m.indexOf('"a"') >= 0; }));
+});
+
+test('boot() is idempotent: a second boot destroys the previous mount first', function () {
+  const slots = freshDom();
+  load('core/bus.js');
+  load('core/registry.js');
+  const destroyed = [];
+  window.Panels.define('a', function () {
+    return { destroy: function () { destroyed.push('a'); } };
+  });
+  window.CRAM_VIZ_CONFIG = { layout: { left: ['a'] } };
+  window.Panels.boot();
+  const firstRoot = slots.left.children[0];
+  window.Panels.boot();
+  assert.deepStrictEqual(destroyed, ['a']);
+  assert.strictEqual(firstRoot.parentNode, null);          // old root removed from the DOM
+  assert.strictEqual(slots.left.children.length, 1);       // exactly one fresh mount, not accumulated
+  assert.deepStrictEqual(window.Panels.mounted(), ['a']);
+});
+
+test('unmountAll() destroys every mounted panel and clears the slots', function () {
+  const slots = freshDom();
+  load('core/bus.js');
+  load('core/registry.js');
+  const destroyed = [];
+  window.Panels.define('a', function () { return { destroy: function () { destroyed.push('a'); } }; });
+  window.Panels.define('b', function () {});   // no destroy() — must not throw
+  window.CRAM_VIZ_CONFIG = { layout: { left: ['a'], right: ['b'] } };
+  window.Panels.boot();
+  window.Panels.unmountAll();
+  assert.deepStrictEqual(destroyed, ['a']);
+  assert.deepStrictEqual(window.Panels.mounted(), []);
+  assert.strictEqual(slots.left.children.length, 0);
+  assert.strictEqual(slots.right.children.length, 0);
 });

@@ -7,8 +7,11 @@ environment variables, so the KB and the server tests run against deterministic 
 instead of a real (huge, generated) bundle.
 """
 
+from __future__ import annotations
+
 import json
-import os
+from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 
@@ -17,6 +20,8 @@ from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import Connection6DoF
 from semantic_digital_twin.world_description.world_entity import Body
+
+# %% fixture scene data
 
 SCENE = {
     "name": "fixture",
@@ -129,6 +134,8 @@ ROBOT_URDF = """<robot name="pr2">
 </robot>
 """
 
+# %% architecture fixture data
+
 # a miniature "architecture" so the KB's repo scan is fast and deterministic
 ARCH_FILES = {
     "coraplex/src/coraplex/plans/plan.py": 'import krrood\n\n\nclass Plan:\n    """A plan."""\n\n    def perform(self):\n        pass\n',
@@ -138,8 +145,11 @@ ARCH_FILES = {
 }
 
 
+# %% fixtures
+
+
 @pytest.fixture()
-def shelved_object_world():
+def shelved_object_world() -> tuple[World, Body]:
     """
     A world with a milk body free-floating on a shelf, connected via a
     :class:`Connection6DoF` so it can be dragged like a viewer-moved object.
@@ -158,7 +168,7 @@ def shelved_object_world():
 
 
 @pytest.fixture()
-def fixture_scene(tmp_path, monkeypatch):
+def fixture_scene(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     """
     A complete miniature scene bundle + architecture; returns the data dir.
     """
@@ -172,16 +182,16 @@ def fixture_scene(tmp_path, monkeypatch):
         json.dumps({"default": "fixture", "scenes": ["fixture"]})
     )
 
-    arch = tmp_path / "arch"
-    for rel, content in ARCH_FILES.items():
-        p = arch / rel
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(content)
+    architecture_root = tmp_path / "arch"
+    for relative_path, content in ARCH_FILES.items():
+        file_path = architecture_root / relative_path
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(content)
 
     monkeypatch.setenv("CRAM_VIZ_DATA", str(tmp_path))
     monkeypatch.setenv("CRAM_VIZ_SCENES", str(tmp_path / "scenes"))
     monkeypatch.setenv("CRAM_VIZ_SCENE", "fixture")
-    monkeypatch.setenv("CRAM_VIZ_ARCHITECTURE", str(arch))
+    monkeypatch.setenv("CRAM_VIZ_ARCHITECTURE", str(architecture_root))
 
     # a fresh KB per test: the module caches it, and the env just changed
     try:
