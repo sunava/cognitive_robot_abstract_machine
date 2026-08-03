@@ -13,7 +13,7 @@ into :func:`cram_viz.paths.scenes_dir`::
 What the hooks capture while the demo runs:
   - every package:// asset resolution and every URDF/STL the world loads
   - per-tick positions of all movable connections (giskardpy Executor.tick)
-  - world pose of the robot base and of every loose (STL) object
+  - world pose of the robot base and of every loose object (STL mesh or spawned box)
   - one segment per executed plan ActionNode, with nesting depth
   - the robot's semantic annotation: base body, arms, end-effector link sets
 
@@ -34,12 +34,16 @@ import runpy
 import shutil
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
+from semantic_digital_twin.adapters.gazebo import GazeboParser
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.adapters.package_resolver import PackageUriResolver
 from semantic_digital_twin.adapters.urdf import URDFParser
+from semantic_digital_twin.api import BodySpecification
 from semantic_digital_twin.world_description.connections import ActiveConnection1DOF
+from semantic_digital_twin.world_description.geometry import Box
 from typing_extensions import (
     Any,
     Callable,
@@ -56,8 +60,9 @@ from cram_viz import get_logger, paths
 from cram_viz.body_geometry import BodyExtent
 from cram_viz.live.bridge import ROBOT_BASE_KEY
 from cram_viz.monkey_patch import MethodPatch
+from cram_viz.onboard.bundle_gazebo import bundle_gazebo_world
 from cram_viz.onboard.bundle_urdf import bundle_urdf
-from cram_viz.palette import ObjectPalette
+from cram_viz.palette import ObjectPalette, css_color
 
 if TYPE_CHECKING:
     from coraplex.plans.executables import Executable
@@ -183,6 +188,53 @@ def log(*parts: object) -> None:
 
 
 # %% recorder
+@dataclass
+class SpawnedBox:
+    """
+    One primitive box body spawned from a specification while the demo ran.
+
+    Loose objects usually enter the world as mesh files, which the mesh-parser hook
+    captures; a box body has no file, so its geometry is remembered here instead.
+    """
+
+    name: str
+    """
+    The body's world name, the key its poses are recorded under.
+    """
+
+    scale: List[float]
+    """
+    The box extents in meters, as ``[x, y, z]``.
+    """
+
+    color: str
+    """
+    The authored color as a css hex string.
+    """
+
+    @classmethod
+    def from_specification(
+        cls, specification: BodySpecification, name: Optional[str] = None
+    ) -> Optional[SpawnedBox]:
+        """
+        :param specification: The specification a body was materialized from.
+        :param name: The spawn-time name override, if one was given.
+        :return: The recordable box, or None when the specification is not a
+            single box shape.
+        """
+        shapes = specification.shapes.shapes
+        if len(shapes) != 1 or not isinstance(shapes[0], Box):
+            return None
+        shape = shapes[0]
+        return cls(
+            name=str(name or specification.name),
+            scale=[
+                round(float(value), POSE_PRECISION) for value in shape.scale.to_np()[:3]
+            ],
+            color=css_color(shape.color.R, shape.color.G, shape.color.B),
+        )
+
+
 class Recorder:
     """
     Records one demo run: assets, per-tick motion and the executed plan.
@@ -206,9 +258,19 @@ class Recorder:
         URDF/xacro files the world was built from, in load order.
         """
 
+        self.gazebo_sources: List[str] = []
+        """
+        Gazebo/SDF world or model files the world was built from, in load order.
+        """
+
         self.mesh_sources: List[str] = []
         """
         Mesh files of the loose objects, in load order.
+        """
+
+        self.spawned_boxes: List[SpawnedBox] = []
+        """
+        Primitive box bodies spawned from specifications, in spawn order.
         """
 
         self.frames: List[Dict[str, float]] = []
@@ -261,14 +323,40 @@ class Recorder:
         Recorded bodies by mesh basename, plus :data:`ROBOT_BASE_KEY`.
         """
 
+        self._asset_hook_uninstallers: List[Callable[[], None]] = []
+        """
+        Restores the methods :meth:`install_asset_hooks` last replaced.
+        """
+
     # %% asset hooks
     def install_asset_hooks(self) -> None:
         """
         Record every asset resolution so the bundler can copy the files.
         """
-        MethodPatch(PackageUriResolver, "resolve").install(self._remember_resolution)
-        MethodPatch(URDFParser, "from_file").install(self._remember_urdf_source)
-        MethodPatch(STLParser, "__init__").install(self._remember_mesh_source)
+        self._asset_hook_uninstallers = [
+            MethodPatch(PackageUriResolver, "resolve").install(
+                self._remember_resolution
+            ),
+            MethodPatch(URDFParser, "from_file").install(self._remember_urdf_source),
+            MethodPatch(GazeboParser, "from_file").install(
+                self._remember_gazebo_source
+            ),
+            MethodPatch(STLParser, "__init__").install(self._remember_mesh_source),
+            MethodPatch(BodySpecification, "to_domain_object").install(
+                self._remember_spawned_box
+            ),
+        ]
+
+    def uninstall_asset_hooks(self) -> None:
+        """
+        Restore the methods :meth:`install_asset_hooks` replaced.
+
+        Bundling re-parses a recorded Gazebo source to build a clean, unprefixed URDF
+        for it, which would otherwise be mistaken for another source to record.
+        """
+        for uninstall in self._asset_hook_uninstallers:
+            uninstall()
+        self._asset_hook_uninstallers = []
 
     def _remember_resolution(
         self,
@@ -297,6 +385,20 @@ class Recorder:
             self.urdf_sources.append(file_path)
         return original(cls, file_path, **kwargs)
 
+    def _remember_gazebo_source(
+        self,
+        original: Callable[..., GazeboParser],
+        cls: type,
+        file_path: str,
+        **kwargs: Any,
+    ) -> GazeboParser:
+        """
+        Parse as usual, but remember this Gazebo/SDF world or model source file.
+        """
+        if file_path not in self.gazebo_sources:
+            self.gazebo_sources.append(file_path)
+        return original(cls, file_path, **kwargs)
+
     def _remember_mesh_source(
         self,
         original: Callable[..., None],
@@ -311,6 +413,22 @@ class Recorder:
         if file_path not in self.mesh_sources:
             self.mesh_sources.append(file_path)
         return original(stl_parser, file_path, *args, **kwargs)
+
+    def _remember_spawned_box(
+        self,
+        original: Callable[..., Any],
+        specification: BodySpecification,
+        name: Optional[str] = None,
+    ) -> Any:
+        """
+        Materialize as usual, but remember box bodies so their poses get recorded.
+        """
+        spawned = SpawnedBox.from_specification(specification, name)
+        if spawned is not None and all(
+            recorded.name != spawned.name for recorded in self.spawned_boxes
+        ):
+            self.spawned_boxes.append(spawned)
+        return original(specification, name)
 
     # %% trajectory hook
     def install_tick_hook(self) -> None:
@@ -355,6 +473,10 @@ class Recorder:
             body = self.world.get_body_by_name(name)
             if body is not None:
                 self._bodies[name] = body
+        for spawned in self.spawned_boxes:
+            body = self.world.get_body_by_name(spawned.name)
+            if body is not None:
+                self._bodies[spawned.name] = body
         self._connections = [
             connection
             for connection in self.world.connections or []
@@ -415,15 +537,17 @@ class Recorder:
     # from the recorded data (object attach/detach + first base motion).
     def _target_of(self, designator: Any) -> Optional[str]:
         """
-        The recorded object a designator refers to, matched by mesh basename.
+        The recorded object a designator refers to, matched by its recorded key: the
+        mesh basename for mesh objects, the body name for spawned boxes.
         """
-        basenames = {os.path.basename(path) for path in self.mesh_sources}
+        keys = {os.path.basename(path) for path in self.mesh_sources}
+        keys |= {spawned.name for spawned in self.spawned_boxes}
         for value in vars(designator).values():
             if not isinstance(value, NamesAWorldEntity):
                 continue
-            basename = str(value.name).split("/")[-1]
-            if basename in basenames:
-                return basename
+            key = str(value.name).split("/")[-1]
+            if key in keys:
+                return key
         return None
 
     @staticmethod
@@ -733,6 +857,112 @@ def link_set(part: Any) -> List[str]:
     return link_names
 
 
+def _bundle_model(
+    source: str,
+    bundler: Callable[..., Dict[str, Any]],
+    out_dir: str,
+    hints: Dict[str, str],
+    world_body_names: List[str],
+    base_body: str,
+) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    """
+    Bundles one model source and turns its report into a ``models`` scene entry.
+
+    :param source: Path or URI of the model's source file.
+    :param bundler: Bundles the source into ``out_dir``, shaped like :func:`bundle_urdf`.
+    :param out_dir: Directory the bundle is written to.
+    :param hints: Resolutions recorded while the demo ran.
+    :param world_body_names: Every body name in the composed world, used to find the
+        model's prefix.
+    :param base_body: The robot's base link name, used to tell a robot model apart from
+        an environment model.
+    :return: The model's ``models`` scene entry, and the bundler's report.
+    """
+    base_name = os.path.splitext(os.path.basename(source))[0]
+    report = bundler(source, base_name, out_dir, hints=hints)
+    # find this model's prefix in the composed world via one of its links
+    model_prefix = ""
+    for link in report["links"][:PREFIX_PROBE_LINKS]:
+        prefixed = next(
+            (
+                body_name
+                for body_name in world_body_names
+                if body_name.endswith("/" + link)
+            ),
+            None,
+        )
+        if prefixed:
+            model_prefix = prefixed.split("/", 1)[0]
+            break
+    is_robot = base_body in report["links"]
+    log(
+        "bundled %-28s prefix=%-12s robot=%s meshes=%d missing=%d"
+        % (
+            base_name,
+            model_prefix or "-",
+            is_robot,
+            report["meshes_copied"],
+            len(report["missing"]),
+        )
+    )
+    model = {
+        "name": base_name,
+        "urdf": "%s.urdf" % base_name,
+        "prefix": model_prefix,
+        "robot": is_robot,
+        "links": len(report["links"]),
+        "movableJoints": report["movable_joints"],
+    }
+    return model, report
+
+
+def scene_objects(recorder: Recorder, out_dir: str) -> List[Dict[str, Any]]:
+    """
+    The scene's loose objects, each with its spawn pose and display color.
+
+    Mesh objects have their mesh copied into the bundle and reference it; spawned
+    boxes carry their extents instead, for the viewer to build the geometry itself.
+    Only objects whose poses were actually recorded are included.
+    """
+    objects: List[Dict[str, Any]] = []
+    palette = ObjectPalette()
+    for index, source in enumerate(recorder.mesh_sources):
+        mesh = os.path.basename(source)
+        if mesh not in recorder.object_frames[0]:
+            continue
+        destination = os.path.join(out_dir, "meshes", "objects", mesh)
+        os.makedirs(os.path.dirname(destination), exist_ok=True)
+        shutil.copy2(source, destination)
+        entry = {
+            "id": os.path.splitext(mesh)[0],
+            "key": mesh,
+            "mesh": "meshes/objects/" + mesh,
+            "spawn": recorder.object_frames[0][mesh],
+            "color": palette.color_for(index),
+        }
+        # recorded from the world, so the knowledge base does not have to guess it;
+        # omitted when the object's shapes report no measurable size
+        body = (recorder._bodies or {}).get(mesh)
+        extent = BodyExtent.of(body) if body is not None else None
+        if extent is not None:
+            entry["height"] = round(extent.z, POSE_PRECISION)
+        objects.append(entry)
+    for spawned in recorder.spawned_boxes:
+        if spawned.name not in recorder.object_frames[0]:
+            continue
+        objects.append(
+            {
+                "id": spawned.name,
+                "key": spawned.name,
+                "box": spawned.scale,
+                "spawn": recorder.object_frames[0][spawned.name],
+                "color": spawned.color,
+                "height": spawned.scale[2],
+            }
+        )
+    return objects
+
+
 def build_scene(
     recorder: Recorder, name: str, out_dir: str, step: int
 ) -> Dict[str, Any]:
@@ -804,29 +1034,7 @@ def build_scene(
             )
 
     # %% objects
-    objects = []
-    palette = ObjectPalette()
-    for index, source in enumerate(recorder.mesh_sources):
-        mesh = os.path.basename(source)
-        if mesh not in recorder.object_frames[0]:
-            continue
-        destination = os.path.join(out_dir, "meshes", "objects", mesh)
-        os.makedirs(os.path.dirname(destination), exist_ok=True)
-        shutil.copy2(source, destination)
-        entry = {
-            "id": os.path.splitext(mesh)[0],
-            "key": mesh,
-            "mesh": "meshes/objects/" + mesh,
-            "spawn": recorder.object_frames[0][mesh],
-            "color": palette.color_for(index),
-        }
-        # recorded from the world, so the knowledge base does not have to guess it;
-        # omitted when the object's shapes report no measurable size
-        body = (recorder._bodies or {}).get(mesh)
-        extent = BodyExtent.of(body) if body is not None else None
-        if extent is not None:
-            entry["height"] = round(extent.z, POSE_PRECISION)
-        objects.append(entry)
+    objects = scene_objects(recorder, out_dir)
 
     # %% place target + drag bounds
     places = [segment["place"] for segment in segments if segment.get("place")]
@@ -856,7 +1064,7 @@ def build_scene(
             "maxY": round(max(spawn_y) + DRAG_BOUNDS_MARGIN_Y, 2),
         }
 
-    # %% bundle the URDF models
+    # %% bundle the URDF and Gazebo/SDF models
     world_body_names = [
         str(body.name) if isinstance(body, NamesAWorldEntity) else ""
         for body in recorder.world.bodies
@@ -864,44 +1072,27 @@ def build_scene(
     models = []
     missing: List[str] = []
     for source in recorder.urdf_sources:
-        base_name = os.path.splitext(os.path.basename(source))[0]
-        report = bundle_urdf(source, base_name, out_dir, hints=recorder.resolutions)
+        model, report = _bundle_model(
+            source,
+            bundle_urdf,
+            out_dir,
+            recorder.resolutions,
+            world_body_names,
+            base_body,
+        )
+        models.append(model)
         missing += report["missing"]
-        # find this model's prefix in the composed world via one of its links
-        model_prefix = ""
-        for link in report["links"][:PREFIX_PROBE_LINKS]:
-            prefixed = next(
-                (
-                    body_name
-                    for body_name in world_body_names
-                    if body_name.endswith("/" + link)
-                ),
-                None,
-            )
-            if prefixed:
-                model_prefix = prefixed.split("/", 1)[0]
-                break
-        is_robot = base_body in report["links"]
-        models.append(
-            {
-                "name": base_name,
-                "urdf": "%s.urdf" % base_name,
-                "prefix": model_prefix,
-                "robot": is_robot,
-                "links": len(report["links"]),
-                "movableJoints": report["movable_joints"],
-            }
+    for source in recorder.gazebo_sources:
+        model, report = _bundle_model(
+            source,
+            bundle_gazebo_world,
+            out_dir,
+            recorder.resolutions,
+            world_body_names,
+            base_body,
         )
-        log(
-            "bundled %-28s prefix=%-12s robot=%s meshes=%d missing=%d"
-            % (
-                base_name,
-                model_prefix or "-",
-                is_robot,
-                report["meshes_copied"],
-                len(report["missing"]),
-            )
-        )
+        models.append(model)
+        missing += report["missing"]
 
     scene = {
         "name": name,
@@ -1016,6 +1207,7 @@ def main() -> None:
             break
         candidate = os.path.dirname(candidate)
     runpy.run_path(demo, run_name="__main__")
+    recorder.uninstall_asset_hooks()
     log(
         "demo finished: %d raw frames, %d actions"
         % (len(recorder.frames), len(recorder.actions))

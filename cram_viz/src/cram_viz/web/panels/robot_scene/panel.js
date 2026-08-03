@@ -30,6 +30,7 @@ Panels.define('robot-scene', function (root, bus) {
     '    <label class="lp-row"><input type="checkbox" id="lyr-objects" checked><span>Bench objects</span></label>' +
     '    <label class="lp-row"><input type="checkbox" id="lyr-labels"><span>Object labels</span></label>' +
     '    <label class="lp-row"><input type="checkbox" id="lyr-floor" checked><span>Floor shadow</span></label>' +
+    '    <label class="lp-row"><input type="checkbox" id="lyr-bg"><span>Background image</span></label>' +
     '    <div class="lp-legend" id="lp-legend"></div>' +
     '  </div>' +
     '  <div id="live-indicator" class="live-indicator">● LIVE</div>' +
@@ -47,6 +48,7 @@ Panels.define('robot-scene', function (root, bus) {
   console.log('%c[cram_viz] robot-scene panel', 'color:#39d5c8;font-weight:bold');
   const container = $('viewer');
   const statusEl = $('viewer-status');
+  const stageBgEl = $('stage-bg');
   const SCENES = 'scenes/';
 
   //: how often the viewer asks whether a live bridge is reachable, in ms
@@ -220,11 +222,15 @@ Panels.define('robot-scene', function (root, bus) {
       worldRoot.add(g);
       needsRender = true;
     }
-    function box(scale) {
+    // centered: recorded body poses are box centers; the bottom-origin variant
+    // stands in for a mesh (whose origin sits at its base) that failed to load
+    function box(scale, centered) {
       const s = scale || [0.06, 0.06, 0.1];
-      place(new THREE.Mesh(new THREE.BoxGeometry(s[0], s[1], s[2]).translate(0, 0, s[2] / 2), mat));
+      const geometry = new THREE.BoxGeometry(s[0], s[1], s[2]);
+      if (!centered) geometry.translate(0, 0, s[2] / 2);
+      place(new THREE.Mesh(geometry, mat));
     }
-    if (spec.box) { box(spec.box); return; }
+    if (spec.box) { box(spec.box, true); return; }
     const fmt = (spec.format || (spec.meshUrl || '').split('?')[0].split('.').pop() || '').toLowerCase();
     if (fmt === 'obj' && THREE.OBJLoader) {
       new THREE.OBJLoader().load(spec.meshUrl, function (o) {
@@ -294,6 +300,13 @@ Panels.define('robot-scene', function (root, bus) {
       if (/\.obj$/i.test(path)) {
         new THREE.OBJLoader(mgr).load(path, function (o) { done(o); },
           undefined, function () { done(new THREE.Object3D()); });
+      } else if (/\.dae$/i.test(path)) {
+        // ColladaLoader auto-rotates Z_UP assets for standalone use; a URDF mesh
+        // must stay in its raw frame since the world root already applies that
+        // correction once for the whole tree — keep the unit scale, undo the rotation.
+        new THREE.ColladaLoader(mgr).load(path, function (c) {
+          done(ColladaMeshUtil.neutralizeUpAxisRotation(c.scene));
+        }, undefined, function () { done(new THREE.Object3D()); });
       } else {
         def(path, mgr, done);
       }
@@ -301,16 +314,11 @@ Panels.define('robot-scene', function (root, bus) {
     return loader;
   }
 
-  function sceneNameFromUrl() {
-    const m = /[?&]scene=([\w-]+)/.exec(window.location.search);
-    return m ? m[1] : null;
-  }
-
   fetch(SCENES + 'index.json')
     .then(function (r) { return r.ok ? r.json() : { default: null, scenes: [] }; })
     .catch(function () { return { default: null, scenes: [] }; })
     .then(function (index) {
-      const name = sceneNameFromUrl() || index.default;
+      const name = SceneContext.name() || index.default;
       // header dropdown: switch between all onboarded scenes
       const sel = $('scene-select');
       if (sel && index.scenes && index.scenes.length > 1) {
@@ -352,7 +360,11 @@ Panels.define('robot-scene', function (root, bus) {
     });
 
     (sc.objects || []).forEach(function (o) {
-      addObject({ id: o.id, key: o.key, meshUrl: sceneBase + o.mesh, color: o.color });
+      addObject({
+        id: o.id, key: o.key, color: o.color,
+        box: o.box || null,
+        meshUrl: o.mesh ? sceneBase + o.mesh : null,
+      });
     });
 
     buildMarker(sc.placeTarget);
@@ -1119,6 +1131,7 @@ Panels.define('robot-scene', function (root, bus) {
     onStepStart: function (cb) { stepCb = cb; },
     setAutoRotate: function (on) { controls.autoRotate = on; controls.autoRotateSpeed = 0.5; needsRender = true; },
     setFloorVisible: function (on) { ground.visible = on; needsRender = true; },
+    setBackgroundVisible: function (on) { stageBgEl.classList.toggle('is-visible', !!on); },
     setFollow: function (on) { follow = on; },
     setPropsVisible: function (on) {
       for (const n in objectMeshes) objectMeshes[n].visible = on;
@@ -1179,6 +1192,7 @@ Panels.define('robot-scene', function (root, bus) {
   bindLayer('lyr-objects', 'setPropsVisible');
   bindLayer('lyr-labels', 'setLabelsAlways');
   bindLayer('lyr-floor', 'setFloorVisible');
+  bindLayer('lyr-bg', 'setBackgroundVisible');
   RobotView.onReady(function () {
     const legend = $('lp-legend');
     const scene = RobotView.getScene();
