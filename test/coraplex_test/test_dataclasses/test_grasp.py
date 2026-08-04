@@ -629,7 +629,91 @@ def test_pose_sequence_top_tracy_box(tracy_milk_world):
     )
 
 
-def test_pose_sequence_180_flip(immutable_simple_pr2_world):
+# %% robot-relative approach directions
+
+
+def test_approach_direction_object_frame_translation():
+    assert (
+        ApproachDirection.FRONT.to_object_frame(ApproachDirection.BACK)
+        == ApproachDirection.BACK
+    )
+    assert (
+        ApproachDirection.LEFT.to_object_frame(ApproachDirection.LEFT)
+        == ApproachDirection.BACK
+    )
+    assert (
+        ApproachDirection.RIGHT.to_object_frame(ApproachDirection.FRONT)
+        == ApproachDirection.RIGHT
+    )
+    assert (
+        ApproachDirection.BACK.to_robot_relative(ApproachDirection.BACK)
+        == ApproachDirection.FRONT
+    )
+    assert (
+        ApproachDirection.FRONT.to_object_frame(
+            ApproachDirection.BACK
+        ).to_robot_relative(ApproachDirection.BACK)
+        == ApproachDirection.FRONT
+    )
+
+
+def test_resolve_approach_direction_for_rotated_target(immutable_simple_pr2_world):
+    world, robot_view, context = immutable_simple_pr2_world
+
+    man = robot_view.left_arm.end_effector
+    rotated_target = Pose.from_xyz_quaternion(
+        1, 0, 1, 0, 0, 1, 0, reference_frame=world.root
+    )
+
+    front_description = GraspDescription(
+        ApproachDirection.FRONT,
+        VerticalAlignment.NoAlignment,
+        man,
+    )
+    assert (
+        front_description.resolve_approach_direction(rotated_target)
+        == ApproachDirection.BACK
+    )
+
+    left_description = GraspDescription(
+        ApproachDirection.LEFT,
+        VerticalAlignment.NoAlignment,
+        man,
+    )
+    assert (
+        left_description.resolve_approach_direction(rotated_target)
+        == ApproachDirection.RIGHT
+    )
+
+
+def test_resolve_approach_direction_with_explicit_robot_pose(
+    immutable_simple_pr2_world,
+):
+    world, robot_view, context = immutable_simple_pr2_world
+
+    man = robot_view.left_arm.end_effector
+    grasp_desc = GraspDescription(
+        ApproachDirection.FRONT,
+        VerticalAlignment.NoAlignment,
+        man,
+    )
+
+    target = Pose.from_xyz_quaternion(1, 0, 1, reference_frame=world.root)
+    standing_pose_north_of_target = Pose.from_xyz_quaternion(
+        1, 2, 0, reference_frame=world.root
+    )
+
+    assert (
+        grasp_desc.resolve_approach_direction(
+            target, robot_pose=standing_pose_north_of_target
+        )
+        == ApproachDirection.LEFT
+    )
+
+
+def test_pose_sequence_front_faces_robot_regardless_of_target_yaw(
+    immutable_simple_pr2_world,
+):
     world, robot_view, context = immutable_simple_pr2_world
 
     man = robot_view.left_arm.end_effector
@@ -646,21 +730,69 @@ def test_pose_sequence_180_flip(immutable_simple_pr2_world):
     assert sequence[0].reference_frame == world.root
 
     assert sequence[0].to_quaternion().to_list() == pytest.approx(
-        [0, 0, 1, 0], abs=0.001
+        [0, 0, 0, 1], abs=0.001
     )
     assert sequence[1].to_quaternion().to_list() == pytest.approx(
-        [0, 0, 1, 0], abs=0.001
+        [0, 0, 0, 1], abs=0.001
     )
     assert sequence[2].to_quaternion().to_list() == pytest.approx(
-        [0, 0, 1, 0], abs=0.001
+        [0, 0, 0, 1], abs=0.001
     )
 
     assert sequence[0].to_position().to_list() == pytest.approx(
-        [1.083, 0, 1, 1], abs=0.001
+        [0.917, 0, 1, 1], abs=0.001
     )
     assert sequence[1].to_position().to_list() == pytest.approx(
         [1.0, 0, 1, 1], abs=0.001
     )
     assert sequence[2].to_position().to_list() == pytest.approx(
         [1.0, 0, 1.05, 1], abs=0.001
+    )
+
+
+def test_pose_sequence_left_of_rotated_target_is_robots_left(
+    immutable_simple_pr2_world,
+):
+    world, robot_view, context = immutable_simple_pr2_world
+
+    man = robot_view.left_arm.end_effector
+    grasp_desc = GraspDescription(
+        ApproachDirection.LEFT,
+        VerticalAlignment.NoAlignment,
+        man,
+    )
+    sequence = grasp_desc.pose_sequence(
+        Pose.from_xyz_quaternion(1, 0, 1, 0, 0, 1, 0, reference_frame=world.root),
+        world.get_body_by_name("milk.stl"),
+    )
+
+    assert sequence[0].to_quaternion().to_list() == pytest.approx(
+        [0, 0, -0.707, 0.707], abs=0.001
+    )
+    assert sequence[1].to_quaternion().to_list() == pytest.approx(
+        [0, 0, -0.707, 0.707], abs=0.001
+    )
+
+    assert sequence[0].to_position().to_list() == pytest.approx(
+        [1, 0.082, 1, 1], abs=0.01
+    )
+    assert sequence[1].to_position().to_list() == pytest.approx([1, 0, 1, 1], abs=0.01)
+
+
+def test_calculate_grasp_descriptions_labels_are_robot_relative(
+    immutable_simple_pr2_world,
+):
+    world, robot_view, context = immutable_simple_pr2_world
+
+    man = robot_view.left_arm.end_effector
+    rotated_target = Pose.from_xyz_quaternion(
+        1, 0, 1, 0, 0, 1, 0, reference_frame=world.root
+    )
+
+    descriptions = GraspDescription.calculate_grasp_descriptions(man, rotated_target)
+
+    assert descriptions[0].approach_direction == ApproachDirection.FRONT
+    assert (
+        descriptions[0].resolve_approach_direction(rotated_target)
+        == ApproachDirection.BACK
     )

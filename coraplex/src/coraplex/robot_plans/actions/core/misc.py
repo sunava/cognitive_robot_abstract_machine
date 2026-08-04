@@ -130,7 +130,12 @@ class MoveToReach(ActionDescription):
 
     @property
     def _action_plan(self) -> PlanNode:
-        grasp_orientation = self.grasp_description.grasp_orientation()
+        resolved_approach_direction = self.grasp_description.resolve_approach_direction(
+            self.target_pose_end_effector, robot_pose=self.standing_pose
+        )
+        grasp_orientation = self.grasp_description.grasp_orientation(
+            resolved_approach_direction
+        )
         target_pose = Pose(
             self.target_pose_end_effector.to_position(),
             (
