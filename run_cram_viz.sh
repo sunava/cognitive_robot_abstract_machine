@@ -2,5 +2,5 @@
 # Activates the cram-env virtualenv and starts the cram-viz server.
 
 source /etc/profile.d/virtualenvwrapper.sh
-workon cram-env
+workon cram-viz
 cram-viz
