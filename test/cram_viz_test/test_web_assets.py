@@ -140,6 +140,9 @@ class TestJsUnits:
     def test_scene_picker(self):
         self.run_node("test_scene_picker.js")
 
+    def test_response_util(self):
+        self.run_node("test_response_util.js")
+
     def test_split_resize(self):
         self.run_node("test_split_resize.js")
 

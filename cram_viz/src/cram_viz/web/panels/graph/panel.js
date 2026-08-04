@@ -119,7 +119,7 @@ Panels.define('graph', function (root, bus) {
       try {
         const r = await fetch(SceneContext.withScene(TABS[name].url));
         if (r.status === 404) throw new Error('this build needs the /api/kb/view route — restart the server');
-        const p = await r.json();
+        const p = await ResponseUtil.parseJson(r);
         if (!p.ok) {
           emptyEl.textContent = p.error || 'view unavailable';
           return;
