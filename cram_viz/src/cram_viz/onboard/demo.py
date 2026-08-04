@@ -37,6 +37,12 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from cram_viz.onboard.scene_index import (
+    scan_scenes as _scan_scenes,
+    scene_environment as _scene_environment,
+    update_scene_index as _update_scene_index,
+    write_json as _write_json,
+)
 from semantic_digital_twin.adapters.gazebo import GazeboParser
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.adapters.package_resolver import PackageUriResolver
@@ -1124,71 +1130,6 @@ def build_scene(
         },
     )
     return scene
-
-
-def _scene_environment(models: List[Dict[str, Any]]) -> Optional[str]:
-    """
-    The name of a scene's environment, or ``None`` for a bench-only scene.
-
-    A scene's models are either its robot or the environment it stands in; the viewer's
-    header picker shows this alongside the robot name to pick out one onboarded scene.
-    """
-    environment_models = [model["name"] for model in models if not model["robot"]]
-    return "+".join(environment_models) if environment_models else None
-
-
-def _scan_scenes(scenes_dir: Path) -> List[Dict[str, Any]]:
-    """
-    Every onboarded scene bundle under ``scenes_dir``, with its robot/environment identity.
-
-    Read straight off the bundles on disk rather than accumulated incrementally, so a
-    scene folder that was removed or renamed since it was indexed cannot leave a stale
-    entry behind.
-    """
-    entries = []
-    for bundle_dir in sorted(scenes_dir.iterdir()):
-        scene_path = bundle_dir / "scene.json"
-        if not scene_path.is_file():
-            continue
-        scene = json.loads(scene_path.read_text(encoding="utf-8"))
-        entries.append(
-            {
-                "name": bundle_dir.name,
-                "robot": scene["robot"]["name"],
-                "environment": _scene_environment(scene["models"]),
-            }
-        )
-    return entries
-
-
-def _update_scene_index(path: Path, name: str) -> None:
-    """
-    Register a freshly written scene in the index the viewer reads.
-
-    The ``scenes`` list is rebuilt from every bundle actually on disk, each carrying its
-    robot/environment identity for the viewer's robot/environment picker. ``default`` is
-    filled in on the first scene onboarded and left alone after that.
-    """
-    index: Dict[str, Any] = {}
-    if path.is_file():
-        index = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(index, dict):
-        index = {}
-    index["scenes"] = _scan_scenes(path.parent)
-    index.setdefault("default", name)
-    _write_json(path, index, indent=1)
-
-
-def _write_json(path: Path, payload: Any, indent: Optional[int] = None) -> None:
-    """
-    Write a bundle file, replacing it only once it is complete.
-
-    A bundle is the artifact of a long recording, so a failure part-way through a
-    write must not leave a truncated file behind.
-    """
-    temporary = path.with_suffix(path.suffix + ".part")
-    temporary.write_text(json.dumps(payload, indent=indent), encoding="utf-8")
-    temporary.replace(path)
 
 
 # %% the cram-viz-onboard entry point

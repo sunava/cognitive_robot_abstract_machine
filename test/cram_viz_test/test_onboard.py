@@ -31,6 +31,7 @@ from cram_viz.onboard.demo import (
     object_windows,
     scene_objects,
 )
+from cram_viz.onboard.scene_index import repair_default
 
 #: a pose that stays put, used wherever a frame's value must not matter
 RESTING = [0.0, 0.0, 1.0, 0, 0, 0, 1]
@@ -443,6 +444,48 @@ class TestSceneIndex:
         assert [entry["name"] for entry in index["scenes"]] == [
             "garmi_apartment",
             "pr2_kitchen",
+        ]
+
+
+class TestRepairDefault:
+    def test_a_default_naming_a_real_bundle_is_left_alone(self, tmp_path):
+        write_scene_bundle(
+            tmp_path / "pr2_kitchen", "pr2", [{"name": "pr2", "robot": True}]
+        )
+        index_path = tmp_path / "index.json"
+        index_path.write_text(json.dumps({"default": "pr2_kitchen", "scenes": []}))
+
+        repair_default(index_path)
+
+        index = json.loads(index_path.read_text())
+        assert index["default"] == "pr2_kitchen"
+
+    def test_a_default_naming_no_real_bundle_falls_back_to_the_first_scene(
+        self, tmp_path
+    ):
+        write_scene_bundle(
+            tmp_path / "PR2_Apartment", "pr2", [{"name": "pr2", "robot": True}]
+        )
+        index_path = tmp_path / "index.json"
+        index_path.write_text(json.dumps({"default": "pr2_kitchen", "scenes": []}))
+
+        repair_default(index_path)
+
+        index = json.loads(index_path.read_text())
+        assert index["default"] == "PR2_Apartment"
+
+    def test_the_scenes_list_is_rebuilt_from_disk(self, tmp_path):
+        write_scene_bundle(
+            tmp_path / "tracy_lab", "tracy", [{"name": "tracy", "robot": True}]
+        )
+        index_path = tmp_path / "index.json"
+        index_path.write_text(json.dumps({"default": "tracy_lab", "scenes": ["stale"]}))
+
+        repair_default(index_path)
+
+        index = json.loads(index_path.read_text())
+        assert index["scenes"] == [
+            {"name": "tracy_lab", "robot": "tracy", "environment": None}
         ]
 
 
