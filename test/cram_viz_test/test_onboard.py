@@ -9,6 +9,7 @@ URDF self-contained. Those are covered here against hand-built recordings.
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass, field
 
@@ -22,6 +23,7 @@ from cram_viz.onboard import bundle_urdf as bundler
 from cram_viz.onboard.demo import (
     Recorder,
     SpawnedBox,
+    _update_scene_index,
     derive_segments,
     first_base_motion,
     link_set,
@@ -345,6 +347,103 @@ class TestSceneObjects:
         )
 
         assert scene_objects(recorder, str(tmp_path)) == []
+
+
+# %% scene index
+def write_scene_bundle(bundle_dir, robot_name, model_entries) -> None:
+    """
+    A minimal ``scene.json`` on disk, with just the keys ``_scan_scenes`` reads.
+    """
+    bundle_dir.mkdir(parents=True)
+    (bundle_dir / "scene.json").write_text(
+        json.dumps({"robot": {"name": robot_name}, "models": model_entries})
+    )
+
+
+class TestSceneIndex:
+    def test_a_scene_is_indexed_with_its_robot_and_environment(self, tmp_path):
+        write_scene_bundle(
+            tmp_path / "pr2_kitchen",
+            "pr2",
+            [{"name": "pr2", "robot": True}, {"name": "apartment", "robot": False}],
+        )
+        index_path = tmp_path / "index.json"
+
+        _update_scene_index(index_path, "pr2_kitchen")
+
+        index = json.loads(index_path.read_text())
+        assert index["scenes"] == [
+            {"name": "pr2_kitchen", "robot": "pr2", "environment": "apartment"}
+        ]
+
+    def test_a_bench_only_scene_has_no_environment(self, tmp_path):
+        write_scene_bundle(
+            tmp_path / "tracy_lab", "tracy", [{"name": "tracy", "robot": True}]
+        )
+        index_path = tmp_path / "index.json"
+
+        _update_scene_index(index_path, "tracy_lab")
+
+        index = json.loads(index_path.read_text())
+        assert index["scenes"] == [
+            {"name": "tracy_lab", "robot": "tracy", "environment": None}
+        ]
+
+    def test_multiple_environment_models_are_joined(self, tmp_path):
+        write_scene_bundle(
+            tmp_path / "aicor_cell",
+            "aicor_cell_arm",
+            [
+                {"name": "aicor_cell_arm", "robot": True},
+                {"name": "bench", "robot": False},
+                {"name": "shelf", "robot": False},
+            ],
+        )
+        index_path = tmp_path / "index.json"
+
+        _update_scene_index(index_path, "aicor_cell")
+
+        index = json.loads(index_path.read_text())
+        assert index["scenes"][0]["environment"] == "bench+shelf"
+
+    def test_a_removed_bundle_drops_out_of_the_index(self, tmp_path):
+        """
+        The index is rebuilt from the bundles actually on disk, so a scene folder that
+        was deleted or renamed after it was indexed cannot leave a stale entry behind.
+        """
+        write_scene_bundle(
+            tmp_path / "pr2_kitchen",
+            "pr2",
+            [{"name": "pr2", "robot": True}, {"name": "apartment", "robot": False}],
+        )
+        index_path = tmp_path / "index.json"
+        index_path.write_text(
+            json.dumps({"default": "pr2_kitchen", "scenes": ["pr2_kitchen", "gone"]})
+        )
+
+        _update_scene_index(index_path, "pr2_kitchen")
+
+        index = json.loads(index_path.read_text())
+        assert [entry["name"] for entry in index["scenes"]] == ["pr2_kitchen"]
+
+    def test_the_default_is_set_once_and_then_left_alone(self, tmp_path):
+        write_scene_bundle(
+            tmp_path / "pr2_kitchen", "pr2", [{"name": "pr2", "robot": True}]
+        )
+        write_scene_bundle(
+            tmp_path / "garmi_apartment", "garmi", [{"name": "garmi", "robot": True}]
+        )
+        index_path = tmp_path / "index.json"
+
+        _update_scene_index(index_path, "pr2_kitchen")
+        _update_scene_index(index_path, "garmi_apartment")
+
+        index = json.loads(index_path.read_text())
+        assert index["default"] == "pr2_kitchen"
+        assert [entry["name"] for entry in index["scenes"]] == [
+            "garmi_apartment",
+            "pr2_kitchen",
+        ]
 
 
 # %% robot parts

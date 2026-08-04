@@ -3,6 +3,10 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
+from giskardpy.motion_statechart.goals.collision_avoidance import (
+    UpdateTemporaryCollisionRules,
+)
+from giskardpy.motion_statechart.goals.templates import Parallel
 from giskardpy.motion_statechart.tasks.cartesian_tasks import CartesianPose
 from giskardpy.motion_statechart.tasks.joint_tasks import JointPositionList
 from coraplex.datastructures.dataclasses import Context
@@ -15,7 +19,7 @@ from coraplex.datastructures.grasp import GraspDescription
 from coraplex.execution_environment import simulated_robot, real_robot
 from coraplex.plans.factories import sequential, execute_single
 from coraplex.plans.plan_node import MotionNode, ActionNode
-from coraplex.robot_plans import MoveMotion
+from coraplex.robot_plans import MoveMotion, MoveToolCenterPointMotion
 from coraplex.robot_plans.actions.core.navigation import NavigateAction
 from coraplex.robot_plans.actions.core.pick_up import PickUpAction
 from coraplex.robot_plans.actions.core.robot_body import MoveTorsoAction
@@ -97,6 +101,37 @@ def test_move_motion_chart(immutable_model_world):
 
     assert msc
     np.testing.assert_equal(msc.goal_pose.to_position().to_np(), np.array([1, 1, 1, 1]))
+
+
+def test_move_tool_center_point_motion_keeps_collision_avoidance_by_default(
+    immutable_model_world,
+):
+    world, view, context = immutable_model_world
+    motion = MoveToolCenterPointMotion(
+        Pose(Point3.from_iterable([1, 1, 1]), reference_frame=world.root),
+        Arms.LEFT,
+    )
+    execute_single(motion, context=context)
+
+    assert isinstance(motion.motion_chart, CartesianPose)
+
+
+def test_move_tool_center_point_motion_allows_gripper_collision_when_requested(
+    immutable_model_world,
+):
+    world, view, context = immutable_model_world
+    motion = MoveToolCenterPointMotion(
+        Pose(Point3.from_iterable([1, 1, 1]), reference_frame=world.root),
+        Arms.LEFT,
+        allow_gripper_collision=True,
+    )
+    execute_single(motion, context=context)
+
+    msc = motion.motion_chart
+
+    assert isinstance(msc, Parallel)
+    assert any(isinstance(node, UpdateTemporaryCollisionRules) for node in msc.nodes)
+    assert any(isinstance(node, CartesianPose) for node in msc.nodes)
 
 
 @pytest.mark.skipif(skip_tests, reason="Alternative motion mappings not available")

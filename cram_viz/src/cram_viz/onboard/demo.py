@@ -1126,22 +1126,56 @@ def build_scene(
     return scene
 
 
+def _scene_environment(models: List[Dict[str, Any]]) -> Optional[str]:
+    """
+    The name of a scene's environment, or ``None`` for a bench-only scene.
+
+    A scene's models are either its robot or the environment it stands in; the viewer's
+    header picker shows this alongside the robot name to pick out one onboarded scene.
+    """
+    environment_models = [model["name"] for model in models if not model["robot"]]
+    return "+".join(environment_models) if environment_models else None
+
+
+def _scan_scenes(scenes_dir: Path) -> List[Dict[str, Any]]:
+    """
+    Every onboarded scene bundle under ``scenes_dir``, with its robot/environment identity.
+
+    Read straight off the bundles on disk rather than accumulated incrementally, so a
+    scene folder that was removed or renamed since it was indexed cannot leave a stale
+    entry behind.
+    """
+    entries = []
+    for bundle_dir in sorted(scenes_dir.iterdir()):
+        scene_path = bundle_dir / "scene.json"
+        if not scene_path.is_file():
+            continue
+        scene = json.loads(scene_path.read_text(encoding="utf-8"))
+        entries.append(
+            {
+                "name": bundle_dir.name,
+                "robot": scene["robot"]["name"],
+                "environment": _scene_environment(scene["models"]),
+            }
+        )
+    return entries
+
+
 def _update_scene_index(path: Path, name: str) -> None:
     """
     Register a freshly written scene in the index the viewer reads.
 
-    A missing or unreadable index is rebuilt from scratch; an index that exists but
-    lacks the keys is filled in rather than crashing on them.
+    The ``scenes`` list is rebuilt from every bundle actually on disk, each carrying its
+    robot/environment identity for the viewer's robot/environment picker. ``default`` is
+    filled in on the first scene onboarded and left alone after that.
     """
     index: Dict[str, Any] = {}
     if path.is_file():
         index = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(index, dict):
         index = {}
-    index.setdefault("scenes", [])
+    index["scenes"] = _scan_scenes(path.parent)
     index.setdefault("default", name)
-    if name not in index["scenes"]:
-        index["scenes"].append(name)
     _write_json(path, index, indent=1)
 
 

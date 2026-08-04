@@ -6,6 +6,8 @@
  * playback / live controls and the layers overlay.
  *
  * Scene selection: ?scene=<name> URL parameter, else scenes/index.json default.
+ * The header's robot/environment dropdowns (ScenePicker) look independent but
+ * only ever resolve to a scene bundle that was actually onboarded for that pair.
  *
  * Bus events:
  *   emits    scene:part-clicked {id}   click on a robot part / object
@@ -18,8 +20,15 @@
 Panels.define('robot-scene', function (root, bus) {
   root.innerHTML =
     '<div class="panel-head">' +
-    '  <h2>Robot · scene</h2>' +
-    '  <select id="scene-select" class="scene-select" style="display:none"></select>' +
+    '  <h2>Semantic Digital Twin</h2>' +
+    '  <div class="scene-pickers">' +
+    '    <label id="robot-picker" class="scene-picker" style="display:none">Roboter:' +
+    '      <select id="robot-select" class="scene-select"></select>' +
+    '    </label>' +
+    '    <label id="environment-picker" class="scene-picker" style="display:none">Environment:' +
+    '      <select id="environment-select" class="scene-select"></select>' +
+    '    </label>' +
+    '  </div>' +
     '</div>' +
     '<div class="stage">' +
     '  <div id="stage-bg" class="stage-bg"></div>' +
@@ -40,7 +49,7 @@ Panels.define('robot-scene', function (root, bus) {
     '<div class="workflow">' +
     '  <div class="workflow-head"><span class="wf-btns">' +
     '    <button id="live-btn" class="play-btn live" style="display:none" title="Attach to the running demo (cram-viz-live bridge) — renders the live world instead of the recording">◉ Live</button>' +
-    '    <button id="play-btn" class="play-btn cram" title="Play the recorded coraplex + giskardpy motion trajectory">▶ Play robot motion</button>' +
+    '    <button id="play-btn" class="play-btn cram" title="Play the recorded coraplex + giskardpy motion trajectory">▶ Replay Recorded NEEM</button>' +
     '  </span></div>' +
     '</div>';
   function $(id) { return root.querySelector('#' + id); }
@@ -71,16 +80,19 @@ Panels.define('robot-scene', function (root, bus) {
   renderer.toneMappingExposure = 0.95;
   container.appendChild(renderer.domElement);
 
-  // soft vertical-gradient studio backdrop
-  (function () {
+  // soft vertical-gradient studio backdrop — kept around so it can be swapped
+  // back in once the "Background image" layer (a transparent canvas over the
+  // DOM photo behind it) is switched off again
+  const studioBackdrop = (function () {
     const cv = document.createElement('canvas');
     cv.width = 2; cv.height = 256;
     const ctx = cv.getContext('2d');
     const g = ctx.createLinearGradient(0, 0, 0, 256);
     g.addColorStop(0, '#232833'); g.addColorStop(0.55, '#151922'); g.addColorStop(1, '#0c0e13');
     ctx.fillStyle = g; ctx.fillRect(0, 0, 2, 256);
-    scene3.background = new THREE.CanvasTexture(cv);
+    return new THREE.CanvasTexture(cv);
   })();
+  scene3.background = studioBackdrop;
 
   // image-based lighting (imported .dae lights are stripped on load)
   if (THREE.RoomEnvironment && THREE.PMREMGenerator) {
@@ -298,8 +310,17 @@ Panels.define('robot-scene', function (root, bus) {
     const def = loader.defaultMeshLoader.bind(loader);
     loader.loadMeshCb = function (path, mgr, done) {
       if (/\.obj$/i.test(path)) {
-        new THREE.OBJLoader(mgr).load(path, function (o) { done(o); },
-          undefined, function () { done(new THREE.Object3D()); });
+        // an .obj's per-face materials (fabric/skin textures, plastic vs. screen
+        // colors) live in its companion .mtl — load that first so multi-material
+        // meshes (e.g. Garmi's body/head) don't fall back to a single flat grey.
+        const loadObj = function (materials) {
+          const objLoader = new THREE.OBJLoader(mgr);
+          if (materials) { materials.preload(); objLoader.setMaterials(materials); }
+          objLoader.load(path, function (o) { done(o); },
+            undefined, function () { done(new THREE.Object3D()); });
+        };
+        new THREE.MTLLoader(mgr).load(path.replace(/\.obj$/i, '.mtl'), loadObj,
+          undefined, function () { loadObj(null); });
       } else if (/\.dae$/i.test(path)) {
         // ColladaLoader auto-rotates Z_UP assets for standalone use; a URDF mesh
         // must stay in its raw frame since the world root already applies that
@@ -319,17 +340,7 @@ Panels.define('robot-scene', function (root, bus) {
     .catch(function () { return { default: null, scenes: [] }; })
     .then(function (index) {
       const name = SceneContext.name() || index.default;
-      // header dropdown: switch between all onboarded scenes
-      const sel = $('scene-select');
-      if (sel && index.scenes && index.scenes.length > 1) {
-        sel.innerHTML = index.scenes.map(function (s) {
-          return '<option value="' + s + '"' + (s === name ? ' selected' : '') + '>' + s + '</option>';
-        }).join('');
-        sel.style.display = '';
-        sel.addEventListener('change', function () {
-          window.location.search = '?scene=' + encodeURIComponent(sel.value);
-        });
-      }
+      wireScenePickers(index.scenes || [], name);
       if (!name) {
         if (statusEl) statusEl.textContent = 'No scene found — run cram-viz-onboard first.';
         return;
@@ -341,9 +352,60 @@ Panels.define('robot-scene', function (root, bus) {
       if (statusEl) statusEl.textContent = 'Scene failed to load: ' + e;
     });
 
+  // header dropdowns: a robot and an environment jointly resolve to the one
+  // onboarded scene bundle recorded for that pair (ScenePicker) — there is no
+  // independent robot/environment mixing, only a lookup among what was
+  // actually recorded, so picking either one narrows the other to valid
+  // combinations and always lands on a real scene.
+  function wireScenePickers(scenes, activeName) {
+    const robotSel = $('robot-select'), envSel = $('environment-select');
+    const robotPicker = $('robot-picker'), envPicker = $('environment-picker');
+    if (!robotSel || !envSel) return;
+    const robots = ScenePicker.robots(scenes);
+    if (robots.length < 2 && ScenePicker.environments(scenes, robots[0]).length < 2) return;
+    const active = ScenePicker.describe(scenes, activeName) || {};
+    let robot = active.robot || robots[0];
+
+    // a picker with nothing to choose (one option, or none) stays visible but
+    // disabled — it disappearing/reappearing as the other picker changes
+    // would shift the header layout around under the user's cursor
+    function fillSelect(sel, values, selected) {
+      sel.innerHTML = values.map(function (v) {
+        const value = v || '';
+        const label = v || '(bench only)';
+        return '<option value="' + value + '"' + (value === (selected || '') ? ' selected' : '') + '>' + label + '</option>';
+      }).join('');
+      sel.disabled = values.length <= 1;
+    }
+
+    function navigateTo(environment) {
+      const target = ScenePicker.sceneFor(scenes, robot, environment || null);
+      if (target) window.location.search = '?scene=' + encodeURIComponent(target);
+    }
+
+    if (robotPicker) robotPicker.style.display = '';
+    if (envPicker) envPicker.style.display = '';
+    fillSelect(robotSel, robots, robot);
+    fillSelect(envSel, ScenePicker.environments(scenes, robot), active.environment);
+
+    robotSel.addEventListener('change', function () {
+      robot = robotSel.value;
+      fillSelect(envSel, ScenePicker.environments(scenes, robot), null);
+      navigateTo(envSel.value);
+    });
+    envSel.addEventListener('change', function () { navigateTo(envSel.value); });
+  }
+
   function loadScene(sc) {
     SCENE = sc;
     if (statusEl) statusEl.textContent = 'Loading ' + sc.name + '…';
+    // a bench-only scene (no environment model, e.g. tracy_lab) has no floor
+    // to rest one on — dropGroundToScene() leaves the default ground alone
+    // when it finds no environment model, so the layer has to start off here
+    const hasEnvironment = sc.models.some(function (m) { return !m.robot; });
+    ground.visible = hasEnvironment;
+    const floorToggle = $('lyr-floor');
+    if (floorToggle) floorToggle.checked = hasEnvironment;
     // robot part lookup (link -> part name)
     linkToPart = {};
     const parts = (sc.robot && sc.robot.parts) || {};
@@ -696,14 +758,17 @@ Panels.define('robot-scene', function (root, bus) {
   const _ray = new THREE.Raycaster();
   let _envMeshes = null;
   function envMeshes() {
-    if (_envMeshes) return _envMeshes;
-    _envMeshes = [];
-    models.forEach(function (m) {
-      if (m.robot) return;
-      m.obj.traverse(function (c) { if (c.isMesh) _envMeshes.push(c); });
-    });
-    if (ground) _envMeshes.push(ground);
-    return _envMeshes;
+    if (!_envMeshes) {
+      _envMeshes = [];
+      models.forEach(function (m) {
+        if (m.robot) return;
+        m.obj.traverse(function (c) { if (c.isMesh) _envMeshes.push(c); });
+      });
+    }
+    // read fresh each call: a hidden floor (no environment model, e.g.
+    // tracy_lab, or the "Floor shadow" layer switched off) must not still
+    // pull dragged objects down onto it
+    return ground.visible ? _envMeshes.concat(ground) : _envMeshes;
   }
   function meshBox(group) {                 // world AABB over the object's meshes only (skip label sprite)
     const box = new THREE.Box3(); box.makeEmpty();
@@ -1131,7 +1196,14 @@ Panels.define('robot-scene', function (root, bus) {
     onStepStart: function (cb) { stepCb = cb; },
     setAutoRotate: function (on) { controls.autoRotate = on; controls.autoRotateSpeed = 0.5; needsRender = true; },
     setFloorVisible: function (on) { ground.visible = on; needsRender = true; },
-    setBackgroundVisible: function (on) { stageBgEl.classList.toggle('is-visible', !!on); },
+    // the opaque studio gradient otherwise paints over the DOM photo behind
+    // the transparent-canvas renderer, so it has to step aside for the photo
+    // to actually show through
+    setBackgroundVisible: function (on) {
+      stageBgEl.classList.toggle('is-visible', !!on);
+      scene3.background = on ? null : studioBackdrop;
+      needsRender = true;
+    },
     setFollow: function (on) { follow = on; },
     setPropsVisible: function (on) {
       for (const n in objectMeshes) objectMeshes[n].visible = on;
@@ -1170,7 +1242,7 @@ Panels.define('robot-scene', function (root, bus) {
     if (!RobotView.hasTrajectory()) return;
     if (RobotView.isPlayingTrajectory()) {
       RobotView.stopTrajectory();
-      playBtn.classList.remove('playing'); playBtn.textContent = '▶ Play robot motion';
+      playBtn.classList.remove('playing'); playBtn.textContent = '▶ Replay Recorded NEEM';
     } else {
       RobotView.playTrajectory();
       playBtn.classList.add('playing'); playBtn.textContent = '⏸ Stop';
@@ -1178,7 +1250,7 @@ Panels.define('robot-scene', function (root, bus) {
   });
   RobotView.onStepStart(function (step) {
     if (step === '__done__') {
-      playBtn.classList.remove('playing'); playBtn.textContent = '▶ Play robot motion';
+      playBtn.classList.remove('playing'); playBtn.textContent = '▶ Replay Recorded NEEM';
       highlightObjects([]);
     }
     bus.emit('scene:step', { step: step });

@@ -271,11 +271,15 @@ body.graph-full-open{overflow:hidden}
 }
 
 /* %% scene switcher in the top bar */
+.scene-pickers{display:flex;align-items:center;gap:14px}
+.scene-picker{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
 .scene-select{
   background:#141821;border:1px solid #37404f;border-radius:4px;color:#c8d1e0;
-  font:inherit;font-size:12.5px;padding:6px 9px;cursor:pointer;margin-right:10px;
+  font:inherit;font-size:12.5px;padding:6px 9px;cursor:pointer;
 }
 .scene-select:hover,.scene-select:focus{border-color:var(--accent);outline:none}
+.scene-select:disabled{opacity:.45;cursor:not-allowed}
+.scene-picker:has(select:disabled){opacity:.6}
 
 /* live mode button */
 .play-btn.live{color:#ff8091;border-color:#ff6b8b;background:rgba(255,107,139,.12)}

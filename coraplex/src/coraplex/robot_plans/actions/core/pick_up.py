@@ -84,7 +84,7 @@ class ReachAction(ActionDescription):
                 MoveToolCenterPointMotion(
                     target_pose,
                     self.arm,
-                    allow_gripper_collision=False,
+                    allow_gripper_collision=True,
                     movement_type=MovementType.CARTESIAN,
                 ),
             ],

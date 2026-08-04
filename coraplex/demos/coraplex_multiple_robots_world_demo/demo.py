@@ -6,7 +6,7 @@ from typing_extensions import Type
 
 from coraplex.datastructures.dataclasses import Context
 from coraplex.datastructures.enums import Arms
-from coraplex.execution_environment import simulated_robot
+from coraplex.execution_environment import simulated_robot, simulated_robot_advanced
 from coraplex.plans.factories import sequential
 from coraplex.robot_plans.actions.composite.transporting import TransportAction
 from coraplex.robot_plans.actions.core.robot_body import ParkArmsAction
@@ -15,8 +15,10 @@ from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.robots.armar7 import Armar7
 from semantic_digital_twin.robots.garmi import Garmi
+from semantic_digital_twin.robots.hsrb import HSRB
 from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.robots.robot_parts import AbstractRobot
+from semantic_digital_twin.robots.tiago import Tiago
 from semantic_digital_twin.robots.unitree_g1 import UnitreeG1
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.spatial_types.spatial_types import Pose
@@ -34,6 +36,8 @@ class DemoRobot(Enum):
     UNITREE_G1 = auto()
     GARMI = auto()
     PR2 = auto()
+    TIAGO = auto()
+    HSR = auto()
 
 
 @dataclass
@@ -73,13 +77,13 @@ ROBOT_SPECIFICATIONS: dict[DemoRobot, RobotSpecification] = {
         Armar7,
         "package://iai_kit_armar7/urdf/Armar7.urdf",
         HomogeneousTransformationMatrix.from_xyz_rpy(1.5, 2.5, 0),
-        can_transport_bowl=False,
+        can_transport_bowl=True,
     ),
     DemoRobot.UNITREE_G1: RobotSpecification(
         UnitreeG1,
         "package://iai_offis_g1_description/urdf/offis_unitree_g1.urdf",
         HomogeneousTransformationMatrix.from_xyz_rpy(1.5, 2.5, 0),
-        can_transport_bowl=False,
+        can_transport_bowl=True,
     ),
     DemoRobot.GARMI: RobotSpecification(
         Garmi,
@@ -87,18 +91,30 @@ ROBOT_SPECIFICATIONS: dict[DemoRobot, RobotSpecification] = {
         # Garmi's arms sit further forward than the other robots', so it is spawned
         # 0.5m further back to keep them clear of the table on spawn.
         HomogeneousTransformationMatrix.from_xyz_rpy(1.0, 2.5, 0),
-        can_transport_bowl=False,
+        can_transport_bowl=True,
     ),
     DemoRobot.PR2: RobotSpecification(
         PR2,
         "package://iai_pr2_description/robots/pr2_with_ft2_cableguide.xacro",
+        HomogeneousTransformationMatrix.from_xyz_rpy(1.2, 2.5, 0),
+        can_transport_bowl=True,
+    ),
+    DemoRobot.TIAGO: RobotSpecification(
+        Tiago,
+        "package://iai_tiago_description/urdf/tiago_from_our_robot.urdf",
+        HomogeneousTransformationMatrix.from_xyz_rpy(1.5, 2.5, 0),
+        can_transport_bowl=True,
+    ),
+    DemoRobot.HSR: RobotSpecification(
+        HSRB,
+        "package://hsr_description/robots/hsrb4s.urdf.xacro",
         HomogeneousTransformationMatrix.from_xyz_rpy(1.5, 2.5, 0),
         can_transport_bowl=True,
     ),
 }
 
 # Change this to switch which robot is spawned into the apartment.
-SELECTED_ROBOT = DemoRobot.GARMI
+SELECTED_ROBOT = DemoRobot.TIAGO
 robot_specification = ROBOT_SPECIFICATIONS[SELECTED_ROBOT]
 
 # %% World setup
@@ -109,11 +125,7 @@ apartment_world = URDFParser.from_file(
     )
 ).parse()
 robot_world = URDFParser.from_file(robot_specification.urdf_path).parse()
-bowl_world = STLParser(
-    os.path.join(
-        os.path.dirname(__file__), "..", "..", "resources", "objects", "bowl.stl"
-    )
-).parse()
+
 milk_world = STLParser(
     os.path.join(
         os.path.dirname(__file__), "..", "..", "resources", "objects", "milk.stl"
@@ -136,12 +148,6 @@ with apartment_world.modify_world():
     )
     apartment_world.merge_world(robot_world, root_connection)
     root_connection.origin = robot_specification.starting_pose
-    apartment_world.merge_world_at_pose(
-        bowl_world,
-        HomogeneousTransformationMatrix.from_xyz_rpy(
-            2.4, 2.2, 1, reference_frame=apartment_world.root
-        ),
-    )
     apartment_world.merge_world_at_pose(
         milk_world,
         HomogeneousTransformationMatrix.from_xyz_rpy(
@@ -172,18 +178,18 @@ except ImportError:
 # %% Demo
 
 robot = robot_specification.semantic_annotation.from_world(world)
+robot.mobile_base.full_body_controlled = True
 context = Context(world=world, robot=robot, _debug=False, ros_node=node)
 context.evaluate_conditions = False
+context.teleport_to_navigate_in_simulation = True
 
 actions = [ParkArmsAction(Arms.BOTH)]
-if robot_specification.can_transport_bowl:
-    actions.append(
-        TransportAction(
-            world.get_body_by_name("bowl.stl"),
-            Pose.from_xyz_rpy(5, 3.3, 0.75, yaw=1.57, reference_frame=world.root),
-            Arms.LEFT,
-        )
-    )
+actions.append(
+    TransportAction(
+        world.get_body_by_name("milk.stl"),
+        Pose.from_xyz_rpy(5, 3.3, 0.75, yaw=1.57, reference_frame=world.root),
+        Arms.LEFT,
+    ))
 
 plan = sequential(actions, context=context).plan
 

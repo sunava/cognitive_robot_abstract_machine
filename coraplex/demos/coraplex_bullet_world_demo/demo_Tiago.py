@@ -13,7 +13,7 @@ from coraplex.testing import setup_world
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
-from semantic_digital_twin.robots.pr2 import PR2
+from semantic_digital_twin.robots.garmin import Tiago
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Bowl,
     Spoon,
@@ -59,8 +59,8 @@ try:
 except ImportError:
     node = None
 
-pr2 = PR2.from_world(world)
-context = Context(world=world, robot=pr2, _debug=False, ros_node=node)
+Tiago = Tiago.from_world(world)
+context = Context(world=world, robot=Tiago, _debug=False, ros_node=node)
 
 with world.modify_world():
     world_reasoner = WorldReasoner(world)
@@ -96,7 +96,7 @@ plan = sequential(
             GraspDescription(
                 ApproachDirection.FRONT,
                 VerticalAlignment.TOP,
-                pr2.left_arm.end_effector,
+                Tiago.left_arm.end_effector,
             ),
         ),
     ],
