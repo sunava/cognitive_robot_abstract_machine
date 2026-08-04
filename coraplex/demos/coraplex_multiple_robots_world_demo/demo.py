@@ -116,7 +116,7 @@ ROBOT_SPECIFICATIONS: dict[DemoRobot, RobotSpecification] = {
 }
 
 # Change this to switch which robot is spawned into the apartment.
-SELECTED_ROBOT = DemoRobot.TIAGO
+SELECTED_ROBOT = DemoRobot.GARMI
 robot_specification = ROBOT_SPECIFICATIONS[SELECTED_ROBOT]
 
 # %% World setup
@@ -209,17 +209,17 @@ actions.append(
         Pose.from_xyz_rpy(5.2, 3.3, 0.75, yaw=1.57, reference_frame=world.root),
         Arms.LEFT,
     ))
-actions.append(
-    TransportAction(
-        world.get_body_by_name("spoon.stl"),
-        Pose.from_xyz_rpy(4.8, 3.3, 0.75, yaw=1.57, reference_frame=world.root),
-        Arms.LEFT,
-        GraspDescription(
-            ApproachDirection.FRONT,
-            VerticalAlignment.TOP,
-            ViewManager.get_end_effector_view(Arms.LEFT, robot),
-        ),
-    ))
+# actions.append(
+#     TransportAction(
+#         world.get_body_by_name("spoon.stl"),
+#         Pose.from_xyz_rpy(4.8, 3.3, 0.75, yaw=1.57, reference_frame=world.root),
+#         Arms.LEFT,
+#         GraspDescription(
+#             ApproachDirection.FRONT,
+#             VerticalAlignment.TOP,
+#             ViewManager.get_end_effector_view(Arms.LEFT, robot),
+#         ),
+#     ))
 
 plan = sequential(actions, context=context).plan
 

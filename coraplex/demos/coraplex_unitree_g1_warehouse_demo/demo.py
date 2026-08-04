@@ -170,7 +170,7 @@ def lowest_collision_point_of(robot: UnitreeG1, world: World) -> float:
 
 world = build_world()
 robot = world.get_semantic_annotations_by_type(UnitreeG1)[0]
-
+print(world.root)
 # Keeps PELVIS_HEIGHT_ABOVE_FLOOR honest: the robot has to stand on the floor rather than
 # sink into it or hover above it.
 assert abs(lowest_collision_point_of(robot, world)) < 1e-3

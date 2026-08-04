@@ -41,7 +41,7 @@ with lab_world.modify_world():
     lab_world.merge_world_at_pose(
         milk_world,
         HomogeneousTransformationMatrix.from_xyz_rpy(
-            0.8, 6.4, 1.1, reference_frame=lab_world.root
+            0.8, 6.4, 1.1, yaw=180, reference_frame=lab_world.root
         ),
     )
 
