@@ -3399,8 +3399,6 @@ class AreReachableByDAO(
         use_existing_column=True,
     )
 
-    single_grasp: Mapped[builtins.bool] = mapped_column(use_existing_column=True)
-
     tip_link_id: Mapped[int] = mapped_column(
         ForeignKey("KinematicStructureEntityDAO.database_id", use_alter=True),
         nullable=True,
@@ -3408,11 +3406,6 @@ class AreReachableByDAO(
     )
     grasp_description_id: Mapped[int] = mapped_column(
         ForeignKey("GraspDescriptionDAO.database_id", use_alter=True),
-        nullable=True,
-        use_existing_column=True,
-    )
-    grasp_body_id: Mapped[int] = mapped_column(
-        ForeignKey("BodyDAO.database_id", use_alter=True),
         nullable=True,
         use_existing_column=True,
     )
@@ -3437,9 +3430,6 @@ class AreReachableByDAO(
         uselist=False,
         foreign_keys=[grasp_description_id],
         post_update=True,
-    )
-    grasp_body: Mapped[BodyDAO] = relationship(
-        "BodyDAO", uselist=False, foreign_keys=[grasp_body_id], post_update=True
     )
 
     __mapper_args__ = {

@@ -2,8 +2,6 @@
 Module holding all enums of CoraPlex.
 """
 
-from __future__ import annotations
-
 from enum import Enum, auto, IntEnum
 from functools import cached_property
 
@@ -181,11 +179,7 @@ class Grasp(Enum):
 
 class ApproachDirection(Grasp):
     """
-    Enum for the approach direction of a gripper, expressed relative to the robot.
-
-    ``FRONT`` denotes the side of the target that faces the robot, ``LEFT`` and
-    ``RIGHT`` the sides to the robot's left and right when looking at the target, and
-    ``BACK`` the far side.
+    Enum for the approach direction of a gripper.
 
     The AxisIdentifier is used to identify the axis of the gripper, and the int is used
     to identify the direction along  that axis.
@@ -202,47 +196,6 @@ class ApproachDirection(Grasp):
         Returns the axis of the approach direction.
         """
         return self.value[0]
-
-    @classmethod
-    def counterclockwise_order(cls) -> tuple[ApproachDirection, ...]:
-        """
-        The approach directions ordered by successive 90° counterclockwise rotations of
-        their face normal around the z-axis.
-        """
-        return cls.FRONT, cls.RIGHT, cls.BACK, cls.LEFT
-
-    def to_object_frame(
-        self, robot_facing_direction: ApproachDirection
-    ) -> ApproachDirection:
-        """
-        Translate this robot-relative direction into the object's frame.
-
-        :param robot_facing_direction: The object-frame direction whose face points
-            towards the robot.
-        :return: The object-frame direction denoted by this robot-relative direction.
-        """
-        order = self.counterclockwise_order()
-        return order[
-            (order.index(robot_facing_direction) + order.index(self)) % len(order)
-        ]
-
-    def to_robot_relative(
-        self, robot_facing_direction: ApproachDirection
-    ) -> ApproachDirection:
-        """
-        Translate this object-frame direction into the robot-relative direction that
-        denotes it.
-
-        Inverse of :meth:`to_object_frame`.
-
-        :param robot_facing_direction: The object-frame direction whose face points
-            towards the robot.
-        :return: The robot-relative direction that denotes this object-frame direction.
-        """
-        order = self.counterclockwise_order()
-        return order[
-            (order.index(self) - order.index(robot_facing_direction)) % len(order)
-        ]
 
 
 class VerticalAlignment(Grasp):
@@ -381,12 +334,10 @@ class CuttingTechnique(Enum):
     """
     Cut the object into slices of equal thickness.
     """
-
     SAW = auto()
     """
     Cut with a repeated back-and-forth sawing motion.
     """
-
     HALVING = auto()
     """
     Cut the object into two halves.
@@ -403,7 +354,6 @@ class SlicingPriority(Enum):
     """
     Keep the requested slice thickness and reduce the number of cuts to fit.
     """
-
     CUT_COUNT = auto()
     """
     Keep the requested number of cuts and shrink the slice thickness to fit.
@@ -419,22 +369,18 @@ class ToolPathSegmentKind(Enum):
     """
     Vertical approach from above onto the object.
     """
-
     DESCEND = auto()
     """
     Straight downward cut into the object.
     """
-
     SAW = auto()
     """
     Oscillatory shear motion with increasing depth.
     """
-
     RETRACT = auto()
     """
     Vertical retraction away from the object.
     """
-
     SPIRAL = auto()
     """
     Planar spiral with growing radius.
@@ -447,12 +393,10 @@ class ToolPathSegmentKind(Enum):
     """
     Planar oscillatory shear at constant depth.
     """
-
     RASTER = auto()
     """
     Planar raster scan covering a rectangle.
     """
-
     SWEEP = auto()
     """
     Sinusoidal sweep along one axis.
@@ -468,12 +412,10 @@ class WipingTechnique(Enum):
     """
     Wipe along a spiral covering the surface.
     """
-
     SHEAR = auto()
     """
     Wipe with an oscillatory shear motion.
     """
-
     SPREAD = auto()
     """
     Spread along straight lanes covering the surface.
@@ -489,7 +431,6 @@ class MixingPattern(Enum):
     """
     Mix along an outward spiral.
     """
-
     STIR = auto()
     """
     Mix along circular stirring laps.

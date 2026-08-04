@@ -106,10 +106,11 @@ def reachability_location(
         costmap,
         [
             AreReachableBy(
-                pose_sequence=[target_pose],
-                grasp_description=grasp_description,
-                grasp_body=_get_object_in_hand(context.robot, context.world, arm)
-                or target_body,
+                pose_sequence=grasp_description.pose_sequence(
+                    target_pose,
+                    _get_object_in_hand(context.robot, context.world, arm)
+                    or target_body,
+                ),
                 tip_link=man.tool_frame,
                 context=Context(
                     world=context.world,
@@ -225,10 +226,11 @@ def giskard_reachability_location(
         backend,
         [
             AreReachableBy(
-                pose_sequence=[target_pose],
-                grasp_description=grasp_description,
-                grasp_body=_get_object_in_hand(context.robot, context.world, arm)
-                or target_body,
+                pose_sequence=grasp_description.pose_sequence(
+                    target_pose,
+                    _get_object_in_hand(context.robot, context.world, arm)
+                    or target_body,
+                ),
                 context=Context(
                     robot=context.robot,
                     world=context.world,
