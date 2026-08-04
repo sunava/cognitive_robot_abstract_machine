@@ -5,11 +5,13 @@ from enum import Enum, auto
 from typing_extensions import Type
 
 from coraplex.datastructures.dataclasses import Context
-from coraplex.datastructures.enums import Arms
+from coraplex.datastructures.enums import Arms, ApproachDirection, VerticalAlignment
+from coraplex.datastructures.grasp import GraspDescription
 from coraplex.execution_environment import simulated_robot, simulated_robot_advanced
 from coraplex.plans.factories import sequential
 from coraplex.robot_plans.actions.composite.transporting import TransportAction
 from coraplex.robot_plans.actions.core.robot_body import ParkArmsAction
+from coraplex.view_manager import ViewManager
 
 from semantic_digital_twin.adapters.mesh import STLParser
 from semantic_digital_twin.adapters.urdf import URDFParser
@@ -114,7 +116,7 @@ ROBOT_SPECIFICATIONS: dict[DemoRobot, RobotSpecification] = {
 }
 
 # Change this to switch which robot is spawned into the apartment.
-SELECTED_ROBOT = DemoRobot.TIAGO
+SELECTED_ROBOT = DemoRobot.HSR
 robot_specification = ROBOT_SPECIFICATIONS[SELECTED_ROBOT]
 
 # %% World setup
@@ -141,6 +143,11 @@ cereal_world = STLParser(
         "breakfast_cereal.stl",
     )
 ).parse()
+spoon_world = STLParser(
+    os.path.join(
+        os.path.dirname(__file__), "..", "..", "resources", "objects", "spoon.stl"
+    )
+).parse()
 
 with apartment_world.modify_world():
     root_connection = OmniDrive.create_with_dofs(
@@ -158,6 +165,12 @@ with apartment_world.modify_world():
         cereal_world,
         HomogeneousTransformationMatrix.from_xyz_rpy(
             2.37, 1.8, 1.05, reference_frame=apartment_world.root
+        ),
+    )
+    apartment_world.merge_world_at_pose(
+        spoon_world,
+        HomogeneousTransformationMatrix.from_xyz_rpy(
+            2.37, 1.6, 1.05, reference_frame=apartment_world.root
         ),
     )
 
@@ -189,6 +202,23 @@ actions.append(
         world.get_body_by_name("milk.stl"),
         Pose.from_xyz_rpy(5, 3.3, 0.75, yaw=1.57, reference_frame=world.root),
         Arms.LEFT,
+    ))
+actions.append(
+    TransportAction(
+        world.get_body_by_name("breakfast_cereal.stl"),
+        Pose.from_xyz_rpy(5.2, 3.3, 0.75, yaw=1.57, reference_frame=world.root),
+        Arms.LEFT,
+    ))
+actions.append(
+    TransportAction(
+        world.get_body_by_name("spoon.stl"),
+        Pose.from_xyz_rpy(4.8, 3.3, 0.75, yaw=1.57, reference_frame=world.root),
+        Arms.LEFT,
+        GraspDescription(
+            ApproachDirection.FRONT,
+            VerticalAlignment.TOP,
+            ViewManager.get_end_effector_view(Arms.LEFT, robot),
+        ),
     ))
 
 plan = sequential(actions, context=context).plan

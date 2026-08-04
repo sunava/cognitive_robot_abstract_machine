@@ -185,7 +185,9 @@ class MoveToolCenterPointMotion(BaseMotion):
             )
         if not self.allow_gripper_collision:
             return task
-        return Parallel([*self._only_allow_gripper_collision_rules(self.arm), task])
+        return Parallel(
+            [*self._only_allow_gripper_collision_rules(self.arm), task], name=task.name
+        )
 
 
 @dataclass
