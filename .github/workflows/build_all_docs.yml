@@ -60,45 +60,8 @@ jobs:
       use_container: ${{ matrix.use_container }}
       repo_lowercase: ${{ needs.to-lowercase.outputs.repo_lowercase }}
 
-  build-cram-viz:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install scene-index dependencies
-        run: pip install typing_extensions
-
-      - name: Assemble the static Recorded-mode site
-        run: |
-          set -euo pipefail
-          test -f cram_viz/scenes/index.json || {
-            echo "::error::cram_viz/scenes submodule is empty - is it checked out?"
-            exit 1
-          }
-          mkdir -p site/scenes
-          cp -r cram_viz/src/cram_viz/web/. site/
-          cp -r cram_viz/scenes/. site/scenes/
-          rm -rf site/scenes/.git
-
-      - name: Repair the scenes index
-        run: PYTHONPATH=cram_viz/src python3 -m cram_viz.onboard.scene_index site/scenes
-
-      - name: Upload cram_viz site
-        uses: actions/upload-artifact@v4
-        with:
-          name: cram-viz-site
-          path: site
-          retention-days: 1
-
   deploy-all-docs:
-    needs: [build-docs, build-cram-viz]
+    needs: [build-docs]
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -163,12 +126,6 @@ jobs:
         with:
           name: giskardpy-doc
           path: aggregate/giskardpy
-
-      - name: Download cram-viz-site
-        uses: actions/download-artifact@v4
-        with:
-          name: cram-viz-site
-          path: aggregate/cram_viz
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

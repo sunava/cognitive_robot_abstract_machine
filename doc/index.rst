@@ -57,10 +57,6 @@ CRAM consists of the following sub-packages:
    Events <https://cram2.github.io/cognitive_robot_abstract_machine/random_events>`__
    is a Python library to provide a simple and flexible way to generate events that are suitable for probabilistic reasoning.
 
--  `CRAM-Viz <cram_viz/>`__ is a browser-based 3D visualizer for the CRAM
-   architecture, replaying pre-recorded demo scenes with no server or ROS
-   installation required.
-
 .. image:: img/cronut.svg
     :alt: Architecture Diagram
 
