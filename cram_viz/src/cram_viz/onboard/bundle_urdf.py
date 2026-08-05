@@ -49,6 +49,7 @@ XACRO_ERROR_TAIL = 2000
 
 #: what the bundler reads out of a URDF
 MESH_REFERENCE_PATTERN = re.compile(r'filename="([^"]+)"')
+XML_COMMENT_PATTERN = re.compile(r"<!--.*?-->", re.DOTALL)
 LINK_PATTERN = re.compile(r'<link\s+name="([^"]+)"')
 JOINT_PATTERN = re.compile(r'<joint\s+name="([^"]+)"\s+type="([^"]+)"')
 
@@ -295,7 +296,8 @@ def bundle_urdf(
     copied: Dict[str, str] = {}
     missing: List[str] = []
     rewritten = 0
-    for reference in sorted(set(MESH_REFERENCE_PATTERN.findall(urdf_text))):
+    live_text = XML_COMMENT_PATTERN.sub("", urdf_text)
+    for reference in sorted(set(MESH_REFERENCE_PATTERN.findall(live_text))):
         if not reference.lower().endswith(MESH_SUFFIXES):
             continue  # plugins (.so) and other non-geometry references
         resolved = resolve_uri(reference, hints=hints, base_dir=base_dir)

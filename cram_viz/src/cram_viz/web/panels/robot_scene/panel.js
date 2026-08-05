@@ -485,23 +485,17 @@ Panels.define('robot-scene', function (root, bus) {
     while (o) { if (o.isURDFLink && o.name) return String(o.name); o = o.parent; }
     return '';
   }
-  // furniture palette, keyed on common link-name vocabulary — applies to any
-  // environment model; unmatched links keep their tamed authored look
+  // furniture palette, keyed on common link-name vocabulary via EnvironmentTheme —
+  // applies to any environment model; unmatched links keep their tamed authored look
+  const THEME_TEXTURES = { counter: WOOD_COUNTER, table: WOOD_TABLE };
   function themeEnvironment(mat, link) {
     tameMat(mat);
-    const n = link.toLowerCase();
-    if (/cooktop|hotplate|ceran|stove/.test(n)) {
-      mat.color.setHex(0x0a0b0d); mat.map = null; mat.roughness = 0.18; mat.metalness = 0.15;
-    } else if (/island_countertop|countertop|worktop/.test(n)) {
-      mat.color.setHex(0xffffff); mat.map = WOOD_COUNTER; mat.roughness = 0.55; mat.metalness = 0.02;
-    } else if (/coffee_table|table_area|bedside_table|table_top|dining/.test(n)) {
-      mat.color.setHex(0xffffff); mat.map = WOOD_TABLE; mat.roughness = 0.5; mat.metalness = 0.02;
-    } else if (/handle|tap_body|tap_handle|sink|faucet/.test(n)) {
-      mat.color.setHex(0xc6ccd4); mat.map = null; mat.roughness = 0.28; mat.metalness = 0.85;
-    } else if (/cabinet|drawer|door|wardrobe|dishwasher|oven|coffe_machine|island_back|island_waterfall|side_[ab]|fridge/.test(n)) {
-      mat.color.setHex(0x1b1d21); mat.map = null; mat.roughness = 0.42; mat.metalness = 0.12;
-    } else if (/wall/.test(n)) {
-      mat.color.setHex(0xd9d4cb); mat.map = null; mat.roughness = 0.95; mat.metalness = 0.0;
+    const look = window.EnvironmentTheme.lookOf(link);
+    if (look) {
+      mat.color.setHex(look.color);
+      mat.map = look.texture ? THEME_TEXTURES[look.texture] : null;
+      mat.roughness = look.roughness;
+      mat.metalness = look.metalness;
     }
     mat.needsUpdate = true;
   }

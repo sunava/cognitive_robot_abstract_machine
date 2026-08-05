@@ -39,6 +39,7 @@ from pathlib import Path
 
 from semantic_digital_twin.adapters.gazebo import GazeboParser
 from semantic_digital_twin.adapters.mesh import STLParser
+from semantic_digital_twin.adapters.mjcf import MJCFParser
 from semantic_digital_twin.adapters.package_resolver import PackageUriResolver
 from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.api import BodySpecification
@@ -61,6 +62,7 @@ from cram_viz.body_geometry import BodyExtent
 from cram_viz.live.bridge import ROBOT_BASE_KEY
 from cram_viz.monkey_patch import MethodPatch
 from cram_viz.onboard.bundle_gazebo import bundle_gazebo_world
+from cram_viz.onboard.bundle_mjcf import bundle_mjcf
 from cram_viz.onboard.bundle_urdf import bundle_urdf
 from cram_viz.palette import ObjectPalette, css_color
 
@@ -263,6 +265,11 @@ class Recorder:
         Gazebo/SDF world or model files the world was built from, in load order.
         """
 
+        self.mjcf_sources: List[str] = []
+        """
+        MJCF files the world was built from, in load order.
+        """
+
         self.mesh_sources: List[str] = []
         """
         Mesh files of the loose objects, in load order.
@@ -341,6 +348,7 @@ class Recorder:
             MethodPatch(GazeboParser, "from_file").install(
                 self._remember_gazebo_source
             ),
+            MethodPatch(MJCFParser, "__init__").install(self._remember_mjcf_source),
             MethodPatch(STLParser, "__init__").install(self._remember_mesh_source),
             MethodPatch(BodySpecification, "to_domain_object").install(
                 self._remember_spawned_box
@@ -398,6 +406,21 @@ class Recorder:
         if file_path not in self.gazebo_sources:
             self.gazebo_sources.append(file_path)
         return original(cls, file_path, **kwargs)
+
+    def _remember_mjcf_source(
+        self,
+        original: Callable[..., None],
+        mjcf_parser: MJCFParser,
+        file_path: str,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        """
+        Initialize as usual, but remember this MJCF source file.
+        """
+        if file_path not in self.mjcf_sources:
+            self.mjcf_sources.append(file_path)
+        return original(mjcf_parser, file_path, *args, **kwargs)
 
     def _remember_mesh_source(
         self,
@@ -1086,6 +1109,17 @@ def build_scene(
         model, report = _bundle_model(
             source,
             bundle_gazebo_world,
+            out_dir,
+            recorder.resolutions,
+            world_body_names,
+            base_body,
+        )
+        models.append(model)
+        missing += report["missing"]
+    for source in recorder.mjcf_sources:
+        model, report = _bundle_model(
+            source,
+            bundle_mjcf,
             out_dir,
             recorder.resolutions,
             world_body_names,
