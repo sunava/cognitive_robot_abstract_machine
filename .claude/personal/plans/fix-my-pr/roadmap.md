@@ -264,3 +264,44 @@ Waves 2 and 3 are a large diff on an already-large PR, and
 these were the reviewers' headline objections. If review latency ever matters
 more than completeness, wave 1 plus the Group B replies already answer 26 of the
 51 threads and could ship alone.
+
+## `viz-onboard-dataclasses` — Recorder and BundleReport (T22/T39, T37)
+
+Closes T22/T39 (`Recorder`) and T37 (`bundle_urdf()`'s return dict), both
+flagged as Group D medium refactors. Scoped to exactly these two shapes —
+`Recorder`'s own internal dict/list-typed fields (`actions`, `frames`, etc.)
+stay as-is; a different Group D finding on a different module covers those.
+
+- **`Recorder` → `@dataclass`** (`onboard/demo.py`): the existing 65-line
+  `__init__` is pure attribute assignment with per-field docstrings already
+  present, so the conversion is mechanical — same field names, types and
+  docstrings, `field(default_factory=...)` for the mutable containers.
+  Confirmed via `git grep` that every `Recorder()` call site (in `demo.py`
+  and `test_onboard.py`) takes no constructor args and only does attribute
+  get/set afterward, so no call site needs to change.
+- **`bundle_urdf()`'s dict → `BundleReport`** (`onboard/bundle_urdf.py`):
+  the ten-key dict (`name, urdf, source, links, joints, movable_joints,
+  meshes_copied, mesh_exts, refs_rewritten, missing`) becomes a dataclass.
+  Three call sites move from subscript to attribute access: `bundle_urdf.py`'s
+  own `main()`, `demo.py`'s bundling loop (lines ~868-903), and
+  `test_onboard.py`'s `TestBundleUrdf` assertions (updating those assertions
+  to attribute access is the TDD anchor — they fail against the dict-
+  returning code first, then pass once `BundleReport` lands).
+  `typing_extensions.Any` is dropped from `bundle_urdf.py`'s imports once its
+  only use (the `Dict[str, Any]` return annotation) is gone.
+- New test added to `test_onboard.py`: two independently constructed
+  `Recorder()` instances must have distinct (`is not`) list/dict attribute
+  objects — the regression guard against writing `field(default=[])` instead
+  of `default_factory` during the conversion, the one real hazard
+  `AGENTS.md`'s mutable-default-argument rule flags for this refactor.
+
+No wire-format change: both `scene.json`/`trajectory.json` payloads stay
+plain dicts built from the new dataclasses' fields, so no
+`panels/graph/panel.js` update is needed here (unlike T12/T16/T31).
+
+Dependency `viz-small-fixes` (PR #22) was confirmed merged into
+`cram-viz-integration` before starting — verified live via
+`check_dependency_readiness.py`, not assumed from the manifest.
+
+Branch: `cram-viz-onboard-dataclasses`, based on `cram-viz-integration`.
+Draft PR: [sunava#24](https://github.com/sunava/cognitive_robot_abstract_machine/pull/24).
