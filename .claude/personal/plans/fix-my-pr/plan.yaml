@@ -239,7 +239,7 @@ items:
     pull_request_number: 23
     track: docs-admin
     depends_on: []
-    status: in_progress
+    status: done
     notes: >
       T51. Blocker cleared: cram2/cram-scenes now exists (created 2026-07-29)
       and was verified to contain the exact submodule commit already pinned
