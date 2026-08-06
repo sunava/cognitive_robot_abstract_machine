@@ -77,10 +77,10 @@ items:
   - id: viz-small-fixes
     title: "Group C: renames, deletions and one-line corrections"
     branch: cram-viz-small-fixes
-    pull_request_number: null
+    pull_request_number: 22
     track: small-fixes
     depends_on: []
-    status: not_started
+    status: done
     notes: >
       Closes T14 (drop `or []`; World.connections is never None), T8 (delete the
       narrating note), T7 (move the live docstring into the README), T3 (repoint
