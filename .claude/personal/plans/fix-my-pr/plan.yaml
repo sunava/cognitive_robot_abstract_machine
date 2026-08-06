@@ -239,15 +239,15 @@ items:
     pull_request_number: 23
     track: docs-admin
     depends_on: []
-    status: in_progress
+    status: done
     notes: >
       T51. Blocker cleared: cram2/cram-scenes now exists (created 2026-07-29)
       and was verified to contain the exact submodule commit already pinned
       in cram_viz/scenes, so this landed as a URL-only retarget with no
       rebase. Three sites changed, not the two the earlier note said:
       .gitmodules:3, paths.py:7, and cram_viz/README.md:22 (a third hardcoded
-      link the earlier triage missed). Draft PR #23 against
-      cram-viz-integration on the sunava fork.
+      link the earlier triage missed). PR #23 merged into
+      cram-viz-integration.
 
   - id: viz-reply-sheet
     title: "Write the paste-ready replies for all 51 review threads"
