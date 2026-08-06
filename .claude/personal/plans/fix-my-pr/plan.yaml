@@ -94,10 +94,11 @@ items:
   - id: viz-wire-rename
     title: "Rename the abbreviated `sig` field across the API and the frontend"
     branch: cram-viz-wire-rename
-    pull_request_number: null
+    pull_request_number: 26
     track: small-fixes
     depends_on: [viz-small-fixes]
-    status: not_started
+    status: in_progress
+    session: https://claude.ai/code/session_014g4C4mMNFePLdBVpQL1e8x
     notes: >
       T12. Separated from the other small fixes because it is a wire-format
       change: three dataclasses in bridge.py, the API contract docstring in
