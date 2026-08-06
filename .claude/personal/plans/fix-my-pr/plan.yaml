@@ -1,0 +1,296 @@
+schema_version: 1
+id: fix-my-pr
+title: "Clear the 51 open review threads on cram_viz PR #485"
+description: >
+  Address the 51 unresolved review threads blocking
+  cram2/cognitive_robot_abstract_machine#485 (the cram_viz browser-based
+  visualization package). CI on that PR is fully green; the only blocker is
+  CHANGES_REQUESTED from two reviewers on 2026-07-29. Work lands as stacked
+  branches on the sunava fork, merges into cram-viz-integration, and is
+  accompanied by a reply sheet the user posts by hand.
+default_repository: sunava/cognitive_robot_abstract_machine
+tracking_issue: 19
+
+waves:
+  - id: w1-fix
+    name: "Bugs and small fixes"
+    description: >
+      Two real bugs found during triage, plus every finding that is a rename,
+      a deletion, or a one-line correction.
+  - id: w2-restructure
+    name: "Split kb.py and replace dicts with dataclasses"
+    description: >
+      The reviewers' headline objections: a 2056-line module, and payloads
+      passed around as bare dicts and tuples.
+  - id: w3-reuse
+    name: "Cross-package reuse, docs and admin"
+    description: >
+      Stop duplicating what semantic_digital_twin already provides, finish the
+      docstrings, and move the scenes submodule under the cram2 org.
+  - id: w4-land
+    name: "Answer the reviewers and merge"
+
+tracks:
+  - id: bugs
+    name: "Bugs"
+    wave: w1-fix
+  - id: small-fixes
+    name: "Small fixes"
+    wave: w1-fix
+  - id: kb
+    name: "kb.py restructure"
+    wave: w2-restructure
+  - id: live
+    name: "Live bridge"
+    wave: w2-restructure
+  - id: onboard
+    name: "Onboarder"
+    wave: w2-restructure
+  - id: upstream
+    name: "Cross-package reuse"
+    wave: w3-reuse
+  - id: docs-admin
+    name: "Docs and admin"
+    wave: w3-reuse
+  - id: landing
+    name: "Landing"
+    wave: w4-land
+
+items:
+  - id: viz-bugs
+    title: "Fix the two bugs triage found (mis-keyed plan groups, EQL preset splicing)"
+    branch: cram-viz-bugs
+    pull_request_number: null
+    track: bugs
+    depends_on: []
+    status: not_started
+    notes: >
+      BUG-1: kb.py PLAN_GROUPS keys on AttachmentNode/DetachmentNode, but
+      coraplex's real classes are AttachNode/DetachNode, and the lookup key is
+      type(node).__name__ - so attach/detach nodes silently render as "Other
+      plan node" and the legend row is dead. BUG-2: get_presets() splices scene
+      object names into EQL source that reaches eval(); an apostrophe breaks the
+      preset. Not a security issue - the server binds 127.0.0.1 and the panel
+      exists to run user-typed EQL. Closes review threads T43 and part of T48.
+      Neither bug is covered by a test today; both get a failing test first.
+
+  - id: viz-small-fixes
+    title: "Group C: renames, deletions and one-line corrections"
+    branch: cram-viz-small-fixes
+    pull_request_number: null
+    track: small-fixes
+    depends_on: []
+    status: not_started
+    notes: >
+      Closes T14 (drop `or []`; World.connections is never None), T8 (delete the
+      narrating note), T7 (move the live docstring into the README), T3 (repoint
+      the cram-viz-live console script), T10 (hoist the PackageUriResolver
+      import), T9 (narrow two excepts to ParsingError and (ImportError,
+      LookupError)), T21 (remaining abbreviations), T30/T47 (KB ->
+      EpisodeKnowledgeBase and friends), T42 (PLAN_LEGEND dataclass), T38 (use
+      krrood's real Evaluable ABC, delete the local Protocol), T32 (use
+      eql_factory_namespace()).
+
+  - id: viz-wire-rename
+    title: "Rename the abbreviated `sig` field across the API and the frontend"
+    branch: cram-viz-wire-rename
+    pull_request_number: null
+    track: small-fixes
+    depends_on: [viz-small-fixes]
+    status: not_started
+    notes: >
+      T12. Separated from the other small fixes because it is a wire-format
+      change: three dataclasses in bridge.py, the API contract docstring in
+      http.py, and the frontend reader at panels/graph/panel.js:265-266 must all
+      change in one commit. The local variable is already spelled `signature`;
+      only the field is abbreviated.
+
+  - id: viz-kb-characterization
+    title: "Characterization tests for kb.py before splitting it"
+    branch: cram-viz-kb-characterization
+    pull_request_number: null
+    track: kb
+    depends_on: [viz-bugs]
+    status: not_started
+    notes: >
+      Gate for the split. kb.py is 2056 lines with 155 lines of tests, which
+      cannot catch a bad cut, and a silent break in the graph panels is the
+      likely failure mode. Covers graph_payload, view_payload and expand_node.
+      Written fresh - fork PR #15's test files are deliberately not mined.
+
+  - id: viz-kb-split
+    title: "Rename kb.py and split it into ~13 single-scoped modules"
+    branch: cram-viz-kb-split
+    pull_request_number: null
+    track: kb
+    depends_on: [viz-kb-characterization]
+    status: not_started
+    notes: >
+      T46 plus T27, done together since the rename touches the same import
+      sites. Cuts along the existing "# %%" markers: scene_bundle, entities,
+      architecture_entities, architecture_scan, knowledge_base, eql_session,
+      graph_payload, and a views/ package (base, dispatcher, plan, kinematics,
+      architecture) plus presets. One commit per cohesive move, suite green
+      after each. Expected to force a full rebase of fork PR #18.
+
+  - id: viz-kb-dataclasses
+    title: "Replace kb.py's tuples, dicts and stringly-typed branches with types"
+    branch: cram-viz-kb-dataclasses
+    pull_request_number: null
+    track: kb
+    depends_on: [viz-kb-split]
+    status: not_started
+    notes: >
+      T40, T42, T44, T45, T28, T29 and the rest of T48. Done after the split so
+      each conversion lands in its new module rather than being done twice.
+      T45 replaces substring heuristics ("gripper" in part, "left" in part) with
+      real types. T48 turns the EQL presets into a dataclass, which is also what
+      removes BUG-2's string splicing for good.
+
+  - id: viz-bridge-injection
+    title: "Remove the module-level BRIDGE global and the leftover untyped payloads"
+    branch: cram-viz-bridge-injection
+    pull_request_number: null
+    track: live
+    depends_on: [viz-wire-rename]
+    status: not_started
+    notes: >
+      T24 and the residue of T16. hooks.py already injects the bridge as a
+      dataclass field, so only http.py's seven references and runner.py need the
+      global; the natural injection point is where serve() builds the server.
+      T16 residue is get_chart() hand-rewriting ChartEdgeEntry.source/target
+      into from/to after asdict.
+
+  - id: viz-semdt-geometry
+    title: "Use semantic_digital_twin's shape API instead of hand-rolled body extents"
+    branch: cram-viz-semdt-geometry
+    pull_request_number: null
+    track: live
+    depends_on: [viz-bridge-injection]
+    status: not_started
+    notes: >
+      T17. BodyExtent.of reads .scale off the first Box or Mesh shape and returns
+      None for spheres, cylinders and capsules. ShapeCollection.scale already
+      handles every shape type. body_geometry.py serves the onboarder too, so
+      both call sites move together.
+
+  - id: viz-onboard-dataclasses
+    title: "Convert Recorder and the bundle report to dataclasses"
+    branch: cram-viz-onboard-dataclasses
+    pull_request_number: null
+    track: onboard
+    depends_on: [viz-small-fixes]
+    status: not_started
+    notes: >
+      T22/T39 (flagged independently by both reviewers) and T37. Recorder's
+      __init__ is 65 lines of pure attribute assignment with per-field
+      docstrings already present, so the conversion is mechanical. T37 turns
+      bundle_urdf()'s ten-key return dict into a BundleReport.
+
+  - id: semdt-prefix-path-locator
+    title: "Add a prefix-path package locator to semantic_digital_twin"
+    branch: semdt-prefix-path-locator
+    pull_request_number: null
+    track: upstream
+    depends_on: []
+    status: not_started
+    notes: >
+      The one genuine gap blocking T33. cram_viz's resolver reads
+      AMENT_PREFIX_PATH and CMAKE_PREFIX_PATH and globs ~/*_ws/install and
+      /opt/ros/*; sem_dt's ROSPackagePathLocator reads only ROS_PACKAGE_PATH.
+      Adding a locator upstream closes the gap for every sem_dt consumer, which
+      is exactly what the reviewer asked for ("if we are missing sth there, we
+      can extend the functionality there"). Independent of every cram_viz item,
+      so it can start at any time.
+
+  - id: viz-bundle-urdf-reuse
+    title: "Drop bundle_urdf.py's duplicated resolver stack and xacro subprocess"
+    branch: cram-viz-bundle-urdf-reuse
+    pull_request_number: null
+    track: upstream
+    depends_on: [semdt-prefix-path-locator, viz-onboard-dataclasses]
+    status: not_started
+    notes: >
+      T33 and T34. About 75 of bundle_urdf.py's 352 lines duplicate
+      adapters/package_resolver.py. T34 is the clean half: xacro_to_urdf_text
+      shells out to the xacro CLI while URDFParser.from_xacro does it in-process
+      and xacro is already a declared sem_dt dependency. Caveat: from_xacro runs
+      hacky_urdf_parser_fix, so the URDF text is normalized rather than raw -
+      verify the browser viewer still loads it.
+
+  - id: viz-param-docs
+    title: "Finish the :param: docstrings across bridge.py, demo.py and kb.py"
+    branch: cram-viz-param-docs
+    pull_request_number: null
+    track: docs-admin
+    depends_on: [viz-kb-dataclasses, viz-bridge-injection, viz-onboard-dataclasses]
+    status: not_started
+    notes: >
+      T18, T23, T41 - roughly 95 functions. Deliberately split: the ~10 whose
+      parameter roles are genuinely non-obvious were documented inline in the
+      earlier items, and this is the isolated mechanical sweep for the rest, so
+      it does not bury the substantive diffs. Runs last because the earlier
+      items move and rename much of what needs documenting. Finish with
+      scripts/format_docstrings.py.
+
+  - id: viz-submodule-org
+    title: "Point the cram-scenes submodule at the cram2 org"
+    branch: cram-viz-submodule-org
+    pull_request_number: null
+    track: docs-admin
+    depends_on: []
+    status: blocked
+    blockers:
+      - "Waiting on the cram-scenes repository being transferred or forked into the cram2 org - a user action, not a code task."
+    notes: >
+      T51. Only .gitmodules:3 and a docstring at paths.py:7 hardcode the URL, so
+      this is a two-line diff once the repo has moved. If the transfer never
+      happens, land everything else and leave the thread alone rather than
+      forcing a URL that does not resolve.
+
+  - id: viz-reply-sheet
+    title: "Write the paste-ready replies for all 51 review threads"
+    pull_request_number: null
+    track: landing
+    depends_on: [viz-param-docs, viz-bundle-urdf-reuse]
+    status: not_started
+    notes: >
+      The only item with no branch and no code. Produces one reply per thread,
+      including the 13 in groups A and B where the reply is the entire
+      deliverable - 5 already fixed by the post-review commits, and 8 where the
+      reviewer's premise does not hold and the current design needs defending
+      (do_OPTIONS, controlled_connections vs door hinges, the deferred-attach
+      None state, the Executor injection sites, the asset-copy gap, nested
+      gitignores, requirements.txt). The user posts these; no session on this
+      plan writes to the cram2 PR.
+
+  - id: cram-viz-integration
+    title: "cram_viz: browser-based visualization as a workspace member"
+    branch: cram-viz-integration
+    repository: cram2/cognitive_robot_abstract_machine
+    pull_request_number: 485
+    track: landing
+    depends_on: [viz-reply-sheet]
+    status: in_progress
+    blockers:
+      - "CHANGES_REQUESTED from LucaKro and Narenvasant; 51 unresolved review threads."
+    notes: >
+      The PR this whole plan exists to unblock. All 21 CI checks pass and it is
+      MERGEABLE; mergeStateStatus is BLOCKED purely on the review decision.
+      Read-only for sessions on this plan - no comments, no thread resolution.
+
+  - id: warehouse-viz-features
+    title: "Warehouse viz features (rebase after the kb.py split)"
+    branch: warehouse-viz-features
+    pull_request_number: 18
+    track: landing
+    depends_on: [viz-kb-split]
+    status: in_progress
+    notes: >
+      Tracked because it collides with this plan, not because the plan owns it.
+      19 commits, currently 0 behind cram-viz-integration and MERGEABLE, updated
+      2026-08-05. It edits kb.py, demo.py and bundle_urdf.py - including new
+      scene_id parameters on scene_dir, load_scene and load_urdf, the exact
+      signatures viz-kb-dataclasses converts. The user chose to refactor first
+      and rebase this afterwards, knowing it means rebasing 19 commits over a
+      file that no longer exists as one module.
