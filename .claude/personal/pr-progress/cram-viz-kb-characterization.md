@@ -38,10 +38,25 @@ this plan's `roadmap.md` section (same content, appended via
 - Branch created, empty-commit bootstrapped, pushed.
 - Draft PR #25 opened against `cram-viz-integration`.
 - `plan.yaml`/`roadmap.md` recorded (`in_progress`, branch, PR number).
+- Added both fixture files (step 1); confirmed via a scratch inspection
+  script that `_class_view`'s internal-base, external-base (`ext:`), and
+  subclass-listing branches now all fire against real fixture data.
+- `TestGraphPayloadStructure` (8 tests) and `TestExpandNode` (11 tests)
+  written in `test/cram_viz_test/test_kb.py`, all values taken from actual
+  payloads (not hand-derived), per steps 2-3.
+- Suite green throughout: `test_kb.py` 26 → 45 tests (155 → 593 lines);
+  full `cram_viz` suite 144 → 163 passed. No production `kb.py` changes.
+- `docformatter` had to be `uv pip install`ed into the workspace venv first
+  (not a declared dependency); `scripts/format_docstrings.py` then run on
+  all three modified/added files (step 4).
+- Commit authored as `sunava <hassouna@uni-bremen.de>` (amended once locally
+  before pushing — the sandbox's global git identity defaults to
+  `Claude <noreply@anthropic.com>`, which AGENTS.md forbids as a commit
+  author; nothing had been pushed yet at that point).
+- PR #25 description updated with final before/after test counts (step 5)
+  and pushed. Left in draft, as it already was.
 
 ## Next
 
-- Add the two fixture files (step 1).
-- Write `TestGraphPayloadStructure` (step 2), run suite, then
-  `TestExpandNode` (step 3), run suite.
-- Format docstrings, update PR description with real test counts, push.
+- Nothing outstanding for this item. Ready for the user's own review of
+  draft PR #25; this plan's cram2 PR stays untouched throughout.
