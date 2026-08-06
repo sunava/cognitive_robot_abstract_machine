@@ -60,10 +60,10 @@ items:
   - id: viz-bugs
     title: "Fix the two bugs triage found (mis-keyed plan groups, EQL preset splicing)"
     branch: cram-viz-bugs
-    pull_request_number: null
+    pull_request_number: 20
     track: bugs
     depends_on: []
-    status: not_started
+    status: done
     notes: >
       BUG-1: kb.py PLAN_GROUPS keys on AttachmentNode/DetachmentNode, but
       coraplex's real classes are AttachNode/DetachNode, and the lookup key is
