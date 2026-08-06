@@ -305,3 +305,51 @@ Dependency `viz-small-fixes` (PR #22) was confirmed merged into
 
 Branch: `cram-viz-onboard-dataclasses`, based on `cram-viz-integration`.
 Draft PR: [sunava#24](https://github.com/sunava/cognitive_robot_abstract_machine/pull/24).
+
+## `viz-kb-characterization` — characterization tests for `kb.py` before splitting it
+
+Hard gate for `viz-kb-split`: `kb.py` (2060 lines) has 248 lines of tests, but
+`graph_payload()` and `expand_node()` — the two functions a bad module cut is
+most likely to silently break — were only partially pinned (`graph_payload`)
+or not tested at all (`expand_node()`, no tests whatsoever). No production
+code changes; `kb.py`'s behavior is already correct, the tests just describe
+it. Written fresh, per this plan's own convention — fork PR #15's test files
+are deliberately not read or mined.
+
+- **`graph_payload()`** (`TestGraphPayloadStructure`, new): the robot→arm→
+  gripper node/edge chain, the episode chain (`precedes`/`performed by`/
+  `picks`/`places at`), object detail lines, the architecture cluster
+  (`cram` root, package/subpackage `contains` edges, `package_deps` `imports`
+  edges), both branches of the `link()` grounding-edge guard clause (present:
+  the anchor episode → `coraplex.plans` `planned by`, since that subpackage
+  exists in the fixture; absent: no edge ever targets
+  `giskardpy.motion_statechart` or `semantic_digital_twin`, since neither
+  package exists in the fixture architecture), the plan-tree cluster
+  (`plan` node, `executed by`/`spans` edges), and the status string — derived
+  from `len(payload["nodes"])`/`len(kb.get_knowledge_base().joints)`/
+  `len(kb.get_knowledge_base().classes)` rather than a hardcoded second copy.
+- **`expand_node()`** (`TestExpandNode`, new): every dispatch branch (robot →
+  `_urdf_view`, `"plan"` → `_plan_view`, package/subpackage/class → their
+  views, unknown id → `None`), plus `_class_view`'s three real branches —
+  internal-base resolution, external-base fallback (`ext:<name>`), and
+  subclass listing — and the `CLASS_CAP`/`SUBCLASS_CAP` truncation notes
+  (exercised via 151/81 synthetic `PythonClass` instances written directly
+  onto the `EpisodeKnowledgeBase` singleton, not 151 real fixture files —
+  characterizing the payload-building logic's cap behavior, not the
+  architecture scanner, which `test_architecture_scan` already covers).
+
+**Fixture change**: the existing dataset (`coraplex.plans.Plan`,
+`krrood.eql.Entity`) had zero inheritance relationships, so `_class_view`'s
+real branches were untestable. Added two small real files (decided with the
+user rather than assumed): `coraplex/src/coraplex/plans/typed_plan.py`
+(`TypedPlan(Plan)` — in-repo subclass + internal-base resolution) and
+`krrood/src/krrood/errors.py` (`EqlError(Exception)` — external-base
+fallback). Both add one class each to their package's top-level view, which
+existing tests don't assert an exact count against.
+
+Dependency `viz-bugs` (PR #20) confirmed merged into `cram-viz-integration`
+before starting, via `check_dependency_readiness.py` against live GitHub
+state, not assumed from the manifest.
+
+Branch: `cram-viz-kb-characterization`, based on `cram-viz-integration`.
+Draft PR: [sunava#25](https://github.com/sunava/cognitive_robot_abstract_machine/pull/25).
