@@ -13,15 +13,12 @@ Full plan: /root/.claude/plans/clever-wondering-panda.md (approved this session)
 5. Open draft PR on sunava fork, base `cram-viz-integration`, label `bug`. [done — PR #20]
 
 ## Status
-PR #20 opened (draft), labelled `bug`, subscribed to activity. CI's `cram_viz`
-job (the relevant one) is green; a few unrelated jobs were still in progress
-right after push. No review comments yet (fresh draft). Note: caught and fixed
-a branch-mix-up mid-session — local `cram-viz-integration` was stale (missing
-the latest cram2:main merge); `cram-viz-bugs` was reset onto
-`origin/cram-viz-integration` before any commits landed, so no impact on the
-final PR.
+MERGED. PR #20 went green (all 21 checks), was marked ready for review by
+sunava, and merged with no review comments. This session was auto-unsubscribed
+from PR activity on merge. `plan.yaml`'s `viz-bugs` item updated to
+`pull_request_number: 20`, `status: done`.
 
 ## Next
-Scheduled a ~1h self check-in (send_later) to re-check CI/reviews. Nothing
-else pending unless new activity arrives. Item is otherwise complete pending
-review.
+Nothing — item complete. Next plan item to pick up (per `depends_on`):
+`viz-kb-characterization` (depends on `viz-bugs`) or `viz-small-fixes`
+(no dependencies), whichever the user wants to kick off next.
