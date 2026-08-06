@@ -77,10 +77,10 @@ items:
   - id: viz-small-fixes
     title: "Group C: renames, deletions and one-line corrections"
     branch: cram-viz-small-fixes
-    pull_request_number: 22
+    pull_request_number: null
     track: small-fixes
     depends_on: []
-    status: done
+    status: not_started
     notes: >
       Closes T14 (drop `or []`; World.connections is never None), T8 (delete the
       narrating note), T7 (move the live docstring into the README), T3 (repoint
@@ -190,10 +190,10 @@ items:
   - id: semdt-prefix-path-locator
     title: "Add a prefix-path package locator to semantic_digital_twin"
     branch: semdt-prefix-path-locator
-    pull_request_number: null
+    pull_request_number: 21
     track: upstream
     depends_on: []
-    status: not_started
+    status: in_progress
     notes: >
       The one genuine gap blocking T33. cram_viz's resolver reads
       AMENT_PREFIX_PATH and CMAKE_PREFIX_PATH and globs ~/*_ws/install and
@@ -235,18 +235,19 @@ items:
 
   - id: viz-submodule-org
     title: "Point the cram-scenes submodule at the cram2 org"
-    branch: cram-viz-submodule-org
-    pull_request_number: null
+    branch: claude/fix-pr-viz-submodule-org-k2guo5
+    pull_request_number: 23
     track: docs-admin
     depends_on: []
-    status: blocked
-    blockers:
-      - "Waiting on the cram-scenes repository being transferred or forked into the cram2 org - a user action, not a code task."
+    status: in_progress
     notes: >
-      T51. Only .gitmodules:3 and a docstring at paths.py:7 hardcode the URL, so
-      this is a two-line diff once the repo has moved. If the transfer never
-      happens, land everything else and leave the thread alone rather than
-      forcing a URL that does not resolve.
+      T51. Blocker cleared: cram2/cram-scenes now exists (created 2026-07-29)
+      and was verified to contain the exact submodule commit already pinned
+      in cram_viz/scenes, so this landed as a URL-only retarget with no
+      rebase. Three sites changed, not the two the earlier note said:
+      .gitmodules:3, paths.py:7, and cram_viz/README.md:22 (a third hardcoded
+      link the earlier triage missed). Draft PR #23 against
+      cram-viz-integration on the sunava fork.
 
   - id: viz-reply-sheet
     title: "Write the paste-ready replies for all 51 review threads"
