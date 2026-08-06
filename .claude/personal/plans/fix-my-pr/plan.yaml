@@ -108,10 +108,11 @@ items:
   - id: viz-kb-characterization
     title: "Characterization tests for kb.py before splitting it"
     branch: cram-viz-kb-characterization
-    pull_request_number: null
+    pull_request_number: 25
     track: kb
     depends_on: [viz-bugs]
-    status: not_started
+    status: in_progress
+    session: https://claude.ai/code/session_01MxoLWbegiTFWtWmHWKHimC
     notes: >
       Gate for the split. kb.py is 2056 lines with 155 lines of tests, which
       cannot catch a bad cut, and a silent break in the graph panels is the
