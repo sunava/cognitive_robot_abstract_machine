@@ -568,3 +568,109 @@ decision, does not rediscover this as a surprise.
 
 Branch: `cram-viz-semdt-geometry`, based on `cram-viz-integration`.
 Draft PR: [sunava#29](https://github.com/sunava/cognitive_robot_abstract_machine/pull/29).
+
+## `viz-kb-split` — rename `kb.py` to a `knowledge` package and split it into ~13 modules (T46, T27)
+
+The item's own notes bundle T27 (a rename) with T46 (the split) but never
+record T27's target name. Asked the user directly this session: the new
+package is named **`knowledge`**, not `knowledge_base` — `knowledge_base.py`
+is reserved as the inner submodule holding the `EpisodeKnowledgeBase` class,
+which would collide with the package name if the package itself were also
+called `knowledge_base`. `kb` is an abbreviation of "knowledge base",
+which `AGENTS.md`'s no-abbreviations rule flags for a module name. The
+sibling `cram_viz/src/cram_viz/live/` package (`bridge.py`/`hooks.py`/
+`http.py`/`runner.py`) is the closest landed precedent for how a split
+package is organized here, though `git log --follow` on `live/bridge.py`
+shows it was authored as a package from day one — there is no in-repo
+precedent for the *incremental extraction* this item needed, so the split
+was designed from the source's actual call graph instead.
+
+**The roadmap's original line-range table (above, "The kb.py split"
+section) is now stale.** Several sibling PRs (`viz-bugs`, `viz-small-fixes`,
+`viz-wire-rename`, `viz-bridge-injection`, `viz-onboard-dataclasses`) merged
+into `cram-viz-integration` since that table was written and shifted line
+numbers throughout `kb.py`. A fresh read of the full 2060-line file on
+`origin/cram-viz-integration` found two call-graph corrections the file's
+own (also stale) `# %%` section headers get wrong:
+
+- `_measurement_line()` sits textually inside "scan the CRAM architecture"
+  but is only ever called from `graph_payload()` — it moved to
+  `graph_payload.py`, not `architecture_scan.py`.
+- `_count_plan_nodes()` sits textually inside "the graph-panel tabs" next to
+  `_plan_view()`, but its one call site is inside `graph_payload()`, not
+  `_plan_view()` — it moved to `graph_payload.py`, not `views/plan.py`.
+
+### Target layout
+
+```
+cram_viz/src/cram_viz/knowledge/
+    __init__.py            # package docstring (from kb.py's) + thin re-export shim
+    scene_bundle.py
+    entities.py
+    architecture_entities.py
+    architecture_scan.py
+    knowledge_base.py
+    eql_session.py
+    graph_payload.py
+    presets.py
+    views/
+        __init__.py         # view_payload() / expand_node() dispatchers, _chart_view
+        base.py
+        plan.py
+        kinematics.py
+        architecture.py
+```
+
+`views/architecture.py` and `views/kinematics.py`'s references to
+`EpisodeKnowledgeBase` are type-hints only — imported under `TYPE_CHECKING`
+per `AGENTS.md`.
+
+### Test strategy
+
+`test/cram_viz_test/test_kb.py` (593 lines) imports only
+`from cram_viz import kb` (never `from cram_viz.kb import X`) and touches
+exactly 13 attributes. All 13 stay re-exported from `knowledge/__init__.py`
+throughout the split, so the test file changes only once — in the first
+(rename) commit, renamed to `test_knowledge.py` with `kb.` replaced by
+`knowledge.` — not once per extraction commit. Splitting the test file
+itself into per-module files (mirroring `live/`'s
+`test_live_bridge.py`/... convention) is deferred; the item's own notes
+name only the source split.
+
+The `if __name__ == "__main__":` preset smoke block (iterates
+`get_presets()`, runs each through `run_query()`, logs OK/FAIL) becomes a
+real pytest test, `TestPresetSmoke`, per the item's own notes — then the
+block is deleted from source.
+
+No production behavior changes in this item — it is a pure structural
+move, so the existing characterization coverage (from `viz-kb-characterization`,
+#25) is the safety net for every commit; no new failing-test-first cycle is
+needed per move, except for the smoke-test conversion itself.
+
+### Commit sequence (suite green after each)
+
+One `git mv kb.py knowledge/__init__.py` rename commit (updating the 4
+external references: `server.py`, `conftest.py`, `test_kb.py` →
+`test_knowledge.py`, `README.md:126`), then bottom-up extraction commits in
+dependency order: `entities` → `architecture_entities` → `scene_bundle` →
+`views/base` → `architecture_scan` → `knowledge_base` → (`eql_session`,
+`presets`, `views/architecture`, `views/plan`, `views/kinematics` — mutually
+independent) → `graph_payload` → `views/__init__` dispatcher (folding
+`knowledge/__init__.py` down to a thin re-export shim) → the
+`TestPresetSmoke` conversion.
+
+### Also found, not part of this item's scope
+
+`warehouse-viz-features` (fork PR #18) — the item that depends on this one
+and shares the "refactor first, rebase after" trade-off recorded above in
+"Live state and the #18 trade-off" — was found **closed unmerged** as of
+2026-08-07T07:57:20Z, contradicting this document's recorded "MERGEABLE, 0
+behind, updated 2026-08-05" status and `plan.yaml`'s `status: in_progress`
+for that item. Nothing in `viz-kb-split` depends on #18, so this doesn't
+block or change this item's plan — flagged here so a future session doesn't
+rediscover the same drift and re-derive it. `warehouse-viz-features`'s own
+manifest entry and status are unchanged by this note; they should be
+corrected when that item is next touched.
+
+Branch: `cram-viz-kb-split`, based on `cram-viz-integration`.
+Draft PR: [sunava#30](https://github.com/sunava/cognitive_robot_abstract_machine/pull/30).
