@@ -183,7 +183,7 @@ items:
     pull_request_number: 24
     track: onboard
     depends_on: [viz-small-fixes]
-    status: in_progress
+    status: done
     session: https://claude.ai/code/session_01NgzqaxHEX9BqKaPtod39mn
     notes: >
       T22/T39 (flagged independently by both reviewers) and T37. Recorder's
