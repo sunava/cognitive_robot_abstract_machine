@@ -171,7 +171,7 @@ items:
     pull_request_number: 29
     track: live
     depends_on: [viz-bridge-injection]
-    status: in_progress
+    status: done
     session: https://claude.ai/code/session_01TTGTZiy1z1moV38wg9F77F
     notes: >
       T17. BodyExtent.of reads .scale off the first Box or Mesh shape and returns
@@ -215,7 +215,7 @@ items:
     pull_request_number: 28
     track: upstream
     depends_on: [semdt-prefix-path-locator, viz-onboard-dataclasses]
-    status: in_progress
+    status: done
     session: https://claude.ai/code/session_01MTSPmuHNpgfrnhFiKC6hZn
     notes: >
       T33 and T34. About 75 of bundle_urdf.py's 352 lines duplicate
