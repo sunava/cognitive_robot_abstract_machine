@@ -1,8 +1,7 @@
 # cram-viz-bridge-injection — viz-bridge-injection (fix-my-pr plan)
 
-Draft PR: sunava#27, based on cram-viz-integration. Implemented, suite green,
-still draft (per convention, drafts flip to ready only when explicitly told
-to).
+PR sunava#27, based on cram-viz-integration. **MERGED** into
+cram-viz-integration (2026-08-07T08:41:29Z). Item complete.
 
 ## Plan (see full design in the approved kickoff plan; summarized here)
 
@@ -58,12 +57,37 @@ to).
   wrong authorship was left as-is rather than rewriting already-pushed
   history unasked; flagged to the user in chat.
 - Pushed, PR #27 description updated with the real diff and suite numbers.
+- sunava marked the PR ready for review and left two review comments:
+  line 409 (`Dict[str, str]` return type on `to_payload()`) — answered:
+  every value returned genuinely is a `str`, so it's the accurate hint, more
+  precise than the file's `Dict[str, Any]` wire-boundary methods. Line 420
+  (`_ChartStructure`'s leading underscore) — pre-existing code this PR
+  doesn't touch, just adjacent to the diff; replied explaining it's out of
+  scope and asked whether to rename here, in a separate PR, or fold into
+  `viz-kb-dataclasses`. sunava merged the PR before answering that question
+  — thread left unresolved, moot for this (now-merged) PR; revisit if the
+  rename is still wanted, as a fresh item/PR.
+- **PR merged** by sunava into `cram-viz-integration` at
+  2026-08-07T08:41:29Z. `plan.yaml` auto-corrected to `status: done` via
+  `sync_manifest_status.py`; roadmap section already reflects the landed
+  design. Dashboard republished.
+- Noticed while refreshing the dashboard: `viz-onboard-dataclasses` (PR #24)
+  also merged around the same time (auto-corrected to `done` too) — not
+  this item's doing, just recorded here since I was already refreshing live
+  state.
+- **Flagged, not acted on**: PR #18 (`warehouse-viz-features`) is now
+  `closed` on GitHub with no `merged_at` — closed *without* merging. The
+  roadmap expected it to merge later (after a rebase past the `kb.py`
+  split). The dashboard refresh reports this as drift
+  (`plan.yaml` still says `status: in_progress`) rather than silently
+  correcting it, since a closed-unmerged PR needs a human read on whether
+  that's intentional (abandoned) or needs reopening. Told the user in chat.
 
 ## Next
 
-- Nothing blocking — implementation is complete and the suite is green.
-- If the user wants PR #27 marked ready for review, do that explicitly (per
-  personal notes, drafts flip to ready only on explicit request, and a PR
-  goes back to draft after any further push).
-- Downstream: `viz-semdt-geometry` depends on this item; it can start once
-  this PR merges into `cram-viz-integration`.
+- This item is done. Nothing further here.
+- Downstream `viz-semdt-geometry` (depends on this item) is now unblocked
+  and shows as "ready to start" on the dashboard.
+- Open question for the user: PR #18's closed-unmerged state (see above) —
+  not part of this item, but surfaced during this session's dashboard
+  refresh.
