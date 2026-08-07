@@ -1,49 +1,56 @@
-# Kickoff of `fix-my-pr` / `viz-onboard-dataclasses`
+# `fix-my-pr` / `viz-onboard-dataclasses`
 
-This session's own branch (`claude/plan-item-kickoff-viz-onboard-9fxn0e`) is
-the kickoff session, not the item's implementation branch. The item itself
-lives on `cram-viz-onboard-dataclasses` (draft PR
-[sunava#24](https://github.com/sunava/cognitive_robot_abstract_machine/pull/24),
-base `cram-viz-integration`) — bootstrapped and `record`ed into
-`fix-my-pr`'s `plan.yaml`/`roadmap.md` as `in_progress`.
+Draft PR [sunava#24](https://github.com/sunava/cognitive_robot_abstract_machine/pull/24),
+branch `cram-viz-onboard-dataclasses`, base `cram-viz-integration`. Closes
+review threads T22/T39 (`Recorder`) and T37 (`BundleReport`).
 
-## Plan (approved)
+## Done
 
-Two mechanical dataclass conversions, closing review threads T22/T39 and T37:
-
-1. **`BundleReport`** dataclass in `cram_viz/src/cram_viz/onboard/bundle_urdf.py`,
-   replacing `bundle_urdf()`'s ten-key return dict. Update `main()`'s
-   dict-subscript reads, `demo.py`'s bundling-loop call site
-   (~lines 868-903), and `test_onboard.py`'s `TestBundleUrdf` assertions
-   (subscript → attribute — write these first so they fail, then land the
-   dataclass). Drop the now-unused `Any` import from `bundle_urdf.py`.
-2. **`Recorder` → `@dataclass`** in `cram_viz/src/cram_viz/onboard/demo.py` —
-   same field names/types/docstrings as the current 65-line `__init__`,
-   `field(default_factory=...)` for every mutable container. No call site
-   changes (every `Recorder()` use takes no args). Add one new test:
-   two `Recorder()` instances must have distinct list/dict attribute objects
-   (guards against `field(default=[])` by mistake).
-3. Run `python -m pytest test/cram_viz_test -q` throughout, keep green.
-   `scripts/format_docstrings.py` on every modified file before opening for
-   review.
-
-Full plan detail: see the `viz-onboard-dataclasses` section this session
-appended to `fix-my-pr`'s `roadmap.md`.
-
-## Done so far
-
-- Branch `cram-viz-onboard-dataclasses` created off `origin/cram-viz-integration`,
-  pushed with an empty bootstrap commit.
-- Draft PR #24 opened on `sunava/cognitive_robot_abstract_machine`.
-- `plan.yaml`/`roadmap.md` updated and pushed (item now `in_progress`, branch
-  and PR number recorded).
-- Confirmed dependency `viz-small-fixes` (PR #22) merged into
-  `cram-viz-integration` before branching.
+- `BundleReport` dataclass added to `cram_viz/src/cram_viz/onboard/bundle_urdf.py`,
+  replacing `bundle_urdf()`'s ten-key return dict. Updated `main()`'s reads,
+  `demo.py`'s bundling loop (~lines 868-903), and `test_onboard.py`'s
+  `TestBundleUrdf` assertions (subscript → attribute; written first so they
+  failed against the dict-returning code, then passed once the dataclass
+  landed). Dropped the now-unused `Any` import from `bundle_urdf.py`.
+- `Recorder` converted to `@dataclass` in `demo.py` — same field
+  names/types/docstrings as the previous 65-line `__init__`,
+  `field(default_factory=...)` for every mutable container. No call site
+  changes needed. Added `TestRecorderMutableDefaults` (two `Recorder()`
+  instances must not share their mutable field objects) as the regression
+  guard for the one real hazard this conversion carries.
+- Environment note for whoever picks this up next: the sandboxed session
+  python3 is 3.11, but this repo's `pyproject.toml` requires `>=3.12,<3.13`
+  (`dataclasses.make_dataclass()`'s `module=` kwarg, used deep in krrood's
+  class-diagram introspection, is 3.12+ only). Built a Python 3.12 venv at
+  `/root/.venvs/cram-viz-onboard` with `semantic_digital_twin`, `krrood`,
+  `cram_viz`, `giskardpy`, `coraplex`, `probabilistic_model` installed
+  `--no-deps -e`, plus their actual runtime imports installed piecemeal
+  (not `pip install -r requirements.txt` — several transitive deps in those
+  files fail to build under this environment's setuptools/distutils, e.g.
+  `dnutils`, `polytope`, `arff`). That venv is local to this container and
+  won't survive a fresh session/container.
+- Suite: `python -m pytest test/cram_viz_test -q` (via that venv,
+  `--ignore=test/cram_viz_test/test_live_hooks.py` — that file needs
+  `matplotlib`/`pandas`/`PyQT5`/etc. through `coraplex` → `giskardpy`'s QP
+  solver plotting, unrelated to this change) — 152 passed (151 baseline + 1
+  new test). Same 4 pre-existing failures as baseline (`test_kb.py`'s EQL
+  query tests, `test_server.py`'s EQL roundtrip — all missing the `jpt`
+  package deep in `probabilistic_model`, unrelated to `Recorder`/
+  `BundleReport`). `scripts/format_docstrings.py` run on all three modified
+  files.
+- Commit `7264cc4f`, authored `sunava <hassouna@uni-bremen.de>` — the
+  session's git config was set to `Claude <noreply@anthropic.com>` (also
+  true of the earlier bootstrap commit `6f7d5224` on this branch, not yet
+  fixed), so used `git commit --author` for this one rather than touching
+  global config.
+- PR #24 description updated to match; still draft, per personal-notes
+  convention.
 
 ## Next
 
-- Implement Part 1 (`BundleReport`) test-first, then Part 2 (`Recorder`
-  dataclass + the new mutable-default regression test).
-- Push commits to `cram-viz-onboard-dataclasses`, keep PR #24's description
-  in sync, keep it in draft.
-- Republish `/plan-dashboard fix-my-pr` after implementation lands.
+- User review of the diff itself (2 files + 1 test file, scoped exactly to
+  T22/T39/T37).
+- Once reviewed, this stays a draft until told to mark ready — per
+  personal-notes convention, no bug label needed (this is a refactor, not a
+  bug fix).
+- After merge: re-run `/plan-dashboard fix-my-pr` to pick up the merge.
