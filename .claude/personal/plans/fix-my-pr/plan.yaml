@@ -139,10 +139,11 @@ items:
   - id: viz-kb-dataclasses
     title: "Replace kb.py's tuples, dicts and stringly-typed branches with types"
     branch: cram-viz-kb-dataclasses
-    pull_request_number: null
+    pull_request_number: 31
     track: kb
     depends_on: [viz-kb-split]
-    status: not_started
+    status: in_progress
+    session: https://claude.ai/code/session_01GuKGeKE6ZphLV3735dXuzh
     notes: >
       T40, T42, T44, T45, T28, T29 and the rest of T48. Done after the split so
       each conversion lands in its new module rather than being done twice.
