@@ -25,23 +25,39 @@ the working summary.
 4. Update PR #28's description from the WIP placeholder to the real summary
    (suite results, files touched) once the suite is green.
 
-Open item noted in the plan, defaulted rather than blocked on: whether to also
-manually load a bundled xacro-sourced scene in the browser viewer (via `/run`)
-to fully address the roadmap's "verify the browser viewer still loads it"
-caveat, versus relying on the new automated structural test plus a caveat note
-in the PR description. Currently defaulting to the latter (backend-only
-change, no `panels/graph/panel.js` touch) — flag to the user if this should
-change.
+Open item, decided rather than left dangling: the roadmap's "verify the browser
+viewer still loads it" caveat is addressed via the automated structural test
+(`test_a_xacro_source_is_bundled_like_a_urdf_source`) plus a caveat note in the
+PR description, not a manual `/run` browser check - this is a backend-only
+change (no `panels/graph/panel.js` touch, no wire-format change). Flag to the
+user if this should change.
 
 ## Done
 - Branch `cram-viz-bundle-urdf-reuse` created off `cram-viz-integration`,
-  bootstrap commit pushed.
-- Draft PR #28 opened (WIP placeholder description).
+  bootstrap commit pushed (author corrected to `sunava <hassouna@uni-bremen.de>`
+  after it was accidentally created under the harness's default `Claude
+  <noreply@anthropic.com>` identity - amended, then force-pushed).
 - Dependencies `semdt-prefix-path-locator` (PR #21) and `viz-onboard-dataclasses`
   (PR #24) confirmed merged via `check_dependency_readiness.py` against live
   GitHub state.
 - Plan recorded in `roadmap.md`.
+- **T34 implemented**: `TestXacroToUrdfText` added (proven failing first - no
+  `xacro` CLI in this sandbox), then `xacro_to_urdf_text()` replaced with
+  `URDFParser.from_xacro(path).urdf`; dropped `import subprocess` and
+  `XACRO_ERROR_TAIL`. `TestBundleUrdf.test_a_xacro_source_is_bundled_like_a_urdf_source`
+  added (end-to-end, passes).
+- **T33 implemented**: `TestResolveUri.test_an_unresolvable_package_uri_is_unresolved`'s
+  docstring updated (assertion unchanged); `_search_root_candidates()` deleted;
+  `_resolve_package_uri()` simplified to delegate to
+  `PackageUriResolver().resolve(uri)`; dropped `import glob`.
+- Environment set up (`uv sync --extra dev --active`; `black`/`docformatter`
+  pinned versions from `.pre-commit-config.yaml` installed separately since
+  they're pre-commit-only deps, not part of the `dev` extra).
+  `python -m pytest test/cram_viz_test -q` — 184 passed (182 baseline + 2 new),
+  0 failures. `scripts/format_docstrings.py` run on both modified files.
+- Real commit pushed (`8f013bc9`), PR #28 description updated with the full
+  summary, subscribed to PR activity, 60-minute check-in scheduled.
 
 ## Next
-- Step 1 above: write the failing `TestXacroToUrdfText` test, then implement
-  the `from_xacro` swap.
+- Item complete pending review/CI. Watch for CI results and any review
+  comments via the PR subscription; nothing else planned for this item.
