@@ -1,7 +1,8 @@
 # cram-viz-bridge-injection — viz-bridge-injection (fix-my-pr plan)
 
-Draft PR: sunava#27, based on cram-viz-integration. Bootstrapped, not yet
-implemented.
+Draft PR: sunava#27, based on cram-viz-integration. Implemented, suite green,
+still draft (per convention, drafts flip to ready only when explicitly told
+to).
 
 ## Plan (see full design in the approved kickoff plan; summarized here)
 
@@ -40,11 +41,29 @@ implemented.
 
 - Branch created, empty bootstrap commit pushed, draft PR #27 opened.
 - `plan.yaml` item flipped to `in_progress`, roadmap section recorded.
+- All three sets of failing tests written first (confirmed failing against
+  the pre-change code), then `bridge.py`/`http.py`/`runner.py` implemented
+  per the plan above, one file at a time, tests green after each.
+- Full suite green: `uv run pytest test/cram_viz_test -q` — 181 passed (was
+  172 before this branch's 9 new tests).
+- `scripts/format_docstrings.py` run on all 6 modified/added files
+  (`docformatter` had to be `uv pip install`ed this session — it wasn't
+  present, unlike the note on PR #26 which found the same gap).
+- Committed as `Vanessa Hassouna <33067562+sunava@users.noreply.github.com>`
+  (matching every prior commit in this repo's history) rather than this
+  environment's global git config default (`Claude <noreply@anthropic.com>`,
+  which the bootstrap commit was accidentally made under) — used
+  `git -c user.name=... -c user.email=...` per AGENTS.md's authorship rule,
+  without touching the global config itself. The bootstrap commit's own
+  wrong authorship was left as-is rather than rewriting already-pushed
+  history unasked; flagged to the user in chat.
+- Pushed, PR #27 description updated with the real diff and suite numbers.
 
 ## Next
 
-- Write the three sets of failing tests, then implement `http.py`,
-  `runner.py`, `bridge.py` in that order.
-- Run `python -m pytest test/cram_viz_test -q`, green after each commit.
-- Run `scripts/format_docstrings.py` on every modified file.
-- Update the PR description with real suite numbers before marking ready.
+- Nothing blocking — implementation is complete and the suite is green.
+- If the user wants PR #27 marked ready for review, do that explicitly (per
+  personal notes, drafts flip to ready only on explicit request, and a PR
+  goes back to draft after any further push).
+- Downstream: `viz-semdt-geometry` depends on this item; it can start once
+  this PR merges into `cram-viz-integration`.
