@@ -352,4 +352,5 @@ before starting, via `check_dependency_readiness.py` against live GitHub
 state, not assumed from the manifest.
 
 Branch: `cram-viz-kb-characterization`, based on `cram-viz-integration`.
-Draft PR: [sunava#25](https://github.com/sunava/cognitive_robot_abstract_machine/pull/25).
+PR [sunava#25](https://github.com/sunava/cognitive_robot_abstract_machine/pull/25)
+merged into `cram-viz-integration`.
