@@ -152,10 +152,11 @@ items:
   - id: viz-bridge-injection
     title: "Remove the module-level BRIDGE global and the leftover untyped payloads"
     branch: cram-viz-bridge-injection
-    pull_request_number: null
+    pull_request_number: 27
     track: live
     depends_on: [viz-wire-rename]
-    status: not_started
+    status: in_progress
+    session: https://claude.ai/code/session_01M2d1iWNB52KUt5sjXyuDQx
     notes: >
       T24 and the residue of T16. hooks.py already injects the bridge as a
       dataclass field, so only http.py's seven references and runner.py need the
