@@ -674,3 +674,35 @@ corrected when that item is next touched.
 
 Branch: `cram-viz-kb-split`, based on `cram-viz-integration`.
 Draft PR: [sunava#30](https://github.com/sunava/cognitive_robot_abstract_machine/pull/30).
+
+### Review feedback (2026-08-07) — one fixed here, five deferred to `viz-kb-dataclasses`
+
+The user's own review on PR #30 left 6 comments. One was in this item's own
+scope and is fixed: `views/plan.py` renamed to `views/plan_tree.py` (module
+docstring updated, three import sites updated) since "plan" collided with
+coraplex's own `Plan`/`PlanNode` types — this module renders the serialized
+plan-node tree recorded in a scene bundle, not a coraplex `Plan` itself.
+Identifiers (`PlanNodeGroup`, `_plan_view`, etc.) were left unchanged; only
+the module name was in question.
+
+The other five are all "no global variables" / "`Dict[str, Any]` payloads are
+confusing" — exactly what `viz-kb-dataclasses` (T40/T42/T44/T45/T28/T29/T48)
+is already scoped to fix, so they were left as open, unresolved threads on
+PR #30 rather than fixed piecemeal here (this item is a pure structural move
+with no behavior change). Concretely, when `viz-kb-dataclasses` starts, fold
+these into its plan:
+
+- `views/architecture.py`'s `CLASS_CAP`/`SUBCLASS_CAP` and
+  `architecture_scan.py`'s `DESCRIPTION_LENGTH_LIMIT`/
+  `ARCHITECTURE_CACHE_VERSION`/`SKIP_DIRS`/`PKG_DESCRIPTIONS` — module-level
+  constants the reviewer wants off module globals (pre-existing, carried over
+  verbatim from `kb.py`, not introduced by the split).
+- `views/architecture.py`'s `_package_view`/`_subpackage_view`/`_class_view`
+  and `views/plan_tree.py`'s `_plan_view` — and by extension every other view
+  builder and `graph_payload()`/`view_payload()`/`expand_node()` — return
+  bare `Dict[str, Any]` payloads with string keys; the reviewer wants real
+  types.
+- Collecting `PlanNodeGroup` (in `views/plan_tree.py`) and `ArmSide` (in
+  `entities.py`) into a shared enums module was also raised and deferred here
+  — pick their new home as part of the dataclass pass rather than moving them
+  twice.
