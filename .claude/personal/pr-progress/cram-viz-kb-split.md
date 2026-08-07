@@ -35,15 +35,37 @@ based on `cram-viz-integration`), per this plan's stacked-branch convention
   before pushing), draft PR #30 opened, `plan_item_bootstrap.py open`/`record`
   run, item flipped to `in_progress` in `plan.yaml`.
 
+- Implementation completed in this same session, on `cram-viz-kb-split`
+  (checked out locally after bootstrap). All 15 planned commits landed:
+  the rename commit, then bottom-up extractions of `entities`,
+  `architecture_entities`, `scene_bundle`, `views/base`,
+  `architecture_scan`, `knowledge_base`, `eql_session`, `presets`,
+  `views/architecture`, `views/plan`, `views/kinematics`,
+  `graph_payload`, the `views/__init__` dispatcher (folding
+  `knowledge/__init__.py` down to a thin re-export shim), and the
+  `TestPresetSmoke` conversion of the `__main__` block. Suite green
+  after every commit (182 → 183 passed). `scripts/format_docstrings.py`
+  run on every touched file (needed `pip install docformatter` first —
+  missing from the installed dev extras in this container).
+- One real wrinkle found and fixed along the way, not anticipated in the
+  approved plan: three `test_knowledge.py` monkeypatches of `load_scene`
+  stopped reaching the code they were meant to affect once that code moved
+  to a different module than the patched name (patching
+  `cram_viz.knowledge.load_scene` only affects callers still living in
+  `knowledge/__init__.py` itself). Two failed outright
+  (`test_a_recorded_height_is_used`,
+  `test_an_apostrophe_in_an_object_name_does_not_break_its_preset`); a
+  third kept "passing" while silently testing the wrong thing
+  (`test_an_apostrophe_in_an_episode_name_does_not_break_its_presets`).
+  Fixed by patching `load_scene` on the submodule that actually owns the
+  call at each point in the split (`knowledge_base`, then later `views.plan`
+  for two more `TestPlanGroups` tests) — the standard "patch where a name
+  is used" idiom, not a production-behavior change.
+  PR #30 description updated with final results and pushed; still in
+  draft, per personal-notes convention, awaiting your own review before
+  marking ready.
+
 ## Next
 
-Implementation (in a session working on `cram-viz-kb-split`, not this one
-unless asked to continue here): follow the commit sequence recorded in
-`roadmap.md`'s `viz-kb-split` section — one rename commit
-(`kb.py` → `knowledge/__init__.py` + the 4 external reference updates: 
-`server.py`, `conftest.py`, `test_kb.py` → `test_knowledge.py`,
-`README.md:126`), then 13 bottom-up extraction commits per the dependency
-graph there, then the `TestPresetSmoke` conversion of the `__main__` block.
-Suite (`python -m pytest test/cram_viz_test -q`) must stay green after every
-commit; run `scripts/format_docstrings.py` on all new/modified files before
-the PR is marked ready.
+Awaiting review/merge of PR #30 by the user. No further implementation
+planned for this item unless review comments come back.
