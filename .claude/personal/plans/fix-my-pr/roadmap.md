@@ -485,3 +485,86 @@ or `XACRO_ERROR_TAIL` outside `bundle_urdf.py` itself (`git grep` confirmed).
 
 Branch: `cram-viz-bundle-urdf-reuse`, based on `cram-viz-integration`.
 Draft PR: [sunava#28](https://github.com/sunava/cognitive_robot_abstract_machine/pull/28).
+
+## `viz-semdt-geometry` — use `ShapeCollection.scale` instead of hand-rolled body extents (T17)
+
+`cram_viz/src/cram_viz/body_geometry.py`'s `BodyExtent.of(body)` scans
+`body.visual`/`body.collision` for the first `Box` or `Mesh` shape and reads
+`.scale` off it directly. Every other shape type (`Sphere`, `Cylinder`) has
+no `.scale` attribute, so a body made only of those shapes silently reports
+`None` — the live bridge falls back to a default placeholder box
+(`_box_size` in `live/bridge.py`) and the onboarder omits the object's
+`height` entirely (`onboard/demo.py`), even though the shape's real size is
+knowable.
+
+`semantic_digital_twin`'s `ShapeCollection.scale` property
+(`shape_collection.py:210`) already computes a scale for any shape type, via
+each shape's own `local_frame_bounding_box` (`Box`, `Mesh`, `Sphere`, and
+`Cylinder` all implement it). The fix is:
+
+```python
+@classmethod
+def of(cls, body: Body) -> Optional[BodyExtent]:
+    for shape_collection in (body.visual, body.collision):
+        if not shape_collection.shapes:
+            continue
+        scale = shape_collection.scale
+        return cls(x=float(scale.x), y=float(scale.y), z=float(scale.z))
+    return None
+```
+
+Same visual-before-collision order as today; returns `None` only when both
+collections are completely empty. Drops the now-unused `Box`/`Mesh` import.
+Both call sites are unchanged, they already handle a `None` result.
+
+**Note on item scope vs. the codebase**: the item's own notes mention
+"spheres, cylinders and capsules", but `semantic_digital_twin`'s
+`geometry.py` currently defines only `Sphere` and `Cylinder` as concrete
+shapes besides `Box`/`Mesh` — no `Capsule` class exists. Test coverage
+targets the shapes that actually exist.
+
+**A consequence surfaced during planning, not stated in the item's own
+notes**: `ShapeCollection.scale` → `as_bounding_box_collection_at_origin` →
+`BoundingBox.transform_to_origin` reads
+`self.origin.reference_frame._world.transform(...)` — a shape only
+participates if its `origin.reference_frame` belongs to a real `World`. Two
+existing `test_live_bridge.py` tests (`test_an_object_without_a_mesh_is_catalogued_as_a_sized_box`,
+`test_an_object_with_unscaled_shapes_falls_back_to_the_default_size`) prove
+`_box_size`'s behavior via a lightweight mimic (`PublishedBody`/`ShapeSet`)
+built from a bare, world-less `Box`. Under the fix, that shape is filtered
+out of the bounding-box collection entirely, so `ShapeCollection.scale`
+raises `ValueError` (`min()` on an empty list) instead of returning the
+`None`/default-size the test expects. Both tests move to a real `World` +
+`Body` fixture, following `test_shape_collections.py`'s idiom; the mimic
+stays for the two tests in that file that never reach geometry.
+
+**New test file** `test/cram_viz_test/test_body_geometry.py` — no dedicated
+test file existed for `body_geometry.py` before this item. Written
+test-first per AGENTS.md: `Sphere`/`Cylinder` cases were confirmed to fail
+against the pre-fix code (proving the bug) before the fix landed. Covers
+`Box`, `Mesh` (regression), `Sphere`, `Cylinder` (new coverage — previously
+`None`), the no-shapes-at-all case (still `None`), the
+visual-preferred-over-collision order, and `BodyExtent.rounded()` (untouched
+but previously untested). `onboard/demo.py`'s `build_scene()` call site is
+not independently tested — it is one line inside an already-untested
+200-line function with no `TestBuildScene` today, and the behavior change is
+fully covered at the `BodyExtent.of` level.
+
+Dependency `viz-bridge-injection` (PR #27) confirmed merged into
+`cram-viz-integration` before starting, via `check_dependency_readiness.py`
+against live GitHub state, not assumed from the manifest.
+
+Filed under Group D ("medium refactors"), not one of the two dedicated
+bug-fix items, so per plan convention this PR does not carry the
+personal-notes `bug` label.
+
+**Flag surfaced during research, not addressed by this item**: fork PR #18
+(`warehouse-viz-features`) shows as closed, unmerged as of a live check
+during this item's planning (`closed_at: 2026-08-07T07:57:20Z`), contradicting
+this roadmap's earlier recorded "MERGEABLE, updated 2026-08-05" and the
+"refactor first, rebase #18 afterward" decision that assumed it would still
+be there to rebase. Noted here so `viz-kb-split`, which relies on that
+decision, does not rediscover this as a surprise.
+
+Branch: `cram-viz-semdt-geometry`, based on `cram-viz-integration`.
+Draft PR: [sunava#29](https://github.com/sunava/cognitive_robot_abstract_machine/pull/29).
