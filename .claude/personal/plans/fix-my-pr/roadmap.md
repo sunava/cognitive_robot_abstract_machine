@@ -428,3 +428,60 @@ against live GitHub state.
 
 Branch: `cram-viz-bridge-injection`, based on `cram-viz-integration`.
 Draft PR: [sunava#27](https://github.com/sunava/cognitive_robot_abstract_machine/pull/27).
+
+## `viz-bundle-urdf-reuse` — drop bundle_urdf.py's duplicated resolver stack and xacro subprocess (T33, T34)
+
+Both dependencies confirmed merged via `check_dependency_readiness.py` against live
+GitHub state before starting: `semdt-prefix-path-locator` (PR #21, merged into
+`main`, and `main`'s `c77d2db8` confirmed an ancestor of `cram-viz-integration`)
+and `viz-onboard-dataclasses` (PR #24, merged into `cram-viz-integration`).
+
+**T33**: `bundle_urdf.py`'s `_resolve_package_uri()` duplicated
+`adapters/package_resolver.py` with a hand-rolled `ament_index_python` call plus
+a hand-rolled prefix-path search (`_search_root_candidates()`, walking
+`AMENT_PREFIX_PATH`/`ROS_PACKAGE_PATH`/`CMAKE_PREFIX_PATH` and
+`~/*_ws/install`, `~/*/install`, `/opt/ros/*`). PR #21 added `PrefixPathPackageLocator`
+to `ROSPackageLocator`'s default chain (`AmentPackageLocator`,
+`ROSPackagePathLocator`, `PrefixPathPackageLocator`), so `PackageUriResolver().resolve(uri)`
+alone now covers exactly the same three tiers. `_search_root_candidates()` and the
+hand-rolled fallback in `_resolve_package_uri()` are deleted; the function
+delegates entirely to `PackageUriResolver().resolve(uri)`, catching
+`(ParsingError, OSError)` as before. `import glob` is dropped, now unused.
+`TestResolveUri.test_an_unresolvable_package_uri_is_unresolved`'s docstring is
+updated to describe the single delegated call rather than the old three-tier
+narration; its assertion (`None` with no env vars set) is unchanged.
+
+**T34**: `xacro_to_urdf_text()` shelled out to the `xacro` CLI via
+`subprocess.run(["xacro", path], ...)`, requiring a sourced ROS environment on
+`PATH` — confirmed no `xacro` CLI is even present in this sandbox, so the
+pre-change implementation could not run here at all. Replaced with
+`URDFParser.from_xacro(path).urdf` (`semantic_digital_twin/adapters/urdf.py:161-182`),
+which expands xacro in-process via the `xacro` Python package, already a
+declared `semantic_digital_twin` dependency (`requirements.txt:7`) — no CLI
+required. `import subprocess` and the `XACRO_ERROR_TAIL` constant are dropped,
+both used only by the old implementation.
+
+**Caveat carried over and addressed**: `from_xacro` runs `hacky_urdf_parser_fix`
+before returning `.urdf`, round-tripping the XML through `xml.etree.ElementTree`
+(dropping `<transmission>`/`<gazebo>` sections), so the text is normalized
+rather than raw. Verified `ElementTree.tostring` still emits double-quoted
+attributes, so `bundle_urdf.py`'s regex-based `MESH_REFERENCE_PATTERN`/
+`LINK_PATTERN`/`JOINT_PATTERN` extraction is structurally unaffected — proven
+with a new end-to-end test bundling a `.xacro` source the same way the existing
+`TestBundleUrdf` tests bundle a plain `.urdf` source. Actually loading the
+bundled output in the browser's `URDFLoader.js` is outside what a pytest run
+can confirm; this PR is backend-only (no `panels/graph/panel.js` touch, no
+wire-format change), so that remains a manual spot-check noted in the PR
+description rather than an automated step here.
+
+New test coverage in `test_onboard.py`: `TestXacroToUrdfText` (new, proves the
+in-process expansion against a macro-free xacro fixture, deriving expected
+link/joint names from `bundler.LINK_PATTERN`/`JOINT_PATTERN` rather than a
+hardcoded second copy) and `TestBundleUrdf.test_a_xacro_source_is_bundled_like_a_urdf_source`
+(new, end-to-end).
+
+No other call site referenced `_search_root_candidates`, `xacro_to_urdf_text`,
+or `XACRO_ERROR_TAIL` outside `bundle_urdf.py` itself (`git grep` confirmed).
+
+Branch: `cram-viz-bundle-urdf-reuse`, based on `cram-viz-integration`.
+Draft PR: [sunava#28](https://github.com/sunava/cognitive_robot_abstract_machine/pull/28).
