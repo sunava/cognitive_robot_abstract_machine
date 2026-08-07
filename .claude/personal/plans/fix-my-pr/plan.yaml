@@ -126,7 +126,7 @@ items:
     pull_request_number: 30
     track: kb
     depends_on: [viz-kb-characterization]
-    status: in_progress
+    status: done
     session: https://claude.ai/code/session_014YgvebvUijBTTx3hfu7QDP
     notes: >
       T46 plus T27, done together since the rename touches the same import
