@@ -706,3 +706,118 @@ these into its plan:
   `entities.py`) into a shared enums module was also raised and deferred here
   — pick their new home as part of the dataclass pass rather than moving them
   twice.
+
+## `viz-kb-dataclasses` — replace `knowledge/`'s tuples, dicts and stringly-typed branches with types (T40, T45, T28, T29, rest of T48, plus PR #30's deferred review threads)
+
+Dependency `viz-kb-split` (PR sunava#30) confirmed merged into
+`cram-viz-integration` before starting
+(`2026-08-07T11:11:42Z`), via `check_dependency_readiness.py` against live
+GitHub state, not assumed from the manifest.
+
+**Open question, not yet resolved:** T44 has no description anywhere in this
+plan's triage notes (`plan.yaml`'s item notes and this file both name it only
+as a bare "T44" with no citation). It is one of the 51 threads on the
+upstream `cram2#485` PR, outside this session's GitHub scope (only the
+`sunava` fork is attached — confirmed the block with a live `pull_request_read`
+call against `cram2/...#485`, denied as "not configured for this session").
+Flagged to the user in the kickoff plan; this item proceeds without it and
+will fold T44 in separately once it's identified.
+
+**T42 note:** `plan.yaml`'s notes for this item list T42 again, but T42 was
+already closed by `viz-small-fixes` ("T42 (PLAN_LEGEND dataclass)") — the
+`PlanLegendEntry`/`PLAN_LEGEND` dataclass/tuple already exists in
+`views/plan_tree.py`. Treated as a stale duplicate and out of scope here.
+
+**PR #30's 5 deferred review threads now show `is_resolved: true` on GitHub**,
+despite this file's own "Review feedback" section (written just before merge)
+recording them as intentionally left open. Doesn't change what needs fixing —
+noted so a future session doesn't assume the threads are still open and
+re-derive this.
+
+### Scope
+
+| Ask | Source | Fix |
+| --- | --- | --- |
+| No module-level globals: `CLASS_CAP`/`SUBCLASS_CAP` | PR#30 review, `views/architecture.py:16` | → class attributes |
+| No module-level globals: `DESCRIPTION_LENGTH_LIMIT`/`ARCHITECTURE_CACHE_VERSION`/`SKIP_DIRS`/`PKG_DESCRIPTIONS` | PR#30 review, `architecture_scan.py:35` | → class attributes |
+| Bare `Dict[str, Any]` view payloads (T40, "nine payload dicts") | PR#30 review + this file's earlier Group D note; the 9: `graph_payload()`, `_package_view`, `_subpackage_view`, `_class_view`, `_urdf_view`, `_plan_view`, `_chart_view`, `view_payload`'s error case, `run_query()` | → payload dataclasses |
+| Collect enums in one place | PR#30 review, `views/plan_tree.py:49` | → new `enums.py` |
+| T45 — substring heuristics → real types | `entities.py` `Gripper.side`/`Arm.side: str`, `"n/a"` fallback in `knowledge_base.py:145` | → `ArmSide` enum end-to-end |
+| T28 — six "funny tuples", two bare untyped | `scan_architecture`/`load_architecture` (3-tuple), `_build_arms` (2-tuple), `load_scene` (2-tuple), `load_urdf` (2-tuple), `_result_rows` (3-tuple); bare-untyped: `_view() -> tuple`, `PythonClass.bases: tuple` | → named dataclasses |
+| T29 — `ArchitectureScan`, duplicated scan logic | `architecture_scan.py` | → `ArchitectureScan` dataclass + `ArchitectureScanner` class |
+| Rest of T48 — EQL presets → dataclass | `presets.py` (BUG-2's splicing fix already landed in `viz-bugs`, PR#20) | → `Preset` dataclass |
+
+### Design
+
+New `cram_viz/src/cram_viz/knowledge/enums.py`: `ArmSide(str, Enum)` (moved
+from `entities.py`, adds an `UNKNOWN` member replacing the `"n/a"` string
+fallback), `NodeGroup(str, Enum)` (unifies every node/edge colour-group
+literal used across the package — `robot, object, event, root, concept,
+klass, goal, pyclass, upper, ind` — replacing `PlanNodeGroup` entirely, since
+its 5 members are a subset), `EdgeKind(str, Enum)` (`PROP`/`TYPE`). All three
+are `str` subclasses, so no wire-format change.
+
+`views/base.py`: `GraphNode`/`DetailEntry`/`GraphEdge` dataclasses plus a
+`SubgraphAccumulator` (nodes/edges/details + an `add()` method) replacing
+`_view()`'s bare-tuple-returning closure. `GraphEdge.to_payload()` maps
+`source`/`target` to the wire keys `from`/`to`, mirroring
+`ChartEdgeEntry.to_payload()` from `viz-bridge-injection`.
+
+Per-view payload dataclasses (`KnowledgeGraphPayload`,
+`PackageViewPayload`/`SubpackageViewPayload`/`ClassViewPayload`,
+`UrdfViewPayload`, `PlanViewPayload`, `ChartViewPayload`), each with a
+`to_payload()` building the exact JSON shape the frontend gets today.
+`server.py`'s `_json()` switches to `.to_payload()` before `json.dumps` — the
+one call-site update outside the package.
+
+`presets.py`: `Preset` dataclass, `ARCH_PRESETS` becomes
+`Tuple[Preset, ...]` (matches `PLAN_LEGEND`'s existing precedent).
+
+`architecture_scan.py`: new `ArchitectureScanner` class wrapping the scan/load
+functions as methods, with the four flagged constants as class attributes.
+`scan()`/`load()` return a new `ArchitectureScan` dataclass built from real
+`Package`/`PythonClass`/`PackageDependency` objects directly, removing the
+dict-then-convert indirection — this is what T29's "duplicated" scan logic
+refers to post-split.
+
+`entities.py`: `Gripper.side`/`Arm.side` become `ArmSide` (was `str`);
+`architecture_entities.py`: `PythonClass.bases` becomes `Tuple[str, ...]`
+(was bare `tuple`) — the other bare-untyped-tuple fix.
+
+`scene_bundle.py`/`eql_session.py`: `SceneBundle`, `ParsedUrdf`/`UrdfJoint`,
+`QueryResult` dataclasses replacing `load_scene()`/`load_urdf()`/
+`run_query()`'s tuple/dict returns.
+
+### Test strategy
+
+`test_knowledge.py` (the sole test file) assertions update from
+dict-subscript to dataclass/attribute access in the same commit as each
+module's conversion — a structural/type change with no behavioural
+difference, so no new failing-test-first cycle per conversion, per
+`viz-kb-split`'s own precedent. Two exceptions get genuine new test-first
+coverage: `ArmSide.UNKNOWN` replacing the `"n/a"` fallback, and
+`ArchitectureScan`/`ArchitectureScanner`'s dict-free construction.
+Dict-literal equality assertions become dataclass-equality assertions with
+the same expected values (not weakened).
+
+### Commit sequence (suite green after each)
+
+1. `enums.py` (`ArmSide` + `UNKNOWN`, `NodeGroup`, `EdgeKind`)
+2. `views/base.py` (`GraphNode`/`DetailEntry`/`GraphEdge`/`SubgraphAccumulator`)
+3. `presets.py` (`Preset`)
+4. `architecture_scan.py` (`ArchitectureScanner`/`ArchitectureScan`/`PackageDependency`)
+5. `entities.py`/`architecture_entities.py` (`ArmSide` fields, `bases` tuple) + `views/architecture.py` (`CLASS_CAP`/`SUBCLASS_CAP` off-global)
+6. `scene_bundle.py` (`SceneBundle`, `ParsedUrdf`/`UrdfJoint`)
+7. `eql_session.py` (`QueryResult`)
+8. Per-view payload dataclasses + `server.py`'s `_json()` call sites
+9. `scripts/format_docstrings.py` on every modified file
+
+### Verification
+
+`python -m pytest test/cram_viz_test -q` after every commit; manual
+spot-check of the knowledge/kinematics/plan panels against a fixture scene
+(JSON wire shape must not change, since `to_payload()` is new code with no
+direct frontend-consumption test coverage).
+
+Branch: `cram-viz-kb-dataclasses`, based on `cram-viz-integration`.
+Draft PR: [sunava#31](https://github.com/sunava/cognitive_robot_abstract_machine/pull/31).
