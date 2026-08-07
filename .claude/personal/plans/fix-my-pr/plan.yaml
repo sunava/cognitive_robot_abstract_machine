@@ -171,7 +171,7 @@ items:
     pull_request_number: 29
     track: live
     depends_on: [viz-bridge-injection]
-    status: done
+    status: in_progress
     session: https://claude.ai/code/session_01TTGTZiy1z1moV38wg9F77F
     notes: >
       T17. BodyExtent.of reads .scale off the first Box or Mesh shape and returns
