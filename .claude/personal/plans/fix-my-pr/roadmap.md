@@ -353,3 +353,78 @@ state, not assumed from the manifest.
 
 Branch: `cram-viz-kb-characterization`, based on `cram-viz-integration`.
 Draft PR: [sunava#25](https://github.com/sunava/cognitive_robot_abstract_machine/pull/25).
+
+## `viz-bridge-injection` — remove the module-level `BRIDGE` global from `http.py`/`runner.py` (T24, T16 residue)
+
+Closes T24 and the remaining `get_chart()` part of T16's residue (the "five
+`Dict[str,Any]` wire-boundary methods" part of T16 stays out of scope — this
+item's own notes name only the `get_chart()` hand-rewrite).
+
+- **`live/http.py`**: `BridgeRequestHandler` read/wrote the module-level
+  `BRIDGE` singleton at 7 sites across `do_GET`/`_send_mesh`/`do_POST`.
+  `live/hooks.py` already injects the bridge as a dataclass field
+  (`LiveHooks.bridge`) — `BaseHTTPRequestHandler` subclasses can't take a
+  constructor argument the way a plain dataclass can, since `socketserver`
+  instantiates the handler *class* per request
+  (`RequestHandlerClass(request, client_address, self)`). Fixed by giving
+  `BridgeRequestHandler` an `__init__(self, *args, bridge: Bridge, **kwargs)`
+  that captures `bridge` before delegating to
+  `BaseHTTPRequestHandler.__init__` (which runs the request synchronously, so
+  `self.bridge` must be set first), and building the handler in `serve()` via
+  `functools.partial(BridgeRequestHandler, bridge=bridge)` — the standard way
+  to pass extra constructor state through `socketserver`'s per-request
+  handler instantiation. `serve(bridge: Bridge, port: int = DEFAULT_PORT)`
+  now requires `bridge` explicitly (no default; it's an internal function
+  called from exactly one place).
+- **`live/runner.py`**: `start()` read/wrote `BRIDGE` 6 times (reuse guard,
+  world binding, the `serve(port)` call, return). `start()` keeps its
+  existing signature (`world`, `port`) — it is the one public, documented
+  entry point (`README.md`: `from cram_viz.live.runner import start;
+  start()`), and adding a `bridge` parameter would be speculative: the
+  `hooks.install_*` functions are hardwired to the same global singleton via
+  `_LIVE_HOOKS = LiveHooks(bridge=BRIDGE)`, so a caller-supplied different
+  bridge would not receive tick/plan/mesh observations anyway. Instead,
+  `start()` binds `BRIDGE` to a local `bridge` name once at the top of the
+  function and uses `bridge.` for the rest of the body, mirroring
+  `hooks.py`'s own single-binding-site pattern, and passes it into
+  `serve(bridge, port)`.
+- **Explicitly out of scope**, per the item's own notes: `hooks.py`'s three
+  `install_*` functions still call `BRIDGE.claim_hook(...)` directly against
+  the same global (lines 122/137/153) — not named in this item, left
+  untouched.
+- **T16 residue**: `Bridge.get_chart()` called `asdict(chart)` (which already
+  serializes `ChartEdgeEntry.source`/`target` as-is), then immediately
+  discarded `payload["edges"]` and hand-rewrote it by re-walking
+  `chart.edges` a second time into `{"from": ..., "to": ..., "kind": ...}`
+  dicts (`from`/`to` because `from` is a Python keyword and can't be a
+  dataclass field name). Added `ChartEdgeEntry.to_payload() -> Dict[str,
+  str]` so the wire-shape mapping lives on the dataclass itself, independently
+  testable, instead of being duplicated inline in `get_chart()`. No wire
+  format change — the `/chart` JSON shape returned to the frontend is
+  unchanged, confirmed by the existing `test_live_bridge.py`
+  `TestChartSnapshot::test_structure_and_states` assertion staying green
+  without modification.
+
+**New test coverage** (both `http.py`'s `serve()`/`BridgeRequestHandler` and
+`runner.py`'s `start()` had zero prior test coverage — `test_server.py`
+despite its name tests a different module, `cram_viz/server.py`):
+
+- `test_live_bridge.py`: new direct unit test for `ChartEdgeEntry.to_payload()`.
+- New `test_live_http.py`, modeled on `test_server.py`'s real-server-on-an-
+  ephemeral-port fixture idiom: `serve(bridge, 0)` against a real `Bridge()`,
+  one test per endpoint, plus a test spinning up two `serve()` calls against
+  two independently constructed `Bridge()` instances to prove
+  `BridgeRequestHandler` no longer reads a shared global.
+- New `test_live_runner.py` covering `start()`'s control flow (reuse guard,
+  world binding, hook installation, server assignment) via `monkeypatch` —
+  `hooks.install_*` monkey-patches coraplex/giskardpy process-globally with
+  no uninstall, so tests substitute no-ops rather than calling them for real,
+  and substitute a fresh `Bridge()` for `runner.BRIDGE` per test so no test
+  touches or dirties the real process singleton.
+
+Dependency `viz-wire-rename` (PR #26) confirmed merged into
+`cram-viz-integration` before starting, via `check_dependency_readiness.py`
+against live GitHub state.
+
+Branch: `cram-viz-bridge-injection`, based on `cram-viz-integration`.
+Draft PR: [sunava#27](https://github.com/sunava/cognitive_robot_abstract_machine/pull/27).
