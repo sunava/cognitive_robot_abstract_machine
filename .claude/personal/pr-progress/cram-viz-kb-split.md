@@ -65,7 +65,26 @@ based on `cram-viz-integration`), per this plan's stacked-branch convention
   draft, per personal-notes convention, awaiting your own review before
   marking ready.
 
+- Review round (2026-08-07): the user left 6 review comments on PR #30.
+  Triaged and handled each:
+  - `views/plan.py`'s name collided with coraplex's own `Plan`/`PlanNode`
+    types — fixed: renamed to `views/plan_tree.py` (docstring + 3 import
+    sites updated), commit `8a80cd31`. Thread replied to and resolved.
+  - The other 5 ("no global variables" on `CLASS_CAP`/`SUBCLASS_CAP` and
+    `architecture_scan.py`'s constants; `Dict[str, Any]` payloads on
+    `_package_view`/`_plan_view`; collecting `PlanNodeGroup`/`ArmSide` into
+    a shared enums module) all match `viz-kb-dataclasses`'s already-planned
+    scope (T40/T42/T44/T45/T28/T29/T48) — confirmed with the user via
+    `AskUserQuestion` rather than assuming, then replied to each thread
+    explaining the deferral and left them **unresolved** (per personal-notes
+    convention: don't resolve a thread you didn't act on). Recorded in
+    `roadmap.md`'s `viz-kb-split` section under "Review feedback
+    (2026-08-07)" so `viz-kb-dataclasses`'s own kickoff doesn't have to
+    rediscover this from PR #30 directly.
+  - Suite re-verified green (183 passed) after the rename; pushed.
+
 ## Next
 
-Awaiting review/merge of PR #30 by the user. No further implementation
-planned for this item unless review comments come back.
+Awaiting further review/merge of PR #30 by the user. The 5 deferred review
+threads are not blockers for this item — they're now recorded as concrete
+scope items for `viz-kb-dataclasses` to pick up when it starts.
