@@ -354,3 +354,37 @@ state, not assumed from the manifest.
 Branch: `cram-viz-kb-characterization`, based on `cram-viz-integration`.
 PR [sunava#25](https://github.com/sunava/cognitive_robot_abstract_machine/pull/25)
 merged into `cram-viz-integration`.
+
+## `viz-wire-rename` — rename the live-bridge `sig` field to `signature` (T12)
+
+Closes T12, split out of `viz-small-fixes` because `sig` is a live-bridge
+JSON key the browser frontend reads directly, so every producer and
+consumer had to change together in one commit.
+
+- Renamed the `sig` field to `signature` on the three `live/bridge.py`
+  dataclasses that carry it (`PlanSnapshot`, `_ChartStructure`,
+  `ChartSnapshot`) and their three construction/read sites.
+  `_serialize_chart_structure`'s local variable was already spelled
+  `signature`; only the field keyword changed there.
+- Updated `live/http.py`'s module-docstring API contract (`GET /plan`,
+  `GET /chart`) to match.
+- Updated the frontend reader in `web/panels/graph/panel.js`
+  (`live.sig` → `live.signature`).
+- Updated `test_live_bridge.py`'s six `["sig"]` assertions and
+  `test_graph_panel.js`'s live-mode mock (`sig: 's1'` → `signature: 's1'`).
+- `uv run pytest test/cram_viz_test -q` (incl. the JS suite via
+  `test_web_assets.py`): 144 passed.
+
+**Formatting caveat**: `black` ran clean on the touched Python files;
+`scripts/format_docstrings.py`'s `docformatter` step could not be run this
+session (PyPI fetches for that package timed out through the proxy). No
+docstring *text* changed in this diff, only the field name declared above
+each one, so the gap is low-risk but should be re-run once docformatter is
+installable.
+
+Branch: `cram-viz-wire-rename`, based on `cram-viz-integration`. PR
+[sunava#26](https://github.com/sunava/cognitive_robot_abstract_machine/pull/26)
+merged into `cram-viz-integration` directly by the user (no CI ran on it —
+the repo hit a multi-hour, repo-wide GitHub Actions outage, still
+unresolved at merge time, that affected every open branch, not just this
+one).

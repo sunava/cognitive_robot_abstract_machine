@@ -97,7 +97,7 @@ items:
     pull_request_number: 26
     track: small-fixes
     depends_on: [viz-small-fixes]
-    status: in_progress
+    status: done
     session: https://claude.ai/code/session_014g4C4mMNFePLdBVpQL1e8x
     notes: >
       T12. Separated from the other small fixes because it is a wire-format
