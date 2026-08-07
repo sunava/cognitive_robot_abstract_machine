@@ -27,10 +27,14 @@ suites that assert on the key (`test_live_bridge.py`, `js/test_graph_panel.js`).
   name above each docstring), so the gap is low-risk, but it should be
   re-run once docformatter is installable.
 
-**Next**:
-- Confirm CI actually goes green on #26 now that there's a real commit for
-  it to run against.
-- Try `scripts/format_docstrings.py` again when PyPI access is reliable.
-- Address any review feedback that comes in.
-- Once merged into `cram-viz-integration`, mark `viz-wire-rename` `done` in
-  the `fix-my-pr` manifest — `viz-bridge-injection` depends on it.
+- PR #26 was merged directly by the user (sunava) into `cram-viz-integration`
+  without going through review-ready CI: the repo hit a repo-wide GitHub
+  Actions outage (zero workflow runs anywhere from 2026-08-06 16:22 UTC
+  through at least 2026-08-06 21:48 UTC, confirmed via repeated
+  `list_workflow_runs`/`get_check_runs` checks); it was still unresolved
+  when the merge happened, so #26 never got a CI run of its own. Session
+  auto-unsubscribed on the merge webhook.
+- Marked `viz-wire-rename` `done` in the `fix-my-pr` manifest and added its
+  roadmap writeup — `viz-bridge-injection` is now unblocked.
+
+**Next**: none — this item is complete.
