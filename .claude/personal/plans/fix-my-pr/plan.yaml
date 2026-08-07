@@ -155,7 +155,7 @@ items:
     pull_request_number: 27
     track: live
     depends_on: [viz-wire-rename]
-    status: in_progress
+    status: done
     session: https://claude.ai/code/session_01M2d1iWNB52KUt5sjXyuDQx
     notes: >
       T24 and the residue of T16. hooks.py already injects the bridge as a
