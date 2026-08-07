@@ -57,7 +57,18 @@ user if this should change.
   0 failures. `scripts/format_docstrings.py` run on both modified files.
 - Real commit pushed (`8f013bc9`), PR #28 description updated with the full
   summary, subscribed to PR activity, 60-minute check-in scheduled.
+- CI: `test_each_lib (giskardpy)` failed on an unrelated flaky physics
+  assertion (`test_attached_self_collision_avoid_stick`, nothing to do with
+  `bundle_urdf.py`) - confirmed not a regression (same check passed on
+  sibling PR #29 against the same base, same timeframe). The overall
+  workflow run hadn't finished, so `rerun_failed_jobs` couldn't run yet; was
+  about to be retried via the scheduled check-in when the user marked the
+  PR ready for review and merged it directly (2026-08-07T10:16:15Z).
+- PR #28 merged. Item status flipped to `done` in `plan.yaml` via
+  `CLAUDE.local.md`'s plan-manifest section + `save-plan.sh` (verified the
+  embedded manifest was byte-identical to a fresh fetch first, so no
+  concurrent sessions' edits - e.g. PR #29/#30 getting their PR numbers -
+  were clobbered). 60-minute check-in trigger deleted (moot).
 
 ## Next
-- Item complete pending review/CI. Watch for CI results and any review
-  comments via the PR subscription; nothing else planned for this item.
+- Item complete and merged. Nothing further planned for this item.
