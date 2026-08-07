@@ -97,7 +97,7 @@ items:
     pull_request_number: 26
     track: small-fixes
     depends_on: [viz-small-fixes]
-    status: done
+    status: in_progress
     session: https://claude.ai/code/session_014g4C4mMNFePLdBVpQL1e8x
     notes: >
       T12. Separated from the other small fixes because it is a wire-format
@@ -112,7 +112,7 @@ items:
     pull_request_number: 25
     track: kb
     depends_on: [viz-bugs]
-    status: done
+    status: in_progress
     session: https://claude.ai/code/session_01MxoLWbegiTFWtWmHWKHimC
     notes: >
       Gate for the split. kb.py is 2056 lines with 155 lines of tests, which
@@ -196,7 +196,7 @@ items:
     pull_request_number: 21
     track: upstream
     depends_on: []
-    status: in_progress
+    status: done
     notes: >
       The one genuine gap blocking T33. cram_viz's resolver reads
       AMENT_PREFIX_PATH and CMAKE_PREFIX_PATH and globs ~/*_ws/install and
