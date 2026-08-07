@@ -123,10 +123,11 @@ items:
   - id: viz-kb-split
     title: "Rename kb.py and split it into ~13 single-scoped modules"
     branch: cram-viz-kb-split
-    pull_request_number: null
+    pull_request_number: 30
     track: kb
     depends_on: [viz-kb-characterization]
-    status: not_started
+    status: in_progress
+    session: https://claude.ai/code/session_014YgvebvUijBTTx3hfu7QDP
     notes: >
       T46 plus T27, done together since the rename touches the same import
       sites. Cuts along the existing "# %%" markers: scene_bundle, entities,
