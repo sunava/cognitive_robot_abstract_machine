@@ -210,10 +210,11 @@ items:
   - id: viz-bundle-urdf-reuse
     title: "Drop bundle_urdf.py's duplicated resolver stack and xacro subprocess"
     branch: cram-viz-bundle-urdf-reuse
-    pull_request_number: null
+    pull_request_number: 28
     track: upstream
     depends_on: [semdt-prefix-path-locator, viz-onboard-dataclasses]
-    status: not_started
+    status: in_progress
+    session: https://claude.ai/code/session_01MTSPmuHNpgfrnhFiKC6hZn
     notes: >
       T33 and T34. About 75 of bundle_urdf.py's 352 lines duplicate
       adapters/package_resolver.py. T34 is the clean half: xacro_to_urdf_text
