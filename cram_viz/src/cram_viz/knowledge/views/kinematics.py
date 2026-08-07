@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from typing_extensions import TYPE_CHECKING, Any, Dict
 
-from cram_viz.knowledge.enums import EdgeKind, NodeGroup
 from cram_viz.knowledge.scene_bundle import load_scene, load_urdf
 from cram_viz.knowledge.views.base import _view
 
@@ -49,24 +48,24 @@ def _urdf_view(knowledge_base: EpisodeKnowledgeBase) -> Dict[str, Any]:
         link: part for part, part_links in parts.items() for link in part_links
     }
 
-    def chain_group(link_name: str) -> NodeGroup:
+    def chain_group(link_name: str) -> str:
         """
         The visual group (colour) a kinematic-chain link is bucketed into.
         """
         part = link_to_part.get(link_name, "").lower()
         if "gripper" in part or "hand" in part or "effector" in part:
-            return NodeGroup.OBJECT  # grippers (teal)
+            return "object"  # grippers (teal)
         if "left" in part:
-            return NodeGroup.ROBOT  # left arm (pink)
+            return "robot"  # left arm (pink)
         if "right" in part:
-            return NodeGroup.EVENT  # right arm (purple)
+            return "event"  # right arm (purple)
         lowered = link_name.lower()
         if any(
             keyword in lowered
             for keyword in ("head", "stereo", "sensor", "kinect", "camera", "laser")
         ):
-            return NodeGroup.GOAL  # head / sensors (amber)
-        return NodeGroup.CONCEPT  # base, torso, casters (green)
+            return "goal"  # head / sensors (amber)
+        return "concept"  # base, torso, casters (green)
 
     # which joint drives each link (child link → its parent joint), for tooltips
     parent_joint = {joint["child"]: joint for joint in joints}
@@ -87,7 +86,7 @@ def _urdf_view(knowledge_base: EpisodeKnowledgeBase) -> Dict[str, Any]:
                 {
                     "from": "urdf:" + joint["parent"],
                     "to": "urdf:" + joint["child"],
-                    "kind": EdgeKind.PROP if _is_movable(joint) else EdgeKind.TYPE,
+                    "kind": "prop" if _is_movable(joint) else "type",
                     "label": "%s (%s)" % (joint["name"], joint["type"]),
                 }
             )
@@ -96,11 +95,11 @@ def _urdf_view(knowledge_base: EpisodeKnowledgeBase) -> Dict[str, Any]:
         "%d links · %d joints (%d movable)" % (len(links), len(joints), movable_count)
     )
     legend = [
-        {"group": NodeGroup.CONCEPT, "label": "Base / torso"},
-        {"group": NodeGroup.ROBOT, "label": "Left arm"},
-        {"group": NodeGroup.EVENT, "label": "Right arm"},
-        {"group": NodeGroup.OBJECT, "label": "Grippers"},
-        {"group": NodeGroup.GOAL, "label": "Head / sensors"},
+        {"group": "concept", "label": "Base / torso"},
+        {"group": "robot", "label": "Left arm"},
+        {"group": "event", "label": "Right arm"},
+        {"group": "object", "label": "Grippers"},
+        {"group": "goal", "label": "Head / sensors"},
     ]
     # force-directed, not hierarchical: the chains read better when the arms and
     # the sensor head spread out around the base than as one wide LR tree

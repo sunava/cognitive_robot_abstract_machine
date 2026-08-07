@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from typing_extensions import Any, Dict, List, Optional
 
-from cram_viz.knowledge.enums import EdgeKind, NodeGroup
 from cram_viz.knowledge.knowledge_base import get_knowledge_base
 from cram_viz.knowledge.presets import get_presets
 from cram_viz.knowledge.scene_bundle import load_scene
@@ -39,7 +38,7 @@ def graph_payload() -> Dict[str, Any]:
     kb = get_knowledge_base()
     nodes, edges, details = [], [], {}
 
-    def add(node_id: str, label: str, group: NodeGroup, lines: List[str]) -> None:
+    def add(node_id: str, label: str, group: str, lines: List[str]) -> None:
         """
         Append one graph node and its detail-panel entry.
         """
@@ -57,7 +56,7 @@ def graph_payload() -> Dict[str, Any]:
     add(
         rob,
         rob,
-        NodeGroup.ROBOT,
+        "robot",
         [
             "a Robot",
             "%d arm%s" % (kb.robot.arm_count, "" if kb.robot.arm_count == 1 else "s"),
@@ -68,16 +67,14 @@ def graph_payload() -> Dict[str, Any]:
         add(
             arm.name,
             arm.name.replace("_", " "),
-            NodeGroup.ROBOT,
+            "robot",
             ["an Arm", "side: " + arm.side, "gripper: " + arm.gripper.name],
         )
-        edges.append(
-            {"from": rob, "to": arm.name, "kind": EdgeKind.PROP, "label": "has part"}
-        )
+        edges.append({"from": rob, "to": arm.name, "kind": "prop", "label": "has part"})
         add(
             arm.gripper.name,
             arm.gripper.name.replace("_", " "),
-            NodeGroup.ROBOT,
+            "robot",
             ["a Gripper", "side: " + arm.gripper.side]
             + _measurement_line("opening", arm.gripper.opening_m, "%.3f"),
         )
@@ -85,7 +82,7 @@ def graph_payload() -> Dict[str, Any]:
             {
                 "from": arm.name,
                 "to": arm.gripper.name,
-                "kind": EdgeKind.PROP,
+                "kind": "prop",
                 "label": "has part",
             }
         )
@@ -94,7 +91,7 @@ def graph_payload() -> Dict[str, Any]:
         add(
             bench_object.name,
             bench_object.label,
-            NodeGroup.OBJECT,
+            "object",
             [
                 "a BenchObject",
                 "kind: " + bench_object.kind,
@@ -108,7 +105,7 @@ def graph_payload() -> Dict[str, Any]:
         add(
             episode.name,
             episode.name,
-            NodeGroup.EVENT,
+            "event",
             [
                 "an ActionEpisode",
                 "frames %d–%d" % (episode.start_frame, episode.end_frame),
@@ -122,7 +119,7 @@ def graph_payload() -> Dict[str, Any]:
                 {
                     "from": previous,
                     "to": episode.name,
-                    "kind": EdgeKind.TYPE,
+                    "kind": "type",
                     "label": "precedes",
                 }
             )
@@ -135,7 +132,7 @@ def graph_payload() -> Dict[str, Any]:
                 {
                     "from": episode.name,
                     "to": episode.performed_by.robot,
-                    "kind": EdgeKind.PROP,
+                    "kind": "prop",
                     "label": "performed by",
                 }
             )
@@ -144,7 +141,7 @@ def graph_payload() -> Dict[str, Any]:
                 {
                     "from": episode.name,
                     "to": episode.picks.name,
-                    "kind": EdgeKind.PROP,
+                    "kind": "prop",
                     "label": "picks",
                 }
             )
@@ -153,7 +150,7 @@ def graph_payload() -> Dict[str, Any]:
                 {
                     "from": episode.name,
                     "to": episode.places_at.name,
-                    "kind": EdgeKind.PROP,
+                    "kind": "prop",
                     "label": "places at",
                 }
             )
@@ -163,7 +160,7 @@ def graph_payload() -> Dict[str, Any]:
         add(
             "cram",
             "CRAM architecture",
-            NodeGroup.ROOT,
+            "root",
             [
                 "~/cognitive_robot_abstract_machine",
                 "%d packages · %d Python classes" % (len(kb.packages), len(kb.classes)),
@@ -173,7 +170,7 @@ def graph_payload() -> Dict[str, Any]:
             add(
                 package.name,
                 package.name,
-                NodeGroup.CONCEPT,
+                "concept",
                 [
                     "a Package",
                     package.description,
@@ -186,7 +183,7 @@ def graph_payload() -> Dict[str, Any]:
                 {
                     "from": "cram",
                     "to": package.name,
-                    "kind": EdgeKind.PROP,
+                    "kind": "prop",
                     "label": "contains",
                 }
             )
@@ -194,7 +191,7 @@ def graph_payload() -> Dict[str, Any]:
             add(
                 subpackage.name,
                 subpackage.name.split(".", 1)[1],
-                NodeGroup.KLASS,
+                "klass",
                 [
                     "a SubPackage of " + subpackage.package,
                     "%d modules · %d classes"
@@ -206,18 +203,13 @@ def graph_payload() -> Dict[str, Any]:
                 {
                     "from": subpackage.package,
                     "to": subpackage.name,
-                    "kind": EdgeKind.PROP,
+                    "kind": "prop",
                     "label": "contains",
                 }
             )
         for source, target in kb.package_deps:
             edges.append(
-                {
-                    "from": source,
-                    "to": target,
-                    "kind": EdgeKind.TYPE,
-                    "label": "imports",
-                }
+                {"from": source, "to": target, "kind": "type", "label": "imports"}
             )
 
         # ground the demo in the architecture at the SUBPACKAGE that actually
@@ -228,12 +220,7 @@ def graph_payload() -> Dict[str, Any]:
             """
             if any(n["id"] == target for n in nodes):
                 edges.append(
-                    {
-                        "from": source,
-                        "to": target,
-                        "kind": EdgeKind.TYPE,
-                        "label": label,
-                    }
+                    {"from": source, "to": target, "kind": "type", "label": label}
                 )
 
         # anchor one representative manipulation episode (they share the stack)
@@ -253,7 +240,7 @@ def graph_payload() -> Dict[str, Any]:
         add(
             "plan",
             "executed plan",
-            NodeGroup.GOAL,
+            "goal",
             [
                 "the plan tree the demo actually executed",
                 "%d nodes" % node_count,
@@ -261,16 +248,11 @@ def graph_payload() -> Dict[str, Any]:
             ],
         )
         edges.append(
-            {"from": "plan", "to": rob, "kind": EdgeKind.PROP, "label": "executed by"}
+            {"from": "plan", "to": rob, "kind": "prop", "label": "executed by"}
         )
         for episode in kb.episodes:
             edges.append(
-                {
-                    "from": "plan",
-                    "to": episode.name,
-                    "kind": EdgeKind.TYPE,
-                    "label": "spans",
-                }
+                {"from": "plan", "to": episode.name, "kind": "type", "label": "spans"}
             )
 
     status = "EQL ready · %d graph nodes · %d joints · %d CRAM classes" % (
