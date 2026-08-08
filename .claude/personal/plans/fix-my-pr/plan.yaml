@@ -142,7 +142,7 @@ items:
     pull_request_number: 32
     track: kb
     depends_on: [viz-kb-split]
-    status: in_progress
+    status: done
     session: https://claude.ai/code/session_01GuKGeKE6ZphLV3735dXuzh
     notes: >
       T40, T42, T44, T45, T28, T29 and the rest of T48. Done after the split so
@@ -155,11 +155,13 @@ items:
       after only its first commit (enums.py) landed - the user merged it on
       GitHub directly, before the remaining six commits were pushed. Those six
       (subgraph.py dataclasses, presets.py, ArchitectureScanner, CLASS_CAP
-      off-global + PythonClass.bases typing, scene_bundle.py, QueryResult)
-      were never part of #31's merge and needed a fresh draft PR (#32, same
-      branch, since enums.py is already common ancestry via the merge) to land
-      into cram-viz-integration. pull_request_number now points at #32, the
-      one still open.
+      off-global + PythonClass.bases typing, scene_bundle.py, RenderResult -
+      renamed from QueryResult per review comment) were never part of #31's
+      merge and needed a fresh draft PR (#32, same branch, since enums.py is
+      already common ancestry via the merge) to land into cram-viz-integration.
+      #32 merged 2026-08-08 with all 7 commits on the branch tip - item complete.
+      T44 was never identified (no access to upstream cram2#485 this session);
+      still open for the user or a later pass.
 
   - id: viz-bridge-injection
     title: "Remove the module-level BRIDGE global and the leftover untyped payloads"
