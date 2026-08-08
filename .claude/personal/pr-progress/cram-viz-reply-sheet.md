@@ -1,4 +1,4 @@
-# `cram-viz-reply-sheet` (fix-my-pr / viz-reply-sheet — kicked off, draft PR sunava#34, not yet implemented)
+# `cram-viz-reply-sheet` (fix-my-pr / viz-reply-sheet — content written, draft PR sunava#34 awaiting self-review)
 
 ## Plan (approved via plan mode this session)
 
@@ -12,37 +12,64 @@ section for this item (`.claude/personal/plans/fix-my-pr/roadmap.md`).
 Both dependencies (`viz-param-docs` #33, `viz-bundle-urdf-reuse` #28)
 confirmed merged live via `check_dependency_readiness.py` before starting.
 
-**Two gaps flagged, not blocking:**
+## What actually landed
+
+`cram_viz/docs/pr-485-review-replies.md` (584 lines), one commit. Rather
+than just restating the roadmap's paraphrase, fetched all 11 closing pull
+requests' actual live descriptions (#20, #22, #23, #24, #26, #27, #28, #29,
+#30, #21, plus #32/#33 already read earlier this session) to write each
+reply from verified specifics — file paths, dataclass names, test names —
+not from memory. Structure: an index table (all 49 documented `T` codes,
+group, status, closing PR), then one section per code organized by the
+roadmap's own Group A–E buckets, plus a combined section for `viz-param-docs`'s
+T18/T23/T41 (one shared reply, since the plan's own notes describe them as
+one mechanical sweep).
+
+**Three gaps flagged in the sheet itself, not silently papered over:**
 - **T44** — still no description anywhere (flagged by two prior items,
-  still unresolved). Sheet gets a `NEEDS INPUT` placeholder instead of a
+  still unresolved). Sheet has a `NEEDS INPUT` placeholder instead of a
   fabricated reply.
 - **T13/T36** — never mentioned anywhere in `roadmap.md`'s triage. A full
   `grep -oE '\bT[0-9]+\b'` sweep found only 49 distinct codes (`T1`–`T51`
-  minus these two), while the reviewer-count table sums to 51. Newly found
-  this session, not flagged before. Sheet covers the 49 documented codes
-  and notes T13/T36 as unaccounted for — can't resolve without `cram2`
-  access.
+  minus these two), while the reviewer-count table sums to 51. Flagged so
+  the user can reconcile against GitHub's actual thread count.
+- **T16 is only partially closed** — found while writing the reply, not in
+  the original triage. PR #27's own description says it fixed
+  `get_chart()`'s residue but explicitly left `Bridge.get_state`,
+  `get_plan`, `status` and `object_catalog` as untouched
+  `Dict[str, Any]` methods; no item in this plan converts those four. The
+  T16 reply says so honestly instead of claiming full closure.
 
-**Deliverable shape is a judgment call**: `cram_viz/docs/pr-485-review-replies.md`,
-organized by the roadmap's own Group A–E structure, one section per
-`T<n>` code. No existing convention for this kind of document in the repo
-(`cram_viz/` has only a root `README.md`). Whether this PR ever merges into
-`cram-viz-integration`, or just serves as a reviewable diff to copy from
-and close unmerged, is left to the user.
+**Verification done**: a script confirmed all 49 documented codes appear
+exactly once (46 as individual `###` headings + T18/T23/T41 sharing one
+combined reply); all three pre-plan Group A commit hashes (`c60d2eb1c`,
+`fb984ff90`, `a58c9065a`) verified to exist with matching commit messages
+via `git log --all` after an unshallow fetch.
+
+**Deliverable shape was a judgment call, confirmed working**:
+`cram_viz/docs/pr-485-review-replies.md` — no existing convention for this
+kind of document in the repo (`cram_viz/` has only a root `README.md`).
+Whether this PR ever merges into `cram-viz-integration`, or just serves as
+a reviewable diff to copy from and close unmerged, is still left to the
+user.
 
 ## Status
 
 Branch `cram-viz-reply-sheet`, draft PR
 [sunava#34](https://github.com/sunava/cognitive_robot_abstract_machine/pull/34)
-against `cram-viz-integration`, no `bug` label (not a bug-fix item).
-Bootstrap commit pushed; the actual reply-sheet content is not yet written.
+against `cram-viz-integration`, no `bug` label (not a bug-fix item). Content
+commit pushed; PR description updated with the same summary and checked
+test-plan boxes.
 
 ## Next
 
-Write `cram_viz/docs/pr-485-review-replies.md` per the plan above, commit,
-push, mark the PR ready for the user's review when done (staying draft
-until then, per personal-notes convention). Update this note and
-`roadmap.md`'s section as the content lands.
+Implementation is done. Per personal-notes convention the PR stays draft
+until the user self-reviews it — in particular checking whether T44's
+placeholder can be filled in, whether T13/T36 turn out to be real missing
+threads, and whether T16's partial-closure framing is acceptable to post
+as-is or needs its own follow-up PR first. Once merged (or otherwise
+resolved), this is the last item before `cram-viz-integration` → cram2#485
+is ready for re-review.
 
 ---
 
