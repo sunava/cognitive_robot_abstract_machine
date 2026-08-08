@@ -241,10 +241,11 @@ items:
   - id: viz-param-docs
     title: "Finish the :param: docstrings across bridge.py, demo.py and kb.py"
     branch: cram-viz-param-docs
-    pull_request_number: null
+    pull_request_number: 33
     track: docs-admin
     depends_on: [viz-kb-dataclasses, viz-bridge-injection, viz-onboard-dataclasses]
-    status: not_started
+    status: in_progress
+    session: https://claude.ai/code/session_01GuKGeKE6ZphLV3735dXuzh
     notes: >
       T18, T23, T41 - roughly 95 functions. Deliberately split: the ~10 whose
       parameter roles are genuinely non-obvious were documented inline in the
