@@ -273,10 +273,11 @@ items:
   - id: viz-reply-sheet
     title: "Write the paste-ready replies for all 51 review threads"
     branch: cram-viz-reply-sheet
-    pull_request_number: null
+    pull_request_number: 34
     track: landing
     depends_on: [viz-param-docs, viz-bundle-urdf-reuse]
-    status: not_started
+    status: in_progress
+    session: https://claude.ai/code/session_01GuKGeKE6ZphLV3735dXuzh
     notes: >
       The only item with no branch and no code. Produces one reply per thread,
       including the 13 in groups A and B where the reply is the entire
