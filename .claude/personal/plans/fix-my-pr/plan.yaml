@@ -244,7 +244,7 @@ items:
     pull_request_number: 33
     track: docs-admin
     depends_on: [viz-kb-dataclasses, viz-bridge-injection, viz-onboard-dataclasses]
-    status: in_progress
+    status: done
     session: https://claude.ai/code/session_01GuKGeKE6ZphLV3735dXuzh
     notes: >
       T18, T23, T41 - roughly 95 functions. Deliberately split: the ~10 whose
