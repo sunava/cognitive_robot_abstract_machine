@@ -930,23 +930,28 @@ on every modified file per commit, per this plan's standing convention)
 Branch: `cram-viz-param-docs`, based on `cram-viz-integration`.
 Draft PR: [sunava#33](https://github.com/sunava/cognitive_robot_abstract_machine/pull/33).
 
-## `viz-reply-sheet` — paste-ready replies for all 51 review threads (approved plan)
+## `viz-reply-sheet` — paste-ready replies for all 51 review threads
 
 Both dependencies confirmed merged live before starting: `viz-param-docs`
 (PR #33, merged 2026-08-08T16:49:44Z) and `viz-bundle-urdf-reuse` (PR #28,
 merged 2026-08-07T10:16:15Z), via `check_dependency_readiness.py` against
 fresh `pr_data.json`.
 
-**Deliverable**: `cram_viz/docs/pr-485-review-replies.md`, one section per
-`T<n>` code from this file's own triage (Groups A–E plus "the two bugs" and
-`viz-param-docs`'s T18/T23/T41), each with the reviewer's paraphrased
-complaint (to match against GitHub, since this session has no `cram2` read
-access to fetch real thread permalinks), the verdict, and the exact paste-
-ready reply text citing the commit/PR/file:line that backs it. No source
-changes, no tests — compilation only, from material this roadmap already
-contains.
+### What landed
 
-**Two gaps found and flagged, not silently papered over:**
+`cram_viz/docs/pr-485-review-replies.md` (584 lines), one commit, no source
+changes. Rather than restating this roadmap's own paraphrase of each
+thread, fetched all 11 closing pull requests' actual live descriptions
+(#20, #21, #22, #23, #24, #26, #27, #28, #29, #30, plus #32/#33 already read
+earlier this session) to write each reply from verified specifics — file
+paths, dataclass names, test names — not from memory. Structure: an index
+table (all 49 documented `T` codes, group, status, closing PR), then one
+section per code organized by this roadmap's own Group A–E buckets, plus
+one combined section for `viz-param-docs`'s T18/T23/T41 (a single shared
+reply, since that item's own notes describe them as one mechanical sweep
+rather than three distinct asks).
+
+### Three gaps flagged in the sheet itself, not silently papered over
 
 - **T44** — still no description anywhere (flagged unresolved by two prior
   items, `viz-kb-dataclasses` and `viz-param-docs`, and still true). Sheet
@@ -959,12 +964,34 @@ contains.
   gap (e.g. folded into a bundled entry like "T30/T47") — undecidable
   without `cram2` access. Sheet covers the 49 documented codes and carries
   an explicit note flagging T13/T36 as unaccounted for.
+- **T16 turned out to be only partially closed** — found while writing the
+  reply, not in the original triage. PR #27's own description states it
+  fixed `get_chart()`'s residue specifically but explicitly left
+  `Bridge.get_state`, `get_plan`, `status` and `object_catalog` as
+  untouched `Dict[str, Any]` wire-boundary methods ("not named in this
+  item, left untouched"). No item anywhere in this plan converts those
+  four. The sheet's T16 reply says so honestly rather than claiming full
+  closure — this is a real residual scope gap for a future item or a
+  follow-up PR, not something this item can close itself.
 
-**Deliverable location is a judgment call, not an existing convention** —
-`cram_viz/` has only a root `README.md`, no `docs/` folder, and this is the
-plan's only item with no code. Proposed `cram_viz/docs/pr-485-review-replies.md`;
-whether this PR is ever merged into `cram-viz-integration` or just serves as
-a reviewable diff to copy from and then close unmerged is left to the user.
+### Verification done
+
+- A script confirmed all 49 documented codes appear exactly once in the
+  sheet: 46 as individual `###` headings, plus T18/T23/T41 sharing one
+  combined reply (verified by scanning both heading text and the shared
+  section explicitly).
+- All three Group A pre-plan commit hashes (`c60d2eb1c`, `fb984ff90`,
+  `a58c9065a`) confirmed to exist with matching commit messages via
+  `git log --all` after an unshallow fetch (the shallow clone didn't have
+  them).
+
+### Deliverable shape — a judgment call, confirmed working
+
+`cram_viz/docs/pr-485-review-replies.md` — no existing convention for this
+kind of document anywhere in the repo (`cram_viz/` had only a root
+`README.md`, no `docs/` folder, before this). Whether this PR is ever
+merged into `cram-viz-integration` or just serves as a reviewable diff to
+copy from and then close unmerged is still the user's call.
 
 Branch: `cram-viz-reply-sheet`, based on `cram-viz-integration`.
 Draft PR: [sunava#34](https://github.com/sunava/cognitive_robot_abstract_machine/pull/34).
