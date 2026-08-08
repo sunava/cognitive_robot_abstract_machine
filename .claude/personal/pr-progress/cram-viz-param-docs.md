@@ -1,4 +1,4 @@
-# `cram-viz-param-docs` (fix-my-pr / viz-param-docs — kicked off, draft PR sunava#33)
+# `cram-viz-param-docs` (fix-my-pr / viz-param-docs — implementation done, draft PR sunava#33 awaiting self-review)
 
 ## Plan (approved via plan mode this session)
 
@@ -9,35 +9,55 @@ across `cram_viz/src/cram_viz/{live,onboard,knowledge}/`, `server.py` and
 
 An AST scan off `origin/cram-viz-integration`'s tip found **104 functions
 across 19 files** needing `:param:` additions (close to the manifest's "~95"
-estimate). Breakdown, commit sequence, and the forwarding-`*args`/`**kwargs`
-convention are all in the roadmap section — not duplicating here.
+estimate).
 
-Purely additive documentation, no behavior/signature/type change anywhere,
-so no new tests are needed.
+## Commits landed (all pushed, suite green after each — 195 passed on
+`test/cram_viz_test`)
+
+1. `live/` package — `bridge.py` (27), `hooks.py` (4), `http.py` (3).
+2. `onboard/` package — `demo.py` (21), `bundle_urdf.py` (4).
+3. `knowledge/` package — `knowledge_base.py`, `eql_session.py`,
+   `graph_payload.py`, `scene_bundle.py`, `subgraph.py`,
+   `architecture_scan.py`, `views/__init__.py`, `views/plan_tree.py`,
+   `views/kinematics.py`, `views/architecture.py` (36 total).
+4. `server.py` (7, including `Handler.__init__`, which had no docstring at
+   all before this) + `body_geometry.py` (2).
+
+Final AST re-scan across every swept file: **0 remaining functions with
+missing `:param:` coverage**. `python -m pytest test/cram_viz_test -q` green
+after every commit (195 passed throughout — no behavior change anywhere).
+
+`scripts/format_docstrings.py` run on every modified file, per commit. Its
+docformatter pass has a recurring quirk on `:param format: ...` lines
+specifically (drops the space after the colon before an inline `` `` ``
+literal, e.g. `:param format:``printf``-style...`) — hit twice
+(`live/http.py`'s and `server.py`'s `log_message`) and once more on
+`graph_payload.py`'s `number_format` param; all three fixed by hand
+immediately after the formatting pass, verified via a grep for the pattern
+across every swept file before each commit.
 
 ## Status
 
-- Branch `cram-viz-param-docs` created off `origin/cram-viz-integration`,
-  bootstrap commit pushed.
-- Draft PR [sunava#33](https://github.com/sunava/cognitive_robot_abstract_machine/pull/33)
-  opened against `cram-viz-integration`, no `bug` label (docs-admin item).
-- `plan_item_bootstrap.py open` + `record` run; manifest's `viz-param-docs`
-  entry now has `pull_request_number: 33`, `status: in_progress`.
+- Branch `cram-viz-param-docs`, draft PR
+  [sunava#33](https://github.com/sunava/cognitive_robot_abstract_machine/pull/33)
+  against `cram-viz-integration`, no `bug` label (docs-admin item).
+- All 4 planned commits pushed; manifest still shows `pull_request_number: 33`.
 - Subscribed to tracking issue #19.
 
 ## Next
 
-Implement the 4-commit sequence from the plan (live/ → onboard/ → knowledge/
-→ server.py+body_geometry.py), running `python -m pytest test/cram_viz_test -q`
-and `scripts/format_docstrings.py` after each. Re-run the AST param-coverage
-scan at the end to confirm 0 remaining gaps.
+Implementation is done. Per personal-notes convention, self-review the draft
+PR (it stays draft until reviewed), then mark `viz-param-docs` `status: done`
+in `plan.yaml` and update `roadmap.md`'s item section with the commit list
+above. `viz-reply-sheet` (depends on this item + `viz-bundle-urdf-reuse`,
+both now done) becomes unblockable once this is marked done.
 
 ## Open question carried over, not this item's to resolve
 
 T18, T23, T41 (this item's own review threads) have no description anywhere
 in the plan's triage notes, same situation as T44 on the now-done
-`viz-kb-dataclasses`. Proceeding without the original thread text since this
-item's own `plan.yaml` notes fully describe the required change.
+`viz-kb-dataclasses`. Proceeded without the original thread text since this
+item's own `plan.yaml` notes fully described the required change.
 
 ---
 
