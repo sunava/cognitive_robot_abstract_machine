@@ -1,8 +1,9 @@
-# `cram-viz-kb-dataclasses` (fix-my-pr / viz-kb-dataclasses, draft PR sunava#32)
+# `cram-viz-kb-dataclasses` (fix-my-pr / viz-kb-dataclasses — DONE, merged via sunava#32)
 
-All 7 planned commits landed and pushed; the item's implementation is
-complete. Split across two PRs — see "PR split" below — because #31 merged
-early, mid-implementation.
+Item complete. PR #32 merged into `cram-viz-integration` on 2026-08-08 with
+all 7 planned commits plus one review fixup (8 total on the branch). Split
+across two PRs — see "PR split" below — because #31 merged early,
+mid-implementation.
 
 ## Open question (surfaced in the plan, not yet answered)
 
@@ -62,6 +63,12 @@ remaining six commits — no rebase or new branch needed. `plan.yaml`'s
    dict, private `_RenderedRows` replacing `_result_rows()`'s 3-tuple. Rows
    themselves stay `List[Dict[str, Any]]` (genuinely dynamic per-query
    shape, not a fixed type this package owns).
+8. Review fixup (post-merge-of-#31 PR #32 review): `QueryResult` renamed to
+   `RenderResult` per sunava's own review comment on PR #32 ("might be
+   confusing with eql methods") — `Query`/`Match`/`Evaluable` are krrood's
+   own EQL vocabulary, and dropping "Query" from this package's own result
+   type removes the ambiguity. Replied to the comment and resolved the
+   thread.
 
 Every commit's JSON wire shape verified byte-identical by driving the real
 `server.py` HTTP endpoints (`/api/kb`, `/api/kb/view` for each tab,
@@ -73,7 +80,8 @@ frontend-consumption test coverage.
 
 ## Next
 
-Nothing left in this item's own scope. Watch PR #32 for review; T44 stays
-open for the user or a later pass. `viz-param-docs` (blocked on this item,
-`viz-bridge-injection` and `viz-onboard-dataclasses`, all now done) can
-start once #32 lands.
+Nothing left in this item's own scope — it is done. T44 was never
+identified (no access to upstream `cram2#485` this session); still open for
+the user or a later pass. `viz-param-docs` (blocked on this item,
+`viz-bridge-injection` and `viz-onboard-dataclasses`, all now done) is
+unblocked and can start.
