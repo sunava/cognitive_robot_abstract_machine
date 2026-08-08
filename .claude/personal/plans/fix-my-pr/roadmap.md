@@ -821,3 +821,111 @@ direct frontend-consumption test coverage).
 
 Branch: `cram-viz-kb-dataclasses`, based on `cram-viz-integration`.
 Draft PR: [sunava#31](https://github.com/sunava/cognitive_robot_abstract_machine/pull/31).
+
+## `viz-param-docs` — finish the `:param:` docstrings across `cram_viz` (T18, T23, T41)
+
+Dependencies confirmed merged into `cram-viz-integration` before starting
+(all three: `viz-kb-dataclasses` #32, `viz-bridge-injection` #27,
+`viz-onboard-dataclasses` #24), via `check_dependency_readiness.py` against
+live GitHub state.
+
+**T18, T23 and T41 have no description anywhere in this plan's triage
+notes** — same situation as T44, confirmed via `grep -n "T18\b\|T23\b\|T41\b"
+roadmap.md` returning nothing. Unlike T44, this item's own `plan.yaml` notes
+fully describe the required change ("finish the `:param:` docstrings across
+bridge.py, demo.py and kb.py — roughly 95 functions... the isolated
+mechanical sweep for the rest"), so the scope is actionable without the
+original thread text. Proceeding on that basis; the exact thread text
+remains unresolved for whoever eventually gets upstream access.
+
+**`kb.py` no longer exists.** The item's own notes name it, but
+`viz-kb-split` (merged before this item was plannable) split it into the
+`cram_viz/src/cram_viz/knowledge/` package. This item's scope is that whole
+package, not a single file.
+
+**Sibling check**: the only merged sibling in this item's own `docs-admin`
+track, `viz-submodule-org` (PR #23), is a 3-line URL-only change with zero
+review comments — no docstring-style precedent to inherit beyond the plan's
+already-standard PR description/commit-message shape.
+
+### Scope, found by direct measurement rather than re-deriving from the manifest
+
+Pulled every file under `cram_viz/src/cram_viz/{live,onboard,knowledge}/`,
+`server.py` and `body_geometry.py` off `origin/cram-viz-integration`'s tip
+(post-#32) and ran a one-off AST script: any function with at least one
+parameter (excluding `self`/`cls`) whose docstring is missing that
+parameter's `:param <name>:` line. Result: **104 functions across 19
+files** — close to the manifest's "~95" estimate, drift explained by files
+the split/dataclass items touched since the estimate was written. One
+function (`server.py`'s `Handler.__init__`) has no docstring at all; every
+other flagged function already has a one-line summary but zero or partial
+`:param:` coverage (e.g. `onboard/demo.py`'s `moved()` documents
+`tolerance` but not `first`/`second`). Files with zero findings
+(`knowledge/__init__.py`, `entities.py`, `presets.py`, `enums.py`,
+`subgraph.py`'s dataclasses, `live/runner.py`) are already fully covered.
+
+| File | Functions needing `:param:` |
+| --- | --- |
+| `live/bridge.py` | 27 |
+| `onboard/demo.py` | 21 |
+| `knowledge/knowledge_base.py` | 8 |
+| `server.py` | 7 |
+| `knowledge/views/architecture.py` | 6 |
+| `knowledge/architecture_scan.py` | 5 |
+| `knowledge/eql_session.py` | 5 |
+| `live/hooks.py` | 4 |
+| `onboard/bundle_urdf.py` | 4 |
+| `knowledge/graph_payload.py` | 3 |
+| `knowledge/views/kinematics.py` | 3 |
+| `live/http.py` | 3 |
+| `knowledge/views/__init__.py` | 2 |
+| `knowledge/views/plan_tree.py` | 2 |
+| `body_geometry.py` | 2 |
+| `knowledge/scene_bundle.py` | 1 |
+| `knowledge/subgraph.py` (`add()`) | 1 |
+
+### Design
+
+Purely additive documentation — no behavior, signature, or type change, so
+no new tests are needed (AGENTS.md's TDD rule governs behavior changes;
+this item changes none). For every flagged function:
+
+- One `:param <name>:` line per parameter, in declaration order, in the
+  package's existing terse RST voice (see `bridge.py`'s `claim_hook` or
+  `demo.py`'s `moved` for the target style) — no type info (the hint
+  already carries it), no restating the function name.
+- Monkeypatch wrappers' pure-forwarding `*args`/`**kwargs` (the
+  `original: Callable, ..., *args, **kwargs` shape already established in
+  `hooks.py`/`demo.py`'s `_remember_*`/`_record_tick` methods) get a brief
+  `:param args:`/`:param kwargs:` line ("positional/keyword arguments
+  forwarded to the wrapped call") rather than being skipped — keeps the
+  sweep mechanical instead of a per-function judgment call.
+- `server.py`'s `Handler.__init__` gets a full docstring added (it has
+  none today): one line stating it delegates to the base handler serving
+  from the packaged web root, plus its `:param:` lines.
+- `:return:` lines are untouched — some functions already have them, most
+  `-> None` methods correctly omit them, and this item's scope (per its
+  own title) is `:param:` coverage specifically, not a return-value audit.
+- No new module, no renamed identifier, no import changes.
+
+### Commit sequence (suite green after each; `scripts/format_docstrings.py`
+on every modified file per commit, per this plan's standing convention)
+
+1. `live/` package — `bridge.py`, `hooks.py`, `http.py` (34 functions)
+2. `onboard/` package — `demo.py`, `bundle_urdf.py` (25 functions)
+3. `knowledge/` package — `knowledge_base.py`, `eql_session.py`,
+   `graph_payload.py`, `scene_bundle.py`, `subgraph.py`, `views/__init__.py`,
+   `views/plan_tree.py`, `views/kinematics.py`, `views/architecture.py`,
+   `architecture_scan.py` (36 functions)
+4. `server.py` + `body_geometry.py` (9 functions, including the one missing
+   docstring)
+
+### Verification
+
+- `python -m pytest test/cram_viz_test -q` after each commit.
+- Re-run the AST param-coverage scan after the last commit — 0 remaining
+  functions with missing `:param:` tags across the swept files.
+- `scripts/format_docstrings.py` on every modified file, per commit.
+
+Branch: `cram-viz-param-docs`, based on `cram-viz-integration`.
+Draft PR: [sunava#33](https://github.com/sunava/cognitive_robot_abstract_machine/pull/33).
