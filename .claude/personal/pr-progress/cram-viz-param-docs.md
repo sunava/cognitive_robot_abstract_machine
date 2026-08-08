@@ -46,11 +46,15 @@ across every swept file before each commit.
 
 ## Next
 
-Implementation is done. Per personal-notes convention, self-review the draft
-PR (it stays draft until reviewed), then mark `viz-param-docs` `status: done`
-in `plan.yaml` and update `roadmap.md`'s item section with the commit list
-above. `viz-reply-sheet` (depends on this item + `viz-bundle-urdf-reuse`,
-both now done) becomes unblockable once this is marked done.
+Implementation is done; PR description updated with the commit breakdown and
+checked test-plan boxes. Per personal-notes convention the PR stays draft
+until the user self-reviews it. Per this plan's own convention (matching
+every other item's manifest entry), `status` only flips to `done` once
+GitHub confirms the PR merged — `/plan-dashboard fix-my-pr`'s
+`sync_manifest_status.py` auto-corrects that the next time it runs against
+live state, so no manual edit is needed here. Once merged,
+`viz-reply-sheet` (depends on this item + `viz-bundle-urdf-reuse`, both then
+done) becomes unblockable.
 
 ## Open question carried over, not this item's to resolve
 
