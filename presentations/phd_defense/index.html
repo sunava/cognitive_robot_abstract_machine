@@ -1,0 +1,800 @@
+<title>PhD Defense — Vanessa Hassouna</title>
+<!--
+  PhD defense presentation, executed like a CRAM plan.
+
+  Controls:
+    → / Space / PageDown   next step
+    ← / PageUp             previous step
+    T                      toggle plan / task-tree overlay (click a node to jump)
+    N                      toggle speaker notes
+    F                      fullscreen
+    Home / End             first / last slide
+
+  Everything marked with class="todo" (dashed underline) is a placeholder
+  that must be replaced with the exact wording / numbers from the thesis.
+-->
+<style>
+  /* %% design tokens — single committed theme: porcelain paper + terminal panels */
+  :root {
+    --paper: #f2f3ef;
+    --paper-high: #fbfbf8;
+    --ink: #1b2321;
+    --ink-soft: #4c5a56;
+    --line: #d4d8cf;
+    --terminal: #141b1a;
+    --terminal-high: #1d2624;
+    --terminal-ink: #d9e2dc;
+    --terminal-dim: #71847d;
+    --accent: #d0342a;        /* Universität Bremen red */
+    --accent-deep: #a3271f;
+    --succeeded: #2e7d5b;
+    --executing: #c2801d;
+    --pending: #9aa8a2;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Charter, "Book Antiqua", Georgia, serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { height: 100%; }
+  body {
+    background: var(--terminal);
+    color: var(--ink);
+    font-family: var(--serif);
+    overflow: hidden;
+  }
+
+  /* %% stage scaling — fixed 1280x720 canvas, scaled to viewport */
+  #stage-wrap {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #stage {
+    width: 1280px; height: 720px;
+    position: relative;
+    background: var(--paper);
+    box-shadow: 0 20px 80px rgba(0,0,0,.55);
+    transform-origin: center center;
+    overflow: hidden;
+  }
+
+  /* %% slides */
+  .slide {
+    position: absolute; inset: 0;
+    padding: 64px 96px 88px;
+    display: none;
+    flex-direction: column;
+  }
+  .slide.active { display: flex; }
+
+  .designator {
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--accent-deep);
+    letter-spacing: .02em;
+    margin-bottom: 26px;
+    white-space: nowrap;
+  }
+  .designator::before { content: "cramera> "; color: var(--pending); }
+
+  h1 {
+    font-size: 52px; line-height: 1.12; font-weight: 600;
+    letter-spacing: -.01em; text-wrap: balance;
+    max-width: 20ch;
+  }
+  h2 {
+    font-size: 40px; line-height: 1.15; font-weight: 600;
+    letter-spacing: -.01em; text-wrap: balance;
+    margin-bottom: 34px; max-width: 26ch;
+  }
+  p, li { font-size: 22px; line-height: 1.55; max-width: 62ch; }
+  .lead { font-size: 26px; color: var(--ink); }
+  .muted { color: var(--ink-soft); }
+  ul.plain { list-style: none; }
+  ul.plain > li { margin-bottom: 16px; padding-left: 30px; position: relative; }
+  ul.plain > li::before {
+    content: "▸"; position: absolute; left: 0; top: 1px;
+    color: var(--accent); font-family: var(--mono); font-size: 19px;
+  }
+
+  .cols { display: flex; gap: 56px; align-items: flex-start; flex: 1; min-height: 0; }
+  .cols > div { flex: 1; min-width: 0; }
+
+  .label {
+    font-family: var(--mono); font-size: 13px; text-transform: uppercase;
+    letter-spacing: .14em; color: var(--ink-soft); margin-bottom: 10px;
+  }
+
+  .todo { text-decoration: underline dashed var(--executing) 1.5px; text-underline-offset: 4px; cursor: help; }
+
+  /* %% terminal panels — dark insets carrying CRAM syntax */
+  .terminal {
+    background: var(--terminal); color: var(--terminal-ink);
+    font-family: var(--mono); font-size: 17px; line-height: 1.6;
+    padding: 24px 28px; border-radius: 6px;
+    overflow-x: auto; white-space: pre;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+  }
+  .terminal .kw   { color: #e8b04e; }
+  .terminal .var  { color: #8fc7b3; }
+  .terminal .str  { color: #d98d84; }
+  .terminal .cmt  { color: var(--terminal-dim); }
+  .terminal .ok   { color: #6fbf94; }
+
+  /* %% status keywords */
+  .st-succ { color: var(--succeeded); }
+  .st-exec { color: var(--executing); }
+  .st-pend { color: var(--pending); }
+
+  /* %% tables */
+  table { border-collapse: collapse; width: 100%; font-size: 19px; }
+  th {
+    font-family: var(--mono); font-size: 13px; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--ink-soft); font-weight: 500;
+    text-align: left; padding: 10px 18px 10px 0; border-bottom: 2px solid var(--ink);
+  }
+  td { padding: 12px 18px 12px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.mono, .mono { font-family: var(--mono); font-size: 16.5px; }
+  tr.dim td { color: var(--ink-soft); }
+
+  /* %% cards (action cores grid) */
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .card {
+    background: var(--paper-high); border: 1px solid var(--line);
+    border-radius: 6px; padding: 22px 24px;
+  }
+  .card .glyph { font-size: 30px; margin-bottom: 10px; display: block; }
+  .card h3 { font-size: 21px; font-weight: 600; margin-bottom: 6px; }
+  .card p { font-size: 16.5px; line-height: 1.45; color: var(--ink-soft); }
+  .card.hero { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+  /* %% pipeline diagram */
+  .pipeline { display: flex; align-items: stretch; gap: 0; margin-top: 12px; }
+  .pipe-step {
+    flex: 1; background: var(--paper-high); border: 1px solid var(--line);
+    border-radius: 6px; padding: 20px 20px 18px; position: relative;
+  }
+  .pipe-step + .pipe-step { margin-left: 42px; }
+  .pipe-step + .pipe-step::before {
+    content: "→"; position: absolute; left: -33px; top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono); font-size: 24px; color: var(--accent);
+  }
+  .pipe-step .label { margin-bottom: 8px; }
+  .pipe-step p { font-size: 16.5px; line-height: 1.45; }
+
+  /* %% chrome: progress + status bar */
+  #progress {
+    position: absolute; top: 0; left: 0; height: 4px;
+    background: var(--accent); width: 0%; z-index: 40;
+    transition: width .25s ease;
+  }
+  #statusbar {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 44px;
+    background: var(--terminal); color: var(--terminal-dim);
+    font-family: var(--mono); font-size: 13.5px;
+    display: flex; align-items: center; gap: 26px;
+    padding: 0 28px; z-index: 30;
+  }
+  #statusbar .st { color: var(--executing); }
+  #statusbar .sep { opacity: .35; }
+  #statusbar .hint { margin-left: auto; opacity: .8; }
+
+  /* %% task tree overlay */
+  #tree {
+    position: absolute; inset: 0; z-index: 50;
+    background: var(--terminal);
+    color: var(--terminal-ink);
+    font-family: var(--mono);
+    padding: 48px 72px; overflow-y: auto;
+    display: none;
+  }
+  #tree.open { display: block; }
+  #tree h2 {
+    font-family: var(--mono); font-size: 14px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: .16em;
+    color: var(--terminal-dim); margin-bottom: 24px; max-width: none;
+  }
+  #tree > ul { list-style: none; column-count: 2; column-gap: 64px; }
+  #tree ul ul { list-style: none; }
+  #tree li.phase-group { break-inside: avoid; margin-bottom: 18px; }
+  #tree .phase { color: var(--terminal-ink); font-size: 14.5px; margin-bottom: 4px; }
+  #tree .node {
+    display: flex; gap: 12px; align-items: baseline;
+    padding: 4px 10px; margin-left: 22px; border-radius: 4px;
+    font-size: 13.5px; cursor: pointer; border: 0;
+    background: none; color: var(--terminal-ink);
+    font-family: var(--mono); width: calc(100% - 22px); text-align: left;
+  }
+  #tree .node:hover, #tree .node:focus-visible { background: var(--terminal-high); outline: none; }
+  #tree .node .status { width: 11ch; flex: none; }
+  #tree .node.succ .status { color: var(--succeeded); }
+  #tree .node.exec .status { color: var(--executing); }
+  #tree .node.pend .status { color: var(--pending); }
+  #tree .node.exec { box-shadow: inset 0 0 0 1px var(--executing); }
+
+  /* %% speaker notes */
+  #notes {
+    position: absolute; left: 0; right: 0; bottom: 44px; z-index: 35;
+    background: var(--terminal-high); color: var(--terminal-ink);
+    font-family: var(--serif); font-size: 17px; line-height: 1.5;
+    padding: 16px 28px; display: none; max-height: 200px; overflow-y: auto;
+  }
+  #notes.open { display: block; }
+  #notes::before {
+    content: "speaker notes"; display: block;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--terminal-dim); margin-bottom: 6px;
+  }
+
+  /* %% boot slide */
+  .slide.boot { background: var(--terminal); color: var(--terminal-ink); justify-content: center; }
+  .boot .prompt-line {
+    font-family: var(--mono); font-size: 21px; color: var(--terminal-ink);
+    margin-bottom: 46px; white-space: pre-wrap;
+  }
+  .boot .prompt-line .ps1 { color: var(--terminal-dim); }
+  .boot .cursor {
+    display: inline-block; width: 11px; height: 24px;
+    background: var(--accent); vertical-align: -4px;
+    animation: blink 1.1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .boot h1 { color: var(--paper-high); font-size: 46px; max-width: 24ch; }
+  .boot .todo {
+    text-decoration-thickness: 1px;
+    text-decoration-color: rgba(194, 128, 29, .5);
+  }
+  .boot .sub { margin-top: 30px; font-size: 22px; color: var(--terminal-dim); }
+  .boot .sub b { color: var(--terminal-ink); font-weight: 600; }
+  .boot .meta {
+    margin-top: 56px; font-family: var(--mono); font-size: 15px;
+    color: var(--terminal-dim); line-height: 2;
+  }
+
+  /* %% final slide */
+  .slide.final { background: var(--terminal); color: var(--terminal-ink); justify-content: center; }
+  .final .bigstatus {
+    font-family: var(--mono); font-size: 15px; letter-spacing: .16em;
+    color: var(--succeeded); margin-bottom: 26px;
+  }
+  .final h1 { color: var(--paper-high); }
+  .final .runtime { margin-top: 40px; font-family: var(--mono); font-size: 16px; color: var(--terminal-dim); }
+
+  footer.slide-foot {
+    margin-top: auto; padding-top: 24px;
+    font-family: var(--mono); font-size: 13px; color: var(--ink-soft);
+    display: flex; gap: 24px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #progress { transition: none; }
+    .boot .cursor { animation: none; }
+  }
+
+  /* %% print — one slide per page for PDF export */
+  @media print {
+    body { overflow: visible; background: #fff; }
+    #stage-wrap { position: static; display: block; }
+    #stage { transform: none !important; box-shadow: none; page-break-after: always; }
+    .slide { position: static; display: flex !important; height: 720px; page-break-after: always; }
+    #progress, #statusbar, #tree, #notes { display: none !important; }
+  }
+</style>
+
+<div id="stage-wrap">
+  <div id="stage">
+    <div id="progress"></div>
+
+    <!-- %% slide 0 · boot -->
+    <section class="slide boot" data-phase="initialization" data-node="(boot cramera)"
+             data-notes="Warten bis alle sitzen. Atmen. Dann Enter drücken — der Vortrag 'startet' wie ein CRAM-Plan.">
+      <div class="prompt-line"><span class="ps1">cramera&gt;</span> (perform (an action (type defending-thesis)))<span class="cursor"></span></div>
+      <h1><span class="todo" title="Exakten Thesis-Titel eintragen">Everything Robots Need to Know:
+Actionable Knowledge for Generalized
+Robot Action Plans in Everyday Manipulation</span></h1>
+      <p class="sub">Dissertation Defense · <b>Vanessa Hassouna</b></p>
+      <div class="meta">Universität Bremen · AICOR Institute for Artificial Intelligence<br><span class="todo" title="Datum und Prüfungsausschuss eintragen">⟨Datum⟩ · Committee: ⟨…⟩</span></div>
+    </section>
+
+    <!-- %% slide 1 · motivation -->
+    <section class="slide" data-phase="motivation" data-node="(present motivation)"
+             data-notes="Einstieg über den Alltag: Für Menschen ist 'schneide die Gurke' trivial. Für Roboter steckt in diesem einen Satz eine enorme Menge implizites Wissen.">
+      <div class="designator">(perform (an action (type presenting) (topic motivation)))</div>
+      <h2>Robots that help in everyday life must master everyday actions</h2>
+      <div class="cols">
+        <div>
+          <ul class="plain">
+            <li>Household environments are open-ended: objects, tools, and goals vary from one execution to the next.</li>
+            <li>Instructions written for humans — recipes, wikiHow — leave almost everything unsaid.</li>
+            <li>A robot cannot ask "how, exactly?" — it needs the missing knowledge <em>before</em> it moves.</li>
+          </ul>
+        </div>
+        <div>
+          <div class="label">one verb, many executions</div>
+          <div class="terminal" style="font-size:15.5px">"cut the cucumber"
+
+  <span class="cmt">;; technique?</span>  halving? slicing? dicing?
+  <span class="cmt">;; tool?</span>       chef's knife? bread knife?
+  <span class="cmt">;; peel?</span>       depends on the object
+  <span class="cmt">;; grasp?</span>      depends on all of the above</div>
+        </div>
+      </div>
+      <footer class="slide-foot"><span>motivation</span></footer>
+    </section>
+
+    <!-- %% slide 2 · the gap -->
+    <section class="slide" data-phase="motivation" data-node="(present knowledge-gap)"
+             data-notes="Kernproblem benennen: Zwischen Anweisung und Bewegung liegt eine Wissenslücke. Weder NL-Verstehen allein noch Motion Planning allein schließt sie.">
+      <div class="designator">(perform (an action (type presenting) (topic knowledge-gap)))</div>
+      <h2>The gap between instruction and motion</h2>
+      <div class="cols">
+        <div>
+          <p class="lead">Natural-language instructions <em>underdetermine</em> robot action.</p>
+          <p class="muted" style="margin-top:18px">Even within a single action category such as <em>cutting</em>, execution depends on object properties (a peel, a core), the task variation (halving vs. slicing), the available tools, and the situational context.</p>
+          <p style="margin-top:18px">The knowledge that fills this gap exists — in how-to guides, encyclopedias, and human common sense — but not in a form a robot can execute.</p>
+        </div>
+        <div>
+          <div class="label">what the robot actually needs</div>
+          <div class="terminal"><span class="cmt">;; instruction (human-readable)</span>
+"slice the cucumber"
+
+<span class="cmt">;; body-motion parameters (robot-executable)</span>
+<span class="kw">:technique</span>      <span class="var">slicing</span>
+<span class="kw">:tool</span>           <span class="var">?knife</span>   <span class="cmt">; must afford cutting</span>
+<span class="kw">:cut-position</span>   <span class="var">?pose</span>    <span class="cmt">; repeated along axis</span>
+<span class="kw">:hold-pose</span>      <span class="var">?grasp</span>   <span class="cmt">; stabilise object</span></div>
+        </div>
+      </div>
+      <footer class="slide-foot"><span>motivation</span></footer>
+    </section>
+
+    <!-- %% slide 3 · research questions -->
+    <section class="slide" data-phase="motivation" data-node="(state research-questions)"
+             data-notes="RQs exakt aus der Thesis übernehmen — Formulierung hier ist Platzhalter.">
+      <div class="designator">(perform (an action (type stating) (topic research-questions)))</div>
+      <h2>Research questions</h2>
+      <ul class="plain">
+        <li><b>RQ1</b> — <span class="todo" title="Exakte Formulierung aus der Thesis">How can action knowledge from web sources be represented so that robots can use it to parameterise manipulation actions?</span></li>
+        <li><b>RQ2</b> — <span class="todo" title="Exakte Formulierung aus der Thesis">How can a single generalized action plan cover task variations of an action category (e.g. halving, slicing, dicing for cutting)?</span></li>
+        <li><b>RQ3</b> — <span class="todo" title="Exakte Formulierung aus der Thesis">How can such plans transfer across objects, tools, robots, and environments without re-programming?</span></li>
+      </ul>
+      <footer class="slide-foot"><span>motivation · research questions</span></footer>
+    </section>
+
+    <!-- %% slide 4 · foundations: CRAM -->
+    <section class="slide" data-phase="foundations" data-node="(load cram-foundations)"
+             data-notes="Kurz CRAM erklären: Pläne sind Programme, Designators sind symbolische Beschreibungen, die zur Laufzeit aufgelöst werden. Diese Präsentation macht genau das gerade selbst.">
+      <div class="designator">(perform (an action (type loading) (module cram)))</div>
+      <h2>Foundations: the Cognitive Robot Abstract Machine</h2>
+      <div class="cols">
+        <div>
+          <ul class="plain">
+            <li>In CRAM, robot behaviour is written as <b>generalized plans</b> — programs with decision points left open.</li>
+            <li>Open decisions are expressed as <b>designators</b>: symbolic descriptions of actions, objects, and locations.</li>
+            <li>At runtime, designators are <b>resolved</b> against knowledge and perception — the same plan yields different motions in different situations.</li>
+          </ul>
+          <p class="muted" style="margin-top:14px; font-size:18px">This talk runs on the same idea — every slide is a designator being resolved and performed.</p>
+        </div>
+        <div>
+          <div class="label">an action designator, resolving</div>
+          <div class="terminal">(<span class="kw">an</span> action
+    (<span class="kw">type</span>      cutting)
+    (<span class="kw">object</span>    (<span class="kw">an</span> object (<span class="kw">type</span> cucumber)))
+    (<span class="kw">technique</span> slicing))
+
+<span class="cmt">;; resolved against knowledge &amp; perception:</span>
+<span class="ok">⇒</span> tool:          <span class="var">knife-01</span>
+<span class="ok">⇒</span> arm:           <span class="var">right</span>
+<span class="ok">⇒</span> grasp:         <span class="var">top-grasp</span>
+<span class="ok">⇒</span> cut-positions: <span class="var">(p₁ p₂ … pₙ)</span></div>
+        </div>
+      </div>
+      <footer class="slide-foot"><span>foundations</span></footer>
+    </section>
+
+    <!-- %% slide 5 · approach overview -->
+    <section class="slide" data-phase="approach" data-node="(present approach-pipeline)"
+             data-notes="Die eine Folie, die alles zusammenhält: von der Anweisung über das Wissen zum Plan zur Ausführung. Hierauf immer wieder zurückverweisen.">
+      <div class="designator">(perform (an action (type presenting) (topic approach)))</div>
+      <h2>Approach: from written instructions to robot motion</h2>
+      <div class="pipeline">
+        <div class="pipe-step">
+          <div class="label">instruction</div>
+          <p>Natural-language task from a recipe or how-to guide — "slice the cucumber".</p>
+        </div>
+        <div class="pipe-step">
+          <div class="label">actionable knowledge graph</div>
+          <p>Web-acquired knowledge, structured per action category: objects, tools, task variations, motion parameters.</p>
+        </div>
+        <div class="pipe-step">
+          <div class="label">generalized action plan</div>
+          <p>One CRAM plan per action category; designators query the AKG to fill open parameters.</p>
+        </div>
+        <div class="pipe-step">
+          <div class="label">execution</div>
+          <p>Parameterised motions on simulated and real robots — different objects, tools, variations.</p>
+        </div>
+      </div>
+      <p class="muted" style="margin-top:36px">Knowledge acquisition and plan structure are decoupled: new task variations extend the graph, not the code.</p>
+      <footer class="slide-foot"><span>approach · overview</span></footer>
+    </section>
+
+    <!-- %% slide 6 · action cores -->
+    <section class="slide" data-phase="approach" data-node="(present action-cores)"
+             data-notes="Sechs Action Cores aus der Frontiers-Arbeit. Cutting ist der vertiefte Kern (hero card) — daran wird die Methode durchdekliniert.">
+      <div class="designator">(perform (an action (type presenting) (topic action-cores)))</div>
+      <h2>Six action cores cover everyday meal preparation</h2>
+      <div class="grid3">
+        <div class="card hero"><span class="glyph">🔪</span><h3>Cutting</h3><p>halving · slicing · dicing · quartering — the deep-dive category of this thesis</p></div>
+        <div class="card"><span class="glyph">🫗</span><h3>Pouring</h3><p>containers, fill levels, target vessels</p></div>
+        <div class="card"><span class="glyph">🥣</span><h3>Mixing</h3><p>whisking, stirring, kneading motions</p></div>
+        <div class="card"><span class="glyph">🥕</span><h3>Preparing</h3><p>peeling, washing, readying ingredients</p></div>
+        <div class="card"><span class="glyph">🤖</span><h3>Pick &amp; Place</h3><p>fetching, transporting, arranging</p></div>
+        <div class="card"><span class="glyph">🍳</span><h3>Cook &amp; Cool</h3><p>heat and temperature state changes</p></div>
+      </div>
+      <p class="muted" style="margin-top:26px">Recipe instructions map into these categories; each category owns one generalized plan.</p>
+      <footer class="slide-foot"><span>approach · action cores</span></footer>
+    </section>
+
+    <!-- %% slide 7 · AKG -->
+    <section class="slide" data-phase="approach" data-node="(present actionable-knowledge-graph)"
+             data-notes="AKG-Struktur: was steht in den Knoten, wo kommt es her (WikiHow, Rezepte, Ontologien), und was macht es 'actionable' — es endet in Bewegungsparametern.">
+      <div class="designator">(perform (an action (type presenting) (topic actionable-knowledge-graphs)))</div>
+      <h2>Actionable Knowledge Graphs make web knowledge executable</h2>
+      <div class="cols">
+        <div>
+          <ul class="plain">
+            <li>Built from web sources — how-to guides, recipes, lexical resources — and curated ontologies.</li>
+            <li>Per action category, the graph links <b>task variations</b>, <b>object properties</b>, and <b>tools</b> to <b>body-motion parameters</b>.</li>
+            <li><em>Actionable</em>: every path through the graph terminates in parameters a plan can execute — not just facts <em>about</em> the action.</li>
+          </ul>
+        </div>
+        <div>
+          <div class="label">a path through the cutting graph</div>
+          <div class="terminal">cutting
+ ├─ variation: <span class="var">slicing</span>
+ │   ├─ cut-position:  <span class="var">along object axis</span>
+ │   └─ repetitions:   <span class="var">many</span>
+ ├─ object: <span class="var">cucumber</span>
+ │   ├─ peel:          <span class="var">edible → keep</span>
+ │   └─ core:          <span class="var">none</span>
+ └─ tool: <span class="var">knife</span>
+     └─ affordance:    <span class="var">cutting-edge</span></div>
+        </div>
+      </div>
+      <footer class="slide-foot"><span>approach · knowledge representation</span></footer>
+    </section>
+
+    <!-- %% slide 8 · generalized cutting plan -->
+    <section class="slide" data-phase="approach" data-node="(present generalized-cutting-plan)"
+             data-notes="Herzstück: EIN Plan, Variationen entstehen nur durch Parameter aus dem Graphen. Tabelle zeigt, wie wenig sich zwischen den Variationen strukturell ändert.">
+      <div class="designator">(perform (an action (type presenting) (topic generalized-plan)))</div>
+      <h2>One cutting plan, all task variations</h2>
+      <table>
+        <thead><tr><th>variation</th><th>cut position</th><th>repetitions</th><th>what changes in the plan</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">halving</td><td>centre of the object</td><td>1</td><td>nothing — parameters only</td></tr>
+          <tr><td class="mono">quartering</td><td>centre, then centres of halves</td><td>3</td><td>nothing — parameters only</td></tr>
+          <tr><td class="mono">slicing</td><td>stepped along the object axis</td><td>n ∝ object length</td><td>nothing — parameters only</td></tr>
+          <tr><td class="mono">dicing</td><td>slicing, then orthogonal pass</td><td>n × m</td><td>nothing — parameters only</td></tr>
+        </tbody>
+      </table>
+      <p class="muted" style="margin-top:30px">The plan body encodes <em>how cutting works</em>; the knowledge graph supplies <em>how this cut, on this object, with this tool</em> works.</p>
+      <footer class="slide-foot"><span>approach · generalized plans</span></footer>
+    </section>
+
+    <!-- %% slide 9 · knowledge to motion -->
+    <section class="slide" data-phase="approach" data-node="(resolve motion-parameters)"
+             data-notes="Wie Wissen zur Bewegung wird: Designator-Auflösung fragt den AKG ab, Ergebnis fließt in Motion Designators. Hier ggf. Video-Standbild der echten Ausführung einfügen.">
+      <div class="designator">(perform (an action (type presenting) (topic parameter-resolution)))</div>
+      <h2>From graph query to body motion</h2>
+      <div class="cols">
+        <div>
+          <div class="label">plan side</div>
+          <div class="terminal">(<span class="kw">perform</span>
+  (<span class="kw">an</span> action
+    (<span class="kw">type</span> cutting)
+    (<span class="kw">object</span> ?obj)
+    (<span class="kw">technique</span> ?var)))   <span class="cmt">; open</span></div>
+        </div>
+        <div>
+          <div class="label">knowledge side</div>
+          <div class="terminal"><span class="cmt">;; AKG query at runtime</span>
+technique(?var, cut_position(?p)),
+object(?obj, peel(?peel)),
+tool(?t, affords(cutting))
+
+<span class="ok">⇒ motion designators, fully ground</span></div>
+        </div>
+      </div>
+      <p class="muted" style="margin-top:30px"><span class="todo" title="Hier ein Foto/Standbild der realen Ausführung aus der Thesis einfügen">⟨Standbild: Roboter schneidet — aus Kapitel „Execution" einfügen⟩</span></p>
+      <footer class="slide-foot"><span>approach · execution</span></footer>
+    </section>
+
+    <!-- %% slide 10 · evaluation setup -->
+    <section class="slide" data-phase="evaluation" data-node="(setup experiments)"
+             data-notes="Setup exakt aus der Thesis: welche Roboter (PR2? HSR? Stretch?), welche Simulation, welche Objekte, wie viele Läufe.">
+      <div class="designator">(perform (an action (type presenting) (topic experimental-setup)))</div>
+      <h2>Evaluation: does the knowledge generalize?</h2>
+      <div class="cols">
+        <div>
+          <div class="label">dimensions of variation</div>
+          <ul class="plain">
+            <li><b>Task variations</b> — halving, slicing, dicing, … from one plan</li>
+            <li><b>Objects</b> — <span class="todo" title="Objekte aus der Thesis">⟨n⟩ food objects with differing properties (peel, core, size)</span></li>
+            <li><b>Robots</b> — <span class="todo" title="Roboter aus der Thesis">⟨PR2, … — Plattformen aus der Thesis⟩</span></li>
+            <li><b>Environments</b> — simulation and real kitchen lab</li>
+          </ul>
+        </div>
+        <div>
+          <div class="label">setup</div>
+          <div class="terminal"><span class="cmt">;; experiment matrix (Platzhalter)</span>
+robots:      <span class="var">⟨…⟩</span>
+objects:     <span class="var">⟨…⟩</span>
+variations:  <span class="var">halving slicing dicing …</span>
+runs:        <span class="var">⟨n⟩ per cell</span>
+measure:     <span class="var">success / plan reuse / …</span></div>
+        </div>
+      </div>
+      <footer class="slide-foot"><span>evaluation · setup</span></footer>
+    </section>
+
+    <!-- %% slide 11 · results -->
+    <section class="slide" data-phase="evaluation" data-node="(report results)"
+             data-notes="Kernzahlen aus der Thesis eintragen. Eine Zahl pro Aussage, nicht mehr. Auf Nachfragen die Backup-Folien nutzen.">
+      <div class="designator">(perform (an action (type reporting) (topic results)))</div>
+      <h2>Results</h2>
+      <ul class="plain">
+        <li><span class="todo" title="Kernergebnis 1 mit Zahl aus der Thesis">⟨Kernergebnis 1 — z. B.: ein generalisierter Cutting-Plan führt k Task-Variationen auf n Objekten aus, Erfolgsrate x %⟩</span></li>
+        <li><span class="todo" title="Kernergebnis 2 mit Zahl aus der Thesis">⟨Kernergebnis 2 — z. B.: Wissenserweiterung ohne Plan-Änderung: neue Variation durch m neue Graph-Knoten⟩</span></li>
+        <li><span class="todo" title="Kernergebnis 3 mit Zahl aus der Thesis">⟨Kernergebnis 3 — z. B.: Transfer auf zweiten Roboter / reale Ausführung⟩</span></li>
+      </ul>
+      <p class="muted" style="margin-top:26px"><span class="todo" title="Zentrale Ergebnis-Grafik der Thesis einfügen">⟨Zentrale Ergebnis-Abbildung aus der Thesis hier einfügen⟩</span></p>
+      <footer class="slide-foot"><span>evaluation · results</span></footer>
+    </section>
+
+    <!-- %% slide 12 · contributions -->
+    <section class="slide" data-phase="conclusion" data-node="(state contributions)"
+             data-notes="Contributions exakt wie in der Thesis nummeriert — die Kommission prüft die Übereinstimmung.">
+      <div class="designator">(perform (an action (type stating) (topic contributions)))</div>
+      <h2>Contributions</h2>
+      <ul class="plain">
+        <li><b>C1</b> — <span class="todo" title="Aus der Thesis übernehmen">A methodology for constructing Actionable Knowledge Graphs from web knowledge for robotic manipulation.</span></li>
+        <li><b>C2</b> — <span class="todo" title="Aus der Thesis übernehmen">Generalized action plans whose task variations are driven entirely by knowledge, demonstrated in depth for cutting.</span></li>
+        <li><b>C3</b> — <span class="todo" title="Aus der Thesis übernehmen">An integration of both into the CRAM/PyCRAM ecosystem, evaluated in simulation and on real robots.</span></li>
+        <li><b>C4</b> — <span class="todo" title="Aus der Thesis übernehmen">⟨weitere Contribution / Open-Source-Beitrag⟩</span></li>
+      </ul>
+      <footer class="slide-foot"><span>conclusion · contributions</span></footer>
+    </section>
+
+    <!-- %% slide 13 · limitations & future work -->
+    <section class="slide" data-phase="conclusion" data-node="(discuss future-work)"
+             data-notes="Limitations aktiv benennen, bevor die Kommission es tut — nimmt Fragen den Wind aus den Segeln.">
+      <div class="designator">(perform (an action (type discussing) (topic future-work)))</div>
+      <h2>Limitations &amp; future work</h2>
+      <div class="cols">
+        <div>
+          <div class="label">honest limitations</div>
+          <ul class="plain">
+            <li><span class="todo" title="Aus der Thesis">⟨Abdeckung der Aktionskategorien / Objektvielfalt⟩</span></li>
+            <li><span class="todo" title="Aus der Thesis">⟨Qualität &amp; Kuration des Webwissens⟩</span></li>
+            <li><span class="todo" title="Aus der Thesis">⟨Wahrnehmungs-/Ausführungsannahmen⟩</span></li>
+          </ul>
+        </div>
+        <div>
+          <div class="label">where this goes next</div>
+          <ul class="plain">
+            <li>Scaling knowledge acquisition — LLM-assisted graph construction with symbolic validation</li>
+            <li>More action cores at cutting-level depth</li>
+            <li>Closing the loop: execution experience feeding back into the graph</li>
+          </ul>
+        </div>
+      </div>
+      <footer class="slide-foot"><span>conclusion · outlook</span></footer>
+    </section>
+
+    <!-- %% slide 14 · conclusion -->
+    <section class="slide" data-phase="conclusion" data-node="(conclude)"
+             data-notes="Der eine Satz, den die Kommission behalten soll: Wissen, nicht Code, trägt die Variation.">
+      <div class="designator">(perform (an action (type concluding)))</div>
+      <h2>Conclusion</h2>
+      <p class="lead">Robots can execute underdetermined everyday instructions when <b>web knowledge is made actionable</b> and <b>plans are written to be general</b> — variation lives in the knowledge, not in the code.</p>
+      <div style="margin-top:44px">
+        <div class="label">the pipeline, once more</div>
+        <p class="mono muted" style="font-size:17px">instruction → actionable knowledge graph → generalized plan → robot motion</p>
+      </div>
+      <footer class="slide-foot"><span>conclusion</span></footer>
+    </section>
+
+    <!-- %% slide 15 · final -->
+    <section class="slide final" data-phase="conclusion" data-node="(await questions)"
+             data-notes="Ruhig stehen bleiben, lächeln. Der Timer unten zeigt die echte Vortragsdauer.">
+      <div class="bigstatus">▸ PLAN SUCCEEDED — ALL SUBTASKS COMPLETED</div>
+      <h1>Thank you.</h1>
+      <p class="sub" style="margin-top:26px; color: var(--terminal-dim); font-size:22px">(perform (an action (type answering-questions) (duration unbounded)))</p>
+      <div class="runtime" id="runtime">talk runtime — 00:00</div>
+    </section>
+
+    <!-- %% backup slides -->
+    <section class="slide" data-phase="backup" data-node="(backup cram-architecture)"
+             data-notes="Nur auf Nachfrage: aktueller CRAM-Stack aus dem Monorepo.">
+      <div class="designator">(perform (an action (type presenting) (topic cram-architecture) (mode backup)))</div>
+      <h2>Backup: the CRAM ecosystem today</h2>
+      <table>
+        <tbody>
+          <tr><td class="mono">CoraPlex</td><td>central executive — interprets and executes plans in the CRAM plan language</td></tr>
+          <tr><td class="mono">Semantic Digital Twin</td><td>world representation fusing sensor data, robot models, semantic annotations</td></tr>
+          <tr><td class="mono">Giskardpy</td><td>constraint- and optimisation-based whole-body motion control</td></tr>
+          <tr><td class="mono">KRROOD</td><td>knowledge representation &amp; reasoning through object-oriented abstractions</td></tr>
+          <tr><td class="mono">probabilistic_model / random_events</td><td>unified probabilistic reasoning layer</td></tr>
+        </tbody>
+      </table>
+      <footer class="slide-foot"><span>backup</span></footer>
+    </section>
+
+    <section class="slide" data-phase="backup" data-node="(backup akg-detail)"
+             data-notes="Nur auf Nachfrage: Detailpfad durch den Graphen, z. B. Objekt mit Schale.">
+      <div class="designator">(perform (an action (type presenting) (topic akg-detail) (mode backup)))</div>
+      <h2>Backup: object properties steer the plan</h2>
+      <div class="terminal" style="font-size:18px">cutting(object: <span class="var">pineapple</span>)
+ ├─ peel: <span class="var">inedible</span>        <span class="ok">⇒ insert peeling subtask before cutting</span>
+ ├─ core: <span class="var">inedible</span>        <span class="ok">⇒ insert coring subtask after halving</span>
+ └─ size: <span class="var">large</span>           <span class="ok">⇒ two-handed stabilisation</span>
+
+cutting(object: <span class="var">cucumber</span>)
+ ├─ peel: <span class="var">edible</span>          <span class="ok">⇒ no extra subtask</span>
+ └─ core: <span class="var">none</span>            <span class="ok">⇒ plain slicing</span></div>
+      <footer class="slide-foot"><span>backup</span></footer>
+    </section>
+
+    <section class="slide" data-phase="backup" data-node="(backup publications)"
+             data-notes="Publikationsliste — bei Fragen nach Vorveröffentlichungen. Liste vervollständigen!">
+      <div class="designator">(perform (an action (type listing) (topic publications) (mode backup)))</div>
+      <h2>Backup: publications</h2>
+      <ul class="plain">
+        <li>Hassouna et&nbsp;al. — <em>Everything robots need to know about cooking actions: creating actionable knowledge graphs to support robotic meal preparation</em>, Frontiers in Robotics and AI, 2025.</li>
+        <li>Pomarlan, Hassouna et&nbsp;al. — <em>Cutting Events: Towards Autonomous Plan Adaption by Robotic Agents through Image-Schematic Event Segmentation</em>, K-CAP 2021. <span class="todo" title="Autorenreihenfolge prüfen">⟨Autorenreihenfolge prüfen⟩</span></li>
+        <li><span class="todo" title="Restliche Publikationen aus der Thesis eintragen">⟨weitere Publikationen aus der Publikationsliste der Thesis⟩</span></li>
+      </ul>
+      <footer class="slide-foot"><span>backup</span></footer>
+    </section>
+
+    <div id="notes"></div>
+    <div id="statusbar">
+      <span>cramera&nbsp;::&nbsp;<span class="st" id="sb-status">BOOT</span></span>
+      <span class="sep">│</span>
+      <span id="sb-task">task 0/0</span>
+      <span class="sep">│</span>
+      <span id="sb-node">(boot cramera)</span>
+      <span class="hint">T plan&nbsp;&nbsp;N notes&nbsp;&nbsp;F fullscreen&nbsp;&nbsp;→ next</span>
+    </div>
+
+    <div id="tree" role="dialog" aria-label="plan overview">
+      <h2>top-level plan — (defend-thesis vanessa)</h2>
+      <ul id="tree-list"></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  // %% presentation engine — the talk as a plan execution
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const mainCount = slides.filter(s => s.dataset.phase !== 'backup').length;
+  let current = 0;
+  let startedAt = null;
+
+  const progress = document.getElementById('progress');
+  const sbStatus = document.getElementById('sb-status');
+  const sbTask = document.getElementById('sb-task');
+  const sbNode = document.getElementById('sb-node');
+  const notes = document.getElementById('notes');
+  const tree = document.getElementById('tree');
+  const treeList = document.getElementById('tree-list');
+
+  // %% task tree construction from slide metadata
+  const phases = [];
+  slides.forEach((slide, index) => {
+    const phase = slide.dataset.phase;
+    if (!phases.length || phases[phases.length - 1].name !== phase) {
+      phases.push({ name: phase, items: [] });
+    }
+    phases[phases.length - 1].items.push({ index, node: slide.dataset.node });
+  });
+
+  function renderTree() {
+    treeList.innerHTML = '';
+    phases.forEach(phase => {
+      const groupLi = document.createElement('li');
+      groupLi.className = 'phase-group';
+      const phaseLabel = document.createElement('div');
+      phaseLabel.className = 'phase';
+      phaseLabel.textContent = '(' + phase.name + ')';
+      groupLi.appendChild(phaseLabel);
+      const nodeList = document.createElement('ul');
+      phase.items.forEach(item => {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        const state = item.index < current ? 'succ' : item.index === current ? 'exec' : 'pend';
+        const word = { succ: 'SUCCEEDED', exec: 'EXECUTING', pend: 'PENDING' }[state];
+        btn.className = 'node ' + state;
+        btn.innerHTML = '<span class="status">' + word + '</span><span>' + item.node + '</span>';
+        btn.addEventListener('click', () => { goTo(item.index); toggleTree(false); });
+        li.appendChild(btn);
+        nodeList.appendChild(li);
+      });
+      groupLi.appendChild(nodeList);
+      treeList.appendChild(groupLi);
+    });
+  }
+
+  // %% navigation
+  function goTo(index) {
+    if (index < 0 || index >= slides.length) return;
+    slides[current].classList.remove('active');
+    current = index;
+    slides[current].classList.add('active');
+    if (current > 0 && !startedAt) startedAt = Date.now();
+
+    const isBackup = slides[current].dataset.phase === 'backup';
+    const shown = Math.min(current + 1, mainCount);
+    progress.style.width = (isBackup ? 100 : (current / (mainCount - 1)) * 100) + '%';
+    sbStatus.textContent = current === 0 ? 'BOOT'
+      : current === mainCount - 1 ? 'SUCCEEDED'
+      : isBackup ? 'BACKUP' : 'EXECUTING';
+    sbStatus.style.color = current === mainCount - 1 ? 'var(--succeeded)'
+      : isBackup ? 'var(--pending)' : 'var(--executing)';
+    sbTask.textContent = isBackup ? 'backup' : 'task ' + shown + '/' + mainCount;
+    sbNode.textContent = slides[current].dataset.node;
+    notes.textContent = slides[current].dataset.notes || '';
+    history.replaceState(null, '', '#' + current);
+    if (tree.classList.contains('open')) renderTree();
+  }
+
+  function toggleTree(force) {
+    const open = force !== undefined ? force : !tree.classList.contains('open');
+    tree.classList.toggle('open', open);
+    if (open) renderTree();
+  }
+
+  // %% runtime clock on the final slide
+  setInterval(() => {
+    const runtime = document.getElementById('runtime');
+    if (!runtime || !startedAt) return;
+    const seconds = Math.floor((Date.now() - startedAt) / 1000);
+    const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+    const ss = String(seconds % 60).padStart(2, '0');
+    runtime.textContent = 'talk runtime — ' + mm + ':' + ss;
+  }, 1000);
+
+  // %% input handling
+  document.addEventListener('keydown', event => {
+    if (event.key === 'ArrowRight' || event.key === ' ' || event.key === 'PageDown') { event.preventDefault(); goTo(current + 1); }
+    else if (event.key === 'ArrowLeft' || event.key === 'PageUp') { event.preventDefault(); goTo(current - 1); }
+    else if (event.key === 'Home') goTo(0);
+    else if (event.key === 'End') goTo(mainCount - 1);
+    else if (event.key === 't' || event.key === 'T') toggleTree();
+    else if (event.key === 'n' || event.key === 'N') notes.classList.toggle('open');
+    else if (event.key === 'f' || event.key === 'F') {
+      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    }
+    else if (event.key === 'Escape') toggleTree(false);
+  });
+  document.getElementById('stage').addEventListener('click', event => {
+    if (tree.classList.contains('open') || event.target.closest('#statusbar, #notes, a, button')) return;
+    goTo(current + 1);
+  });
+
+  // %% stage scaling
+  function rescale() {
+    const scale = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    document.getElementById('stage').style.transform = 'scale(' + scale + ')';
+  }
+  window.addEventListener('resize', rescale);
+  rescale();
+
+  // %% init from URL hash
+  const initial = parseInt(location.hash.slice(1), 10);
+  slides[0].classList.add('active');
+  goTo(Number.isFinite(initial) && initial > 0 ? initial : 0);
+</script>
