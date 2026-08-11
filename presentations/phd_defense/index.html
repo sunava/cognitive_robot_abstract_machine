@@ -96,6 +96,7 @@
     content: "▸"; position: absolute; left: 0; top: 1px;
     color: var(--accent); font-family: var(--mono); font-size: 19px;
   }
+  ul.plain.compact > li { font-size: 18px; line-height: 1.45; margin-bottom: 12px; max-width: 72ch; }
 
   .cols { display: flex; gap: 56px; align-items: flex-start; flex: 1; min-height: 0; }
   .cols > div { flex: 1; min-width: 0; }
@@ -433,7 +434,7 @@ Robot Action Plans in Everyday Manipulation</span></h1>
         <div class="card"><span class="glyph">🤖</span><h3>Pick &amp; Place</h3><p>fetching, transporting, arranging</p></div>
         <div class="card"><span class="glyph">🍳</span><h3>Cook &amp; Cool</h3><p>heat and temperature state changes</p></div>
       </div>
-      <p class="muted" style="margin-top:26px">Recipe instructions map into these categories; each category owns one generalized plan.</p>
+      <p class="muted" style="margin-top:26px">Verb matching over the Recipe1M+ corpus (&gt;1&nbsp;M recipes) maps 76.5&nbsp;% of instruction verbs directly onto these cores; a neuro-symbolic step with an LLM handles the rest. Each core owns one generalized plan.</p>
       <footer class="slide-foot"><span>approach · action cores</span></footer>
     </section>
 
@@ -441,13 +442,13 @@ Robot Action Plans in Everyday Manipulation</span></h1>
     <section class="slide" data-phase="approach" data-node="(present actionable-knowledge-graph)"
              data-notes="AKG-Struktur: was steht in den Knoten, wo kommt es her (WikiHow, Rezepte, Ontologien), und was macht es 'actionable' — es endet in Bewegungsparametern.">
       <div class="designator">(perform (an action (type presenting) (topic actionable-knowledge-graphs)))</div>
-      <h2>Actionable Knowledge Graphs make web knowledge executable</h2>
+      <h2 style="max-width:32ch">Actionable Knowledge Graphs make web knowledge executable</h2>
       <div class="cols">
         <div>
           <ul class="plain">
-            <li>Built from web sources — how-to guides, recipes, lexical resources — and curated ontologies.</li>
-            <li>Per action category, the graph links <b>task variations</b>, <b>object properties</b>, and <b>tools</b> to <b>body-motion parameters</b>.</li>
-            <li><em>Actionable</em>: every path through the graph terminates in parameters a plan can execute — not just facts <em>about</em> the action.</li>
+            <li>Built from web sources — how-to guides, recipes, lexical resources — grounded in the SOMA ontology (SOMA_HOME, SOMA_DFL).</li>
+            <li>Action cores subdivide into <b>action groups</b>: motion parameterisations linking <b>task variations</b>, <b>object properties</b>, and <b>tools</b>.</li>
+            <li><em>Actionable</em>: every path ends in parameters a plan can execute — not just facts <em>about</em> the action.</li>
           </ul>
         </div>
         <div>
@@ -652,9 +653,11 @@ cutting(object: <span class="var">cucumber</span>)
              data-notes="Publikationsliste — bei Fragen nach Vorveröffentlichungen. Liste vervollständigen!">
       <div class="designator">(perform (an action (type listing) (topic publications) (mode backup)))</div>
       <h2>Backup: publications</h2>
-      <ul class="plain">
-        <li>Hassouna et&nbsp;al. — <em>Everything robots need to know about cooking actions: creating actionable knowledge graphs to support robotic meal preparation</em>, Frontiers in Robotics and AI, 2025.</li>
-        <li>Pomarlan, Hassouna et&nbsp;al. — <em>Cutting Events: Towards Autonomous Plan Adaption by Robotic Agents through Image-Schematic Event Segmentation</em>, K-CAP 2021. <span class="todo" title="Autorenreihenfolge prüfen">⟨Autorenreihenfolge prüfen⟩</span></li>
+      <ul class="plain compact">
+        <li>Kümpel, Scheibl, Töberg, <b>Hassouna</b>, Cimiano, Wrede, Beetz — <em>Everything robots need to know about cooking actions: creating actionable knowledge graphs to support robotic meal preparation</em>, Frontiers in Robotics and AI, 2025.</li>
+        <li><em>Towards a Knowledge Engineering Methodology for Flexible Robot Manipulation in Everyday Tasks</em>, AKR³ Workshop @ ESWC 2024. <span class="todo" title="Autorenreihenfolge prüfen">⟨Autorenreihenfolge⟩</span></li>
+        <li><b>Hassouna</b>, Rosin, Sun et&nbsp;al. (shared first authorship) — <em>A Framework for Adapting Human-Robot Interaction to Diverse User Groups</em>, ICSR 2024.</li>
+        <li><em>Cutting Events: Towards Autonomous Plan Adaption by Robotic Agents through Image-Schematic Event Segmentation</em>, K-CAP 2021. <span class="todo" title="Autorenreihenfolge prüfen">⟨Autorenreihenfolge⟩</span></li>
         <li><span class="todo" title="Restliche Publikationen aus der Thesis eintragen">⟨weitere Publikationen aus der Publikationsliste der Thesis⟩</span></li>
       </ul>
       <footer class="slide-foot"><span>backup</span></footer>
