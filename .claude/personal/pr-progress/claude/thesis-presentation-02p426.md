@@ -10,24 +10,29 @@ Done:
   ~10 fps as sparse joint tracks (~210 KB) and replayed with a JS FK
   player: robot switcher, plan-step chips, scrub/play/speed, orbit camera,
   base-path ribbon, light/dark themes. Later slides renumbered 15-21.
-- v2 after user feedback ("not as good as my cramera viewer"): rendering
-  upgraded from box proxies to REAL URDF visual meshes in a raw-WebGL
-  renderer inside the deck (no libs): meshes decimated to <=1300 tris via
-  fast-simplification, uint16-quantized, base64 meshlib ~3.9 MB / 240k
-  tris shared across scenes; flat shading via derivatives, planar contact
-  shadows, checkerboard-shader floor, wheel zoom; env colors from URDF
-  materials + DAE texture means, robots keep shell/joint scheme (URDF
-  robot colors are segmentation debug colors); apartment FK cached
-  (static); SwiftShader detected -> lower dpr. Deck now ~4.4 MB.
-  Verified all robots + dark mode headless; software-render fps is slow
-  in headless but any real GPU handles 240k tris easily.
-- Scripts in session scratchpad: compile_scene.py (tracks), compile_meshes.py
-  (meshlib), fk_preview.py, screenshot_deck.py, episode_player_gl.js
-  (source of the injected player). Regenerate: clone cram2/cram-scenes,
-  run both compilers, re-inject via the python snippets in the session.
+- v2/v3 after user feedback ("not as good as my cramera viewer"): raw-WebGL
+  renderer inside the deck (no libs) with REAL URDF visual meshes.
+  v3 (current): per-vertex smooth normals (int8) + per-vertex colors
+  sampled from the DAE baseColorTextures at UVs (scipy cKDTree carries
+  colors through fast-simplification decimation, cap 1300 tris/link);
+  robots get their true textured look (PR2 blue head display, HSR dark
+  body, TIAGo white), env colors from textures or URDF materials; smooth
+  two-light lambert + mild gamma, planar contact shadows, checkerboard
+  floor shader, wheel zoom, object legend in HUD (like cramera viewer).
+  meshlib.json ~6.5 MB / 260k tris shared across scenes; deck ~6.9 MB.
+  Walls/windows compiled with w:1 flag but skipped at draw (front-cull
+  attempt left edge artifacts) -> future ghosted-walls toggle possible.
+  Apartment FK cached; SwiftShader detected -> dpr 0.8 (headless preview
+  is slow, any real GPU is fine).
+- Scripts in session scratchpad: compile_scene.py (tracks),
+  compile_meshes_v3.py (meshlib v3; compile_meshes.py = v2, obsolete),
+  fk_preview.py, screenshot_deck.py, episode_player_gl.js (source of the
+  injected player; block-replace between the 'recorded cramera episodes'
+  marker and '/* -- theme switching' in defense.html, injecting EPISODES
+  + MESHLIB json). Regenerate: clone cram2/cram-scenes, run compilers.
 
 Next (if asked):
 - Optionally add Unitree_warehouse / tracy_lab / garmi episodes (compilers
   handle any bundle; garmi/tracy have no apartment env).
-- Walls/windows/ceiling are skipped for the dollhouse view; could add a
-  ghosted-walls toggle.
+- Ghosted-walls toggle (data already flagged w:1); background image toggle
+  like the cramera viewer.
