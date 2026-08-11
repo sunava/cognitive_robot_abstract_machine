@@ -1,7 +1,17 @@
-# Branch: claude/thesis-presentation-02p426 — defense deck (artifact work, no PR)
+# Branch: claude/thesis-presentation-02p426 — defense deck
 
-Deliverable is the defense-deck Artifact, not repo code:
-https://claude.ai/code/artifact/f96ca126-240d-4cc6-8f91-f9b14cb20de6
+Two deliverables now:
+1. LOCAL deck (primary, user request "lass uns das lokal machen"): defense/
+   on this branch — deck HTML + deck_player.js (rendering/URDF/material core
+   reused from cramera panel.js, vendor/ copied from cram-viz-integration
+   branch). Loads full bundles (meshes+textures+full trajectory) from
+   defense/scenes (clone/symlink of cram2/cram-scenes, gitignored). Title
+   slide background + episodes slide share ONE viewer, re-parented on slide
+   change (DeckPlayer.onSlide); title = autoRotate ambient. Run:
+   cd defense && git clone https://github.com/cram2/cram-scenes scenes &&
+   python3 -m http.server 8123. Committed + pushed.
+2. Artifact (shareable fallback, self-contained v3 vertex-color renderer):
+   https://claude.ai/code/artifact/f96ca126-240d-4cc6-8f91-f9b14cb20de6
 
 Done:
 - 20-slide "cram_viewer" deck (earlier sessions).
