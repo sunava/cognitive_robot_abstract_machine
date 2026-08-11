@@ -313,6 +313,8 @@
 
   // %% playback (from cramera, dt-based so speed is adjustable)
   let playing = true, playhead = 0, speed = 2, scrubbing = false, lastSegIdx = -1;
+  let sweep = null;              // {t0, prev, amount} while the title sweep runs
+  let onTitle = false;
   const _p0 = new THREE.Vector3(), _p1 = new THREE.Vector3();
   const _q0 = new THREE.Quaternion(), _q1 = new THREE.Quaternion();
   function setPose(obj, a, b, t) {
@@ -428,6 +430,7 @@
       applyFrame(slot, 0);
       fillHud(slot);
       frameCamera(slot);
+      if (onTitle) startSweep();
       needsRender = true;
     });
   }
@@ -485,6 +488,14 @@
       needsRender = true;
     }
     const moved = controls.update();
+    if (sweep) {
+      const u = Math.min(1, (clock.getElapsedTime() - sweep.t0) / TITLE_SWEEP_SECONDS);
+      const eased = u * u * (3 - 2 * u);
+      rotateAroundTarget((eased - sweep.prev) * sweep.amount);
+      sweep.prev = eased;
+      if (u >= 1) sweep = null;
+      needsRender = true;
+    }
     if (active && active.traj && playing && !scrubbing) {
       const fps = active.traj.fps || active.traj.framesPerSecond || 30;
       playhead += dt * fps * speed;
@@ -536,11 +547,29 @@
   });
 
   // %% slide routing: title slide shows the ambient view, episode slide the HUD one
+  //: title-slide camera sweep: total angle in degrees and duration in seconds —
+  //: the camera pans once from left to right, eases out and then holds still
+  const TITLE_SWEEP_DEGREES = 24;
+  const TITLE_SWEEP_SECONDS = 22;
+  const _sweepUp = new THREE.Vector3(0, 1, 0);
+  const _sweepOff = new THREE.Vector3();
+  function rotateAroundTarget(angle) {
+    _sweepOff.copy(camera.position).sub(controls.target);
+    _sweepOff.applyAxisAngle(_sweepUp, angle);
+    camera.position.copy(controls.target).add(_sweepOff);
+  }
+  function startSweep() {
+    const amount = THREE.MathUtils.degToRad(TITLE_SWEEP_DEGREES);
+    rotateAroundTarget(amount / 2);          // start panned to the left edge
+    sweep = { t0: clock.getElapsedTime(), prev: 0, amount: -amount };
+    needsRender = true;
+  }
   function moveTo(stage, ambient) {
     if (host.parentElement !== stage) stage.appendChild(host);
-    controls.autoRotate = ambient;
-    controls.autoRotateSpeed = 0.5;
+    onTitle = ambient;
     controls.enabled = !ambient;
+    sweep = null;
+    if (ambient) startSweep();
     resize();
     needsRender = true;
   }
