@@ -18,6 +18,19 @@ git clone https://github.com/cram2/cram-scenes scenes   # or: ln -s ~/.cramera/s
 python3 -m http.server 8123
 ```
 
+The real-robot clips on the monitoring, live-demo and real-world-execution
+slides are served from `defense/videos/` (gitignored, like the scene
+bundles). Copy them from the website repo:
+
+```bash
+git clone --depth 1 https://github.com/sunava/sunava.github.io /tmp/site
+cp /tmp/site/files/pr2_real_cutting_{bread,cucumber,zucchini,force_torque}.mp4 \
+   /tmp/site/files/pr2_real_pouring_combined.mp4 \
+   /tmp/site/files/pr2_simulation_spreading_bread_simulation.mp4 videos/
+```
+
+Missing videos degrade gracefully (empty player, no error).
+
 Open <http://localhost:8123>.
 
 ## Keys
