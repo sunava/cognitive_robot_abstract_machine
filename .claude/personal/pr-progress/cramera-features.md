@@ -23,8 +23,13 @@
   environment + robot models); overlay OBJs keep their MTL materials
   (side-asset serving); tameMat no longer flattens authored finishes.
 - 413 tests green; bullet demo verified end to end over HTTP.
-- Next: push + draft PR; port statechart panel check in real browser;
-  consider PR #36 landing order (branch contains it).
+- Pushed; draft PR #37 (stacked on PR #36 / rerun-demo-visualization):
+  https://github.com/sunava/cognitive_robot_abstract_machine/pull/37
+- Fixed reload flapping: content-based bundle signature (overlay
+  re-parenting no longer reloads the scene); gimbal-lock warning
+  silenced in the URDF origin writer.
+- Next: check panels in a real browser; land #36 first, then mark #37
+  ready when told.
 
 **Next:**
 - Ask the team whether attach/detach should be restored in shared actions
