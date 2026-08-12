@@ -13,6 +13,19 @@
   Demo uses local ModelAttachingPickUpAction/ModelDetachingPlaceAction
   subclasses instead of touching shared code.
 
+**Rewrite branch `cramera-world-visualization`** (worktree ~/cram-worktrees/cramera-rewrite,
+3 commits, not pushed):
+- Rebuilt cramera on PR #36's WorldVisualization: CRAMERA backend
+  (CORAPLEX_VISUALIZATION=cramera), bridge bound to the World object via
+  state/model callbacks + PlanCallback (new on_motion_tick event); all six
+  monkey-patches, model-source tracking and live onboarding deleted.
+- Live scene now serialized from the world (UrdfDocument.of_bodies:
+  environment + robot models); overlay OBJs keep their MTL materials
+  (side-asset serving); tameMat no longer flattens authored finishes.
+- 413 tests green; bullet demo verified end to end over HTTP.
+- Next: push + draft PR; port statechart panel check in real browser;
+  consider PR #36 landing order (branch contains it).
+
 **Next:**
 - Ask the team whether attach/detach should be restored in shared actions
   (physics vs kinematic worlds) and whether wind_turbine_hall demo should be
