@@ -23,6 +23,7 @@ slides are served from `defense/videos/` (gitignored, like the scene
 bundles). Copy them from the website repo:
 
 ```bash
+mkdir -p videos
 git clone --depth 1 https://github.com/sunava/sunava.github.io /tmp/site
 cp /tmp/site/files/pr2_real_cutting_{bread,cucumber,zucchini,force_torque}.mp4 \
    /tmp/site/files/pr2_real_pouring_combined.mp4 \
