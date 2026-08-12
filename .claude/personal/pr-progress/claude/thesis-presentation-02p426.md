@@ -41,6 +41,14 @@ Done:
   marker and '/* -- theme switching' in defense.html, injecting EPISODES
   + MESHLIB json). Regenerate: clone cram2/cram-scenes, run compilers.
 
+Videos (committed): s18 real-robot 2x2 video wall (cutting bread/cucumber/
+zucchini + pouring, designator captions), s11 FT/robot-view video
+(max-height capped), s12 PiP real-execution panel per action (cut/pour/
+wipe->spreading sim). defense/videos/ gitignored; copy from
+sunava/sunava.github.io files/ (README has the command). Play/pause via
+onSlide; muted+playsinline for autoplay. Note: headless test Chromium has
+no H.264 -> verified mechanics with a VP9 test clip; real browsers fine.
+
 Next (if asked):
 - Optionally add Unitree_warehouse / tracy_lab / garmi episodes (compilers
   handle any bundle; garmi/tracy have no apartment env).
