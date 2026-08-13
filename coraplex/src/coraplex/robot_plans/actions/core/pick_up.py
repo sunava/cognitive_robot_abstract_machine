@@ -299,6 +299,7 @@ class PickUpAction(ActionDescription):
                     motion=GripperState.CLOSE,
                     gripper=self.arm,
                     target_opening=self.grasp_opening,
+                    grasped_object=self.object_designator,
                     finger_velocity=self.grasp_closing_velocity,
                     stall_min_time=self.grasp_stall_min_time,
                 ),
