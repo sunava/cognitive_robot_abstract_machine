@@ -3,14 +3,8 @@ from typing import Optional
 
 from typing_extensions import List
 
-from giskardpy.motion_statechart.goals.templates import Parallel
-from giskardpy.motion_statechart.tasks.joint_tasks import (
-    JointPositionList,
-    JointState,
-    JointVelocityLimit,
-)
+from giskardpy.motion_statechart.tasks.joint_tasks import JointPositionList, JointState
 from giskardpy.motion_statechart.tasks.pointing import Pointing
-from coraplex.robot_plans.mixins import HasMaxJointVelocity
 from coraplex.robot_plans.motions.base import BaseMotion
 from semantic_digital_twin.robots.robot_parts import Camera
 from semantic_digital_twin.spatial_types import Vector3
@@ -18,7 +12,7 @@ from semantic_digital_twin.spatial_types.spatial_types import Pose
 
 
 @dataclass
-class MoveJointsMotion(BaseMotion, HasMaxJointVelocity):
+class MoveJointsMotion(BaseMotion):
     """
     Moves any joint on the robot.
     """
@@ -59,24 +53,26 @@ class MoveJointsMotion(BaseMotion, HasMaxJointVelocity):
     (optional).
     """
 
+    max_velocity: Optional[float] = None
+    """
+    Explicit joint velocity (in rad/s or m/s, per joint) to command instead
+    of :class:`JointPositionList`'s default. ``None`` keeps the default
+    velocity. Per-joint velocity limits still clamp this, so a value above
+    what a given joint can do is harmless.
+    """
+
     def perform(self):
         return
 
     @property
     def _motion_chart(self):
         dofs = [self.world.get_connection_by_name(name) for name in self.names]
-        joint_task = JointPositionList(
+        kwargs = {}
+        if self.max_velocity is not None:
+            kwargs["max_velocity"] = self.max_velocity
+        return JointPositionList(
             goal_state=JointState.from_mapping(dict(zip(dofs, self.positions))),
-        )
-        if self.max_joint_velocity is None:
-            return joint_task
-        return Parallel(
-            [
-                joint_task,
-                JointVelocityLimit(
-                    connections=dofs, max_velocity=self.max_joint_velocity
-                ),
-            ]
+            **kwargs,
         )
 
 

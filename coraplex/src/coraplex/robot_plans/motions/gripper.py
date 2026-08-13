@@ -3,22 +3,14 @@ from typing import Optional, List
 
 from giskardpy.motion_statechart.data_types import DefaultWeights
 from giskardpy.motion_statechart.goals.templates import Parallel, Sequence
-from giskardpy.motion_statechart.graph_node import Task
 from giskardpy.motion_statechart.binding_policy import GoalBindingPolicy
 from giskardpy.motion_statechart.tasks.align_planes import AlignPlanes
 from giskardpy.motion_statechart.tasks.cartesian_tasks import (
     CartesianPose,
     CartesianPosition,
     CartesianPositionTrajectory,
-    CartesianPositionVelocityLimit,
-    CartesianRotationVelocityLimit,
 )
-from giskardpy.motion_statechart.tasks.joint_tasks import (
-    JointPositionList,
-    JointState,
-    JointVelocityLimit,
-)
-from giskardpy.motion_statechart.monitors.monitors import LocalMinimumReached
+from giskardpy.motion_statechart.tasks.joint_tasks import JointPositionList, JointState
 from semantic_digital_twin.datastructures.alignment import AlignmentPair
 from semantic_digital_twin.datastructures.definitions import GripperState
 from semantic_digital_twin.robots.justin import Justin
@@ -28,11 +20,6 @@ from semantic_digital_twin.spatial_types import Point3, Vector3
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.world_entity import Body
 from coraplex.exceptions import MissingToolFrame, MissingWaypoints
-from coraplex.robot_plans.mixins import (
-    CartesianVelocityLimitParameters,
-    GripperStallToleranceParameters,
-    HasTcpGoalThresholds,
-)
 from coraplex.robot_plans.motions.base import BaseMotion
 from coraplex.datastructures.enums import (
     Arms,
@@ -44,11 +31,21 @@ from coraplex.view_manager import ViewManager
 from coraplex.utils import translate_pose_along_local_axis
 
 
+TOOL_ORIENTATION_THRESHOLD = 0.02
+"""
+Orientation tolerance in rad (~1.1 degrees) for tool-center-point poses.
+
+The position ``threshold`` of 0.005 doubles as a rotation tolerance in
+:class:`CartesianPose` unless overridden -- 0.005 rad (0.29 degrees) is unreachable for
+a physically simulated arm, whose PD-tracked joints settle with a residual orientation
+error of ~0.008 rad, so such a task never registers as done and stalls the rest of the
+plan behind it.
+"""
+
 @dataclass
-class ReachMotion(BaseMotion, HasTcpGoalThresholds):
+class ReachMotion(BaseMotion):
     """
-    Moves the tool center point through the grasp description's pre-grasp and grasp
-    poses for an object.
+    
     """
 
     object_designator: Body
@@ -113,8 +110,8 @@ class ReachMotion(BaseMotion, HasTcpGoalThresholds):
                 root_link=self.robot_view.root,
                 tip_link=tip,
                 goal_pose=pose,
-                translation_threshold=self.resolved_position_threshold(),
-                orientation_threshold=self.resolved_orientation_threshold(),
+                threshold=0.005,
+                orientation_threshold=TOOL_ORIENTATION_THRESHOLD,
                 name="Reach",
             )
             for pose in self._calculate_pose_sequence()
@@ -123,7 +120,7 @@ class ReachMotion(BaseMotion, HasTcpGoalThresholds):
 
 
 @dataclass
-class MoveGripperMotion(BaseMotion, GripperStallToleranceParameters):
+class MoveGripperMotion(BaseMotion):
     """
     Opens or closes the gripper.
     """
@@ -152,6 +149,23 @@ class MoveGripperMotion(BaseMotion, GripperStallToleranceParameters):
     shared OPEN/CLOSE states.
     """
 
+    finger_velocity: Optional[float] = None
+    """
+    Explicit finger joint velocity (in m/s) to command instead of
+    :attr:`JointPositionList`'s default.
+
+    ``None`` keeps the default velocity.
+    """
+
+    stall_min_time: Optional[float] = None
+    """
+    Explicit minimum stall dwell time (in seconds, see
+    :attr:`JointPositionList.stall_min_time`) to command instead of the default.
+
+    Only meaningful for a CLOSE motion, since that is the only case where stalling is
+    tolerated. ``None`` keeps the default.
+    """
+
     def perform(self):
         return
 
@@ -174,41 +188,27 @@ class MoveGripperMotion(BaseMotion, GripperStallToleranceParameters):
     def _motion_chart(self):
         arm = ViewManager().get_end_effector_view(self.gripper, self.robot)
 
-        name = "OpenGripper" if self.motion == GripperState.OPEN else "CloseGripper"
-        goal_state = self._goal_state(arm)
-        joint_task = JointPositionList(goal_state=goal_state, name=name)
+        kwargs = {}
+        if self.finger_velocity is not None:
+            kwargs["max_velocity"] = self.finger_velocity
+        if self.stall_min_time is not None:
+            kwargs["stall_min_time"] = self.stall_min_time
 
-        done_node = joint_task
-        if self.tolerate_stall:
-            stall_monitor = LocalMinimumReached(
-                degrees_of_freedom=[
-                    connection.raw_dof for connection in goal_state.connections
-                ],
-                minimum_time=(
-                    self.stall_minimum_time
-                    if self.stall_minimum_time is not None
-                    else 1.0
-                ),
-                measure_from_own_start=True,
-            )
-            done_node = Parallel(
-                [joint_task, stall_monitor], minimum_success=1, name=name
-            )
-
-        if self.finger_velocity is None:
-            return done_node
-
-        velocity_limit = JointVelocityLimit(
-            connections=list(goal_state.connections),
-            max_velocity=self.finger_velocity,
+        return JointPositionList(
+            goal_state=self._goal_state(arm),
+            name=(
+                "OpenGripper" if self.motion == GripperState.OPEN else "CloseGripper"
+            ),
+            # Closing must not fail just because a grasped object physically
+            # stops the fingers before their nominal fully-closed target;
+            # opening stalling early is a real problem worth surfacing.
+            tolerate_stall=self.motion == GripperState.CLOSE,
+            **kwargs,
         )
-        return Parallel([done_node, velocity_limit], name=name)
 
 
 @dataclass
-class MoveToolCenterPointMotion(
-    BaseMotion, CartesianVelocityLimitParameters, HasTcpGoalThresholds
-):
+class MoveToolCenterPointMotion(BaseMotion):
     """
     Moves the Tool center point (TCP) of the robot.
     """
@@ -250,34 +250,6 @@ class MoveToolCenterPointMotion(
     def perform(self):
         return
 
-    def _velocity_limit_nodes(self, root: Body, tip: Body) -> List[Task]:
-        """
-        :return: The :class:`CartesianPositionVelocityLimit`/
-            :class:`CartesianRotationVelocityLimit` nodes requested via
-            :attr:`max_linear_velocity`/:attr:`max_angular_velocity`, if any.
-        """
-        nodes = []
-        if self.max_linear_velocity is not None:
-            nodes.append(
-                CartesianPositionVelocityLimit(
-                    root_link=root,
-                    tip_link=tip,
-                    max_linear_velocity=self.max_linear_velocity,
-                )
-            )
-        if (
-            self.max_angular_velocity is not None
-            and self.movement_type != MovementType.TRANSLATION
-        ):
-            nodes.append(
-                CartesianRotationVelocityLimit(
-                    root_link=root,
-                    tip_link=tip,
-                    max_angular_velocity=self.max_angular_velocity,
-                )
-            )
-        return nodes
-
     @property
     def _motion_chart(self):
         tip = ViewManager().get_end_effector_view(self.arm, self.robot).tool_frame
@@ -287,6 +259,7 @@ class MoveToolCenterPointMotion(
             and self.robot.mobile_base.full_body_controlled
             else self.robot.root
         )
+        task = None
         if self.movement_type == MovementType.TRANSLATION:
             kwargs = {}
             if self.reference_linear_velocity is not None:
@@ -297,7 +270,7 @@ class MoveToolCenterPointMotion(
                 goal_point=self.target.to_position(),
                 name="MoveTCP",
                 weight=DefaultWeights.WEIGHT_BELOW_COLLISION_AVOIDANCE,
-                threshold=self.resolved_position_threshold(),
+                threshold=0.005,
                 **kwargs,
             )
         else:
@@ -312,16 +285,11 @@ class MoveToolCenterPointMotion(
                 goal_pose=self.target,
                 name="MoveTCP",
                 weight=DefaultWeights.WEIGHT_BELOW_COLLISION_AVOIDANCE,
-                translation_threshold=self.resolved_position_threshold(),
-                orientation_threshold=self.resolved_orientation_threshold(),
+                threshold=0.005,
+                orientation_threshold=TOOL_ORIENTATION_THRESHOLD,
                 **kwargs,
             )
-        velocity_limit_nodes = self._velocity_limit_nodes(root, tip)
-        if not velocity_limit_nodes:
-            return task
-        return Parallel([task, *velocity_limit_nodes], name="MoveTCP")
-
-
+        return task
 @dataclass
 class MoveTCPWaypointsMotion(BaseMotion):
     """
@@ -371,6 +339,47 @@ class MoveTCPWaypointsMotion(BaseMotion):
             for pose in self.waypoints
         ]
         return Sequence(nodes=nodes)
+@dataclass
+class MoveManipulatorMotion(BaseMotion):
+    """
+    Moves the Tool center point (TCP) of the robot.
+    """
+
+    target: Pose
+    """
+    Target pose to which the TCP should be moved.
+    """
+    end_effector: EndEffector
+    """
+    The end effector to move to the target pose.
+    """
+
+    allow_gripper_collision: bool = False
+    """
+    If the gripper can collide with something.
+    """
+
+    @property
+    def _motion_chart(self):
+        robot = self.robot
+        full_body_controlled = (
+            robot.mobile_base.full_body_controlled
+            if isinstance(robot, HasMobileBase)
+            else False
+        )
+        root = self.world.root if full_body_controlled else robot.root
+        task = CartesianPose(
+            root_link=root,
+            tip_link=self.end_effector.tool_frame,
+            goal_pose=self.target,
+            threshold=0.005,
+            orientation_threshold=TOOL_ORIENTATION_THRESHOLD,
+            binding_policy=GoalBindingPolicy.Bind_on_start,
+            name=self.__class__.__name__,
+        )
+        return task
+
+
 @dataclass
 class MoveTCPWaypointsAlignedMotion(BaseMotion):
     """
@@ -471,44 +480,3 @@ class MoveTCPWaypointsAlignedMotion(BaseMotion):
         )
         motion_statechart_nodes.append(Parallel(tasks))
         return Parallel(motion_statechart_nodes)
-
-
-@dataclass
-class MoveManipulatorMotion(BaseMotion, HasTcpGoalThresholds):
-    """
-    Moves the Tool center point (TCP) of the robot.
-    """
-
-    target: Pose
-    """
-    Target pose to which the TCP should be moved.
-    """
-    end_effector: EndEffector
-    """
-    The end effector to move to the target pose.
-    """
-
-    allow_gripper_collision: bool = False
-    """
-    If the gripper can collide with something.
-    """
-
-    @property
-    def _motion_chart(self):
-        robot = self.robot
-        full_body_controlled = (
-            robot.mobile_base.full_body_controlled
-            if isinstance(robot, HasMobileBase)
-            else False
-        )
-        root = self.world.root if full_body_controlled else robot.root
-        task = CartesianPose(
-            root_link=root,
-            tip_link=self.end_effector.tool_frame,
-            goal_pose=self.target,
-            translation_threshold=self.resolved_position_threshold(),
-            orientation_threshold=self.resolved_orientation_threshold(),
-            binding_policy=GoalBindingPolicy.Bind_on_start,
-            name=self.__class__.__name__,
-        )
-        return task

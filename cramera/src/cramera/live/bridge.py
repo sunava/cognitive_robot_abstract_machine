@@ -26,6 +26,8 @@ from enum import Enum, StrEnum
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
+import numpy
+
 from typing_extensions import (
     Any,
     ClassVar,
@@ -46,7 +48,7 @@ from semantic_digital_twin.spatial_types import (
     RotationMatrix,
 )
 from cramera.logging_setup import get_logger
-from cramera.body_geometry import POSE_PRECISION, rounded_pose
+from cramera.body_geometry import POSE_PRECISION, rounded_pose, rounded_pose_from_matrix
 from semantic_digital_twin.world_description.connections import (
     ActiveConnection1DOF,
     Connection6DoF,
@@ -224,6 +226,28 @@ class MoveRequest:
                 raise MalformedMoveRequest("'%s' must be finite" % name)
             coordinates.append(float(entry))
         return coordinates
+
+
+@dataclass
+class VisualAttachment:
+    """
+    A loose object's published pose overridden to follow another body, without the
+    world model itself ever being changed.
+
+    Holds the offset as a plain numpy transform, not a symbolic one: it is read back on
+    world state-change callbacks (see :meth:`Bridge.snapshot`), which run on the
+    simulation's physics thread where building symbolic (CasADi) expressions is unsafe.
+    """
+
+    reference: Body
+    """
+    The body whose live pose the attached object's published pose tracks.
+    """
+
+    reference_T_object: numpy.ndarray
+    """
+    Fixed 4x4 transform from :attr:`reference` to the object, captured when attached.
+    """
 
 
 @dataclass
@@ -669,6 +693,15 @@ class Bridge:
     Object key → absolute mesh path served via the ``/mesh`` endpoint.
     """
 
+    _visual_attachments: Dict[int, VisualAttachment] = field(default_factory=dict)
+    """
+    Viewer-only pose overrides, by :func:`id` of the attached body.
+
+    Identity, not equality: keying by the body object itself would risk collapsing two
+    structurally-identical bodies (see :attr:`_motion_nodes`'s own docstring for the same
+    concern with plan nodes).
+    """
+
     _plan: Optional[Plan] = None
     """
     The coraplex plan captured by the ``Plan.perform`` hook.
@@ -842,6 +875,7 @@ class Bridge:
         """
         self._plan = plan
         self._motion_nodes.clear()
+        self._visual_attachments.clear()
         self.snapshot_plan()
 
     def observe_model_change(self) -> None:
@@ -1232,6 +1266,37 @@ class Bridge:
             move.is_final,
         )
 
+    # %% viewer-only attachment
+    def attach_in_viewer(self, body: Body, reference: Body) -> None:
+        """
+        Make the published pose of ``body`` track ``reference``'s live pose, at the
+        offset between them when attached, instead of ``body``'s own world pose.
+
+        Display-only: the world model is never modified, so nothing outside the viewer
+        (planning, reachability, physics) is aware of this attachment.
+
+        :param body: The body whose published pose should start following ``reference``.
+        :param reference: The body ``body`` is attached to for display purposes.
+        """
+        if self.world is None:
+            return
+        world_T_reference = self.world.compute_forward_kinematics_np(
+            self.world.root, reference
+        )
+        world_T_body = self.world.compute_forward_kinematics_np(self.world.root, body)
+        self._visual_attachments[id(body)] = VisualAttachment(
+            reference=reference,
+            reference_T_object=numpy.linalg.inv(world_T_reference) @ world_T_body,
+        )
+
+    def detach_in_viewer(self, body: Body) -> None:
+        """
+        Stop overriding ``body``'s published pose, resuming its own world pose.
+
+        :param body: The body to stop tracking a reference body's pose.
+        """
+        self._visual_attachments.pop(id(body), None)
+
     # %% world discovery
     def bind(self) -> None:
         """
@@ -1410,8 +1475,17 @@ class Bridge:
         for name, body in self._bodies.items():
             if name == ROBOT_BASE_KEY:
                 base_pose = rounded_pose(body)
-            else:
+                continue
+            attachment = self._visual_attachments.get(id(body))
+            if attachment is None:
                 object_poses[name] = rounded_pose(body)
+                continue
+            world_T_reference = self.world.compute_forward_kinematics_np(
+                self.world.root, attachment.reference
+            )
+            object_poses[name] = rounded_pose_from_matrix(
+                world_T_reference @ attachment.reference_T_object
+            )
         self._refresh_marker_state()
         with self._lock:
             self.sequence_number += 1

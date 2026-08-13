@@ -8,6 +8,7 @@ measurement, taken the same way, and both publish body poses rounded the same wa
 
 from __future__ import annotations
 
+import numpy
 from scipy.spatial.transform import Rotation
 from semantic_digital_twin.spatial_types import Point3
 from semantic_digital_twin.world_description.geometry import Scale
@@ -56,6 +57,21 @@ def rounded_scale(scale: Scale, precision: int) -> List[float]:
     ]
 
 
+def rounded_pose_from_matrix(
+    world_T_body: numpy.ndarray, precision: int = POSE_PRECISION
+) -> List[float]:
+    """
+    A numeric world transform as ``[x, y, z, qx, qy, qz, qw]``, rounded for publication.
+
+    :param world_T_body: The body's world pose as a plain 4x4 numpy transform.
+    :param precision: Number of decimal places to round each value to.
+    """
+    quaternion = Rotation.from_matrix(world_T_body[:3, :3]).as_quat(canonical=True)
+    return [
+        round(float(value), precision) for value in (*world_T_body[:3, 3], *quaternion)
+    ]
+
+
 def rounded_pose(body: Body, precision: int = POSE_PRECISION) -> List[float]:
     """
     A body's world pose as ``[x, y, z, qx, qy, qz, qw]``, rounded for publication.
@@ -72,10 +88,7 @@ def rounded_pose(body: Body, precision: int = POSE_PRECISION) -> List[float]:
     """
     world = body._world
     world_T_body = world.compute_forward_kinematics_np(world.root, body)
-    quaternion = Rotation.from_matrix(world_T_body[:3, :3]).as_quat(canonical=True)
-    return [
-        round(float(value), precision) for value in (*world_T_body[:3, 3], *quaternion)
-    ]
+    return rounded_pose_from_matrix(world_T_body, precision)
 
 
 def position_label(position: Point3) -> str:

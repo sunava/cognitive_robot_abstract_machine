@@ -56,9 +56,13 @@ from coraplex.orm.ormatic_interface import Base  # noqa: F401
 
 from coraplex.plans.factories import sequential
 from coraplex.plans.plan_node import PlanNode
-from coraplex.robot_plans.actions.core.pick_up import PickUpAction
+from coraplex.robot_plans.actions.core.pick_up import (
+    GRASP_DETECTION_THRESHOLD,
+    PickUpAction,
+)
 from coraplex.robot_plans.actions.core.placing import PlaceAction
 from coraplex.robot_plans.actions.core.robot_body import ParkArmsAction
+from coraplex.view_manager import ViewManager
 
 from causal_diagnosis_v2 import (
     ActionCausalDiagnoser,
@@ -96,6 +100,12 @@ from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
 )
 from semantic_digital_twin.robots.panda import Panda
 from semantic_digital_twin.spatial_types.spatial_types import Pose
+from coraplex.datastructures.enums import VisualizationBackend
+from coraplex.visualization import WorldVisualization
+from cramera.live.bridge import BRIDGE
+from cramera.live.visualization import ViewerGraspTracker
+
+
 
 
 def verify_workspace_matches_demo() -> None:
@@ -957,6 +967,24 @@ def perform_attempt(
         ``supporting_cube``.
     """
     plan = build_stack_plan(pickup_action, place_action)
+    visualization = WorldVisualization.from_environment(
+        world, default_backend=VisualizationBackend.CRAMERA
+    ).start()
+    visualization.attach_plan(plan.plan)
+    # Makes the cramera viewer show the cube following the gripper while carried,
+    # purely for display -- the real re-parenting (AttachNode/DetachNode) is
+    # intentionally disabled in PickUpAction/PlaceAction to test whether raw
+    # physics/friction alone holds the object, and this must not interfere with that.
+    plan.plan.node_callbacks.append(
+        ViewerGraspTracker(
+            bridge=BRIDGE,
+            body=pickup_action.object_designator,
+            end_effector=ViewManager.get_end_effector_view(
+                pickup_action.arm, context.robot
+            ),
+            grasp_threshold=GRASP_DETECTION_THRESHOLD,
+        )
+    )
     try:
         plan.perform()
     except Exception as exc:
@@ -1520,7 +1548,9 @@ def print_iteration_summary(iteration_index: int) -> None:
 
 
 multi_sim.start_simulation()
-
+visualization = WorldVisualization.from_environment(
+    world, default_backend=VisualizationBackend.CRAMERA
+).start()
 # See demo2.py's own identical comment: without this, the viewer falls back to
 # MuJoCo's default camera instead of the scene's intended viewing angle.
 viewer = multi_sim.simulator.renderer

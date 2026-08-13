@@ -32,10 +32,7 @@ from giskardpy.motion_statechart.tasks.cartesian_tasks import (
     CartesianPositionVelocityLimit,
     CartesianRotationVelocityLimit,
 )
-from giskardpy.motion_statechart.tasks.joint_tasks import (
-    JointPositionList,
-    JointVelocityLimit,
-)
+from giskardpy.motion_statechart.tasks.joint_tasks import JointPositionList
 from giskardpy.motion_statechart.tasks.pointing import Pointing
 from semantic_digital_twin.datastructures.definitions import GripperState, TorsoState
 from semantic_digital_twin.spatial_types import Point3, Quaternion

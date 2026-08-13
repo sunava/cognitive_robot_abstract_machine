@@ -20,6 +20,8 @@ from semantic_digital_twin.callbacks.callback import (
     ModelChangeCallback,
     StateChangeCallback,
 )
+from semantic_digital_twin.reasoning.robot_predicates import is_body_in_gripper
+from semantic_digital_twin.robots.robot_parts import EndEffector
 from semantic_digital_twin.world import World
 
 from cramera.live.bridge import BRIDGE, Bridge
@@ -30,6 +32,7 @@ from cramera.live.ros_markers import RosMarkerListener
 if TYPE_CHECKING:
     from coraplex.plans.plan import Plan
     from giskardpy.motion_statechart.motion_statechart import MotionStatechart
+    from semantic_digital_twin.world_description.world_entity import Body
 
 # %% world synchronization
 
@@ -95,6 +98,54 @@ class BridgePlanCallback(PlanCallback):
 
     def on_motion_tick(self, statechart: MotionStatechart) -> None:
         self.bridge.observe_motion_tick(statechart)
+
+
+@dataclass
+class ViewerGraspTracker(PlanCallback):
+    """
+    Keeps the viewer's pose override for one carried object in sync with whether it is
+    currently gripped, entirely inside the viewer -- the world model is never touched.
+
+    Detects the grasp itself on every executor tick (via :func:`is_body_in_gripper`)
+    rather than reacting to specific plan nodes: the pickup/place actions that grip and
+    release the object build their own gripper motions internally, with no stable node
+    reference available from outside them to react to.
+    """
+
+    bridge: Bridge = field(kw_only=True)
+    """
+    The bridge whose viewer-only pose override this tracker drives.
+    """
+
+    body: Body = field(kw_only=True)
+    """
+    The object whose published pose should follow :attr:`end_effector` while held.
+    """
+
+    end_effector: EndEffector = field(kw_only=True)
+    """
+    The end effector whose grip on :attr:`body` is checked every tick.
+    """
+
+    grasp_threshold: float = field(kw_only=True)
+    """
+    Minimum fraction of sampled rays between the gripper's fingers that must hit
+    :attr:`body` for it to count as held (see :func:`is_body_in_gripper`).
+    """
+
+    _attached: bool = field(default=False, init=False)
+    """
+    Whether :attr:`body` is currently overridden to follow :attr:`end_effector`.
+    """
+
+    def on_motion_tick(self, statechart: MotionStatechart) -> None:
+        gripped = is_body_in_gripper(self.body, self.end_effector) > self.grasp_threshold
+        if gripped and not self._attached:
+            self.bridge.attach_in_viewer(self.body, self.end_effector.tool_frame)
+            self._attached = True
+        elif not gripped and self._attached:
+            self.bridge.detach_in_viewer(self.body)
+            self._attached = False
 
 
 # %% the backend

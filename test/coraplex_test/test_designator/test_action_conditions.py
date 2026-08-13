@@ -47,17 +47,17 @@ def test_get_bound_variables(immutable_model_world):
 
     assert len(bound_variables) == 11
     assert list(bound_variables.keys()) == [
-        "grasp_detection_threshold",
-        "pre_approach_linear_velocity",
-        "final_approach_linear_velocity",
-        "grasp_closing_velocity",
-        "lift_linear_velocity",
-        "grasp_stall_minimum_time",
-        "object_friction",
         "object_designator",
         "arm",
         "grasp_description",
-        "tolerate_grasp_stall",
+        "grasp_opening",
+        "pre_approach_linear_velocity",
+        "grasp_linear_velocity",
+        "grasp_closing_velocity",
+        "lift_linear_velocity",
+        "grasp_stall_min_time",
+        "object_friction",
+        "max_grasp_attempts",
     ]
     assert list(bound_variables["arm"]._domain_) == [Arms.LEFT]
     assert bound_variables["arm"]._type_ == Arms
