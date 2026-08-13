@@ -138,3 +138,34 @@ Fix crashes hit while running the Franka montessori demo
   thread-safety fix (event_monitoring thread vs. main thread vs. physics thread all
   building CasADi SX concurrently with no lock).
 - No PR opened yet for this branch.
+
+## Pivot (2026-08-13): new branch `segmind-stacking2-cramera`, based on sorin's branch
+User asked for a second branch with the base/merge direction reversed: instead of
+cramera-world-visualization as base with sorin/segmind_stacking2 merged in (this
+branch), make a new branch rooted in `sorin/segmind_stacking2` with "everything
+cramera needs" merged on top.
+
+- Checked other very recent sorin branches first (`sorin/panda_demo_stabilize`,
+  `sorin/merge_attempt1`, both titled "Trying merge v2", pushed today after
+  segmind_stacking2) since they looked like Sorin's own concurrent attempts at
+  this same merge. `panda_demo_stabilize` already carries a `cramera/` directory,
+  but it's a stale pre-world-visualization-rewrite cramera (shares ancestor
+  1238a7de with cramera-features, not with cramera-world-visualization) — not
+  what's wanted. User confirmed via AskUserQuestion to use `sorin/segmind_stacking2`
+  as asked.
+- Reused this branch's already-resolved merge tree instead of re-resolving the 18
+  conflicted files a second time: `git write-tree` on this branch's in-progress
+  (uncommitted) merge index (tree `3d2beda3b`), then `git commit-tree` with parents
+  swapped — `-p sorin/segmind_stacking2(76b572d1) -p HEAD(9feb1af2c)` — to build a
+  merge commit with the same resolved content but history rooted in
+  sorin/segmind_stacking2. This is safe/valid because a merge tree's content
+  doesn't depend on parent order — only conflict resolution does, and that
+  resolution was already reasoned through, not a blind ours/theirs pick.
+  Result commit `118436174`, branch `segmind-stacking2-cramera` created pointing
+  at it. **This branch's merge on cramera-sorin-stacking was left exactly as-is
+  (still uncommitted, `MERGE_HEAD` still set) — only `git write-tree`/`commit-tree`
+  plumbing was used, nothing here was touched.**
+- Not yet built/tested. Next: verify `segmind-stacking2-cramera` actually runs
+  (`coraplex/demos/coraplex_panda_demo/inference2.py`), then decide whether this
+  branch or `cramera-sorin-stacking` (or both) gets a PR, and what becomes of this
+  branch's own still-uncommitted merge once that's decided.
