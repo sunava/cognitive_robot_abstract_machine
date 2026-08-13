@@ -68,8 +68,17 @@ Fix crashes hit while running the Franka montessori demo
   to raise this with the user. This needs a decision on approach (e.g. a lock guarding
   casadi construction, or restructuring which thread is allowed to build symbolic
   expressions) before touching cross-package code — do not implement unilaterally.
+- Control run confirmed the hypothesis: same command, same `--max-shapes 3`, with
+  `CORAPLEX_VISUALIZATION=NONE` (cramera off) completed cleanly, 3/3 shapes fell
+  through, exit code 0, no crash. So the race predates cramera and isn't caused by
+  it, but cramera's extra thread activity (even after the fixes above) makes the
+  timing window far more likely to be hit. Reported this to the user with the
+  evidence; did not implement a fix — needs a decision on approach (global casadi
+  lock vs. restructuring which thread may build symbolic expressions) since it spans
+  `experiments`/`semantic_digital_twin`/`krrood`.
 
 ## Next
-- Check the `CORAPLEX_VISUALIZATION=NONE` control run's outcome and report the
-  cramera-independent race to the user with that evidence.
+- Awaiting user decision on whether/how to pursue the cross-package casadi
+  thread-safety fix (event_monitoring thread vs. main thread vs. physics thread all
+  building CasADi SX concurrently with no lock).
 - No PR opened yet for this branch.
