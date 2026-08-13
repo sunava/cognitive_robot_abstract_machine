@@ -225,7 +225,7 @@ table.tt td b{color:var(--ink);font-weight:600;}
     <span>hassouna@ai.uni-bremen.de</span>
     <span class="right">
       <span id="hudmode">mode: beamer</span>
-      <span id="hudframe">frame 01 / 21</span>
+      <span id="hudframe">frame 01 / 23</span>
     </span>
   </div>
 
@@ -244,9 +244,9 @@ table.tt td b{color:var(--ink);font-weight:600;}
     </div>
   </section>
 
-  <!-- ══════════ 2 · MOTIVATION ══════════ -->
+  <!-- ══════════ 2 · PROBLEM ══════════ -->
   <section class="slide" id="s2">
-    <p class="eyebrow">// 02 · motivation <span class="ph">— "prepare breakfast"</span></p>
+    <p class="eyebrow">// 02 · the problem <span class="ph">— "prepare breakfast"</span></p>
     <h2>Easy to state. Hard to execute.</h2>
     <div class="cols">
       <div class="col">
@@ -271,11 +271,27 @@ table.tt td b{color:var(--ink);font-weight:600;}
         <p class="small" style="margin-top:16px;">All five depend on the specific geometry and material of the object at hand.</p>
       </div>
     </div>
+    <div class="panel" style="margin-top:16px;border-left:3px solid var(--acc);">
+      <span class="mono" style="font-size:11px;color:var(--acc);letter-spacing:.06em;">PROBLEM STATEMENT&nbsp;&nbsp;</span>
+      <span style="font-size:14.5px;color:var(--ink2);">Given an underspecified task description and a concrete scene, produce robot motion that achieves the intended — <b style="color:var(--ink)">irreversible</b> — material effect and satisfies all correctness constraints, for objects, tools, robots and environments that are <b style="color:var(--ink)">not fixed in advance</b>.</span>
+    </div>
   </section>
 
-  <!-- ══════════ 3 · PROBLEM ══════════ -->
+  <!-- ══════════ 3 · WHY IT MATTERS ══════════ -->
+  <section class="slide" id="sWhy">
+    <p class="eyebrow">// 03 · why it matters <span class="ph">— relevance before difficulty</span></p>
+    <h2>An everyday competence, a representational gap, a guarantee question</h2>
+    <div class="arch" style="grid-template-columns:repeat(3,1fr);margin-top:8px;">
+      <div class="anode"><div class="t">the core of everyday activity</div><div class="d">Across &gt;1M Recipe1M+ recipes, six action categories cover <b style="color:var(--ink)">76.5%</b> of instructional verbs — and the manipulation-heavy subset (cutting, transfer, mixing, surface treatment) is exactly what a household assistant must master. Fetch-and-carry alone prepares no meal.</div></div>
+      <div class="anode"><div class="t">a representational gap</div><div class="d">Symbolic task planning stops above the contact layer; learned visuomotor policies produce motion but leave the conditions that make it <i>correct</i> implicit. State-changing manipulation needs both at once: <b style="color:var(--ink)">symbols to reason about and constraints that hold during contact</b>.</div></div>
+      <div class="anode"><div class="t">correctness cannot be averaged</div><div class="d">The actions are irreversible — a wrong cut cannot be undone. Around people, the decisive question is whether an action is <b style="color:var(--ink)">admissible before contact</b>, not whether it succeeds on average: a guarantee question, and guarantees require explicit representation.</div></div>
+    </div>
+    <p class="small" style="margin-top:16px;">It is also a falsifiable engineering claim: if the representation is right, the <i>same</i> action templates must survive new objects, tools, robots and environments — evaluated in this thesis with 7,693 systematic executions and a physical PR2.</p>
+  </section>
+
+  <!-- ══════════ 4 · WHY HARD ══════════ -->
   <section class="slide" id="s3">
-    <p class="eyebrow">// 03 · the problem <span class="ph">— underdetermination</span></p>
+    <p class="eyebrow">// 04 · why it is hard <span class="ph">— underdetermination · irreversibility · context</span></p>
     <h2>State-changing manipulation is a representational problem</h2>
     <div class="cols">
       <div class="col">
@@ -294,11 +310,16 @@ table.tt td b{color:var(--ink);font-weight:600;}
         </div>
       </div>
     </div>
+    <div class="arch" style="grid-template-columns:repeat(3,1fr);margin-top:16px;">
+      <div class="anode"><div class="t" style="color:var(--axx)">a recorded trajectory?</div><div class="d">Replaying a successful cut fails as soon as loaf, pose or knife change — the conditions that made the motion correct are not part of the trajectory.</div></div>
+      <div class="anode"><div class="t" style="color:var(--axx)">an action name?</div><div class="d">cut(x) determines neither sawing vs. slicing, nor the admissible contact region, nor termination — the symbol stops above the contact layer.</div></div>
+      <div class="anode"><div class="t" style="color:var(--axx)">an end-to-end policy?</div><div class="d">It produces motion, but its constraints stay implicit: no admissibility check before irreversible contact, no named failure to recover from after it.</div></div>
+    </div>
   </section>
 
-  <!-- ══════════ 4 · RQ + HYPOTHESES ══════════ -->
+  <!-- ══════════ 5 · RQ + HYPOTHESES ══════════ -->
   <section class="slide" id="s4">
-    <p class="eyebrow">// 04 · research question &amp; hypotheses</p>
+    <p class="eyebrow">// 05 · research question &amp; hypotheses</p>
     <h2 style="font-size:24px;max-width:60ch;">How can manipulation actions be represented so that they can be correctly executed within a defined task scope — across varying object instances, tools, robots, and environments — while satisfying the relevant constraints?</h2>
     <div class="verdict" style="margin-top:18px;">
       <div class="vrow">
@@ -320,9 +341,9 @@ table.tt td b{color:var(--ink);font-weight:600;}
     <p class="small" style="margin-top:14px;">Operationalised as seven requirements R1–R7: structural transfer · object-relative grounding · explicit constraints · runtime instantiation · monitored execution · diagnosable failure · implementation usability.</p>
   </section>
 
-  <!-- ══════════ 5 · APPROACH ══════════ -->
+  <!-- ══════════ 6 · APPROACH ══════════ -->
   <section class="slide" id="s5">
-    <p class="eyebrow">// 05 · approach</p>
+    <p class="eyebrow">// 06 · proposed solution <span class="ph">— how we approach the problem</span></p>
     <h2>Separate the stable action structure from its runtime bindings</h2>
     <p class="lead">The stable part is the phase sequence with its constraints. The variable part — object slots, scene bindings, material-dependent parameters — is grounded at runtime. A new object requires <b style="color:var(--ink)">new geometric anchor points, not a new template</b>.</p>
     <div class="flow" style="margin-top:22px;">
@@ -336,21 +357,30 @@ table.tt td b{color:var(--ink);font-weight:600;}
       <div class="farr">→</div>
       <div class="fnode"><div class="t">monitored execution</div><div class="d">phase invariants checked continuously; violations are named events with a recovery scope</div></div>
     </div>
-    <div class="cols" style="margin-top:24px;">
-      <div class="col panel">
-        <div class="mono" style="font-size:12px;color:var(--acc);margin-bottom:6px;">two knowledge sources close what geometry can't</div>
-        <div style="font-size:13px;color:var(--ink2);line-height:1.55;"><b style="color:var(--ink)">Semantic Digital Twin</b> → current scene geometry: pose, support, reachability.<br><b style="color:var(--ink)">Knowledge Graph</b> → material properties, tool affordances, technique defaults, forbidden regions.</div>
-      </div>
-      <div class="col panel">
-        <div class="mono" style="font-size:12px;color:var(--acc);margin-bottom:6px;">motion is object-anchored</div>
-        <div style="font-size:13px;color:var(--ink2);line-height:1.55;">Generators defined relative to the manipulated object's geometry — separating surface, container interior, opening + tilt axis, contact surface — never in robot coordinates.</div>
-      </div>
+    <div class="arch" style="grid-template-columns:repeat(3,1fr);margin-top:22px;">
+      <div class="anode"><div class="t">underdetermination →<br><span style="color:var(--ok)">declared slots + grounding function</span></div><div class="d">Open slots are part of the representation, not an omission. <span class="mono" style="font-size:11.5px;">B<sub>g</sub> = γ(D, W<sub>SDT</sub>, K<sub>KG</sub>)</span> binds them from the <b style="color:var(--ink)">Semantic Digital Twin</b> (pose, support, reachability) and the <b style="color:var(--ink)">Knowledge Graph</b> (material, tool affordances, technique defaults). Execution starts only when every required slot is bound.</div></div>
+      <div class="anode"><div class="t">irreversibility →<br><span style="color:var(--ok)">constraints before and during contact</span></div><div class="d">Applicability constraints are evaluated <b style="color:var(--ink)">before</b> the first irreversible contact; phase invariants are monitored <b style="color:var(--ink)">during</b> it. A violation is a named event with a defined recovery scope — controller correction, re-binding, or replanning.</div></div>
+      <div class="anode"><div class="t">context dependence →<br><span style="color:var(--ok)">action-relative geometry</span></div><div class="d">Motion generators are defined relative to the manipulated object's geometry — separating surface, container interior, opening + tilt axis, contact surface — <b style="color:var(--ink)">never in robot coordinates</b>. A new object supplies new anchor values for the same geometry type.</div></div>
     </div>
+    <p class="small" style="margin-top:12px;">Each column answers one difficulty from frame 04; the rest of the talk supplies the evidence that the answer holds.</p>
   </section>
 
-  <!-- ══════════ 6 · ARCHITECTURE ══════════ -->
+  <!-- ══════════ 7 · CONTRIBUTIONS PREVIEW ══════════ -->
+  <section class="slide" id="sContrib">
+    <p class="eyebrow">// 07 · contributions <span class="ph">— the claims, up front</span></p>
+    <h2>Four claims this talk will substantiate</h2>
+    <div class="verdict" style="margin-top:6px;">
+      <div class="vrow"><div class="h">C1</div><div class="d"><b style="color:var(--ink)">Empirical.</b> Household manipulation actions share a stable four-phase organisation — approach · contact · technique · withdrawal — derivable from human observation alone (3,046 annotated episodes, MPII Cooking 2).</div><div class="s"><span class="chip">observation</span></div></div>
+      <div class="vrow"><div class="h">C2</div><div class="d"><b style="color:var(--ink)">Representational.</b> The Object-Anchored Action Template: a constraint-carrying symbolic structure whose phases are anchored in action-relative object geometry, with applicability as explicit material constraints.</div><div class="s"><span class="chip">OAAT</span></div></div>
+      <div class="vrow"><div class="h">C3</div><div class="d"><b style="color:var(--ink)">Systems.</b> A layered grounding pipeline in the CRAM architecture that turns underspecified designators into monitored, executable motion — with every failure attributable to one layer.</div><div class="s"><span class="chip">grounding</span></div></div>
+      <div class="vrow"><div class="h">C4</div><div class="d"><b style="color:var(--ink)">Evidence.</b> One representation, eight morphologically diverse robots, three environments — 7,693 executions with zero template rewrites — plus real-PR2 validation: 113/120 pouring, cutting across three materials.</div><div class="s"><span class="chip ok">evaluation</span></div></div>
+    </div>
+    <p class="small" style="margin-top:14px;">Each claim returns at the end with its evidence — the recorded executions in between are the demonstration.</p>
+  </section>
+
+  <!-- ══════════ 8 · ARCHITECTURE ══════════ -->
   <section class="slide" id="s6">
-    <p class="eyebrow">// 06 · system architecture <span class="ph">— the CRAM cognitive architecture as execution substrate</span></p>
+    <p class="eyebrow">// 08 · system architecture <span class="ph">— the CRAM cognitive architecture as execution substrate</span></p>
     <h2>Five components, one contract</h2>
     <div class="arch" style="margin-top:6px;">
       <div class="anode"><div class="t">PyCRAM</div><div class="d">Plan executive. Plans as trees of control-flow nodes; designators as runtime records of partial commitments; ORM-backed execution log. (Dech &amp; Hassouna, 2024)</div></div>
@@ -363,9 +393,9 @@ table.tt td b{color:var(--ink);font-weight:600;}
     <p class="small" style="margin-top:16px;">Grounding in image-schema theory: cutting = Contact + separation event · pouring = Containment → Source-Path-Goal boundary crossing · mixing = circulation inside Containment · wiping = Contact on Support. First systematic mapping from Hedblom's ISL<sub>FOL</sub> to continuous trajectory invariants for household action.</p>
   </section>
 
-  <!-- ══════════ 7 · OBSERVATION ══════════ -->
+  <!-- ══════════ 9 · OBSERVATION ══════════ -->
   <section class="slide" id="s7">
-    <p class="eyebrow">// 07 · from observation to formalisation <span class="ph">— chapter 3</span></p>
+    <p class="eyebrow">// 09 · from observation to formalisation <span class="ph">— chapter 3</span></p>
     <h2>The phase structure is already in the human data</h2>
     <div class="cols">
       <div class="col">
@@ -393,9 +423,9 @@ table.tt td b{color:var(--ink);font-weight:600;}
     </div>
   </section>
 
-  <!-- ══════════ 8 · FOUR FAMILIES ══════════ -->
+  <!-- ══════════ 10 · FOUR FAMILIES ══════════ -->
   <section class="slide" id="s8">
-    <p class="eyebrow">// 08 · four primitive families <span class="ph">— one invariant each</span></p>
+    <p class="eyebrow">// 10 · four primitive families <span class="ph">— one invariant each</span></p>
     <h2>Each family is defined by a physical invariant</h2>
     <div class="fam" style="margin-top:4px;">
       <div class="famcard"><canvas data-mini="cut" width="240" height="192"></canvas><div>
@@ -422,9 +452,9 @@ table.tt td b{color:var(--ink);font-weight:600;}
     <p class="small" style="margin-top:14px;">No claim that all manipulation verbs reduce to four families — this is the evaluated scope. The structure extended cleanly to bottle-opening in supervised follow-up work.</p>
   </section>
 
-  <!-- ══════════ 9 · OAAT ══════════ -->
+  <!-- ══════════ 11 · OAAT ══════════ -->
   <section class="slide" id="s9">
-    <p class="eyebrow">// 09 · the representation <span class="ph">— chapter 4</span></p>
+    <p class="eyebrow">// 11 · the representation <span class="ph">— chapter 4</span></p>
     <h2>Object-Anchored Action Template (OAAT)</h2>
     <div class="cols">
       <div class="col" style="flex:1.15;">
@@ -438,7 +468,12 @@ table.tt td b{color:var(--ink);font-weight:600;}
 <br>
 <span class="cm"># OAAT instance</span><br>
 O<sub>A</sub> = (T<sub>A</sub>, G<sub>A</sub>, k<sub>A</sub>, S<sub>A</sub>, C<sub>A</sub>)<br>
-<span class="cm">&nbsp;&nbsp;phases · geometry type · primitive family ·<br>&nbsp;&nbsp;open slots · applicability + motion bounds</span>
+<span class="cm">&nbsp;&nbsp;T<sub>A</sub> = ⟨Φ₁ … Φₙ⟩ phases · G<sub>A</sub> geometry type · k<sub>A</sub> family ·<br>&nbsp;&nbsp;S<sub>A</sub> open slots · C<sub>A</sub> = applicability ∧ motion bounds</span><br>
+<br>
+<span class="cm"># grounding &amp; executability</span><br>
+B<sub>g</sub> = γ(D, W<sub>SDT</sub>, K<sub>KG</sub>)&nbsp;&nbsp;<span class="cm"># designator · world model · knowledge</span><br>
+<span class="kw">executable</span>(O<sub>A</sub>, B<sub>g</sub>) ⇔ S<sub>A</sub> ⊆ dom(B<sub>g</sub>) ∧ C<sub>app</sub>(B<sub>g</sub>)<br>
+<span class="cm">&nbsp;&nbsp;— admissibility decided before irreversible contact</span>
         </div>
       </div>
       <div class="col">
@@ -446,15 +481,15 @@ O<sub>A</sub> = (T<sub>A</sub>, G<sub>A</sub>, k<sub>A</sub>, S<sub>A</sub>, C<s
           <li><b>Phases</b> Φᵢ = (family, anchor, params, interval, pre, post, success) — each phase's postcondition feeds the next's precondition; the success criterion measures the <b>material effect</b>, not motion completion.</li>
           <li><b>Action-relative geometry</b> — the template expects a <i>type</i> of geometry (separating surface, bounded interior, opening, contact surface); bread and cucumber differ in values, not in type.</li>
           <li><b>Applicability constraints</b> checked <b>before irreversible contact</b>: cuttable ← compliance &gt; c<sub>min</sub> ∧ hasSeparatingSurface · pourable ← flowable(contents) ∧ hasOpening · mixable · wipeable / spreadable.</li>
-          <li>Executable iff every required slot is bound: <span class="mono" style="color:var(--ok)">S_T ⊆ dom(B_g)</span>.</li>
+          <li>Every failure is attributable: an unbound slot, a violated applicability constraint, or a violated phase invariant — exactly the taxonomy the grounding pipeline and the runtime monitor implement.</li>
         </ul>
       </div>
     </div>
   </section>
 
-  <!-- ══════════ 10 · GROUNDING ══════════ -->
+  <!-- ══════════ 12 · GROUNDING ══════════ -->
   <section class="slide" id="s10">
-    <p class="eyebrow">// 10 · grounding pipeline <span class="ph">— chapter 5 · watch the slots close</span></p>
+    <p class="eyebrow">// 12 · grounding pipeline <span class="ph">— chapter 5 · watch the slots close</span></p>
     <h2>Layered grounding — every failure belongs to a layer</h2>
     <div class="gp" style="margin-top:4px;">
       <div class="gprow"><div class="st">input designator</div><div class="src">task request</div><div class="bd">primitive family + symbolic object role</div><div class="fl">✗ no OAAT instance</div></div>
@@ -468,9 +503,9 @@ O<sub>A</sub> = (T<sub>A</sub>, G<sub>A</sub>, k<sub>A</sub>, S<sub>A</sub>, C<s
     <p class="small" style="margin-top:12px;"><b style="color:var(--ink2)">Why geometry alone fails (H<sub>0,3</sub>):</b> for a cherry, geometry offers one wide admissible anchor zone; the knowledge query <span class="mono">hasPart(pit)</span> removes the pit axis, leaving two admissible bands. Geometry proposes — knowledge disposes.</p>
   </section>
 
-  <!-- ══════════ 11 · MONITORING ══════════ -->
+  <!-- ══════════ 13 · MONITORING ══════════ -->
   <section class="slide" id="s11">
-    <p class="eyebrow">// 11 · monitored execution <span class="ph">— violations are named events</span></p>
+    <p class="eyebrow">// 13 · monitored execution <span class="ph">— violations are named events</span></p>
     <h2>Three recovery scopes, one untouched template</h2>
     <div class="cols">
       <div class="col">
@@ -498,7 +533,7 @@ O<sub>A</sub> = (T<sub>A</sub>, G<sub>A</sub>, k<sub>A</sub>, S<sub>A</sub>, C<s
     </div>
   </section>
 
-  <!-- ══════════ 12 · LIVE DEMO ══════════ -->
+  <!-- ══════════ 14 · LIVE DEMO ══════════ -->
   <section class="slide" id="s12">
     <canvas id="demoCanvas"></canvas>
     <div id="demoHud">
@@ -528,9 +563,9 @@ O<sub>A</sub> = (T<sub>A</sub>, G<sub>A</sub>, k<sub>A</sub>, S<sub>A</sub>, C<s
     <div id="demoNote">drag to orbit · same template, only bindings change<br>rendered live — no video</div>
   </section>
 
-  <!-- ══════════ 13 · EVAL DESIGN ══════════ -->
+  <!-- ══════════ 15 · EVAL DESIGN ══════════ -->
   <section class="slide" id="s13">
-    <p class="eyebrow">// 13 · evaluation design <span class="ph">— chapter 6</span></p>
+    <p class="eyebrow">// 15 · evaluation design <span class="ph">— chapter 6</span></p>
     <h2>Fix the representation. Vary the embodiment.</h2>
     <div class="cols">
       <div class="col" style="flex:1.25;">
@@ -552,7 +587,7 @@ O<sub>A</sub> = (T<sub>A</sub>, G<sub>A</sub>, k<sub>A</sub>, S<sub>A</sub>, C<s
     </div>
   </section>
 
-  <!-- ══════════ 14 · RECORDED EPISODES (cramera) ══════════ -->
+  <!-- ══════════ 16 · RECORDED EPISODES (cramera) ══════════ -->
   <section class="slide" id="sEp">
     <div id="epStage" class="glstage"></div>
     <div id="epHud">
@@ -583,9 +618,9 @@ O<sub>A</sub> = (T<sub>A</sub>, G<sub>A</sub>, k<sub>A</sub>, S<sub>A</sub>, C<s
     <div id="epNote">drag to orbit · recorded PyCRAM execution, replayed frame-by-frame — no video<br>full URDF meshes &amp; textures + recorded giskardpy trajectory — cramera viewer stack</div>
   </section>
 
-  <!-- ══════════ 15 · MAIN RESULT ══════════ -->
+  <!-- ══════════ 17 · MAIN RESULT ══════════ -->
   <section class="slide" id="s14">
-    <p class="eyebrow">// 15 · causal intervention analysis <span class="ph">— bowl mixing, n = 1,915, matched seeds</span></p>
+    <p class="eyebrow">// 17 · causal intervention analysis <span class="ph">— bowl mixing, n = 1,915, matched seeds</span></p>
     <h2>Identical task, identical template — 72.5 pp apart</h2>
     <div class="cols">
       <div class="col viz-root" style="flex:1.35;">
@@ -608,9 +643,9 @@ O<sub>A</sub> = (T<sub>A</sub>, G<sub>A</sub>, k<sub>A</sub>, S<sub>A</sub>, C<s
     </div>
   </section>
 
-  <!-- ══════════ 16 · MATRIX ══════════ -->
+  <!-- ══════════ 18 · MATRIX ══════════ -->
   <section class="slide" id="s15">
-    <p class="eyebrow">// 16 · robot × environment <span class="ph">— seed-controlled success matrix</span></p>
+    <p class="eyebrow">// 18 · robot × environment <span class="ph">— seed-controlled success matrix</span></p>
     <h2>Environments change what is reachable, not what is represented</h2>
     <div class="cols">
       <div class="col viz-root" style="flex:1.2;">
@@ -628,9 +663,9 @@ O<sub>A</sub> = (T<sub>A</sub>, G<sub>A</sub>, k<sub>A</sub>, S<sub>A</sub>, C<s
     </div>
   </section>
 
-  <!-- ══════════ 17 · RECOVERY PARADOX ══════════ -->
+  <!-- ══════════ 19 · RECOVERY PARADOX ══════════ -->
   <section class="slide" id="s16">
-    <p class="eyebrow">// 17 · failure analysis <span class="ph">— read the statistics carefully</span></p>
+    <p class="eyebrow">// 19 · failure analysis <span class="ph">— read the statistics carefully</span></p>
     <h2>The recovery paradox</h2>
     <div class="cols">
       <div class="col viz-root">
@@ -649,9 +684,9 @@ O<sub>A</sub> = (T<sub>A</sub>, G<sub>A</sub>, k<sub>A</sub>, S<sub>A</sub>, C<s
     </div>
   </section>
 
-  <!-- ══════════ 18 · REAL ROBOT ══════════ -->
+  <!-- ══════════ 20 · REAL ROBOT ══════════ -->
   <section class="slide" id="s17">
-    <p class="eyebrow">// 18 · real-world execution <span class="ph">— same action code, physical PR2</span></p>
+    <p class="eyebrow">// 20 · real-world execution <span class="ph">— same action code, physical PR2</span></p>
     <h2>From simulation to the physical kitchen</h2>
     <div class="cols">
       <div class="col" style="flex:1.2;">
@@ -683,9 +718,9 @@ O<sub>A</sub> = (T<sub>A</sub>, G<sub>A</sub>, k<sub>A</sub>, S<sub>A</sub>, C<s
     </div>
   </section>
 
-  <!-- ══════════ 19 · HYPOTHESES REVISITED ══════════ -->
+  <!-- ══════════ 21 · HYPOTHESES REVISITED ══════════ -->
   <section class="slide" id="s18">
-    <p class="eyebrow">// 19 · hypotheses revisited <span class="ph">— chapter 7</span></p>
+    <p class="eyebrow">// 21 · hypotheses revisited <span class="ph">— chapter 7</span></p>
     <h2>What held, and where the edges are</h2>
     <div class="verdict">
       <div class="vrow"><div class="h">H1</div><div class="d">Stable phase organisation in human demonstrations, unchanged across all 7,693 robot executions. Variation absorbed <b style="color:var(--ink)">entirely through parameterisation</b>.</div><div class="s"><span class="chip ok">supported</span></div></div>
@@ -700,17 +735,17 @@ O<sub>A</sub> = (T<sub>A</sub>, G<sub>A</sub>, k<sub>A</sub>, S<sub>A</sub>, C<s
     <p class="small" style="margin-top:12px;">*within the tested task scope. Honest edges: bounding-box shape proxies fail on irregular objects (avocado) · curated KG coverage (29 materials) · large-scale analysis is simulated; real trials cover one platform. The claim is <b style="color:var(--ink2)">representational invariance, not universal realisability</b>.</p>
   </section>
 
-  <!-- ══════════ 20 · CONTRIBUTIONS ══════════ -->
+  <!-- ══════════ 22 · CONTRIBUTIONS ══════════ -->
   <section class="slide" id="s19">
-    <p class="eyebrow">// 20 · contributions</p>
+    <p class="eyebrow">// 22 · contributions — revisited <span class="ph">— the claims from frame 07, with their evidence</span></p>
     <h2>What this thesis puts on the table</h2>
     <div class="cols">
       <div class="col">
         <ul class="k">
-          <li><b>Representational:</b> the OAAT — phase structures anchored in action-relative object geometry, applicability as explicit material constraints.</li>
-          <li><b>Empirical:</b> the phase structure of household manipulation is stable and derivable from observation alone.</li>
-          <li><b>Grounding:</b> layered query + policy resolution turns underspecified designators into executable motion; the geometry-only null model demonstrably fails.</li>
-          <li><b>Evaluation:</b> one representation, eight morphologically diverse robots, three environments — 7,693 executions, zero template rewrites.</li>
+          <li><span class="mono" style="color:var(--acc)">C1</span> <b>Empirical:</b> the phase structure of household manipulation is stable and derivable from observation alone — 3,046 episodes, four families, one recurring four-phase organisation.</li>
+          <li><span class="mono" style="color:var(--acc)">C2</span> <b>Representational:</b> the OAAT — phase structures anchored in action-relative object geometry, applicability as explicit material constraints.</li>
+          <li><span class="mono" style="color:var(--acc)">C3</span> <b>Grounding:</b> layered query + policy resolution turns underspecified designators into executable motion; the geometry-only null model H<sub>0,3</sub> demonstrably fails.</li>
+          <li><span class="mono" style="color:var(--acc)">C4</span> <b>Evaluation:</b> one representation, eight morphologically diverse robots, three environments — 7,693 executions, zero template rewrites.</li>
         </ul>
       </div>
       <div class="col">
@@ -724,12 +759,12 @@ O<sub>A</sub> = (T<sub>A</sub>, G<sub>A</sub>, k<sub>A</sub>, S<sub>A</sub>, C<s
     </div>
   </section>
 
-  <!-- ══════════ 21 · CLOSING ══════════ -->
+  <!-- ══════════ 23 · CLOSING ══════════ -->
   <section class="slide" id="s20">
     <canvas id="closeCanvas" style="position:absolute;top:0;bottom:0;left:32%;width:74%;height:100%;"></canvas>
     <div class="scrim" style="position:absolute;inset:0;background:var(--scrim2);"></div>
     <div style="position:relative;z-index:5;max-width:620px;padding-top:56px;">
-      <p class="eyebrow">// 21 · future work &amp; closing</p>
+      <p class="eyebrow">// 23 · future work &amp; closing</p>
       <ul class="k" style="font-size:15px;">
         <li>Action-relative geometry for <b>irregular objects</b> (part-based, convex decomposition)</li>
         <li><b>Task-level recovery</b>: new tool, move the object, ask for help</li>
