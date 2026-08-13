@@ -7,13 +7,17 @@ simulation, tasks are added individually and get pause/interrupt monitors and pr
 condition monitors wired in.
 """
 
+from dataclasses import dataclass, field
+
 import pytest
+from typing_extensions import List
 
 from giskardpy.motion_statechart.goals.templates import Sequence
 from giskardpy.motion_statechart.graph_node import CancelMotion, EndMotion
 from giskardpy.motion_statechart.monitors.payload_monitors import (
     ThreadedPredicateMonitor,
 )
+from giskardpy.motion_statechart.motion_statechart import MotionStatechart
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 
@@ -23,6 +27,7 @@ from coraplex.execution_environment import real_robot, simulated_robot, Executio
 from coraplex.plans.condition_nodes import PlanNodeStatusMonitor
 from coraplex.plans.executables import ModelChangeExecutable
 from coraplex.plans.factories import execute_single
+from coraplex.plans.plan_callbacks import PlanCallback
 from coraplex.robot_plans.actions.core.pick_up import ReachAction
 
 
@@ -33,8 +38,9 @@ def reach_action_executable(immutable_model_world):
     ``test_merge_motions`` in ``test_graph_parsing.py`` does.
     """
     world, view, context = immutable_model_world
-    world.get_body_by_name("milk.stl").parent_connection.origin = (
-        HomogeneousTransformationMatrix.from_xyz_rpy(2, 1.5, 0.7, 0, 0, 0)
+    milk_connection = world.get_body_by_name("milk.stl").parent_connection
+    milk_connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(
+        2, 1.5, 0.7, 0, 0, 0, reference_frame=milk_connection.parent
     )
     plan = execute_single(
         ReachAction(
@@ -51,6 +57,43 @@ def reach_action_executable(immutable_model_world):
     )
     plan.notify()
     return plan.parse()
+
+
+# %% motion tick notification
+
+
+@dataclass
+class MotionTickRecorder(PlanCallback):
+    """
+    Records every motion tick notification it receives.
+    """
+
+    ticked_statecharts: List[MotionStatechart] = field(default_factory=list)
+    """
+    The statechart passed with each tick notification, in notification order.
+    """
+
+    def on_motion_tick(self, statechart: MotionStatechart):
+        self.ticked_statecharts.append(statechart)
+
+
+def test_notify_motion_tick_notifies_each_plan_exactly_once(reach_action_executable):
+    """
+    One executor tick notifies the plan behind the executable's motions exactly once,
+    even when the executable realizes several motions of that same plan.
+    """
+    assert len(reach_action_executable.motion_mappings) > 1
+    plan = next(iter(reach_action_executable.motion_mappings)).plan
+    recorder = MotionTickRecorder()
+    plan.node_callbacks.append(recorder)
+    statechart = MotionStatechart()
+
+    reach_action_executable._notify_motion_tick(statechart)
+
+    assert recorder.ticked_statecharts == [statechart]
+
+
+# %% REAL/SIMULATED motion state chart construction
 
 
 def test_motion_state_chart_simulated_execution_adds_tasks_directly(

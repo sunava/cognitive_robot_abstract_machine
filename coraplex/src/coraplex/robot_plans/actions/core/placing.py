@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from typing_extensions import Any, Dict
+from typing_extensions import Any, Dict, Optional
 
+from coraplex.plans.attachment_nodes import DetachNode
 from coraplex.plans.plan_node import PlanNode
 from krrood.entity_query_language.core.variable import Variable
 from krrood.entity_query_language.factories import (
@@ -23,9 +24,10 @@ from coraplex.datastructures.grasp import GraspDescription
 from coraplex.plans.factories import sequential, execute_single
 from coraplex.querying.predicates import GripperIsFree
 from coraplex.robot_plans.actions.base import ActionDescription
-from coraplex.robot_plans.actions.core.pick_up import (
-    GRASP_DETECTION_THRESHOLD,
-    PickUpAction,
+from coraplex.robot_plans.actions.core.pick_up import PickUpAction
+from coraplex.robot_plans.mixins import (
+    HasGraspDetectionThreshold,
+    PlaceTuningParameters,
 )
 from coraplex.robot_plans.motions.gripper import (
     MoveGripperMotion,
@@ -34,13 +36,13 @@ from coraplex.robot_plans.motions.gripper import (
 from coraplex.view_manager import ViewManager
 from semantic_digital_twin.datastructures.definitions import GripperState
 from semantic_digital_twin.reasoning.predicates import allclose
-from semantic_digital_twin.reasoning.robot_predicates import is_body_in_gripper
+from semantic_digital_twin.reasoning.robot_predicates import is_body_gripped
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.world_entity import Body
 
 
 @dataclass
-class PlaceAction(ActionDescription):
+class PlaceAction(ActionDescription, PlaceTuningParameters, HasGraspDetectionThreshold):
     """
     Places an Object at a position using an arm.
     """
@@ -59,35 +61,11 @@ class PlaceAction(ActionDescription):
     Arm that is currently holding the object
     """
 
-    placing_linear_velocity: float = 0.03
+    grasp_release_threshold: float = field(default=0.1, kw_only=True)
     """
-    Linear reference velocity (in m/s) for the final descent onto the target location.
-
-    Slowed down from the default so the object settles onto the surface instead of being
-    dropped/shoved into place.
-    """
-
-    transport_linear_velocity: float = 0.05
-    """
-    Linear reference velocity (in m/s) for carrying the held object to a pose above the
-    target location, before the final descent.
-    """
-
-    release_opening_velocity: float = 0.05
-    """
-    Finger joint velocity (in m/s) used while opening the gripper to release the object.
-    """
-
-    retract_linear_velocity: float = 0.05
-    """
-    Linear reference velocity (in m/s) for retracting the end effector away from the
-    placed object.
-
-    Kept at the original, careful speed -- tried raising this to 0.15 m/s, but that was
-    enough for the retreat itself to knock the just-placed cube back down in testing
-    (confirmed via final stack heights collapsing to table level despite every
-    pick/place reporting success), since the retreat path runs immediately beside a cube
-    that is only resting on the stack by gravity/friction, not attached.
+    Maximum fraction of sampled rays between the gripper's fingers that may still hit
+    :attr:`object_designator` for it to count as released (see
+    :func:`~semantic_digital_twin.reasoning.robot_predicates.is_body_gripped`).
     """
 
     max_release_attempts: int = 3
@@ -124,41 +102,48 @@ class PlaceAction(ActionDescription):
             self.target_location, self.object_designator, reverse=True
         )
 
-    def _transport_and_descend_plan(self, transport_pose: Pose, placing_pose: Pose) -> PlanNode:
+    def _transport_and_descend_plan(
+        self, transport_pose: Pose, placing_pose: Pose
+    ) -> PlanNode:
         return sequential(
             [
                 MoveToolCenterPointMotion(
                     transport_pose,
                     self.arm,
                     allow_gripper_collision=False,
-                    reference_linear_velocity=self.transport_linear_velocity,
+                    max_linear_velocity=self.transport_linear_velocity,
                 ),
                 MoveToolCenterPointMotion(
                     placing_pose,
                     self.arm,
                     allow_gripper_collision=False,
-                    reference_linear_velocity=self.placing_linear_velocity,
+                    max_linear_velocity=self.placing_linear_velocity,
                 ),
             ],
         )
 
     def _retract_plan(self, retract_pose: Pose) -> PlanNode:
-        # A DetachNode(body=self.object_designator, new_parent=self.world.root)
-        # would normally go here, but is unnecessary: the object is held only
-        # by real contact/friction (AttachNode is likewise disabled in
-        # PickUpAction), so nothing needs kinematically re-parenting once
-        # released.
-        return MoveToolCenterPointMotion(
-            retract_pose,
-            self.arm,
-            reference_linear_velocity=self.retract_linear_velocity,
+        """
+        :return: The plan that re-parents the placed object back to the world and
+            retracts the end effector away from it.
+        """
+        return sequential(
+            [
+                DetachNode(body=self.object_designator, new_parent=self.world.root),
+                MoveToolCenterPointMotion(
+                    retract_pose,
+                    self.arm,
+                    max_linear_velocity=self.retract_linear_velocity,
+                ),
+            ],
         )
 
     def _object_released(self) -> bool:
         end_effector = ViewManager.get_end_effector_view(self.arm, self.robot)
-        return not (
-            is_body_in_gripper(self.object_designator, end_effector)
-            > GRASP_DETECTION_THRESHOLD
+        return not is_body_gripped(
+            self.object_designator,
+            end_effector,
+            threshold=self.grasp_release_threshold,
         )
 
     def execute(self) -> Any:
@@ -212,8 +197,11 @@ class PlaceAction(ActionDescription):
         )
         return or_(
             not_(GripperIsFree(end_effector)),
-            is_body_in_gripper(variable_from(kwargs["object_designator"]), end_effector)
-            > GRASP_DETECTION_THRESHOLD,
+            is_body_gripped(
+                variable_from(kwargs["object_designator"]),
+                end_effector,
+                threshold=kwargs["grasp_detection_threshold"],
+            ),
         )
 
     @staticmethod
@@ -229,8 +217,13 @@ class PlaceAction(ActionDescription):
         )
         return and_(
             GripperIsFree(end_effector),
-            is_body_in_gripper(variable_from(kwargs["object_designator"]), end_effector)
-            < 0.1,
+            not_(
+                is_body_gripped(
+                    variable_from(kwargs["object_designator"]),
+                    end_effector,
+                    threshold=kwargs["grasp_release_threshold"],
+                )
+            ),
             allclose(
                 variable_from(kwargs["object_designator"]).global_pose,
                 kwargs["target_location"],

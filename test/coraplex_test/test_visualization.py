@@ -1,314 +1,175 @@
-from __future__ import annotations
+"""
+Tests for the canonical coraplex visualization entry point: backend selection from the
+environment and end-to-end Rerun recording of a performed plan.
+"""
 
-from dataclasses import dataclass, field
-
-import networkx as nx
 import pytest
-from rustworkx import PyDiGraph, PyGraph
 
+from coraplex.datastructures.enums import VisualizationBackend
+from coraplex.exceptions import UnknownVisualizationOption
+from coraplex.execution_environment import simulated_robot
+from coraplex.plans.factories import sequential
+from coraplex.robot_plans.actions.core.robot_body import MoveTorsoAction
 from coraplex.visualization import (
-    GraphVisualizer,
-    build_nx_graph,
-    calculate_layout_positions,
-    create_ordered_graph,
-    _collect_properties,
-    _escape_html,
-    _format_params,
-    _graph_snapshot,
-    _object_params_with_properties,
+    RERUN_MODE_VARIABLE,
+    RERUN_TARGET_VARIABLE,
+    VISUALIZATION_BACKEND_VARIABLE,
+    WorldVisualization,
 )
+from semantic_digital_twin.adapters.rerun import RerunAdapter, RerunMode
+from semantic_digital_twin.datastructures.definitions import TorsoState
+from semantic_digital_twin.world import World
 
+# %% backend selection from the environment
 
-@dataclass
-class FakePlanNode:
-    """A minimal stand-in for a plan node used to exercise graph construction."""
 
-    index: int
-    """The index of the node inside the originating plan graph."""
+def test_from_environment_selects_backend(monkeypatch) -> None:
+    """
+    The environment variables select the backend, the Rerun mode, and the Rerun target.
+    """
+    monkeypatch.setenv(VISUALIZATION_BACKEND_VARIABLE, "rerun")
+    monkeypatch.setenv(RERUN_MODE_VARIABLE, "save")
+    monkeypatch.setenv(RERUN_TARGET_VARIABLE, "/some/recording.rrd")
 
-    children: list = field(default_factory=list)
-    """The direct successors of this node."""
+    visualization = WorldVisualization.from_environment(World())
 
+    assert visualization.backend == VisualizationBackend.RERUN
+    assert visualization.rerun_mode == RerunMode.SAVE
+    assert visualization.rerun_target == "/some/recording.rrd"
 
-@dataclass
-class FakePlan:
-    """A minimal stand-in for a plan exposing only what the visualizer reads."""
 
-    nodes: list
-    """The nodes contained in the plan, in arbitrary order."""
+def test_from_environment_uses_defaults_without_variables(monkeypatch) -> None:
+    """
+    Without any environment variables set, the given default backend is used with a
+    spawned viewer and no target.
+    """
+    monkeypatch.delenv(VISUALIZATION_BACKEND_VARIABLE, raising=False)
+    monkeypatch.delenv(RERUN_MODE_VARIABLE, raising=False)
+    monkeypatch.delenv(RERUN_TARGET_VARIABLE, raising=False)
 
+    visualization = WorldVisualization.from_environment(
+        World(), default_backend=VisualizationBackend.RERUN
+    )
 
-@dataclass
-class PayloadWithAttributes:
-    """A payload whose public instance attributes should become parameters."""
+    assert visualization.backend == VisualizationBackend.RERUN
+    assert visualization.rerun_mode == RerunMode.SPAWN
+    assert visualization.rerun_target is None
 
-    name: str
-    """A public attribute that must be displayed."""
 
-    count: int
-    """A second public attribute that must be displayed."""
+def test_from_environment_rejects_unknown_backend(monkeypatch) -> None:
+    """
+    A value that names no backend raises an exception listing the valid values.
+    """
+    monkeypatch.setenv(VISUALIZATION_BACKEND_VARIABLE, "hologram")
 
-    _hidden: str = "secret"
-    """A private attribute that must be ignored."""
+    with pytest.raises(UnknownVisualizationOption):
+        WorldVisualization.from_environment(World())
 
 
-class PayloadWithProperties:
-    """A payload exposing properties with different access behaviours."""
+# %% inert NONE backend
 
-    @property
-    def doubled(self) -> int:
-        """A readable property whose value must be collected."""
-        return 21 * 2
 
-    @property
-    def label(self) -> str:
-        """A property named ``label`` that must never be collected as a parameter."""
-        return "ignored"
+def test_none_backend_registers_nothing() -> None:
+    """
+    Starting the NONE backend adds no world callbacks and creates no adapter or node.
+    """
+    world = World()
+    state_callbacks_before = len(world.state.state_change_callbacks)
 
-    @property
-    def broken(self) -> int:
-        """A property that raises on access and must be skipped silently."""
-        raise ValueError("cannot read this property")
+    visualization = WorldVisualization(world=world).start()
 
+    assert len(world.state.state_change_callbacks) == state_callbacks_before
+    assert visualization.rerun_adapter is None
+    assert visualization.ros_node is None
+    visualization.stop()
 
-def directed_graph_with_payloads(payloads) -> PyDiGraph:
-    """Build a directed rustworkx graph holding the given payloads as a chain."""
-    graph = PyDiGraph(multigraph=False)
-    indices = [graph.add_node(payload) for payload in payloads]
-    for parent, child in zip(indices, indices[1:]):
-        graph.add_edge(parent, child, None)
-    return graph
 
+# %% end-to-end recording
 
-class TestCreateOrderedGraph:
-    def test_remaps_indices_to_contiguous_range(self):
-        root = FakePlanNode(index=10)
-        child = FakePlanNode(index=25)
-        root.children = [child]
-        plan = FakePlan(nodes=[root, child])
 
-        ordered_graph, mapping = create_ordered_graph(plan)
+def test_rerun_save_records_plan_events(immutable_model_world, tmp_path) -> None:
+    """
+    Performing a plan under a SAVE-mode Rerun visualization records both the world's
+    bodies and the plan's events into the ``.rrd``.
+    """
+    world, robot_view, context = immutable_model_world
+    recording_file_path = tmp_path / "demo.rrd"
+    visualization = WorldVisualization(
+        world=world,
+        backend=VisualizationBackend.RERUN,
+        rerun_mode=RerunMode.SAVE,
+        rerun_target=str(recording_file_path),
+    ).start()
+    plan = sequential([MoveTorsoAction(TorsoState.HIGH)], context=context).plan
+    visualization.attach_plan(plan)
 
-        assert mapping == {10: 0, 25: 1}
-        assert ordered_graph.num_nodes() == 2
+    with simulated_robot:
+        plan.perform()
+    timeline = visualization.rerun_adapter.timeline
+    visualization.stop()
 
-    def test_preserves_edges_under_remapping(self):
-        root = FakePlanNode(index=3)
-        first_child = FakePlanNode(index=7)
-        second_child = FakePlanNode(index=9)
-        root.children = [first_child, second_child]
-        plan = FakePlan(nodes=[root, first_child, second_child])
+    recorded = RerunAdapter.read_recording_entities(
+        str(recording_file_path), timeline=timeline
+    )
+    assert any(path.startswith("/world/") for path in recorded)
+    assert any(path.startswith("/plan/") for path in recorded)
 
-        ordered_graph, mapping = create_ordered_graph(plan)
 
-        expected_edges = {(mapping[3], mapping[7]), (mapping[3], mapping[9])}
-        assert set(ordered_graph.edge_list()) == expected_edges
+# %% the cramera backend
 
-    def test_empty_plan_yields_empty_graph(self):
-        ordered_graph, mapping = create_ordered_graph(FakePlan(nodes=[]))
 
-        assert mapping == {}
-        assert ordered_graph.num_nodes() == 0
+def test_from_environment_selects_the_cramera_backend(monkeypatch) -> None:
+    monkeypatch.setenv(VISUALIZATION_BACKEND_VARIABLE, "cramera")
 
+    visualization = WorldVisualization.from_environment(World())
 
-class TestCalculateLayoutPositions:
-    def test_empty_graph_returns_empty_mapping(self):
-        assert calculate_layout_positions("bfs", nx.Graph()) == {}
+    assert visualization.backend == VisualizationBackend.CRAMERA
 
-    @pytest.mark.parametrize("layout", ["spring", "kamada_kawai", "bfs"])
-    def test_layout_assigns_position_to_every_node(self, layout):
-        graph = nx.path_graph(4)
 
-        positions = calculate_layout_positions(layout, graph)
+def test_cramera_backend_serves_the_world_and_publishes_plans(monkeypatch) -> None:
+    """
+    Starting the cramera backend binds the live bridge to the world, and attaching a
+    plan appends the bridge's plan callback to it.
+    """
+    cramera_visualization = pytest.importorskip("cramera.live.visualization")
 
-        assert set(positions) == set(graph.nodes)
-        assert all(len(position) == 2 for position in positions.values())
+    served = []
+    monkeypatch.setattr(
+        cramera_visualization,
+        "serve",
+        lambda bridge, port: served.append((bridge, port)) or _ShutdownRecorder(),
+    )
+    world = World()
+    visualization = WorldVisualization(
+        world=world, backend=VisualizationBackend.CRAMERA
+    ).start()
 
-    def test_unknown_layout_falls_back_to_spring(self):
-        graph = nx.path_graph(3)
+    assert visualization.cramera_visualization.bridge.world is world
+    assert [port for _, port in served] == [cramera_visualization.DEFAULT_PORT]
 
-        positions = calculate_layout_positions("does_not_exist", graph)
-        spring_positions = calculate_layout_positions("spring", graph)
+    plan = _RecordingPlan()
+    visualization.attach_plan(plan)
+    assert [type(callback).__name__ for callback in plan.node_callbacks] == [
+        "BridgePlanCallback"
+    ]
 
-        assert set(positions) == set(spring_positions)
-        assert all(
-            tuple(positions[node]) == tuple(spring_positions[node])
-            for node in spring_positions
-        )
+    visualization.stop()
+    assert visualization.cramera_visualization is None
 
-    def test_bfs_with_invalid_start_uses_existing_node(self):
-        graph = nx.path_graph(3)
 
-        positions = calculate_layout_positions("bfs", graph, start=999)
+class _ShutdownRecorder:
+    """
+    Stands in for the bridge's HTTP server during the cramera backend test.
+    """
 
-        assert set(positions) == set(graph.nodes)
+    def shutdown(self) -> None:
+        pass
 
 
-class TestBuildNxGraph:
-    def test_default_label_uses_payload_label_key(self):
-        graph = directed_graph_with_payloads([{"label": "pick"}])
+class _RecordingPlan:
+    """
+    A plan of which ``attach_plan`` only touches the callback list.
+    """
 
-        nx_graph = build_nx_graph(graph, None, None, None)
-
-        assert nx_graph.nodes[0]["label"] == "pick"
-
-    def test_custom_node_label_callable_is_used(self):
-        graph = directed_graph_with_payloads([{"value": 5}])
-
-        nx_graph = build_nx_graph(
-            graph, None, None, lambda index, payload: f"node-{index}"
-        )
-
-        assert nx_graph.nodes[0]["label"] == "node-0"
-
-    def test_explicit_node_params_are_rendered(self):
-        graph = directed_graph_with_payloads([{"label": "a"}])
-
-        nx_graph = build_nx_graph(graph, {0: {"speed": 3}}, None, None)
-
-        assert "speed" in nx_graph.nodes[0]["param_text"]
-        assert "3" in nx_graph.nodes[0]["param_text"]
-
-    def test_attribute_filter_limits_displayed_params(self):
-        graph = directed_graph_with_payloads([{"label": "a"}])
-
-        nx_graph = build_nx_graph(graph, {0: {"speed": 3, "force": 7}}, ["speed"], None)
-
-        assert "speed" in nx_graph.nodes[0]["param_text"]
-        assert "force" not in nx_graph.nodes[0]["param_text"]
-
-    def test_directed_graph_produces_directed_networkx_graph(self):
-        graph = directed_graph_with_payloads([{"label": "a"}, {"label": "b"}])
-
-        nx_graph = build_nx_graph(graph, None, None, None)
-
-        assert nx_graph.is_directed()
-        assert list(nx_graph.edges()) == [(0, 1)]
-
-    def test_undirected_graph_produces_undirected_networkx_graph(self):
-        graph = PyGraph(multigraph=False)
-        first = graph.add_node({"label": "a"})
-        second = graph.add_node({"label": "b"})
-        graph.add_edge(first, second, None)
-
-        nx_graph = build_nx_graph(graph, None, None, None)
-
-        assert not nx_graph.is_directed()
-
-    def test_non_contiguous_indices_after_removal_are_handled(self):
-        graph = directed_graph_with_payloads(
-            [{"label": "a"}, {"label": "b"}, {"label": "c"}]
-        )
-        graph.remove_node(1)
-
-        nx_graph = build_nx_graph(graph, None, None, None)
-
-        assert set(nx_graph.nodes) == {0, 2}
-
-
-class TestGraphSnapshot:
-    def test_snapshot_is_stable_for_equal_graphs(self):
-        first = build_nx_graph(
-            directed_graph_with_payloads([{"label": "a"}]), None, None, None
-        )
-        second = build_nx_graph(
-            directed_graph_with_payloads([{"label": "a"}]), None, None, None
-        )
-
-        assert _graph_snapshot(first) == _graph_snapshot(second)
-
-    def test_snapshot_changes_when_label_changes(self):
-        before = build_nx_graph(
-            directed_graph_with_payloads([{"label": "a"}]), None, None, None
-        )
-        after = build_nx_graph(
-            directed_graph_with_payloads([{"label": "b"}]), None, None, None
-        )
-
-        assert _graph_snapshot(before) != _graph_snapshot(after)
-
-    def test_snapshot_changes_when_edges_change(self):
-        single = build_nx_graph(
-            directed_graph_with_payloads([{"label": "a"}]), None, None, None
-        )
-        connected = build_nx_graph(
-            directed_graph_with_payloads([{"label": "a"}, {"label": "a"}]),
-            None,
-            None,
-            None,
-        )
-
-        assert _graph_snapshot(single) != _graph_snapshot(connected)
-
-
-class TestObjectParamsWithProperties:
-    def test_dict_payload_drops_label_key(self):
-        params = _object_params_with_properties({"label": "a", "speed": 4})
-
-        assert params == {"speed": 4}
-
-    def test_none_payload_returns_none(self):
-        assert _object_params_with_properties(None) is None
-
-    def test_public_attributes_are_collected_without_private(self):
-        params = _object_params_with_properties(
-            PayloadWithAttributes(name="cup", count=2)
-        )
-
-        assert params == {"name": "cup", "count": 2}
-
-    def test_properties_are_collected_and_failures_skipped(self):
-        params = _object_params_with_properties(PayloadWithProperties())
-
-        assert params == {"doubled": 42}
-
-
-class TestCollectProperties:
-    def test_collects_readable_properties_and_skips_broken_and_label(self):
-        properties = _collect_properties(PayloadWithProperties())
-
-        assert properties == {"doubled": 42}
-
-
-class TestFormatParams:
-    def test_empty_params_render_placeholder(self):
-        assert _format_params(None) == "<i>No parameters</i>"
-        assert _format_params({}) == "<i>No parameters</i>"
-
-    def test_params_render_as_escaped_table(self):
-        rendered = _format_params({"name": "<b>x</b>"})
-
-        assert "<table>" in rendered
-        assert "&lt;b&gt;x&lt;/b&gt;" in rendered
-        assert "<b>x</b>" not in rendered.replace("<b>name</b>", "")
-
-
-class TestEscapeHtml:
-    def test_escapes_all_special_characters(self):
-        escaped = _escape_html("<a href=\"x\">'&'</a>")
-
-        assert "<" not in escaped
-        assert ">" not in escaped
-        assert "&lt;a href=&quot;x&quot;&gt;&#39;&amp;&#39;&lt;/a&gt;" == escaped
-
-
-class TestGraphVisualizer:
-    def test_build_current_nx_graph_polls_graph_source(self):
-        first = directed_graph_with_payloads([{"label": "a"}])
-        second = directed_graph_with_payloads([{"label": "a"}, {"label": "b"}])
-        graphs = iter([first, second])
-        visualizer = GraphVisualizer(graph=first, graph_source=lambda: next(graphs))
-
-        first_result = visualizer._build_current_nx_graph()
-        second_result = visualizer._build_current_nx_graph()
-
-        assert first_result.number_of_nodes() == 1
-        assert second_result.number_of_nodes() == 2
-
-    def test_build_current_nx_graph_uses_static_graph_without_source(self):
-        graph = directed_graph_with_payloads([{"label": "a"}])
-        visualizer = GraphVisualizer(graph=graph)
-
-        nx_graph = visualizer._build_current_nx_graph()
-
-        assert nx_graph.number_of_nodes() == 1
+    def __init__(self) -> None:
+        self.node_callbacks = []

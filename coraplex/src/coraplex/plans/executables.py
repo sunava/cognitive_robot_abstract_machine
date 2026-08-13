@@ -54,6 +54,49 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class MotionLifeCycleTracker:
+    """
+    Emits plan node callbacks for motion nodes as their giskard tasks change life cycle
+    state during simulated execution.
+    """
+
+    motion_mappings: Dict[MotionNode, Task]
+    """
+    The motion nodes and the giskard tasks realizing them.
+    """
+
+    _last_states: Dict[MotionNode, LifeCycleValues] = field(init=False)
+    """
+    The life cycle state each task had when it was last inspected.
+    """
+
+    def __post_init__(self):
+        self._last_states = {
+            motion_node: LifeCycleValues.NOT_STARTED
+            for motion_node in self.motion_mappings
+        }
+
+    def emit_transitions(self) -> None:
+        """
+        Notify the plan of every motion node whose task started or finished since the
+        last inspection.
+
+        A task that reaches a terminal state without ever being seen running still emits
+        its start first, so every ended motion node was also started.
+        """
+        for motion_node, task in self.motion_mappings.items():
+            last_state = self._last_states[motion_node]
+            current_state = task.life_cycle_state
+            if current_state == last_state:
+                continue
+            self._last_states[motion_node] = current_state
+            if last_state == LifeCycleValues.NOT_STARTED:
+                motion_node.plan.notify_node_started(motion_node)
+            if current_state in (LifeCycleValues.DONE, LifeCycleValues.FAILED):
+                motion_node.plan.notify_node_ended(motion_node)
+
+
+@dataclass
 class Executable:
     """Base class for executable units."""
 
@@ -323,6 +366,15 @@ class GiskardExecutable(Executable):
             case _:
                 raise UnknownExecutionType(GiskardExecutable.execution_type)
 
+    def _notify_motion_tick(self, statechart: MotionStatechart) -> None:
+        """
+        Notify every plan whose motions this executable realizes of one executor tick.
+
+        :param statechart: The statechart the executor is ticking.
+        """
+        for plan in {motion_node.plan for motion_node in self.motion_mappings or {}}:
+            plan.notify_motion_tick(statechart)
+
     def _execute_simulation(self) -> None:
         """Compiles the motion state chart and ticks it in the world of the
         context until it is done."""
@@ -341,6 +393,11 @@ class GiskardExecutable(Executable):
         motion_state_chart = self.motion_state_chart
         executor.compile(motion_state_chart)
 
+        life_cycle_tracker = MotionLifeCycleTracker(
+            motion_mappings=self.motion_mappings
+        )
+        life_cycle_tracker.emit_transitions()
+
         counter = 0
         while (
             counter
@@ -358,6 +415,8 @@ class GiskardExecutable(Executable):
             executor.tick()
             executor.pacer.sleep()
             counter += 1
+            life_cycle_tracker.emit_transitions()
+            self._notify_motion_tick(executor.motion_statechart)
             if executor.motion_statechart.is_end_motion():
                 break
 
@@ -376,13 +435,11 @@ class GiskardExecutable(Executable):
             raise MotionDidNotFinish(failed_nodes)
 
     def _execute_real(self) -> None:
-        """Executes the motion state chart on the real robot via giskard while
-        monitoring for interrupts."""
-        from giskardpy.middleware.ros2.python_interface import GiskardWrapper
-
-        giskard = GiskardWrapper(self.context.ros_node, world=self.context.world)
-
-        giskard.execute(self.motion_state_chart)
+        """
+        Executes the motion state chart on the real robot via giskard while monitoring
+        for interrupts.
+        """
+        self.context.giskard_wrapper.execute(self.motion_state_chart)
 
 
 @dataclass
@@ -414,6 +471,18 @@ class ModelChangeExecutable(Executable):
     new_parent: Body = field(kw_only=True)
     """The body the moved body is attached to afterwards."""
 
+    giskard_idle_settle_delta: timedelta = field(
+        default=timedelta(seconds=0.3), kw_only=True
+    )
+    """
+    Time to wait after publishing the model change on the real robot.
+
+    Giskard only applies buffered world updates, and only republishes tf, while its
+    behavior tree is idle between goals (tree tick period is 50ms); this delay gives it
+    a few idle ticks to catch up before the next motion goal is sent, instead of relying
+    on however much idle time happens to fall out of the surrounding plan's timing.
+    """
+
     def execute(self) -> None:
         """Re-parent the body to ``new_parent`` while preserving its global
         pose."""
@@ -434,6 +503,8 @@ class ModelChangeExecutable(Executable):
             # )
             self.context.world.add_connection(connection)
             # connection.origin = obj_transform
+        if GiskardExecutable.execution_type == ExecutionType.REAL:
+            time.sleep(self.giskard_idle_settle_delta.total_seconds())
 
 
 @dataclass

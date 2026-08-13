@@ -2,13 +2,12 @@ from __future__ import division
 
 import asyncio
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from time import sleep
 from typing import Set
 
 import numpy as np
 import pytest
-from docutils.nodes import field
 from geometry_msgs.msg import (
     PoseStamped,
     Point,
@@ -52,6 +51,10 @@ from giskardpy.motion_statechart.monitors.monitors import LocalMinimumReached
 from giskardpy.motion_statechart.monitors.overwrite_state_monitors import (
     SetOdometry,
     SetSeedConfiguration,
+)
+from giskardpy.motion_statechart.monitors.payload_monitors import (
+    CountSeconds,
+    CountSimulationTimeSeconds,
 )
 from giskardpy.motion_statechart.motion_statechart import MotionStatechart
 from giskardpy.motion_statechart.tasks.align_planes import AlignPlanes
@@ -158,11 +161,12 @@ class PR2Tester(GiskardTester):
             world_config=WorldWithPR2Config(urdf=robot_desc),
             robot_interface_config=PR2StandaloneInterface(),
             behavior_tree_config=StandAloneBTConfig(
-                debug_mode=True, add_debug_marker_publisher=True
+                debug_mode=True,
+                add_debug_marker_publisher=True,
+                add_trajectory_plotter=True,
             ),
             qp_controller_config=QPControllerConfig(
                 target_frequency=20,
-                retries_with_relaxed_constraints=15,
             ),
         )
 
@@ -907,8 +911,8 @@ class TestSelfCollisionAvoidance:
         giskard_better_pose.add_box_to_world(
             name=box_name,
             size=(0.2, 0.1, 0.1),
-            pose=HomogeneousTransformationMatrix(
-                reference_frame=giskard_better_pose.r_tip
+            pose=HomogeneousTransformationMatrix.from_xyz_rpy(
+                x=0.05, reference_frame=giskard_better_pose.r_tip
             ),
             parent_link=giskard_better_pose.r_tip,
         )
@@ -930,6 +934,8 @@ class TestSelfCollisionAvoidance:
             ]
         )
         msc.add_node(EndMotion.when_true(cart_goal))
+        msc.add_node(timeout := CountSimulationTimeSeconds(seconds=10))
+        msc.add_node(CancelMotion.when_true(timeout))
         giskard_better_pose.api.execute(msc)
 
     def test_avoid_self_collision_with_l_arm(self, giskard: PR2Tester):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Tuple, List
 
@@ -103,13 +103,15 @@ class ParkArmsAction(ActionDescription):
     Entry from the enum for which arm should be parked.
     """
 
-    joint_velocity: float = 2.0
+    joint_velocity: Optional[float] = field(default=None, kw_only=True)
     """
-    Joint velocity (in rad/s) to command for the parking motion, raised well
-    above :class:`JointPositionList`'s default of 1.0 rad/s -- parking never
-    approaches an object, so there is nothing nearby to knock over, and each
-    joint's own velocity limit still clamps this individually (e.g. Panda's
-    finger joints, or a joint whose real limit is below this value).
+    Maximum joint velocity (in rad/s) to command for the parking motion, enforced via
+    :class:`~giskardpy.motion_statechart.tasks.joint_tasks.JointVelocityLimit`. ``None``
+    leaves the speed unconstrained.
+
+    Lowered by a caller carrying an object held only by friction, so parking doesn't
+    jerk it out of the fingers (see
+    :class:`~coraplex.robot_plans.actions.core.pick_up.PickUpAction`).
     """
 
     @property
@@ -120,7 +122,7 @@ class ParkArmsAction(ActionDescription):
             MoveJointsMotion(
                 names=joint_names,
                 positions=joint_poses,
-                max_velocity=self.joint_velocity,
+                max_joint_velocity=self.joint_velocity,
             )
         )
 

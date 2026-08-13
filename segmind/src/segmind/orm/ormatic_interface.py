@@ -16,6 +16,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship, Mapped, mapped_column, DeclarativeBase
 
 import builtins
+import coraplex.datastructures.enums
 import coraplex.orm.model
 import datetime
 import enum
@@ -45,6 +46,7 @@ import semantic_digital_twin.semantic_annotations.semantic_annotations
 import semantic_digital_twin.world_description.degree_of_freedom
 import semantic_digital_twin.world_description.world_entity
 import sqlalchemy.sql.sqltypes
+import types
 import typing
 import typing_extensions
 import uuid
@@ -67,6 +69,7 @@ class Base(DeclarativeBase):
         uuid.UUID: sqlalchemy.sql.sqltypes.UUID,
         pathlib.Path: krrood.ormatic.custom_types.PathType,
         krrood.adapters.json_serializer.JSONData: krrood.ormatic.custom_types.JSONDataType,
+        types.NoneType: krrood.ormatic.custom_types.TypeType,
     }
 
 
@@ -532,6 +535,9 @@ class AbstractDetectorDAO(
     name: Mapped[builtins.str] = mapped_column(
         sqlalchemy.sql.sqltypes.Text, use_existing_column=True
     )
+    parent_node_index: Mapped[typing.Optional[builtins.int]] = mapped_column(
+        use_existing_column=True
+    )
 
     tracked_object: Mapped[
         typing.Optional[semantic_digital_twin.world_description.world_entity.Body]
@@ -933,8 +939,14 @@ class EpisodeSegmenterExecutorDAO(
         Integer, primary_key=True, use_existing_column=True
     )
 
-    tmp_folder: Mapped[builtins.str] = mapped_column(
-        sqlalchemy.sql.sqltypes.Text, use_existing_column=True
+    player_id: Mapped[typing.Optional[builtins.int]] = mapped_column(
+        ForeignKey("EpisodePlayerDAO.database_id", use_alter=True),
+        nullable=True,
+        use_existing_column=True,
+    )
+
+    player: Mapped[EpisodePlayerDAO] = relationship(
+        "EpisodePlayerDAO", uselist=False, foreign_keys=[player_id], post_update=True
     )
 
 
@@ -999,7 +1011,7 @@ class EpisodePlayerDAO(
 
     use_realtime: Mapped[builtins.bool] = mapped_column(use_existing_column=True)
     stop_after_ready: Mapped[builtins.bool] = mapped_column(use_existing_column=True)
-    rdr_viewer: Mapped[builtins.NoneType] = mapped_column(use_existing_column=True)
+    rdr_viewer: Mapped[types.NoneType] = mapped_column(use_existing_column=True)
 
     world_id: Mapped[typing.Optional[builtins.int]] = mapped_column(
         ForeignKey("WorldMappingDAO.database_id", use_alter=True),

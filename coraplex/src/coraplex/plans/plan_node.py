@@ -276,16 +276,18 @@ class PlanNode(PlanEntity):
                 return
 
         self.status = TaskStatus.RUNNING
+        self.plan.notify_node_started(self)
         try:
             self.notify()
             self.result = self.parse().execute()
+            self.status = TaskStatus.SUCCEEDED
         except PlanFailure as e:
             self.status = TaskStatus.FAILED
             self.reason = e
             raise e
         finally:
             self.end_time = datetime.now()
-        self.status = TaskStatus.SUCCEEDED
+            self.plan.notify_node_ended(self)
 
     def mount_subplan(self, root: PlanNode):
         """
@@ -376,7 +378,14 @@ class PlanNode(PlanEntity):
 
 
 @dataclass(eq=False, repr=False)
-class UnderspecifiedNode(PlanNode):
+class ExecutionBoundaryNode(ABC, PlanNode):
+    """
+    A PlanNode that interrupts the merging of surrounding motions into one chart.
+    """
+
+
+@dataclass(eq=False, repr=False)
+class UnderspecifiedNode(ExecutionBoundaryNode):
     """
     An action or language expression that is described by an underspecified `an(...)`
     match statement.
