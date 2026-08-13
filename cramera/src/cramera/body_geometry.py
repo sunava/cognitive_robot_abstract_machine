@@ -8,6 +8,7 @@ measurement, taken the same way, and both publish body poses rounded the same wa
 
 from __future__ import annotations
 
+from scipy.spatial.transform import Rotation
 from semantic_digital_twin.spatial_types import Point3
 from semantic_digital_twin.world_description.geometry import Scale
 from typing_extensions import List, Optional, TYPE_CHECKING
@@ -59,12 +60,21 @@ def rounded_pose(body: Body, precision: int = POSE_PRECISION) -> List[float]:
     """
     A body's world pose as ``[x, y, z, qx, qy, qz, qw]``, rounded for publication.
 
+    Derived purely numerically from the world's precomputed forward kinematics.
+
+    .. warning:: This runs on world state-change callbacks, which simulators fire from
+        their physics thread. It must never build symbolic (CasADi) expressions — for
+        example via ``body.global_pose`` — because symbolic construction is not
+        thread-safe against the demo's own motion-generation threads.
+
     :param body: The body whose world pose is read.
     :param precision: Number of decimal places to round each value to.
     """
+    world = body._world
+    world_T_body = world.compute_forward_kinematics_np(world.root, body)
+    quaternion = Rotation.from_matrix(world_T_body[:3, :3]).as_quat(canonical=True)
     return [
-        round(value, precision)
-        for value in body.global_pose.to_position_quaternion_list()
+        round(float(value), precision) for value in (*world_T_body[:3, 3], *quaternion)
     ]
 
 

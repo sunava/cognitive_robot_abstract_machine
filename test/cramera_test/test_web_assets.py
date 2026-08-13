@@ -174,6 +174,9 @@ class TestJsUnits:
     def test_collada_mesh(self):
         self.run_node("test_collada_mesh.js")
 
+    def test_obj_mesh_material(self):
+        self.run_node("test_obj_mesh_material.js")
+
     def test_environment_theme(self):
         self.run_node("test_environment_theme.js")
 

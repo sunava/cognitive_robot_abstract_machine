@@ -71,6 +71,10 @@ from segmind.datastructures.events import InsertionEvent, PickUpEvent
 from semantic_digital_twin.robots.panda import Panda
 from semantic_digital_twin.spatial_types.spatial_types import Point3
 from semantic_digital_twin.utils import rclpy_installed
+from coraplex.datastructures.enums import VisualizationBackend
+from coraplex.visualization import WorldVisualization
+
+
 
 if TYPE_CHECKING:
     # coraplex.datastructures.dataclasses and the ROS adapters below all pull in
@@ -732,7 +736,9 @@ def _build_world_and_sort(
             "Visualizing the Montessori world on topic '%s'.",
             viz_marker_publisher.topic_name,
         )
-
+    visualization = WorldVisualization.from_environment(
+        montessori.world, default_backend=VisualizationBackend.CRAMERA
+    ).start()
     multi_sim = MujocoSim(
         world=montessori.world,
         headless=not arguments.viewer,

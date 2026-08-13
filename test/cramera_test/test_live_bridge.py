@@ -459,15 +459,20 @@ class TestViewerAccessors:
         assert status["robot"] is None
         assert status["sequenceNumber"] == 0
 
-    def test_the_robot_parts_are_read_off_the_live_annotations_when_asked(self):
+    def test_status_serves_the_part_annotations_captured_at_the_last_bind(self):
         """
-        The bridge keeps the robot's sem_dt annotations, not a snapshot of them, so a
-        part attached after the last bind is still published.
+        ``status`` answers ``/info`` polls on HTTP threads, which must never walk the
+        robot's live annotations — the world is being mutated concurrently.
+
+        The parts are captured while binding on the demo's own thread and served from
+        that capture until the next bind (every model change rebinds, so a part attached
+        mid-run still appears).
         """
         arm = ArmPart(bodies=[NamedBody("pr2/l_upper_arm_link")])
         bridge = Bridge()
         bridge.robot = OneArmedRobot(arm=arm)
-        assert bridge.status()["partAnnotations"] == [
+        bridge.capture_robot_parts()
+        expected = [
             {
                 "name": "ArmPart",
                 "role": "arm",
@@ -476,8 +481,11 @@ class TestViewerAccessors:
                 "attachedTo": None,
             }
         ]
+        assert bridge.status()["partAnnotations"] == expected
 
         arm.end_effector = EndEffectorPart(bodies=[NamedBody("pr2/l_gripper_link")])
+        assert bridge.status()["partAnnotations"] == expected
+        bridge.capture_robot_parts()
         assert [
             annotation["name"] for annotation in bridge.status()["partAnnotations"]
         ] == ["ArmPart", "EndEffectorPart"]
@@ -555,6 +563,41 @@ class TestWorldDrivenDiscovery:
 
         objects = bridge.get_state()["objects"]
         assert objects["milk.stl"] == [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+
+    def test_snapshot_constructs_no_symbolic_expressions(self, monkeypatch):
+        """
+        Snapshots run on the physics thread's state-change callback, where building
+        symbolic (CasADi) expressions is not thread-safe.
+
+        Geometry discovery — which does build them — belongs to ``bind``, driven by the
+        model-change callback on the mutating thread, no matter how much time passed
+        since the last bind.
+        """
+        import time as time_module
+
+        from krrood.symbolic_math.symbolic_math import SymbolicMathType
+
+        bridge = Bridge()
+        bridge.world = world_with(
+            Body(
+                name=PrefixedName("milk.stl", prefix="world"),
+                visual=ShapeCollection(shapes=[Box(scale=Scale(0.1, 0.1, 0.1))]),
+            )
+        )
+        bridge.bind()
+
+        constructed = []
+        original_post_init = SymbolicMathType.__post_init__
+
+        def counting_post_init(instance) -> None:
+            constructed.append(type(instance).__name__)
+            original_post_init(instance)
+
+        original_time = time_module.time
+        monkeypatch.setattr(SymbolicMathType, "__post_init__", counting_post_init)
+        monkeypatch.setattr(time_module, "time", lambda: original_time() + 10_000.0)
+        bridge.snapshot()
+        assert constructed == []
 
 
 class TestBundleSignature:

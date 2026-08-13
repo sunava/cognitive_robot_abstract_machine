@@ -58,6 +58,12 @@ def build_live_scene(bridge: Bridge) -> Optional[str]:
     """
     Bundle the live world's current model into a throwaway scene.
 
+    Serializes the world through CasADi-backed shape and pose reads, so this must only
+    ever run on a thread the demo itself drives (attaching, or a model-change
+    callback) — never on an HTTP thread answering a viewer poll. The built name is
+    recorded on the bridge (see :meth:`~cramera.live.bridge.Bridge.record_live_scene`),
+    so ``GET /live_scene`` only ever reads that recording.
+
     :param bridge: The live bridge whose current world is bundled.
     :return: :data:`cramera.paths.LIVE_SCENE_NAME`, the scene name to navigate the
         viewer to, or None while no world is attached yet.
@@ -68,8 +74,11 @@ def build_live_scene(bridge: Bridge) -> Optional[str]:
     with BUILD_LOCK:
         signature = bridge.bundle_signature()
         if _existing_signature(output_directory) == signature:
-            return paths.LIVE_SCENE_NAME
-        return _write_bundle(bridge, output_directory, signature)
+            name = paths.LIVE_SCENE_NAME
+        else:
+            name = _write_bundle(bridge, output_directory, signature)
+    bridge.record_live_scene(name, signature)
+    return name
 
 
 def _existing_signature(output_directory: Path) -> Optional[str]:

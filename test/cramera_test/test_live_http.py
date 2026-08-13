@@ -22,6 +22,7 @@ from semantic_digital_twin.world_description.world_entity import Body
 from cramera import paths
 from cramera.live.bridge import Bridge
 from cramera.live.http import serve
+from cramera.live.live_bundle import build_live_scene
 
 from .test_live_bridge import shaped_body, world_with
 from .test_server import get, get_json
@@ -143,17 +144,49 @@ class TestLiveScene:
     def test_live_scene_reflects_a_fresh_bridge(self, server):
         assert get_json(server + "/live_scene") == {"scene": None}
 
-    def test_live_scene_bundles_the_attached_world(
+    def test_live_scene_serves_the_bundle_the_demo_built(
         self, server, bridge, tmp_path, monkeypatch
     ):
         scenes = tmp_path / "scenes"
         monkeypatch.setenv("CRAMERA_SCENES", str(scenes))
         bridge.attach(world_with(shaped_body("laboratory", "bench")))
+        build_live_scene(bridge)
 
         assert get_json(server + "/live_scene") == {"scene": paths.LIVE_SCENE_NAME}
         scene_directory = scenes / paths.LIVE_SCENE_NAME
         assert (scene_directory / "scene.json").is_file()
         assert (scene_directory / "environment.urdf").is_file()
+
+    def test_live_scene_never_builds_on_the_http_thread(
+        self, server, bridge, tmp_path, monkeypatch
+    ):
+        """
+        Bundling serializes the whole world, which only the demo's own threads may do; a
+        poll that arrives before the demo built the bundle gets "nothing yet", not a
+        build.
+        """
+        scenes = tmp_path / "scenes"
+        monkeypatch.setenv("CRAMERA_SCENES", str(scenes))
+        bridge.attach(world_with(shaped_body("laboratory", "bench")))
+
+        assert get_json(server + "/live_scene") == {"scene": None}
+        assert not (scenes / paths.LIVE_SCENE_NAME).exists()
+
+    def test_live_scene_ignores_a_bundle_of_another_world(
+        self, server, bridge, tmp_path, monkeypatch
+    ):
+        """
+        A bundle left on disk by an earlier run (or predating a model change) does not
+        match the attached world's signature and must not be served as if it did.
+        """
+        scenes = tmp_path / "scenes"
+        monkeypatch.setenv("CRAMERA_SCENES", str(scenes))
+        bridge.attach(world_with(shaped_body("laboratory", "bench")))
+        build_live_scene(bridge)
+
+        bridge.attach(world_with(shaped_body("laboratory", "shelf")))
+
+        assert get_json(server + "/live_scene") == {"scene": None}
 
 
 class TestMove:

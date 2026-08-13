@@ -19,7 +19,6 @@ from __future__ import annotations
 import hashlib
 import json
 import threading
-import time
 import urllib.parse
 import math
 from dataclasses import asdict, dataclass, field
@@ -585,11 +584,6 @@ class Bridge:
     handlers only ever read the finished snapshot dicts under :attr:`_lock`.
     """
 
-    REBIND_INTERVAL_SECONDS: ClassVar[float] = 3.0
-    """
-    How long a world binding stays fresh before bodies are re-discovered.
-    """
-
     DEFAULT_OBJECT_SIZE: ClassVar[Tuple[float, float, float]] = (0.06, 0.06, 0.12)
     """
     Fallback size for an object whose shapes carry no scale, in metres.
@@ -603,6 +597,14 @@ class Bridge:
     robot: Optional[AbstractRobot] = None
     """
     The robot annotation of :attr:`world`, re-discovered on every bind.
+    """
+
+    robot_parts: List[RobotPartAnnotation] = field(default_factory=list)
+    """
+    The robot's part annotations as captured at the last bind.
+
+    Served to HTTP threads instead of walking the live annotations, which would read
+    the world while the demo mutates it.
     """
 
     sequence_number: int = 0
@@ -638,11 +640,6 @@ class Bridge:
     _bodies: Dict[str, Body] = field(default_factory=dict)
     """
     Published bodies by mesh key; :data:`ROBOT_BASE_KEY` is the robot root.
-    """
-
-    _last_bind_time: float = 0.0
-    """
-    Timestamp of the last world discovery (see :attr:`REBIND_INTERVAL_SECONDS`).
     """
 
     _lock: threading.Lock = field(default_factory=threading.Lock)
@@ -723,6 +720,17 @@ class Bridge:
     _bundle_signature: str = ""
     """
     Cached digest of the bundled scene content, recomputed on attach and model change.
+    """
+
+    _live_scene_name: Optional[str] = None
+    """
+    Name of the live-scene bundle as last recorded by :meth:`record_live_scene`, or
+    None before any build.
+    """
+
+    _live_scene_signature: str = ""
+    """
+    Bundle signature the cached :attr:`_live_scene_name` was built from.
     """
 
     live_server: Optional[ThreadingHTTPServer] = None
@@ -808,6 +816,17 @@ class Bridge:
         self.bind()
         self._refresh_bundle_signature()
 
+    def capture_robot_parts(self) -> None:
+        """
+        Snapshot the robot's part annotations for :meth:`status` to serve.
+
+        Walks the robot's live annotations, so it may only run on the thread that owns
+        the world — binding and the model-change callback.
+        """
+        self.robot_parts = (
+            RobotPartAnnotation.of_robot(self.robot) if self.robot is not None else []
+        )
+
     def publish_bodies(self, bodies: Dict[str, Body]) -> None:
         """
         Replace the published bodies and rebuild the viewer's geometry catalog.
@@ -851,6 +870,33 @@ class Bridge:
         make the viewer reload it. State changes never touch it either.
         """
         return self._bundle_signature
+
+    def record_live_scene(self, name: str, signature: str) -> None:
+        """
+        Record that a live-scene bundle matching ``signature`` was written to disk.
+
+        Called only from the thread that built the bundle (:func:`cramera.live.
+        live_bundle.build_live_scene`, itself only ever run on the thread owning the
+        world); the HTTP layer reads the recorded name through :meth:`live_scene`
+        instead of building anything itself.
+
+        :param name: The bundle's scene name.
+        :param signature: The bundle signature it was built from.
+        """
+        self._live_scene_name = name
+        self._live_scene_signature = signature
+
+    def live_scene(self) -> Optional[str]:
+        """
+        The live-scene bundle's name, or None while none matching the currently
+        attached world has been built yet.
+
+        Safe to call from HTTP threads: it only ever reads the name recorded by
+        :meth:`record_live_scene`, never builds a bundle itself.
+        """
+        if self._live_scene_signature != self.bundle_signature():
+            return None
+        return self._live_scene_name
 
     def _refresh_bundle_signature(self) -> None:
         """
@@ -899,11 +945,7 @@ class Bridge:
                 sequence_number=self.sequence_number,
                 model_version=self._model_revision,
                 bundle_signature=bundle_signature,
-                robot_parts=(
-                    RobotPartAnnotation.of_robot(self.robot)
-                    if self.robot is not None
-                    else []
-                ),
+                robot_parts=self.robot_parts,
             ).to_payload()
 
     # %% viewer -> world
@@ -1001,15 +1043,17 @@ class Bridge:
         """
         Discover the robot, joints and publishable bodies of the current world.
 
-        Re-run periodically because demos modify their world (objects get spawned and
-        removed mid-run).
+        Re-run on every model change because demos modify their world (objects get
+        spawned and removed mid-run). Builds symbolic expressions while scanning
+        geometry, so it must only run on the thread mutating the world — attachment
+        and the model-change callback, never a state-change callback.
         """
         world = self.world
         if world is None:
             return
-        self._last_bind_time = time.time()
         robots = world.get_semantic_annotations_by_type(AbstractRobot)
         self.robot = robots[0] if robots else None
+        self.capture_robot_parts()
         self._connections = self._actuated_connections(world)
         bodies: Dict[str, Body] = {}
         if self.robot is not None:
@@ -1155,13 +1199,14 @@ class Bridge:
         """
         Publish the world's joints, base pose and object poses.
 
-        Runs on the simulation thread; rebinds the world periodically so mid-run spawns
-        show up.
+        Runs on state-change callbacks, which simulators fire from their physics
+        thread; it must therefore never build symbolic (CasADi) expressions.
+        Geometry discovery — which does build them — happens in :meth:`bind`, driven
+        by the model-change callback on the thread mutating the world, so mid-run
+        spawns still show up.
         """
         if self.world is None:
             return
-        if time.time() - self._last_bind_time > self.REBIND_INTERVAL_SECONDS:
-            self.bind()
         frames = {
             str(connection.name): round(float(connection.position), POSE_PRECISION)
             for connection in self._connections

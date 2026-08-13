@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-@dataclass
+@dataclass(eq=False)
 class Plan:
     """
     Represents a plan structure, typically a tree, which can be changed at any point in
@@ -58,6 +58,9 @@ class Plan:
 
     Performing the plan will traverse the plan structure in depth first order and
     perform each PlanNode
+
+    ..note:: Plans compare and hash by identity: two plans are only equal if they are
+        the same object.
     """
 
     context: Optional[Context] = None

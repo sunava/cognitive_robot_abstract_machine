@@ -5,6 +5,7 @@ world's own callbacks and publishing plan execution through plan callbacks.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 
 import pytest
@@ -18,6 +19,7 @@ from semantic_digital_twin.world_description.world_entity import Body
 
 from coraplex.plans.plan_node import MotionNode
 
+from cramera import paths
 from cramera.live import visualization as visualization_module
 from cramera.live.bridge import Bridge, TaskStatusName
 from cramera.live.visualization import (
@@ -36,6 +38,15 @@ from .test_live_bridge import (
 )
 
 # %% fixtures
+
+
+@pytest.fixture(autouse=True)
+def isolated_scenes_directory(tmp_path, monkeypatch):
+    """
+    Route every bundle write into the test's own directory, never the real scenes.
+    """
+    monkeypatch.setenv("CRAMERA_SCENES", str(tmp_path / "scenes"))
+    return tmp_path / "scenes"
 
 
 @pytest.fixture()
@@ -101,6 +112,33 @@ class TestWorldSync:
         sync.on_model_change()
 
         assert bridge.bundle_signature() != before
+
+    def test_a_model_change_rebuilds_the_live_bundle(
+        self, world, isolated_scenes_directory
+    ):
+        """
+        The bundle is rebuilt where the model changed — on the demo's own thread — so
+        the HTTP layer never has to serialize the world itself.
+        """
+        bridge = Bridge()
+        bridge.attach(world)
+        sync = WorldModelSync(_world=world, bridge=bridge)
+
+        with world.modify_world():
+            world.add_connection(
+                FixedConnection(
+                    parent=world.root,
+                    child=Body(name=PrefixedName("bench", prefix="laboratory")),
+                )
+            )
+        sync.on_model_change()
+
+        scene = json.loads(
+            (
+                isolated_scenes_directory / paths.LIVE_SCENE_NAME / "scene.json"
+            ).read_text()
+        )
+        assert scene["bundleSignature"] == bridge.bundle_signature()
 
 
 # %% plan synchronization
@@ -191,6 +229,28 @@ class TestLiveVisualization:
         assert bridge.world is world
         assert bridge.live_server is server
         assert live.state_sync in world.state.state_change_callbacks
+
+    def test_start_builds_the_live_bundle_eagerly(
+        self, world, monkeypatch, isolated_scenes_directory
+    ):
+        """
+        A viewer polling ``/live_scene`` right after the demo starts must find a bundle
+        already on disk; building it lazily on that poll would mean building it on an
+        HTTP thread, which is not allowed to serialize the world.
+        """
+        bridge = Bridge()
+        monkeypatch.setattr(
+            visualization_module, "serve", lambda passed_bridge, port: ServerRecorder()
+        )
+
+        LiveVisualization(world=world, bridge=bridge).start()
+
+        scene = json.loads(
+            (
+                isolated_scenes_directory / paths.LIVE_SCENE_NAME / "scene.json"
+            ).read_text()
+        )
+        assert scene["bundleSignature"] == bridge.bundle_signature()
 
     def test_start_reuses_a_running_server(self, world, monkeypatch):
         bridge = Bridge()
