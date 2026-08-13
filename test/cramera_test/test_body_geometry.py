@@ -25,6 +25,8 @@ from semantic_digital_twin.world_description.shape_collection import ShapeCollec
 from semantic_digital_twin.world_description.world_entity import Body
 from typing_extensions import Optional
 
+from krrood.symbolic_math.symbolic_math import SymbolicMathType
+
 from cramera.body_geometry import measure_body, rounded_pose, rounded_scale
 
 
@@ -144,3 +146,57 @@ def test_rounded_pose_rounds_every_value():
         world.state[degrees_of_freedom["x"].id].position = 0.123456789
 
     assert rounded_pose(body, 3)[0] == 0.123
+
+
+def _freely_posed_body() -> Body:
+    """
+    A body on a 6-DOF connection, moved to a pose with a nontrivial rotation.
+
+    Rotated a quarter turn around z (``qz = qw = sqrt(0.5)``) and translated, so a
+    pose conversion that mixes up axes, order or handedness cannot pass.
+    """
+    world = World()
+    root = Body(name=PrefixedName("world"))
+    body = Body(name=PrefixedName("object"))
+    with world.modify_world():
+        degrees_of_freedom = {
+            component: DegreeOfFreedom(name=PrefixedName(component))
+            for component in ("x", "y", "z", "qx", "qy", "qz", "qw")
+        }
+        for degree_of_freedom in degrees_of_freedom.values():
+            world.add_degree_of_freedom(degree_of_freedom)
+        world.add_connection(
+            Connection6DoF(parent=root, child=body, **degrees_of_freedom)
+        )
+        world.state[degrees_of_freedom["x"].id].position = 0.4
+        world.state[degrees_of_freedom["y"].id].position = -0.2
+        world.state[degrees_of_freedom["z"].id].position = 0.9
+        world.state[degrees_of_freedom["qz"].id].position = 0.5**0.5
+        world.state[degrees_of_freedom["qw"].id].position = 0.5**0.5
+    return body
+
+
+def test_rounded_pose_matches_the_symbolic_conversion_for_a_rotated_body():
+    body = _freely_posed_body()
+    assert rounded_pose(body, 5) == pytest.approx(
+        [round(value, 5) for value in body.global_pose.to_position_quaternion_list()]
+    )
+
+
+def test_rounded_pose_constructs_no_symbolic_expressions(monkeypatch):
+    """
+    The live bridge publishes poses from the physics thread's state-change callback, and
+    CasADi expression construction is not thread-safe, so the pose must be derived
+    purely numerically.
+    """
+    body = _freely_posed_body()
+    constructed = []
+    original_post_init = SymbolicMathType.__post_init__
+
+    def counting_post_init(self) -> None:
+        constructed.append(type(self).__name__)
+        original_post_init(self)
+
+    monkeypatch.setattr(SymbolicMathType, "__post_init__", counting_post_init)
+    rounded_pose(body)
+    assert constructed == []

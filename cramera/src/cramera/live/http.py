@@ -10,10 +10,11 @@ HTTP endpoints of the live bridge (default port 8765).
     GET /objects geometry catalog (mesh served via /mesh?key=)
     GET /markers {version, markers: [{topic, ns, id, kind, pose, scale, color,
                   opacity, points, text}]}  the CRAM debug-marker overlay
-    GET /live_scene  {scene}  bundles the running demo's *current* world into a
-                      throwaway scene (see :mod:`cramera.live.live_bundle`) and names
-                      it, or {scene: null} when nothing is tracked yet; the viewer
-                      loads the named scene exactly like any other
+    GET /live_scene  {scene}  the throwaway scene the running demo's world was last
+                      bundled into (see :mod:`cramera.live.live_bundle`), or
+                      {scene: null} while none matching the currently attached world
+                      has been built yet; the viewer loads the named scene exactly
+                      like any other
     GET /plan    {signature, nodes: [{id, parent, kind, label, status, derived}]}
     GET /chart   {signature, title,
                   nodes: [{id, parent, name, class_name, life_cycle, observation}],
@@ -41,7 +42,6 @@ from pathlib import Path
 from typing_extensions import Any, ClassVar, Dict, Optional, Tuple, Type
 
 from cramera.live.bridge import Bridge, MalformedMoveRequest, MoveRequest
-from cramera.live.live_bundle import build_live_scene
 from cramera.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -104,7 +104,7 @@ class BridgeRequestHandler(BaseHTTPRequestHandler):
         if self.path.startswith("/mesh"):
             return self._send_mesh()
         if self.path.startswith("/live_scene"):
-            return self._send_json({"scene": build_live_scene(self.bridge)})
+            return self._send_json({"scene": self.bridge.live_scene()})
         if self.path.startswith("/markers"):
             return self._send_json(self.bridge.get_markers())
         if self.path.startswith("/info"):

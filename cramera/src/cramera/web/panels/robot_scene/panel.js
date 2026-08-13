@@ -399,8 +399,15 @@ Panels.define('robot-scene', function (root, bus) {
         const loadObj = function (materials) {
           const objLoader = new THREE.OBJLoader(mgr);
           if (materials) { materials.preload(); objLoader.setMaterials(materials); }
-          objLoader.load(path, function (o) { done(o); },
-            undefined, function () { done(new THREE.Object3D()); });
+          objLoader.load(path, function (o) {
+            // OBJLoader always wraps its result in a Group, even for a single-mesh,
+            // no-material .obj (e.g. one trimesh wrote); URDFLoader only assigns the
+            // URDF's <material> to a bare Mesh, so hand back that one mesh directly
+            // — unless materials was loaded, in which case the object already carries
+            // its own per-face colors and a single URDF color must not flatten them
+            const single = materials ? null : ObjMeshMaterial.singleMeshChild(o);
+            done(single || o);
+          }, undefined, function () { done(new THREE.Object3D()); });
         };
         new THREE.MTLLoader(mgr).load(path.replace(/\.obj$/i, '.mtl'), loadObj,
           undefined, function () { loadObj(null); });

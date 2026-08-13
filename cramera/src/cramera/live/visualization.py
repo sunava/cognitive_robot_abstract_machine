@@ -24,6 +24,7 @@ from semantic_digital_twin.world import World
 
 from cramera.live.bridge import BRIDGE, Bridge
 from cramera.live.http import DEFAULT_PORT, serve
+from cramera.live.live_bundle import build_live_scene
 from cramera.live.ros_markers import RosMarkerListener
 
 if TYPE_CHECKING:
@@ -51,7 +52,8 @@ class WorldStateSync(StateChangeCallback):
 @dataclass(eq=False)
 class WorldModelSync(ModelChangeCallback):
     """
-    Refreshes the bridge's body and geometry catalogs when the world model changes.
+    Refreshes the bridge's body and geometry catalogs when the world model changes, and
+    rebuilds the live-scene bundle to match.
     """
 
     bridge: Bridge = field(kw_only=True)
@@ -61,6 +63,7 @@ class WorldModelSync(ModelChangeCallback):
 
     def on_model_change(self, **kwargs) -> None:
         self.bridge.observe_model_change()
+        build_live_scene(self.bridge)
 
 
 # %% plan synchronization
@@ -135,7 +138,12 @@ class LiveVisualization:
 
     def start(self) -> LiveVisualization:
         """
-        Attach the bridge to the world and start serving the viewer.
+        Attach the bridge to the world, build its live-scene bundle and start serving
+        the viewer.
+
+        The bundle is built here rather than on the first ``/live_scene`` poll: it
+        serializes the world through CasADi-backed reads, which only the thread driving
+        the demo may do — never an HTTP thread.
 
         Reuses the already running HTTP server when one exists, so starting a second
         visualization in the same process rebinds the world instead of failing on the
@@ -145,6 +153,7 @@ class LiveVisualization:
         """
         self.bridge.attach(self.world)
         self.bridge.snapshot()
+        build_live_scene(self.bridge)
         self.state_sync = WorldStateSync(_world=self.world, bridge=self.bridge)
         self.model_sync = WorldModelSync(_world=self.world, bridge=self.bridge)
         self.marker_listener = RosMarkerListener.start_if_available(self.bridge)
