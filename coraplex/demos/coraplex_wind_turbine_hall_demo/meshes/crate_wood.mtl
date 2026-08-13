@@ -1,0 +1,7 @@
+newmtl wood
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.04 0.04 0.04
+Ns 8
+map_Kd wood.png
+map_bump -bm 0.4 wood_bump.png

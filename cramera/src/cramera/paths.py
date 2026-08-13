@@ -28,6 +28,22 @@ WEB_ROOT = Path(__file__).resolve().parent / "web"
 The packaged frontend: index.html, panels, vendored libraries.
 """
 
+LIVE_SCENE_NAME = "__live__"
+"""
+Reserved scene name a live-attach snapshot is served under (see
+:mod:`cramera.live.live_bundle`) — a pointer at the cached bundle of the running demo's
+current world.
+
+Excluded from the real scene index — never a bundle a user onboarded.
+"""
+
+LIVE_BUNDLE_CACHE_NAME = ".live_bundle_cache"
+"""
+Directory inside the scenes directory holding one bundled live world per world
+configuration, keyed by bundle signature — built on the first attach, reused on every
+later one.
+"""
+
 
 def _configured_path(variable: str) -> Optional[Path]:
     """

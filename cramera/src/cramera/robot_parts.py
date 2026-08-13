@@ -186,38 +186,38 @@ def model_identity(
     links: List[str],
     world_body_names: List[str],
     base_body: Optional[str],
-    probe_link_count: int,
 ) -> Tuple[str, bool]:
     """
     A model's world-instance prefix and whether it is the robot, from its link names.
 
-    The prefix is found by checking which world body name ends with one of the model's
-    first few links; a model is the robot if its links include the robot's own base
-    link. Shared by onboarding, which bundles a model to disk, and live model serving,
-    which never does.
+    The prefix is the one under which most of the model's links exist in the composed
+    world — a majority vote, so a single link name another model also uses (a dummy
+    ``world`` root, a ``base_link``) cannot steal the prefix, and the result does not
+    depend on the order the world happens to list its bodies in. Ties break to the
+    lexicographically smallest prefix, so the result stays deterministic. A model is
+    the robot if its links include the robot's own base link. Shared by onboarding,
+    which bundles a model to disk, and live model serving, which never does.
 
     :param links: Names of the model's own links, in document order.
     :param world_body_names: Every body name in the composed world.
     :param base_body: The robot's base link name, unprefixed, or None when no robot is
         bound.
-    :param probe_link_count: How many of the model's first links to check for a prefix.
-    :return: The model's world-instance prefix (empty if unprefixed), and whether it is
-        the robot.
+    :return: The model's world-instance prefix (empty if unprefixed or absent), and
+        whether it is the robot.
     """
-    prefix = ""
-    for link in links[:probe_link_count]:
-        prefixed = next(
-            (
-                body_name
-                for body_name in world_body_names
-                if body_name.endswith("/" + link)
-            ),
-            None,
+    link_set = set(links)
+    votes: Dict[str, int] = {}
+    for body_name in world_body_names:
+        prefix, _, basename = body_name.rpartition("/")
+        if basename in link_set:
+            votes[prefix] = votes.get(prefix, 0) + 1
+    winning_prefix = ""
+    if votes:
+        most_votes = max(votes.values())
+        winning_prefix = min(
+            prefix for prefix, count in votes.items() if count == most_votes
         )
-        if prefixed:
-            prefix = prefixed.split("/", 1)[0]
-            break
-    return prefix, base_body is not None and base_body in links
+    return winning_prefix, base_body is not None and base_body in links
 
 
 # %% reading them off a world's robot

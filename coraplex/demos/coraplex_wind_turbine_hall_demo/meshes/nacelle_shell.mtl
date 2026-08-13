@@ -1,0 +1,7 @@
+newmtl nacelle
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.22 0.22 0.22
+Ns 40
+map_Kd nacelle.png
+map_bump -bm 0.5 nacelle_bump.png

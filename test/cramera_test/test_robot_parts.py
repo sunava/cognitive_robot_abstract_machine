@@ -77,6 +77,11 @@ class OneArmedRobot:
 
     arm: ArmPart
 
+    root: NamedBody = field(default_factory=lambda: NamedBody("robot/base_link"))
+    """
+    The robot's root body, read for the base link name.
+    """
+
     def get_arms(self) -> List[ArmPart]:
         return [self.arm]
 
@@ -198,7 +203,6 @@ class TestModelIdentity:
             links=["base_link", "arm_link"],
             world_body_names=["pr2_1/base_link", "pr2_1/arm_link"],
             base_body="base_link",
-            probe_link_count=12,
         )
 
         assert is_robot is True
@@ -209,7 +213,6 @@ class TestModelIdentity:
             links=["table", "lid"],
             world_body_names=["lab_1/table", "lab_1/lid"],
             base_body="base_link",
-            probe_link_count=12,
         )
 
         assert is_robot is False
@@ -220,27 +223,36 @@ class TestModelIdentity:
             links=["table"],
             world_body_names=["table"],
             base_body="base_link",
-            probe_link_count=12,
         )
 
         assert prefix == ""
 
-    def test_only_the_first_probe_link_count_links_are_checked_for_a_prefix(self):
-        prefix, _ = model_identity(
-            links=["a", "b", "c"],
-            world_body_names=["lab_1/c"],
-            base_body="base_link",
-            probe_link_count=2,
-        )
+    def test_a_link_name_another_model_also_uses_cannot_steal_the_prefix(self):
+        """
+        A model's dummy ``world`` link also exists as the composed world's own root; the
+        prefix under which most of the model's links exist wins, regardless of the order
+        the world happens to list its bodies in.
+        """
+        world_body_names = [
+            "None/world",
+            "r100/world",
+            "r100/arm_link",
+            "r100/hand_link",
+        ]
+        for names in (world_body_names, list(reversed(world_body_names))):
+            prefix, _ = model_identity(
+                links=["world", "arm_link", "hand_link"],
+                world_body_names=names,
+                base_body=None,
+            )
 
-        assert prefix == ""
+            assert prefix == "r100"
 
     def test_no_bound_robot_means_nothing_is_the_robot(self):
         _, is_robot = model_identity(
             links=["base_link"],
             world_body_names=["base_link"],
             base_body=None,
-            probe_link_count=12,
         )
 
         assert is_robot is False

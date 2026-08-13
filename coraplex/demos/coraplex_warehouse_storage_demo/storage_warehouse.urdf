@@ -1,0 +1,1028 @@
+<?xml version="1.0"?>
+<!--
+  A storage warehouse, converted from a Wavefront model by
+  generate_warehouse_model.py. The building and its stored goods are visual
+  only; collision geometry is limited to the two surfaces the robot works on,
+  the target shelf and the loaded pallet, so motion planning interacts with
+  exactly those and nothing else. The floor surface is at z = 0.
+-->
+<robot name="storage_warehouse">
+
+  <material name="besi_lamp">
+    <color rgba="0.9063 0.9063 0.9063 1.0"/>
+  </material>
+  <material name="hitam_dop">
+    <color rgba="0.1245 0.121 0.1155 1.0"/>
+  </material>
+  <material name="putih_dop">
+    <color rgba="0.9063 0.9063 0.9063 1.0"/>
+  </material>
+  <material name="besi_biru">
+    <color rgba="0.0329 0.0105 0.1444 1.0"/>
+  </material>
+  <material name="besi_hijau">
+    <color rgba="0.326 0.4063 0.2166 1.0"/>
+  </material>
+  <material name="besi_kuning">
+    <color rgba="0.9063 0.7297 0.4362 1.0"/>
+  </material>
+  <material name="besi_lis">
+    <color rgba="0.6063 0.6063 0.6063 1.0"/>
+  </material>
+  <material name="besi_merah">
+    <color rgba="0.3563 0.0644 0.0772 1.0"/>
+  </material>
+  <material name="besi_putih">
+    <color rgba="0.8563 0.8563 0.8563 1.0"/>
+  </material>
+  <material name="cat_kuning">
+    <color rgba="0.8063 0.7213 0.1861 1.0"/>
+  </material>
+  <material name="gerbang">
+    <color rgba="0.8238 0.9017 0.9063 1.0"/>
+  </material>
+  <material name="kaca">
+    <color rgba="0.9063 0.9063 0.9063 1.0"/>
+  </material>
+  <material name="kain_biru">
+    <color rgba="0.0485 0.0822 0.1563 1.0"/>
+  </material>
+  <material name="kardus">
+    <color rgba="0.5709 0.4497 0.3932 1.0"/>
+  </material>
+  <material name="kayu">
+    <color rgba="0.5563 0.4239 0.3391 1.0"/>
+  </material>
+  <material name="kayu_2">
+    <color rgba="0.2806 0.2193 0.1856 1.0"/>
+  </material>
+  <material name="kayu_box">
+    <color rgba="0.4563 0.2839 0.1711 1.0"/>
+  </material>
+  <material name="krum_1">
+    <color rgba="0.9063 0.9063 0.9063 1.0"/>
+  </material>
+  <material name="krum_1_001">
+    <color rgba="0.9063 0.9063 0.9063 1.0"/>
+  </material>
+  <material name="lantai">
+    <color rgba="0.1563 0.1563 0.1563 1.0"/>
+  </material>
+  <material name="plastik_abu">
+    <color rgba="0.2563 0.2563 0.2563 1.0"/>
+  </material>
+  <material name="plastik_biru">
+    <color rgba="0.0489 0.0278 0.2062 1.0"/>
+  </material>
+  <material name="plastik_hijau">
+    <color rgba="0.2558 0.4563 0.1823 1.0"/>
+  </material>
+  <material name="plastik_hitam">
+    <color rgba="0.0563 0.0563 0.0563 1.0"/>
+  </material>
+  <material name="plastik_merah">
+    <color rgba="0.3048 0.0904 0.1076 1.0"/>
+  </material>
+  <material name="plastik_putih">
+    <color rgba="0.8063 0.8063 0.8063 1.0"/>
+  </material>
+  <material name="plat_hitam">
+    <color rgba="0.1 0.1 0.1 1.0"/>
+  </material>
+  <material name="plat_krum">
+    <color rgba="0.9063 0.9063 0.9063 1.0"/>
+  </material>
+  <material name="seng">
+    <color rgba="0.9063 0.9063 0.9063 1.0"/>
+  </material>
+  <material name="tembok_putih">
+    <color rgba="0.9063 0.9063 0.9063 1.0"/>
+  </material>
+
+  <link name="warehouse_root"/>
+
+  <link name="front_wall__seng">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/front_wall__seng.stl"/>
+      </geometry>
+      <material name="seng"/>
+    </visual>
+  </link>
+  <joint name="front_wall__seng_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="front_wall__seng"/>
+  </joint>
+
+  <link name="front_wall__besi_lis">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/front_wall__besi_lis.stl"/>
+      </geometry>
+      <material name="besi_lis"/>
+    </visual>
+  </link>
+  <joint name="front_wall__besi_lis_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="front_wall__besi_lis"/>
+  </joint>
+
+  <link name="wall_trim__besi_lis">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/wall_trim__besi_lis.stl"/>
+      </geometry>
+      <material name="besi_lis"/>
+    </visual>
+  </link>
+  <joint name="wall_trim__besi_lis_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="wall_trim__besi_lis"/>
+  </joint>
+
+  <link name="walls__seng">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/walls__seng.stl"/>
+      </geometry>
+      <material name="seng"/>
+    </visual>
+  </link>
+  <joint name="walls__seng_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="walls__seng"/>
+  </joint>
+
+  <link name="hall_frame__besi_lis">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/hall_frame__besi_lis.stl"/>
+      </geometry>
+      <material name="besi_lis"/>
+    </visual>
+  </link>
+  <joint name="hall_frame__besi_lis_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="hall_frame__besi_lis"/>
+  </joint>
+
+  <link name="floor__lantai">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/floor__lantai.stl"/>
+      </geometry>
+      <material name="lantai"/>
+    </visual>
+  </link>
+  <joint name="floor__lantai_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="floor__lantai"/>
+  </joint>
+
+  <link name="gate__gerbang">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/gate__gerbang.stl"/>
+      </geometry>
+      <material name="gerbang"/>
+    </visual>
+  </link>
+  <joint name="gate__gerbang_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="gate__gerbang"/>
+  </joint>
+
+  <link name="gate__besi_lis">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/gate__besi_lis.stl"/>
+      </geometry>
+      <material name="besi_lis"/>
+    </visual>
+  </link>
+  <joint name="gate__besi_lis_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="gate__besi_lis"/>
+  </joint>
+
+  <link name="gate__kaca">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/gate__kaca.stl"/>
+      </geometry>
+      <material name="kaca"/>
+    </visual>
+  </link>
+  <joint name="gate__kaca_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="gate__kaca"/>
+  </joint>
+
+  <link name="gate__krum_1_001">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/gate__krum_1_001.stl"/>
+      </geometry>
+      <material name="krum_1_001"/>
+    </visual>
+  </link>
+  <joint name="gate__krum_1_001_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="gate__krum_1_001"/>
+  </joint>
+
+  <link name="gate__besi_putih">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/gate__besi_putih.stl"/>
+      </geometry>
+      <material name="besi_putih"/>
+    </visual>
+  </link>
+  <joint name="gate__besi_putih_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="gate__besi_putih"/>
+  </joint>
+
+  <link name="gate__besi_biru">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/gate__besi_biru.stl"/>
+      </geometry>
+      <material name="besi_biru"/>
+    </visual>
+  </link>
+  <joint name="gate__besi_biru_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="gate__besi_biru"/>
+  </joint>
+
+  <link name="storage_racks__besi_biru">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/storage_racks__besi_biru.stl"/>
+      </geometry>
+      <material name="besi_biru"/>
+    </visual>
+  </link>
+  <joint name="storage_racks__besi_biru_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="storage_racks__besi_biru"/>
+  </joint>
+
+  <link name="storage_racks__kayu">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/storage_racks__kayu.stl"/>
+      </geometry>
+      <material name="kayu"/>
+    </visual>
+  </link>
+  <joint name="storage_racks__kayu_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="storage_racks__kayu"/>
+  </joint>
+
+  <link name="storage_racks__kayu_2">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/storage_racks__kayu_2.stl"/>
+      </geometry>
+      <material name="kayu_2"/>
+    </visual>
+  </link>
+  <joint name="storage_racks__kayu_2_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="storage_racks__kayu_2"/>
+  </joint>
+
+  <link name="floor_markings__cat_kuning">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/floor_markings__cat_kuning.stl"/>
+      </geometry>
+      <material name="cat_kuning"/>
+    </visual>
+  </link>
+  <joint name="floor_markings__cat_kuning_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="floor_markings__cat_kuning"/>
+  </joint>
+
+  <link name="cardboard_boxes__kardus">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/cardboard_boxes__kardus.stl"/>
+      </geometry>
+      <material name="kardus"/>
+    </visual>
+  </link>
+  <joint name="cardboard_boxes__kardus_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="cardboard_boxes__kardus"/>
+  </joint>
+
+  <link name="wrapped_bundles__hitam_dop">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/wrapped_bundles__hitam_dop.stl"/>
+      </geometry>
+      <material name="hitam_dop"/>
+    </visual>
+  </link>
+  <joint name="wrapped_bundles__hitam_dop_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="wrapped_bundles__hitam_dop"/>
+  </joint>
+
+  <link name="wrapped_bundles__kain_biru">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/wrapped_bundles__kain_biru.stl"/>
+      </geometry>
+      <material name="kain_biru"/>
+    </visual>
+  </link>
+  <joint name="wrapped_bundles__kain_biru_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="wrapped_bundles__kain_biru"/>
+  </joint>
+
+  <link name="plastic_wrapped_goods__plastik_putih">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/plastic_wrapped_goods__plastik_putih.stl"/>
+      </geometry>
+      <material name="plastik_putih"/>
+    </visual>
+  </link>
+  <joint name="plastic_wrapped_goods__plastik_putih_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="plastic_wrapped_goods__plastik_putih"/>
+  </joint>
+
+  <link name="plastic_wrapped_goods__plastik_merah">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/plastic_wrapped_goods__plastik_merah.stl"/>
+      </geometry>
+      <material name="plastik_merah"/>
+    </visual>
+  </link>
+  <joint name="plastic_wrapped_goods__plastik_merah_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="plastic_wrapped_goods__plastik_merah"/>
+  </joint>
+
+  <link name="plastic_wrapped_goods__plastik_biru">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/plastic_wrapped_goods__plastik_biru.stl"/>
+      </geometry>
+      <material name="plastik_biru"/>
+    </visual>
+  </link>
+  <joint name="plastic_wrapped_goods__plastik_biru_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="plastic_wrapped_goods__plastik_biru"/>
+  </joint>
+
+  <link name="plastic_wrapped_goods__plastik_abu">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/plastic_wrapped_goods__plastik_abu.stl"/>
+      </geometry>
+      <material name="plastik_abu"/>
+    </visual>
+  </link>
+  <joint name="plastic_wrapped_goods__plastik_abu_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="plastic_wrapped_goods__plastik_abu"/>
+  </joint>
+
+  <link name="bottles__plastik_putih">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/bottles__plastik_putih.stl"/>
+      </geometry>
+      <material name="plastik_putih"/>
+    </visual>
+  </link>
+  <joint name="bottles__plastik_putih_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="bottles__plastik_putih"/>
+  </joint>
+
+  <link name="bottles__plastik_hitam">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/bottles__plastik_hitam.stl"/>
+      </geometry>
+      <material name="plastik_hitam"/>
+    </visual>
+  </link>
+  <joint name="bottles__plastik_hitam_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="bottles__plastik_hitam"/>
+  </joint>
+
+  <link name="barrels__besi_merah">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/barrels__besi_merah.stl"/>
+      </geometry>
+      <material name="besi_merah"/>
+    </visual>
+  </link>
+  <joint name="barrels__besi_merah_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="barrels__besi_merah"/>
+  </joint>
+
+  <link name="barrels__besi_putih">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/barrels__besi_putih.stl"/>
+      </geometry>
+      <material name="besi_putih"/>
+    </visual>
+  </link>
+  <joint name="barrels__besi_putih_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="barrels__besi_putih"/>
+  </joint>
+
+  <link name="gas_cylinders__besi_hijau">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/gas_cylinders__besi_hijau.stl"/>
+      </geometry>
+      <material name="besi_hijau"/>
+    </visual>
+  </link>
+  <joint name="gas_cylinders__besi_hijau_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="gas_cylinders__besi_hijau"/>
+  </joint>
+
+  <link name="gas_cylinders__besi_kuning">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/gas_cylinders__besi_kuning.stl"/>
+      </geometry>
+      <material name="besi_kuning"/>
+    </visual>
+  </link>
+  <joint name="gas_cylinders__besi_kuning_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="gas_cylinders__besi_kuning"/>
+  </joint>
+
+  <link name="gas_cylinders__besi_merah">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/gas_cylinders__besi_merah.stl"/>
+      </geometry>
+      <material name="besi_merah"/>
+    </visual>
+  </link>
+  <joint name="gas_cylinders__besi_merah_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="gas_cylinders__besi_merah"/>
+  </joint>
+
+  <link name="steel_boxes__besi_lis">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/steel_boxes__besi_lis.stl"/>
+      </geometry>
+      <material name="besi_lis"/>
+    </visual>
+  </link>
+  <joint name="steel_boxes__besi_lis_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="steel_boxes__besi_lis"/>
+  </joint>
+
+  <link name="timber_stacks__kayu_box">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/timber_stacks__kayu_box.stl"/>
+      </geometry>
+      <material name="kayu_box"/>
+    </visual>
+  </link>
+  <joint name="timber_stacks__kayu_box_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="timber_stacks__kayu_box"/>
+  </joint>
+
+  <link name="wooden_crates__kayu_2">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/wooden_crates__kayu_2.stl"/>
+      </geometry>
+      <material name="kayu_2"/>
+    </visual>
+  </link>
+  <joint name="wooden_crates__kayu_2_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="wooden_crates__kayu_2"/>
+  </joint>
+
+  <link name="wooden_crates__kayu">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/wooden_crates__kayu.stl"/>
+      </geometry>
+      <material name="kayu"/>
+    </visual>
+  </link>
+  <joint name="wooden_crates__kayu_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="wooden_crates__kayu"/>
+  </joint>
+
+  <link name="wheeled_trolleys__besi_putih">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/wheeled_trolleys__besi_putih.stl"/>
+      </geometry>
+      <material name="besi_putih"/>
+    </visual>
+  </link>
+  <joint name="wheeled_trolleys__besi_putih_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="wheeled_trolleys__besi_putih"/>
+  </joint>
+
+  <link name="wheeled_trolleys__besi_lis">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/wheeled_trolleys__besi_lis.stl"/>
+      </geometry>
+      <material name="besi_lis"/>
+    </visual>
+  </link>
+  <joint name="wheeled_trolleys__besi_lis_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="wheeled_trolleys__besi_lis"/>
+  </joint>
+
+  <link name="wheeled_trolleys__besi_kuning">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/wheeled_trolleys__besi_kuning.stl"/>
+      </geometry>
+      <material name="besi_kuning"/>
+    </visual>
+  </link>
+  <joint name="wheeled_trolleys__besi_kuning_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="wheeled_trolleys__besi_kuning"/>
+  </joint>
+
+  <link name="wheeled_trolleys__krum_1">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/wheeled_trolleys__krum_1.stl"/>
+      </geometry>
+      <material name="krum_1"/>
+    </visual>
+  </link>
+  <joint name="wheeled_trolleys__krum_1_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="wheeled_trolleys__krum_1"/>
+  </joint>
+
+  <link name="wheeled_trolleys__hitam_dop">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/wheeled_trolleys__hitam_dop.stl"/>
+      </geometry>
+      <material name="hitam_dop"/>
+    </visual>
+  </link>
+  <joint name="wheeled_trolleys__hitam_dop_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="wheeled_trolleys__hitam_dop"/>
+  </joint>
+
+  <link name="transformer__besi_putih">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/transformer__besi_putih.stl"/>
+      </geometry>
+      <material name="besi_putih"/>
+    </visual>
+  </link>
+  <joint name="transformer__besi_putih_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="transformer__besi_putih"/>
+  </joint>
+
+  <link name="transformer__besi_lis">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/transformer__besi_lis.stl"/>
+      </geometry>
+      <material name="besi_lis"/>
+    </visual>
+  </link>
+  <joint name="transformer__besi_lis_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="transformer__besi_lis"/>
+  </joint>
+
+  <link name="switchboards__gerbang">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/switchboards__gerbang.stl"/>
+      </geometry>
+      <material name="gerbang"/>
+    </visual>
+  </link>
+  <joint name="switchboards__gerbang_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="switchboards__gerbang"/>
+  </joint>
+
+  <link name="switchboards__plastik_hijau">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/switchboards__plastik_hijau.stl"/>
+      </geometry>
+      <material name="plastik_hijau"/>
+    </visual>
+  </link>
+  <joint name="switchboards__plastik_hijau_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="switchboards__plastik_hijau"/>
+  </joint>
+
+  <link name="switchboards__besi_lis">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/switchboards__besi_lis.stl"/>
+      </geometry>
+      <material name="besi_lis"/>
+    </visual>
+  </link>
+  <joint name="switchboards__besi_lis_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="switchboards__besi_lis"/>
+  </joint>
+
+  <link name="switchboards__plastik_merah">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/switchboards__plastik_merah.stl"/>
+      </geometry>
+      <material name="plastik_merah"/>
+    </visual>
+  </link>
+  <joint name="switchboards__plastik_merah_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="switchboards__plastik_merah"/>
+  </joint>
+
+  <link name="stairs__besi_putih">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/stairs__besi_putih.stl"/>
+      </geometry>
+      <material name="besi_putih"/>
+    </visual>
+  </link>
+  <joint name="stairs__besi_putih_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="stairs__besi_putih"/>
+  </joint>
+
+  <link name="stairs__besi_lis">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/stairs__besi_lis.stl"/>
+      </geometry>
+      <material name="besi_lis"/>
+    </visual>
+  </link>
+  <joint name="stairs__besi_lis_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="stairs__besi_lis"/>
+  </joint>
+
+  <link name="stairs__besi_biru">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/stairs__besi_biru.stl"/>
+      </geometry>
+      <material name="besi_biru"/>
+    </visual>
+  </link>
+  <joint name="stairs__besi_biru_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="stairs__besi_biru"/>
+  </joint>
+
+  <link name="stairs__tembok_putih">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/stairs__tembok_putih.stl"/>
+      </geometry>
+      <material name="tembok_putih"/>
+    </visual>
+  </link>
+  <joint name="stairs__tembok_putih_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="stairs__tembok_putih"/>
+  </joint>
+
+  <link name="ceiling_fixtures__plat_krum">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/ceiling_fixtures__plat_krum.stl"/>
+      </geometry>
+      <material name="plat_krum"/>
+    </visual>
+  </link>
+  <joint name="ceiling_fixtures__plat_krum_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="ceiling_fixtures__plat_krum"/>
+  </joint>
+
+  <link name="ceiling_fixtures__hitam_dop">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/ceiling_fixtures__hitam_dop.stl"/>
+      </geometry>
+      <material name="hitam_dop"/>
+    </visual>
+  </link>
+  <joint name="ceiling_fixtures__hitam_dop_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="ceiling_fixtures__hitam_dop"/>
+  </joint>
+
+  <link name="ceiling_fixtures__besi_putih">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/ceiling_fixtures__besi_putih.stl"/>
+      </geometry>
+      <material name="besi_putih"/>
+    </visual>
+  </link>
+  <joint name="ceiling_fixtures__besi_putih_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="ceiling_fixtures__besi_putih"/>
+  </joint>
+
+  <link name="air_conditioners__putih_dop">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/air_conditioners__putih_dop.stl"/>
+      </geometry>
+      <material name="putih_dop"/>
+    </visual>
+  </link>
+  <joint name="air_conditioners__putih_dop_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="air_conditioners__putih_dop"/>
+  </joint>
+
+  <link name="air_conditioners__besi_lamp">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/air_conditioners__besi_lamp.stl"/>
+      </geometry>
+      <material name="besi_lamp"/>
+    </visual>
+  </link>
+  <joint name="air_conditioners__besi_lamp_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="air_conditioners__besi_lamp"/>
+  </joint>
+
+  <link name="cable_runs__hitam_dop">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/cable_runs__hitam_dop.stl"/>
+      </geometry>
+      <material name="hitam_dop"/>
+    </visual>
+  </link>
+  <joint name="cable_runs__hitam_dop_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="cable_runs__hitam_dop"/>
+  </joint>
+
+  <link name="tables__kayu_box">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/tables__kayu_box.stl"/>
+      </geometry>
+      <material name="kayu_box"/>
+    </visual>
+  </link>
+  <joint name="tables__kayu_box_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="tables__kayu_box"/>
+  </joint>
+
+  <link name="tables__besi_biru">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/tables__besi_biru.stl"/>
+      </geometry>
+      <material name="besi_biru"/>
+    </visual>
+  </link>
+  <joint name="tables__besi_biru_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="tables__besi_biru"/>
+  </joint>
+
+  <link name="hand_carts__besi_lis">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/hand_carts__besi_lis.stl"/>
+      </geometry>
+      <material name="besi_lis"/>
+    </visual>
+  </link>
+  <joint name="hand_carts__besi_lis_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="hand_carts__besi_lis"/>
+  </joint>
+
+  <link name="hand_carts__hitam_dop">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/hand_carts__hitam_dop.stl"/>
+      </geometry>
+      <material name="hitam_dop"/>
+    </visual>
+  </link>
+  <joint name="hand_carts__hitam_dop_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="hand_carts__hitam_dop"/>
+  </joint>
+
+  <link name="hand_carts__plat_krum">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/hand_carts__plat_krum.stl"/>
+      </geometry>
+      <material name="plat_krum"/>
+    </visual>
+  </link>
+  <joint name="hand_carts__plat_krum_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="hand_carts__plat_krum"/>
+  </joint>
+
+  <link name="hand_carts__plat_hitam">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/hand_carts__plat_hitam.stl"/>
+      </geometry>
+      <material name="plat_hitam"/>
+    </visual>
+  </link>
+  <joint name="hand_carts__plat_hitam_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="hand_carts__plat_hitam"/>
+  </joint>
+
+  <link name="hand_carts__besi_lamp">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/hand_carts__besi_lamp.stl"/>
+      </geometry>
+      <material name="besi_lamp"/>
+    </visual>
+  </link>
+  <joint name="hand_carts__besi_lamp_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="hand_carts__besi_lamp"/>
+  </joint>
+
+  <link name="fire_extinguishers__besi_lamp">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/fire_extinguishers__besi_lamp.stl"/>
+      </geometry>
+      <material name="besi_lamp"/>
+    </visual>
+  </link>
+  <joint name="fire_extinguishers__besi_lamp_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="fire_extinguishers__besi_lamp"/>
+  </joint>
+
+  <link name="fire_extinguishers__besi_merah">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/fire_extinguishers__besi_merah.stl"/>
+      </geometry>
+      <material name="besi_merah"/>
+    </visual>
+  </link>
+  <joint name="fire_extinguishers__besi_merah_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="fire_extinguishers__besi_merah"/>
+  </joint>
+
+  <link name="fire_extinguishers__hitam_dop">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/fire_extinguishers__hitam_dop.stl"/>
+      </geometry>
+      <material name="hitam_dop"/>
+    </visual>
+  </link>
+  <joint name="fire_extinguishers__hitam_dop_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="fire_extinguishers__hitam_dop"/>
+  </joint>
+
+  <link name="fire_extinguishers__besi_kuning">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/fire_extinguishers__besi_kuning.stl"/>
+      </geometry>
+      <material name="besi_kuning"/>
+    </visual>
+  </link>
+  <joint name="fire_extinguishers__besi_kuning_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="fire_extinguishers__besi_kuning"/>
+  </joint>
+
+  <link name="fire_extinguishers__kaca">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/fire_extinguishers__kaca.stl"/>
+      </geometry>
+      <material name="kaca"/>
+    </visual>
+  </link>
+  <joint name="fire_extinguishers__kaca_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="fire_extinguishers__kaca"/>
+  </joint>
+
+  <link name="target_shelf">
+    <collision>
+      <origin xyz="7.035 2.27 1.175" rpy="0 0 0"/>
+      <geometry>
+        <box size="1.17 1.5 0.05"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="target_shelf_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="target_shelf"/>
+  </joint>
+
+  <link name="incoming_pallet_base">
+    <visual>
+      <origin xyz="4.4 5.9 0.072" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.8 1.2 0.144"/>
+      </geometry>
+      <material name="kayu"/>
+    </visual>
+    <collision>
+      <origin xyz="4.4 5.9 0.072" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.8 1.2 0.144"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="incoming_pallet_base_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="incoming_pallet_base"/>
+  </joint>
+
+  <link name="incoming_pallet_load">
+    <visual>
+      <origin xyz="4.4 5.9 0.47200000000000003" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.8 1.2 0.656"/>
+      </geometry>
+      <material name="kardus"/>
+    </visual>
+    <collision>
+      <origin xyz="4.4 5.9 0.47200000000000003" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.8 1.2 0.656"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="incoming_pallet_load_joint" type="fixed">
+    <parent link="warehouse_root"/>
+    <child link="incoming_pallet_load"/>
+  </joint>
+
+</robot>

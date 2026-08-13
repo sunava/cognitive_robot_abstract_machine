@@ -221,12 +221,12 @@ class PickUpAction(
                     # unreachable and which therefore squeezes it back out.
                     grasped_object=self.object_designator,
                 ),
-                # AttachNode(
-                #     body=self.object_designator,
-                #     new_parent=ViewManager.get_end_effector_view(
-                #         self.arm, self.robot
-                #     ).tool_frame,
-                # ),
+                AttachNode(
+                    body=self.object_designator,
+                    new_parent=ViewManager.get_end_effector_view(
+                        self.arm, self.robot
+                    ).tool_frame,
+                ),
             ],
         )
 

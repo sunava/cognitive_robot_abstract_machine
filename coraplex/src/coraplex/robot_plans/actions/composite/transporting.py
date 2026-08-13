@@ -33,7 +33,7 @@ from semantic_digital_twin.semantic_annotations.semantic_annotations import Draw
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.world_entity import Body
 
-
+from cramera.live.runner import start
 @dataclass
 class TransportAction(ActionDescription):
     """
@@ -100,6 +100,7 @@ class TransportAction(ActionDescription):
 
     @property
     def _action_plan(self) -> PlanNode:
+        print("transport")
         self.grasp_description = self.grasp_description or GraspDescription(
             ApproachDirection.FRONT,
             VerticalAlignment.NoAlignment,

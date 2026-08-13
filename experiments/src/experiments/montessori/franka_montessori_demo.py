@@ -76,6 +76,7 @@ if TYPE_CHECKING:
     # coraplex.datastructures.dataclasses and the ROS adapters below all pull in
     # rclpy at module level (see main), so these are only ever imported for type
     # hints, never at runtime.
+    from rclpy.executors import SingleThreadedExecutor
     from semantic_digital_twin.adapters.multi_sim import MujocoSim
     from semantic_digital_twin.adapters.ros.tf_publisher import TFPublisher
     from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
@@ -140,7 +141,14 @@ overhead it saves, but produced an unreliable/wedged grasp and, once, a run that
 converged -- the controller needs joint state read back at least as often as it commands.
 """
 
-SKIPPED_SHAPE_CATEGORIES = frozenset({MontessoriShapeCategory.DISK})
+SKIPPED_SHAPE_CATEGORIES = frozenset(
+    {
+        MontessoriShapeCategory.DISK,
+        MontessoriShapeCategory.CYLINDER,
+        MontessoriShapeCategory.TRIANGULAR_PRISM,
+        MontessoriShapeCategory.RECTANGULAR_PRISM,
+    }
+)
 """
 Shape categories the demo leaves where they are.
 
@@ -429,13 +437,15 @@ def _insert_shape_or_none(
 
 
 def _log_segmind_verdict(
-    shape: MontessoriShape, ground_truth_fell_through: Optional[bool], monitor: MontessoriEventMonitor
+    shape: MontessoriShape,
+    ground_truth_fell_through: Optional[bool],
+    monitor: MontessoriEventMonitor,
 ) -> None:
     """
-    Log segmind's own pick-up/insertion verdict for ``shape`` next to the ground truth
-    :meth:`~experiments.montessori.insert_shape_action.InsertMontessoriShapeAction.has_fallen_through_hole`
-    already computed for it, for comparison while segmind's detectors are still new to
-    this scene.
+    Log segmind's own pick-up/insertion verdict for ``shape`` next to the ground truth :
+    meth:`~experiments.montessori.insert_shape_action.InsertMontessoriShapeAction.has_fa
+    llen_through_hole` already computed for it, for comparison while segmind's detectors
+    are still new to this scene.
 
     :param shape: The shape ``monitor`` was tracking.
     :param ground_truth_fell_through: What :func:`_insert_shape` determined by direct
@@ -454,7 +464,10 @@ def _log_segmind_verdict(
     logger.info(
         "DEBUG segmind raw events for %s: %s",
         shape.name,
-        [(type(e).__name__, getattr(e, "with_object", None), e.timestamp) for e in events],
+        [
+            (type(e).__name__, getattr(e, "with_object", None), e.timestamp)
+            for e in events
+        ],
     )
     logger.info(
         "segmind for %s: pick-up detected=%s, insertion detected=%s "
@@ -678,9 +691,7 @@ def _open_results_session(database_uri: str) -> Session:
     return sessionmaker(engine)()
 
 
-def _build_world_and_sort(
-    node, arguments: argparse.Namespace
-) -> tuple[
+def _build_world_and_sort(node, arguments: argparse.Namespace) -> tuple[
     list[ShapeInsertionResult],
     MujocoSim,
     Optional[TFPublisher],
@@ -835,6 +846,29 @@ def _log_iteration_summary(iteration_results: list[SortingIterationResult]) -> N
         )
 
 
+def _spin_until_context_ends(executor: SingleThreadedExecutor) -> None:
+    """
+    Deliver this demo's node callbacks until the executor or the ROS context stops.
+
+    Giskard tears its own middleware down at the end of a run and ends the ROS context
+    with it, which happens before :func:`main`'s own ``finally`` block shuts this executor
+    down. rclpy reports that to a spinning executor as
+    :class:`~rclpy.executors.ExternalShutdownException`, and unlike the shutdown of the
+    executor itself it is not swallowed by ``spin_once`` -- so left alone it escapes this
+    thread and is printed as an unhandled exception in the middle of a run that finished
+    fine. It is this thread's normal end, so it stops here.
+
+    :param executor: The executor whose callbacks are delivered.
+    """
+    # rclpy is imported inside the functions that need it, as everywhere in this module
+    from rclpy.executors import ExternalShutdownException
+
+    try:
+        executor.spin()
+    except ExternalShutdownException:
+        pass
+
+
 def main() -> None:
     """
     Build the Montessori world, bolt the Panda next to it, visualize it in RViz, and
@@ -867,7 +901,12 @@ def main() -> None:
     node = rclpy.create_node(NODE_NAME)
     executor = SingleThreadedExecutor()
     executor.add_node(node)
-    spinner = threading.Thread(target=executor.spin, daemon=True, name="rclpy-executor")
+    spinner = threading.Thread(
+        target=_spin_until_context_ends,
+        args=(executor,),
+        daemon=True,
+        name="rclpy-executor",
+    )
     spinner.start()
 
     # keep_simulation_running: matches the original single-run behavior of leaving the
@@ -882,7 +921,7 @@ def main() -> None:
     multi_sim = None
     tf_publisher = None
     viz_marker_publisher = None
-#    results_session = _open_results_session(arguments.database_uri)
+    #    results_session = _open_results_session(arguments.database_uri)
     logger.info("Recording results to '%s'.", arguments.database_uri)
     try:
         for iteration in range(
@@ -902,8 +941,8 @@ def main() -> None:
                 iteration=iteration, shape_results=shape_results
             )
             iteration_results.append(iteration_result)
-            #results_session.add(to_dao(iteration_result))
-            #results_session.commit()
+            # results_session.add(to_dao(iteration_result))
+            # results_session.commit()
 
             if keep_simulation_running:
                 break
@@ -926,7 +965,7 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
-        #results_session.close()
+        # results_session.close()
         if multi_sim is not None:
             multi_sim.stop_simulation()
         if viz_marker_publisher is not None:
