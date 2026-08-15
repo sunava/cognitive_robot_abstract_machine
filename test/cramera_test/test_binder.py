@@ -6,9 +6,11 @@ by Jupyter — nothing imports it — so its contents are checked here.
 """
 
 import re
+import subprocess
 import tomllib
 from pathlib import Path
 
+import pytest
 from traitlets.config import Config
 from typing_extensions import Any, Dict, List
 
@@ -18,6 +20,11 @@ from cramera.server import NO_BROWSER_FLAG
 REPOSITORY_ROOT = Path(__file__).parents[2]
 
 BINDER_DIRECTORY = REPOSITORY_ROOT / "binder"
+
+GITLINK_MODE = "160000"
+"""
+The mode git records a committed submodule under in the index.
+"""
 
 SERVER_CONFIG_FILE = BINDER_DIRECTORY / "jupyter_server_config.py"
 """
@@ -64,6 +71,59 @@ def viewer_command_name() -> str:
         script for script, target in scripts.items() if target == VIEWER_ENTRY_POINT
     ]
     return name
+
+
+def read_git(*arguments: str) -> List[str]:
+    """
+    The non-empty output lines of one git command run in the repository.
+
+    :param arguments: The git command line, without the program name.
+    """
+    completed = subprocess.run(
+        ["git", "-C", str(REPOSITORY_ROOT), *arguments],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return completed.stdout.splitlines()
+
+
+def committed_submodule_paths() -> List[str]:
+    """
+    Every submodule the checkout records, whether or not it is declared.
+    """
+    entries = [line for line in read_git("ls-files", "--stage") if GITLINK_MODE in line]
+    return [line.split("\t", 1)[1] for line in entries]
+
+
+def declared_submodule_paths() -> List[str]:
+    """
+    The submodule paths ``.gitmodules`` gives a url, as git itself reads them.
+    """
+    settings = read_git(
+        "config",
+        "--file",
+        str(REPOSITORY_ROOT / ".gitmodules"),
+        "--get-regexp",
+        r"^submodule\..*\.path$",
+    )
+    return [setting.split(" ", 1)[1] for setting in settings]
+
+
+@pytest.mark.skipif(
+    not (REPOSITORY_ROOT / ".git").exists(), reason="not a git checkout"
+)
+class TestEverySubmoduleCanBeCloned:
+    """
+    Binder clones the repository with ``git submodule update --init --recursive``, which
+    aborts the whole build on a recorded submodule that ``.gitmodules`` has no url for.
+    """
+
+    def test_every_committed_submodule_is_declared(self):
+        undeclared = sorted(
+            set(committed_submodule_paths()) - set(declared_submodule_paths())
+        )
+        assert not undeclared, undeclared
 
 
 class TestTheLaunchUrlReachesTheViewer:
