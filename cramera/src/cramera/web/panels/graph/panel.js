@@ -63,11 +63,11 @@ Panels.define('graph', function (root, bus) {
 
   // %% tabs
   const TABS = {
-    knowledge:  { url: '/api/knowledge' },
-    kinematics: { url: '/api/knowledge/view?name=kinematics' },
-    plan:       { url: '/api/knowledge/view?name=plan' },
-    chart:      { url: '/api/knowledge/view?name=chart' },
-    transforms: { url: '/api/knowledge/view?name=transforms' },
+    knowledge:  { url: ServerApi.urlFor('knowledge') },
+    kinematics: { url: ServerApi.urlFor('knowledge/view?name=kinematics') },
+    plan:       { url: ServerApi.urlFor('knowledge/view?name=plan') },
+    chart:      { url: ServerApi.urlFor('knowledge/view?name=chart') },
+    transforms: { url: ServerApi.urlFor('knowledge/view?name=transforms') },
   };
   // the bridge endpoint each live view polls
   const LIVE_ENDPOINT = { plan: '/plan', chart: '/chart', transforms: '/transforms' };
@@ -109,7 +109,7 @@ Panels.define('graph', function (root, bus) {
   async function drill(id) {
     if (!view.details[id]) return;
     try {
-      const r = await fetch(SceneContext.withScene('/api/knowledge/expand?node=' + encodeURIComponent(id)));
+      const r = await fetch(SceneContext.withScene(ServerApi.urlFor('knowledge/expand?node=' + encodeURIComponent(id))));
       const p = await ResponseUtil.parseJson(r);
       if (!p.ok) return;                       // node has no inside view
       stacks[tab].push(view);

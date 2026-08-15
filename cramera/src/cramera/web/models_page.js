@@ -26,7 +26,7 @@
   // %% model state and loading
 
   function refreshState() {
-    fetch('/api/models/state').then(ResponseUtil.parseJson).then(function (state) {
+    fetch(ServerApi.urlFor('models/state')).then(ResponseUtil.parseJson).then(function (state) {
       if (!state.ok) return showUnavailable(state.error || 'models API unavailable');
       variables = state.variables || [];
       statusEl.textContent = state.loaded
@@ -53,7 +53,7 @@
     file.text().then(function (text) {
       // the file travels as text: python's JSON reader accepts the Infinity/NaN
       // literals circuit files carry, the browser's JSON.parse does not
-      return fetch('/api/models/load', {
+      return fetch(ServerApi.urlFor('models/load'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model_text: text, name: file.name }),
@@ -204,7 +204,7 @@
   document.getElementById('query-run').addEventListener('click', function () {
     const resultEl = document.getElementById('query-result');
     resultEl.innerHTML = '<div class="answer-empty">calculating…</div>';
-    postJson('/api/models/probability', {
+    postJson(ServerApi.urlFor('models/probability'), {
       query: constraintsOf('query-rows'),
       evidence: constraintsOf('query-evidence-rows'),
     }).then(function (payload) {
@@ -233,7 +233,7 @@
       return;
     }
     plotsEl.innerHTML = '<div class="answer-empty">calculating…</div>';
-    postJson('/api/models/posterior', {
+    postJson(ServerApi.urlFor('models/posterior'), {
       variables: chosen,
       evidence: constraintsOf('posterior-evidence-rows'),
     }).then(function (payload) {
@@ -255,7 +255,7 @@
   document.getElementById('mode-run').addEventListener('click', function () {
     const resultEl = document.getElementById('mode-result');
     resultEl.innerHTML = '<div class="answer-empty">calculating…</div>';
-    postJson('/api/models/mode', {
+    postJson(ServerApi.urlFor('models/mode'), {
       evidence: constraintsOf('mode-evidence-rows'),
     }).then(function (payload) {
       if (!payload.ok) return showError(resultEl, payload.error);

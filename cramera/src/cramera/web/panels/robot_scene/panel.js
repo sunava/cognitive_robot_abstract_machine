@@ -1888,7 +1888,7 @@ Panels.define('robot-scene', function (root, bus) {
         updateRecordingButtons();
       })
       .catch(function () {
-        fetch('/api/recording/status').then(function (r) { return r.json(); })
+        fetch(ServerApi.urlFor('recording/status')).then(function (r) { return r.json(); })
           .then(function (status) {
             recordingState = (status && status.state) || RecordingMode.STATE.IDLE;
             updateRecordingButtons();
@@ -1913,7 +1913,7 @@ Panels.define('robot-scene', function (root, bus) {
   });
 
   recordDiscardBtn.addEventListener('click', function () {
-    postRecordingAction('/recording/discard', '/api/recording/discard').then(function () {
+    postRecordingAction('/recording/discard', ServerApi.urlFor('recording/discard')).then(function () {
       pollRecordingStatus();
       if (RecordingMode.isRecordingScene(SceneContext.name())) {
         const params = new URLSearchParams(window.location.search);
@@ -1930,7 +1930,7 @@ Panels.define('robot-scene', function (root, bus) {
       window.alert('Scene names must be 1-64 characters of letters, digits, "_" or "-".');
       return;
     }
-    postRecordingAction('/recording/save', '/api/recording/save', { name: name })
+    postRecordingAction('/recording/save', ServerApi.urlFor('recording/save'), { name: name })
       .then(function (d) {
         if (!d || !d.ok) {
           window.alert('Could not save the recording: ' + ((d && d.error) || 'unknown error'));

@@ -51,6 +51,15 @@ def panel_scripts() -> List[Path]:
     return sorted(WEB_ROOT.glob("panels/**/*.js"))
 
 
+def frontend_scripts() -> List[Path]:
+    """
+    Every script written for this frontend, vendored libraries excluded.
+    """
+    return sorted(
+        script for script in WEB_ROOT.glob("**/*.js") if "vendor" not in script.parts
+    )
+
+
 PAGES = ["index.html", "models.html"]
 """
 Every page the server ships; each must reference only files that exist.
@@ -130,6 +139,34 @@ class TestAssetConsistency:
             assert "'static/" not in panel_js.read_text(), panel_js.name
 
 
+class TestServedUnderAPathPrefix:
+    """
+    The viewer is served both at a host's root (``cramera`` on localhost) and under a
+    path prefix, where the page is one route among many — Binder mounts it at
+    ``<base>/cramera/``.
+
+    Every request the frontend makes therefore has to resolve relative to the page. A
+    root-absolute one drops the prefix and hits the host's own routes instead.
+    """
+
+    ROOT_ABSOLUTE_URL_PATTERN = re.compile(r"""['"](/(?:api|scenes)/[^'"]*)""")
+    """
+    A quoted request path starting at the host root, which is what must not appear.
+    """
+
+    def test_no_script_requests_a_root_absolute_url(self):
+        for script in frontend_scripts():
+            found = self.ROOT_ABSOLUTE_URL_PATTERN.findall(script.read_text())
+            assert not found, "%s: %s" % (script.name, found)
+
+    def test_the_api_url_helper_stays_below_the_page(self):
+        """
+        One place decides where the API lives; it must not start at the host root.
+        """
+        [root] = re.findall(r"const API_ROOT = '([^']*)'", read("core/api.js"))
+        assert not root.startswith("/")
+
+
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
 class TestJsUnits:
     def run_node(self, name: str) -> None:
@@ -176,6 +213,9 @@ class TestJsUnits:
 
     def test_response_util(self):
         self.run_node("test_response_util.js")
+
+    def test_server_api(self):
+        self.run_node("test_server_api.js")
 
     def test_scene_context(self):
         self.run_node("test_scene_context.js")

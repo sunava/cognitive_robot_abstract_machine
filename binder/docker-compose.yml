@@ -1,0 +1,15 @@
+services:
+  cramera:
+    image: cramera-binder:latest
+    build:
+      context: ../
+      dockerfile: ./binder/Dockerfile
+    stdin_open: true
+    tty: true
+    user: root
+    working_dir: /home/repo
+    command: jupyter lab --allow-root --ServerApp.token='' --no-browser --ip=0.0.0.0
+    ports:
+      - 8888:8888
+    volumes:
+      - ../:/home/repo:rw

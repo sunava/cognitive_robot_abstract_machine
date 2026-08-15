@@ -29,6 +29,16 @@ function loadSceneContext(search) {
   return scope.SceneContext;
 }
 
+// and the real core/api.js, for the same reason: it decides where every requested url
+// sits relative to the page
+function loadServerApi() {
+  const scope = {};
+  new Function('window', fs.readFileSync(path.join(WEB, 'core/api.js'), 'utf8'))(scope);
+  return scope.ServerApi;
+}
+
+const ServerApi = loadServerApi();
+
 function flush() {
   return new Promise(function (resolve) { setTimeout(resolve, 0); });
 }
@@ -119,8 +129,9 @@ function loadPanel(responses, search) {
     setStatuses() { return false; },
     zoomBy(factor) { zooms.push(factor); }, fit() { zooms.push('fit'); },
   };
-  new Function('Panels', 'Graph', 'fetch', 'ResponseUtil', 'SceneContext', SOURCE)(
-    Panels, Graph, makeFetch(responses, requested), loadResponseUtil(), loadSceneContext(search)
+  new Function('Panels', 'Graph', 'fetch', 'ResponseUtil', 'SceneContext', 'ServerApi', SOURCE)(
+    Panels, Graph, makeFetch(responses, requested), loadResponseUtil(), loadSceneContext(search),
+    ServerApi
   );
   return {
     factory: factory,
@@ -135,8 +146,8 @@ function loadPanel(responses, search) {
 // only has to pass the group through, legend included
 test('a live plan is drawn with the groups and legend the bridge sent', async function () {
   const panel = loadPanel({
-    '/api/knowledge': { ok: true, nodes: [], edges: [], details: {} },
-    '/api/knowledge/view?name=plan': { ok: true, nodes: [], edges: [], details: {}, live: 'plan' },
+    [ServerApi.urlFor('knowledge')]: { ok: true, nodes: [], edges: [], details: {} },
+    [ServerApi.urlFor('knowledge/view?name=plan')]: { ok: true, nodes: [], edges: [], details: {}, live: 'plan' },
     'http://bridge/plan': {
       signature: 's1',
       nodes: [
@@ -174,8 +185,8 @@ test('a live plan is drawn with the groups and legend the bridge sent', async fu
 // %% live statechart colour groups
 test('statechart nodes are grouped by the kind of node giskardpy compiled', async function () {
   const panel = loadPanel({
-    '/api/knowledge': { ok: true, nodes: [], edges: [], details: {} },
-    '/api/knowledge/view?name=chart': { ok: true, nodes: [], edges: [], details: {}, live: 'chart' },
+    [ServerApi.urlFor('knowledge')]: { ok: true, nodes: [], edges: [], details: {} },
+    [ServerApi.urlFor('knowledge/view?name=chart')]: { ok: true, nodes: [], edges: [], details: {}, live: 'chart' },
     'http://bridge/chart': {
       signature: 'c1',
       title: 'reach',
@@ -217,8 +228,8 @@ test('statechart nodes are grouped by the kind of node giskardpy compiled', asyn
 // frame with the freshness of the connection that carries it
 function loadTransformsPanel() {
   return loadPanel({
-    '/api/knowledge': { ok: true, nodes: [], edges: [], details: {} },
-    '/api/knowledge/view?name=transforms': { ok: true, nodes: [], edges: [], details: {}, live: 'transforms' },
+    [ServerApi.urlFor('knowledge')]: { ok: true, nodes: [], edges: [], details: {} },
+    [ServerApi.urlFor('knowledge/view?name=transforms')]: { ok: true, nodes: [], edges: [], details: {}, live: 'transforms' },
     'http://bridge/transforms': {
       signature: 't1',
       connections: [
@@ -334,8 +345,8 @@ test('a frame nothing has written yet says so instead of reporting an age', asyn
 // %% a route with no backend
 test('a view whose route has no backend reports the status, not a JSON.parse error', async function () {
   const panel = loadPanel({
-    '/api/knowledge': { ok: true, nodes: [], edges: [], details: {} },
-    '/api/knowledge/view?name=kinematics': 502,
+    [ServerApi.urlFor('knowledge')]: { ok: true, nodes: [], edges: [], details: {} },
+    [ServerApi.urlFor('knowledge/view?name=kinematics')]: 502,
   });
   const root = makeRoot();
   const instance = panel.factory(root, makeBus());
@@ -357,8 +368,8 @@ test('a view whose route has no backend reports the status, not a JSON.parse err
 test('every api request carries the scene the url names', async function () {
   const requested = [];
   const panel = loadPanel({
-    '/api/knowledge?scene=lab': { ok: true, nodes: [], edges: [], details: {} },
-    '/api/knowledge/view?name=kinematics&scene=lab': { ok: true, nodes: [], edges: [], details: {} },
+    [ServerApi.urlFor('knowledge?scene=lab')]: { ok: true, nodes: [], edges: [], details: {} },
+    [ServerApi.urlFor('knowledge/view?name=kinematics&scene=lab')]: { ok: true, nodes: [], edges: [], details: {} },
   }, '?scene=lab');
   const root = makeRoot();
   const instance = panel.factory(root, makeBus());
@@ -368,8 +379,8 @@ test('every api request carries the scene the url names', async function () {
     await flush();
 
     assert.deepStrictEqual(panel.requested, [
-      '/api/knowledge?scene=lab',
-      '/api/knowledge/view?name=kinematics&scene=lab',
+      ServerApi.urlFor('knowledge?scene=lab'),
+      ServerApi.urlFor('knowledge/view?name=kinematics&scene=lab'),
     ]);
   } finally {
     instance.destroy();
@@ -380,7 +391,7 @@ test('every api request carries the scene the url names', async function () {
 // a laptop touchpad is the awkward case for any gesture, so zooming must also be
 // reachable without one
 test('the zoom controls step the graph in, out and back to a full fit', async function () {
-  const panel = loadPanel({ '/api/knowledge': { ok: true, nodes: [], edges: [], details: {} } });
+  const panel = loadPanel({ [ServerApi.urlFor('knowledge')]: { ok: true, nodes: [], edges: [], details: {} } });
   const root = makeRoot();
   const instance = panel.factory(root, makeBus());
   try {

@@ -36,7 +36,7 @@ Panels.define('eql', function (root, bus) {
   let knowledge = null;   // /api/knowledge overview (presets + entity details)
 
   // %% boot
-  fetch(SceneContext.withScene('/api/knowledge')).then(ResponseUtil.parseJson).then(boot).catch(function (err) {
+  fetch(SceneContext.withScene(ServerApi.urlFor('knowledge'))).then(ResponseUtil.parseJson).then(boot).catch(function (err) {
     knowledgeStatus.textContent = 'EQL unavailable';
     answerEl.innerHTML = '<div class="qerr">EQL unavailable: ' + esc(errorText(err)) + '</div>';
   });
@@ -124,7 +124,7 @@ Panels.define('eql', function (root, bus) {
     running = true;
     runBtn.textContent = '…';
     try {
-      const r = await fetch(SceneContext.withScene('/api/eql'), {
+      const r = await fetch(SceneContext.withScene(ServerApi.urlFor('eql')), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: code }),
