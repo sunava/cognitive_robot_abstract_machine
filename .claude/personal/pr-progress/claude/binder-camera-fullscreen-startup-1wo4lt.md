@@ -25,7 +25,13 @@ Done (commit 8f61f1ec0, pushed):
 - 453 cramera tests pass locally (`test_onboard.py`/`test_palette.py` need
   `physics_simulators`, absent from the local venv only)
 
-Next: no PR opened yet - the user did not ask for one. Unverified until a
-real Binder build: the image contents and whether the base image's own
-`ServerProxy.servers` (if it sets any) get overwritten by the plain
-assignment in `jupyter_server_config.py`.
+First Binder build failed before Docker even started - repo2docker's
+`git submodule update --init --recursive` aborted on `cram_viz/scenes`, a
+gitlink left behind by the cramera rename, and `defense/scenes`, never
+declared. Both directories held nothing else. Fixed in ade4b6bd2 with
+`TestEverySubmoduleCanBeCloned` in `test_binder.py` guarding the invariant.
+
+Next: no PR opened yet - the user did not ask for one. Still unverified
+until a Binder build gets past the clone: the image contents, and whether
+the base image's own `ServerProxy.servers` (if it sets any) get overwritten
+by the plain assignment in `jupyter_server_config.py`.
