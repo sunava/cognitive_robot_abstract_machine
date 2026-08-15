@@ -14,7 +14,21 @@ Browser-based visualization for the CRAM architecture — one tool for two modes
 ```bash
 cramera                                  # serves http://localhost:8711
 cramera-onboard path/to/demo.py --name my_scene    # record a demo once
+cramera-onboard-demos path/to/demo_a.py path/to/demo_b.py   # record several
 cramera-live path/to/demo.py             # run a demo with the live bridge
+```
+
+`cramera-onboard-demos` records each demo in a process of its own — the
+onboarder patches the interpreter it runs in and ends that process once the
+bundle is written — and names every scene after its demo file, dropping a
+leading `demo_`. A demo that fails does not stop the ones after it; the
+command's exit code reports whether all of them were written. The four
+tool-based demos, recorded as the scenes `cutting`, `pouring`, `mixing` and
+`wiping`:
+
+```bash
+cd experiments/src/experiments/tool_based_actions/simple_demo
+cramera-onboard-demos demo_cutting.py demo_pouring.py demo_mixing.py demo_wiping.py
 ```
 
 Scene bundles are **generated artifacts** (tens of MB per scene) and are not
@@ -167,6 +181,7 @@ src/cramera/
     __main__.py    cramera-live entry point
   onboard/         turn a demo run into a scene bundle
     demo.py        demo -> scene bundle (record + bundle, one command)
+    demo_scenes.py a set of demos -> a scene each, one process per demo
     bundle_urdf.py standalone URDF/xacro asset bundler
   web/
     index.html     shell: topbar + slots + script includes

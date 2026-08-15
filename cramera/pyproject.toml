@@ -26,6 +26,7 @@ license = { text = "GPL-3.0-only" }
 cramera = "cramera.server:main"
 cramera-live = "cramera.live.runner:main"
 cramera-onboard = "cramera.onboard.demo:main"
+cramera-onboard-demos = "cramera.onboard.demo_scenes:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
