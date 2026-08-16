@@ -34,12 +34,23 @@ Missing videos degrade gracefully (empty player, no error).
 
 Open <http://localhost:8123>.
 
+## Structure
+
+The deck is a 13-frame main sequence (~20 min) plus 12 appendix frames that
+are excluded from the frame count and the arrow-key sequence. Appendix frames
+carry `class="slide apx"` and a `data-apx` label; main frames carry a
+`data-section` label, shown as the section locator in the top bar.
+
 ## Keys
 
-- `←` / `→` / `Space` — navigate slides
+- `←` / `→` / `Space` — navigate (stays within the main sequence, or within
+  the appendix once you are in it)
+- `a` — appendix index; `1`–`9` or a click jumps to an entry
+- `Esc` — leave the appendix, returning to the frame you left
+- `n` — presenter notes for the current frame
 - `t` — light/dark theme
 - `f` — fullscreen
 
-On the *recorded episodes* slide: drag to orbit, scroll to zoom, the PR2/HSR/
-TIAGO buttons switch between the three recorded apartment episodes, the chips
-jump to plan steps.
+On the *recorded episodes* appendix slide: drag to orbit, scroll to zoom, the
+PR2/HSR/TIAGO buttons switch between the three recorded apartment episodes,
+the chips jump to plan steps.
