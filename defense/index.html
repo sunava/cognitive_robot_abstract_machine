@@ -74,6 +74,12 @@ body{margin:0;background:var(--page);color:var(--ink);font-family:var(--sans);ov
 #notespanel.on{display:block;}
 #notespanel .lbl{font-family:var(--mono);font-size:11px;color:var(--acc);letter-spacing:.08em;margin-bottom:6px;}
 
+/* ---------- missing media placeholder ---------- */
+.vidmissing{display:flex;align-items:center;justify-content:center;text-align:center;
+  border:1px dashed var(--line2);border-radius:6px;background:var(--panel2);
+  min-height:120px;padding:12px;box-sizing:border-box;
+  font-family:var(--mono);font-size:11.5px;line-height:1.5;color:var(--mute);}
+
 /* ---------- appendix ---------- */
 .slide.apx .eyebrow{color:var(--warn);}
 #apxlist .anode{cursor:pointer;}
@@ -895,6 +901,20 @@ addEventListener('keydown',e=>{
   else if(/^[1-9]$/.test(e.key)&&apxCur>=0)goApx(parseInt(e.key,10));
   else if(e.key==='f'||e.key==='F'){document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}
 });
+
+/* ── a clip that is not on disk becomes a labelled placeholder, not an empty box ── */
+document.querySelectorAll('video.slidevid').forEach(v=>{
+  if(v.id==='demoReal')return;
+  v.addEventListener('error',()=>{
+    const box=document.createElement('div');
+    box.className='vidmissing';
+    box.textContent='clip not loaded — see defense/README.md';
+    v.replaceWith(box);
+  },true);
+});
+document.getElementById('demoReal').addEventListener('error',()=>{
+  document.getElementById('demoRealPanel').style.display='none';
+},true);
 
 /* ── presenter notes overlay ── */
 let notesOpen=false;
