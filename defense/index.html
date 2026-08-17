@@ -101,6 +101,13 @@ ul.k li b{color:var(--ink);font-weight:600;}
 #s1 h1{font-size:40px;}
 .byline{margin-top:22px;font-size:15px;color:var(--ink2);line-height:1.7;}
 .byline b{color:var(--ink);font-weight:600;}
+#brandlogos{position:absolute;left:16px;bottom:10px;z-index:50;display:flex;align-items:center;gap:12px;transition:none;}
+#brandlogos img{display:block;height:13px;width:auto;}
+#brandlogos img.dk{display:none;}
+:root[data-theme="dark"] #brandlogos img.lt{display:none;}
+:root[data-theme="dark"] #brandlogos img.dk{display:block;}
+#brandlogos.title{left:auto;right:60px;bottom:44px;gap:26px;}
+#brandlogos.title img{height:32px;}
 
 /* ---------- pipeline / architecture diagrams ---------- */
 .flow{display:flex;align-items:stretch;gap:0;}
@@ -221,7 +228,7 @@ table.tt td b{color:var(--ink);font-weight:600;}
 <div id="stage">
   <div id="topbar">
     <span class="dot"></span>
-    <span class="sess">cram_viewer&nbsp;—&nbsp;episode:&nbsp;phd_defense</span>
+    <span class="sess">Vanesa Hassouna, hassouna@uni-bremen.de</span>
     <span>hassouna@ai.uni-bremen.de</span>
     <span class="right">
       <span id="hudmode">mode: beamer</span>
@@ -234,7 +241,7 @@ table.tt td b{color:var(--ink);font-weight:600;}
     <div id="titleStage" class="glstage" style="inset:0;pointer-events:none;"></div>
     <div class="scrim"></div>
     <div class="titlewrap">
-      <p class="eyebrow">$ roslaunch defense thesis.launch <span class="ph">— world: household</span></p>
+      <p class="eyebrow">// 01 · doctoral defense <span class="ph">25.08.2026</span></p>
       <h1>From Underspecified Task Descriptions to Robotic Agents Executing Complex Household Activities</h1>
       <div class="byline">
         <b>Vanessa Hassouna</b> · Doctoral Defense<br>
@@ -780,6 +787,12 @@ B<sub>g</sub> = γ(D, W<sub>SDT</sub>, K<sub>KG</sub>)&nbsp;&nbsp;<span class="c
   <div id="tooltip"></div>
   <div id="progress"></div>
   <div id="navhint"><b>←</b> <b>→</b> navigate · <b>t</b> theme · <b>f</b> fullscreen</div>
+  <div id="brandlogos">
+    <img class="lt" alt="University of Bremen" src="logos/unibremen_light.png" />
+    <img class="dk" alt="University of Bremen" src="logos/unibremen_dark.png" />
+    <img class="lt" alt="AICOR" src="logos/aicor_light.png" />
+    <img class="dk" alt="AICOR" src="logos/aicor_dark.png" />
+  </div>
 </div>
 </div>
 
@@ -801,6 +814,7 @@ function go(i){
   cur=i;
   document.getElementById('hudframe').textContent=`frame ${String(i+1).padStart(2,'0')} / ${N}`;
   document.getElementById('progress').style.width=((i+1)/N*100)+'%';
+  document.getElementById('brandlogos').classList.toggle('title',i===0);
   location.hash='s'+(i+1);
   onSlide(i);
 }
