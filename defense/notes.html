@@ -1,0 +1,275 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Presenter notes</title>
+<style>
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --line:#d5dce3; --ink:#16212c; --ink2:#3c4c5c; --mute:#6e7d8c; --acc:#2a63b8; --accink:#ffffff;
+  --mono:ui-monospace,'SF Mono',Menlo,'Cascadia Code',Consolas,monospace;
+  --sans:'Helvetica Neue',ui-sans-serif,-apple-system,'Segoe UI',sans-serif;
+}
+:root[data-theme="dark"]{
+  --bg:#0c1116; --panel:#141d27; --line:#22303f; --ink:#e9eef5; --ink2:#a9b6c6; --mute:#6b7a8d; --acc:#5a8fdd; --accink:#0b1016;
+}
+html,body{height:100%;margin:0;}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);display:flex;flex-direction:column;box-sizing:border-box;padding:16px;gap:12px;}
+#head{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:11px;color:var(--mute);letter-spacing:.05em;border-bottom:1px solid var(--line);padding-bottom:10px;}
+#head b{color:var(--ink2);font-weight:400;}
+#clock{font-variant-numeric:tabular-nums;}
+#eyebrow{font-family:var(--mono);font-size:12px;color:var(--acc);letter-spacing:.06em;}
+#title{font-size:22px;font-weight:700;line-height:1.2;margin:4px 0 2px;letter-spacing:-.01em;}
+
+#modebar{display:flex;justify-content:space-between;align-items:center;}
+.seg{display:flex;border:1px solid var(--line);border-radius:5px;overflow:hidden;}
+.seg button{border:none;border-radius:0;background:var(--panel);}
+.seg button:not(:last-child){border-right:1px solid var(--line);}
+.seg button.on{background:var(--acc);color:var(--accink);font-weight:700;}
+#revertBtn{color:var(--mute);font-family:var(--mono);font-size:11px;background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;}
+#revertBtn:hover{color:var(--ink);}
+
+#noteWrap{flex:1;min-height:0;position:relative;}
+#noteView,#noteEdit{position:absolute;inset:0;overflow-y:auto;box-sizing:border-box;padding:14px 16px;background:var(--panel);border:1px solid var(--line);border-radius:8px;}
+#noteView{font-size:16px;line-height:1.55;color:var(--ink2);}
+#noteView h1,#noteView h2,#noteView h3{color:var(--ink);line-height:1.25;margin:0 0 8px;}
+#noteView h1{font-size:19px;}#noteView h2{font-size:17px;}#noteView h3{font-size:15px;}
+#noteView p{margin:0 0 10px;}
+#noteView ul,#noteView ol{margin:0 0 10px;padding-left:20px;}
+#noteView li{margin-bottom:4px;}
+#noteView code{font-family:var(--mono);font-size:.9em;background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:1px 5px;color:var(--acc);}
+#noteView strong{color:var(--ink);}
+#noteEdit{width:100%;height:100%;font-family:var(--mono);font-size:14px;line-height:1.55;color:var(--ink);resize:none;outline:none;}
+.hidden{display:none !important;}
+
+#nextbox{font-family:var(--mono);font-size:11.5px;color:var(--mute);border-top:1px solid var(--line);padding-top:10px;}
+#nextbox b{color:var(--ink2);font-weight:400;}
+#timerrow{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:11px;color:var(--mute);}
+#elapsed{font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums;}
+button{font-family:var(--mono);font-size:11px;padding:5px 10px;cursor:pointer;background:var(--panel);color:var(--ink2);border:1px solid var(--line);border-radius:4px;}
+button:hover{border-color:var(--acc);color:var(--ink);}
+#waiting{color:var(--mute);font-style:italic;}
+</style>
+</head>
+<body>
+  <div id="head">
+    <span id="framecount"><b>presenter notes</b></span>
+    <span style="display:flex;align-items:center;gap:12px;">
+      <span id="clock"></span>
+      <button id="themeToggle" title="toggle light/dark — stays in sync with the deck's 't' key" style="padding:3px 8px;">◐</button>
+    </span>
+  </div>
+  <div>
+    <div id="eyebrow"></div>
+    <div id="title">Waiting for the deck…</div>
+  </div>
+
+  <div id="modebar">
+    <div class="seg" role="group" aria-label="notes mode">
+      <button id="viewBtn" class="on" aria-pressed="true">view</button>
+      <button id="editBtn" aria-pressed="false">edit</button>
+    </div>
+    <button id="revertBtn" title="discard your edits, restore the deck's built-in note for this slide">revert to auto-note</button>
+  </div>
+
+  <div id="noteWrap">
+    <div id="noteView"><span id="waiting">Open index.html in the other window/screen and start presenting — notes appear here automatically.</span></div>
+    <textarea id="noteEdit" class="hidden" placeholder="Write markdown notes for this slide — headings with #, **bold**, - bullets…" disabled></textarea>
+  </div>
+
+  <div id="nextbox"><b>next:</b> <span id="nexttitle">—</span></div>
+  <div id="timerrow">
+    <span>elapsed <span id="elapsed">00:00</span></span>
+    <span>
+      <button id="pauseTimer">pause</button>
+      <button id="resetTimer">reset timer</button>
+    </span>
+  </div>
+
+<script>
+'use strict';
+/* ── theme: shares the deck's own 'deck-theme' key, so index.html's 't' key drives this window too ── */
+const THEME_KEY='deck-theme';
+function applyNotesTheme(name){
+  document.documentElement.dataset.theme=(name==='dark')?'dark':'light';
+}
+function setNotesTheme(name){
+  applyNotesTheme(name);
+  try{localStorage.setItem(THEME_KEY,name);}catch(e){}
+}
+let initialTheme='light';
+try{initialTheme=localStorage.getItem(THEME_KEY)||'light';}catch(e){}
+applyNotesTheme(initialTheme);
+addEventListener('storage',e=>{
+  if(e.key===THEME_KEY&&e.newValue)applyNotesTheme(e.newValue);
+});
+document.getElementById('themeToggle').addEventListener('click',()=>{
+  setNotesTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+});
+
+const STATE_KEY='cram-defense-notes-state';
+const MODE_KEY='cram-defense-notes-mode';
+function userNoteKey(id){return 'cram-defense-notes-user:'+id;}
+
+/* ── tiny, dependency-free markdown renderer (headings, bold/italic, code, lists, paragraphs) ── */
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function inlineMd(s){
+  s=escapeHtml(s);
+  s=s.replace(/`([^`]+)`/g,'<code>$1</code>');
+  s=s.replace(/\*\*([^*]+)\*\*|__([^_]+)__/g,(m,a,b)=>'<strong>'+(a||b)+'</strong>');
+  s=s.replace(/\*([^*]+)\*|_([^_]+)_/g,(m,a,b)=>'<em>'+(a||b)+'</em>');
+  return s;
+}
+function renderMarkdown(src){
+  const lines=(src||'').replace(/\r\n/g,'\n').split('\n');
+  let html='',para=[],list=null; // list: {type:'ul'|'ol', items:[]}
+  function flushPara(){
+    if(para.length){html+='<p>'+inlineMd(para.join(' '))+'</p>';para=[];}
+  }
+  function flushList(){
+    if(list){html+='<'+list.type+'>'+list.items.map(i=>'<li>'+inlineMd(i)+'</li>').join('')+'</'+list.type+'>';list=null;}
+  }
+  for(const raw of lines){
+    const line=raw.trim();
+    if(!line){flushPara();flushList();continue;}
+    let m;
+    if((m=line.match(/^(#{1,3})\s+(.*)$/))){
+      flushPara();flushList();
+      const lvl=m[1].length;
+      html+='<h'+lvl+'>'+inlineMd(m[2])+'</h'+lvl+'>';
+      continue;
+    }
+    if((m=line.match(/^[-*]\s+(.*)$/))){
+      flushPara();
+      if(!list||list.type!=='ul')  {flushList();list={type:'ul',items:[]};}
+      list.items.push(m[1]);
+      continue;
+    }
+    if((m=line.match(/^\d+\.\s+(.*)$/))){
+      flushPara();
+      if(!list||list.type!=='ol'){flushList();list={type:'ol',items:[]};}
+      list.items.push(m[1]);
+      continue;
+    }
+    flushList();
+    para.push(line);
+  }
+  flushPara();flushList();
+  return html||'<p class="small"></p>';
+}
+
+let current=null;   // last payload from the deck
+let mode='view';
+
+function effectiveNote(payload){
+  try{
+    const u=localStorage.getItem(userNoteKey(payload.id));
+    if(u!==null)return u;
+  }catch(e){}
+  return payload.note||'';
+}
+function applyMode(){
+  document.getElementById('viewBtn').classList.toggle('on',mode==='view');
+  document.getElementById('viewBtn').setAttribute('aria-pressed',mode==='view');
+  document.getElementById('editBtn').classList.toggle('on',mode==='edit');
+  document.getElementById('editBtn').setAttribute('aria-pressed',mode==='edit');
+  document.getElementById('noteView').classList.toggle('hidden',mode!=='view');
+  document.getElementById('noteEdit').classList.toggle('hidden',mode!=='edit');
+  if(mode==='edit')document.getElementById('noteEdit').focus();
+}
+function setMode(m){
+  mode=m;
+  try{localStorage.setItem(MODE_KEY,m);}catch(e){}
+  applyMode();
+}
+function renderNoteAreas(){
+  if(!current)return;
+  const text=effectiveNote(current);
+  const editEl=document.getElementById('noteEdit');
+  if(document.activeElement!==editEl)editEl.value=text;
+  editEl.disabled=false;
+  document.getElementById('noteView').innerHTML=renderMarkdown(text);
+}
+function render(payload){
+  if(!payload)return;
+  current=payload;
+  document.getElementById('framecount').innerHTML='<b>frame '+String(payload.index+1).padStart(2,'0')+' / '+payload.total+'</b>';
+  document.getElementById('eyebrow').textContent=payload.eyebrow||'';
+  document.getElementById('title').textContent=payload.title||payload.id||'';
+  document.getElementById('nexttitle').textContent=payload.nextTitle||'—';
+  renderNoteAreas();
+}
+try{
+  const cached=localStorage.getItem(STATE_KEY);
+  if(cached)render(JSON.parse(cached));
+}catch(e){}
+if('BroadcastChannel' in window){
+  const ch=new BroadcastChannel('cram-defense-notes');
+  ch.onmessage=ev=>render(ev.data);
+}
+addEventListener('storage',e=>{
+  if(e.key===STATE_KEY&&e.newValue){
+    try{render(JSON.parse(e.newValue));}catch(err){}
+  }
+});
+
+try{mode=localStorage.getItem(MODE_KEY)||'view';}catch(e){}
+applyMode();
+document.getElementById('viewBtn').addEventListener('click',()=>setMode('view'));
+document.getElementById('editBtn').addEventListener('click',()=>setMode('edit'));
+document.getElementById('noteEdit').addEventListener('input',e=>{
+  if(!current)return;
+  try{localStorage.setItem(userNoteKey(current.id),e.target.value);}catch(err){}
+  document.getElementById('noteView').innerHTML=renderMarkdown(e.target.value);
+});
+document.getElementById('revertBtn').addEventListener('click',()=>{
+  if(!current)return;
+  try{localStorage.removeItem(userNoteKey(current.id));}catch(e){}
+  renderNoteAreas();
+});
+
+/* clock + pausable elapsed timer */
+function pad(n){return String(n).padStart(2,'0');}
+function tickClock(){
+  document.getElementById('clock').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+const TIMER_ACCUM_KEY='cram-defense-notes-timer-accum';   // ms banked while previously running
+const TIMER_RUNSTART_KEY='cram-defense-notes-timer-runstart'; // Date.now() of the current run, or '' if paused
+let accumMs=0, runStart=Date.now(); // runStart===null means paused
+try{
+  accumMs=parseInt(localStorage.getItem(TIMER_ACCUM_KEY)||'0',10)||0;
+  const rs=localStorage.getItem(TIMER_RUNSTART_KEY);
+  if(rs===null)runStart=Date.now();        // never persisted before: start running now
+  else if(rs==='')runStart=null;           // was explicitly paused
+  else runStart=parseInt(rs,10);           // was running since this timestamp
+}catch(e){runStart=Date.now();}
+function saveTimerState(){
+  try{
+    localStorage.setItem(TIMER_ACCUM_KEY,String(accumMs));
+    localStorage.setItem(TIMER_RUNSTART_KEY,runStart===null?'':String(runStart));
+  }catch(e){}
+}
+function currentElapsedMs(){
+  return accumMs+(runStart===null?0:Date.now()-runStart);
+}
+function applyPauseButton(){
+  document.getElementById('pauseTimer').textContent=runStart===null?'resume':'pause';
+}
+function tickTimer(){
+  const s=Math.floor(currentElapsedMs()/1000);
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+  document.getElementById('elapsed').textContent=(h>0?pad(h)+':':'')+pad(m)+':'+pad(sec);
+}
+document.getElementById('pauseTimer').addEventListener('click',()=>{
+  if(runStart===null){runStart=Date.now();}
+  else{accumMs+=Date.now()-runStart;runStart=null;}
+  saveTimerState();applyPauseButton();tickTimer();
+});
+document.getElementById('resetTimer').addEventListener('click',()=>{
+  accumMs=0;
+  runStart=runStart===null?null:Date.now();
+  saveTimerState();tickTimer();
+});
+applyPauseButton();
+tickClock();tickTimer();
+setInterval(()=>{tickClock();tickTimer();},1000);
+</script>
+</body></html>
