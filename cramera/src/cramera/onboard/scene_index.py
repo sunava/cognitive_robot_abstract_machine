@@ -23,13 +23,27 @@ from cramera.generated_json import GeneratedJson, write_json_atomically
 RESERVED_SCENE_NAMES = (paths.LIVE_SCENE_NAME, paths.RECORDING_SCENE_NAME)
 """
 Throwaway bundle names that are never something a user onboarded or saved, and must
-never show up as a robot/environment choice in the real picker.
+never show up as a robot choice in the real picker.
 """
 
-SCENE_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+SCENE_PATH_SEGMENT_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 """
-What a user-given scene name may look like: safe as a single path segment, without
-resorting to escaping or length limits a filesystem might reject.
+What one segment of a scene's identity (robot, environment, task or version) may look
+like: safe as a single path component, without resorting to escaping or length limits a
+filesystem might reject.
+"""
+
+NO_ENVIRONMENT_SEGMENT = "_none"
+"""
+Directory segment recorded in place of the environment when a scene has none (a robot
+recorded alone, with no environment model) — keeps a scene's path at a fixed four
+segments, so the viewer's picker can always narrow robot -> environment -> task ->
+version instead of falling back to a flat list of names.
+"""
+
+SCENE_IDENTITY_SEGMENT_COUNT = 4
+"""
+How many path segments a scene name is made of: robot, environment, task, version.
 """
 
 
@@ -40,22 +54,64 @@ class InvalidSceneName(Exception):
     """
 
 
+def validate_scene_path_segment(value: str, field: str) -> str:
+    """
+    Check that one segment of a scene's identity is safe to use as a directory name.
+
+    :param value: The segment to validate.
+    :param field: Name of the parameter it validates, used in the error message.
+    :return:``value`` unchanged, for chaining.
+    :raises InvalidSceneName: If ``value`` is not exactly letters, digits, ``_`` or
+        ``-`` (1-64 characters).
+    """
+    if not SCENE_PATH_SEGMENT_PATTERN.match(value):
+        raise InvalidSceneName(
+            "%s must be 1-64 characters of letters, digits, '_' or '-'" % field
+        )
+    return value
+
+
 def validate_scene_name(name: str) -> str:
     """
-    Check that a user-given name is safe to use as a scene bundle's directory name.
+    Check that a user-given name is a safe scene identity to save or look up.
+
+    A scene name is exactly four segments — robot, environment, task, version — joined
+    by ``/``, matching the four-level directory a scene bundle is stored under.
 
     :param name: The name to validate.
     :return:``name`` unchanged, for chaining.
-    :raises InvalidSceneName: If ``name`` is not exactly letters, digits, ``_`` or ``-``
-        (1-64 characters), or is one of :data:`RESERVED_SCENE_NAMES`.
+    :raises InvalidSceneName: If ``name`` is not exactly four safe segments joined by
+        ``/``, or its robot segment is one of :data:`RESERVED_SCENE_NAMES`.
     """
-    if not SCENE_NAME_PATTERN.match(name):
+    segments = name.split("/")
+    if len(segments) != SCENE_IDENTITY_SEGMENT_COUNT:
         raise InvalidSceneName(
-            "a scene name must be 1-64 characters of letters, digits, '_' or '-'"
+            "a scene name must be exactly robot/environment/task/version"
         )
-    if name in RESERVED_SCENE_NAMES:
-        raise InvalidSceneName("'%s' is a reserved scene name" % name)
+    for segment in segments:
+        validate_scene_path_segment(segment, "each segment of a scene name")
+    if segments[0] in RESERVED_SCENE_NAMES:
+        raise InvalidSceneName("'%s' is a reserved robot name" % segments[0])
     return name
+
+
+def compose_scene_name(
+    robot: str, environment: Optional[str], task: str, version: str
+) -> str:
+    """
+    Build the ``/``-joined scene name a (robot, environment, task, version) identity is
+    saved and looked up under.
+
+    :param robot: Name of the robot the scene was recorded with.
+    :param environment: Name of the scene's environment, or None for a bench-only scene.
+    :param task: Name of the task the recording demonstrates.
+    :param version: Which recorded version of that task this is.
+    :raises InvalidSceneName: If any segment is unsafe, or ``robot`` is a reserved name.
+    """
+    environment_segment = (
+        environment if environment is not None else NO_ENVIRONMENT_SEGMENT
+    )
+    return validate_scene_name("/".join([robot, environment_segment, task, version]))
 
 
 @dataclass
@@ -64,14 +120,15 @@ class SceneIndexEntry:
     One onboarded (or saved) scene bundle, as ``index.json`` advertises it to the
     viewer.
 
-    The viewer's header offers a robot and an environment separately, but only ever
-    resolves the pair back to a bundle that was actually recorded — these entries are
-    what it looks that up in.
+    The viewer's header offers a robot, an environment, a task and a version separately,
+    narrowing each in turn to the bundle actually recorded for that combination — these
+    entries are what it looks that up in.
     """
 
     name: str
     """
-    Directory name of the bundle, which is also its ``?scene=`` value.
+    The bundle's ``robot/environment/task/version`` directory path, which is also its
+    ``?scene=`` value.
     """
 
     robot: str
@@ -81,7 +138,17 @@ class SceneIndexEntry:
 
     environment: Optional[str]
     """
-    The scene's environment models joined by ``+``, or None for a bench-only scene.
+    Name of the scene's environment, or None for a bench-only scene.
+    """
+
+    task: str
+    """
+    Name of the task the recording demonstrates.
+    """
+
+    version: str
+    """
+    Which recorded version of that task this is.
     """
 
     @classmethod
@@ -89,35 +156,31 @@ class SceneIndexEntry:
         """
         Every onboarded bundle under a scenes directory, in name order.
 
+        Only a ``scene.json`` exactly four directory levels down counts as a bundle — a
+        throwaway bundle (see :data:`RESERVED_SCENE_NAMES`) is written one level down
+        and so is never matched here, needing no separate exclusion.
+
         :param scenes_directory: Directory holding the scene bundles.
         """
         entries = []
-        for bundle_directory in sorted(scenes_directory.iterdir()):
-            if bundle_directory.name in RESERVED_SCENE_NAMES:
-                continue  # a throwaway bundle, never something a user onboarded
-            scene_path = bundle_directory / "scene.json"
-            if not scene_path.is_file():
-                continue
-            scene = json.loads(scene_path.read_text(encoding="utf-8"))
-            robot = scene.get("robot") or {}
+        for scene_path in sorted(scenes_directory.glob("*/*/*/*/scene.json")):
+            robot, environment_segment, task, version = scene_path.parent.relative_to(
+                scenes_directory
+            ).parts
             entries.append(
                 cls(
-                    name=bundle_directory.name,
-                    robot=robot.get("name", ""),
-                    environment=cls._environment_of(scene["models"]),
+                    name="/".join((robot, environment_segment, task, version)),
+                    robot=robot,
+                    environment=(
+                        None
+                        if environment_segment == NO_ENVIRONMENT_SEGMENT
+                        else environment_segment
+                    ),
+                    task=task,
+                    version=version,
                 )
             )
         return entries
-
-    @staticmethod
-    def _environment_of(models: List[Dict[str, Any]]) -> Optional[str]:
-        """
-        The name of a scene's environment, or None for a bench-only scene.
-
-        :param models: The scene's ``models`` entries.
-        """
-        environments = [model["name"] for model in models if not model["robot"]]
-        return "+".join(environments) if environments else None
 
     def to_payload(self) -> Dict[str, Any]:
         """
@@ -127,6 +190,8 @@ class SceneIndexEntry:
             "name": self.name,
             "robot": self.robot,
             "environment": self.environment,
+            "task": self.task,
+            "version": self.version,
         }
 
 
@@ -135,9 +200,9 @@ def write_scene_index(path: Path, name: str) -> None:
     Register a freshly written scene in the index the viewer reads.
 
     The ``scenes`` list is rebuilt from the bundles actually on disk, each carrying its
-    robot/environment identity for the viewer's pickers, so a bundle that was removed or
-    renamed since it was indexed cannot leave a stale entry behind. ``default`` is
-    filled in on the first scene onboarded and left alone after that.
+    robot/environment/task/version identity for the viewer's pickers, so a bundle that
+    was removed or renamed since it was indexed cannot leave a stale entry behind.
+    ``default`` is filled in on the first scene onboarded and left alone after that.
 
     :param path: Path of the scene index file.
     :param name: Name of the scene to register.

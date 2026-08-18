@@ -20,7 +20,7 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 
-from typing_extensions import Any, Dict, List, Optional
+from typing_extensions import Any, Dict, FrozenSet, List, Optional
 
 from semantic_digital_twin.robots.robot_parts import AbstractRobot
 from semantic_digital_twin.world import World
@@ -84,6 +84,7 @@ def bundle_world_models(
     robot: Optional[AbstractRobot],
     output_directory: Path,
     mesh_subdirectory: str,
+    reparented_body_names: FrozenSet[str] = frozenset(),
 ) -> WorldModelsBundle:
     """
     Serialize a world's robot and environment bodies into URDF models on disk.
@@ -100,13 +101,22 @@ def bundle_world_models(
     :param output_directory: Directory the URDF and mesh files are written into.
     :param mesh_subdirectory: Directory the meshes nest under inside
         ``output_directory``.
+    :param reparented_body_names: Full names of bodies seen changing kinematic parent
+        at runtime (see :attr:`cramera.live.bridge.Bridge.reparented_body_names`) —
+        excluded from both models even while currently sitting in the robot's
+        subtree, since the object overlay renders them instead.
     """
-    robot_bodies = _robot_bodies(world, robot)
+    robot_bodies = [
+        body
+        for body in _robot_bodies(world, robot)
+        if not _is_overlay_body(body, reparented_body_names)
+    ]
     models: List[Dict[str, Any]] = []
     environment_bodies = [
         body
         for body in world.bodies_topologically_sorted
-        if body not in set(robot_bodies) and not _is_overlay_body(body)
+        if body not in set(robot_bodies)
+        and not _is_overlay_body(body, reparented_body_names)
     ]
     if environment_bodies:
         report = UrdfDocument.of_bodies(
@@ -178,7 +188,11 @@ def _write_bundle(bridge: Bridge, output_directory: Path, signature: str) -> str
         shutil.rmtree(output_directory)
     output_directory.mkdir(parents=True)
     geometry = bundle_world_models(
-        bridge.world, bridge.robot, output_directory, MESH_SUBDIRECTORY
+        bridge.world,
+        bridge.robot,
+        output_directory,
+        MESH_SUBDIRECTORY,
+        reparented_body_names=bridge.reparented_body_names,
     )
     scene = {
         "name": paths.LIVE_SCENE_NAME,
@@ -211,17 +225,26 @@ def _robot_bodies(world: World, robot: Optional[AbstractRobot]) -> List[Body]:
     return [body for body in world.bodies_topologically_sorted if body in subtree]
 
 
-def _is_overlay_body(body: Body) -> bool:
+def _is_overlay_body(
+    body: Body, reparented_body_names: FrozenSet[str] = frozenset()
+) -> bool:
     """
     Whether the object overlay renders this body instead of the scene bundle.
 
-    Bodies named like mesh files are demo objects that spawn, move and disappear mid-
-    run; the overlay streams their poses live, so baking them into the bundle would show
-    them twice.
+    Bodies named like mesh files are demo objects that spawn, move and disappear
+    mid-run. A body seen changing kinematic parent at least once — a grasped and
+    released object — is one for the same reason, whatever it is named. Either way
+    the overlay streams its pose live, so baking it into the bundle would show it
+    twice, or leave it behind at a stale position once it moves again.
 
     :param body: The body to check.
+    :param reparented_body_names: Full names of bodies known to change kinematic
+        parent at runtime.
     """
-    return MeshFormat.of_path(str(body.name).split("/")[-1]) is not None
+    return (
+        MeshFormat.of_path(str(body.name).split("/")[-1]) is not None
+        or str(body.name) in reparented_body_names
+    )
 
 
 def _model_payload(report: BundleReport, is_robot: bool) -> Dict[str, Any]:

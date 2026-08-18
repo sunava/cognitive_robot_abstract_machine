@@ -16,7 +16,8 @@ Serves three things from one port (default 8711):
                                         cramera.live.recording_storage) — a pure
                                         filesystem check, so it answers correctly even
                                         once the demo process that made it has exited
-      POST /api/recording/save         {name, destination?, firstFrame?, lastFrame?}
+      POST /api/recording/save         {robot, environment?, task, version,
+                                        destination?, firstFrame?, lastFrame?}
                                         -> promote that
                                         bundle to a permanent, locally saved scene,
                                         trimmed to the given inclusive frame range
@@ -65,7 +66,11 @@ from cramera.models_workbench import (
     NO_MODELS_MESSAGE,
     PROBABILISTIC_MODELS_AVAILABLE,
 )
-from cramera.onboard.scene_index import InvalidSceneName, merged_scene_index
+from cramera.onboard.scene_index import (
+    InvalidSceneName,
+    compose_scene_name,
+    merged_scene_index,
+)
 from cramera.payload import CrameraPayload
 
 logger = get_logger(__name__)
@@ -127,13 +132,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         Route the per-request access log through logging.
 
         The page polls for the live scene while no demo runs; those misses would
-        flood the console every second and are not news, so they stay out of the log.
+        flood the console every second and are not news, so they stay out of the log
+        entirely. A loaded scene's own asset requests (its URDFs and every mesh file)
+        and the recording control's status poll are routine and high-volume too, but
+        still worth having at ``debug`` rather than dropping outright.
 
         :param format:``printf``-style log message format.
         :param args: Values to interpolate into ``format``.
         """
         message = format % args if args else format
         if paths.LIVE_SCENE_NAME in message and " 404 " in message:
+            return
+        if "/scenes/" in message or "/api/recording/status" in message:
+            logger.debug("  %s", message)
             return
         logger.info("  %s", message)
 
@@ -305,7 +316,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return self._send_json({"ok": False, "error": str(error)}, 400)
         try:
             name = save_recording_bundle(
-                str(body.get("name") or ""),
+                compose_scene_name(
+                    str(body.get("robot") or ""),
+                    str(body["environment"]) if body.get("environment") else None,
+                    str(body.get("task") or ""),
+                    str(body.get("version") or ""),
+                ),
                 SceneDestination(body.get("destination", SceneDestination.LOCAL)),
             )
         except InvalidSceneName as error:

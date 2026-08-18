@@ -77,9 +77,14 @@ def write_recording_bundle(
             shutil.rmtree(output_directory)
         output_directory.mkdir(parents=True)
         geometry = bundle_world_models(
-            bridge.world, bridge.robot, output_directory, MESH_SUBDIRECTORY
+            bridge.world,
+            bridge.robot,
+            output_directory,
+            MESH_SUBDIRECTORY,
+            reparented_body_names=bridge.reparented_body_names,
         )
-        objects = _loose_object_entries(bridge, frames[0], output_directory)
+        spawn_poses = _spawn_poses(bridge, frames)
+        objects = _loose_object_entries(bridge, spawn_poses, output_directory)
         scene = {
             "name": scene_name,
             "framesPerSecond": frames_per_second,
@@ -99,7 +104,7 @@ def write_recording_bundle(
                 "framesPerSecond": frames_per_second,
                 "frames": [frame.frames for frame in frames],
                 "base": [frame.base for frame in frames],
-                "objects": [frame.objects for frame in frames],
+                "objects": [{**spawn_poses, **frame.objects} for frame in frames],
             },
         )
         return scene
@@ -139,25 +144,48 @@ def finalize_recording(bridge: Bridge, recording: Recording) -> Optional[str]:
     return recording.scene_name
 
 
+def _spawn_poses(bridge: Bridge, frames: List[RecordedFrame]) -> Dict[str, List[float]]:
+    """
+    Each catalog object's pose in the first recorded tick that published one.
+
+    Not necessarily the very first tick: an object the demo only later grasps (see
+    :meth:`~cramera.live.bridge.Bridge._track_reparented_bodies`) joins the overlay,
+    and so starts appearing in a tick's ``objects``, only from then on. An object
+    that never appears in any tick (spawned after the recording stopped) is left out
+    — there is no pose to declare for it.
+
+    :param bridge: The live bridge whose object catalog is read.
+    :param frames: The recording's buffered ticks, in order.
+    """
+    spawn_poses: Dict[str, List[float]] = {}
+    for entry in bridge.object_metadata:
+        spawn = next(
+            (
+                frame.objects[entry.key]
+                for frame in frames
+                if entry.key in frame.objects
+            ),
+            None,
+        )
+        if spawn is not None:
+            spawn_poses[entry.key] = spawn
+    return spawn_poses
+
+
 def _loose_object_entries(
-    bridge: Bridge, first_frame: RecordedFrame, output_directory: Path
+    bridge: Bridge, spawn_poses: Dict[str, List[float]], output_directory: Path
 ) -> List[Dict[str, Any]]:
     """
-    ``scene.json``'s ``objects`` entries for every catalog object present in the first
-    recorded frame.
-
-    An object the catalog knows about but that never appears in the first tick (spawned
-    mid-recording) is skipped: an ``objects`` entry can only declare one static spawn
-    pose, the same convention the offline onboarding pipeline uses.
+    ``scene.json``'s ``objects`` entries for every catalog object with a spawn pose.
 
     :param bridge: The live bridge whose object catalog and bodies are read.
-    :param first_frame: The recording's first tick, whose ``objects`` poses double as
-        each entry's spawn pose.
+    :param spawn_poses: Each object's spawn pose, keyed by mesh key (see
+        :func:`_spawn_poses`).
     :param output_directory: Directory a mesh-backed object's file is copied into.
     """
     entries = []
     for entry in bridge.object_metadata:
-        spawn = first_frame.objects.get(entry.key)
+        spawn = spawn_poses.get(entry.key)
         body = bridge.object_body(entry.key)
         if spawn is None or body is None:
             continue

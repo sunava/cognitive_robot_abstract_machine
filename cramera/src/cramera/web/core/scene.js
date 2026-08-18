@@ -10,8 +10,11 @@
   'use strict';
 
   function name() {
-    const m = /[?&]scene=([\w-]+)/.exec(window.location.search);
-    return m ? m[1] : null;
+    // a scene name is now a robot/environment/task/version path (see
+    // cramera.onboard.scene_index.compose_scene_name) — URLSearchParams decodes its
+    // percent-encoded '/'s, where a hand-rolled [\w-]+ regex would truncate at the
+    // first one
+    return new URLSearchParams(window.location.search).get('scene');
   }
 
   function withScene(url) {

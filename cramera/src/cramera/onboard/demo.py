@@ -4,7 +4,7 @@ Turn a coraplex demo into a self-contained web-viewer scene.
 Runs the demo file *unmodified* under instrumentation and emits a scene bundle
 into :func:`cramera.paths.scenes_directory`::
 
-    <scenes dir>/<name>/
+    <scenes dir>/<robot>/<environment>/<task>/<version>/
         scene.json         models, robot parts, objects, segments, targets
         trajectory.json    per-tick joints + robot base + object world poses
         <model>.urdf       package:// resolved & rewritten
@@ -19,12 +19,12 @@ What the hooks capture while the demo runs:
 
 Usage (the interpreter needs the CRAM stack on it)::
 
-    cramera-onboard path/to/demo.py --name pr2_kitchen
+    cramera-onboard path/to/demo.py --robot pr2 --task kitchen_pouring --version v1
 
 A demo file that parses its own CLI arguments (its own ``argparse.ArgumentParser``
 or ``sys.argv`` reads) receives everything after a ``--`` separator unchanged::
 
-    cramera-onboard path/to/demo.py --name pr2_kitchen -- --robot pr2 --seed 3
+    cramera-onboard path/to/demo.py --robot pr2 --task kitchen_pouring --version v1 -- --seed 3
 """
 
 from __future__ import annotations
@@ -87,7 +87,7 @@ from cramera.onboard.bundle_urdf import (
     bundle_model,
 )
 from cramera.onboard.bundle_world import BundledWorld
-from cramera.onboard.scene_index import write_scene_index
+from cramera.onboard.scene_index import compose_scene_name, write_scene_index
 from cramera.onboard.world_to_urdf import UrdfDocument
 from cramera.palette import ObjectPalette
 
@@ -1429,7 +1429,14 @@ def main() -> None:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("demo", help="path to the coraplex demo .py file")
-    parser.add_argument("--name", required=True, help="scene name (output folder)")
+    parser.add_argument("--robot", required=True, help="robot name")
+    parser.add_argument(
+        "--environment",
+        default=None,
+        help="environment name, omitted for a bench-only recording",
+    )
+    parser.add_argument("--task", required=True, help="task the recording demonstrates")
+    parser.add_argument("--version", required=True, help="version label, e.g. v1")
     parser.add_argument(
         "--out",
         default=str(paths.scenes_directory()),
@@ -1480,17 +1487,18 @@ def main() -> None:
     if recorder.robot is None:
         sys.exit("No AbstractRobot semantic annotation found in the world.")
 
+    name = compose_scene_name(args.robot, args.environment, args.task, args.version)
     step = args.step or max(1, len(recorder.frames) // TARGET_BUNDLE_FRAMES)
-    output_directory = os.path.join(args.out, args.name)
+    output_directory = os.path.join(args.out, name)
     os.makedirs(output_directory, exist_ok=True)
     # bundling re-parses the recorded Gazebo/MJCF sources, which the still-installed
     # hooks would record as further sources
     recorder.uninstall_asset_hooks()
     recorder.resolve_action_targets()
-    scene = SceneBuilder(recorder, args.name, output_directory, step).build()
-    write_scene_index(Path(args.out) / "index.json", args.name)
+    scene = SceneBuilder(recorder, name, output_directory, step).build()
+    write_scene_index(Path(args.out) / "index.json", name)
 
-    log("scene '%s' written to %s" % (args.name, output_directory))
+    log("scene '%s' written to %s" % (name, output_directory))
     log(
         "  models:  %s"
         % ", ".join(

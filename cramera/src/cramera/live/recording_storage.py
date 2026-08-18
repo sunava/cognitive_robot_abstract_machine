@@ -96,7 +96,8 @@ def save_recording_bundle(
     Sharing only moves files: the scene appears in the shared checkout's working tree,
     and committing it there stays a deliberate act.
 
-    :param name: Name to save the recording under.
+    :param name: Name to save the recording under — a ``robot/environment/task/
+        version`` identity (see :func:`cramera.onboard.scene_index.compose_scene_name`).
     :param destination: Which scenes root to save it into.
     :raises cramera.onboard.scene_index.InvalidSceneName: If ``name`` is unsafe or
         reserved.
@@ -121,6 +122,9 @@ def save_recording_bundle(
     if any((existing / name).is_dir() for existing in paths.scene_roots()):
         raise SceneNameTaken("a scene named '%s' already exists" % name)
     scene_directory = root / name
+    # the robot/environment/task levels above it are not created until a scene is
+    # actually saved under them, unlike the flat root shutil.move otherwise relies on
+    scene_directory.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(str(source), str(scene_directory))
     scene_path = scene_directory / "scene.json"
     scene = json.loads(scene_path.read_text(encoding="utf-8"))

@@ -18,7 +18,7 @@
   /* Mirrors cramera.live.recording.RecordingState's values. */
 
   const NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
-  /* Mirrors cramera.onboard.scene_index.SCENE_NAME_PATTERN. */
+  /* Mirrors cramera.onboard.scene_index.SCENE_PATH_SEGMENT_PATTERN. */
 
   const SPEED_OPTIONS = [0.5, 1, 2, 4];
   /* Playback speed multipliers the speed selector offers. */
@@ -71,9 +71,19 @@
       return state !== STATE.IDLE;
     },
 
-    /* Whether a user-typed name is safe to save the recording under. */
+    /* Whether a user-typed value is safe to use as one segment (robot, environment,
+       task or version) of a scene's identity. */
     isValidSaveName: function (name) {
       return typeof name === 'string' && NAME_PATTERN.test(name) && name !== SCENE_NAME;
+    },
+
+    /* Whether a scene's four identity fields are all safe to save under — robot, task
+       and version are required, environment may be left blank for a bench-only scene. */
+    isValidSaveIdentity: function (robot, environment, task, version) {
+      return this.isValidSaveName(robot)
+        && (!environment || this.isValidSaveName(environment))
+        && this.isValidSaveName(task)
+        && this.isValidSaveName(version);
     },
 
     /* What the single recording control does right now: end the capture, then keep

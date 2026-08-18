@@ -31,10 +31,12 @@ from typing_extensions import (
     Any,
     ClassVar,
     Dict,
+    FrozenSet,
     List,
     Optional,
     Protocol,
     runtime_checkable,
+    Set,
     Tuple,
     TYPE_CHECKING,
 )
@@ -779,6 +781,19 @@ class Bridge:
     Cached digest of the bundled scene content, recomputed on attach and model change.
     """
 
+    _parent_names_at_last_bind: Dict[str, Optional[str]] = field(default_factory=dict)
+    """
+    Each body's parent name as observed at the previous bind, keyed by full body name.
+    """
+
+    _reparented_body_names: Set[str] = field(default_factory=set)
+    """
+    Full names of bodies seen to change parent since :meth:`attach` — e.g. an object
+    grasped and released. Once a body is seen here it stays here, so the object overlay
+    keeps rendering it instead of the static scene bundle even while it briefly sits
+    still under its original parent again.
+    """
+
     live_server: Optional[ThreadingHTTPServer] = None
     """
     The bridge's HTTP server once it is listening, so a second start reuses it.
@@ -799,6 +814,8 @@ class Bridge:
         """
         self.world = world
         self._model_revision += 1
+        self._parent_names_at_last_bind = {}
+        self._reparented_body_names = set()
         self.bind()
         self._refresh_bundle_signature()
         logger.info(
@@ -1073,11 +1090,22 @@ class Bridge:
         A digest of the bundled scene's content: the identity, parentage and connection
         type of every body the live bundle serializes, plus the robot's identity.
 
-        Deliberately excludes the overlay's mesh-named objects — a demo re-parenting a
-        grasped object changes the world model but not the bundled scene, and must not
-        make the viewer reload it. State changes never touch it either.
+        Deliberately excludes overlay objects — mesh-named bodies, and any body seen
+        re-parenting at least once (see :attr:`reparented_body_names`). A demo
+        re-parenting a grasped object changes the world model but not the bundled
+        scene, and must not make the viewer reload it. State changes never touch it
+        either.
         """
         return self._bundle_signature
+
+    @property
+    def reparented_body_names(self) -> FrozenSet[str]:
+        """
+        Full names of bodies seen changing parent since :meth:`attach` — grasped and
+        released objects that the object overlay renders instead of the static scene
+        bundle (see :meth:`_track_reparented_bodies`).
+        """
+        return frozenset(self._reparented_body_names)
 
     def _refresh_bundle_signature(self) -> None:
         """
@@ -1091,7 +1119,10 @@ class Bridge:
         try:
             for body in self.world.bodies:
                 name = str(body.name)
-                if MeshFormat.of_path(name.split("/")[-1]) is not None:
+                if (
+                    MeshFormat.of_path(name.split("/")[-1]) is not None
+                    or name in self._reparented_body_names
+                ):
                     continue
                 connection = body.parent_connection
                 entries.append(
@@ -1245,6 +1276,7 @@ class Bridge:
             bodies[ROBOT_BASE_KEY] = self.robot.root
         try:
             bodies_by_name = {str(body.name): body for body in world.bodies}
+            self._track_reparented_bodies(bodies_by_name)
             bodies.update(self._discover_overlay_bodies(bodies_by_name))
         except Exception as error:
             # boundary guard: the world is mid-modification (a body is being spawned
@@ -1256,6 +1288,32 @@ class Bridge:
                 bodies.setdefault(key, body)
         self.publish_bodies(bodies)
 
+    def _track_reparented_bodies(self, bodies_by_name: Dict[str, Body]) -> None:
+        """
+        Record each body's parent, flagging any body whose parent differs from the
+        one seen at the previous bind.
+
+        A body's parent changes when it is grasped or released (:class:`AttachNode`/
+        :class:`DetachNode` re-parent it in the kinematic tree) rather than when the
+        scene itself changes, so it does not need the viewer to reload the static
+        bundle. A body newly seen this bind (just spawned) is not flagged — there is
+        nothing to compare its parent against yet.
+
+        :param bodies_by_name: Every world body by its full name, as this bind found
+            them.
+        """
+        parent_names: Dict[str, Optional[str]] = {}
+        for name, body in bodies_by_name.items():
+            connection = body.parent_connection
+            parent_name = str(connection.parent.name) if connection else None
+            parent_names[name] = parent_name
+            previous_parent_name = self._parent_names_at_last_bind.get(
+                name, parent_name
+            )
+            if parent_name != previous_parent_name:
+                self._reparented_body_names.add(name)
+        self._parent_names_at_last_bind = parent_names
+
     def _discover_overlay_bodies(
         self, bodies_by_name: Dict[str, Body]
     ) -> Dict[str, Body]:
@@ -1263,8 +1321,11 @@ class Bridge:
         Every world body the overlay renders, keyed the way it is published.
 
         Bodies named like mesh files are the demo's objects — they spawn, get carried
-        and disappear mid-run, so their poses stream through the overlay. Every other
-        body is part of the bundled scene the viewer loads once.
+        and disappear mid-run, so their poses stream through the overlay. A body seen
+        changing parent (see :meth:`_track_reparented_bodies`) is an overlay object
+        too, whatever it is named — a grasped item's pose has to stream every tick
+        the same way. Every other body is part of the bundled scene the viewer loads
+        once.
 
         :param bodies_by_name: Every world body by its full name.
         """
@@ -1274,7 +1335,10 @@ class Bridge:
             if body is robot_root:
                 continue
             basename = full_name.split("/")[-1]
-            if MeshFormat.of_path(basename) is not None:
+            if (
+                MeshFormat.of_path(basename) is not None
+                or full_name in self._reparented_body_names
+            ):
                 bodies[basename] = body
         return bodies
 

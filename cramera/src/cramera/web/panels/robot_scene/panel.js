@@ -26,8 +26,11 @@ Panels.define('robot-scene', function (root, bus) {
     '    <label id="environment-picker" class="scene-picker" style="display:none">Environment:' +
     '      <select id="environment-select" class="scene-select"></select>' +
     '    </label>' +
-    '    <label id="scene-name-picker" class="scene-picker" style="display:none" title="Every saved scene by name — several can share the same robot and environment (e.g. multiple saved live recordings)">Scene:' +
-    '      <select id="scene-name-select" class="scene-select"></select>' +
+    '    <label id="task-picker" class="scene-picker" style="display:none">Task:' +
+    '      <select id="task-select" class="scene-select"></select>' +
+    '    </label>' +
+    '    <label id="version-picker" class="scene-picker" style="display:none" title="Several saved recordings can share the same robot, environment and task">Version:' +
+    '      <select id="version-select" class="scene-select"></select>' +
     '    </label>' +
     '  </div>' +
     '</div>' +
@@ -59,7 +62,10 @@ Panels.define('robot-scene', function (root, bus) {
     '    <select id="playback-speed" class="scene-select" style="display:none" title="Playback speed"></select>' +
     '  </span></div>' +
     '  <div id="record-save-panel" class="record-save-panel" style="display:none">' +
-    '    <label class="record-save-field">Name<input type="text" id="record-name" class="record-name" placeholder="my_episode" maxlength="64"></label>' +
+    '    <label class="record-save-field">Robot<input type="text" id="record-robot" class="record-name" placeholder="pr2" maxlength="64"></label>' +
+    '    <label class="record-save-field">Environment<input type="text" id="record-environment" class="record-name" placeholder="kitchen (optional)" maxlength="64"></label>' +
+    '    <label class="record-save-field">Task<input type="text" id="record-task" class="record-name" placeholder="pouring" maxlength="64"></label>' +
+    '    <label class="record-save-field">Version<input type="text" id="record-version" class="record-name" placeholder="v1" maxlength="64"></label>' +
     '    <label class="record-save-field">From<input type="range" id="record-trim-first" class="record-trim" min="0" max="0" step="1" value="0"></label>' +
     '    <label class="record-save-field">To<input type="range" id="record-trim-last" class="record-trim" min="0" max="0" step="1" value="0"></label>' +
     '    <span id="record-trim-summary" class="record-trim-summary"></span>' +
@@ -482,19 +488,25 @@ Panels.define('robot-scene', function (root, bus) {
       if (statusEl) statusEl.textContent = 'Scene failed to load: ' + e;
     });
 
-  // header dropdowns: a robot and an environment jointly resolve to the one
-  // onboarded scene bundle recorded for that pair (ScenePicker) — there is no
-  // independent robot/environment mixing, only a lookup among what was actually
-  // recorded, so picking either one narrows the other to valid combinations and
-  // always lands on a real scene.
+  // header dropdowns: a robot, an environment, a task and a version jointly resolve to
+  // the one onboarded scene bundle recorded for that combination (ScenePicker) — there
+  // is no independent mixing across the four, only a lookup among what was actually
+  // recorded, so picking any one narrows the rest to valid combinations and always
+  // lands on a real scene. Version alone disambiguates scenes that otherwise share
+  // every other axis (e.g. several saved live recordings of the same demo), so there
+  // is no separate flat "scene name" picker.
   function wireScenePickers(scenes, activeName) {
     const robotSel = $('robot-select'), envSel = $('environment-select');
+    const taskSel = $('task-select'), versionSel = $('version-select');
     const robotPicker = $('robot-picker'), envPicker = $('environment-picker');
-    const nameSel = $('scene-name-select'), namePicker = $('scene-name-picker');
-    if (!robotSel || !envSel) return;
+    const taskPicker = $('task-picker'), versionPicker = $('version-picker');
+    if (!robotSel || !envSel || !taskSel || !versionSel) return;
     // picking any dropdown navigates away from the live or recording scene, which
     // the dropdowns should never do while watching or capturing a running demo
     if (activeName === LIVE_SCENE_NAME || RecordingMode.isRecordingScene(activeName)) return;
+    // fewer than two onboarded scenes means every axis is single-valued — nothing to
+    // pick, whichever axis is looked at
+    if ((scenes || []).length < 2) return;
 
     // a picker with nothing to choose (one option, or none) stays visible but
     // disabled — it disappearing/reappearing as another picker changes would
@@ -508,40 +520,54 @@ Panels.define('robot-scene', function (root, bus) {
       sel.disabled = values.length <= 1;
     }
 
-    // Scene: every scene by name, independent of the robot/environment axes below.
-    // sceneFor() only ever resolves a (robot, environment) pair to its *first* match,
-    // so this is the exhaustive picker for choosing among several scenes that share
-    // one — e.g. multiple saved live recordings of the same demo.
-    const allNames = ScenePicker.names(scenes);
-    if (nameSel && namePicker && allNames.length > 1) {
-      namePicker.style.display = '';
-      fillSelect(nameSel, allNames, activeName);
-      nameSel.addEventListener('change', function () {
-        window.location.search = '?scene=' + encodeURIComponent(nameSel.value);
-      });
-    }
-
-    const robots = ScenePicker.robots(scenes);
-    if (robots.length < 2 && ScenePicker.environments(scenes, robots[0]).length < 2) return;
     const active = ScenePicker.describe(scenes, activeName) || {};
-    let robot = active.robot || robots[0];
+    let robot = active.robot || ScenePicker.robots(scenes)[0];
+    let environment = active.environment !== undefined
+      ? active.environment : (ScenePicker.environments(scenes, robot)[0] || null);
+    let task = active.task || ScenePicker.tasks(scenes, robot, environment)[0];
+    let version = active.version || ScenePicker.versions(scenes, robot, environment, task)[0];
 
-    function navigateTo(environment) {
-      const target = ScenePicker.sceneFor(scenes, robot, environment || null);
+    function navigateTo() {
+      const target = ScenePicker.sceneFor(scenes, robot, environment, task, version);
       if (target) window.location.search = '?scene=' + encodeURIComponent(target);
     }
 
-    if (robotPicker) robotPicker.style.display = '';
-    if (envPicker) envPicker.style.display = '';
-    fillSelect(robotSel, robots, robot);
-    fillSelect(envSel, ScenePicker.environments(scenes, robot), active.environment);
+    [robotPicker, envPicker, taskPicker, versionPicker].forEach(function (el) {
+      if (el) el.style.display = '';
+    });
+    fillSelect(robotSel, ScenePicker.robots(scenes), robot);
+    fillSelect(envSel, ScenePicker.environments(scenes, robot), environment);
+    fillSelect(taskSel, ScenePicker.tasks(scenes, robot, environment), task);
+    fillSelect(versionSel, ScenePicker.versions(scenes, robot, environment, task), version);
 
     robotSel.addEventListener('change', function () {
       robot = robotSel.value;
-      fillSelect(envSel, ScenePicker.environments(scenes, robot), null);
-      navigateTo(envSel.value);
+      environment = ScenePicker.environments(scenes, robot)[0] || null;
+      task = ScenePicker.tasks(scenes, robot, environment)[0];
+      version = ScenePicker.versions(scenes, robot, environment, task)[0];
+      fillSelect(envSel, ScenePicker.environments(scenes, robot), environment);
+      fillSelect(taskSel, ScenePicker.tasks(scenes, robot, environment), task);
+      fillSelect(versionSel, ScenePicker.versions(scenes, robot, environment, task), version);
+      navigateTo();
     });
-    envSel.addEventListener('change', function () { navigateTo(envSel.value); });
+    envSel.addEventListener('change', function () {
+      environment = envSel.value || null;
+      task = ScenePicker.tasks(scenes, robot, environment)[0];
+      version = ScenePicker.versions(scenes, robot, environment, task)[0];
+      fillSelect(taskSel, ScenePicker.tasks(scenes, robot, environment), task);
+      fillSelect(versionSel, ScenePicker.versions(scenes, robot, environment, task), version);
+      navigateTo();
+    });
+    taskSel.addEventListener('change', function () {
+      task = taskSel.value;
+      version = ScenePicker.versions(scenes, robot, environment, task)[0];
+      fillSelect(versionSel, ScenePicker.versions(scenes, robot, environment, task), version);
+      navigateTo();
+    });
+    versionSel.addEventListener('change', function () {
+      version = versionSel.value;
+      navigateTo();
+    });
   }
 
   function loadScene(sc) {
@@ -1871,7 +1897,10 @@ Panels.define('robot-scene', function (root, bus) {
   // %% recording controls (capturing a live run into a temporary, replayable scene)
   const recordBtn = $('record-btn');
   const recordSavePanel = $('record-save-panel');
-  const recordName = $('record-name');
+  const recordRobot = $('record-robot');
+  const recordEnvironment = $('record-environment');
+  const recordTask = $('record-task');
+  const recordVersion = $('record-version');
   const recordTrimFirst = $('record-trim-first');
   const recordTrimLast = $('record-trim-last');
   const recordTrimSummary = $('record-trim-summary');
@@ -1935,7 +1964,7 @@ Panels.define('robot-scene', function (root, bus) {
     recordTrimLast.value = String(whole.last);
     recordSavePanel.style.display = '';
     updateTrimSummary();
-    recordName.focus();
+    recordRobot.focus();
   }
 
   function closeSavePanel() {
@@ -2036,13 +2065,19 @@ Panels.define('robot-scene', function (root, bus) {
   });
 
   function saveEpisode(destination) {
-    const name = recordName.value;
-    if (!RecordingMode.isValidSaveName(name)) {
-      window.alert('Scene names must be 1-64 characters of letters, digits, "_" or "-".');
+    const robot = recordRobot.value, environment = recordEnvironment.value;
+    const task = recordTask.value, version = recordVersion.value;
+    if (!RecordingMode.isValidSaveIdentity(robot, environment, task, version)) {
+      window.alert(
+        'Robot, task and version are required; every field must be 1-64 characters '
+        + 'of letters, digits, "_" or "-".');
       return;
     }
     const trim = currentTrim();
-    const body = { name: name, destination: destination };
+    const body = {
+      robot: robot, environment: environment || null, task: task, version: version,
+      destination: destination,
+    };
     // Only ask for a trim that removes something: an untouched range would rewrite the
     // bundle for nothing.
     if (!RecordingMode.isWholeTrim(trim, recordedFrameCount)) {

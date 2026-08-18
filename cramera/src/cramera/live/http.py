@@ -28,9 +28,11 @@ HTTP endpoints of the live bridge (default port 8765).
     POST /recording/stop     finalize the current recording into a scene bundle under
                               :func:`cramera.paths.local_scenes_directory`
     POST /recording/discard  drop the current recording and its bundle, if any
-    POST /recording/save     {name, destination?, firstFrame?, lastFrame?} -> the finalized
-                              bundle to a permanent, locally saved scene, trimmed to
-                              the given inclusive frame range when one is sent
+    POST /recording/save     {robot, environment?, task, version, destination?,
+                              firstFrame?, lastFrame?} -> the finalized bundle to a
+                              permanent, locally saved scene named after those four
+                              segments, trimmed to the given inclusive frame range when
+                              one is sent
 
 Every ``pose`` above is ``[x, y, z, qx, qy, qz, qw]``.
 
@@ -67,7 +69,7 @@ from cramera.live.recording_storage import (
     trim_recording_bundle,
 )
 from cramera.logging_setup import get_logger
-from cramera.onboard.scene_index import InvalidSceneName
+from cramera.onboard.scene_index import InvalidSceneName, compose_scene_name
 
 logger = get_logger(__name__)
 
@@ -267,7 +269,12 @@ class BridgeRequestHandler(BaseHTTPRequestHandler):
                 return self._send_json({"ok": False, "error": str(error)}, 400)
         try:
             name = save_recording_bundle(
-                str(payload.get("name") or ""),
+                compose_scene_name(
+                    str(payload.get("robot") or ""),
+                    str(payload["environment"]) if payload.get("environment") else None,
+                    str(payload.get("task") or ""),
+                    str(payload.get("version") or ""),
+                ),
                 SceneDestination(payload.get("destination", SceneDestination.LOCAL)),
             )
         except InvalidSceneName as error:
