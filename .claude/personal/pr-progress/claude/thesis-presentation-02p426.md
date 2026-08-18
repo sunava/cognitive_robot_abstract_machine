@@ -198,6 +198,20 @@ addressed their critique points in the deck rather than just noting them:
   Verified: section/div/h2/span tag counts all balanced, JS syntax clean,
   local http.server still serves 200. This is presentation dramaturgy, not
   code — the real test is a timed run-through, which wasn't possible here.
+- notes.html light/dark theme (user request: "like the slides"). Split its
+  single hardcoded dark palette into a light-default :root + a
+  :root[data-theme="dark"] override, reusing the same variable names and
+  values as index.html's own THEMES.light/.dark (--bg/--panel/--line/
+  --ink/--ink2/--mute/--acc/--accink) so the two windows read as one
+  system. Synced BOTH ways through the existing shared localStorage key
+  'deck-theme' (already what index.html's applyTheme() writes on 't'):
+  notes.html applies it on load and listens for the 'storage' event to
+  live-follow index.html's 't' key; conversely index.html now ALSO listens
+  for 'storage' on 'deck-theme' (it previously only wrote that key, never
+  read it back) so a manual toggle from notes.html's own new ◐ button in
+  its header flows back to the main deck too. Verified: JS syntax clean on
+  both files, div/span counts still balanced, both pages still serve
+  200 — actual visual toggling in a real browser not verified here.
 
 Next (if asked):
 - Do an actual timed run-through of frames 01-06 to check the 5-7 minute
