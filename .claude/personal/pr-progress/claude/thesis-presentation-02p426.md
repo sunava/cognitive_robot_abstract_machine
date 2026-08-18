@@ -212,6 +212,23 @@ addressed their critique points in the deck rather than just noting them:
   its header flows back to the main deck too. Verified: JS syntax clean on
   both files, div/span counts still balanced, both pages still serve
   200 — actual visual toggling in a real browser not verified here.
+- Fixed a real bug the user hit while using slide-edit mode: typing the
+  letter 't' while editing text flipped the light/dark theme instead of
+  typing a 't'. Root cause: the THEME keydown listener (near the theme
+  system code, separate from the nav keydown listener) never had the
+  contenteditable guard that the nav listener already had — two separate
+  addEventListener('keydown',...) blocks in this file, only one was
+  guarded. Fixed by adding the same
+  `if(slideEditMode && document.activeElement.isContentEditable) return;`
+  guard to the theme listener too. Also added what the user asked for in
+  the same message: ctrl/cmd+b now calls document.execCommand('bold')
+  while editing a slide (handled inside the nav listener's early-return
+  branch, so it works even though everything else is suppressed there);
+  added ctrl/cmd+i for italic alongside it since it's the same one-line
+  pattern and matches the deck's existing use of <i> for emphasis.
+  editIndicator text now advertises both shortcuts. Verified: JS syntax
+  clean, page still serves — didn't verify the actual bold/italic
+  execCommand output in a real browser.
 
 Next (if asked):
 - Do an actual timed run-through of frames 01-06 to check the 5-7 minute
