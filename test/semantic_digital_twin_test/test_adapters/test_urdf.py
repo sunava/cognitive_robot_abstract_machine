@@ -8,8 +8,8 @@ from urdf_parser_py import urdf as urdfpy
 
 from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
-from semantic_digital_twin.robots.pr2 import PR2
-from semantic_digital_twin.robots.tiago import Tiago
+from semantic_digital_twin.robots.pr2 import PR2, PR2Joint
+from semantic_digital_twin.robots.tiago import Tiago, TiagoJoint
 from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.world_description.world_entity import Body
 
@@ -123,15 +123,17 @@ def test_pr2_parsing(pr2_parser):
 
 def test_mimic_joints(pr2_parser):
     world = pr2_parser.parse()
-    joint_to_be_mimicked = world.get_connection_by_name("l_gripper_l_finger_joint")
-    mimic_joint = world.get_connection_by_name("l_gripper_r_finger_joint")
+    joint_to_be_mimicked = world.get_connection_by_name(
+        PR2Joint.LEFT_GRIPPER_LEFT_FINGER
+    )
+    mimic_joint = world.get_connection_by_name(PR2Joint.LEFT_GRIPPER_RIGHT_FINGER)
 
     assert joint_to_be_mimicked.dofs == mimic_joint.dofs
 
 
 def test_declared_joint_dynamics_are_imported(tiago_parser):
     world = tiago_parser.parse()
-    dynamics = world.get_connection_by_name("arm_left_1_joint").dynamics
+    dynamics = world.get_connection_by_name(TiagoJoint.LEFT_ARM_1).dynamics
     assert dynamics.damping == 40.0
     assert dynamics.dry_friction == 1.0
 
@@ -193,3 +195,83 @@ def test_xacro():
     assert len(world.kinematic_structure_entities) > 0
     assert len(world.connections) > 0
     assert world.root.name.name == "base_footprint"
+
+
+# %% named material references
+
+
+@pytest.fixture
+def named_materials_path(urdf_paths):
+    """
+    Path of the URDF whose named materials are defined inside link visuals.
+    """
+    return os.path.join(os.path.dirname(urdf_paths.table), "named_materials.urdf")
+
+
+def declared_color(path: str, material_name: str) -> tuple:
+    """
+    The rgba a material is declared with in a URDF, wherever it is declared.
+
+    :param path: The URDF file to read.
+    :param material_name: Name of the material to look up.
+    """
+    document = urdfpy.URDF.from_xml_file(path)
+    declarations = [
+        visual.material
+        for link in document.links
+        for visual in link.visuals
+        if visual.material and visual.material.color
+    ] + [material for material in document.materials if material.color]
+    return next(
+        material.color.rgba
+        for material in declarations
+        if material.name == material_name
+    )
+
+
+def visual_color(world, body_name: str):
+    """
+    The color of a body's single visual shape.
+
+    :param world: The parsed world.
+    :param body_name: Name of the body to read the color off.
+    """
+    return world.get_body_by_name(body_name).visual.shapes[0].color
+
+
+def test_a_material_defined_in_another_link_is_resolved_by_name(named_materials_path):
+    """
+    URDF material names are global, so a link referencing one another link defined keeps
+    that color instead of falling back to white.
+    """
+    world = URDFParser.from_file(file_path=named_materials_path).parse()
+
+    color = visual_color(world, "referencing_link")
+
+    assert (color.R, color.G, color.B, color.A) == tuple(
+        declared_color(named_materials_path, "DarkGrey")
+    )
+
+
+def test_a_top_level_material_is_resolved_by_name(named_materials_path):
+    world = URDFParser.from_file(file_path=named_materials_path).parse()
+
+    color = visual_color(world, "top_level_material_link")
+
+    assert (color.R, color.G, color.B, color.A) == tuple(
+        declared_color(named_materials_path, "Blue")
+    )
+
+
+def test_a_mesh_keeps_the_color_of_its_material(named_materials_path):
+    """
+    Most robot descriptions draw their links as meshes, so a mesh dropping its material
+    leaves the whole robot in the default color.
+    """
+    world = URDFParser.from_file(file_path=named_materials_path).parse()
+
+    color = visual_color(world, "mesh_link")
+
+    assert (color.R, color.G, color.B, color.A) == tuple(
+        declared_color(named_materials_path, "DarkGrey")
+    )

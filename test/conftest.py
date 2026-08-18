@@ -23,6 +23,12 @@ try:
 except ModuleNotFoundError:
     # ROS dependencies.
     Context = None
+
+try:
+    from giskardpy.middleware.ros2 import rospy
+except ModuleNotFoundError:
+    # ROS dependencies.
+    rospy = None
 from semantic_digital_twin.adapters.package_resolver import PathResolver
 from semantic_digital_twin.collision_checking.collision_matrix import (
     MaxAvoidedCollisionsOverride,
@@ -491,6 +497,19 @@ def _garmi_world_setup():
 
 
 @pytest.fixture(scope="session")
+def _armar7_world_setup():
+    return world_with_urdf_factory(Armar7)
+
+
+@pytest.fixture(scope="function")
+def armar7_world_state_reset(_armar7_world_setup):
+    world = deepcopy(_armar7_world_setup)
+    state = world.state._data.copy()
+    yield world
+    world.state._data[:] = state
+
+
+@pytest.fixture(scope="session")
 def tracy_world():
     if not tracy_installed():
         pytest.skip("Tracy not installed")
@@ -934,6 +953,27 @@ def pr2_apartment_state_reset(pr2_apartment_world):
 ###############################
 ######### Utils ###############
 ###############################
+
+
+@pytest.fixture(scope="function")
+def init_rospy():
+    """
+    Gives a test the global Giskard ros node.
+
+    ..warning::
+        This fixture drives the same global ros context as :func:`rclpy_node`, so the
+        two cannot be used together.
+    """
+    if rospy is None:
+        pytest.skip("ROS not installed")
+
+    rospy.init_node("giskard")
+
+    try:
+        yield None
+    finally:
+        # Cleanly reset TF and shutdown ROS2 node/executor
+        rospy.shutdown()
 
 
 @pytest.fixture(scope="function")

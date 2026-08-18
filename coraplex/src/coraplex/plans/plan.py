@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from coraplex.plans.plan_callbacks import PlanCallback
     from coraplex.datastructures.dataclasses import Context
     from coraplex.plans.designator import Designator
+    from giskardpy.motion_statechart.motion_statechart import MotionStatechart
 
 
 logger = logging.getLogger(__name__)
@@ -262,6 +263,34 @@ class Plan:
         result = self.root.perform()
         return result
 
+    def notify_node_started(self, node: PlanNode) -> None:
+        """
+        Notify every registered callback that a node started executing.
+
+        :param node: The node that started.
+        """
+        for callback in self.node_callbacks:
+            callback.on_start(node)
+
+    def notify_node_ended(self, node: PlanNode) -> None:
+        """
+        Notify every registered callback that a node finished executing.
+
+        :param node: The node that ended.
+        """
+        for callback in self.node_callbacks:
+            callback.on_end(node)
+
+    def notify_motion_tick(self, statechart: MotionStatechart) -> None:
+        """
+        Notify every registered callback that the motion executor ticked once while
+        realizing this plan's motions.
+
+        :param statechart: The motion statechart the executor is ticking.
+        """
+        for callback in self.node_callbacks:
+            callback.on_motion_tick(statechart)
+
     def re_perform(self):
         for child in self.root.descendants:
             if child.is_leaf:
@@ -323,19 +352,21 @@ class Plan:
         GraphVisualizerBackend.PLOTLY: InteractiveGraphVisualizer,
         GraphVisualizerBackend.CYTOSCAPE: CytoscapeGraphVisualizer,
     }
-    """The visualizer to use for each rendering backend."""
+    """
+    The visualizer to use for each rendering backend.
+    """
 
     def visualize(
         self,
         backend: GraphVisualizerBackend = GraphVisualizerBackend.CYTOSCAPE,
-        layout: GraphLayout = GraphLayout.PHYSICS,
+        layout: GraphLayout = GraphLayout.LAYERED,
     ) -> GraphVisualizerBase:
         """
         Open an interactive, real-time visualization of the plan graph.
 
-        Nodes appear as the plan is built, are labelled by their type, coloured by execution
-        status and reveal their status and timing when clicked. With the default physics layout
-        the nodes self-organize and bounce as the plan grows.
+        Nodes appear as the plan is built, are labelled by their type, coloured by
+        execution status and reveal their status and timing when clicked. With the
+        default physics layout the nodes self-organize and bounce as the plan grows.
 
         :param backend: The rendering technology to use.
         :param layout: The algorithm used to place the nodes.
@@ -343,8 +374,8 @@ class Plan:
         """
         visualizer = self._visualizer_classes[backend](
             graph=self.plan_graph,
-            label_getter=lambda node: node.__class__.__name__,
-            information_getter=self._node_details,
+            label_getter=lambda node: node.__node_label__(),
+            information_getter=lambda node: node.__node_info__(),
             color_getter=lambda node: node.status.color.replace("-", ""),
             layout=layout,
             title=repr(self),
