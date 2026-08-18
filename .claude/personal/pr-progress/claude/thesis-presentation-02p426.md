@@ -167,8 +167,41 @@ addressed their critique points in the deck rather than just noting them:
   a Node vm sandbox with a fake DOM+localStorage (timer freezes while
   paused, resumes correctly, reset keeps running-state) — still no real
   browser exercise of the actual button clicks.
+- Narrative/dramaturgy pass (2026-08-18) from detailed reviewer-style
+  feedback the user pasted in, three points, all addressed:
+  1. Pacing — frames 02-06 (problem/why-matters/why-hard/RQ/approach) were
+     at risk of eating too much time before landing the core idea. Added a
+     bold pull-quote on s5/frame 06 ("The template stays the same. Only
+     the bindings change.") as the explicit sentence to land by minute
+     5-7, and rewrote NOTES for s2/sWhy/s3/s4/s5 with explicit per-slide
+     time budgets (45s/60s/90s/45s) summing to that window, plus s5's note
+     now says outright "say the bold line out loud, it's the one sentence
+     the audience must leave the opening with."
+  2. Tone — sWhy's "correctness cannot be averaged" panel said "guarantees
+     require explicit representation" (reads as a universal claim against
+     learned methods). Rescoped to the user's own suggested framing:
+     "within this thesis's declared task scope, explicit constraints buy
+     checkable applicability, monitored execution, and diagnosable
+     failure." NOTES for sWhy/s3 now warn explicitly not to let this
+     become a general anti-learning claim / foundation-model debate.
+  3. Reconnect the technical middle to the hypotheses so the committee
+     remembers the claim, not the machinery. Added small `chip ok` tags
+     directly in the h2 of four slides, exactly the mapping the user gave:
+     s7/frame09 "→ H1 · a reusable structure exists", s9/frame11 "→ H1/H2
+     · structure, encoded as constraints", s10/frame12 "→ H3 · geometry
+     alone is not enough", s11/frame13 "→ R5/R6 · violations, detected and
+     localised". Added a one-line bridge on s13/frame15 ("did any of that
+     survive variation? everything from here on is that check") so the
+     evaluation section reads as answering the callbacks, not a separate
+     technical tour. NOTES for s7/s9/s10/s11/s13 now say "say the callback
+     out loud" rather than trusting the chip alone to land it.
+  Verified: section/div/h2/span tag counts all balanced, JS syntax clean,
+  local http.server still serves 200. This is presentation dramaturgy, not
+  code — the real test is a timed run-through, which wasn't possible here.
 
 Next (if asked):
+- Do an actual timed run-through of frames 01-06 to check the 5-7 minute
+  budget is realistic with the current slide content, not just the notes.
 - User should actually try the new slide-edit toggle for real (typos are
   cheap to introduce with contenteditable) and use "⟲ revert" if a slide
   breaks after an edit — this was never exercised in a real browser here.
