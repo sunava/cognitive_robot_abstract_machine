@@ -121,8 +121,39 @@ addressed their critique points in the deck rather than just noting them:
   unchanged. Verified renderMarkdown() output via a Node vm sandbox
   (headers/bold/italic/code/lists all rendered correctly) — again no real
   browser check possible here.
+- Live slide editing in index.html itself (user request: "edit window also
+  for the slides"), mirroring the notes view/edit switch: press/click 'e'
+  ("edit slide" in navhint) to make the CURRENT slide contenteditable=true
+  (only the current one — applySlideEditability() re-scopes it on every
+  go()). SLIDE_EDIT_EXCLUDE marks canvas/video/button/input/select/
+  textarea/#demoHud/#epHud/#titleStage/#closeCanvas as
+  contenteditable="false" islands so the live 3D viewers, HUD buttons and
+  live-updating readouts (which are also unaffected by innerHTML restore
+  since canvas pixel state and video src both round-trip through
+  innerHTML fine) aren't turned into text. Edits autosave per slide to
+  localStorage (cram-defense-slide-edit:<slideId>) on 'input', restored at
+  load time BEFORE any chart/mini-canvas builder code runs later in the
+  same script (so #mixbars/#heatmap/data-mini canvases etc. still populate
+  correctly into the restored markup). ORIGINAL_SLIDE_HTML{} snapshots
+  every slide's pristine innerHTML in memory before any restore/edit, so
+  "⟲ revert" (navhint, confirm()-guarded) always has a true original to
+  fall back to even if localStorage is also stale. Arrow keys/space are
+  suppressed as nav shortcuts while focus is inside the editable region
+  (so they type normally instead of flipping slides), and the click-to-
+  navigate edge-thirds handler is suspended while slideEditMode is on.
+  KNOWN RISK (inherent to contenteditable, not fully solved): a selection
+  that spans from editable text across a "false" island can still delete
+  that island's node (e.g. a stray canvas or a chart container div like
+  #mixbars) — the exclusion stops it from becoming text-editable, not from
+  being deleted by a wide selection. Mitigation is the per-slide revert
+  button, not prevention. Verified: node --check clean, section/div counts
+  still balanced (25/25), local http.server still serves 200 — no real
+  browser exercise of the editing UX itself was possible here.
 
 Next (if asked):
+- User should actually try the new slide-edit toggle for real (typos are
+  cheap to introduce with contenteditable) and use "⟲ revert" if a slide
+  breaks after an edit — this was never exercised in a real browser here.
 - User is sharpening the sQ1/sQ2 wording themselves now that it's in the
   main sequence — don't rewrite that content unless asked again.
 - User should test the notes window for real: open index.html + press 'n'
