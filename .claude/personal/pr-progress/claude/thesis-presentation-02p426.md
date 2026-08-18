@@ -150,10 +150,29 @@ addressed their critique points in the deck rather than just noting them:
   still balanced (25/25), local http.server still serves 200 — no real
   browser exercise of the editing UX itself was possible here.
 
+- notes.html timer now pausable (user request): replaced the old
+  single-timestamp elapsed timer with accumMs (ms banked from prior runs)
+  + runStart (Date.now() of the current run, or null/'' when paused).
+  "pause" button toggles label to "resume" and freezes the displayed time;
+  "reset timer" zeroes accumMs but preserves whatever running/paused state
+  it was already in. Both persisted to localStorage
+  (cram-defense-notes-timer-accum, cram-defense-notes-timer-runstart —
+  empty string means paused, distinct from "key absent" which means
+  first-ever load) so pause state survives closing/reopening the notes
+  window. The old cram-defense-notes-timer-start key is now dead/unused,
+  harmless leftover. Caught and fixed a real bug before shipping: an
+  empty-string runstart ('' = paused) is falsy in JS, so a naive
+  `rs ? parseInt(rs) : Date.now()` silently un-paused on reload — fixed
+  with an explicit null/'' check. Verified the pause/resume/reset math in
+  a Node vm sandbox with a fake DOM+localStorage (timer freezes while
+  paused, resumes correctly, reset keeps running-state) — still no real
+  browser exercise of the actual button clicks.
+
 Next (if asked):
 - User should actually try the new slide-edit toggle for real (typos are
   cheap to introduce with contenteditable) and use "⟲ revert" if a slide
   breaks after an edit — this was never exercised in a real browser here.
+- Try the new pause/resume timer buttons for real in notes.html too.
 - User is sharpening the sQ1/sQ2 wording themselves now that it's in the
   main sequence — don't rewrite that content unless asked again.
 - User should test the notes window for real: open index.html + press 'n'
