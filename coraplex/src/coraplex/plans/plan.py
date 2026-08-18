@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from coraplex.plans.plan_callbacks import PlanCallback
     from coraplex.datastructures.dataclasses import Context
     from coraplex.plans.designator import Designator
+    from giskardpy.motion_statechart.motion_statechart import MotionStatechart
 
 
 logger = logging.getLogger(__name__)
@@ -280,6 +281,16 @@ class Plan:
         for callback in self.node_callbacks:
             callback.on_end(node)
 
+    def notify_motion_tick(self, statechart: MotionStatechart) -> None:
+        """
+        Notify every registered callback that the motion executor ticked once while
+        realizing this plan's motions.
+
+        :param statechart: The motion statechart the executor is ticking.
+        """
+        for callback in self.node_callbacks:
+            callback.on_motion_tick(statechart)
+
     def re_perform(self):
         for child in self.root.descendants:
             if child.is_leaf:
@@ -348,7 +359,7 @@ class Plan:
     def visualize(
         self,
         backend: GraphVisualizerBackend = GraphVisualizerBackend.CYTOSCAPE,
-        layout: GraphLayout = GraphLayout.PHYSICS,
+        layout: GraphLayout = GraphLayout.LAYERED,
     ) -> GraphVisualizerBase:
         """
         Open an interactive, real-time visualization of the plan graph.
@@ -363,8 +374,8 @@ class Plan:
         """
         visualizer = self._visualizer_classes[backend](
             graph=self.plan_graph,
-            label_getter=lambda node: node.__class__.__name__,
-            information_getter=self._node_details,
+            label_getter=lambda node: node.__node_label__(),
+            information_getter=lambda node: node.__node_info__(),
             color_getter=lambda node: node.status.color.replace("-", ""),
             layout=layout,
             title=repr(self),
