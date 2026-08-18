@@ -54,10 +54,12 @@ Narrative (frames 1-7 now follow the five research-talk questions):
 representational gap / guarantee-not-average), 04 why hard + why the obvious
 routes fail (trajectory / action name / e2e policy), 05 RQ+hypotheses,
 06 proposed solution (difficulty->solution-element mapping, gamma grounding
-function), 07 NEW claims C1-C4 up front, paid off on frame 22 (tagged C1-C4).
+function), 07 NEW claims C1-C4 up front, paid off on frame 24 (tagged C1-C4,
+after the reviewer-questions frames — see below).
 OAAT frame states B_g = gamma(D, W_SDT, K_KG) and executable(O_A,B_g).
-23 frames total; slide element IDs unchanged (s1..s20 + sWhy/sContrib/sEp),
-so JS hooks (s8 minis, s10 gprows, s12 demo, s20 closing) still match.
+25 frames total (was 23); slide element IDs unchanged (s1..s20 +
+sWhy/sContrib/sEp/sQ1/sQ2), so JS hooks (s8 minis, s10 gprows, s12 demo,
+s20 closing) still match.
 NOTE: the shareable Artifact is now BEHIND the local deck (it still has the
 old 21-frame narrative + embedded v3 meshes); regenerate only if asked.
 
@@ -65,15 +67,24 @@ Since defense review (2026-08-18): read both Gutachten (Downloads/
 "Hassouna - Lima-2.pdf" = Pedro Lima, summa cum laude; Downloads/
 "PhD Gutachten Vanessa Hassouna.pdf" = Michael Beetz, magna cum laude) and
 addressed their critique points in the deck rather than just noting them:
-- Added two appendix slides sQ1/sQ2 (after s20, IDs outside the numbered
-  1-23 sequence so no renumbering needed) with prepared answers to the
-  reviewers' toughest points: Lima's pre-execution diagnosability/platform-
-  switch question, Lima's "noise-free SDT" (Ch 7.5) real-world-validity
-  point, Lima's implementation-complexity/parameter-count point, and
-  Beetz's representational-depth/"same template" identity point (the one
-  he flagged as the summa-vs-magna line). Framed as honest, thesis-
-  consistent answers (what's already built vs named future work), not
-  deflection. hudframe total now dynamic 25 (N=slides.length already was).
+- Added two slides sQ1/sQ2 with prepared answers to the reviewers' toughest
+  points: Lima's pre-execution diagnosability/platform-switch question,
+  Lima's "noise-free SDT" (Ch 7.5) real-world-validity point, Lima's
+  implementation-complexity/parameter-count point, and Beetz's
+  representational-depth/"same template" identity point (the one he
+  flagged as the summa-vs-magna line). Framed as honest, thesis-consistent
+  answers (what's already built vs named future work), not deflection.
+  First built as backup/appendix slides after s20 (only open if asked) —
+  user then decided (after discussing the tradeoff) to move them INTO the
+  main sequence instead, as frames 22-23 right after "hypotheses revisited"
+  (s18, frame 21) and before "contributions revisited" (s19, now frame 24,
+  was 22). Renumbered all downstream eyebrows (s19 22->24, s20 23->25) and
+  fixed every "frame NN"/"appendix" cross-reference in slide bodies and in
+  NOTES (sContrib, s8, s11, sQ1, sQ2). User's own words: "i think you can
+  move it into the main sequence and then i can sharpen the whole thing
+  myself" — so the sQ1/sQ2 wording is intentionally left as my draft;
+  expect the user to rewrite/tighten it directly, don't re-touch that
+  copy unprompted.
 - More-visual pass: added a reusable phase-timeline diagram (reuses
   existing .flow/.fnode CSS from s5, zero new CSS) showing
   approach->contact->technique->withdrawal; inserted full-size into s7
@@ -91,14 +102,29 @@ addressed their critique points in the deck rather than just noting them:
   even if opened after the deck already moved on. Open via the 'n' key or
   clicking "n" in the navhint bar -> window.open('notes.html', ...) sized
   480x780. Verified: node --check on both extracted <script> blocks (syntax
-  clean), section/div tag counts balanced (25 sections = 23 + 2 appendix),
-  all 25 slide ids have a NOTES entry, local http.server smoke-served both
-  pages 200 OK. Could NOT do a real browser/visual check — no
-  chromium/puppeteer/playwright available in this sandbox; user should open
-  it for real (their actual multi-window/extended-display use case can't be
-  simulated headlessly anyway) and confirm the notes window syncs live.
+  clean), section/div tag counts balanced (25 sections), all 25 slide ids
+  have a NOTES entry, local http.server smoke-served both pages 200 OK.
+  Could NOT do a real browser/visual check — no chromium/puppeteer/
+  playwright available in this sandbox; user should open it for real
+  (their actual multi-window/extended-display use case can't be simulated
+  headlessly anyway) and confirm the notes window syncs live.
+- notes.html upgrade (user request): view/edit switch (segmented toggle)
+  for the notes area. Edit mode is a <textarea>; view mode renders it
+  through a small dependency-free markdown renderer written inline
+  (renderMarkdown() in notes.html — headers #/##/###, **bold**, *italic*,
+  `code`, -/* bullet lists, 1. numbered lists, paragraphs; no external
+  libs). Per-slide edits autosave to localStorage
+  (cram-defense-notes-user:<slideId>) on every keystroke and take priority
+  over the deck's built-in NOTES default for that slide; a "revert to
+  auto-note" link clears the override. Mode (view/edit) itself also
+  persists across reloads (cram-defense-notes-mode). Reset-timer button
+  unchanged. Verified renderMarkdown() output via a Node vm sandbox
+  (headers/bold/italic/code/lists all rendered correctly) — again no real
+  browser check possible here.
 
 Next (if asked):
+- User is sharpening the sQ1/sQ2 wording themselves now that it's in the
+  main sequence — don't rewrite that content unless asked again.
 - User should test the notes window for real: open index.html + press 'n'
   (or click it), confirm the second window shows live-synced notes when
   advancing slides, and check it looks right on an actual extended display
