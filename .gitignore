@@ -25,6 +25,8 @@ msg/_*.py
 !.claude/skills/plan-dashboard/example/screenshots/*.png
 !cramera/src/cramera/web/img/aicor-logo.png
 !cramera/src/cramera/web/img/ai-picture.png
+!defense/img/**/*.png
+!defense/logos/*.png
 *.lprof
 tmp_data/
 tmp/
