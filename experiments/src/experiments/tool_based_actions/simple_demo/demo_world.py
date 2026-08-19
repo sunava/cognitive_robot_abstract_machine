@@ -77,6 +77,22 @@ SPONGE_COLOR = Color(0.95, 0.85, 0.3)
 Yellowish color for the sponge.
 """
 
+CUTTING_BOARD_COLOR = Color(0.82, 0.65, 0.42)
+"""
+Light wood color for the cutting board.
+"""
+
+CUTTING_BOARD_THICKNESS = 0.02
+"""
+Thickness of the primitive-box cutting board placed under a cut object.
+"""
+
+CUTTING_BOARD_MARGIN = 0.08
+"""
+How far the cutting board's footprint extends past the cut object's footprint on each
+side.
+"""
+
 
 # %% robot placement
 
@@ -109,6 +125,58 @@ def parse_object(stl_file_name: str, color: Optional[Color] = None) -> World:
     if color is not None:
         object_world.root.visual.dye_shapes(color)
     return object_world
+
+
+def add_cutting_board(
+    world: World, cut_object: World, cut_object_position_xyz: tuple
+) -> Body:
+    """
+    Add a flat board to ``world``, directly under where ``cut_object`` will be placed.
+
+    The board's footprint is sized to ``cut_object``'s own footprint plus a margin on
+    each side. ``cut_object_position_xyz`` is the placement ``cut_object`` would need to
+    rest directly on the counter without a board — its origin is not generally its
+    bottom face, so the board's bottom is derived from ``cut_object``'s own local
+    geometry rather than from ``cut_object_position_xyz`` directly, putting the board's
+    bottom exactly where ``cut_object``'s bottom would otherwise have been. Its top is
+    one board thickness higher. Callers should therefore merge ``cut_object`` one board
+    thickness higher than ``cut_object_position_xyz``, so it rests on top of the board
+    instead of inside it.
+
+    :param world: The world to add the board to.
+    :param cut_object: The not-yet-merged world containing the object to be cut, used
+        to size the board's footprint and to locate its own bottom face.
+    :param cut_object_position_xyz: The x, y, z position ``cut_object``'s origin would
+        occupy resting directly on the counter, without a board.
+    :return: The cutting board body inside ``world``.
+    """
+    footprint = cut_object.root.collision.as_bounding_box_collection_in_frame(
+        cut_object.root
+    ).bounding_box()
+    board_width = footprint.max_x - footprint.min_x + 2 * CUTTING_BOARD_MARGIN
+    board_depth = footprint.max_y - footprint.min_y + 2 * CUTTING_BOARD_MARGIN
+    board_scale = Scale(board_width, board_depth, CUTTING_BOARD_THICKNESS)
+    x, y, object_origin_z = cut_object_position_xyz
+    counter_z = object_origin_z + footprint.min_z
+    board_body = Body(
+        name=PrefixedName("cutting_board"),
+        collision=ShapeCollection([Box(scale=board_scale)]),
+        visual=ShapeCollection([Box(scale=board_scale, color=CUTTING_BOARD_COLOR)]),
+    )
+    connection = FixedConnection(
+        parent=world.root,
+        child=board_body,
+        parent_T_connection_expression=HomogeneousTransformationMatrix.from_xyz_rpy(
+            x,
+            y,
+            counter_z + CUTTING_BOARD_THICKNESS / 2,
+            reference_frame=world.root,
+        ),
+    )
+    with world.modify_world():
+        world.add_kinematic_structure_entity(board_body)
+        world.add_connection(connection)
+    return board_body
 
 
 def attach_sponge(world: World, robot: AbstractRobot, arm: Arms) -> Body:

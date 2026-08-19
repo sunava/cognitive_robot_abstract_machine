@@ -891,7 +891,7 @@ B<sub>g</sub> = γ(D, W<sub>SDT</sub>, K<sub>KG</sub>)&nbsp;&nbsp;<span class="c
 
   <div id="tooltip"></div>
   <div id="progress"></div>
-  <div id="navhint"><b>←</b> <b>→</b> navigate · <b>t</b> theme · <b id="notesBtn" style="cursor:pointer;text-decoration:underline;">n</b> notes · <b id="editSlideBtn" style="cursor:pointer;text-decoration:underline;">e</b> edit slide · <b id="revertSlideBtn" style="cursor:pointer;text-decoration:underline;display:none;">⟲</b> revert · <b>f</b> fullscreen</div>
+  <div id="navhint"><b>←</b> <b>→</b> navigate · <b>t</b> theme · <b id="notesBtn" style="cursor:pointer;text-decoration:underline;">n</b> notes · <b id="editSlideBtn" style="cursor:pointer;text-decoration:underline;">e</b> edit slide · <b id="revertSlideBtn" style="cursor:pointer;text-decoration:underline;display:none;">⟲</b> revert · <b id="exportEditsBtn" style="cursor:pointer;text-decoration:underline;">x</b> export edits · <b>f</b> fullscreen</div>
   <div id="brandlogos">
     <img class="lt" alt="University of Bremen" src="logos/unibremen_light.png" />
     <img class="dk" alt="University of Bremen" src="logos/unibremen_dark.png" />
@@ -954,6 +954,21 @@ function revertCurrentSlide(){
   try{localStorage.removeItem(SLIDE_EDIT_PREFIX+s.id);}catch(e){}
   applySlideEditability();
   onSlide(cur);
+}
+function exportSlideEdits(){
+  const edits={};
+  slides.forEach(s=>{
+    let saved=null;
+    try{saved=localStorage.getItem(SLIDE_EDIT_PREFIX+s.id);}catch(e){}
+    if(saved!==null&&saved!==ORIGINAL_SLIDE_HTML[s.id])edits[s.id]=saved;
+  });
+  if(Object.keys(edits).length===0){alert('No slide edits are stored in this browser to export.');return;}
+  const blob=new Blob([JSON.stringify(edits,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='slide-edits.json';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 /* ═════════════════════════ presenter notes (separate window, screen-share friendly) ═════════════════════════ */
@@ -1033,6 +1048,7 @@ addEventListener('keydown',e=>{
   else if(e.key==='End')go(N-1);
   else if(e.key==='n'||e.key==='N')openNotesWindow();
   else if(e.key==='e'||e.key==='E')toggleSlideEditMode();
+  else if(e.key==='x'||e.key==='X')exportSlideEdits();
   else if(e.key==='f'||e.key==='F'){document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}
 });
 /* click right/left third to advance/back (touch-friendly) — suspended while editing slide text */
@@ -1047,8 +1063,22 @@ stage.addEventListener('input',e=>{
   const s=e.target.closest('.slide');
   if(s&&s.getAttribute('contenteditable')==='true'){
     try{localStorage.setItem(SLIDE_EDIT_PREFIX+s.id,s.innerHTML);}catch(err){}
+    exportEditsPending=true;
+    clearTimeout(exportEditsIdleTimer);
+    exportEditsIdleTimer=setTimeout(autoExportSlideEdits,8000);
   }
 });
+/* auto-export as a safety net: on an idle pause after editing, and whenever the tab/window
+   goes hidden (covers closing/switching away) — localStorage alone isn't reliably flushed
+   to disk by the browser before a crash or abrupt close */
+let exportEditsPending=false,exportEditsIdleTimer=null;
+function autoExportSlideEdits(){
+  if(!exportEditsPending)return;
+  exportSlideEdits();
+  exportEditsPending=false;
+}
+addEventListener('visibilitychange',()=>{if(document.hidden)autoExportSlideEdits();});
+addEventListener('pagehide',autoExportSlideEdits);
 
 /* ═════════════════════════ theme system (light = beamer default, dark = sim night) ═════════════════════════ */
 const THEMES={
@@ -1675,6 +1705,7 @@ applyTheme(THEMES[initTheme]?initTheme:'light');
 document.getElementById('notesBtn').addEventListener('click',openNotesWindow);
 document.getElementById('editSlideBtn').addEventListener('click',toggleSlideEditMode);
 document.getElementById('revertSlideBtn').addEventListener('click',revertCurrentSlide);
+document.getElementById('exportEditsBtn').addEventListener('click',exportSlideEdits);
 
 /* initial slide from hash */
 const m=location.hash.match(/^#s(\d+)$/);
