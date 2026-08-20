@@ -379,7 +379,7 @@ table.tt td b{color:var(--ink);font-weight:600;}
     <button id="tintClearBtn" title="remove colour from the selection">clear</button>
     <span class="sep"></span>
     <button id="imgFileBtn" title="pick an image file — embedded into the slide">image…</button>
-    <button id="imgPathBtn" title="reference an image already in this folder, e.g. thesis_img/intro/image1.png">image by path…</button>
+    <button id="imgPathBtn" title="reference an image already in this folder, e.g. img/thesis/intro_image1.png">image by path…</button>
     <span class="sep"></span>
     <button id="newSlideBtn" title="insert an empty slide after this one">+ slide</button>
     <button id="delSlideBtn" title="delete this inserted slide">− slide</button>
@@ -428,7 +428,7 @@ table.tt td b{color:var(--ink);font-weight:600;}
 <div class="cols" style="display:grid;grid-template-columns:1fr 1fr;align-items:start;">
   <div class="col">
     <figure class="fig keep">
-      <img src="thesis_img/intro/image1.png" alt="TIAGo and PR2 preparing a meal in a domestic kitchen">
+      <img src="img/thesis/intro_image1.png" alt="TIAGo and PR2 preparing a meal in a domestic kitchen">
       <figcaption><b>Fig. 1.1</b> · Collaborative meal preparation: TIAGo stabilises and monitors while PR2 stirs a heated pot. Image © Universität Bremen.</figcaption>
     </figure>
     <div class="reveal" style="margin-top:18px;">
@@ -1382,7 +1382,7 @@ technique, repositioning, and retract phases.</figcaption>
     <div class="cols" style="grid-template-columns:1.35fr 1fr;">
       <div class="col">
         <figure class="fig">
-          <img src="thesis_img/experiment/robots/allrobots.png" alt="Eight robot platforms used in the evaluation" style="background:#ffffff;padding:10px;box-sizing:border-box;">
+          <img src="img/thesis/experiment_robots_allrobots.png" alt="Eight robot platforms used in the evaluation" style="background:#ffffff;padding:10px;box-sizing:border-box;">
           <figcaption><b>Fig. 6.1</b> · [1] TIAGo<a class="cite" data-ref="tiago"></a>, [2] Unitree G1<a class="cite" data-ref="unitreeg1"></a>, [3] PR2<a class="cite" data-ref="pr2"></a>, [4] ARMAR-7<a class="cite" data-ref="armar7"></a>, [5] Stretch 3<a class="cite" data-ref="stretch3_specs"></a>, [6] HSRB<a class="cite" data-ref="hsr"></a>, [7] Garmi<a class="cite" data-ref="garmi"></a>, [8] Rollin' Justin<a class="cite" data-ref="justin"></a>.</figcaption>
         </figure>
       </div>
@@ -1408,11 +1408,11 @@ technique, repositioning, and retract phases.</figcaption>
     <p class="eyebrow">// 6 · environments <span class="ph">— robot-centred labs and a human living space</span></p>
     <h2>Three scene contexts, shared seeds within each column</h2>
     <div class="figrow" style="grid-template-columns:repeat(3,1fr);">
-      <figure class="fig"><img src="thesis_img/experiment/environments/kitchen-enironemnt.png" alt="AICOR kitchen laboratory">
+      <figure class="fig"><img src="img/thesis/experiment_environments_kitchen-enironemnt.png" alt="AICOR kitchen laboratory">
         <figcaption><b>Kitchen</b> — AICOR Kitchen laboratory, University of Bremen<a class="cite" data-ref="aicorlab2022"></a>. Dedicated counters, appliances, manipulation-relevant work surfaces.</figcaption></figure>
-      <figure class="fig"><img src="thesis_img/experiment/environments/apartment-lab.png" alt="AICOR apartment laboratory">
+      <figure class="fig"><img src="img/thesis/experiment_environments_apartment-lab.png" alt="AICOR apartment laboratory">
         <figcaption><b>Apartment</b> — AICOR Apartment laboratory. The most structured setting: regular placement, accessible surfaces, room for extended tool trajectories.</figcaption></figure>
-      <figure class="fig"><img src="thesis_img/experiment/environments/isr-testbed.png" alt="VisLab at ISR Lisbon">
+      <figure class="fig"><img src="img/thesis/experiment_environments_isr-testbed.png" alt="VisLab at ISR Lisbon">
         <figcaption><b>VisLab</b> — Institute for Systems and Robotics, Lisbon<a class="cite" data-ref="vislab2026"></a>. A human living space: fixed furniture, tighter workspace for large platforms.</figcaption></figure>
     </div>
     <p class="small" style="margin-top:14px;">Because seeds are shared within each environment column, differences <i>within</i> a column reflect genuine geometric variation rather than task assignment.</p>
@@ -1455,7 +1455,7 @@ technique, repositioning, and retract phases.</figcaption>
         </ul>
         <figure class="fig" style="margin-top:12px;">
           <!-- portrait 1024x1213: capped by height so the column keeps room for the list above -->
-          <img src="thesis_img/experiment/robots/hsrb_reach.png" alt="HSRB at near-maximum vertical extension" style="width:auto;max-width:100%;max-height:186px;margin:0 auto;">
+          <img src="img/thesis/experiment_robots_hsrb_reach.png" alt="HSRB at near-maximum vertical extension" style="width:auto;max-width:100%;max-height:186px;margin:0 auto;">
           <figcaption><b>Fig. 6.3</b> · HSRB at near-maximum vertical extension (red indicator) reaching a standard counter. Any surface at human working height sits at the ceiling of its reachable workspace — no margin left for the wrist rotations contact-rich manipulation requires.</figcaption>
         </figure>
       </div>
@@ -1520,11 +1520,11 @@ technique, repositioning, and retract phases.</figcaption>
     <p class="eyebrow">// 6 · real-robot execution <span class="ph">— PR2, Bremen Apartment laboratory</span></p>
     <h2>Same action code, now with contact forces and material behaviour</h2>
     <div class="figrow" style="grid-template-columns:1fr 1fr .8fr;">
-      <figure class="fig"><img src="thesis_img/experiment/cutting/cuc_real.png" alt="Real-world cucumber cutting on the PR2">
+      <figure class="fig"><img src="img/thesis/experiment_cutting_cuc_real.png" alt="Real-world cucumber cutting on the PR2">
         <figcaption><b>Fig. 6.6</b> · Cucumber cutting. The object is fixed on a nailed cutting board because the PR2's shoulder geometry limits comfortable two-handed configurations at table height.</figcaption></figure>
-      <figure class="fig"><img src="thesis_img/experiment/cutting/cut_real_bread.png" alt="Real-world bread cutting on the PR2">
+      <figure class="fig"><img src="img/thesis/experiment_cutting_cut_real_bread.png" alt="Real-world bread cutting on the PR2">
         <figcaption><b>Fig. 6.7</b> · Bread cutting. Depending on crust hardness the knife has to overcome high initial resistance before entering the softer interior; amplitude, direction and contact force stay controlled throughout.</figcaption></figure>
-      <figure class="fig"><img src="thesis_img/experiment/cutting/handle.png" alt="Custom tool handle for the PR2 gripper">
+      <figure class="fig"><img src="img/thesis/experiment_cutting_handle.png" alt="Custom tool handle for the PR2 gripper">
         <figcaption><b>Fig. 6.8</b> · Custom tool handle — without this adapter the gripper could not reliably hold a bread-knife-sized tool through a contact-rich action.</figcaption></figure>
     </div>
     <div class="panel" style="margin-top:14px;">
@@ -1539,8 +1539,8 @@ technique, repositioning, and retract phases.</figcaption>
     <div class="cols" style="grid-template-columns:1fr 1fr;">
       <div class="col">
         <div class="figrow" style="grid-template-columns:1fr 1fr;">
-          <figure class="fig"><img src="thesis_img/pouring/pouring_mug.png" alt="PR2 pouring from a mug"><figcaption>Small mug — 40/40.</figcaption></figure>
-          <figure class="fig"><img src="thesis_img/pouring/spilling.png" alt="Granular material flying past the target bowl"><figcaption>Ballistic ejection past the target: the elongated container.</figcaption></figure>
+          <figure class="fig"><img src="img/thesis/pouring_pouring_mug.png" alt="PR2 pouring from a mug"><figcaption>Small mug — 40/40.</figcaption></figure>
+          <figure class="fig"><img src="img/thesis/pouring_spilling.png" alt="Granular material flying past the target bowl"><figcaption>Ballistic ejection past the target: the elongated container.</figcaption></figure>
         </div>
         <table class="t" style="margin-top:12px;">
           <tr><th>Source container</th><th>Trials</th><th>Success</th></tr>
@@ -2344,7 +2344,7 @@ function bindEditTools(){
   [['tintClearBtn',clearTint],
    ['imgFileBtn',()=>fileInput.click()],
    ['imgPathBtn',()=>{
-      const path=prompt('Image path, relative to this file — e.g. thesis_img/intro/image1.png');
+      const path=prompt('Image path, relative to this file — e.g. img/thesis/intro_image1.png');
       if(path)insertImage(path,path.split('/').pop());
    }],
    ['newSlideBtn',insertSlideAfterCurrent],
