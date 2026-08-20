@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html data-theme="light"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Thesis Defense · Object-Anchored Action Templates</title>
+<style>
+/* ============================================================
+   CRAM VIEWER DECK — single dark theme, committed:
+   the deck *is* a simulation viewer session.
+   ============================================================ */
+:root{
+  --bg:#eef1f4;            /* viewport ground — light sim-viewer */
+  --panel:#ffffff;         /* HUD panel */
+  --panel2:#f2f5f8;
+  --line:#d5dce3;
+  --line2:#b9c4cf;
+  --ink:#16212c;
+  --ink2:#3c4c5c;
+  --mute:#6e7d8c;
+  --acc:#2a63b8;           /* z-axis blue: primary accent */
+  --ok:#1e7d3e;            /* y-axis green: success / invariant holding */
+  --warn:#9a6a00;
+  --crit:#c0392b;          /* x-axis red family */
+  --axx:#c74444; --axy:#2c8c4a; --axz:#2a63b8;
+  --chart-good:#0ca30c; --chart-warn:#fab219; --chart-crit:#d03b3b;
+  --seq3:#2a78d6;
+  --page:#cfd6dd; --pg1:#dde3e9; --pg2:#c7cfd7;
+  --tb1:#f7f9fb; --tb2:#eef1f4;
+  --codebg:#f6f8fa; --well:#e7ecf1; --slc:#b45309;
+  --glass:rgba(255,255,255,.92); --accink:#ffffff;
+  --pcnow:rgba(42,99,184,.12); --stshadow:rgba(30,45,60,.28);
+  --scrim1:linear-gradient(90deg,rgba(238,241,244,.96) 0%,rgba(238,241,244,.82) 45%,rgba(238,241,244,.04) 75%);
+  --scrim2:linear-gradient(90deg,rgba(238,241,244,.96) 0%,rgba(238,241,244,.85) 42%,rgba(238,241,244,.05) 72%);
+  --mono:ui-monospace,'SF Mono',Menlo,'Cascadia Code',Consolas,monospace;
+  --sans:'Helvetica Neue',ui-sans-serif,-apple-system,'Segoe UI',sans-serif;
+}
+:root[data-theme="dark"]{
+  --bg:#0c1116; --panel:#121a23; --panel2:#172230;
+  --line:#22303f; --line2:#2d3d50;
+  --ink:#e9eef5; --ink2:#a9b6c6; --mute:#6b7a8d;
+  --acc:#5a8fdd; --ok:#4fc26b; --warn:#e0a92c; --crit:#d03b3b;
+  --axx:#e05c5c; --axy:#4fc26b; --axz:#5a8fdd;
+  --seq3:#3987e5;
+  --page:#070b0f; --pg1:#0d141b; --pg2:#070b0f;
+  --tb1:#101820; --tb2:#0e151d;
+  --codebg:#0d141c; --well:#0d141c; --slc:#fab219;
+  --glass:rgba(15,21,29,.88); --accink:#0b1016;
+  --pcnow:rgba(90,143,221,.18); --stshadow:rgba(0,0,0,.55);
+  --scrim1:linear-gradient(90deg,rgba(12,17,22,.92) 0%,rgba(12,17,22,.75) 45%,rgba(12,17,22,.05) 75%);
+  --scrim2:linear-gradient(90deg,rgba(12,17,22,.93) 0%,rgba(12,17,22,.8) 42%,rgba(12,17,22,.06) 72%);
+}
+html,body{height:100%;}
+body{margin:0;background:var(--page);color:var(--ink);font-family:var(--sans);overflow:hidden;}
+#viewport{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:
+  radial-gradient(1200px 700px at 50% 40%, var(--pg1) 0%, var(--pg2) 70%);}
+#stage{width:1280px;height:720px;position:relative;background:var(--bg);
+  transform-origin:center center;box-shadow:0 0 0 1px var(--line),0 30px 80px var(--stshadow);overflow:hidden;}
+
+/* ---------- persistent HUD chrome ---------- */
+#topbar{position:absolute;top:0;left:0;right:0;height:34px;z-index:50;display:flex;align-items:center;
+  gap:14px;padding:0 16px;background:linear-gradient(var(--tb1),var(--tb2));border-bottom:1px solid var(--line);
+  font-family:var(--mono);font-size:11px;color:var(--mute);letter-spacing:.04em;}
+#topbar .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok);}
+#topbar .sess{color:var(--ink2);}
+#topbar .right{margin-left:auto;display:flex;gap:16px;}
+#hudframe{color:var(--ink2);}
+#navhint{position:absolute;bottom:10px;right:16px;z-index:50;font-family:var(--mono);font-size:10px;color:var(--mute);}
+#navhint b{color:var(--ink2);font-weight:400;}
+#progress{position:absolute;bottom:0;left:0;height:2px;background:var(--acc);z-index:60;transition:width .35s ease;}
+
+/* ---------- slides ---------- */
+.slide{position:absolute;inset:34px 0 0 0;padding:34px 60px 44px;box-sizing:border-box;
+  opacity:0;visibility:hidden;transform:translateY(8px);transition:opacity .3s ease,transform .3s ease;}
+.slide.on{opacity:1;visibility:visible;transform:none;}
+.slide[contenteditable="true"]{outline:2px dashed var(--warn);outline-offset:-2px;cursor:text;}
+.slide[contenteditable="true"] [contenteditable="false"]{cursor:default;}
+.eyebrow{font-family:var(--mono);font-size:12px;color:var(--acc);letter-spacing:.08em;margin:0 0 10px;}
+.eyebrow .ph{color:var(--mute);}
+h1{font-size:44px;line-height:1.12;margin:0 0 14px;font-weight:700;letter-spacing:-.01em;text-wrap:balance;}
+h2{font-size:30px;line-height:1.15;margin:0 0 16px;font-weight:700;letter-spacing:-.01em;text-wrap:balance;}
+p.lead{font-size:17px;line-height:1.5;color:var(--ink2);max-width:62ch;margin:0 0 10px;}
+.cols{display:flex;gap:36px;}
+.col{flex:1;min-width:0;}
+ul.k{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;}
+ul.k li{font-size:15.5px;line-height:1.45;color:var(--ink2);padding-left:18px;position:relative;}
+ul.k li::before{content:'▸';position:absolute;left:0;color:var(--acc);font-size:12px;top:3px;}
+ul.k li b{color:var(--ink);font-weight:600;}
+.small{font-size:12.5px;color:var(--mute);line-height:1.45;}
+.mono{font-family:var(--mono);}
+.chip{display:inline-block;font-family:var(--mono);font-size:11px;padding:3px 9px;border:1px solid var(--line2);
+  border-radius:3px;color:var(--ink2);background:var(--panel);}
+.chip.ok{color:var(--ok);border-color:rgba(30,125,62,.45);}
+.chip.bad{color:var(--axx);border-color:rgba(199,68,68,.45);}
+/* citations: inline marker + auto-numbered footnote strip per slide */
+.cite{font-family:var(--mono);font-size:9.5px;color:var(--acc);vertical-align:super;
+  line-height:0;margin-left:2px;cursor:help;text-decoration:none;font-weight:600;}
+.citelist{position:absolute;left:60px;right:60px;bottom:30px;font-family:var(--mono);
+  font-size:9.5px;line-height:1.5;color:var(--mute);letter-spacing:.02em;
+  /* clears the brand logos (bottom 10px, 13px tall) and the nav hint below it */}
+.citelist b{color:var(--ink2);font-weight:600;}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .45s ease,transform .45s ease;}
+.reveal.shown{opacity:1;transform:none;}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px 18px;box-sizing:border-box;}
+.code{font-family:var(--mono);font-size:13px;line-height:1.65;background:var(--codebg);border:1px solid var(--line);
+  border-radius:6px;padding:14px 16px;color:var(--ink2);overflow-x:auto;}
+.code .kw{color:var(--acc);} .code .sl{color:var(--slc);} .code .ok2{color:var(--ok);} .code .cm{color:var(--mute);}
+.figplate{background:#f5f6f8;border-radius:6px;padding:10px;box-sizing:border-box;}
+.figplate img{display:block;width:100%;height:auto;border-radius:3px;}
+.figcap{font-family:var(--mono);font-size:11px;color:var(--mute);margin-top:8px;}
+
+/* ---------- title slide ---------- */
+#s1 .titlewrap{position:absolute;left:60px;top:120px;width:640px;z-index:5;}
+#s1 canvas{position:absolute;top:0;bottom:0;left:30%;width:76%;height:100%;}
+#s1 .scrim{position:absolute;inset:0;background:var(--scrim1);z-index:2;}
+#s1 h1{font-size:40px;}
+.byline{margin-top:22px;font-size:15px;color:var(--ink2);line-height:1.7;}
+.byline b{color:var(--ink);font-weight:600;}
+#brandlogos{position:absolute;left:16px;bottom:10px;z-index:50;display:flex;align-items:center;gap:12px;transition:none;}
+#brandlogos img{display:block;height:13px;width:auto;}
+#brandlogos img.dk{display:none;}
+:root[data-theme="dark"] #brandlogos img.lt{display:none;}
+:root[data-theme="dark"] #brandlogos img.dk{display:block;}
+#brandlogos.title{left:auto;right:60px;bottom:44px;gap:26px;}
+#brandlogos.title img{height:32px;}
+
+/* ---------- pipeline / architecture diagrams ---------- */
+.flow{display:flex;align-items:stretch;gap:0;}
+.fnode{flex:1;background:var(--panel);border:1px solid var(--line2);border-radius:5px;padding:12px 12px;text-align:center;}
+.fnode .t{font-family:var(--mono);font-size:12px;color:var(--ink);margin-bottom:6px;}
+.fnode .d{font-size:11.5px;color:var(--mute);line-height:1.4;}
+.farr{align-self:center;padding:0 8px;color:var(--acc);font-family:var(--mono);font-size:14px;}
+.arch{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.arch .anode{background:var(--panel);border:1px solid var(--line2);border-radius:6px;padding:13px 15px;}
+.anode .t{font-family:var(--mono);font-size:13px;color:var(--acc);margin-bottom:6px;}
+.anode .d{font-size:12.5px;color:var(--ink2);line-height:1.45;}
+
+/* ---------- grounding pipeline table ---------- */
+.gp{display:flex;flex-direction:column;gap:7px;}
+.gprow{display:grid;grid-template-columns:150px 130px 1fr 210px;gap:12px;align-items:center;
+  background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:4px;
+  padding:9px 14px;opacity:.18;transform:translateX(-6px);transition:opacity .4s,transform .4s;}
+.gprow.lit{opacity:1;transform:none;}
+.gprow .st{font-family:var(--mono);font-size:12.5px;color:var(--ink);}
+.gprow .src{font-family:var(--mono);font-size:11px;color:var(--acc);}
+.gprow .bd{font-size:12.5px;color:var(--ink2);}
+.gprow .fl{font-family:var(--mono);font-size:11px;color:var(--axx);text-align:right;}
+
+/* ---------- family cards ---------- */
+.fam{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.famcard{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;display:flex;gap:14px;}
+.famcard canvas{width:120px;height:96px;flex:none;background:var(--codebg);border:1px solid var(--line);border-radius:4px;}
+.famcard .t{font-family:var(--mono);font-size:12.5px;color:var(--ink);margin-bottom:4px;}
+.famcard .inv{font-family:var(--mono);font-size:11px;color:var(--ok);margin-bottom:6px;}
+.famcard .d{font-size:12px;color:var(--ink2);line-height:1.45;}
+
+/* ---------- demo slide ---------- */
+#s12{padding:0;}
+#demoCanvas{position:absolute;inset:34px 0 0 0;width:100%;height:calc(100% - 34px);}
+#demoHud{position:absolute;left:26px;top:60px;width:340px;z-index:10;display:flex;flex-direction:column;gap:10px;}
+#demoHud .panel{background:var(--glass);backdrop-filter:blur(3px);}
+.actbtns{display:flex;gap:8px;}
+.actbtns button{font-family:var(--mono);font-size:12px;letter-spacing:.06em;padding:8px 0;flex:1;cursor:pointer;
+  background:var(--panel2);color:var(--ink2);border:1px solid var(--line2);border-radius:4px;}
+.actbtns button:hover{border-color:var(--acc);color:var(--ink);}
+.actbtns button.sel{background:var(--acc);border-color:var(--acc);color:var(--accink);font-weight:700;}
+.actbtns button:focus-visible{outline:2px solid var(--acc);outline-offset:2px;}
+#phaseChips{display:flex;flex-wrap:wrap;gap:6px;}
+#phaseChips .pc{font-family:var(--mono);font-size:10.5px;padding:4px 8px;border-radius:3px;border:1px solid var(--line2);color:var(--mute);}
+#phaseChips .pc.now{background:var(--pcnow);border-color:var(--acc);color:var(--ink);}
+#phaseChips .pc.done{color:var(--ok);border-color:rgba(30,125,62,.4);}
+#invLine{font-family:var(--mono);font-size:11px;color:var(--ok);line-height:1.5;}
+#desigBox{font-size:12px;}
+#demoNote{position:absolute;right:26px;bottom:44px;z-index:10;font-family:var(--mono);font-size:10.5px;color:var(--mute);text-align:right;}
+
+/* ---------- recorded episodes slide (cramera) ---------- */
+#sEp{padding:0;}
+.glstage{position:absolute;inset:34px 0 0 0;overflow:hidden;}
+.glstage canvas{display:block;}
+#epHud{position:absolute;left:26px;top:60px;width:352px;z-index:10;display:flex;flex-direction:column;gap:10px;}
+#epHud .panel{background:var(--glass);backdrop-filter:blur(3px);}
+#epChips{display:flex;flex-wrap:wrap;gap:6px;}
+#epChips .pc{font-family:var(--mono);font-size:10.5px;padding:4px 8px;border-radius:3px;border:1px solid var(--line2);color:var(--mute);cursor:pointer;}
+#epChips .pc.now{background:var(--pcnow);border-color:var(--acc);color:var(--ink);}
+#epChips .pc.done{color:var(--ok);border-color:rgba(30,125,62,.4);}
+#epCtrls{display:flex;align-items:center;gap:8px;}
+#epCtrls button{font-family:var(--mono);font-size:12px;padding:5px 9px;cursor:pointer;background:var(--panel2);color:var(--ink2);border:1px solid var(--line2);border-radius:4px;}
+#epCtrls button:hover{border-color:var(--acc);color:var(--ink);}
+#epCtrls button:focus-visible{outline:2px solid var(--acc);outline-offset:2px;}
+#epScrub{flex:1;min-width:0;accent-color:var(--acc);}
+#epTime{font-family:var(--mono);font-size:10.5px;color:var(--ink2);min-width:92px;text-align:right;font-variant-numeric:tabular-nums;}
+#epMeta{font-family:var(--mono);font-size:10.5px;color:var(--mute);line-height:1.6;}
+#epNote{position:absolute;right:26px;bottom:44px;z-index:10;font-family:var(--mono);font-size:10.5px;color:var(--mute);text-align:right;}
+
+/* ---------- embedded real-robot videos ---------- */
+video.slidevid{display:block;width:100%;border-radius:4px;border:1px solid var(--line);background:#000;}
+.vidgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.vidgrid figure{margin:0;}
+.vidgrid figcaption{font-family:var(--mono);font-size:10.5px;color:var(--mute);margin-top:4px;line-height:1.4;}
+.vidgrid figcaption .kw{color:var(--acc);} .vidgrid figcaption .ok2{color:var(--ok);}
+
+/* ---------- charts ---------- */
+.viz-root{--surface-1:var(--panel);}
+.bars{display:flex;flex-direction:column;gap:7px;}
+.brow{display:grid;grid-template-columns:110px 1fr 58px;gap:10px;align-items:center;cursor:default;}
+.brow .lb{font-family:var(--mono);font-size:12px;color:var(--ink2);text-align:right;}
+.brow .tr{height:20px;background:var(--well);border-radius:3px;position:relative;overflow:hidden;}
+.brow .fillb{position:absolute;left:0;top:0;bottom:0;border-radius:3px 3px 3px 3px;width:0;transition:width .8s cubic-bezier(.2,.7,.2,1);}
+.brow .vl{font-family:var(--mono);font-size:12px;color:var(--ink);font-variant-numeric:tabular-nums;}
+.legend{display:flex;gap:16px;margin-top:12px;font-size:11.5px;color:var(--ink2);font-family:var(--mono);}
+.legend .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;}
+.hm{display:grid;grid-template-columns:110px repeat(3,1fr);gap:4px;}
+.hm .hlab{font-family:var(--mono);font-size:11.5px;color:var(--ink2);display:flex;align-items:center;justify-content:flex-end;padding-right:8px;}
+.hm .hcol{font-family:var(--mono);font-size:11px;color:var(--mute);text-align:center;padding-bottom:4px;}
+.hm .cell{height:34px;border-radius:3px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;cursor:default;}
+#tooltip{position:absolute;z-index:100;pointer-events:none;background:#16212c;border:1px solid #16212c;
+  border-radius:4px;padding:7px 10px;font-family:var(--mono);font-size:11px;color:#dbe3ea;display:none;max-width:260px;line-height:1.5;}
+.statrow{display:flex;gap:14px;}
+.stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:13px 16px;}
+.stat .v{font-size:30px;font-weight:700;color:var(--ink);letter-spacing:-.02em;}
+.stat .v em{font-style:normal;font-size:15px;color:var(--mute);font-weight:400;}
+.stat .l{font-family:var(--mono);font-size:11px;color:var(--mute);margin-top:4px;letter-spacing:.04em;}
+
+table.tt{border-collapse:collapse;width:100%;font-size:13px;}
+table.tt th{font-family:var(--mono);font-size:11px;color:var(--mute);text-align:left;font-weight:400;
+  padding:6px 10px;border-bottom:1px solid var(--line2);letter-spacing:.05em;}
+table.tt td{padding:7px 10px;border-bottom:1px solid var(--line);color:var(--ink2);font-variant-numeric:tabular-nums;}
+table.tt td b{color:var(--ink);font-weight:600;}
+
+.verdict{display:flex;flex-direction:column;gap:12px;}
+.vrow{display:grid;grid-template-columns:52px 1fr 130px;gap:14px;align-items:start;background:var(--panel);
+  border:1px solid var(--line);border-radius:6px;padding:12px 16px;}
+.vrow .h{font-family:var(--mono);font-size:15px;color:var(--acc);font-weight:700;}
+.vrow .d{font-size:13.5px;color:var(--ink2);line-height:1.5;}
+.vrow .s{text-align:right;}
+@media (prefers-reduced-motion:reduce){
+  .slide,.brow .fillb,.gprow{transition:none;}
+}
+
+/* ============================================================
+   THESIS DECK ADDITIONS — figure frames, primitive-family
+   palette, chapter dividers, redrawn-figure primitives.
+   ============================================================ */
+:root{
+  --fam-sep:#a8546a;      /* separation and division — Rose */
+  --fam-mix:#4a7a5a;      /* aggregation and mixing — Sage */
+  --fam-transfer:#2f6f9e; /* material transfer — Sky */
+  --fam-surface:#6a5aa8;  /* surface interaction — Lavender */
+  --fig-ink:#16212c; --fig-line:#8d9aa8; --fig-fill:#ffffff;
+}
+:root[data-theme="dark"]{
+  --fam-sep:#d98da4; --fam-mix:#6fc48c; --fam-transfer:#63a8de; --fam-surface:#a394e0;
+  --fig-ink:#e9eef5; --fig-line:#4a5b6d; --fig-fill:#0f1720;
+}
+/* chapter divider slides */
+.chapdiv{display:flex;flex-direction:column;justify-content:center;height:100%;}
+.chapdiv .num{font-family:var(--mono);font-size:13px;color:var(--acc);letter-spacing:.14em;}
+.chapdiv h1{font-size:44px;line-height:1.1;margin:12px 0 0;max-width:22ch;letter-spacing:-.02em;}
+.chapdiv .sub{font-size:16px;color:var(--ink2);margin-top:16px;max-width:60ch;line-height:1.5;}
+.chapdiv .ties{margin-top:26px;display:flex;gap:10px;flex-wrap:wrap;}
+/* figures: photos from the thesis and redrawn diagrams share one frame */
+figure.fig{margin:0;}
+figure.fig img{display:block;width:100%;height:auto;max-height:360px;object-fit:contain;
+  border-radius:6px;border:1px solid var(--line2);background:var(--fig-fill);}
+figure.fig.tall img{max-height:520px;}
+figure.fig svg{display:block;width:100%;height:auto;}
+figure.fig figcaption{font-size:11px;color:var(--mute);line-height:1.4;margin-top:6px;}
+figure.fig figcaption b{color:var(--ink2);font-weight:600;}
+.figrow{display:grid;gap:12px;}
+/* a figure that steps back once the reveals below it come in */
+figure.fig.yields{transition:max-width .45s ease;max-width:100%;margin-left:auto;margin-right:auto;}
+.slide.stepping figure.fig.yields{max-width:72%;}
+/* primitive-family chips */
+.famchip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;
+  padding:3px 9px;border-radius:3px;border:1px solid currentColor;}
+.famchip .sw{width:8px;height:8px;border-radius:2px;background:currentColor;}
+.famchip.sep{color:var(--fam-sep);} .famchip.mix{color:var(--fam-mix);}
+.famchip.transfer{color:var(--fam-transfer);} .famchip.surface{color:var(--fam-surface);}
+/* compact data tables (thesis tables carried onto slides) */
+table.t{width:100%;border-collapse:collapse;font-size:12px;}
+table.t th{text-align:left;font-family:var(--mono);font-size:10.5px;font-weight:400;color:var(--mute);
+  letter-spacing:.06em;border-bottom:1px solid var(--line2);padding:5px 8px 5px 0;}
+table.t td{padding:5px 8px 5px 0;border-bottom:1px solid var(--line);color:var(--ink2);vertical-align:top;}
+table.t td b{color:var(--ink);font-weight:600;}
+table.t tr:last-child td{border-bottom:none;}
+table.t td.mono,table.t th.mono{font-family:var(--mono);font-size:11px;}
+/* heatmap grid, coloured from JS so it follows the theme */
+.hmap{display:grid;gap:2px;font-family:var(--mono);}
+.hmap .hlab{font-size:11px;color:var(--ink2);display:flex;align-items:center;justify-content:flex-end;padding-right:8px;}
+.hmap .hcol{font-size:10.5px;color:var(--mute);text-align:center;padding-bottom:3px;letter-spacing:.04em;}
+.hmap .cell{font-size:12px;display:flex;align-items:center;justify-content:center;height:30px;border-radius:3px;font-weight:600;}
+/* horizontal bar rows */
+.brows{display:grid;gap:5px;}
+.brow2{display:grid;align-items:center;gap:8px;grid-template-columns:110px 1fr 52px;}
+.brows.wide .brow2{grid-template-columns:168px 1fr 52px;}
+.brow2 .lb{font-family:var(--mono);font-size:11px;color:var(--ink2);text-align:right;}
+.brow2 .tr{background:var(--panel2);border-radius:3px;height:18px;overflow:hidden;}
+.brow2 .fillb{height:100%;width:0;border-radius:3px;transition:width .7s cubic-bezier(.2,.7,.2,1);}
+.brow2 .vl{font-family:var(--mono);font-size:11px;color:var(--ink);text-align:right;}
+/* hypothesis / requirement cards */
+.hyp{border-left:3px solid var(--acc);padding:10px 14px;background:var(--panel);border-radius:0 6px 6px 0;}
+.hyp .tag{font-family:var(--mono);font-size:11px;color:var(--acc);letter-spacing:.08em;}
+.hyp p{margin:5px 0 0;font-size:13.5px;line-height:1.5;color:var(--ink2);}
+.hyp p b{color:var(--ink);}
+.stat{display:flex;flex-direction:column;gap:2px;}
+.stat .v{font-size:30px;font-weight:700;letter-spacing:-.02em;color:var(--ink);}
+.stat .l{font-family:var(--mono);font-size:10px;color:var(--mute);letter-spacing:.05em;line-height:1.35;}
+</style>
+</head><body><div id="viewport">
+<div id="stage">
+  <div id="topbar">
+    <span class="dot"></span>
+    <span class="sess">Vanessa Hassouna · hassouna@uni-bremen.de</span>
+    <span>Institute for Artificial Intelligence · University of Bremen</span>
+    <span class="right">
+      <span id="hudchap">ch. 1 · introduction</span>
+      <span id="hudframe">frame 01</span>
+    </span>
+  </div>
+
+  <!-- ═════════ TITLE ═════════ -->
+  <section class="slide" id="title">
+    <div class="chapdiv">
+      <p class="eyebrow">// doctoral defense <span class="ph">— Vanessa Hassouna</span></p>
+      <h1 style="font-size:38px;max-width:30ch;">From Underspecified Task Descriptions to Robotic Agents Executing Complex Household Activities</h1>
+      <p class="sub" style="font-size:17px;max-width:52ch;">Object-Anchored Action Templates: one stable phase structure per primitive family, anchored in object geometry, grounded from contextual knowledge, monitored during execution.</p>
+      <div class="byline" style="margin-top:26px;">
+        <b>Vanessa Hassouna</b><br>
+        Institute for Artificial Intelligence · University of Bremen
+      </div>
+      <div class="ties">
+        <span class="famchip sep"><span class="sw"></span>separation &amp; division</span>
+        <span class="famchip mix"><span class="sw"></span>aggregation &amp; mixing</span>
+        <span class="famchip transfer"><span class="sw"></span>material transfer</span>
+        <span class="famchip surface"><span class="sw"></span>surface interaction</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════ CH 1 DIVIDER ═════════ -->
+  <section class="slide" id="c1" data-chap="1 · introduction">
+    <div class="chapdiv">
+      <p class="num">CHAPTER 1</p>
+      <h1>Introduction</h1>
+      <p class="sub">Household instructions specify the intended outcome and leave the execution parameters unbound. This chapter states the problem, the scope, the three hypotheses, and the seven evaluation requirements.</p>
+    </div>
+  </section>
+
+  <!-- 1.1 motivation -->
+  <section class="slide" id="s1a" data-chap="1 · introduction">
+    <p class="eyebrow">// 1 · motivation <span class="ph">— "prepare breakfast"</span></p>
+    <h2>We expect robots to act in our everyday world</h2>
+    <div class="cols" style="grid-template-columns:1.25fr .95fr;">
+      <div class="col">
+        <figure class="fig">
+          <img src="thesis_img/intro/image1.png" alt="TIAGo and PR2 preparing a meal in a domestic kitchen">
+          <figcaption><b>Fig. 1.1</b> · Collaborative meal preparation: TIAGo stabilises and monitors while PR2 stirs a heated pot. Image © Universität Bremen.</figcaption>
+        </figure>
+      </div>
+      <div class="col">
+        <div class="code" style="font-size:15px;line-height:2;"><span class="kw">Cut&nbsp;</span><span class="sl">the bread into slices.</span><br><span class="kw">Pour&nbsp;</span><span class="sl">the juice.</span><br><span class="kw">Spread&nbsp;</span><span class="sl">the butter on my toast.</span><br><span class="kw">Mix&nbsp;</span><span class="sl">the ingredients.</span></div>
+        <p class="lead" style="margin-top:14px;">Each requires physical contact with an object that will be <b style="color:var(--ink)">permanently changed</b>.</p>
+        <p class="small" style="margin-top:12px;">A thick sourdough loaf needs a different cutting motion than a cucumber, just as honey pours differently than water<a class="cite" data-ref="yamaguchi2018pouring"></a>. The verbal description is short; none of it is executable.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1.2 underdetermination -->
+  <section class="slide" id="s1b" data-chap="1 · introduction">
+    <p class="eyebrow">// 1 · the problem <span class="ph">— what "cut the cucumber" leaves open</span></p>
+    <h2>Easy to state. Hard to execute.</h2>
+    <figure class="fig">
+      <svg viewBox="0 0 1160 226" role="img" aria-label="A single instruction expands into tool, contact surface, technique, force and layout parameters, all of which must be resolved before motion can be planned.">
+        <defs>
+          <marker id="ar1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--acc)"/>
+          </marker>
+        </defs>
+        <g font-family="var(--mono)" font-size="10.5" letter-spacing=".06em" fill="var(--mute)">
+          <text x="6" y="12">INSTRUCTION</text><text x="360" y="12">UNRESOLVED EXECUTION PARAMETERS</text><text x="920" y="12">REQUIRED</text>
+        </g>
+        <rect x="6" y="86" width="250" height="50" rx="6" fill="none" stroke="var(--acc)" stroke-width="1.5"/>
+        <text x="24" y="117" font-size="17" fill="var(--ink)" font-family="var(--mono)">cut(cucumber)</text>
+        <g stroke="var(--acc)" stroke-width="1.2" fill="none" opacity=".8">
+          <path d="M258 111 H310 V32 H352" marker-end="url(#ar1)"/>
+          <path d="M258 111 H310 V72 H352" marker-end="url(#ar1)"/>
+          <path d="M258 111 H310 V111 H352" marker-end="url(#ar1)"/>
+          <path d="M258 111 H310 V150 H352" marker-end="url(#ar1)"/>
+          <path d="M258 111 H310 V189 H352" marker-end="url(#ar1)"/>
+        </g>
+        <g font-size="14" fill="var(--ink)">
+          <rect x="356" y="18" width="300" height="28" rx="4" fill="none" stroke="var(--fig-line)"/><text x="370" y="37">which tool? — knife, blade geometry</text>
+          <rect x="356" y="58" width="300" height="28" rx="4" fill="none" stroke="var(--fig-line)"/><text x="370" y="77">which separating surface, which anchor?</text>
+          <rect x="356" y="97" width="300" height="28" rx="4" fill="none" stroke="var(--fig-line)"/><text x="370" y="116">saw or slice? how many cuts?</text>
+          <rect x="356" y="136" width="300" height="28" rx="4" fill="none" stroke="var(--fig-line)"/><text x="370" y="155">how deep, how much force?</text>
+          <rect x="356" y="175" width="300" height="28" rx="4" fill="none" stroke="var(--fig-line)"/><text x="370" y="194">which arm, which support, where?</text>
+        </g>
+        <path d="M660 111 H714" stroke="var(--acc)" stroke-width="1.5" fill="none" marker-end="url(#ar1)"/>
+        <rect x="718" y="60" width="436" height="102" rx="6" fill="none" stroke="var(--acc)" stroke-width="1.5"/>
+        <text x="738" y="88" font-size="15" fill="var(--ink)">every parameter resolved <tspan font-style="italic">from this object,</tspan></text>
+        <text x="738" y="110" font-size="15" fill="var(--ink)"><tspan font-style="italic">this scene, this robot</tspan> — before motion exists</text>
+        <text x="738" y="140" font-size="12.5" fill="var(--mute)" font-family="var(--mono)">the execution context is not fixed in advance</text>
+      </svg>
+      <figcaption><b>Redrawn from Fig. 1.2</b> · These open parameters are not controller details — they are part of the action semantics. A cutting motion that avoids the object does not count as cutting.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 1.3 definition + families -->
+  <section class="slide" id="s1c" data-chap="1 · introduction">
+    <p class="eyebrow">// 1 · scope <span class="ph">— Definition 1.1 and the four primitive families</span></p>
+    <h2>State-changing manipulation</h2>
+    <div class="panel" style="border-left:3px solid var(--acc);">
+      <p class="lead" style="margin:0;font-size:14.5px;">Manipulation in which the intended outcome is a <b style="color:var(--ink)">material, containment, distribution, or surface-state change</b> of the manipulated object or medium — rather than only a change in object pose.</p>
+    </div>
+    <div class="figrow" style="grid-template-columns:repeat(4,1fr);margin-top:16px;">
+      <figure class="fig"><img src="thesis_img/cutting/cutting-abstract-2.png" alt="separation and division sketch">
+        <figcaption><span class="famchip sep"><span class="sw"></span>separation &amp; division</span><br>one connected body → disconnected parts. <i>Cutting.</i></figcaption></figure>
+      <figure class="fig"><img src="thesis_img/mixing/mix-abstract-2.png" alt="aggregation and mixing sketch">
+        <figcaption><span class="famchip mix"><span class="sw"></span>aggregation &amp; mixing</span><br>concentration gradients → uniformity. <i>Mixing.</i></figcaption></figure>
+      <figure class="fig"><img src="thesis_img/pouring/pour-abstract-2.png" alt="material transfer sketch">
+        <figcaption><span class="famchip transfer"><span class="sw"></span>material transfer</span><br>bulk material across a container boundary. <i>Pouring.</i></figcaption></figure>
+      <figure class="fig"><img src="thesis_img/surface_interaction/surface-interaction-2.png" alt="surface interaction sketch">
+        <figcaption><span class="famchip surface"><span class="sw"></span>surface interaction</span><br>remove residue from / distribute onto a surface. <i>Wiping, spreading.</i></figcaption></figure>
+    </div>
+    <p class="small" style="margin-top:12px;">Out of scope by construction: assembly, deformation without separation, thermally induced state change. Scope restrictions are not weaknesses of the representation — they are what make its claims precise.</p>
+  </section>
+
+  <!-- 1.4 transport contrast -->
+  <section class="slide" id="s1d" data-chap="1 · introduction">
+    <p class="eyebrow">// 1 · why this is different in kind <span class="ph">— transport vs. state change</span></p>
+    <h2>Transport preserves the object. State-changing manipulation targets it.</h2>
+    <figure class="fig">
+      <svg viewBox="0 0 1160 250" role="img" aria-label="Transport is judged by final pose and is reversible; state-changing manipulation is judged by the produced material effect and is irreversible.">
+        <g font-family="var(--mono)" font-size="10.5" letter-spacing=".06em" fill="var(--mute)">
+          <text x="6" y="12">TRANSPORT — solved for pick-and-place</text><text x="600" y="12">STATE-CHANGING MANIPULATION — the open problem</text>
+        </g>
+        <rect x="6" y="22" width="556" height="216" rx="6" fill="none" stroke="var(--fig-line)" stroke-dasharray="3 3"/>
+        <rect x="598" y="22" width="556" height="216" rx="6" fill="none" stroke="var(--acc)"/>
+        <!-- transport -->
+        <g>
+          <rect x="46" y="130" width="54" height="54" rx="5" fill="none" stroke="var(--ink2)" stroke-width="1.5"/>
+          <path d="M112 157 C170 100 230 100 288 157" stroke="var(--fig-line)" stroke-width="1.4" fill="none" stroke-dasharray="4 3"/>
+          <rect x="300" y="130" width="54" height="54" rx="5" fill="none" stroke="var(--ink2)" stroke-width="1.5"/>
+          <text x="46" y="204" font-size="12.5" fill="var(--mute)" font-family="var(--mono)">pose A</text>
+          <text x="300" y="204" font-size="12.5" fill="var(--mute)" font-family="var(--mono)">pose B</text>
+          <text x="30" y="60" font-size="15" fill="var(--ink)">success is <tspan font-style="italic">relational</tspan>: the object ends up elsewhere,</text>
+          <text x="30" y="82" font-size="15" fill="var(--ink)">materially unchanged. A bad grasp can be redone.</text>
+          <text x="392" y="150" font-size="12.5" fill="var(--ok)" font-family="var(--mono)">reversible</text>
+          <text x="392" y="170" font-size="12.5" fill="var(--mute)" font-family="var(--mono)">reuse grasp +</text>
+          <text x="392" y="186" font-size="12.5" fill="var(--mute)" font-family="var(--mono)">collision model</text>
+        </g>
+        <!-- state change -->
+        <g>
+          <rect x="638" y="130" width="54" height="54" rx="5" fill="none" stroke="var(--fam-sep)" stroke-width="1.5"/>
+          <path d="M704 157 H872" stroke="var(--fam-sep)" stroke-width="1.4" fill="none" marker-end="url(#ar1)"/>
+          <rect x="884" y="130" width="24" height="54" rx="4" fill="none" stroke="var(--fam-sep)" stroke-width="1.5"/>
+          <rect x="914" y="130" width="24" height="54" rx="4" fill="none" stroke="var(--fam-sep)" stroke-width="1.5"/>
+          <text x="638" y="204" font-size="12.5" fill="var(--mute)" font-family="var(--mono)">connected</text>
+          <text x="884" y="204" font-size="12.5" fill="var(--mute)" font-family="var(--mono)">divided</text>
+          <text x="622" y="60" font-size="15" fill="var(--ink)">success is the <tspan font-style="italic">material effect</tspan>, produced while</text>
+          <text x="622" y="82" font-size="15" fill="var(--ink)">contact, support, containment and flow hold.</text>
+          <text x="962" y="150" font-size="12.5" fill="var(--crit)" font-family="var(--mono)">irreversible</text>
+          <text x="962" y="170" font-size="12.5" fill="var(--mute)" font-family="var(--mono)">a misplaced cut</text>
+          <text x="962" y="186" font-size="12.5" fill="var(--mute)" font-family="var(--mono)">cannot be undone</text>
+        </g>
+      </svg>
+      <figcaption>Mobile pick-and-place already transfers across objects, robots and environments from one shared representation<a class="cite" data-ref="kazhoyan2021ease"></a>. The question of this thesis is whether that generalisability extends to actions whose <b>site of change is the object itself</b>.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 1.5 hypotheses -->
+  <section class="slide" id="s1e" data-chap="1 · introduction">
+    <p class="eyebrow">// 1 · research hypotheses <span class="ph">— three connected subproblems</span></p>
+    <h2>Action structure · geometric realisation · execution context</h2>
+    <div class="cols" style="grid-template-columns:repeat(3,1fr);gap:14px;">
+      <div class="col hyp" style="border-color:var(--fam-sep);">
+        <div class="tag" style="color:var(--fam-sep);">HYPOTHESIS 1 — structure</div>
+        <p>Within a defined task scope, the instances of a manipulation action category can be described by a <b>small number of action templates</b> with their specialisations and parameterisations. Parameters are left unbound.</p>
+      </div>
+      <div class="col hyp" style="border-color:var(--fam-transfer);">
+        <div class="tag" style="color:var(--fam-transfer);">HYPOTHESIS 2 — constraints</div>
+        <p>That structure can be represented as a <b>constraint-aware and constraint-enforcing</b> symbolic structure describing a set of admissible executions — constraints explicit at each phase as applicability conditions, motion bounds, and success criteria.</p>
+      </div>
+      <div class="col hyp" style="border-color:var(--fam-mix);">
+        <div class="tag" style="color:var(--fam-mix);">HYPOTHESIS 3 — context</div>
+        <p><b>Contextual knowledge is necessary</b> for correct template instantiation. Object-structural constraints, material properties and tool affordances identify execution-critical distinctions that object geometry alone cannot resolve.</p>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px;">
+      <p class="small" style="margin:0;">Without a stable unit there is nothing to parameterise, monitor or transfer (H1). A stable unit is useful only if it generates physically admissible motion for a concrete instance (H2). And which executions are admissible depends on information absent from the action description — a cut anchored correctly on a mango still fails if nothing can express that there is a pit to avoid (H3).</p>
+    </div>
+  </section>
+
+  <!-- 1.6 requirements -->
+  <section class="slide" id="s1f" data-chap="1 · introduction">
+    <p class="eyebrow">// 1 · evaluation criteria <span class="ph">— R1–R7, used throughout the thesis</span></p>
+    <h2>What would count as evidence</h2>
+    <table class="t">
+      <tr><th style="width:52px;">Req.</th><th style="width:190px;">Name</th><th>Criterion</th></tr>
+      <tr><td class="mono"><b>R1</b></td><td><b>Structural transfer</b></td><td>The same template remains unchanged across object instances, robots and environments within the declared task scope.</td></tr>
+      <tr><td class="mono"><b>R2</b></td><td><b>Object-relative grounding</b></td><td>Open parameters are bound from object geometry, material properties and scene state — not from task-specific constants.</td></tr>
+      <tr><td class="mono"><b>R3</b></td><td><b>Explicit constraints</b></td><td>Applicability constraints, phase invariants, motion bounds and success criteria are represented explicitly enough to be checked.</td></tr>
+      <tr><td class="mono"><b>R4</b></td><td><b>Runtime instantiation</b></td><td>An underdetermined action designator resolves into a fully executable motion description through a fixed dependency order.</td></tr>
+      <tr><td class="mono"><b>R5</b></td><td><b>Monitored execution</b></td><td>The conditions that justify each phase are checked during execution, not only before it starts.</td></tr>
+      <tr><td class="mono"><b>R6</b></td><td><b>Diagnosable failure</b></td><td>Failures are localisable to applicability, symbolic binding, scene binding, geometric binding, controller execution or perception state.</td></tr>
+      <tr><td class="mono"><b>R7</b></td><td><b>Implementation usability</b></td><td>The representation maps to concrete software interfaces without rewriting each action instance by hand.</td></tr>
+    </table>
+  </section>
+
+  <!-- 1.7 approach pipeline -->
+  <section class="slide" id="s1g" data-chap="1 · introduction">
+    <p class="eyebrow">// 1 · approach <span class="ph">— from task request to monitored execution</span></p>
+    <h2>The pipeline is deliberately ordered</h2>
+    <figure class="fig">
+      <svg viewBox="0 0 1160 250" role="img" aria-label="Five ordered stages: task description, object resolution, template selection, grounding, and execution monitoring, each with its question, source and result.">
+        <g font-family="var(--mono)" font-size="10" letter-spacing=".05em" fill="var(--mute)">
+          <text x="6" y="12">STAGE</text><text x="6" y="112">SOURCE</text><text x="6" y="188">RESULT</text>
+        </g>
+        <g id="pipe">
+          <g>
+            <rect x="86" y="22" width="196" height="56" rx="6" fill="none" stroke="var(--acc)" stroke-width="1.4"/>
+            <text x="100" y="46" font-size="14" fill="var(--ink)">task description</text>
+            <text x="100" y="66" font-size="11.5" fill="var(--mute)" font-family="var(--mono)">what is requested?</text>
+            <text x="100" y="126" font-size="12" fill="var(--ink2)">instruction / planner</text>
+            <text x="100" y="202" font-size="12" fill="var(--ink2)">underdetermined</text>
+            <text x="100" y="218" font-size="12" fill="var(--ink2)">action designator</text>
+          </g>
+          <g>
+            <rect x="298" y="22" width="196" height="56" rx="6" fill="none" stroke="var(--acc)" stroke-width="1.4"/>
+            <text x="312" y="46" font-size="14" fill="var(--ink)">object resolution</text>
+            <text x="312" y="66" font-size="11.5" fill="var(--mute)" font-family="var(--mono)">which world objects?</text>
+            <text x="312" y="126" font-size="12" fill="var(--ink2)">perception, Semantic</text>
+            <text x="312" y="142" font-size="12" fill="var(--ink2)">Digital Twin</text>
+            <text x="312" y="202" font-size="12" fill="var(--ink2)">resolved instances:</text>
+            <text x="312" y="218" font-size="12" fill="var(--ink2)">target, tool, support</text>
+          </g>
+          <g>
+            <rect x="510" y="22" width="196" height="56" rx="6" fill="none" stroke="var(--acc)" stroke-width="1.4"/>
+            <text x="524" y="46" font-size="14" fill="var(--ink)">template selection</text>
+            <text x="524" y="66" font-size="11.5" fill="var(--mute)" font-family="var(--mono)">which structure applies?</text>
+            <text x="524" y="126" font-size="12" fill="var(--ink2)">primitive family,</text>
+            <text x="524" y="142" font-size="12" fill="var(--ink2)">task scope</text>
+            <text x="524" y="202" font-size="12" fill="var(--ink2)">OAAT instance: phases,</text>
+            <text x="524" y="218" font-size="12" fill="var(--ink2)">hooks, required slots</text>
+          </g>
+          <g>
+            <rect x="722" y="22" width="196" height="56" rx="6" fill="none" stroke="var(--acc)" stroke-width="1.4"/>
+            <text x="736" y="46" font-size="14" fill="var(--ink)">grounding</text>
+            <text x="736" y="66" font-size="11.5" fill="var(--mute)" font-family="var(--mono)">executable <tspan font-style="italic">here</tspan>?</text>
+            <text x="736" y="126" font-size="12" fill="var(--ink2)">knowledge graph, scene</text>
+            <text x="736" y="142" font-size="12" fill="var(--ink2)">state, object geometry</text>
+            <text x="736" y="202" font-size="12" fill="var(--ink2)">tool, technique, arm,</text>
+            <text x="736" y="218" font-size="12" fill="var(--ink2)">anchor, normal, depth</text>
+          </g>
+          <g>
+            <rect x="934" y="22" width="220" height="56" rx="6" fill="none" stroke="var(--ok)" stroke-width="1.4"/>
+            <text x="948" y="46" font-size="14" fill="var(--ink)">execution monitoring</text>
+            <text x="948" y="66" font-size="11.5" fill="var(--mute)" font-family="var(--mono)">do the constraints hold?</text>
+            <text x="948" y="126" font-size="12" fill="var(--ink2)">controller feedback,</text>
+            <text x="948" y="142" font-size="12" fill="var(--ink2)">current world state</text>
+            <text x="948" y="202" font-size="12" fill="var(--ink2)">continue, correct,</text>
+            <text x="948" y="218" font-size="12" fill="var(--ink2)">re-bind, or diagnose</text>
+          </g>
+        </g>
+        <g stroke="var(--acc)" stroke-width="1.4" fill="none">
+          <path d="M282 50 H294" marker-end="url(#ar1)"/><path d="M494 50 H506" marker-end="url(#ar1)"/>
+          <path d="M706 50 H718" marker-end="url(#ar1)"/><path d="M918 50 H930" marker-end="url(#ar1)"/>
+        </g>
+        <path d="M1044 82 V96 H660 V82" stroke="var(--ok)" stroke-width="1.2" fill="none" stroke-dasharray="4 3" marker-end="url(#ar1)"/>
+        <text x="666" y="94" font-size="11" fill="var(--ok)" font-family="var(--mono)">local re-binding keeps the phase</text>
+      </svg>
+      <figcaption><b>Redrawn from Tab. 1.2 / Fig. 1.3</b> · Object resolution precedes geometric binding because a surface normal only exists relative to an instance. Template selection precedes grounding because the family determines which slots are required. Symbolic grounding precedes geometry because tool and technique constrain what geometry is needed.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 1.8 contributions -->
+  <section class="slide" id="s1h" data-chap="1 · introduction">
+    <p class="eyebrow">// 1 · contribution <span class="ph">— six results</span></p>
+    <h2>What this thesis contributes</h2>
+    <div class="arch" style="grid-template-columns:repeat(3,1fr);">
+      <div class="anode"><div class="t">representational</div><div class="d">State-changing manipulation encoded at a level <b>between symbolic action names and fixed trajectories</b>: ordered phase structures whose motion generators are anchored in action-relative object geometry, with applicability governed by explicit material and physical constraints. <span class="mono" style="color:var(--acc);">H1, H2</span></div></div>
+      <div class="anode"><div class="t">empirical</div><div class="d">The phase structure is <b>derivable from observation alone</b>, without assuming the OAAT decomposition in advance — shared phases, technique variants and interaction regions across four household action types. <span class="mono" style="color:var(--acc);">H1</span></div></div>
+      <div class="anode"><div class="t">grounding</div><div class="d">Underspecified designators become executable by resolving object, tool, technique, scene and parameter slots through explicit knowledge queries and policies. The geometry-only null model <b>lacks bindings geometry cannot supply</b>. <span class="mono" style="color:var(--acc);">H3</span></div></div>
+    </div>
+    <div class="arch" style="grid-template-columns:repeat(3,1fr);margin-top:12px;">
+      <div class="anode"><div class="t">evaluation</div><div class="d"><b>7,693</b> seed-controlled executions across <b>8 platforms</b>, <b>3 environments</b> and <b>4 primitive families</b>, varying only bindings and geometric parameters.</div></div>
+      <div class="anode"><div class="t">real-world deployment</div><div class="d">RoboCup@Home deployment plus real-robot cutting on bread, cucumber and zucchini, and a separate pouring experiment across three source containers.</div></div>
+      <div class="anode"><div class="t">open source &amp; VRB</div><div class="d">Executions contributed as NEEM-structured episodic memory<a class="cite" data-ref="beetz2015openease"></a>, and deployed as an Action Cores Lab in the Virtual Research Building<a class="cite" data-ref="vrb2024"></a>.</div></div>
+    </div>
+  </section>
+
+  <!-- ═════════ CH 2 DIVIDER ═════════ -->
+  <section class="slide" id="c2" data-chap="2 · background">
+    <div class="chapdiv">
+      <p class="num">CHAPTER 2</p>
+      <h1>Background and System Architecture</h1>
+      <p class="sub">The underdetermination problem, the cognitive architecture the OAAT lives in, and the image-schema theory that explains why phase structure recurs at all.</p>
+    </div>
+  </section>
+
+  <!-- 2.1 what is missing -->
+  <section class="slide" id="s2a" data-chap="2 · background">
+    <p class="eyebrow">// 2 · related work <span class="ph">— four requirements, no single structure</span></p>
+    <h2>The architecture exists. The intermediate representation does not.</h2>
+    <figure class="fig">
+      <svg viewBox="0 0 1160 208" role="img" aria-label="Parameterised representations, constraint-based controllers and knowledge-based approaches each cover some of the four requirements; none covers all four in one structure.">
+        <g font-family="var(--mono)" font-size="10.5" fill="var(--mute)" letter-spacing=".05em">
+          <text x="326" y="14">REUSABLE ACROSS</text><text x="326" y="28">OBJECT INSTANCES</text>
+          <text x="536" y="14">ANCHORED TO OBJECT</text><text x="536" y="28">NOT ROBOT STATE</text>
+          <text x="746" y="14">EXPLICIT CONSTRAINTS</text><text x="746" y="28">AT EVERY PHASE</text>
+          <text x="956" y="14">GROUNDED FROM</text><text x="956" y="28">CONTEXT AT RUNTIME</text>
+        </g>
+        <g font-size="13.5" fill="var(--ink)">
+          <text x="6" y="66">parameterised action representations</text>
+          <text x="6" y="106">constraint-based motion controllers</text>
+          <text x="6" y="146">knowledge-based reasoning systems</text>
+          <text x="6" y="190" font-weight="600" fill="var(--acc)">Object-Anchored Action Template</text>
+        </g>
+        <g stroke="var(--fig-line)" stroke-width="1" opacity=".5">
+          <path d="M6 78 H1150"/><path d="M6 118 H1150"/><path d="M6 158 H1150"/>
+        </g>
+        <g font-family="var(--mono)" font-size="15">
+          <g fill="var(--ok)"><text x="386" y="70">✓</text><text x="596" y="70">·</text><text x="806" y="70">·</text><text x="1016" y="70">·</text></g>
+          <g fill="var(--ok)"><text x="386" y="110">·</text><text x="596" y="110">✓</text><text x="806" y="110">✓</text><text x="1016" y="110">·</text></g>
+          <g fill="var(--ok)"><text x="386" y="150">·</text><text x="596" y="150">·</text><text x="806" y="150">·</text><text x="1016" y="150">✓</text></g>
+          <g fill="var(--acc)" font-weight="700"><text x="386" y="194">✓</text><text x="596" y="194">✓</text><text x="806" y="194">✓</text><text x="1016" y="194">✓</text></g>
+        </g>
+      </svg>
+      <figcaption>The surrounding architecture can already represent symbolic tasks, maintain a semantic world model, reason over object properties and execute constrained motion. What is missing is the structure that tells it <b>how a state-changing action decomposes, which bindings are required, which depend on knowledge rather than geometry, and which constraints define success per phase</b>.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 2.2 system architecture -->
+  <section class="slide" id="s2b" data-chap="2 · background">
+    <p class="eyebrow">// 2 · system architecture <span class="ph">— where the OAAT sits</span></p>
+    <h2>PyCRAM · RoboKudo · Semantic Digital Twin · KnowRob · Giskard</h2>
+    <figure class="fig">
+      <svg viewBox="0 0 1160 524" role="img" aria-label="The CRAM architecture: a plan executive holding the generalized action plan and its OAAT, querying KnowRob for body motion specifications, over RoboKudo, the Semantic Digital Twin and Giskard, with executions recorded as NEEMs.">
+        <defs>
+          <marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--acc)"/>
+          </marker>
+        </defs>
+        <!-- outer frame -->
+        <rect x="26" y="6" width="1108" height="500" rx="8" fill="var(--acc)" fill-opacity=".05" stroke="var(--acc)" stroke-width="1.4"/>
+        <text x="580" y="36" text-anchor="middle" font-size="19" font-weight="700" fill="var(--mute)" letter-spacing=".02em">CRAM Architecture</text>
+
+        <!-- plan executive -->
+        <rect x="66" y="56" width="272" height="196" rx="6" fill="var(--panel)" stroke="var(--acc)" stroke-width="1.8"/>
+        <text x="202" y="82" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">Plan Executive</text>
+        <rect x="82" y="92" width="240" height="44" rx="4" fill="var(--warn)" fill-opacity=".28" stroke="var(--warn)" stroke-width="1.2"/>
+        <text x="202" y="110" text-anchor="middle" font-size="12" fill="var(--ink)">Generalized action plan</text>
+        <text x="202" y="127" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">OAAT</text>
+        <text x="82" y="160" font-size="12.5" fill="var(--ink2)">Contextualize</text>
+        <text x="82" y="176" font-size="12.5" fill="var(--ink2)">Action</text>
+        <text x="82" y="192" font-size="12.5" fill="var(--ink2)">Designator</text>
+        <rect x="82" y="206" width="240" height="30" rx="4" fill="var(--bg)" stroke="var(--acc)" stroke-width="1.2"/>
+        <text x="202" y="226" text-anchor="middle" font-size="12.5" fill="var(--ink)">Motion plan</text>
+
+        <!-- knowrob -->
+        <ellipse cx="762" cy="152" rx="188" ry="106" fill="var(--acc)" fill-opacity=".10" stroke="var(--acc)" stroke-width="1.4"/>
+        <text x="762" y="62" text-anchor="middle" font-size="16" font-weight="700" fill="var(--ink)">KnowRob 3.0</text>
+        <circle cx="668" cy="122" r="34" fill="var(--panel)" stroke="var(--acc)" stroke-width="1.2"/>
+        <text x="668" y="127" text-anchor="middle" font-size="12.5" fill="var(--ink)">EQL</text>
+        <circle cx="856" cy="122" r="34" fill="var(--panel)" stroke="var(--acc)" stroke-width="1.2"/>
+        <text x="856" y="127" text-anchor="middle" font-size="12.5" fill="var(--ink)">JPT</text>
+        <circle cx="762" cy="222" r="34" fill="var(--panel)" stroke="var(--acc)" stroke-width="1.2"/>
+        <text x="762" y="227" text-anchor="middle" font-size="11.5" fill="var(--ink)">Ontology</text>
+        <path d="M762 122 L794 176 H730 Z" fill="var(--panel)" stroke="var(--acc)" stroke-width="1.2"/>
+        <text x="762" y="168" text-anchor="middle" font-size="10" fill="var(--ink2)">Reasoning</text>
+        <g stroke="var(--acc)" stroke-width="1" fill="none" opacity=".8">
+          <path d="M700 132 L734 152" marker-end="url(#aa)"/>
+          <path d="M824 132 L790 152" marker-end="url(#aa)"/>
+          <path d="M762 188 V196" marker-end="url(#aa)" marker-start="url(#aa)"/>
+        </g>
+
+        <!-- plan executive <-> knowrob -->
+        <g stroke="var(--acc)" stroke-width="1.5" fill="none">
+          <path d="M338 152 H600" marker-end="url(#aa)"/>
+          <path d="M600 186 H338" marker-end="url(#aa)"/>
+        </g>
+        <text x="352" y="146" font-size="12.5" fill="var(--ink2)">Body motion query</text>
+        <text x="352" y="204" font-size="12.5" fill="var(--ink2)">Motion specifications</text>
+
+        <!-- neems -->
+        <g fill="var(--panel)" stroke="var(--acc)" stroke-width="1.4">
+          <path d="M888 296 V344 A96 16 0 0 0 1080 344 V296"/>
+          <ellipse cx="984" cy="296" rx="96" ry="16"/>
+        </g>
+        <text x="984" y="322" text-anchor="middle" font-size="13" fill="var(--ink)">NEEMs</text>
+        <text x="984" y="338" text-anchor="middle" font-size="11" fill="var(--ink2)">(episodic memory)</text>
+        <path d="M944 194 H1040 V280" stroke="var(--acc)" stroke-width="1.5" fill="none" marker-end="url(#aa)"/>
+
+        <!-- executives -->
+        <rect x="66" y="374" width="248" height="60" rx="6" fill="var(--panel)" stroke="var(--acc)" stroke-width="1.6"/>
+        <text x="190" y="398" text-anchor="middle" font-size="14.5" font-weight="700" fill="var(--ink)">RoboKudo</text>
+        <text x="190" y="416" text-anchor="middle" font-size="11.5" fill="var(--ink2)">Perception Executive</text>
+        <rect x="344" y="374" width="266" height="60" rx="6" fill="var(--panel)" stroke="var(--acc)" stroke-width="1.6"/>
+        <text x="477" y="398" text-anchor="middle" font-size="14.5" font-weight="700" fill="var(--ink)">Semantic Digital Twin</text>
+        <text x="477" y="416" text-anchor="middle" font-size="11.5" fill="var(--ink2)">Shared Belief State</text>
+        <rect x="640" y="374" width="266" height="60" rx="6" fill="var(--panel)" stroke="var(--acc)" stroke-width="1.6"/>
+        <text x="773" y="398" text-anchor="middle" font-size="14.5" font-weight="700" fill="var(--ink)">Giskard</text>
+        <text x="773" y="416" text-anchor="middle" font-size="11.5" fill="var(--ink2)">Action Executive</text>
+        <g stroke="var(--acc)" stroke-width="1.5" fill="none">
+          <path d="M314 404 H340" marker-end="url(#aa)"/>
+          <path d="M640 404 H614" marker-end="url(#aa)"/>
+        </g>
+        <!-- every component talks to every other one over the shared bus, and the bus
+             is what gets written into the episodic memory -->
+        <g stroke="var(--acc)" stroke-width="1.5" fill="none">
+          <path d="M198 340 H884" marker-end="url(#aa)"/>
+          <path d="M200 330 V256" marker-end="url(#aa)" marker-start="url(#aa)"/>
+          <path d="M700 330 V260" marker-end="url(#aa)" marker-start="url(#aa)"/>
+          <path d="M250 350 V372" marker-end="url(#aa)" marker-start="url(#aa)"/>
+          <path d="M477 350 V372" marker-end="url(#aa)" marker-start="url(#aa)"/>
+          <path d="M773 350 V372" marker-end="url(#aa)" marker-start="url(#aa)"/>
+        </g>
+
+        <!-- world in, motion out, experience back -->
+        <g stroke="var(--acc)" stroke-width="1.5" fill="none">
+          <path d="M6 112 H62" marker-end="url(#aa)"/>
+          <path d="M6 404 H62" marker-end="url(#aa)"/>
+          <path d="M906 404 H1154" marker-end="url(#aa)"/>
+          <path d="M1096 404 V470 H60 V440" marker-end="url(#aa)"/>
+        </g>
+        <text x="578" y="492" text-anchor="middle" font-size="12.5" fill="var(--ink2)">Robot experience</text>
+      </svg>
+      <figcaption><b>Redrawn from Fig. 2.4</b> · The OAAT lives inside the plan executive as the generalized action plan. The contribution is not another robot architecture — it is the representation the existing one was missing.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 2.3 image schemas -->
+  <section class="slide" id="s2c" data-chap="2 · background">
+    <p class="eyebrow">// 2 · image schemas <span class="ph">— why phase boundaries are where they are</span></p>
+    <h2>Phase boundaries are qualitative transitions, not time slices</h2>
+    <div class="cols" style="grid-template-columns:1fr 1fr;">
+      <div class="col">
+        <p class="lead">Contact events are the natural boundaries of phase-specific motor control<a class="cite" data-ref="flanagan2006control"></a>, and they coincide with categorical transitions in the qualitative spatial relation between tool and object.</p>
+        <p class="small" style="margin-top:12px;">Image schema theory explains why human manipulation exhibits stable phase structure at all: the boundaries are where the spatial relation changes <i>kind</i> — free motion becomes contact, contact becomes penetration, containment is entered or left.</p>
+        <p class="small" style="margin-top:12px;">This later yields an independent theoretical check on the four families: each enforces, as a continuous trajectory invariant, the predicate the corresponding image schema defines qualitatively<a class="cite" data-ref="hedblom2020"></a> — extending the image-schematic analysis of cutting<a class="cite" data-ref="dhanabalachandran2021"></a> to all four.</p>
+      </div>
+      <div class="col">
+        <table class="t">
+          <tr><th>Primitive family</th><th>Image schema</th><th>Continuous invariant</th></tr>
+          <tr><td><span class="famchip sep"><span class="sw"></span>separation</span></td><td class="mono">Contact / Blockage</td><td>a separating manifold is crossed</td></tr>
+          <tr><td><span class="famchip mix"><span class="sw"></span>mixing</span></td><td class="mono">Containment</td><td>motion stays inside the admissible volume</td></tr>
+          <tr><td><span class="famchip transfer"><span class="sw"></span>transfer</span></td><td class="mono">Source-Path-Goal</td><td>material crosses a container boundary</td></tr>
+          <tr><td><span class="famchip surface"><span class="sw"></span>surface</span></td><td class="mono">Support / Contact</td><td>motion stays in the contact tangent plane</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════ CH 3 DIVIDER ═════════ -->
+  <section class="slide" id="c3" data-chap="3 · observation">
+    <div class="chapdiv">
+      <p class="num">CHAPTER 3</p>
+      <h1>From Observation to Formalisation</h1>
+      <p class="sub">Generalising actions from demonstration: the phase skeleton, the technique segment, and the interaction region — read off human demonstrations rather than assumed.</p>
+      <div class="ties"><span class="chip">grounds H1 in evidence</span></div>
+    </div>
+  </section>
+
+  <!-- 3.1 segmentation -->
+  <section class="slide" id="s3a" data-chap="3 · observation">
+    <p class="eyebrow">// 3 · segmentation <span class="ph">— an annotated cutting episode</span></p>
+    <h2>Contact events segment the episode</h2>
+    <figure class="fig yields">
+      <svg viewBox="0 0 1160 244" role="img" aria-label="A video episode segmented into approach, technique, reposition and retract by blade contact, blade lift and final lift-off; the physical invariant is enforced inside the technique segment.">
+        <!-- video strip -->
+        <rect x="60" y="20" width="1040" height="56" rx="4" fill="var(--panel2)" stroke="var(--fig-line)"/>
+        <g id="sprockets" fill="var(--bg)"></g>
+        <text x="60" y="14" font-family="var(--mono)" font-size="10.5" fill="var(--mute)" letter-spacing=".05em">VIDEO EPISODE</text>
+        <g font-family="var(--mono)" font-size="11" fill="var(--ink2)">
+          <text x="160" y="53" text-anchor="middle">free motion</text>
+          <text x="450" y="53" text-anchor="middle" fill="var(--fam-sep)" font-weight="600">constrained motion</text>
+          <text x="740" y="53" text-anchor="middle">lift &amp; advance</text>
+          <text x="1010" y="53" text-anchor="middle">withdraw</text>
+        </g>
+        <!-- phase blocks -->
+        <g>
+          <rect x="80" y="148" width="160" height="40" rx="5" fill="none" stroke="var(--fig-line)" stroke-width="1.3"/>
+          <text x="160" y="173" text-anchor="middle" font-size="13.5" fill="var(--ink)">approach</text>
+          <rect x="370" y="142" width="160" height="52" rx="5" fill="none" stroke="var(--fam-sep)" stroke-width="1.8"/>
+          <text x="450" y="166" text-anchor="middle" font-size="13.5" fill="var(--ink)" font-weight="600">technique</text>
+          <text x="450" y="184" text-anchor="middle" font-size="11" fill="var(--fam-sep)" font-family="var(--mono)">saw / slice</text>
+          <rect x="660" y="148" width="160" height="40" rx="5" fill="none" stroke="var(--fig-line)" stroke-width="1.3"/>
+          <text x="740" y="173" text-anchor="middle" font-size="13.5" fill="var(--ink)">reposition</text>
+          <rect x="930" y="148" width="160" height="40" rx="5" fill="none" stroke="var(--fig-line)" stroke-width="1.3"/>
+          <text x="1010" y="173" text-anchor="middle" font-size="13.5" fill="var(--ink)">retract</text>
+        </g>
+        <g stroke="var(--fig-line)" stroke-width="1.2" fill="none">
+          <path d="M240 168 H366" marker-end="url(#ar1)"/><path d="M530 168 H656" marker-end="url(#ar1)"/><path d="M820 168 H926" marker-end="url(#ar1)"/>
+        </g>
+        <!-- boundaries -->
+        <g stroke="var(--ink2)" stroke-width="1.1" stroke-dasharray="5 4">
+          <path d="M305 78 V206"/><path d="M595 78 V206"/><path d="M875 78 V206"/>
+        </g>
+        <g font-family="var(--mono)" font-size="11" text-anchor="middle">
+          <text x="305" y="98" fill="var(--fam-sep)" font-weight="600">contact onset</text>
+          <text x="305" y="112" fill="var(--mute)">blade contact</text>
+          <text x="595" y="98" fill="var(--ink2)">contact release</text>
+          <text x="595" y="112" fill="var(--mute)">blade lifts</text>
+          <text x="875" y="98" fill="var(--ink2)">contact release</text>
+          <text x="875" y="112" fill="var(--mute)">final lift</text>
+        </g>
+        <!-- brace over technique -->
+        <path d="M305 220 V230 H595 V220" stroke="var(--fam-sep)" stroke-width="1.5" fill="none"/>
+        <text x="450" y="243" text-anchor="middle" font-size="12" fill="var(--fam-sep)" font-family="var(--mono)">physical invariant enforced</text>
+        <!-- time axis -->
+        <path d="M60 206 H1120" stroke="var(--fig-line)" stroke-width="1.2" fill="none" marker-end="url(#ar1)"/>
+        <text x="1126" y="210" font-size="11" fill="var(--mute)" font-family="var(--mono)">time</text>
+      </svg>
+      <figcaption><b>Redrawn from Fig. 3.1</b> · The dashed lines mark <b>observable</b> contact events in the video. The technique segment is the interval in which the contact-dependent physical invariant is maintained — the reusable unit is not a trajectory shape but a <b>regime boundary</b>.</figcaption>
+    </figure>
+    <div class="cols" style="grid-template-columns:.62fr 1fr;gap:18px;margin-top:14px;">
+      <div class="col reveal">
+        <p class="mono" style="font-size:10.5px;color:var(--mute);letter-spacing:.06em;margin:0 0 8px;">OBSERVATION SOURCE — MPII COOKING 2<a class="cite" data-ref="MPIIdataset"></a></p>
+        <div style="display:grid;gap:8px;">
+          <div class="stat" style="display:flex;align-items:baseline;gap:12px;padding:8px 14px;"><div class="v">273</div><div class="l" style="margin-top:0;">videos</div></div>
+          <div class="stat" style="display:flex;align-items:baseline;gap:12px;padding:8px 14px;"><div class="v">14,105</div><div class="l" style="margin-top:0;">annotated events</div></div>
+          <div class="stat" style="display:flex;align-items:baseline;gap:12px;padding:8px 14px;"><div class="v">19.4 h</div><div class="l" style="margin-top:0;">labelled activity</div></div>
+        </div>
+        <p class="small" style="margin-top:12px;">The most frequent labels are not state-changing actions but task logistics — <span class="mono">take out</span> 1,747 (12.4%), <span class="mono">move</span> 1,512 (10.7%). The manipulation cores sit underneath that traffic.</p>
+      </div>
+      <div class="col reveal">
+        <table class="t">
+          <tr><th>Primitive family</th><th>Retained MPII labels</th><th style="text-align:right;">Episodes</th><th style="text-align:right;">Corpus share</th><th style="text-align:right;">Duration</th></tr>
+          <tr><td><span class="famchip sep"><span class="sw"></span>separation</span></td><td class="mono">cut apart · slice · cut dice · chop</td><td class="mono" style="text-align:right;"><b>1,407</b></td><td class="mono" style="text-align:right;">10.0%</td><td class="mono" style="text-align:right;">~160 min</td></tr>
+          <tr><td><span class="famchip mix"><span class="sw"></span>mixing</span></td><td class="mono">stir · mix</td><td class="mono" style="text-align:right;"><b>327</b></td><td class="mono" style="text-align:right;">2.3%</td><td class="mono" style="text-align:right;">~57 min</td></tr>
+          <tr><td><span class="famchip transfer"><span class="sw"></span>transfer</span></td><td class="mono">pour</td><td class="mono" style="text-align:right;"><b>211</b></td><td class="mono" style="text-align:right;">1.5%</td><td class="mono" style="text-align:right;">~17 min</td></tr>
+          <tr><td><span class="famchip surface"><span class="sw"></span>surface</span></td><td class="mono">wash · clean · dry · spread</td><td class="mono" style="text-align:right;"><b>1,101</b></td><td class="mono" style="text-align:right;">7.8%</td><td class="mono" style="text-align:right;">~92 min</td></tr>
+          <tr><td><b>total retained</b></td><td></td><td class="mono" style="text-align:right;"><b>3,046</b></td><td class="mono" style="text-align:right;"><b>21.6%</b></td><td class="mono" style="text-align:right;">~5.4 h</td></tr>
+        </table>
+        <p class="small" style="margin-top:8px;">Retained only when approach, contact onset, technique and withdrawal were all visible; episodes dominated by transport, search or occlusion were excluded.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3.2 phase timeline across families -->
+  <section class="slide" id="s3b" data-chap="3 · observation">
+    <p class="eyebrow">// 3 · phase organisation <span class="ph">— across all four primitive families</span></p>
+    <h2>The same skeleton, four different contact stories</h2>
+    <figure class="fig">
+      <svg viewBox="0 0 1160 300" role="img" aria-label="Four rows, one per primitive family, each showing approach, transition, technique, transition and retract with family-specific contact events.">
+        <g id="timeline"></g>
+      </svg>
+      <figcaption><b>Redrawn from Fig. 3.2</b> · Approach · transition · <b>task-critical</b> · transition · retract recurs across demonstrators, object instances and material conditions. What changes between bread and cucumber, between circular and orbital mixing, or between smooth and tapping transfer is the <b>parameterisation of the technique segment</b> — not the existence or order of the surrounding phases.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 3.3 techniques and invariants -->
+  <section class="slide" id="s3c" data-chap="3 · observation">
+    <p class="eyebrow">// 3 · action techniques <span class="ph">— grouped by invariant, not by trajectory shape</span></p>
+    <h2>Techniques within a family differ in parameters, not in what they enforce</h2>
+    <table class="t">
+      <tr><th style="width:180px;">Primitive family</th><th style="width:250px;">Observed techniques</th><th style="width:270px;">Interaction region</th><th>Physical invariant maintained throughout the technique phase</th></tr>
+      <tr><td><span class="famchip sep"><span class="sw"></span>separation &amp; division</span></td><td>sawing, slicing, julienne, halving</td><td>separating surface — normal and extent read from the object shape</td><td>a separating manifold is crossed; sawing and slicing differ in whether tangential oscillation accompanies penetration</td></tr>
+      <tr><td><span class="famchip mix"><span class="sw"></span>aggregation &amp; mixing</span></td><td>circular, elliptical, orbital</td><td>container interior — clearance function constrains the utensil</td><td>motion remains inside the admissible volume; the three variants differ in path geometry, not in container confinement</td></tr>
+      <tr><td><span class="famchip transfer"><span class="sw"></span>material transfer</span></td><td>tilting, tapping, shaking</td><td>container opening — tilt axis and outflow normal change with orientation</td><td>material crosses a container boundary; variants differ in the temporal profile of discharge</td></tr>
+      <tr><td><span class="famchip surface"><span class="sw"></span>surface interaction</span></td><td>circular, linear, spiral wiping; spreading</td><td>contact surface — normal, coverage extent, material load</td><td>contact is maintained and motion stays tangential; variants differ in coverage strategy</td></tr>
+    </table>
+    <p class="small" style="margin-top:14px;">The four families do not exhaust the framework: the designator structure has also been applied to bottle opening<a class="cite" data-ref="Luca2023"></a>, whose object geometry is qualitatively different — rotation about a fixed axis rather than surface crossing or containment.</p>
+  </section>
+
+  <!-- ═════════ CH 4 DIVIDER ═════════ -->
+  <section class="slide" id="c4" data-chap="4 · OAAT">
+    <div class="chapdiv">
+      <p class="num">CHAPTER 4</p>
+      <h1>Representing State-Changing Manipulation Through Action Templates</h1>
+      <p class="sub">The core representational contribution: the OAAT — phases, action-relative object geometry, motion generators, applicability constraints, success criteria, and open slots.</p>
+      <div class="ties"><span class="chip">addresses H1</span><span class="chip">addresses H2</span></div>
+    </div>
+  </section>
+
+  <!-- 4.1 definition -->
+  <section class="slide" id="s4a" data-chap="4 · OAAT">
+    <p class="eyebrow">// 4 · definition <span class="ph">— Definition 4.2</span></p>
+    <h2>Object-Anchored Action Template</h2>
+    <div class="panel" style="border-left:3px solid var(--acc);">
+      <p class="lead" style="margin:0;font-size:14.5px;">A symbolic template that organises a state-changing manipulation action into an <b style="color:var(--ink)">ordered sequence of phases</b>. Motion generators are <b style="color:var(--ink)">anchored to the geometry of the object</b> being manipulated. Applicability is governed by <b style="color:var(--ink)">property-based constraints</b> over object properties. Parameters are left unbound and resolved at runtime from the current world state.</p>
+    </div>
+    <div class="cols" style="grid-template-columns:1.1fr 1fr;margin-top:14px;">
+      <div class="col">
+        <figure class="fig">
+          <svg viewBox="0 0 560 268" role="img" aria-label="The OAAT holds phases with invariants, admissibility conditions and success criteria, plus open slots filled at grounding time.">
+            <rect x="4" y="18" width="552" height="244" rx="7" fill="none" stroke="var(--acc)" stroke-width="1.8"/>
+            <text x="20" y="12" font-family="var(--mono)" font-size="10.5" fill="var(--acc)" letter-spacing=".06em">OAAT — WHAT THE TEMPLATE FIXES</text>
+            <g>
+              <rect x="20" y="32" width="120" height="46" rx="5" fill="none" stroke="var(--fig-line)"/>
+              <text x="80" y="53" text-anchor="middle" font-size="12.5" fill="var(--ink)">approach</text>
+              <text x="80" y="69" text-anchor="middle" font-size="10" fill="var(--mute)" font-family="var(--mono)">free motion</text>
+              <rect x="150" y="32" width="120" height="46" rx="5" fill="none" stroke="var(--acc)" stroke-width="1.6"/>
+              <text x="210" y="53" text-anchor="middle" font-size="12.5" fill="var(--ink)">contact</text>
+              <text x="210" y="69" text-anchor="middle" font-size="10" fill="var(--mute)" font-family="var(--mono)">established</text>
+              <rect x="280" y="32" width="120" height="46" rx="5" fill="none" stroke="var(--acc)" stroke-width="2"/>
+              <text x="340" y="53" text-anchor="middle" font-size="12.5" fill="var(--ink)" font-weight="600">technique</text>
+              <text x="340" y="69" text-anchor="middle" font-size="10" fill="var(--acc)" font-family="var(--mono)">invariant held</text>
+              <rect x="410" y="32" width="120" height="46" rx="5" fill="none" stroke="var(--fig-line)"/>
+              <text x="470" y="53" text-anchor="middle" font-size="12.5" fill="var(--ink)">retract</text>
+              <text x="470" y="69" text-anchor="middle" font-size="10" fill="var(--mute)" font-family="var(--mono)">release</text>
+            </g>
+            <g font-size="12" fill="var(--ink2)">
+              <text x="20" y="104">per phase: <tspan fill="var(--ink)">invariant</tspan> · <tspan fill="var(--ink)">admissibility</tspan> · <tspan fill="var(--ink)">success criterion</tspan></text>
+              <text x="20" y="126">motion generator anchored in action-relative object geometry</text>
+              <text x="20" y="148">applicability constraints over material and physical properties</text>
+            </g>
+            <rect x="20" y="164" width="516" height="82" rx="5" fill="none" stroke="var(--warn)" stroke-dasharray="4 3"/>
+            <text x="34" y="184" font-family="var(--mono)" font-size="10.5" fill="var(--warn)" letter-spacing=".06em">OPEN SLOTS — WHAT THE SCENE MUST SUPPLY</text>
+            <g font-family="var(--mono)" font-size="11.5" fill="var(--ink2)">
+              <text x="34" y="206">tool · technique · arm · support · approach</text>
+              <text x="34" y="226">anchor p* · normal n · depth d · withdraw w · repetitions</text>
+            </g>
+          </svg>
+          <figcaption><b>Redrawn from Fig. 4.1</b> · The stable structure belongs to the template; object-specific quantities are bound only when the action is grounded in a concrete scene.</figcaption>
+        </figure>
+      </div>
+      <div class="col">
+        <p class="lead" style="font-size:14px;">Read as a <b>generalised action designator</b><a class="cite" data-ref="beetz2010cram"></a>: it keeps the designator's role as carrier of a symbolic description with open runtime slots, and adds an object-anchored mathematical backbone.</p>
+        <p class="small" style="margin-top:12px;">Why the constraints live <i>inside</i> the template: for state-changing manipulation the cost of a constraint violation is categorically higher than for transport. Once the knife has entered the bread at the wrong position, no subsequent action restores the original object. A representation that discovers applicability failures mid-execution is insufficient.</p>
+        <div class="panel" style="margin-top:12px;">
+          <p class="small" style="margin:0;">Three knowledge sources are required: <b>primitive-family knowledge</b> (the reusable template), <b>object knowledge</b> (what this object affords and forbids), <b>scene knowledge</b> (which bindings are currently feasible).</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4.2 designators / open slots -->
+  <section class="slide" id="s4b" data-chap="4 · OAAT">
+    <p class="eyebrow">// 4 · action designators <span class="ph">— one structure, three states</span></p>
+    <h2>Underspecified → partially bound → executable</h2>
+    <div class="cols" style="grid-template-columns:repeat(3,1fr);gap:12px;">
+      <div class="col">
+        <p class="mono" style="font-size:10.5px;color:var(--mute);letter-spacing:.06em;">1 · UNDERSPECIFIED</p>
+        <div class="code" style="font-size:11.5px;line-height:1.7;"><span class="kw">(GeneralizedActionPlan</span><br>&nbsp;&nbsp;:action divide<br>&nbsp;&nbsp;:roles<br>&nbsp;&nbsp;&nbsp;&nbsp;(object <span class="sl">...</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(tool <span class="sl">...</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(arm <span class="sl">...</span>)<br>&nbsp;&nbsp;:slots<br>&nbsp;&nbsp;&nbsp;&nbsp;(technique <span class="sl">...</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(num-cuts <span class="sl">...</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(anchor <span class="sl">...</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(normal <span class="sl">...</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(support <span class="sl">...</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(depth <span class="sl">...</span>)<span class="kw">)</span></div>
+        <p class="small" style="margin-top:8px;"><span class="mono">Ellipsis</span> is not a value to execute — it is a <b>request to resolve</b> the slot before the next execution step becomes effective.</p>
+      </div>
+      <div class="col">
+        <p class="mono" style="font-size:10.5px;color:var(--mute);letter-spacing:.06em;">2 · PARTIALLY SPECIFIED BY THE CALLER</p>
+        <div class="code" style="font-size:11.5px;line-height:1.7;"><span class="kw">(GeneralizedActionPlan</span><br>&nbsp;&nbsp;:action divide<br>&nbsp;&nbsp;:roles<br>&nbsp;&nbsp;&nbsp;&nbsp;(object <span class="ok2">cucumber</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(tool <span class="sl">...</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(arm <span class="sl">...</span>)<br>&nbsp;&nbsp;:slots<br>&nbsp;&nbsp;&nbsp;&nbsp;(policy-type <span class="ok2">equal-parts</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(technique <span class="sl">...</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(anchor <span class="sl">...</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(normal <span class="sl">...</span>)<span class="kw">)</span></div>
+        <p class="small" style="margin-top:8px;">The same designator structure covers <i>"cut this bread with the right arm"</i>, <i>"slice this cucumber into equal parts"</i> and <i>"choose a knife and support automatically"</i>. Only the set of open slots changes.</p>
+      </div>
+      <div class="col">
+        <p class="mono" style="font-size:10.5px;color:var(--mute);letter-spacing:.06em;">3 · GROUNDED — COMPILES TO MOTION</p>
+        <div class="code" style="font-size:11.5px;line-height:1.7;"><span class="kw">(GeneralizedActionPlan</span><br>&nbsp;&nbsp;:action divide<br>&nbsp;&nbsp;:roles<br>&nbsp;&nbsp;&nbsp;&nbsp;(object <span class="ok2">cucumber-1</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(tool <span class="ok2">knife-2</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(arm <span class="ok2">right</span>)<br>&nbsp;&nbsp;:slots<br>&nbsp;&nbsp;&nbsp;&nbsp;(technique <span class="ok2">saw</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(num-cuts <span class="ok2">4</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(anchor <span class="ok2">p*</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(normal <span class="ok2">n</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(support <span class="ok2">board-1</span>)<br>&nbsp;&nbsp;&nbsp;&nbsp;(depth <span class="ok2">d</span>)<span class="kw">)</span></div>
+        <p class="small" style="margin-top:8px;">Executable when every slot the template requires has a binding: <span class="mono">S<sub>T</sub> ⊆ dom(B<sub>g</sub>)</span>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4.3 action-relative object geometry -->
+  <section class="slide" id="s4c" data-chap="4 · OAAT">
+    <p class="eyebrow">// 4 · action-relative object geometry <span class="ph">— four geometry types</span></p>
+    <h2>Motion is anchored to the object, not to the robot</h2>
+    <figure class="fig">
+      <svg viewBox="0 0 1160 214" role="img" aria-label="Separating surface with normal; container interior with clearance; container opening with tilt axis; contact surface with coverage region.">
+        <g font-family="var(--mono)" font-size="11" letter-spacing=".04em">
+          <text x="10" y="14" fill="var(--fam-sep)">SEPARATING SURFACE + NORMAL</text>
+          <text x="300" y="14" fill="var(--fam-mix)">INTERIOR VOLUME + CLEARANCE</text>
+          <text x="590" y="14" fill="var(--fam-transfer)">OPENING + TILT AXIS</text>
+          <text x="880" y="14" fill="var(--fam-surface)">CONTACT SURFACE + COVERAGE</text>
+        </g>
+        <!-- separation -->
+        <g stroke="var(--fam-sep)" fill="none">
+          <rect x="30" y="96" width="200" height="54" rx="26" stroke-width="1.6"/>
+          <path d="M130 40 V150" stroke-width="1.4" stroke-dasharray="5 4"/>
+          <path d="M130 40 V88" stroke-width="1.8" marker-end="url(#ar1)"/>
+          <path d="M96 96 V150 M164 96 V150" stroke-width="1" opacity=".6"/>
+        </g>
+        <g font-family="var(--mono)" font-size="11" fill="var(--mute)">
+          <text x="138" y="58">n</text><text x="30" y="176">p* = (p₀, n)</text><text x="30" y="192" fill="var(--ink2)">monotonic penetration along n,</text><text x="30" y="206" fill="var(--ink2)">tangential motion q(t)·n = 0</text>
+        </g>
+        <!-- mixing -->
+        <g stroke="var(--fam-mix)" fill="none">
+          <path d="M320 84 L340 150 H430 L450 84" stroke-width="1.6"/>
+          <ellipse cx="385" cy="84" rx="65" ry="14" stroke-width="1.6"/>
+          <ellipse cx="385" cy="118" rx="34" ry="12" stroke-width="1.4" stroke-dasharray="4 3"/>
+          <path d="M385 60 V112" stroke-width="1.6"/>
+        </g>
+        <g font-family="var(--mono)" font-size="11" fill="var(--mute)">
+          <text x="300" y="176">admissible volume V</text><text x="300" y="192" fill="var(--ink2)">motion stays inside V;</text><text x="300" y="206" fill="var(--ink2)">clearance margin to the wall</text>
+        </g>
+        <!-- transfer -->
+        <g stroke="var(--fam-transfer)" fill="none">
+          <g transform="rotate(-32 640 110)">
+            <rect x="600" y="60" width="70" height="88" rx="6" stroke-width="1.6"/>
+            <path d="M600 60 H670" stroke-width="2"/>
+          </g>
+          <circle cx="616" cy="66" r="3" fill="var(--fam-transfer)" stroke="none"/>
+          <path d="M622 72 C660 96 690 112 720 130" stroke-width="1.4" stroke-dasharray="3 3"/>
+          <path d="M712 132 A38 20 0 0 0 788 132" stroke-width="1.6"/>
+          <path d="M712 132 V120 M788 132 V120" stroke-width="1.6"/>
+        </g>
+        <g font-family="var(--mono)" font-size="11" fill="var(--mute)">
+          <text x="590" y="176">opening boundary ∂O, tilt axis</text><text x="590" y="192" fill="var(--ink2)">material crosses ∂O;</text><text x="590" y="206" fill="var(--ink2)">tilt profile from material</text>
+        </g>
+        <!-- surface -->
+        <g stroke="var(--fam-surface)" fill="none">
+          <path d="M890 140 H1140" stroke-width="1.8"/>
+          <rect x="900" y="112" width="228" height="28" rx="4" stroke-width="1" stroke-dasharray="4 3"/>
+          <path d="M918 126 C948 106 978 146 1008 126 C1038 106 1068 146 1098 126" stroke-width="1.5"/>
+          <path d="M1010 140 V102" stroke-width="1.4" marker-end="url(#ar1)"/>
+        </g>
+        <g font-family="var(--mono)" font-size="11" fill="var(--mute)">
+          <text x="1016" y="98">n</text><text x="880" y="176">contact surface + coverage region</text><text x="880" y="192" fill="var(--ink2)">contact maintained, motion in</text><text x="880" y="206" fill="var(--ink2)">the tangent plane</text>
+        </g>
+      </svg>
+      <figcaption>A new object requires <b>new geometric anchor points, not a new template</b>. The same generator applies to any object for which an action-relative object geometry can be derived — which is why the same action executes on objects never seen before.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 4.4 motion primitives -->
+  <section class="slide" id="s4d" data-chap="4 · OAAT">
+    <p class="eyebrow">// 4 · motion primitives <span class="ph">— Definition 4.6</span></p>
+    <h2>One generator per invariant, not one per verb</h2>
+    <div class="panel" style="border-left:3px solid var(--acc);">
+      <p class="lead" style="margin:0;font-size:15px;font-family:var(--mono);">π<sub>k</sub>(t) = g<sub>k</sub>(p*, θ, t),&nbsp;&nbsp;t ∈ T</p>
+      <p class="small" style="margin:6px 0 0;">The anchor <b>p*</b> is the geometric site on or in the object; <b>θ</b> collects amplitudes, depths, frequencies, durations, clearance margins; <b>T</b> is the phase interval. The generator does not describe one stored trajectory — it describes the family of admissible trajectories that keep the invariant fixed.</p>
+    </div>
+    <table class="t" style="margin-top:14px;">
+      <tr><th style="width:180px;">Generator</th><th style="width:290px;">Equation</th><th>Techniques it covers — differing only in θ</th></tr>
+      <tr><td><span class="famchip sep"><span class="sw"></span>separation</span></td><td class="mono">g<sub>sep</sub> = p₀ − d(t)·n + q(t), &nbsp; q(t)·n = 0</td><td>sawing, slicing, julienne, halving — cut count, spacing, tangential excitation</td></tr>
+      <tr><td><span class="famchip mix"><span class="sw"></span>mixing</span></td><td class="mono">g<sub>mix</sub> ∈ V(object), &nbsp; clearance ≥ margin</td><td>circular, elliptical, orbital — path geometry and scale</td></tr>
+      <tr><td><span class="famchip transfer"><span class="sw"></span>transfer</span></td><td class="mono">g<sub>tra</sub>: material crosses ∂O under tilt(t)</td><td>tilting, tapping, shaking — temporal profile of discharge</td></tr>
+      <tr><td><span class="famchip surface"><span class="sw"></span>surface</span></td><td class="mono">g<sub>surf</sub> = p* + q<sub>shear</sub>(τ)</td><td>wiping and spreading — coverage strategy and material-flow direction</td></tr>
+    </table>
+    <p class="small" style="margin-top:12px;">Defining a generator per named variant does not scale: <i>slice, dice, chop, mince, halve, quarter</i> grow with the task vocabulary. An early implementation with one generator per named variant required modifying generator code in several places for each new food class. Keeping the invariant fixed and varying the object-derived anchor removes that cost. <b>The claim is bounded</b>: not all manipulation verbs reduce to four families — these four state-changing families do.</p>
+  </section>
+
+  <!-- 4.5 applicability constraints + timing -->
+  <section class="slide" id="s4e" data-chap="4 · OAAT">
+    <p class="eyebrow">// 4 · applicability constraints <span class="ph">— why they live inside the template</span></p>
+    <h2>Constraints have to be checked before material contact begins</h2>
+    <figure class="fig">
+      <svg viewBox="0 0 1160 216" role="img" aria-label="Applicability constraints are evaluated in the pre-execution window; once material contact begins the state change is underway and a violation cannot be undone.">
+        <path d="M20 118 H1130" stroke="var(--fig-line)" stroke-width="1.4" fill="none" marker-end="url(#ar1)"/>
+        <text x="1136" y="122" font-size="11" fill="var(--mute)" font-family="var(--mono)">time</text>
+        <!-- pre-execution zone -->
+        <rect x="30" y="92" width="250" height="52" rx="6" fill="none" stroke="var(--ok)" stroke-dasharray="5 4" stroke-width="1.4"/>
+        <circle cx="155" cy="118" r="13" fill="none" stroke="var(--ok)" stroke-width="1.6"/>
+        <text x="155" y="123" text-anchor="middle" font-size="14" fill="var(--ok)">✓</text>
+        <text x="155" y="80" text-anchor="middle" font-size="12" fill="var(--ok)" font-family="var(--mono)">pre-execution</text>
+        <text x="155" y="164" text-anchor="middle" font-size="12" fill="var(--ok)">applicability check</text>
+        <text x="155" y="180" text-anchor="middle" font-size="11" fill="var(--mute)" font-family="var(--mono)">cuttable · flowable · wipeable · spreadable</text>
+        <path d="M30 58 H280" stroke="var(--ok)" stroke-width="1.4" fill="none"/>
+        <text x="155" y="50" text-anchor="middle" font-size="11.5" fill="var(--ok)" font-family="var(--mono)">constraints evaluated here</text>
+        <!-- phases -->
+        <rect x="330" y="94" width="170" height="48" rx="5" fill="none" stroke="var(--fig-line)" stroke-width="1.3"/>
+        <text x="415" y="123" text-anchor="middle" font-size="13.5" fill="var(--ink)">approach</text>
+        <rect x="548" y="94" width="170" height="48" rx="5" fill="none" stroke="var(--warn)" stroke-width="1.5"/>
+        <text x="633" y="116" text-anchor="middle" font-size="13" fill="var(--ink)">contact</text>
+        <text x="633" y="133" text-anchor="middle" font-size="13" fill="var(--ink)">established</text>
+        <rect x="836" y="94" width="170" height="48" rx="5" fill="none" stroke="var(--crit)" stroke-width="1.5"/>
+        <text x="921" y="123" text-anchor="middle" font-size="13.5" fill="var(--ink)">technique</text>
+        <g stroke="var(--fig-line)" stroke-width="1.2" fill="none">
+          <path d="M286 118 H326" marker-end="url(#ar1)"/><path d="M500 118 H544" marker-end="url(#ar1)"/><path d="M718 118 H832" marker-end="url(#ar1)"/>
+        </g>
+        <!-- irreversibility line -->
+        <path d="M770 42 V186" stroke="var(--crit)" stroke-width="1.4" stroke-dasharray="5 4" fill="none"/>
+        <text x="770" y="32" text-anchor="middle" font-size="12" fill="var(--crit)" font-family="var(--mono)">material contact begins</text>
+        <circle cx="921" cy="66" r="13" fill="none" stroke="var(--crit)" stroke-width="1.6"/>
+        <text x="921" y="71" text-anchor="middle" font-size="14" fill="var(--crit)">✕</text>
+        <text x="921" y="164" text-anchor="middle" font-size="12" fill="var(--crit)">state change irreversible</text>
+        <path d="M780 186 H1010" stroke="var(--crit)" stroke-width="1.3" fill="none"/>
+        <text x="895" y="204" text-anchor="middle" font-size="11.5" fill="var(--crit)" font-family="var(--mono)">a violation discovered here cannot be undone</text>
+      </svg>
+      <figcaption><b>Redrawn from Fig. 4.5</b> · The OAAT places applicability constraints inside the template, so they are evaluated in the pre-execution window rather than by an external wrapper at dispatch time. Surface interaction splits into two dispositions: <b>wipeable</b> governs the target surface, <b>spreadable</b> the tool-material combination.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ═════════ CH 5 DIVIDER ═════════ -->
+  <section class="slide" id="c5" data-chap="5 · grounding">
+    <div class="chapdiv">
+      <p class="num">CHAPTER 5</p>
+      <h1>Grounding and Executing Action Templates</h1>
+      <p class="sub">How an OAAT instance is resolved against the current world — in a fixed dependency order — and how its phase invariants are kept valid while the robot moves.</p>
+      <div class="ties"><span class="chip">addresses H3</span></div>
+    </div>
+  </section>
+
+  <!-- 5.1 the pipeline -->
+  <section class="slide" id="s5a" data-chap="5 · grounding">
+    <p class="eyebrow">// 5 · the grounding pipeline <span class="ph">— order is part of the representation</span></p>
+    <h2>Three knowledge sources, one fixed resolution order</h2>
+    <figure class="fig">
+      <svg viewBox="0 0 1160 300" role="img" aria-label="Action, object and scene knowledge feed a resolver that binds the OAAT's open slots in a fixed order into concrete execution values.">
+        <g font-family="var(--mono)" font-size="10.5" fill="var(--mute)" letter-spacing=".05em"><text x="6" y="12">KNOWLEDGE SOURCES</text></g>
+        <g>
+          <rect x="6" y="22" width="252" height="52" rx="6" fill="none" stroke="var(--fam-sep)" stroke-width="1.3"/>
+          <text x="22" y="44" font-size="13" fill="var(--ink)">action knowledge</text>
+          <text x="22" y="62" font-size="10" fill="var(--mute)" font-family="var(--mono)">phases · invariants · success criteria</text>
+          <rect x="6" y="84" width="252" height="52" rx="6" fill="none" stroke="var(--fam-mix)" stroke-width="1.3"/>
+          <text x="22" y="106" font-size="13" fill="var(--ink)">object knowledge</text>
+          <text x="22" y="124" font-size="10" fill="var(--mute)" font-family="var(--mono)">geometry · material · dispositions</text>
+          <rect x="6" y="146" width="252" height="52" rx="6" fill="none" stroke="var(--fam-transfer)" stroke-width="1.3"/>
+          <text x="22" y="168" font-size="13" fill="var(--ink)">scene knowledge</text>
+          <text x="22" y="186" font-size="10" fill="var(--mute)" font-family="var(--mono)">support · reachability · collision</text>
+        </g>
+        <g stroke="var(--fig-line)" stroke-width="1.2" fill="none">
+          <path d="M258 48 H286 V110" /><path d="M258 110 H286"/><path d="M258 172 H286 V110"/>
+          <path d="M286 110 H316" marker-end="url(#ar1)"/>
+        </g>
+        <!-- resolver ladder -->
+        <rect x="320" y="22" width="470" height="222" rx="7" fill="none" stroke="var(--acc)" stroke-width="1.8"/>
+        <text x="338" y="42" font-family="var(--mono)" font-size="10.5" fill="var(--acc)" letter-spacing=".06em">RESOLVER — DEPENDENCY-ORDERED SLOT BINDING</text>
+        <g id="ladder"></g>
+        <path d="M790 132 H832" stroke="var(--acc)" stroke-width="1.4" fill="none" marker-end="url(#ar1)"/>
+        <!-- output -->
+        <rect x="836" y="60" width="318" height="146" rx="7" fill="none" stroke="var(--ok)" stroke-width="1.6"/>
+        <text x="854" y="82" font-family="var(--mono)" font-size="10.5" fill="var(--ok)" letter-spacing=".06em">GROUNDED DESIGNATOR</text>
+        <g font-size="12.5" fill="var(--ink2)">
+          <text x="854" y="106">object: cucumber-1 · support: board-1</text>
+          <text x="854" y="126">tool: knife · technique: saw · cuts: 4</text>
+          <text x="854" y="146">arm: right · approach: front</text>
+          <text x="854" y="166">anchor p* · normal n · depth d · withdraw w</text>
+          <text x="854" y="192" font-family="var(--mono)" font-size="11.5" fill="var(--ok)">→ approach, saw stroke, retract</text>
+        </g>
+        <path d="M995 206 V276 H555 V248" stroke="var(--ok)" stroke-width="1.2" stroke-dasharray="4 3" fill="none" marker-end="url(#ar1)"/>
+        <text x="775" y="294" text-anchor="middle" font-size="11" fill="var(--ok)" font-family="var(--mono)">experience &amp; NEEMs refine queries, scores and priors</text>
+      </svg>
+      <figcaption><b>Redrawn from Fig. 5.1</b> · Violating the order produces inconsistent bindings: a contact region derived for the wrong object, a tool selected for an inadmissible material, a motion goal computed for an arm that cannot reach.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 5.2 grounding trace -->
+  <section class="slide" id="s5b" data-chap="5 · grounding">
+    <p class="eyebrow">// 5 · worked trace <span class="ph">— "cut the cucumber on the counter"</span></p>
+    <h2>Every failure belongs to the layer where the information is meaningful</h2>
+    <table class="t">
+      <tr><th style="width:150px;">Stage</th><th style="width:190px;">Source</th><th>Example binding</th><th style="width:200px;">Failure reported</th></tr>
+      <tr><td><b>input designator</b></td><td>task request</td><td class="mono">family: separation and division · object: cucumber on counter</td><td class="mono">no OAAT instance</td></tr>
+      <tr><td><b>object binding</b></td><td>Semantic Digital Twin, perception</td><td class="mono">object: cucumber-1 · pose: T<sub>O</sub> · support: board</td><td class="mono">object not found</td></tr>
+      <tr style="background:var(--panel2);box-shadow:inset 3px 0 0 var(--acc);"><td><b>applicability</b></td><td>KnowRob</td><td class="mono">cuttable: true</td><td class="mono">inapplicable object</td></tr>
+      <tr style="background:var(--panel2);box-shadow:inset 3px 0 0 var(--acc);"><td><b>symbolic binding</b></td><td>KnowRob</td><td class="mono">tool: knife · technique: saw · cuts: 4</td><td class="mono">missing symbolic binding</td></tr>
+      <tr><td><b>scene binding</b></td><td>Semantic Digital Twin</td><td class="mono">arm: right · support: board · pose: T<sub>O</sub></td><td class="mono">no reachable arm / missing support</td></tr>
+      <tr><td><b>geometric binding</b></td><td>object geometry in the SDT</td><td class="mono">anchor p* · normal n · depth d · withdraw w</td><td class="mono">missing geometric anchor</td></tr>
+      <tr><td><b>instantiation</b></td><td>motion generator, Giskard</td><td class="mono">approach, saw stroke, retract</td><td class="mono">controller infeasible</td></tr>
+    </table>
+    <div class="panel" style="margin-top:14px;border-left:3px solid var(--acc);">
+      <p class="small" style="margin:0;">The two highlighted rows are exactly what the <b>geometry-only null model</b> H<sub>0,3</sub> omits. A geometry-only model could still compute a surface and an anchor; it could not reject an unsuitable material, exclude a semantically protected part, or select the technique and task parameters that make the grounded instance admissible. <b>These are not improvements over geometry — they are bindings geometry cannot supply at all.</b></p>
+    </div>
+  </section>
+
+  <!-- 5.3 geometry vs knowledge -->
+  <section class="slide" id="s5c" data-chap="5 · grounding">
+    <p class="eyebrow">// 5 · H3, concretely <span class="ph">— knowledge narrows what geometry proposes</span></p>
+    <h2>Geometry proposes a broad anchor region. Knowledge removes the pit.</h2>
+    <div class="cols" style="grid-template-columns:1.15fr 1fr;">
+      <div class="col">
+        <figure class="fig">
+          <img src="thesis_img/hypo3/kg_combined.png" alt="Knowledge-graph narrowing of the admissible anchor region">
+          <figcaption><b>Fig. 5.x</b> · The knowledge graph removes the semantically inadmissible region from the geometrically admissible one.</figcaption>
+        </figure>
+      </div>
+      <div class="col">
+        <p class="lead" style="font-size:14px;">Geometry is sufficient wherever the parameter is a <b>spatial consequence</b> of the current instance: where the cut anchor sits on a cucumber, how large the wiping surface is, where the interior clearance-maximising point of a bowl lies.</p>
+        <p class="lead" style="font-size:14px;margin-top:10px;">Symbolic knowledge is necessary wherever the parameter depends on properties <b>not recoverable from geometry</b>: which tool is admissible, which technique family applies, whether a material pours slowly or quickly, which regions are structurally inadmissible because of hidden internal parts.</p>
+        <div class="panel" style="margin-top:12px;">
+          <p class="small" style="margin:0;">Geometry does not need to encode material semantics, and the knowledge graph does not need to solve spatial grounding. The OAAT is reusable because <b>each source is responsible only for the part of the parameterisation it can determine reliably</b>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5.4 monitoring -->
+  <section class="slide" id="s5d" data-chap="5 · grounding">
+    <p class="eyebrow">// 5 · monitored execution <span class="ph">— recovery scope follows the active phase</span></p>
+    <h2>Keeping the bindings valid instead of assuming they stay correct</h2>
+    <figure class="fig">
+      <svg viewBox="0 0 1160 236" role="img" aria-label="The active phase determines which invariant is monitored and which of three recovery scopes applies: controller correction, local re-binding, or replanning.">
+        <rect x="6" y="26" width="470" height="90" rx="6" fill="none" stroke="var(--acc)" stroke-width="1.6"/>
+        <text x="24" y="16" font-family="var(--mono)" font-size="10.5" fill="var(--acc)" letter-spacing=".06em">ACTIVE PHASE DETERMINES WHAT IS MONITORED</text>
+        <g font-size="12.5" fill="var(--ink2)">
+          <text x="24" y="50">approach — collision-free corridor, reachability</text>
+          <text x="24" y="72">contact — contact established at the intended anchor</text>
+          <text x="24" y="94">technique — <tspan fill="var(--ink)">the family invariant</tspan>, motion bounds, success criterion</text>
+        </g>
+        <path d="M240 116 V140" stroke="var(--acc)" stroke-width="1.4" fill="none" marker-end="url(#ar1)"/>
+        <rect x="6" y="144" width="470" height="46" rx="6" fill="none" stroke="var(--crit)" stroke-width="1.4"/>
+        <text x="24" y="172" font-size="13" fill="var(--ink)">violation = a <tspan font-style="italic">named event</tspan> at a <tspan font-style="italic">named phase</tspan> with a recovery scope</text>
+        <path d="M476 167 H524" stroke="var(--fig-line)" stroke-width="1.4" fill="none" marker-end="url(#ar1)"/>
+        <!-- three scopes -->
+        <g>
+          <rect x="528" y="26" width="626" height="48" rx="6" fill="none" stroke="var(--ok)" stroke-width="1.4"/>
+          <text x="548" y="46" font-size="13.5" fill="var(--ink)">small deviation → <tspan fill="var(--ok)">absorbed by the controller</tspan></text>
+          <text x="548" y="64" font-size="11.5" fill="var(--mute)" font-family="var(--mono)">the phase and all bindings stay valid</text>
+          <rect x="528" y="86" width="626" height="48" rx="6" fill="none" stroke="var(--warn)" stroke-width="1.4"/>
+          <text x="548" y="106" font-size="13.5" fill="var(--ink)">local change → <tspan fill="var(--warn)">re-bind the affected slots, keep the phase</tspan></text>
+          <text x="548" y="124" font-size="11.5" fill="var(--mute)" font-family="var(--mono)">e.g. new arm assignment, new anchor within the admissible region</text>
+          <rect x="528" y="146" width="626" height="48" rx="6" fill="none" stroke="var(--crit)" stroke-width="1.4"/>
+          <text x="548" y="166" font-size="13.5" fill="var(--ink)">semantic failure → <tspan fill="var(--crit)">replanning</tspan></text>
+          <text x="548" y="184" font-size="11.5" fill="var(--mute)" font-family="var(--mono)">the action itself is no longer admissible in this context</text>
+        </g>
+        <path d="M841 194 V214 H240 V194" stroke="var(--fig-line)" stroke-width="1.1" stroke-dasharray="4 3" fill="none" marker-end="url(#ar1)"/>
+        <text x="540" y="230" text-anchor="middle" font-size="11" fill="var(--mute)" font-family="var(--mono)">the phase structure keeps adaptation local and explainable</text>
+      </svg>
+      <figcaption>Because constraints are part of the representation, a failure is not merely "unsuccessful": it names the layer at which the missing or inconsistent information appeared. <span class="mono" style="color:var(--acc);">R5, R6</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- ═════════ CH 6 DIVIDER ═════════ -->
+  <section class="slide" id="c6" data-chap="6 · experiment">
+    <div class="chapdiv">
+      <p class="num">CHAPTER 6</p>
+      <h1>Experiment and Applications</h1>
+      <p class="sub">7,693 seed-controlled executions · 8 platforms · 3 environments · 4 primitive families — plus real-robot cutting and pouring on the PR2.</p>
+      <div class="ties"><span class="chip">R1–R7</span></div>
+    </div>
+  </section>
+
+  <!-- 6.1 design -->
+  <section class="slide" id="s6a" data-chap="6 · experiment">
+    <p class="eyebrow">// 6 · experimental design <span class="ph">— intervention, not observation</span></p>
+    <h2>Cross-platform success rates are uninterpretable unless assignment is controlled</h2>
+    <div class="cols" style="grid-template-columns:1.1fr 1fr;">
+      <div class="col">
+        <div class="panel" style="border-left:3px solid var(--acc);">
+          <p class="lead" style="margin:0;font-size:14px;">A platform evaluated on smaller bowls or in more accessible environments looks stronger even when its embodiment is not better suited to the action. Do-calculus makes the distinction precise<a class="cite" data-ref="pearl2009causality"></a>:</p>
+          <p class="mono" style="margin:10px 0 0;font-size:13px;color:var(--mute);">P(success | robot = r)</p>
+          <p class="small" style="margin:2px 0 0;">success <i>among runs assigned</i> to platform r</p>
+          <p class="mono" style="margin:10px 0 0;font-size:13px;color:var(--acc);">P(success | do(robot = r))</p>
+          <p class="small" style="margin:2px 0 0;">success after <i>setting</i> the platform to r, all else fixed</p>
+        </div>
+        <p class="small" style="margin-top:12px;">Shared random seeds fix object pose, object size, support surface and environment layout across platforms, so only <span class="mono">robot_name</span> differs within a matched group. Bowl mixing is the primary intervention class because all eight platforms complete a non-trivial fraction of trials — cutting and surface interaction produce floor effects for the most constrained platforms.</p>
+      </div>
+      <div class="col">
+        <table class="t">
+          <tr><th>Quantity</th><th style="width:80px;">Count</th><th>Meaning</th></tr>
+          <tr><td>robot platforms</td><td class="mono"><b>8</b></td><td>evaluated embodiments</td></tr>
+          <tr><td>environments</td><td class="mono"><b>3</b></td><td>apartment, kitchen, ISR lab</td></tr>
+          <tr><td>primitive families</td><td class="mono"><b>4</b></td><td>with shared seeds</td></tr>
+          <tr><td>core intervention class</td><td class="mono"><b>1</b></td><td>bowl mixing</td></tr>
+          <tr><td>seed-controlled executions</td><td class="mono"><b>7,693</b></td><td>8 platforms × shared seeds across 3 environments and 4 families</td></tr>
+          <tr><td>core mixing executions</td><td class="mono"><b>1,915</b></td><td>matched runs for the primary causal estimate, seeds 910,001–910,005</td></tr>
+        </table>
+        <p class="small" style="margin-top:12px;">Success is evaluated at two levels: <b>applicability constraints</b> before dispatch, <b>success criteria</b> at phase boundaries. Physical material effects — connectivity change, homogeneity increase, mass transfer — are excluded from the simulated aggregates and evaluated separately on the real robot.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6.2 platforms -->
+  <section class="slide" id="s6b" data-chap="6 · experiment">
+    <p class="eyebrow">// 6 · platforms <span class="ph">— eight morphologically diverse robots</span></p>
+    <h2>The same template, no platform-specific adaptation</h2>
+    <div class="cols" style="grid-template-columns:1.35fr 1fr;">
+      <div class="col">
+        <figure class="fig">
+          <img src="thesis_img/experiment/robots/allrobots.png" alt="Eight robot platforms used in the evaluation">
+          <figcaption><b>Fig. 6.1</b> · [1] TIAGo<a class="cite" data-ref="tiago"></a>, [2] Unitree G1<a class="cite" data-ref="unitreeg1"></a>, [3] PR2<a class="cite" data-ref="pr2"></a>, [4] ARMAR-7<a class="cite" data-ref="armar7"></a>, [5] Stretch 3<a class="cite" data-ref="stretch3_specs"></a>, [6] HSRB<a class="cite" data-ref="hsr"></a>, [7] Garmi<a class="cite" data-ref="garmi"></a>, [8] Rollin' Justin<a class="cite" data-ref="justin"></a>.</figcaption>
+        </figure>
+      </div>
+      <div class="col">
+        <table class="t">
+          <tr><th>Robot</th><th>Base</th><th>Arms / EE</th><th>Arm DoF</th></tr>
+          <tr><td><b>ARMAR-7</b></td><td>omni</td><td>2× hands</td><td class="mono">8×2</td></tr>
+          <tr><td><b>Rollin' Justin</b></td><td>omni</td><td>2× hands</td><td class="mono">7×2</td></tr>
+          <tr><td><b>PR2</b></td><td>omni</td><td>2× gripper</td><td class="mono">7×2</td></tr>
+          <tr><td><b>TIAGo</b></td><td>diff.</td><td>2× gripper</td><td class="mono">7×2</td></tr>
+          <tr><td><b>HSRB</b></td><td>omni</td><td>1× gripper</td><td class="mono">5</td></tr>
+          <tr><td><b>Unitree G1</b></td><td>bipedal/omni</td><td>2× hands</td><td class="mono">7×2</td></tr>
+          <tr><td><b>Stretch 3</b></td><td>diff.</td><td>1× gripper</td><td class="mono">6 ctrl / 8 kin</td></tr>
+          <tr><td><b>Garmi</b></td><td>omni</td><td>2× hands</td><td class="mono">7×2</td></tr>
+        </table>
+        <p class="small" style="margin-top:10px;">Every platform is integrated into the Semantic Digital Twin, which provides the shared representation of kinematics, geometry and sensing that the grounding pipeline consumes. Stretch 3 and HSRB are the most constrained: a single gripper plus limited arm or wrist mobility.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6.3 environments -->
+  <section class="slide" id="s6c" data-chap="6 · experiment">
+    <p class="eyebrow">// 6 · environments <span class="ph">— robot-centred labs and a human living space</span></p>
+    <h2>Three scene contexts, shared seeds within each column</h2>
+    <div class="figrow" style="grid-template-columns:repeat(3,1fr);">
+      <figure class="fig"><img src="thesis_img/experiment/environments/kitchen-enironemnt.png" alt="AICOR kitchen laboratory">
+        <figcaption><b>Kitchen</b> — AICOR Kitchen laboratory, University of Bremen<a class="cite" data-ref="aicorlab2022"></a>. Dedicated counters, appliances, manipulation-relevant work surfaces.</figcaption></figure>
+      <figure class="fig"><img src="thesis_img/experiment/environments/apartment-lab.png" alt="AICOR apartment laboratory">
+        <figcaption><b>Apartment</b> — AICOR Apartment laboratory. The most structured setting: regular placement, accessible surfaces, room for extended tool trajectories.</figcaption></figure>
+      <figure class="fig"><img src="thesis_img/experiment/environments/isr-testbed.png" alt="VisLab at ISR Lisbon">
+        <figcaption><b>VisLab</b> — Institute for Systems and Robotics, Lisbon<a class="cite" data-ref="vislab2026"></a>. A human living space: fixed furniture, tighter workspace for large platforms.</figcaption></figure>
+    </div>
+    <p class="small" style="margin-top:14px;">Because seeds are shared within each environment column, differences <i>within</i> a column reflect genuine geometric variation rather than task assignment.</p>
+  </section>
+
+  <!-- 6.4 causal main result -->
+  <section class="slide" id="s6d" data-chap="6 · experiment">
+    <p class="eyebrow">// 6 · main result <span class="ph">— matched bowl mixing, n = 1,915</span></p>
+    <h2>Platform embodiment drives a 72.5% spread under identical task conditions</h2>
+    <div class="cols" style="grid-template-columns:1fr 1fr;">
+      <div class="col">
+        <p class="mono" style="font-size:10.5px;color:var(--mute);letter-spacing:.06em;">SUCCESS RATE BY PLATFORM</p>
+        <div class="brows" id="perfBars" style="margin-top:6px;"></div>
+      </div>
+      <div class="col">
+        <p class="mono" style="font-size:10.5px;color:var(--mute);letter-spacing:.06em;">MEDIAN EXECUTION TIME</p>
+        <div class="brows" id="timeBars" style="margin-top:6px;"></div>
+        <p class="small" style="margin-top:14px;">Execution time and success rate are <b>not correlated</b>: HSRB is the fastest platform at 4.2 s while sitting mid-tier at 78.9%; ARMAR-7 is the slowest at 22.6 s while reaching only 44.6%.</p>
+      </div>
+    </div>
+    <div class="panel reveal" style="margin-top:14px;border-left:3px solid var(--acc);">
+      <p class="small" style="margin:0;">ARMAR-7's low rate is <b>not a capability deficit</b> — with 8 DoF per arm and omnidirectional mobility it outperforms several platforms elsewhere. The mixing trajectory needs continuous circular wrist motion at bowl-rim height, where its wrist has limited rotational freedom; and because it adjusts height by bending at the waist rather than translating a torso, the reachable envelope shifts in ways the planner struggles to resolve. <b>The representation generated correct parameters in every case</b>; what the solver could not guarantee is a kinematically feasible path.</p>
+    </div>
+  </section>
+
+  <!-- 6.5 heatmap robot x env -->
+  <section class="slide" id="s6e" data-chap="6 · experiment">
+    <p class="eyebrow">// 6 · robot × environment <span class="ph">— seed-controlled, 8 × 3</span></p>
+    <h2>Reading across a row: how much the platform degrades. Down a column: sensitivity to scene geometry.</h2>
+    <div class="cols" style="grid-template-columns:1.05fr .95fr;">
+      <div class="col">
+        <div class="hmap" id="hmEnv" style="grid-template-columns:120px repeat(3,1fr);"></div>
+      </div>
+      <div class="col">
+        <ul class="k" style="font-size:13.5px;">
+          <li><b>TIAGo</b> stays above 95% in all three environments.</li>
+          <li><b>Stretch</b> reverses between apartment (10%) and kitchen (47%) — the kitchen's higher tables place the bowl inside its narrow reachable height band.</li>
+          <li><b>ARMAR-7</b> falls to 33% in the VisLab while TIAGo and Unitree G1 stay above 85%.</li>
+          <li><b>Rollin' Justin</b> drops from 96.7% in the apartment to 69.1% in the kitchen — a 27.6% swing driven entirely by navigation feasibility, not manipulation capability.</li>
+        </ul>
+        <figure class="fig" style="margin-top:12px;">
+          <img src="thesis_img/experiment/robots/hsrb_reach.png" alt="HSRB at near-maximum vertical extension">
+          <figcaption><b>Fig. 6.3</b> · HSRB at near-maximum vertical extension (red indicator) reaching a standard counter. Any surface at human working height sits at the ceiling of its reachable workspace — no margin left for the wrist rotations contact-rich manipulation requires.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6.6 recovery paradox -->
+  <section class="slide" id="s6f" data-chap="6 · experiment">
+    <p class="eyebrow">// 6 · recovery bias <span class="ph">— why the naive reading inverts the ordering</span></p>
+    <h2>A high recovery rate is a sign of resilience, not brittleness</h2>
+    <div class="cols" style="grid-template-columns:1fr 1.05fr;">
+      <div class="col">
+        <div class="brows wide" id="recBars"></div>
+        <p class="small" style="margin-top:14px;">A naive reading concludes that activating recovery reduces success from 80.8% to 15.6%. <b>This is wrong.</b> Recovery fires only <i>after</i> a collision failure, so the recovery = true group is pre-selected for the hardest execution contexts — precisely those where primary success was already unavailable. The 15.6% figure does not estimate <span class="mono">P(success | do(recovery = true))</span>; it estimates the success rate among runs that were already failing.</p>
+      </div>
+      <div class="col">
+        <figure class="fig">
+          <svg viewBox="0 0 560 220" role="img" aria-label="ARMAR-7 accounts for 137 of the 231 recovery-triggered runs, more than all other platforms combined.">
+            <text x="6" y="14" font-family="var(--mono)" font-size="10.5" fill="var(--mute)" letter-spacing=".05em">WHERE THE 231 RECOVERY-TRIGGERED RUNS COME FROM</text>
+            <rect x="6" y="30" width="330" height="34" rx="4" fill="var(--crit)" opacity=".22"/>
+            <rect x="6" y="30" width="330" height="34" rx="4" fill="none" stroke="var(--crit)" stroke-width="1.3"/>
+            <text x="20" y="52" font-size="13.5" fill="var(--ink)">ARMAR-7 — <tspan font-family="var(--mono)">137</tspan></text>
+            <rect x="6" y="74" width="226" height="34" rx="4" fill="none" stroke="var(--fig-line)" stroke-width="1.2"/>
+            <text x="20" y="96" font-size="13.5" fill="var(--ink2)">all other platforms combined — <tspan font-family="var(--mono)">94</tspan></text>
+            <text x="6" y="140" font-size="13" fill="var(--ink)">recovery motion succeeds in only</text>
+            <text x="6" y="176" font-size="34" font-weight="700" fill="var(--crit)" letter-spacing="-.02em">10.2%</text>
+            <text x="150" y="176" font-size="13" fill="var(--ink2)">of ARMAR-7's recovery attempts</text>
+            <text x="6" y="206" font-size="12" fill="var(--mute)">The low overall recovery rate is not a defect in the recovery policy — it is one</text>
+            <text x="6" y="220" font-size="12" fill="var(--mute)">platform's kinematic mismatch appearing repeatedly inside that group.</text>
+          </svg>
+          <figcaption><b>Redrawn from Fig. 6.4</b> · Recovery activates automatically after collision detection: it is a property of the execution model, not an experimenter-assigned treatment.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6.7 failure modes -->
+  <section class="slide" id="s6g" data-chap="6 · experiment">
+    <p class="eyebrow">// 6 · failure modes <span class="ph">— per platform, seed-controlled mixing</span></p>
+    <h2>No failure originates in the OAAT phase structure</h2>
+    <div class="cols" style="grid-template-columns:1fr 1fr;">
+      <div class="col">
+        <figure class="fig">
+          <svg viewBox="0 0 560 236" role="img" aria-label="Failure counts split into motion stalls and hard failures for Stretch, ARMAR-7 and Rollin Justin.">
+            <g font-family="var(--mono)" font-size="10.5" fill="var(--mute)" letter-spacing=".05em">
+              <text x="6" y="14">FAILURES BY MODE</text>
+              <text x="330" y="14" fill="var(--warn)">■ motion stall</text><text x="452" y="14" fill="var(--crit)">■ hard failure</text>
+            </g>
+            <g id="failBars"></g>
+          </svg>
+          <figcaption><b>Redrawn from Fig. 6.5</b> · <b>Motion stall</b>: end-effector displacement falls below the convergence threshold during the trajectory. <b>Hard failure</b>: collision or workspace violation before the technique phase completes.</figcaption>
+        </figure>
+      </div>
+      <div class="col">
+        <ul class="k" style="font-size:13.5px;">
+          <li><b>Stretch</b> — 180 of 182 failures (98.9%) are motion stagnation, in all three environments alike. It does not selectively fail in cluttered scenes, which points to a structural mismatch between its arm configuration and the mixing primitive rather than an obstacle-avoidance problem.</li>
+          <li><b>Rollin' Justin</b> — 34 of 43 failures (79.1%) are hard controller failures concentrated in the kitchen, where its large footprint leaves fewer valid base poses.</li>
+          <li><b>ARMAR-7</b> — 123 stalls and 11 hard failures, both from the joint-limit constraints at bowl-rim height.</li>
+          <li><b>HSRB</b> — cutting failures trace to progressive arm extension instability over the full cutting stroke, not to reach alone.</li>
+        </ul>
+        <div class="panel" style="margin-top:12px;border-left:3px solid var(--ok);">
+          <p class="small" style="margin:0;">In all cases the failure localises to the <b>execution layer</b>. The OAAT phase structure remained unchanged across all 1,915 runs. <span class="mono" style="color:var(--acc);">R1, R6</span></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6.8 cross-family -->
+  <section class="slide" id="s6h" data-chap="6 · experiment">
+    <p class="eyebrow">// 6 · cross-family generalisation <span class="ph">— platform × primitive family</span></p>
+    <h2>Failure is trajectory-specific, not template-specific</h2>
+    <div class="cols" style="grid-template-columns:1.1fr .9fr;">
+      <div class="col">
+        <div class="hmap" id="hmFam" style="grid-template-columns:120px repeat(4,1fr);"></div>
+        <p class="small" style="margin-top:10px;">Mean over all three environments, seed-controlled. All four family templates were instantiated across all eight platforms and all three environments; <b>no template was rewritten</b> between platforms or families.</p>
+      </div>
+      <div class="col">
+        <ul class="k" style="font-size:13px;">
+          <li><b>Stretch and HSRB both exceed 90% on pouring</b> — their cutting and mixing failures are therefore not a grounding or parameter-derivation problem. The same representation executes reliably when the trajectory falls inside their kinematic envelope.</li>
+          <li><b>Garmi</b> has the strongest arms of all eight (two Franka arms) yet lands mid-tier: a large base footprint and above-average gripper size drive navigation and collision failures. The arms are rarely the bottleneck; the surrounding geometry is.</li>
+          <li><b>Rollin' Justin</b> struggles on vertical surface targets — reaching a self-collision-free configuration while maintaining contact is a geometric, not kinematic, problem.</li>
+          <li><b>Unitree G1 vs ARMAR-7</b>: both bend at the waist to set working height, but G1's wrist design gives more rotational freedom exactly at the bowl-rim configurations that cost ARMAR-7 its recovery attempts.</li>
+        </ul>
+        <div class="brows wide" id="mtbfBars" style="margin-top:12px;"></div>
+        <p class="small" style="margin-top:6px;">Overall success and MTBF per family: failure rate follows <b>trajectory demand</b>, not template complexity.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6.9 real robot cutting -->
+  <section class="slide" id="s6i" data-chap="6 · experiment">
+    <p class="eyebrow">// 6 · real-robot execution <span class="ph">— PR2, Bremen Apartment laboratory</span></p>
+    <h2>Same action code, now with contact forces and material behaviour</h2>
+    <div class="figrow" style="grid-template-columns:1fr 1fr .8fr;">
+      <figure class="fig"><img src="thesis_img/experiment/cutting/cuc_real.png" alt="Real-world cucumber cutting on the PR2">
+        <figcaption><b>Fig. 6.6</b> · Cucumber cutting. The object is fixed on a nailed cutting board because the PR2's shoulder geometry limits comfortable two-handed configurations at table height.</figcaption></figure>
+      <figure class="fig"><img src="thesis_img/experiment/cutting/cut_real_bread.png" alt="Real-world bread cutting on the PR2">
+        <figcaption><b>Fig. 6.7</b> · Bread cutting. Depending on crust hardness the knife has to overcome high initial resistance before entering the softer interior; amplitude, direction and contact force stay controlled throughout.</figcaption></figure>
+      <figure class="fig"><img src="thesis_img/experiment/cutting/handle.png" alt="Custom tool handle for the PR2 gripper">
+        <figcaption><b>Fig. 6.8</b> · Custom tool handle — without this adapter the gripper could not reliably hold a bread-knife-sized tool through a contact-rich action.</figcaption></figure>
+    </div>
+    <div class="panel" style="margin-top:14px;">
+      <p class="small" style="margin:0;">Cutting succeeded on <b>bread, cucumber and zucchini</b> with the technique selected automatically from material properties. The remaining differences are material-dependent: watery cucumber slices adhere to the blade and need a wiping-off motion between cuts; zucchini needs stable force transmission because of its density; bread needs repeated sawing through a compliant structure. These localise the additional difficulty to <b>embodiment, tooling and material interaction — not to the OAAT grounding</b>. <span class="mono" style="color:var(--acc);">R7</span></p>
+    </div>
+  </section>
+
+  <!-- 6.10 pouring -->
+  <section class="slide" id="s6j" data-chap="6 · experiment">
+    <p class="eyebrow">// 6 · real-world pouring <span class="ph">— 120 trials, target perceived anew every trial</span></p>
+    <h2>94.2% success — and the seven failures name a missing predicate, not a broken structure</h2>
+    <div class="cols" style="grid-template-columns:1fr 1fr;">
+      <div class="col">
+        <div class="figrow" style="grid-template-columns:1fr 1fr;">
+          <figure class="fig"><img src="thesis_img/pouring/pouring_mug.png" alt="PR2 pouring from a mug"><figcaption>Small mug — 40/40.</figcaption></figure>
+          <figure class="fig"><img src="thesis_img/pouring/spilling.png" alt="Granular material flying past the target bowl"><figcaption>Ballistic ejection past the target: the elongated container.</figcaption></figure>
+        </div>
+        <table class="t" style="margin-top:12px;">
+          <tr><th>Source container</th><th>Trials</th><th>Success</th></tr>
+          <tr><td>small — ceramic mug</td><td class="mono">40/40</td><td class="mono" style="color:var(--ok);"><b>100%</b></td></tr>
+          <tr><td>medium — 3D-printed cup</td><td class="mono">40/40</td><td class="mono" style="color:var(--ok);"><b>100%</b></td></tr>
+          <tr><td>large — Pringles can</td><td class="mono">33/40</td><td class="mono" style="color:var(--warn);"><b>82.5%</b></td></tr>
+          <tr><td><b>overall</b></td><td class="mono"><b>113/120</b></td><td class="mono"><b>94.2%</b></td></tr>
+        </table>
+      </div>
+      <div class="col">
+        <p class="lead" style="font-size:14px;">The OAAT grounding <b>succeeded in all 120 trials</b>: opening geometry derived from the perceived source object, tilt axis and admissible tilt range computed from the bounding box, target alignment resolved from the perceived bowl pose. No ground-truth pose was provided.</p>
+        <p class="small" style="margin-top:12px;">The large-container failures are not a grounding error. The elongated aspect ratio and confined cross-section accelerate the wrapped candies along the tube axis before they clear the opening, producing ballistic ejection outside the target region.</p>
+        <div class="panel" style="margin-top:12px;border-left:3px solid var(--warn);">
+          <p class="small" style="margin:0;">What is missing is an additional predicate <b>distinguishing compact from elongated granular containers</b> — not a different phase structure and not a different geometric grounding procedure. <span class="mono" style="color:var(--acc);">R2</span></p>
+        </div>
+        <p class="small" style="margin-top:12px;">100% across the 80 small- and medium-container trials confirms that the material-transfer primitive instantiates from perceived geometry <b>without container-specific tuning</b>, and that target alignment from online perception suffices for reliable transfer in those cases.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6.11 VRB -->
+  <section class="slide" id="s6k" data-chap="6 · experiment">
+    <p class="eyebrow">// 6 · open source <span class="ph">— reproducibility of the representation, separately from the hardware</span></p>
+    <h2>The evaluation is inspectable, not just reported</h2>
+    <div class="arch" style="grid-template-columns:repeat(3,1fr);">
+      <div class="anode"><div class="t">NEEM-structured logs</div><div class="d">A large-scale collection of robot execution logs<a class="cite" data-ref="beetz2015openease"></a> contributed to the shared episodic memory dataset used across the EASE research group — executions as <b>reusable experience data</b>, not aggregate numbers.</div></div>
+      <div class="anode"><div class="t">Action Cores Lab · VRB</div><div class="d">The OAAT experiments deployed inside the Virtual Research Building<a class="cite" data-ref="vrb2024"></a> as a combined simulation and online robotic digital twin: select robot, environment, action and object parameters and <b>replay OAAT-structured executions</b> in a shared research environment.</div></div>
+      <div class="anode"><div class="t">code</div><div class="d">The same templates that drove the controlled evaluation are available as executable configurations, and outside the VRB in the thesis branch of the <span class="mono">cognitive_robot_abstract_machine</span> repository.</div></div>
+    </div>
+    <div class="panel" style="margin-top:16px;">
+      <p class="small" style="margin:0;">RoboCup@Home added a class of constraint laboratory evaluation does not surface: walls, furniture and object placement are reconfigured across competition runs. Video recordings of OAAT-driven executions there show the same phase organisation as the controlled evaluation — approach–technique–retract preserved, constraint violations triggering <b>local re-binding rather than full task restarts</b>. No quantitative failure analysis is available for the competition runs.</p>
+    </div>
+  </section>
+
+  <!-- ═════════ CH 7 DIVIDER ═════════ -->
+  <section class="slide" id="c7" data-chap="7 · discussion">
+    <div class="chapdiv">
+      <p class="num">CHAPTER 7</p>
+      <h1>Discussion and Insights</h1>
+      <p class="sub">What the results mean, what the OAAT generalises over, and where the limits of the current work actually lie.</p>
+    </div>
+  </section>
+
+  <!-- 7.1 hypotheses -->
+  <section class="slide" id="s7a" data-chap="7 · discussion">
+    <p class="eyebrow">// 7 · reflection on hypotheses <span class="ph">— what the evidence supports</span></p>
+    <h2>Three hypotheses, three kinds of evidence</h2>
+    <div class="cols" style="grid-template-columns:repeat(3,1fr);gap:14px;">
+      <div class="col hyp" style="border-color:var(--fam-sep);">
+        <div class="tag" style="color:var(--fam-sep);">H1 · SUPPORTED</div>
+        <p>The approach–technique–retract organisation held across <b>7,693 executions</b>, 8 platforms, 3 environments and 4 families, and was visible in the human demonstrations before any template was assumed. <b>No structural change</b> was required.</p>
+        <p class="small" style="margin-top:8px;color:var(--mute);">Evidence: observation study (Ch. 3) + representational stability (Ch. 6).</p>
+      </div>
+      <div class="col hyp" style="border-color:var(--fam-transfer);">
+        <div class="tag" style="color:var(--fam-transfer);">H2 · SUPPORTED</div>
+        <p>Parameterisation produced valid executions, and every failure was categorisable by layer. Failures came <b>from the system — perception, kinematics, controller — not from the representation</b>.</p>
+        <p class="small" style="margin-top:8px;color:var(--mute);">Evidence: OAAT phases (Ch. 4–5), constraint satisfaction, failure categorisation.</p>
+      </div>
+      <div class="col hyp" style="border-color:var(--fam-mix);">
+        <div class="tag" style="color:var(--fam-mix);">H3 · SUPPORTED, within scope</div>
+        <p>Material-specific parameters were retrieved at runtime; the knowledge graph narrowed geometrically admissible anchor regions to semantically admissible ones. The geometry-only baseline <b>could not produce those bindings at all</b>.</p>
+        <p class="small" style="margin-top:8px;color:var(--mute);">Evidence: knowledge constraints, pouring failure analysis, H<sub>0,3</sub> test.</p>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px;border-left:3px solid var(--fam-surface);">
+      <p class="small" style="margin:0;"><b>Independent theoretical support</b> — the four primitive families correspond formally to the predicates of Hedblom's ISL<sub>FOL</sub><a class="cite" data-ref="hedblom2020"></a>: each generator enforces, as a continuous trajectory invariant, what the corresponding image schema defines qualitatively. The empirically derived structure coincides with a cognitively grounded formal prediction.</p>
+    </div>
+  </section>
+
+  <!-- 7.2 generalisation boundary -->
+  <section class="slide" id="s7b" data-chap="7 · discussion">
+    <p class="eyebrow">// 7 · the generalisation boundary <span class="ph">— representational invariance, not universal realisability</span></p>
+    <h2>What generalises is the action organisation — not one trajectory</h2>
+    <div class="cols" style="grid-template-columns:1fr 1fr;">
+      <div class="col">
+        <p class="mono" style="font-size:10.5px;color:var(--ok);letter-spacing:.06em;">REUSABLE STRUCTURE — FIXED BY THE TEMPLATE</p>
+        <ul class="k" style="font-size:13.5px;">
+          <li>the phase order</li>
+          <li>the primitive family attached to each phase</li>
+          <li>the invariants that define admissible execution</li>
+        </ul>
+        <p class="small">These are shared across instances of an action class and correspond to the common execution skeleton in the implementation.</p>
+      </div>
+      <div class="col">
+        <p class="mono" style="font-size:10.5px;color:var(--warn);letter-spacing:.06em;">PARAMETERISATION — SUPPLIED BY THE CONTEXT</p>
+        <ul class="k" style="font-size:13.5px;">
+          <li>anchors, normals, penetration depths, surface extents</li>
+          <li>tilt profiles, durations, repetition counts</li>
+          <li>object-specific symbolic bindings: tool, technique</li>
+        </ul>
+        <p class="small">The template is reusable because it fixes <i>what kind</i> of motion organisation is required; parameterisation stays open because it determines <i>how</i> that organisation is instantiated here.</p>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px;border-left:3px solid var(--crit);">
+      <p class="small" style="margin:0;"><b>What the OAAT does not generalise over</b> — arbitrary objects, arbitrary materials, or arbitrary infrastructure quality. If the geometry cannot be represented well enough to derive a valid action-relative object geometry, if the world model is inconsistent, if the controller cannot realise the constraints, or if the knowledge graph does not cover the material, the action may fail <i>even though the phase structure remains valid</i>. The claim is representational invariance, not universal realisability.</p>
+    </div>
+  </section>
+
+  <!-- 7.3 threats -->
+  <section class="slide" id="s7c" data-chap="7 · discussion">
+    <p class="eyebrow">// 7 · threats to validity <span class="ph">— stated, not hidden</span></p>
+    <h2>Where these results could be wrong</h2>
+    <table class="t">
+      <tr><th style="width:230px;">Threat</th><th>What it means for the claim</th></tr>
+      <tr><td><b>Observation selection bias</b></td><td>The families were extracted from a bounded set of demonstrations; they still depend on how segmentation boundaries were chosen and which variants were treated as central. Borderline cases — ladle-mediated transfer, composite surface cleaning — are the pressure points. The claim is a stable core sufficient for these families, not an exhaustive account of human manipulation.</td></tr>
+      <tr><td><b>Bounded evaluation space</b></td><td>Eight platforms and three environments give meaningful variation but do not span domestic manipulation. The results support structural invariance <i>across the tested embodiments and scenes</i>.</td></tr>
+      <tr><td><b>Bounding boxes as shape proxies</b></td><td>Adequate for regular objects; a real risk for irregular, articulated or internally structured ones. Where the box over-approximates the admissible region, the derived anchor or depth can be geometrically coherent yet physically poor. Some failures are attributable to <b>the geometric abstraction rather than the OAAT</b>.</td></tr>
+      <tr><td><b>Curated knowledge graph</b></td><td>Coverage is necessarily incomplete and reflects the knowledge-engineering scope. Missing entities, relations or default fallbacks all affect execution quality — a claim about contextual parameterisation can be weakened by an incomplete resource rather than by a flawed representation.</td></tr>
+      <tr><td><b>Simulation vs reality</b></td><td>Collision geometry, poses and contact conditions are cleaner in simulation. The PR2 trials expose the same pipeline to perception noise and real contact, but cover one platform and a subset of families.</td></tr>
+      <tr><td><b>Scope of the phase form</b></td><td>All four families share the approach–technique–retract form. Actions requiring interleaved sensing and motion, or conditional phase ordering, are supported by the plan structure but <b>not evaluated experimentally</b>.</td></tr>
+    </table>
+  </section>
+
+  <!-- ═════════ CH 8 DIVIDER ═════════ -->
+  <section class="slide" id="c8" data-chap="8 · conclusion">
+    <div class="chapdiv">
+      <p class="num">CHAPTER 8</p>
+      <h1>Conclusion and Future Work</h1>
+      <p class="sub">State-changing household manipulation does not have to be represented either as a symbolic action name or as a fixed trajectory.</p>
+    </div>
+  </section>
+
+  <!-- 8.1 results at a glance -->
+  <section class="slide" id="s8a" data-chap="8 · conclusion">
+    <p class="eyebrow">// 8 · summary of contributions <span class="ph">— the numbers behind the claim</span></p>
+    <h2>What was shown</h2>
+    <div class="cols" style="grid-template-columns:repeat(5,1fr);gap:14px;">
+      <div class="col stat"><div class="v">7,693</div><div class="l">seed-controlled<br>executions</div></div>
+      <div class="col stat"><div class="v">8 × 3 × 4</div><div class="l">platforms ×<br>environments × families</div></div>
+      <div class="col stat"><div class="v">72.5%</div><div class="l">embodiment-driven spread<br>under identical conditions</div></div>
+      <div class="col stat"><div class="v">94.2%</div><div class="l">real-world pouring,<br>120 PR2 trials</div></div>
+      <div class="col stat"><div class="v">0</div><div class="l">failures originating in the<br>phase structure itself</div></div>
+    </div>
+    <div class="cols" style="grid-template-columns:1fr 1fr;margin-top:20px;">
+      <div class="col">
+        <div class="brows wide" id="famBars"></div>
+        <p class="small" style="margin-top:8px;">Full four-family corpus: overall success and mean time between execution failures. The ordering follows trajectory demand.</p>
+      </div>
+      <div class="col">
+        <ul class="k" style="font-size:13.5px;">
+          <li>The same template executed across 8 platforms, 3 environments and 4 families <b>without modification</b>. <span class="mono">R1</span></li>
+          <li>Open parameters bound at runtime from geometry, perceived scene state and the knowledge graph — <b>not from constants</b>. <span class="mono">R2</span></li>
+          <li>Applicability, invariants and success criteria checked explicitly at each boundary and during execution. <span class="mono">R3, R5</span></li>
+          <li>Underdetermined designators resolved through the fixed dependency order. <span class="mono">R4</span></li>
+          <li>Every failure localisable to a layer, never to the phase structure. <span class="mono">R6</span></li>
+          <li>The implementation maps directly onto PyCRAM designators, KnowRob queries, SDT geometry interfaces and Giskard constraints — <b>no per-instance rewriting</b>. <span class="mono">R7</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8.2 argument structure -->
+  <section class="slide" id="s8b" data-chap="8 · conclusion">
+    <p class="eyebrow">// 8 · the argument, end to end <span class="ph">— hypothesis → evidence → result</span></p>
+    <h2>How the chapters compose into one argument</h2>
+    <figure class="fig">
+      <svg viewBox="0 0 1160 300" role="img" aria-label="Each hypothesis links to its chapter evidence and to the result it supports; a fourth row records the formal correspondence to image schemas.">
+        <g font-family="var(--mono)" font-size="10.5" fill="var(--mute)" letter-spacing=".06em">
+          <text x="6" y="14">HYPOTHESIS</text><text x="330" y="14">EVIDENCE</text><text x="700" y="14">MECHANISM</text><text x="978" y="14">RESULT</text>
+        </g>
+        <g stroke="var(--fig-line)" stroke-width="1" opacity=".45" stroke-dasharray="3 3">
+          <path d="M6 22 H1154"/><path d="M318 22 V294"/><path d="M688 22 V294"/><path d="M966 22 V294"/><path d="M6 226 H1154"/>
+        </g>
+        <g id="argRows"></g>
+      </svg>
+      <figcaption><b>Redrawn from Fig. 8.1</b> · The empirically derived structure coincides with a cognitively grounded formal prediction — independent theoretical support for H1 and H2.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 8.3 future work -->
+  <section class="slide" id="s8c" data-chap="8 · conclusion">
+    <p class="eyebrow">// 8 · future research directions <span class="ph">— what the structure makes tractable next</span></p>
+    <h2>Where this goes</h2>
+    <div class="arch" style="grid-template-columns:repeat(3,1fr);">
+      <div class="anode"><div class="t">geometry beyond bounding boxes</div><div class="d">Convex decomposition or a <b>part-based action-relative object geometry</b> from semantic part annotations — extending the range of applicable objects without changing the OAAT structure.</div></div>
+      <div class="anode"><div class="t">monitoring → replanning</div><div class="d">Connecting the monitoring layer to a mechanism that restarts parameterisation <b>from the current world state</b>, for environments where objects move during execution.</div></div>
+      <div class="anode"><div class="t">task-level recovery</div><div class="d">Lifting recovery from local arm re-binding to reasoning at phase boundaries: choose a new tool, move the object to a better support, ask for assistance. <b>Explicit phase identity is what makes this tractable.</b></div></div>
+    </div>
+    <div class="arch" style="grid-template-columns:repeat(3,1fr);margin-top:12px;">
+      <div class="anode"><div class="t">learned material models</div><div class="d">Density estimators or physics simulators conditioned on perception, extending knowledge-based parameterisation to <b>novel materials</b> without manual knowledge engineering.</div></div>
+      <div class="anode"><div class="t">transients &amp; bimanual scope</div><div class="d">Explicit modelling of intermediate material entities<a class="cite" data-ref="kuempel2024transients"></a> would enable stopping criteria driven by material state rather than geometry or time; and bimanual, multi-object actions are supported in principle but not yet realised.</div></div>
+      <div class="anode"><div class="t">more image schemas</div><div class="d">Beyond Containment, Source-Path-Goal, Contact and Support: <b>Blockage</b> (confined spaces), <b>Caused-Movement</b> (pushing, striking), <b>Link</b> (one hand stabilising while the other acts).</div></div>
+    </div>
+    <p class="small" style="margin-top:14px;">Six of these directions are already under investigation in supervised theses: plan transformation, open-world navigation, action recognition, language-driven slot resolution, scoring-based pick-and-place, and multi-robot task planning.</p>
+  </section>
+
+  <!-- 8.4 closing -->
+  <section class="slide" id="s8d" data-chap="8 · conclusion">
+    <p class="eyebrow">// 8 · final remarks</p>
+    <div class="cols" style="grid-template-columns:1.2fr 1fr;">
+      <div class="col">
+        <h2 style="font-size:25px;max-width:32ch;">"The central challenge is not to make motion smoother or training data larger, but to represent action in a way that <span style="color:var(--acc);">preserves the physical invariants of the world</span> in which a robot must operate."</h2>
+        <p class="lead" style="margin-top:18px;">Households are not static test benches: they are continuous, irregular, and only partly predictable. A robot working there must understand not only how to move, but <b>what it means to cut, pour, grasp or release in relation to the objects around it</b>.</p>
+      </div>
+      <div class="col">
+        <div class="panel" style="border-left:3px solid var(--acc);">
+          <p class="small" style="margin:0;">Foundation models have made remarkable progress at reasoning about tasks, plans and goals. Statistical pattern recognition over text or images does not replace an explicit representation of physical structure. The OAAT is the <b>missing middle layer</b> such systems can build on — a way to translate underspecified instructions into action structures that stay physically grounded, interpretable, and constrained by what the world actually permits.</p>
+        </div>
+        <p class="byline" style="margin-top:26px;">Thank you. <span class="small">— questions welcome</span></p>
+        <div class="ties" style="margin-top:18px;">
+          <span class="famchip sep"><span class="sw"></span>separation &amp; division</span>
+          <span class="famchip mix"><span class="sw"></span>aggregation &amp; mixing</span>
+          <span class="famchip transfer"><span class="sw"></span>material transfer</span>
+          <span class="famchip surface"><span class="sw"></span>surface interaction</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="progress"></div>
+  <div id="navhint"><b>←</b> <b>→</b> navigate · <b>t</b> theme · <b>o</b> overview · <b>f</b> fullscreen</div>
+  <div id="brandlogos">
+    <img class="lt" alt="University of Bremen" src="index_files/unibremen_light.png">
+    <img class="dk" alt="University of Bremen" src="index_files/unibremen_dark.png">
+    <img class="lt" alt="AICOR" src="index_files/aicor_light.png">
+    <img class="dk" alt="AICOR" src="index_files/aicor_dark.png">
+  </div>
+</div>
+</div>
+<script src="refs.js"></script>
+<script>
+/* ═══════════════════════ thesis data ═══════════════════════
+   Every number here is read from the thesis (Ch. 6 and Ch. 8) so the
+   redrawn figures carry the same values as the printed ones. */
+const MIX_PERF=[            // platform, success %, median execution time s (Fig. 6.2)
+  ['TIAGo',97.3,15.2],['Unitree G1',90.1,11.8],['PR2',86.8,15.6],["Rollin' Justin",82.2,16.0],
+  ['Garmi',80.6,23.0],['HSRB',78.9,4.2],['ARMAR-7',44.6,22.6],['Stretch',24.8,6.4]];
+const ENV_COLS=['Apartment','Kitchen','ISR lab'];
+const ENV_RATES=[           // platform × environment success % (Fig. 6.3)
+  ['TIAGo',[100,96,95]],['Unitree G1',[88,100,85]],['HSRB',[73,84,81]],['PR2',[100,81,77]],
+  ["Rollin' Justin",[97,69,77]],['Garmi',[82,69,88]],['ARMAR-7',[56,44,33]],['Stretch',[10,47,23]]];
+const FAM_COLS=['Mixing','Cutting','Surface int.','Pouring'];
+const FAM_RATES=[           // platform × primitive family success %, mean over environments (Fig. 6.6)
+  ['TIAGo',[97,77,88,99]],['Unitree G1',[90,76,75,98]],['PR2',[87,80,85,96]],["Rollin' Justin",[82,91,51,73]],
+  ['Garmi',[81,82,76,89]],['HSRB',[79,20,57,98]],['ARMAR-7',[45,56,24,89]],['Stretch',[25,9,61,97]]];
+const FAILURES=[            // platform, motion stalls, hard failures (Fig. 6.5)
+  ['Stretch',180,2],['ARMAR-7',123,11],["Rollin' Justin",9,34]];
+const RECOVERY=[            // conditioning on the recovery flag (Eq. 6.2, 6.3)
+  ['no recovery triggered',80.8,1684],['recovery triggered',15.6,231]];
+const FAM_TOTALS=[          // primitive family, overall success %, MTBF_exec (Ch. 8)
+  ['mixing',71.8,3.5,'mix'],['surface interaction',66.8,3.0,'surface'],['cutting',58.3,2.4,'sep']];
+const FAM_TIMELINE=[        // family, colour token, phase labels, contact-event labels
+  ['Aggregation and mixing','--fam-mix',['approach','spiral in','circular / elliptical / orbital','spiral out','retract'],
+    ['rim entry','contact','contact end','rim exit']],
+  ['Separation and division','--fam-sep',['approach','align','saw / slice','reposition','retract'],
+    ['pre-align','contact','lift','clear']],
+  ['Material transfer','--fam-transfer',['approach','align &amp; tilt','tilt / tap / shake','recovery','retract'],
+    ['tilt onset','flow onset','flow stop','upright']],
+  ['Surface interaction','--fam-surface',['approach','lower tool','raster / spiral / sweep','lift','retract'],
+    ['lower','contact','lift-off','clear']]];
+const GROUND_LADDER=[
+  ['object binding','Semantic Digital Twin, perception'],
+  ['applicability','KnowRob — cuttable, flowable, wipeable'],
+  ['symbolic binding','KnowRob — tool, technique, repetitions'],
+  ['scene binding','SDT — arm, support, approach side'],
+  ['geometric binding','object geometry — anchor, normal']];
+const ARG_ROWS=[
+  ['H1','--fam-sep','stable phase structure across the task scope','observation study (Ch. 3) · 7,693 executions, 8 platforms',
+   'approach · technique · retract invariant','H1 supported — no structural change'],
+  ['H2','--fam-transfer','constraint-aware template describes admissible executions','OAAT phases (Ch. 4–5) · constraint satisfaction · failure categorisation',
+   'parameterisation produces valid executions','H2 supported — failures from the system, not the representation'],
+  ['H3','--fam-mix','contextual knowledge improves execution over geometry alone','knowledge constraints · pouring failure analysis · H₀,₃ test',
+   'material-specific parameters retrieved at runtime','H3 supported — within the tested task scope']];
+const ARG_FORMAL=['formal correspondence','--fam-surface','OAAT ↔ image schema',
+  'ISL-FOL predicates map to all four primitive families',
+  'empirically derived structure = cognitively grounded formal prediction',
+  'independent theoretical support for H1 and H2'];
+
+/* ═══════════════════════ small drawing helpers ═══════════════════════ */
+const SVGNS='http://www.w3.org/2000/svg';
+function svgEl(tag,attrs,text){
+  const el=document.createElementNS(SVGNS,tag);
+  for(const k in attrs)el.setAttribute(k,attrs[k]);
+  if(text!==undefined)el.innerHTML=text;
+  return el;
+}
+function tier(v){return v>=85?'var(--ok)':v>=60?'var(--warn)':'var(--crit)';}
+
+/* film-strip sprocket holes for the segmentation figure */
+(function sprockets(){
+  const g=document.getElementById('sprockets');
+  if(!g)return;
+  for(let x=70;x<1090;x+=44){
+    g.appendChild(svgEl('rect',{x:x,y:24,width:22,height:6,rx:1.5}));
+    g.appendChild(svgEl('rect',{x:x,y:66,width:22,height:6,rx:1.5}));
+  }
+})();
+
+/* observed phase timelines, one row per primitive family */
+(function timeline(){
+  const g=document.getElementById('timeline');
+  if(!g)return;
+  const x0=200,x1=1120,bounds=[0,.16,.32,.66,.82,1];
+  const px=f=>x0+f*(x1-x0);
+  FAM_TIMELINE.forEach(([name,tok,phases,events],r)=>{
+    const y=44+r*58,c=`var(${tok})`;
+    g.appendChild(svgEl('text',{x:6,y:y+4,'font-size':12,fill:c,'font-weight':600},name));
+    phases.forEach((label,i)=>{
+      const a=px(bounds[i]),b=px(bounds[i+1]),core=i===2;
+      g.appendChild(svgEl('rect',{x:a,y:y-(core?15:11),width:b-a,height:core?30:22,rx:4,
+        fill:c,'fill-opacity':core?.20:(i===1||i===3?.10:.05),stroke:c,'stroke-width':core?1.6:1,
+        'stroke-opacity':core?1:.55}));
+      g.appendChild(svgEl('text',{x:(a+b)/2,y:y+(core?-1:4),'text-anchor':'middle',
+        'font-size':core?11.5:11,fill:'var(--ink)','font-weight':core?600:400},core?'technique':label));
+      if(core)g.appendChild(svgEl('text',{x:(a+b)/2,y:y+13,'text-anchor':'middle','font-size':9.5,
+        fill:c,'font-family':'var(--mono)'},label));
+    });
+    events.forEach((label,i)=>{
+      const x=px(bounds[i+1]),hard=i===1||i===2;
+      g.appendChild(svgEl('line',{x1:x,y1:y-20,x2:x,y2:y+20,stroke:c,'stroke-width':hard?1.5:1,
+        'stroke-dasharray':hard?'':'4 3','stroke-opacity':hard?1:.6}));
+      g.appendChild(svgEl('text',{x:x,y:y-24,'text-anchor':'middle','font-size':8.5,
+        fill:'var(--mute)','font-family':'var(--mono)'},label));
+    });
+  });
+  /* shared structure band underneath */
+  const y=284,band=[['approach',0,.16],['transition',.16,.32],['task-critical',.32,.66],
+                    ['transition',.66,.82],['retract',.82,1]];
+  band.forEach(([label,a,b],i)=>{
+    const core=i===2;
+    g.appendChild(svgEl('rect',{x:px(a),y:y-11,width:px(b)-px(a),height:18,rx:3,fill:'none',
+      stroke:'var(--fig-line)','stroke-width':core?1.4:.9,'stroke-opacity':core?1:.6}));
+    g.appendChild(svgEl('text',{x:(px(a)+px(b))/2,y:y+2,'text-anchor':'middle','font-size':10,
+      fill:core?'var(--ink)':'var(--mute)','font-family':'var(--mono)','font-weight':core?600:400},label));
+  });
+  g.appendChild(svgEl('text',{x:6,y:y+2,'font-size':10,fill:'var(--mute)','font-family':'var(--mono)'},'shared'));
+})();
+
+/* dependency-ordered resolver ladder */
+(function ladder(){
+  const g=document.getElementById('ladder');
+  if(!g)return;
+  GROUND_LADDER.forEach(([stage,source],i)=>{
+    const y=56+i*38;
+    g.appendChild(svgEl('rect',{x:336,y:y,width:438,height:30,rx:4,fill:'none',
+      stroke:'var(--fig-line)','stroke-width':1}));
+    g.appendChild(svgEl('text',{x:350,y:y+20,'font-size':12.5,fill:'var(--ink)'},stage));
+    g.appendChild(svgEl('text',{x:520,y:y+20,'font-size':10.5,fill:'var(--mute)','font-family':'var(--mono)'},source));
+    if(i<GROUND_LADDER.length-1)
+      g.appendChild(svgEl('path',{d:`M555 ${y+30} V ${y+38}`,stroke:'var(--acc)','stroke-width':1.2,
+        fill:'none','marker-end':'url(#ar1)'}));
+  });
+})();
+
+/* horizontal bar rows */
+function barRows(hostId,rows,fmt){
+  const host=document.getElementById(hostId);
+  if(!host)return;
+  const max=Math.max(...rows.map(r=>r[1]));
+  rows.forEach(([label,value,colour])=>{
+    const row=document.createElement('div');
+    row.className='brow2';
+    row.innerHTML=`<div class="lb">${label}</div><div class="tr"><div class="fillb"
+      data-w="${(value/max*100).toFixed(1)}" style="background:${colour}"></div></div>
+      <div class="vl">${fmt(value)}</div>`;
+    host.appendChild(row);
+  });
+}
+barRows('perfBars',MIX_PERF.map(([n,s])=>[n,s,tier(s)]),v=>v.toFixed(1)+'%');
+barRows('timeBars',MIX_PERF.map(([n,,t])=>[n,t,'var(--seq3)']),v=>v.toFixed(1)+' s');
+barRows('recBars',RECOVERY.map(([n,v,c])=>[n+' · n='+c,v,n.startsWith('no')?'var(--ok)':'var(--crit)']),v=>v.toFixed(1)+'%');
+barRows('mtbfBars',FAM_TOTALS.map(([n,s,,tok])=>[n,s,`var(--fam-${tok})`]),v=>v.toFixed(1)+'%');
+barRows('famBars',FAM_TOTALS.map(([n,s,m,tok])=>[n+' · MTBF '+m.toFixed(1),s,`var(--fam-${tok})`]),v=>v.toFixed(1)+'%');
+
+/* failure modes: stacked stall / hard-failure bars */
+(function failBars(){
+  const g=document.getElementById('failBars');
+  if(!g)return;
+  const max=Math.max(...FAILURES.map(([,a,b])=>a+b)),x0=136,x1=548;
+  FAILURES.forEach(([name,stall,hard],i)=>{
+    const y=36+i*62,ws=(stall/max)*(x1-x0),wh=(hard/max)*(x1-x0);
+    g.appendChild(svgEl('text',{x:128,y:y+20,'text-anchor':'end','font-size':12,fill:'var(--ink2)'},name));
+    g.appendChild(svgEl('rect',{x:x0,y:y,width:ws,height:26,rx:3,fill:'var(--warn)','fill-opacity':.85}));
+    g.appendChild(svgEl('rect',{x:x0+ws,y:y,width:wh,height:26,rx:3,fill:'var(--crit)','fill-opacity':.85}));
+    g.appendChild(svgEl('text',{x:x0+4,y:y+42,'font-size':10.5,fill:'var(--mute)','font-family':'var(--mono)'},
+      `${stall} stalls · ${hard} hard · ${stall+hard} total`));
+  });
+})();
+
+/* heatmaps, coloured from the theme tokens */
+function heatmap(hostId,cols,rows){
+  const host=document.getElementById(hostId);
+  if(!host)return;
+  host.innerHTML='<div></div>'+cols.map(c=>`<div class="hcol">${c}</div>`).join('');
+  rows.forEach(([name,values])=>{
+    host.insertAdjacentHTML('beforeend',`<div class="hlab">${name}</div>`);
+    values.forEach(v=>{
+      const cell=document.createElement('div');
+      cell.className='cell';cell.dataset.v=v;cell.textContent=v+'%';
+      host.appendChild(cell);
+    });
+  });
+  paintCells();
+}
+function paintCells(){
+  const dark=document.documentElement.dataset.theme==='dark';
+  document.querySelectorAll('.hmap .cell').forEach(cell=>{
+    const v=+cell.dataset.v,t=Math.max(0,Math.min(1,v/100));
+    /* red → neutral → green, lightness chosen so the label stays legible in both themes */
+    const hue=t<.5?8+t*2*22:100+(t-.5)*2*40;
+    const sat=dark?38:52, light=dark?(18+t*20):(94-t*34);
+    cell.style.background=`hsl(${hue} ${sat}% ${light}%)`;
+    cell.style.color=dark?(t>.55?'#0b1016':'#e9eef5'):(t>.62?'#ffffff':'#16212c');
+  });
+}
+heatmap('hmEnv',ENV_COLS,ENV_RATES);
+heatmap('hmFam',FAM_COLS,FAM_RATES);
+
+/* thesis argument structure */
+(function argRows(){
+  const g=document.getElementById('argRows');
+  if(!g)return;
+  const draw=(row,y,tall)=>{
+    const [tag,tok,claim,evidence,mechanism,result]=row,c=`var(${tok})`;
+    g.appendChild(svgEl('rect',{x:6,y:y,width:302,height:tall,rx:5,fill:c,'fill-opacity':.12,stroke:c,'stroke-width':1.2}));
+    g.appendChild(svgEl('text',{x:22,y:y+20,'font-size':13,fill:c,'font-weight':700,'font-family':'var(--mono)'},tag));
+    wrap(g,claim,22,y+38,268,11.5,'var(--ink)');
+    wrap(g,evidence,330,y+20,346,11.5,'var(--ink2)');
+    wrap(g,mechanism,700,y+20,254,11.5,'var(--ink2)');
+    g.appendChild(svgEl('rect',{x:974,y:y,width:180,height:tall,rx:5,fill:c,'fill-opacity':.12,stroke:c,'stroke-width':1.2}));
+    wrap(g,result,988,y+20,156,11,'var(--ink)');
+    g.appendChild(svgEl('path',{d:`M308 ${y+tall/2} H326`,stroke:c,'stroke-width':1.2,fill:'none','marker-end':'url(#ar1)'}));
+    g.appendChild(svgEl('path',{d:`M952 ${y+tall/2} H970`,stroke:c,'stroke-width':1.2,fill:'none','marker-end':'url(#ar1)'}));
+  };
+  ARG_ROWS.forEach((r,i)=>draw(r,30+i*64,58));
+  draw(ARG_FORMAL,236,54);
+})();
+/* naive greedy text wrapping for SVG labels */
+function wrap(g,text,x,y,width,size,fill){
+  const words=String(text).split(' ');
+  const perLine=Math.max(8,Math.floor(width/(size*0.53)));
+  let line='',dy=0;
+  const flush=()=>{g.appendChild(svgEl('text',{x:x,y:y+dy,'font-size':size,fill:fill},line));dy+=size+3;line='';};
+  words.forEach(w=>{
+    if((line+' '+w).trim().length>perLine)flush();
+    line=(line?line+' ':'')+w;
+  });
+  if(line)flush();
+}
+
+/* ═══════════════════════ citations ═══════════════════════ */
+const REFS=window.REFS||{};
+const slides=[...document.querySelectorAll('.slide')];
+function renderCitations(){
+  slides.forEach(s=>{
+    const markers=[...s.querySelectorAll('.cite[data-ref]')],old=s.querySelector('.citelist');
+    if(old)old.remove();
+    if(!markers.length)return;
+    const order=[];
+    markers.forEach(m=>{
+      const key=m.dataset.ref;
+      if(!REFS[key]){m.textContent='[?]';m.title='unknown bibliography key: '+key;return;}
+      let n=order.indexOf(key);
+      if(n<0){order.push(key);n=order.length-1;}
+      m.textContent='['+(n+1)+']';m.title=REFS[key];
+    });
+    if(!order.length)return;
+    const list=document.createElement('div');
+    list.className='citelist';
+    list.innerHTML=order.map((k,j)=>'<b>['+(j+1)+']</b> '+REFS[k]).join(' &nbsp;·&nbsp; ');
+    s.appendChild(list);
+  });
+}
+renderCitations();
+
+/* ═══════════════════════ navigation ═══════════════════════ */
+const stage=document.getElementById('stage'),N=slides.length;
+let cur=0;
+function fit(){const s=Math.min(innerWidth/1280,innerHeight/720);stage.style.transform=`scale(${s})`;}
+addEventListener('resize',fit);fit();
+function revealNext(){
+  const pending=slides[cur].querySelector('.reveal:not(.shown)');
+  if(!pending)return false;
+  pending.classList.add('shown');
+  markStepping(slides[cur]);
+  return true;
+}
+/* a figure yields room to the reveal steps below it */
+function markStepping(s){
+  if(s.querySelector('.reveal'))s.querySelectorAll('figure.fig').forEach(f=>f.classList.add('yields'));
+  s.classList.toggle('stepping',!!s.querySelector('.reveal.shown'));
+}
+function advance(){if(!revealNext())go(cur+1);}
+function go(i){
+  i=Math.max(0,Math.min(N-1,i));
+  slides.forEach((s,j)=>s.classList.toggle('on',j===i));
+  cur=i;
+  const s=slides[i];
+  s.querySelectorAll('.reveal').forEach(el=>el.classList.remove('shown'));
+  markStepping(s);
+  s.querySelectorAll('.fillb').forEach(b=>{b.style.width='0';requestAnimationFrame(()=>{b.style.width=b.dataset.w+'%';});});
+  document.getElementById('hudframe').textContent='frame '+String(i+1).padStart(2,'0')+' / '+N;
+  document.getElementById('hudchap').textContent=s.dataset.chap||'title';
+  document.getElementById('progress').style.width=((i+1)/N*100)+'%';
+  location.hash='#'+s.id;
+}
+addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();advance();}
+  else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();go(cur-1);}
+  else if(e.key==='Home')go(0);
+  else if(e.key==='End')go(N-1);
+  else if(e.key==='t'||e.key==='T')setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+  else if(e.key==='o'||e.key==='O')toggleOverview();
+  else if(e.key==='f'||e.key==='F'){document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}
+});
+stage.addEventListener('click',e=>{
+  if(e.target.closest('a,button'))return;
+  const r=stage.getBoundingClientRect(),x=(e.clientX-r.left)/r.width;
+  if(x>0.8)advance();else if(x<0.08)go(cur-1);
+});
+/* chapter overview: jump straight to any divider */
+function toggleOverview(){
+  const open=document.getElementById('overview');
+  if(open){open.remove();return;}
+  const box=document.createElement('div');
+  box.id='overview';
+  box.style.cssText='position:absolute;inset:34px 0 0 0;z-index:80;background:var(--bg);padding:40px 60px;box-sizing:border-box;overflow:auto;';
+  box.innerHTML='<p class="eyebrow">// chapter overview <span class="ph">— o to close</span></p>'+
+    slides.map((s,j)=>s.id.startsWith('c')||s.id==='title'
+      ? `<div data-j="${j}" style="cursor:pointer;padding:7px 0;border-bottom:1px solid var(--line);font-size:16px;color:var(--ink);">
+           <span class="mono" style="color:var(--mute);font-size:11px;">${String(j+1).padStart(2,'0')}</span>
+           &nbsp;&nbsp;${(s.querySelector('h1')||s.querySelector('h2')||{textContent:s.id}).textContent}</div>`
+      : '').join('');
+  box.addEventListener('click',e=>{
+    const row=e.target.closest('[data-j]');
+    if(!row)return;
+    box.remove();go(+row.dataset.j);
+  });
+  stage.appendChild(box);
+}
+/* theme */
+function setTheme(name){
+  document.documentElement.dataset.theme=name;
+  paintCells();
+  try{localStorage.setItem('thesis-deck-theme',name);}catch(e){}
+}
+let startTheme='light';
+try{startTheme=new URLSearchParams(location.search).get('theme')||localStorage.getItem('thesis-deck-theme')||'light';}catch(e){}
+setTheme(startTheme==='dark'?'dark':'light');
+
+const fromHash=slides.findIndex(s=>'#'+s.id===location.hash);
+go(fromHash>=0?fromHash:0);
+</script>
+</body></html>
