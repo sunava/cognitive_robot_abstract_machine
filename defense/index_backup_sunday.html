@@ -449,8 +449,6 @@ table.tt td{padding:7px 10px;border-bottom:1px solid var(--line);color:var(--ink
 table.tt td b{color:var(--ink);font-weight:600;}
 
 /* ---------- hypothesis spine: every content slide declares which claim it serves ---------- */
-.hypbadge.nohyp{display:none;}
-.qhline{font-size:11.5px;letter-spacing:.04em;margin:-6px 0 12px;}
 .hypbadge{position:absolute;top:10px;right:60px;z-index:8;display:flex;gap:6px;align-items:center;
   font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;pointer-events:none;}
 .hypbadge .hb{display:inline-block;padding:2px 7px;border-radius:3px;border:1px solid currentColor;
@@ -725,10 +723,6 @@ table.tt td b{color:var(--ink);font-weight:600;}
   
 
   <!-- ══════════ archive · the template / bindings split ══════════ -->
-  
-  
-  
-
   <section class="slide" id="s1">
     <div id="titleStage" class="glstage" style="inset:0;pointer-events:none;"></div>
     <div class="scrim"></div>
@@ -761,7 +755,7 @@ table.tt td b{color:var(--ink);font-weight:600;}
     </div>
     <div class="mono" style="position:absolute;left:26px;bottom:22px;font-size:10.5px;color:rgba(255,255,255,.55);z-index:5;">real PR2 execution · no simulation</div>
   </section><section class="slide" id="s1a" data-chap="1 · introduction">
-    <div class="hypbadge nohyp" contenteditable="false" aria-hidden="true"><span class="hbrole">PART 1 · STEP 1 — the problem</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
+    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">PART 1 · STEP 1 — the problem</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
 <p class="eyebrow">// 1 · the problem <span class="ph">— what a task description leaves open</span></p>
 <h2>We expect robots to act in our everyday world</h2>
 <div class="cols" style="display:grid;grid-template-columns:1fr 1fr;align-items:start;">
@@ -789,7 +783,7 @@ table.tt td b{color:var(--ink);font-weight:600;}
   </div>
 </div>
 </section><section class="slide" id="s2">
-    <div class="hypbadge nohyp" contenteditable="false" aria-hidden="true"><span class="hbrole">PART 1 · STEP 1 — the problem, formally</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
+    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">PART 1 · STEP 1 — the problem, formally</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
     <p class="eyebrow">// 1 · the problem, stated <span class="ph">— given / generate / across</span></p>
     <h2>Easy to state. Hard to execute.</h2>
     <div style="margin-top:4px;">
@@ -859,7 +853,7 @@ table.tt td b{color:var(--ink);font-weight:600;}
     </figure>
 
   </div></section><section class="slide" id="s1d" data-chap="1 · introduction">
-    <div class="hypbadge nohyp" contenteditable="false" aria-hidden="true"><span class="hbrole">PART 1 · STEP 1 — scope of the problem</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
+    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">PART 1 · STEP 1 — scope of the problem</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
     <p class="eyebrow">// 1 · scope <span class="ph">— which actions this thesis is about</span></p>
     <h2>Manipulation beyond pick and place</h2>
     <div class="panel" style="border-left:3px solid var(--acc);margin-bottom:14px;"><p class="lead" style="margin: 0px; font-size: 14.5px;"><strong data-start="781" data-end="847"></strong><strong data-start="434" data-end="500"></strong><span class="tint-warn"><strong data-start="434" data-end="500">State-changing manipulation changes an object or its contents.</strong><a class="cite" data-ref="Kunze2017"></a><a class="cite" data-ref="soma"></a><br data-start="500" data-end="503"></span>
@@ -912,7 +906,7 @@ Cutting divides, pouring transfers, and mixing combines materials.<a class="cite
       <figcaption></figcaption>
     </figure>
 </section><section class="slide" id="sWhy">
-    <div class="hypbadge nohyp" contenteditable="false" aria-hidden="true"><span class="hbrole">PART 1 · STEP 2 — why it matters</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
+    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">PART 1 · STEP 2 — why it matters</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
     <p class="eyebrow">// 1 · why it matters <span class="ph">— relevance, before difficulty</span></p>
     <h2>Action descriptions do not specify what must hold</h2>
     <svg width="0" height="0" style="position:absolute;" aria-hidden="true"><defs>
@@ -968,7 +962,7 @@ Cutting divides, pouring transfers, and mixing combines materials.<a class="cite
       <p style="margin:0;font-size:17px;font-weight:600;color:var(--ink);letter-spacing:-.01em;">How can these physical requirements be encoded in the action representation?</p>
     </div>
   </section><section class="slide" id="sHard">
-    <div class="hypbadge nohyp" contenteditable="false" aria-hidden="true"><span class="hbrole">PART 1 · STEP 3 — why it is hard</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
+    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">PART 1 · STEP 3 — why it is hard</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
     <p class="eyebrow">// 1 · why this is hard <span class="ph">— three gaps, not one</span></p>
     <h2>Why this is a hard problem</h2>
     <p class="lead" style="font-size:16px;max-width:70ch;margin:2px 0 10px;">Between an action name and a valid execution, <b style="color:var(--ink)">three questions</b> remain unresolved.</p>
@@ -1073,7 +1067,7 @@ Cutting divides, pouring transfers, and mixing combines materials.<a class="cite
     <div class="hypnote reveal" style="margin-top:10px;"><span class="k">WHAT THIS ADDS UP TO</span>These three difficulties define what the representation must solve.</div>
   </section><section class="slide" id="s4">
     <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">PART 1 · STEP 4 — research question</span><span class="hb h1">H1</span><span class="hb h2">H2</span><span class="hb h3">H3</span></div>
-    <p class="eyebrow">// 1 · research question <span class="ph">— each difficulty becomes one testable claim</span></p>
+    <p class="eyebrow">// 1 · research question <span class="ph">— each difficulty becomes one hypothesis</span></p>
     <p class="mono" style="font-size:11px;color:var(--mute);letter-spacing:.1em;margin:0 0 8px;">RESEARCH QUESTION</p>
     <h2 style="max-width: 68ch; margin: 0px;"><span style="font-size: 26px; letter-spacing: -0.26px;">How can manipulation actions be represented so that they can be</span></h2><h2 style="max-width: 68ch; margin: 0px;"><span style="font-size: 26px; letter-spacing: -0.26px;">correctly executed within a defined task scope across varying object</span></h2><h2 style="max-width: 68ch; margin: 0px;"><span style="font-size: 26px; letter-spacing: -0.26px;">instances, tools, robots, and environments while satisfying the relevant</span></h2><h2 style="max-width: 68ch; margin: 0px;"><span style="font-size: 26px; letter-spacing: -0.26px;">constraints?</span></h2>
     <div class="arch" style="grid-template-columns:repeat(3,1fr);margin-top:20px;">
@@ -1107,8 +1101,8 @@ Cutting divides, pouring transfers, and mixing combines materials.<a class="cite
     </div>
   </section><section class="slide" id="s5">
     <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">PART 1 · STEP 5 — methodology</span><span class="hb h1">H1</span><span class="hb h2">H2</span><span class="hb h3">H3</span></div>
-    <p class="eyebrow">// 1 · methodology <span class="ph">— from observation to evidence</span></p>
-    <h2 style="margin-bottom:4px;">One methodology: observe, formalise, ground, validate</h2>
+    <p class="eyebrow">// 1 · methodology <span class="ph">— how H1–H3 are tested</span></p>
+    <h2 style="margin-bottom:4px;">To test them, one methodology: observe, formalise, ground, validate</h2>
     <figure class="fig keep" style="margin-top:10px;">
       <svg viewBox="0 0 1160 340" role="img" aria-label="A four-step methodology: observe recorded human demonstrations — cutting bread, a cucumber and a tomato — where the object changes but the downward cutting motion recurs, and the same holds for mixing, pouring and wiping; formalise that recurring structure as an Object-Anchored Action Template, whose upper half is fixed by the template — the phase sequence with its invariant and applicability constraint — and whose lower half, the open parameters tool, anchor and depth, is bound per run; ground the open parameters at runtime from object geometry, semantic knowledge and scene state and translate them into constraint-based motion; and validate by fixing the representation and varying the context, which yields the evidence for the three hypotheses.">
         <defs>
@@ -1257,7 +1251,7 @@ Cutting divides, pouring transfers, and mixing combines materials.<a class="cite
           </g>
           <text x="890" y="244" font-size="13" fill="var(--mute)">every experiment changes the context,</text>
           <text x="890" y="262" font-size="13" fill="var(--mute)">never the representation</text>
-          <text x="890" y="290" font-family="var(--mono)" font-size="11.5" fill="var(--acc)">→ the evidence</text>
+          <text x="890" y="290" font-family="var(--mono)" font-size="11.5" fill="var(--acc)">→ evidence for <tspan class="h1c" fill="var(--hyp1)">H1</tspan> <tspan fill="var(--mute)">·</tspan> <tspan fill="var(--hyp2)">H2</tspan> <tspan fill="var(--mute)">·</tspan> <tspan fill="var(--hyp3)">H3</tspan></text>
         </g>
       </svg>
     </figure>
@@ -1266,8 +1260,8 @@ Cutting divides, pouring transfers, and mixing combines materials.<a class="cite
       <p class="num">PART 2 · thesis ch. 2–3</p>
       <h1>From Observation to Formalisation</h1>
       <p class="sub">Where the reusable action structure comes from: human manipulation episodes, segmented by contact events.</p>
-      <div class="ties"><span class="chip">where the structure comes from</span></div>
-      <p class="sub" style="font-size:14px;margin-top:10px;">If the phase organisation had to be invented rather than observed, the whole approach would rest on an assumption. This part shows it is derivable from data.</p>
+      <div class="ties"><span class="chip h1c">H1 — establishes the phase structure empirically</span></div>
+      <p class="sub" style="font-size:14px;margin-top:10px;">If the phase organisation had to be invented rather than observed, H1 would be an assumption instead of a finding. This part shows it is derivable from data.</p>
     </div>
   </section><section class="slide" id="s3a" data-chap="3 · observation">
     <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">evidence · the structure is found, not assumed</span><span class="hb h1">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
@@ -1509,7 +1503,7 @@ technique, repositioning, and retract phases.</figcaption>
     <!-- three empty reveal steps so the normal forward key walks the beats before leaving the slide -->
     <span id="bkReveals" aria-hidden="true" contenteditable="false"><span class="reveal"></span><span class="reveal"></span><span class="reveal"></span><span class="reveal"></span></span>
   </section><section class="slide" id="sPart2Sum" data-chap="2 · observation">
-    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">part 2 · what this establishes</span><span class="hb h1">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
+    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">part 2 · what this establishes</span><span class="hb h1">H1</span><span class="hb h2">H2</span><span class="hb off">H3</span></div>
     <p class="eyebrow">// 2 · summary <span class="ph">— what observation settles, and what it hands on</span></p>
     <h2 style="margin-bottom:10px;">What the observation settles — and what it does not</h2>
     <div class="cols" style="grid-template-columns:1.15fr 1fr;gap:26px;align-items:start;">
@@ -1536,21 +1530,21 @@ technique, repositioning, and retract phases.</figcaption>
       </div>
     </div>
     <div class="hypnote reveal" style="margin-top:16px;">
-      <span class="k">HYPOTHESIS STATUS</span>
-      <b class="h1c">H1</b> — the question <i>“is there a reusable structure?”</i> is answered <b style="color:var(--ink)">here</b>: the phase organisation is a finding, visible in human demonstrations before any template was written. <span style="color:var(--mute)">What the evaluation still has to test: whether that structure survives a change of object, tool, robot and environment.</span>
+      <span class="k">HOW THIS ANSWERS THE HYPOTHESES</span>
+      <b class="h1c">H1</b> no longer rests on an assumption: the reusable phase organisation is a finding, visible in human demonstrations before any template was written. <b class="h2c">H2</b> is untouched so far — turning that observed structure into a constraint-carrying, executable representation is exactly what Part 3 does.
     </div>
   </section><section class="slide" id="c5" data-chap="4 · grounding">
     <div class="chapdiv">
       <p class="num">PART 4 · thesis ch. 5–6</p>
       <h1>Grounding and Executing Action Templates</h1>
       <p class="sub">How a template instance is resolved against the current world in a fixed dependency order, and how its phase invariants are kept valid while the robot moves.</p>
-      <div class="ties"><span class="chip">knowledge on top of geometry</span><span class="chip">constraints checked before contact</span></div>
-      <p class="sub" style="font-size:14px;margin-top:10px;">Geometry alone cannot produce the bindings an execution needs. This part shows the layer that supplies what geometry cannot.</p>
+      <div class="ties"><span class="chip h3c">H3 — knowledge on top of geometry</span><span class="chip h2c">H2 — constraints checked before contact</span></div>
+      <p class="sub" style="font-size:14px;margin-top:10px;">H3 claims geometry alone cannot produce the bindings. This part shows the layer that supplies what geometry cannot.</p>
     </div>
   </section><section class="slide" id="sArchi" data-chap="3 · OAAT">
-    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">method · where the OAAT sits</span><span class="hb h1">H1</span><span class="hb h2">H2</span><span class="hb off">H3</span></div>
+    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">method · where the OAAT sits</span><span class="hb h1">H1</span><span class="hb h2">H2</span><span class="hb h3">H3</span></div>
     <p class="eyebrow">// PART 3 · thesis ch. 4 <span class="ph">— system architecture, and where the OAAT sits in it</span></p>
-    <h2 style="margin-bottom:4px;">The Object-Anchored Action Template <span class="chip">the structure made reusable</span> <span class="chip">the requirements made explicit</span></h2>
+    <h2 style="margin-bottom:4px;">The Object-Anchored Action Template <span class="chip h1c">H1 — the structure made reusable</span> <span class="chip h2c">H2 — the requirements made explicit</span></h2>
     <figure class="fig" contenteditable="false">
       <svg viewBox="0 0 1160 524" role="img" aria-label="The CRAM architecture: a plan executive holding the generalized action plan and its OAAT, querying KnowRob for body motion specifications, over RoboKudo, the Semantic Digital Twin and Giskard, with executions recorded as NEEMs." contenteditable="false">
         <defs>
@@ -1714,6 +1708,20 @@ technique, repositioning, and retract phases.</figcaption>
         </div>
       </div>
     </div>
+  </section><section class="slide" id="s10">
+    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">method · geometry alone is not enough</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb h3">H3</span></div>
+    <p class="eyebrow">// 4 · grounding pipeline <span class="ph">— chapter 5 · watch the slots close</span></p>
+    <h2>Layered grounding — every failure belongs to a layer</h2>
+    <div class="gp" style="margin-top:4px;">
+      <div class="gprow"><div class="st">input designator</div><div class="src">task request</div><div class="bd">primitive family + symbolic object role</div><div class="fl">✗ no OAAT instance</div></div>
+      <div class="gprow"><div class="st">object binding</div><div class="src">SDT + perception</div><div class="bd">object instance, pose, support</div><div class="fl">✗ object not found</div></div>
+      <div class="gprow"><div class="st">applicability</div><div class="src">KnowRob</div><div class="bd">cuttable(bread_1) = true — checked before contact</div><div class="fl">✗ inapplicable object</div></div>
+      <div class="gprow"><div class="st">symbolic binding</div><div class="src">KnowRob</div><div class="bd">tool = knife · technique = saw · num_cuts = 4</div><div class="fl">✗ missing symbolic binding</div></div>
+      <div class="gprow"><div class="st">scene binding</div><div class="src">SDT</div><div class="bd">arm = right · support surface · base pose</div><div class="fl">✗ no reachable arm</div></div>
+      <div class="gprow"><div class="st">geometric binding</div><div class="src">object geometry</div><div class="bd">anchor p*, normal n, depth d, withdraw w</div><div class="fl">✗ missing geometric anchor</div></div>
+      <div class="gprow"><div class="st">instantiation</div><div class="src">generator → Giskard</div><div class="bd">MotionSequence: approach · saw stroke · retract — curves live in the object frame, so they survive object drift</div><div class="fl">✗ controller infeasible</div></div>
+    </div>
+    <p class="small" style="margin-top:12px;"><b style="color:var(--ink2)">Why geometry alone fails (H<sub>0,3</sub>):</b> for a cherry, geometry offers one wide admissible anchor zone; the knowledge query <span class="mono">hasPart(pit)</span> removes the pit axis, leaving two admissible bands. Geometry proposes — knowledge disposes.</p>
   </section><section class="slide" id="s4e" data-chap="4 · OAAT">
     <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">method · requirements checked before contact</span><span class="hb off">H1</span><span class="hb h2">H2</span><span class="hb off">H3</span></div>
     <p class="eyebrow">// 3 · applicability constraints <span class="ph">— why they live inside the template</span></p>
@@ -1754,23 +1762,9 @@ technique, repositioning, and retract phases.</figcaption>
       <figcaption><b>Redrawn from Fig. 4.5</b></figcaption>
     </figure>
     <p style="font-size:18px;font-weight:600;color:var(--ink);margin:14px 0 0;letter-spacing:-.01em;text-align:center;">Invalid executions are rejected while recovery is still possible.</p>
-  </section><section class="slide" id="s10">
-    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">method · geometry alone is not enough</span><span class="hb off">H1</span><span class="hb h2">H2</span><span class="hb h3">H3</span></div>
-    <p class="eyebrow">// 4 · grounding pipeline <span class="ph">— chapter 5 · watch the slots close</span></p>
-    <h2>Layered grounding — every failure belongs to a layer</h2>
-    <div class="gp" style="margin-top:4px;">
-      <div class="gprow"><div class="st">input designator</div><div class="src">task request</div><div class="bd">primitive family + symbolic object role</div><div class="fl">✗ no OAAT instance</div></div>
-      <div class="gprow"><div class="st">object binding</div><div class="src">SDT + perception</div><div class="bd">object instance, pose, support</div><div class="fl">✗ object not found</div></div>
-      <div class="gprow"><div class="st">applicability</div><div class="src">KnowRob</div><div class="bd">cuttable(bread_1) = true — checked before contact</div><div class="fl">✗ inapplicable object</div></div>
-      <div class="gprow"><div class="st">symbolic binding</div><div class="src">KnowRob</div><div class="bd">tool = knife · technique = saw · num_cuts = 4</div><div class="fl">✗ missing symbolic binding</div></div>
-      <div class="gprow"><div class="st">scene binding</div><div class="src">SDT</div><div class="bd">arm = right · support surface · base pose</div><div class="fl">✗ no reachable arm</div></div>
-      <div class="gprow"><div class="st">geometric binding</div><div class="src">object geometry</div><div class="bd">anchor p*, normal n, depth d, withdraw w</div><div class="fl">✗ missing geometric anchor</div></div>
-      <div class="gprow"><div class="st">instantiation</div><div class="src">generator → Giskard</div><div class="bd">MotionSequence: approach · saw stroke · retract — curves live in the object frame, so they survive object drift</div><div class="fl">✗ controller infeasible</div></div>
-    </div>
-    <p class="small" style="margin-top:12px;"><b style="color:var(--ink2)">Why geometry alone fails (H<sub>0,3</sub>):</b> for a cherry, geometry offers one wide admissible anchor zone; the knowledge query <span class="mono">hasPart(pit)</span> removes the pit axis, leaving two admissible bands. Geometry proposes — knowledge disposes.</p>
   </section><section class="slide" id="s5c" data-chap="5 · grounding">
     <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">method · knowledge narrows what geometry proposes</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb h3">H3</span></div>
-    <p class="eyebrow">// 4 · concretely <span class="ph">— knowledge narrows what geometry proposes</span></p>
+    <p class="eyebrow">// 4 · H3, concretely <span class="ph">— knowledge narrows what geometry proposes</span></p>
     <h2>Geometry proposes a broad anchor region. Knowledge removes the pit.</h2>
     <div class="cols" style="grid-template-columns:1.15fr 1fr;">
       <div class="col">
@@ -1820,7 +1814,7 @@ technique, repositioning, and retract phases.</figcaption>
       </div>
     </div>
   </section><section class="slide" id="s5d" data-chap="5 · grounding">
-    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">method · bindings kept valid while moving</span><span class="hb off">H1</span><span class="hb h2">H2</span><span class="hb off">H3</span></div>
+    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">method · bindings kept valid while moving</span><span class="hb off">H1</span><span class="hb h2">H2</span><span class="hb h3">H3</span></div>
     <p class="eyebrow">// 4 · monitored execution <span class="ph">— recovery scope follows the active phase</span></p>
     <h2>Keeping the bindings valid instead of assuming they stay correct</h2>
     <figure class="fig">
@@ -1854,94 +1848,51 @@ technique, repositioning, and retract phases.</figcaption>
       <figcaption>Because constraints are part of the representation, a failure is not merely "unsuccessful": it names the layer at which the missing or inconsistent information appeared. <span class="mono" style="color:var(--acc);">R5, R6</span></figcaption>
     </figure>
   </section><section class="slide" id="sPart34Sum" data-chap="4 · grounding">
-    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">parts 3–4 · what this establishes</span><span class="hb off">H1</span><span class="hb h2">H2</span><span class="hb h3">H3</span></div>
-    <p class="eyebrow">// 4 · summary <span class="ph">— the representation, and what it leaves open</span></p>
-    <h2 style="margin-bottom:10px;">The representation is defined. Whether it holds is a separate question.</h2>
-    <p class="lead" style="font-size:16px;max-width:96ch;margin:0 0 16px;">A representation now bridges underspecified task descriptions and executable robot motion: <b style="color:var(--ink)">an ordered sequence of phases, each carrying its own conditions, with the remaining parameters bound against the current scene.</b></p>
-    <div class="cols" style="grid-template-columns:1fr 1fr;gap:26px;align-items:start;">
+    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">parts 3–4 · what this establishes</span><span class="hb h1">H1</span><span class="hb h2">H2</span><span class="hb h3">H3</span></div>
+    <p class="eyebrow">// 4 · summary <span class="ph">— what the representation settles, and what only the evaluation can</span></p>
+    <h2 style="margin-bottom:10px;">A representation that can be checked — but not yet one that has been tested</h2>
+    <div class="cols" style="grid-template-columns:1.15fr 1fr;gap:26px;align-items:start;">
       <div class="col">
-        <p class="mono" style="font-size:10.5px;letter-spacing:.07em;color:var(--mute);margin:0 0 8px;">WHAT IT DOES</p>
-        <div style="display:grid;gap:8px;font-size:13.5px;color:var(--mute);">
-          <div><b style="color:var(--ink)">It is instantiated, not replayed.</b> γ closes the open parameters against the current scene.</div>
-          <div><b style="color:var(--ink)">It is checked before contact.</b> Applicability is a predicate over object properties, evaluated before the object is changed.</div>
-          <div><b style="color:var(--ink)">It gives failure an address.</b> Grounding runs in a fixed dependency order, so a failure belongs to one layer.</div>
-          <div><b style="color:var(--ink)">It is monitored, not assumed.</b> The phase invariant is kept valid while the robot moves.</div>
-        </div>
+        <p class="mono" style="font-size:10.5px;letter-spacing:.07em;color:var(--mute);margin:0 0 8px;">SETTLED BY THE REPRESENTATION AND ITS GROUNDING</p>
+        <table class="t" style="margin-top:0;">
+          <tbody>
+          <tr><td style="width:44px;"><span class="chip h2c">H2</span></td><td><b style="color:var(--ink)">The template is instantiated, not replayed.</b> γ closes the open parameters against the current scene, so one underspecified description becomes an executable instance.</td></tr>
+          <tr><td><span class="chip h2c">H2</span></td><td><b style="color:var(--ink)">Applicability is checked before contact.</b> It is a predicate over object properties, evaluated before the object is changed — so an inapplicable action is refused rather than attempted.</td></tr>
+          <tr><td><span class="chip h2c">H2</span></td><td><b style="color:var(--ink)">Failure has an address.</b> Grounding runs in a fixed dependency order, so every failure belongs to one layer instead of to the representation as a whole.</td></tr>
+          <tr><td><span class="chip h3c">H3</span></td><td><b style="color:var(--ink)">Knowledge narrows what geometry proposes.</b> The material-dependent bindings are ones a geometry-only pipeline cannot produce at all.</td></tr>
+          <tr><td><span class="chip h2c">H2</span></td><td><b style="color:var(--ink)">Bindings are monitored, not assumed.</b> The phase invariant is kept valid while the robot moves, rather than trusted after instantiation.</td></tr>
+          </tbody></table>
       </div>
       <div class="col">
-        <p class="mono" style="font-size:10.5px;letter-spacing:.07em;color:var(--mute);margin:0 0 8px;">WHAT IT DOES NOT DO</p>
+        <p class="mono" style="font-size:10.5px;letter-spacing:.07em;color:var(--mute);margin:0 0 8px;">NOT SETTLED — AND THIS IS PART 5</p>
         <div class="panel" style="border-left:3px solid var(--acc);">
-          <p class="lead" style="font-size:15px;margin:0;">None of this shows that the representation <b style="color:var(--ink)">works</b>. It shows that it <i>can</i> be instantiated and checked — on the objects, tools, robots and scenes it has been built against.</p>
-          <p class="small" style="margin:12px 0 0;">Everything claimed so far is a property of the design. Whether those properties survive a change of context is an empirical matter, and it is what the rest of the talk is about.</p>
-        </div>
-      </div>
-    </div>
-    <div class="hypnote" style="margin-top:16px;">
-      <span class="k">HYPOTHESIS STATUS</span>
-      <b class="h2c">H2</b> — the constraints now live <b style="color:var(--ink)">inside</b> the representation and are checked before contact. <span style="color:var(--mute)">The evaluation tests whether they are sufficient to produce valid executions.</span><br>
-      <b class="h3c">H3</b> — the grounding layer supplies the bindings geometry cannot. <span style="color:var(--mute)">The evaluation tests how much the concrete context changes the outcome.</span>
-    </div>
-    <p class="reveal" style="font-size:21px;font-weight:700;color:var(--ink);margin:16px 0 0;letter-spacing:-.01em;">Three questions decide whether any of this holds.</p>
-  </section><section class="slide" id="sQuestions" data-chap="4 · grounding">
-    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">what the evaluation must decide</span><span class="hb h1">H1</span><span class="hb h2">H2</span><span class="hb h3">H3</span></div>
-    <p class="eyebrow">// 4 · questions <span class="ph">— the three hypotheses, now as the things the evaluation has to decide</span></p>
-    <p class="mono" style="font-size:11px;color:var(--mute);letter-spacing:.1em;margin:0 0 8px;">THE REPRESENTATION RAISES THREE QUESTIONS</p>
-    <h2 style="font-size:25px;max-width:78ch;margin:0 0 18px;">I observed a reusable structure, encoded its constraints, and left parameters open for grounding. Each of those three moves can fail.</h2>
-    <div class="cols" style="grid-template-columns:repeat(3,1fr);gap:20px;align-items:stretch;">
-      <div class="col">
-        <div class="anode" style="padding:14px 16px;border-top:2px solid var(--hyp1);height:100%;box-sizing:border-box;">
-          <div class="mono" style="font-size:11px;letter-spacing:.09em;color:var(--hyp1);">Q1 · STRUCTURE / REUSE</div>
-          <div style="font-size:17.5px;color:var(--ink);line-height:1.35;margin:10px 0 0;font-weight:600;">Is the structure reusable across changing contexts?</div>
-          <div class="reveal">
-            <div style="font-size:16px;color:var(--hyp1);margin:12px 0 6px;">↓</div>
-            <div class="mono" style="font-size:13px;font-weight:700;letter-spacing:.08em;color:var(--hyp1);">HYPOTHESIS 1</div>
-            <div class="mono" style="font-size:9.5px;letter-spacing:.06em;color:var(--mute);margin:12px 0 4px;">TESTED BY</div>
-            <div style="font-size:12.6px;color:var(--ink2);line-height:1.5;">8 platforms · 3 environments · 7,693 seed-controlled executions — with the template held fixed. A rewrite anywhere would falsify it.</div>
-          </div>
-        </div>
-      </div>
-      <div class="col">
-        <div class="anode" style="padding:14px 16px;border-top:2px solid var(--hyp2);height:100%;box-sizing:border-box;">
-          <div class="mono" style="font-size:11px;letter-spacing:.09em;color:var(--hyp2);">Q2 · CONSTRAINTS</div>
-          <div style="font-size:17.5px;color:var(--ink);line-height:1.35;margin:10px 0 0;font-weight:600;">Do the encoded constraints lead to valid executions?</div>
-          <div class="reveal">
-            <div style="font-size:16px;color:var(--hyp2);margin:12px 0 6px;">↓</div>
-            <div class="mono" style="font-size:13px;font-weight:700;letter-spacing:.08em;color:var(--hyp2);">HYPOTHESIS 2</div>
-            <div class="mono" style="font-size:9.5px;letter-spacing:.06em;color:var(--mute);margin:12px 0 4px;">TESTED BY</div>
-            <div style="font-size:12.6px;color:var(--ink2);line-height:1.5;">Every failure attributed to a layer, contact forces on the real PR2, and what recovery costs. A structure-level failure would falsify it.</div>
-          </div>
-        </div>
-      </div>
-      <div class="col">
-        <div class="anode" style="padding:14px 16px;border-top:2px solid var(--hyp3);height:100%;box-sizing:border-box;">
-          <div class="mono" style="font-size:11px;letter-spacing:.09em;color:var(--hyp3);">Q3 · CONTEXT / GROUNDING</div>
-          <div style="font-size:17.5px;color:var(--ink);line-height:1.35;margin:10px 0 0;font-weight:600;">How strongly does execution depend on the concrete context?</div>
-          <div class="reveal">
-            <div style="font-size:16px;color:var(--hyp3);margin:12px 0 6px;">↓</div>
-            <div class="mono" style="font-size:13px;font-weight:700;letter-spacing:.08em;color:var(--hyp3);">HYPOTHESIS 3</div>
-            <div class="mono" style="font-size:9.5px;letter-spacing:.06em;color:var(--mute);margin:12px 0 4px;">TESTED BY</div>
-            <div style="font-size:12.6px;color:var(--ink2);line-height:1.5;">Three scene contexts under shared seeds, the embodiment spread, and a geometry-only baseline. A baseline matching the pipeline would falsify it.</div>
+          <p class="lead" style="font-size:14.5px;margin:0 0 10px;">Everything so far shows that the representation <b style="color:var(--ink)">can</b> be instantiated and checked. Whether it <b style="color:var(--ink)">holds up</b> is an empirical question.</p>
+          <div style="display:grid;gap:7px;font-size:13.5px;color:var(--mute);">
+            <div><span class="chip h1c">H1</span> &nbsp;does the same template really run unchanged across objects, tools, robots and environments?</div>
+            <div><span class="chip h2c">H2</span> &nbsp;do failures stay out of the phase structure once the context varies?</div>
+            <div><span class="chip h3c">H3</span> &nbsp;does the knowledge layer measurably beat a geometry-only baseline?</div>
+            <div><span class="chip">real</span> &nbsp;and does any of it survive contact with a physical robot?</div>
           </div>
         </div>
       </div>
     </div>
     <div class="hypnote reveal" style="margin-top:16px;">
-      <span class="k">THESE THREE QUESTIONS STRUCTURE THE EXPERIMENTAL EVALUATION</span>
-      The hypotheses were stated in Part 1; what has changed is that there is now a representation for them to be about. From here on every slide names the question it tests, the hypothesis that question decides, and what the evidence implies.
+      <span class="k">HOW THIS ANSWERS THE HYPOTHESES</span>
+      Parts 3 and 4 give <b class="h2c">H2</b> and <b class="h3c">H3</b> a mechanism — constraints that live in the representation, and a grounding layer that supplies what geometry cannot. Neither claim is decided yet, and <b class="h1c">H1</b> is untouched: a template that has only ever run in one setting has not been shown to transfer. Everything from here on is that test.
     </div>
-  </section><section class="slide" id="c6" data-chap="5 · experiment">
+  </section>
+<section class="slide" id="c6" data-chap="5 · experiment">
     <div class="chapdiv">
       <p class="num">PART 5 · thesis ch. 7</p>
       <h1>Experimental Evaluation</h1>
       <p class="sub">7,693 seed-controlled executions · 8 platforms · 3 environments · 4 primitive families — plus real-robot cutting and pouring on the PR2.</p>
-      <div class="ties"><span class="chip h1c">Q1 → H1</span><span class="chip h2c">Q2 → H2</span><span class="chip h3c">Q3 → H3</span><span class="chip">R1–R7</span></div>
-      <p class="sub" style="font-size:14px;margin-top:10px;">Each experiment answers one of the three questions, and is chosen so that the corresponding hypothesis could fail visibly: rewrites would falsify H1, structure-level failures would falsify H2, a geometry-only baseline matching the pipeline would falsify H3.</p>
+      <div class="ties"><span class="chip h1c">tests H1</span><span class="chip h2c">tests H2</span><span class="chip h3c">tests H3</span><span class="chip">R1–R7</span></div>
+      <p class="sub" style="font-size:14px;margin-top:10px;">Each experiment is chosen so that one hypothesis could fail visibly: rewrites would falsify H1, structure-level failures would falsify H2, a geometry-only baseline matching the pipeline would falsify H3.</p>
     </div>
   </section><section class="slide" id="s6a" data-chap="6 · experiment">
     <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">test design · what would falsify H1</span><span class="hb h1">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
     <p class="eyebrow">// 5 · experimental design <span class="ph">— intervention, not observation</span></p>
     <h2>Cross-platform success rates are uninterpretable unless assignment is controlled</h2>
-    <p class="qhline"><span class="mono" style="color:var(--hyp1);font-weight:700;">Q1 · STRUCTURE / REUSE</span><span class="mono" style="color:var(--line2);"> → </span><span class="mono" style="color:var(--hyp1);font-weight:700;">H1</span><span style="color:var(--mute);"> &nbsp;the control that makes any cross-platform claim readable</span></p>
     <div class="cols" style="grid-template-columns:1.1fr 1fr;">
       <div class="col">
         <div class="panel" style="border-left:3px solid var(--acc);">
@@ -1970,7 +1921,6 @@ technique, repositioning, and retract phases.</figcaption>
     <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">test · template held fixed across 8 robots</span><span class="hb h1">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
     <p class="eyebrow">// 5 · platforms <span class="ph">— eight morphologically diverse robots</span></p>
     <h2>The same template, no platform-specific adaptation</h2>
-    <p class="qhline"><span class="mono" style="color:var(--hyp1);font-weight:700;">Q1 · STRUCTURE / REUSE</span><span class="mono" style="color:var(--line2);"> → </span><span class="mono" style="color:var(--hyp1);font-weight:700;">H1</span><span style="color:var(--mute);"> &nbsp;the same template on eight platforms, no adaptation</span></p>
     <div class="cols" style="grid-template-columns:1.35fr 1fr;">
       <div class="col">
         <figure class="fig">
@@ -1994,10 +1944,9 @@ technique, repositioning, and retract phases.</figcaption>
       </div>
     </div>
   </section><section class="slide" id="s6c" data-chap="6 · experiment">
-    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">test · scene varied, template unchanged</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb h3">H3</span></div>
+    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">test · scene varied, template unchanged</span><span class="hb h1">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
     <p class="eyebrow">// 5 · environments <span class="ph">— robot-centred labs and a human living space</span></p>
     <h2>Three scene contexts, shared seeds within each column</h2>
-    <p class="qhline"><span class="mono" style="color:var(--hyp3);font-weight:700;">Q3 · CONTEXT / GROUNDING</span><span class="mono" style="color:var(--line2);"> → </span><span class="mono" style="color:var(--hyp3);font-weight:700;">H3</span><span style="color:var(--mute);"> &nbsp;the same task in three scene contexts</span></p>
     <div class="figrow" style="grid-template-columns:repeat(3,1fr);">
       <figure class="fig"><img src="img/thesis/experiment_environments_kitchen-enironemnt.png" alt="AICOR kitchen laboratory">
         <figcaption><b>Kitchen</b> — AICOR Kitchen laboratory, University of Bremen<a class="cite" data-ref="aicorlab2022"></a>. Dedicated counters, appliances, manipulation-relevant work surfaces.</figcaption></figure>
@@ -2008,10 +1957,9 @@ technique, repositioning, and retract phases.</figcaption>
     </div>
     <p class="small" style="margin-top:14px;">Because seeds are shared within each environment column, differences <i>within</i> a column reflect genuine geometric variation rather than task assignment.</p>
   </section><section class="slide" id="s6d" data-chap="6 · experiment">
-    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">result · the variance is embodiment, not representation</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb h3">H3</span></div>
+    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">result · the variance is embodiment, not representation</span><span class="hb h1">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
     <p class="eyebrow">// 5 · main result <span class="ph">— matched bowl mixing, n = 1,915</span></p>
     <h2>Platform embodiment drives a 72.5% spread under identical task conditions</h2>
-    <p class="qhline"><span class="mono" style="color:var(--hyp3);font-weight:700;">Q3 · CONTEXT / GROUNDING</span><span class="mono" style="color:var(--line2);"> → </span><span class="mono" style="color:var(--hyp3);font-weight:700;">H3</span><span style="color:var(--mute);"> &nbsp;how much embodiment alone moves the outcome</span></p>
     <div class="cols" style="grid-template-columns:1fr 1fr;">
       <div class="col">
         <p class="mono" style="font-size:10.5px;color:var(--mute);letter-spacing:.06em;">SUCCESS RATE BY PLATFORM</p>
@@ -2028,10 +1976,9 @@ technique, repositioning, and retract phases.</figcaption>
     </div>
     <div class="panel" style="margin-top:12px;border-left:3px solid var(--ok);"><p class="small" style="margin:0;"><b>Reads on H1:</b> the 72.5% spread appears while the template is held fixed — the spread is produced by embodiment and kinematics, not by any change to the action representation. That is exactly the pattern H1 predicts.</p></div>
   </section><section class="slide" id="s6e" data-chap="6 · experiment">
-    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">result · platform vs. scene sensitivity</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb h3">H3</span></div>
+    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">result · platform vs. scene sensitivity</span><span class="hb h1">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
     <p class="eyebrow">// 5 · robot × environment <span class="ph">— seed-controlled, 8 × 3</span></p>
     <h2>Reading across a row: how much the platform degrades. Down a column: sensitivity to scene geometry.</h2>
-    <p class="qhline"><span class="mono" style="color:var(--hyp3);font-weight:700;">Q3 · CONTEXT / GROUNDING</span><span class="mono" style="color:var(--line2);"> → </span><span class="mono" style="color:var(--hyp3);font-weight:700;">H3</span><span style="color:var(--mute);"> &nbsp;platform degradation against scene sensitivity</span></p>
     <div class="cols" style="grid-template-columns:1.05fr .95fr;">
       <div class="col">
         <div class="hmap" id="hmEnv" style="grid-template-columns:120px repeat(3,1fr);"></div>
@@ -2054,7 +2001,6 @@ technique, repositioning, and retract phases.</figcaption>
     <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">result · no failure originates in the structure</span><span class="hb off">H1</span><span class="hb h2">H2</span><span class="hb off">H3</span></div>
     <p class="eyebrow">// 5 · failure modes <span class="ph">— per platform, seed-controlled mixing</span></p>
     <h2>No failure originates in the OAAT phase structure</h2>
-    <p class="qhline"><span class="mono" style="color:var(--hyp2);font-weight:700;">Q2 · CONSTRAINTS</span><span class="mono" style="color:var(--line2);"> → </span><span class="mono" style="color:var(--hyp2);font-weight:700;">H2</span><span style="color:var(--mute);"> &nbsp;where the failures actually originate</span></p>
     <div class="cols" style="grid-template-columns:1fr 1fr;">
       <div class="col">
         <figure class="fig">
@@ -2081,10 +2027,9 @@ technique, repositioning, and retract phases.</figcaption>
       </div>
     </div>
   </section><section class="slide" id="s6h" data-chap="6 · experiment">
-    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">result · holds across four families</span><span class="hb h1">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
+    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">result · holds across four families</span><span class="hb h1">H1</span><span class="hb h2">H2</span><span class="hb off">H3</span></div>
     <p class="eyebrow">// 5 · cross-family generalisation <span class="ph">— platform × primitive family</span></p>
     <h2>Failure is trajectory-specific, not template-specific</h2>
-    <p class="qhline"><span class="mono" style="color:var(--hyp1);font-weight:700;">Q1 · STRUCTURE / REUSE</span><span class="mono" style="color:var(--line2);"> → </span><span class="mono" style="color:var(--hyp1);font-weight:700;">H1</span><span style="color:var(--mute);"> &nbsp;whether failure is a property of the template</span></p>
     <div class="cols" style="grid-template-columns:1.1fr .9fr;">
       <div class="col">
         <div class="hmap" id="hmFam" style="grid-template-columns:120px repeat(4,1fr);"></div>
@@ -2103,10 +2048,9 @@ technique, repositioning, and retract phases.</figcaption>
     </div>
     <div class="panel" style="margin-top:12px;border-left:3px solid var(--ok);"><p class="small" style="margin:0;"><b>Reads on H1 and H2:</b> failures cluster by trajectory and platform, never by template. Structure transfers across all four families; what varies is whether a given body can realise it.</p></div>
   </section><section class="slide" id="s6i" data-chap="6 · experiment">
-    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">result · same code on the real PR2</span><span class="hb off">H1</span><span class="hb h2">H2</span><span class="hb off">H3</span></div>
+    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">result · same code on the real PR2</span><span class="hb off">H1</span><span class="hb h2">H2</span><span class="hb h3">H3</span></div>
     <p class="eyebrow">// 5 · real-robot execution <span class="ph">— PR2, Bremen Apartment laboratory</span></p>
     <h2>Same action code, now with contact forces and material behaviour</h2>
-    <p class="qhline"><span class="mono" style="color:var(--hyp2);font-weight:700;">Q2 · CONSTRAINTS</span><span class="mono" style="color:var(--line2);"> → </span><span class="mono" style="color:var(--hyp2);font-weight:700;">H2</span><span style="color:var(--mute);"> &nbsp;the constraints under real contact forces</span></p>
     <div class="figrow" style="grid-template-columns:1fr 1fr .8fr;">
       <figure class="fig"><img src="img/thesis/experiment_cutting_cuc_real.png" alt="Real-world cucumber cutting on the PR2">
         <figcaption><b>Fig. 6.6</b> · Cucumber cutting. The object is fixed on a nailed cutting board because the PR2's shoulder geometry limits comfortable two-handed configurations at table height.</figcaption></figure>
@@ -2122,7 +2066,6 @@ technique, repositioning, and retract phases.</figcaption>
     <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">result · the failures name a missing predicate</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb h3">H3</span></div>
     <p class="eyebrow">// 5 · real-world pouring <span class="ph">— 120 trials, target perceived anew every trial</span></p>
     <h2>94.2% success — and the seven failures name a missing predicate, not a broken structure</h2>
-    <p class="qhline"><span class="mono" style="color:var(--hyp3);font-weight:700;">Q3 · CONTEXT / GROUNDING</span><span class="mono" style="color:var(--line2);"> → </span><span class="mono" style="color:var(--hyp3);font-weight:700;">H3</span><span style="color:var(--mute);"> &nbsp;what the residual failures name</span></p>
     <div class="cols" style="grid-template-columns:1fr 1fr;">
       <div class="col">
         <div class="figrow" style="grid-template-columns:1fr 1fr;">
@@ -2148,10 +2091,9 @@ technique, repositioning, and retract phases.</figcaption>
     </div>
     <div class="panel" style="margin-top:12px;border-left:3px solid var(--ok);"><p class="small" style="margin:0;"><b>Reads on H3:</b> the seven failures are all traceable to a material property the knowledge graph did not encode — the missing information is contextual knowledge, which is what H3 is about, and not the phase structure.</p></div>
   </section><section class="slide" id="s6k" data-chap="6 · experiment">
-    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">result · reproducible without the hardware</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
+    <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">result · reproducible without the hardware</span><span class="hb h1">H1</span><span class="hb h2">H2</span><span class="hb h3">H3</span></div>
     <p class="eyebrow">// 5 · open source <span class="ph">— reproducibility of the representation, separately from the hardware</span></p>
     <h2>The evaluation is inspectable, not just reported</h2>
-    <p class="qhline"><span class="mono" style="color:var(--mute);font-weight:700;">METHOD</span><span style="color:var(--mute);"> &nbsp;the evaluation itself, made inspectable</span></p>
     <div class="arch" style="grid-template-columns:repeat(3,1fr);">
       <div class="anode"><div class="t">NEEM-structured logs</div><div class="d">A large-scale collection of robot execution logs<a class="cite" data-ref="beetz2015openease"></a> contributed to the shared episodic memory dataset used across the EASE research group — executions as <b>reusable experience data</b>, not aggregate numbers.</div></div>
       <div class="anode"><div class="t">Action Cores Lab · VRB</div><div class="d">The OAAT experiments deployed inside the Virtual Research Building<a class="cite" data-ref="vrb2024"></a> as a combined simulation and online robotic digital twin: select robot, environment, action and object parameters and <b>replay OAAT-structured executions</b> in a shared research environment.</div></div>
@@ -2164,7 +2106,6 @@ technique, repositioning, and retract phases.</figcaption>
     <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">result · reading the failure statistics correctly</span><span class="hb off">H1</span><span class="hb h2">H2</span><span class="hb off">H3</span></div>
     <p class="eyebrow">// 5 · failure analysis <span class="ph">— read the statistics carefully</span></p>
     <h2>The recovery paradox</h2>
-    <p class="qhline"><span class="mono" style="color:var(--hyp2);font-weight:700;">Q2 · CONSTRAINTS</span><span class="mono" style="color:var(--line2);"> → </span><span class="mono" style="color:var(--hyp2);font-weight:700;">H2</span><span style="color:var(--mute);"> &nbsp;what recovery costs, and why</span></p>
     <div class="cols">
       <div class="col viz-root">
         <div class="bars" id="recbars"><div class="brow" style="grid-template-columns: 170px 1fr 58px;"><div class="lb">no recovery triggered</div><div class="tr" style="height:26px"><div class="fillb" data-w="80.8" style="background:var(--seq3)"></div></div><div class="vl">80.8%</div></div><div class="brow" style="grid-template-columns: 170px 1fr 58px;"><div class="lb">recovery triggered</div><div class="tr" style="height:26px"><div class="fillb" data-w="15.6" style="background:var(--seq3)"></div></div><div class="vl">15.6%</div></div></div>
@@ -2192,24 +2133,20 @@ not obstacle avoidance.</li>
     </div>
   </section><section class="slide" id="s7a" data-chap="7 · discussion">
     <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">verdict · what the evidence supports</span><span class="hb h1">H1</span><span class="hb h2">H2</span><span class="hb h3">H3</span></div>
-    <p class="eyebrow">// 6 · back to the three questions <span class="ph">— evidence, then verdict</span></p>
-    <h2 style="margin-bottom:6px;">Back to the three questions</h2>
-    <p class="lead" style="font-size:15px;color:var(--mute);margin:0 0 14px;">Each question, the evidence that answers it, and the verdict on the hypothesis it became.</p>
+    <p class="eyebrow">// 6 · reflection on hypotheses <span class="ph">— what the evidence supports</span></p>
+    <h2>Three hypotheses, three kinds of evidence</h2>
     <div class="cols" style="grid-template-columns:repeat(3,1fr);gap:14px;">
       <div class="col hyp" style="border-color:var(--fam-sep);">
-        <div class="mono" style="font-size:10.5px;letter-spacing:.08em;color:var(--hyp1);">Q1 · IS THE STRUCTURE REUSABLE?</div>
         <div class="tag" style="color:var(--fam-sep);">H1 · SUPPORTED</div>
         <p>The approach–technique–retract organisation held across <b>7,693 executions</b>, 8 platforms, 3 environments and 4 families, and was visible in the human demonstrations before any template was assumed. <b>No structural change</b> was required.</p>
         <p class="small" style="margin-top:8px;color:var(--mute);">Evidence: observation study (Ch. 3) + representational stability (Ch. 6).</p>
       </div>
       <div class="col hyp" style="border-color:var(--fam-transfer);">
-        <div class="mono" style="font-size:10.5px;letter-spacing:.08em;color:var(--hyp2);">Q2 · ARE THE CONSTRAINTS SUFFICIENT?</div>
         <div class="tag" style="color:var(--fam-transfer);">H2 · SUPPORTED</div>
         <p>Parameterisation produced valid executions, and every failure was categorisable by layer. Failures came <b>from the system — perception, kinematics, controller — not from the representation</b>.</p>
         <p class="small" style="margin-top:8px;color:var(--mute);">Evidence: OAAT phases (Ch. 4–5), constraint satisfaction, failure categorisation.</p>
       </div>
       <div class="col hyp" style="border-color:var(--fam-mix);">
-        <div class="mono" style="font-size:10.5px;letter-spacing:.08em;color:var(--hyp3);">Q3 · HOW MUCH DOES CONTEXT MATTER?</div>
         <div class="tag" style="color:var(--fam-mix);">H3 · SUPPORTED, within scope</div>
         <p>Material-specific parameters were retrieved at runtime; the knowledge graph narrowed geometrically admissible anchor regions to semantically admissible ones. The geometry-only baseline <b>could not produce those bindings at all</b>.</p>
         <p class="small" style="margin-top:8px;color:var(--mute);">Evidence: knowledge constraints, pouring failure analysis, H<sub>0,3</sub> test.</p>
@@ -2261,8 +2198,7 @@ not obstacle avoidance.</li>
   </section><section class="slide" id="sContrib" data-chap="7 · discussion">
     <div class="hypbadge" contenteditable="false" aria-hidden="true"><span class="hbrole">discussion — the four contributions</span><span class="hb h1">H1</span><span class="hb h2">H2</span><span class="hb h3">H3</span></div>
     <p class="eyebrow">// 7 · contributions <span class="ph">— what was claimed, and what now backs it</span></p>
-    <h2 style="margin-bottom:4px;">Four contributions — each one now substantiated</h2>
-    <p class="lead" style="font-size:15px;color:var(--mute);margin:0 0 10px;">The three questions are answered. What remains is to say what the work contributed in answering them.</p>
+    <h2>Four contributions — each one now substantiated</h2>
     <div class="verdict" style="margin-top:6px;">
       <div class="vrow"><div class="h">C1</div><div class="d"><b style="color:var(--ink)">Empirical.</b>
  Household manipulation actions share a stable four-phase organisation —
@@ -3506,13 +3442,11 @@ const NOTES={
   sWhy:"STEP 2 · WHY IT MATTERS. Three panels, one breath each: coverage (76.5% of analysed tasks are six categories), the representational gap (the action name does not say what must hold), and irreversibility (some errors must be caught before contact). Land POUR(water) != POUR(honey). Keep the guarantee point scoped to this thesis — don't open a foundation-model debate. ~50s.",
   sHard:"STEP 3 · WHY IT IS HARD. Walk the three gaps on the spine, one sentence each, and say the full sentence the diagram only labels. D1 STRUCTURE: what stays the same across instances is unknown — cutting bread and cutting a cherry share nothing at the trajectory level, so without a reusable organisation of the action every object, tool and robot needs its own hand-written plan. D2 CONSTRAINTS: the physical requirements are not in the action description — 'cut' does not say where to place the blade, how deep to go, or what must remain true while the blade moves; symbolic plans state what to do, execution needs what must hold. D3 CONTEXT: geometry alone underdetermines the execution — a bounding box offers many admissible anchors and only some are physically sensible for this material, and the change is often irreversible, so the wrong choice cannot be retried. Close on the summary line: these three difficulties define what the representation must solve — do not name the hypotheses yet. This is the beat the supervisor asked for — what, then why hard, before any solution. ~50s.",
   sHyp:"ARCHIVE · FALSIFICATION CONDITIONS. Slow down here. The claims were just stated on the research-question slide, so do not read them again - say: 'and here is how each one could have failed.' Walk the falsification column — each claim is stated so it could have failed, and each one names where it is decided. Finish with: 'from here on, every slide shows H1 H2 H3 in the top-right corner, with the one it argues for highlighted.' Do not go into R1-R7 unless asked. ~90s — the most important slide of the opening.",
-  s4:"STEP 4 · RESEARCH QUESTION AND HYPOTHESES. Read the question once at normal pace, then click each column open: each difficulty becomes one hypothesis, quoted as it stands in the thesis. H1 is a coverage claim - a small, finite set of templates covers the instances within scope; do not overstate it as one template for everything. H2 is a representation claim - the structure is constraint-aware and constraint-enforcing, with the constraints explicit per phase. H3 is a necessity claim - contextual knowledge is necessary, geometry alone cannot resolve execution-critical distinctions. Say that all three are claims about a representation that does not exist yet, and that each part of the talk will close by saying which of them it has answered. ~55s.",
-  s5:"STEP 5 · METHODOLOGY. Four panels, one pipeline from human behaviour to evidence. OBSERVE: human demonstrations of the four action families - the highlighted segment is what recurs when everything else varies. FORMALISE: that recurring structure written down as the Object-Anchored Action Template. GROUND: the open parameters bound at runtime from geometry, semantic knowledge and scene state, then turned into constraint-based motion. VALIDATE: the representation is fixed and the context varies, which is what makes the experiments a test of the representation and not of a tuning. Say the punchline out loud, it is not on the slide: fix the representation, vary the context. ~55s.",
+  s4:"STEP 4 · RESEARCH QUESTION. The three columns are the three difficulties from the previous slide, same order, same colours. Read the question once at normal pace, then click each column open: each difficulty becomes one hypothesis, quoted as it stands in the thesis. H1 is a coverage claim - a small, finite set of templates covers the instances within scope; do not overstate it as 'one template for everything'. H2 is a representation claim - the structure is constraint-aware and constraint-enforcing, with the constraints explicit per phase. H3 is a necessity claim - contextual knowledge is necessary, geometry alone cannot resolve execution-critical distinctions. If asked what would have falsified them, the falsification conditions and the chapter that decides each are in the backup slides. ~50s.",
+  s5:"STEP 5 · METHODOLOGY. This slide answers one question: how did I test H1-H3? Nine clicks, four panels, one pipeline from human behaviour to evidence. One OBSERVE: human demonstrations of the four action families, across different objects, tools and executions — the highlighted segment is what recurs when everything else varies. Two FORMALISE: that recurring structure is written down as the Object-Anchored Action Template — phases, the invariant and applicability constraint that must hold in each, and the rest deliberately left open. Three GROUND: the open parameters are bound at runtime from object geometry, semantic knowledge and scene state, then translated into constraint-based motion — this is where a representation becomes executable on a real robot. Four VALIDATE: the representation is fixed and the context varies — objects, tools, robots, environments — which is what makes the experiments a test of the representation and not of a tuning. Then say the punchline out loud, it is not on the slide: fix the representation, vary the context. If asked which system provides geometry and knowledge, that is the architecture in Part 3. ~55s.",
   sContrib:"DISCUSSION · CONTRIBUTIONS. This is the payoff slide, not a preview - the evidence has been shown, so state C1-C4 as settled and point at the H-tags: every contribution exists because one hypothesis needed it. C1 empirical, C2 representational, C3 systems, C4 evidence. Then hand over to the conclusion. ~45s.",
-  sPart2Sum:"PART 2 · SUMMARY. Close the observation part by saying what it settled and what it deliberately did not. Left column, four points, one breath each: boundaries are observable and fall on contact events; one phase order across all four families, with only the interaction region family-specific; a phase is delimited by a relation and not by a duration; a technique varies the parameters and not the goal. Then the right column, honestly: observation gives a description, not a representation - nothing yet states what must hold during a phase, which parameters stay open, or how any of it is checked. Close on the status line: H1's question, is there a reusable structure, is answered HERE, because the phase organisation is a finding and not an assumption - but whether it survives a change of object, tool, robot and environment is for the evaluation. ~50s.",
-  sPart34Sum:"PARTS 3-4 · WHERE THIS LEAVES US. Open with the sentence on the slide: a representation now bridges underspecified task descriptions and executable robot motion. Left column, what it does - instantiated not replayed, checked before contact, failure has an address, monitored not assumed. Then the right column: none of that shows it works, only that it CAN be instantiated and checked, on the objects and robots it was built against. Then the status line, which is the payoff of this part: H2's constraints now live inside the representation and are checked before contact, and H3's grounding layer supplies what geometry cannot - but sufficiency and context-dependence are empirical questions. Then the click: three questions decide whether any of this holds. ~55s.",
-  sQuestions:"THE THREE QUESTIONS · the hinge into the evaluation. The hypotheses are not new here - they were stated in Part 1. What is new is that there is now a representation for them to be about. Say the heading out loud: I observed a reusable structure, encoded its constraints, and left parameters open for grounding, and each of those three moves can fail. Then the three questions, one breath each. Q1, is the structure reusable across changing contexts. Q2, do the encoded constraints lead to valid executions. Q3, how strongly does execution depend on the concrete context. Then click each column: the question decides one hypothesis, and TESTED BY names the experiments that follow, including what would have falsified it. Be precise about the wording - these are questions raised by the representation and they structure the evaluation; they are not research subquestions formally defined in the written thesis. ~65s.",
-  s7a:"BACK TO THE THREE QUESTIONS. Not a list of hypotheses - the same three questions the representation raised, now answered. Q1 is the structure reusable: the phase organisation held across 7,693 executions, 8 platforms, 3 environments, 4 families, with no structural change - H1 supported. Q2 are the constraints sufficient: parameterisation produced valid executions and every failure was categorisable by layer, coming from perception, kinematics or control rather than from the representation - H2 supported. Q3 how much does context matter: material-specific parameters retrieved at runtime, the knowledge graph narrowing geometrically admissible regions to semantically admissible ones, and a geometry-only baseline that could not produce those bindings at all - H3 supported within scope. Then the independent theoretical support, and straight into the contributions. ~70s.",
+  sPart2Sum:"PART 2 · SUMMARY. The beat the supervisor asked for: close the observation part by saying what it settled and what it deliberately did not. Left column, four points, one breath each: boundaries are observable and fall on contact events; one phase order across all four families, with only the interaction region family-specific; a phase is delimited by a relation and not by a duration; a technique varies the parameters and not the goal. Then the right column, and be honest about it: observation gives a description, not a representation - nothing yet states what must hold during a phase, which parameters stay open, or how any of it is checked. Close on the bottom line, which is the click: H1 no longer rests on an assumption, it is a finding; H2 is untouched so far, and turning this into a constraint-carrying representation is exactly what Part 3 does. Then straight into the OAAT divider. ~50s.",
+  sPart34Sum:"PARTS 3-4 · SUMMARY. Same beat as the one before Part 3, now for the representation and its grounding. Left column, five points, each tagged with the hypothesis it serves: the template is instantiated rather than replayed, gamma closing the open parameters; applicability is checked before contact, so an inapplicable action is refused and not attempted; failure has an address, because grounding runs in a fixed dependency order; knowledge narrows what geometry proposes, and those bindings are ones geometry cannot produce at all; bindings are monitored while the robot moves rather than trusted after instantiation. Then the honest half on the right: all of that shows the representation CAN be instantiated and checked, not that it holds up. Read the four open questions out loud - they are exactly the experiments that follow, in order. Close on the bottom line: H2 and H3 now have a mechanism but no verdict, and H1 is untouched, because a template that has only ever run in one setting has not been shown to transfer. Then into the evaluation. ~50s.",
   s4b:"THE SLOTS CLOSING · six clicks, one designator, one click per grounding layer. Left card: the underdetermined cutting action designator from chapter 4 — separation and division is the primitive family it belongs to, say that once and move on — three roles and ten slots, all open. The object role is deliberately not a dotted slot: the request already carries an object-designator, :type cucumber :location (:on counter) — that is where the object comes from, nobody sets it by hand. What is missing is which world-model entity it denotes. First click brings in the grounding pipeline of chapter 5 between the two cards, six layers, nothing lit yet. Then five clicks, one per layer, and each closes exactly the slots it owns — object binding from the SDT resolves that designator against the world model, and the object entry gains its :name — cucumber-1 — so the same designator now denotes one stable instance; the applicability check runs on that instance in the same breath, but it lives in the layer as a query, cuttable via compliance and a separating surface, and never becomes a slot in the designator and it is checked before contact; symbolic binding asks three things of KnowRob for this instance: which tool cuts it (knife, and it enters the designator as its own object-designator, :type knife :location (:in hand)), which technique that tool admits on this material (slicing), and how many cuts the material default requests (four) — note the wording, requested, not committed, because cuts and slice thickness cannot both be independent hard constants over a fixed object length; scene binding closes what only the current scene can answer, and the first query is the one to point at: the tool designator says :location (:in hand), but which hand — holds(?arm, knife) gives left, and that is why the arm slot is a scene binding and not a knowledge query. Then the support the object rests on and the approach side that arm can reach; geometric binding does two things: it derives the anchor, the surface normal, depth and withdraw clearance from the hull and surface model, and it runs the partition resolver — usable cutting length 0.262 m for this cucumber, feasible partitions enumerated, ranked by the resolved policy, slice-thickness-main, which is itself a slot and falls back to a default when the caller leaves it open, and only there do num-cuts and slice-thickness commit together at four cuts of three centimetres. That is the one slide-visible place where a policy is part of grounding rather than an implementation detail: policy-type sits in the designator like any other slot, and swapping it changes the selection criterion, not the phase structure. Whatever the current layer just contributed is highlighted in blue on the card, in the same blue as the lit layer in the stack, and settles into green once the next layer takes over — so point at the blue block rather than reading values. Say the layer out loud each time — the point is that no single source binds everything, each answers only what it can determine reliably, and that is also why a failure can be named by layer. Last click: instantiation, handed to Giskard as a motion sequence, and the right card is fully bound. After the last layer a button appears under the left card — the underdetermined designator — and this is the beat worth saving time for. Press it and the caller fills one slot in that left designator: technique = halving. Watch what re-opens on the right: and watch what re-opens. Symbolic binding lights again and asks cuts(halving, cucumber-1), which now requests 1 instead of 4; geometric binding lights again, re-runs the partition over the same 0.262 m and commits one cut of thirteen centimetres with the anchor at mid-span. Object binding, applicability and scene binding stay green — nothing above the fixed slot has to run again. Say it plainly: fixing a slot invalidates exactly what depends on it, and the dependency order in Definition 5.2.1 is what makes that decidable. Press the button again to go back to slicing if you want to repeat it. Close with: the template never changed, only the bindings did. The query lines now come from the thesis itself: Eq. 4.7 and Listing 4.4 for cuttable, Listing 4.7 for the query–policy split behind the tool and scene rows, Section 2.4.4 for the sentence the symbolic layer actually returns — the object is cuttable, a knife is the admissible tool class, and slicing or sawing is appropriate for this material, Section 5.2 for the Ellipsis slot and for the hull/bounding-volume/surface-model sources of the geometric bindings. The card values are one worked example; Table 5.1 traces the same pipeline with saw, four cuts and the right arm — say so if anyone compares the two. ~65s.",
   s4a:"ARCHIVE · WHAT THE TEMPLATE CONTAINS — one visual, one question. Read the blue block as the part that never changes: four phases, what must hold in each, motion defined against the object. Then the dashed box: same action, and every one of these values comes from the scene in front of the robot — knife, slicing, right arm, cutting board, anchor from the object pose, 3 cm, 6 cm, four cuts. That contrast IS the contribution, so let it sit for a beat. Then the transition line: 'the template deliberately leaves parameters open — so where do these values come from?' and click: primitive-family, object and scene knowledge together make it executable. Do not explain why constraints live inside the template on this slide; say it only if asked. ~75s.",
   sBoundC:"CANDIDATE C · FROZEN RENDER. Same cut generator as the live demo, held at one instant. Click the four thumbnails: approach (no contact), CONTACT ONSET, inside the technique, CONTACT RELEASE. The camera eases into the blade-loaf contact each time. Say: the phase does not end after a fixed duration, it ends when this relation changes. Drag to orbit if someone asks to see it from another side.",
@@ -3574,9 +3508,7 @@ function go(i){
   document.getElementById('hudframe').textContent=inArchive
     ? `archive ${String(i+1-TALK_LENGTH).padStart(2,'0')} / ${N-TALK_LENGTH}`
     : `frame ${String(i+1).padStart(2,'0')} / ${TALK_LENGTH}`;
-  document.getElementById('presenterslide').textContent=inArchive
-    ? `archive ${i+1-TALK_LENGTH} / ${N-TALK_LENGTH}`
-    : `${i+1} / ${TALK_LENGTH}`;
+  document.getElementById('presenterslide').textContent=`${i+1} / ${N}`;
   document.getElementById('progress').style.width=(Math.min(1,(i+1)/TALK_LENGTH)*100)+'%';
   document.getElementById('brandlogos').classList.toggle('title',i===0);
   location.hash='s'+(i+1);
@@ -5109,7 +5041,6 @@ go(m?parseInt(m[1],10)-1:0);
 <script src="vendor/OrbitControls.js"></script>
 <script src="vendor/URDFLoader.js"></script>
 <script src="deck_player.js"></script>
-
 
 
 
