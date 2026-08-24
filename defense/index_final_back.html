@@ -249,8 +249,8 @@ body.slide-edit-active #edittools{display:flex;}
 #s1 canvas,#s20 canvas{position:absolute;top:0;bottom:0;left:30%;width:76%;height:100%;}
 #s1 .scrim,#s20 .scrim{position:absolute;inset:0;background:var(--scrim1);z-index:2;
   backdrop-filter:blur(7px) saturate(.85);-webkit-backdrop-filter:blur(7px) saturate(.85);
-  -webkit-mask-image:linear-gradient(90deg,#000 0%,#000 44%,transparent 70%);
-  mask-image:linear-gradient(90deg,#000 0%,#000 44%,transparent 70%);}
+  -webkit-mask-image:linear-gradient(90deg,#000 0%,#000 55%,transparent 88%);
+  mask-image:linear-gradient(90deg,#000 0%,#000 55%,transparent 88%);}
 #s1 h1,#s20 h1{font-size:40px;}
 .byline{margin-top:22px;font-size:15px;color:var(--ink2);line-height:1.7;}
 .byline b{color:var(--ink);font-weight:600;}
@@ -1026,7 +1026,7 @@ body.instant #bkKnife,body.instant .bkFace,body.instant #bkSlice{transition:none
     </figure>
 
   </div></section><section class="slide" id="sWhy">
-    <div class="hypbadge nohyp" contenteditable="false" aria-hidden="true"><span class="hbrole">Introduction</span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
+    <div class="hypbadge nohyp" contenteditable="false" aria-hidden="true"><span class="hbrole"></span><span class="hb off">H1</span><span class="hb off">H2</span><span class="hb off">H3</span></div>
     <p class="eyebrow">// Introduction</p>
     <h2><span style="letter-spacing: -0.01em; text-wrap-mode: initial;">Why does this problem matter?</span></h2><div><span style="letter-spacing: -0.01em; text-wrap-mode: initial;"><br></span></div>
     <svg width="0" height="0" style="position:absolute;" aria-hidden="true" contenteditable="false"><defs>
@@ -1042,8 +1042,9 @@ body.instant #bkKnife,body.instant .bkFace,body.instant #bkSlice{transition:none
         <div class="small" style="font-size:10px;color:var(--mute);margin-top:4px;">the four families studied in this thesis</div>
       </div>
       <div class="anode">
-        <div style="font-size:34px;font-weight:700;color:var(--acc);line-height:1;"><span style="color: rgb(60, 76, 92); font-size: 13px;">The action name alone does not specify the physical requirements.</span></div>
-        <svg viewBox="0 0 340 162" style="display:block;width:100%;height:auto;margin-top:14px;" role="img" aria-label="The task description leads to the physical requirements that must hold, and those requirements constrain the execution." contenteditable="false">
+        <div style="font-size:34px;font-weight:700;color:var(--acc);line-height:1;">?</div>
+        <div class="d" style="margin-top:8px;font-size:13px;">The action name alone does not specify the physical requirements.</div>
+        <svg viewBox="0 0 340 156" style="display:block;width:100%;height:auto;margin-top:14px;" role="img" aria-label="The task description leads to the physical requirements that must hold, and those requirements constrain the execution." contenteditable="false">
           <text x="0" y="10" font-family="var(--mono)" font-size="9.5" letter-spacing=".08em" fill="var(--mute)">TASK</text>
           <rect x="70" y="16" width="200" height="28" rx="4" fill="none" stroke="var(--fig-line)"></rect>
           <text x="170" y="34" text-anchor="middle" font-size="11.5" fill="var(--ink)">"cut the cucumber"</text>
@@ -1240,11 +1241,10 @@ body.instant #bkKnife,body.instant .bkFace,body.instant #bkSlice{transition:none
         <g class="reveal">
           <rect x="8" y="34" width="266" height="272" rx="8" fill="none" stroke="var(--line2)" stroke-width="1.1"></rect>
           <text x="26" y="58" font-family="var(--mono)" font-size="11" letter-spacing=".08em" fill="var(--acc)">① OBSERVE</text>
-          <text x="26" y="78" font-size="15.5" font-weight="600" fill="var(--ink)">analyse people</text>
-          <text x="26" y="96" font-size="15.5" font-weight="600" fill="var(--ink)">executing the task</text>
-          <text x="26" y="118" font-family="var(--mono)" font-size="9.5" letter-spacing=".06em" fill="var(--mute)">HUMAN DEMONSTRATIONS</text>
+          <text x="26" y="80" font-size="15.5" font-weight="600" fill="var(--ink)">watch people do it</text>
+          <text x="26" y="102" font-family="var(--mono)" font-size="9.5" letter-spacing=".06em" fill="var(--mute)">HUMAN DEMONSTRATIONS</text>
           <!-- the recorded demonstrations themselves: frames from the cooking dataset -->
-          <image href="img/mp2cookingdataset.png" x="26" y="124" width="188" height="142" preserveAspectRatio="xMidYMid meet"></image>
+          <image href="img/mp2cookingdataset.png" x="26" y="108" width="199" height="150" preserveAspectRatio="xMidYMid meet"></image>
           <text x="26" y="278" font-family="var(--mono)" font-size="10" fill="var(--fam-sep)">different object, same downward cut</text>
           <text x="26" y="298" font-family="var(--mono)" font-size="11.5" fill="var(--acc)">→ what stays the same</text>
         </g>
@@ -1254,7 +1254,7 @@ body.instant #bkKnife,body.instant .bkFace,body.instant #bkSlice{transition:none
           <path d="M278 158 H292" stroke="var(--mute)" stroke-width="1.2" fill="none" marker-end="url(#m6a)"></path>
           <rect x="296" y="34" width="266" height="272" rx="8" fill="none" stroke="var(--line2)" stroke-width="1.1"></rect>
           <text x="314" y="58" font-family="var(--mono)" font-size="11" letter-spacing=".08em" fill="var(--acc)">② FORMALISE</text>
-          <text x="314" y="80" font-size="15.5" font-weight="600" fill="var(--ink)">abstract the structure</text>
+          <text x="314" y="80" font-size="15.5" font-weight="600" fill="var(--ink)">write that structure down</text>
           <text x="314" y="96" font-family="var(--mono)" font-size="9.5" letter-spacing=".06em" fill="var(--hyp1)">FIXED BY THE TEMPLATE</text>
           <rect x="314" y="102" width="230" height="62" rx="6" fill="none" stroke="var(--hyp1)" stroke-width="1.3"></rect>
           <g font-family="var(--mono)" font-size="9.5" fill="var(--mute)">
@@ -1288,7 +1288,7 @@ body.instant #bkKnife,body.instant .bkFace,body.instant #bkSlice{transition:none
           <path d="M566 158 H580" stroke="var(--mute)" stroke-width="1.2" fill="none" marker-end="url(#m6a)"></path>
           <rect x="584" y="34" width="266" height="272" rx="8" fill="none" stroke="var(--line2)" stroke-width="1.1"></rect>
           <text x="602" y="58" font-family="var(--mono)" font-size="11" letter-spacing=".08em" fill="var(--acc)">③ GROUND</text>
-          <text x="602" y="80" font-size="15.5" font-weight="600" fill="var(--ink)">make it executable for robots</text>
+          <text x="602" y="80" font-size="15.5" font-weight="600" fill="var(--ink)">make it executable here</text>
           <text x="602" y="96" font-family="var(--mono)" font-size="9.5" letter-spacing=".06em" fill="var(--mute)">WHAT THIS SCENE PROVIDES</text>
           <g font-family="var(--mono)" font-size="9" fill="var(--mute)">
             <rect x="602" y="102" width="74" height="18" rx="4" fill="none" stroke="var(--ink2)" stroke-width="1"></rect><text x="639" y="114" text-anchor="middle">geometry</text>
@@ -4149,7 +4149,7 @@ function isChapterStart(slide){
 function talkChapters(){
   const chapters=[];
   let inChapter=false;
-  slides.filter(isInTalk).forEach((sec,index)=>{
+  slides.filter(sec=>!isArchived(sec)).forEach((sec,index)=>{
     const starts=isChapterStart(sec);
     if(chapters.length===0||(starts&&inChapter))chapters.push({slideIndices:[index]});
     else chapters[chapters.length-1].slideIndices.push(index);
@@ -4165,13 +4165,13 @@ function renderProgress(i){
     chapters.forEach(group=>{
       const seg=document.createElement('div');
       seg.className='chapter';
+      seg.style.flex=group.slideIndices.length;
       seg.appendChild(document.createElement('div')).className='done';
       bar.appendChild(seg);
     });
   }
   chapters.forEach((group,index)=>{
     const seg=bar.children[index];
-    seg.style.flex=group.slideIndices.length;
     const first=group.slideIndices[0],count=group.slideIndices.length;
     const current=i>=first&&i<first+count;
     const filled=i>=first+count?1:current?(i-first+1)/count:0;
@@ -5779,7 +5779,6 @@ go(m?parseInt(m[1],10)-1:0);
 <script src="vendor/OrbitControls.js"></script>
 <script src="vendor/URDFLoader.js"></script>
 <script src="deck_player.js"></script>
-
 
 
 

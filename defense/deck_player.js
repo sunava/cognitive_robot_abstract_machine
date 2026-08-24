@@ -50,7 +50,6 @@
     loop: { start: 1120, end: 1899 },
     speed: 0.2,
     focus: 'bowl.stl',
-    liquid: { source: 'jeroen_cup.stl', target: 'bowl.stl', tipped: 0.45, rim: 0.11, targetRim: 0.05, seconds: 0.9 },
   };
   EPISODES.push(SHOWREEL);
   const EPISODE_NAMES = EPISODES.map(function (e) { return e.name; });
@@ -91,20 +90,16 @@
   host.insertBefore(renderer.domElement, statusEl);
 
   // theme-aware studio backdrop (deck has a light beamer mode and a dark mode)
-  function backdrop(dark) {
-    const cv = document.createElement('canvas');
-    cv.width = 2; cv.height = 256;
-    const ctx = cv.getContext('2d');
-    const g = ctx.createLinearGradient(0, 0, 0, 256);
-    if (dark) { g.addColorStop(0, '#232833'); g.addColorStop(0.55, '#151922'); g.addColorStop(1, '#0c0e13'); }
-    else { g.addColorStop(0, '#f4f6f9'); g.addColorStop(0.55, '#e9edf1'); g.addColorStop(1, '#dde3e9'); }
-    ctx.fillStyle = g; ctx.fillRect(0, 0, 2, 256);
-    return new THREE.CanvasTexture(cv);
+  //: the viewer's own ground, taken from the slide's --bg so the canvas edge does not
+  //: read as a cut through the slide
+  function slideBackground() {
+    const value = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+    return new THREE.Color(value || '#eef1f4');
   }
   const hemi = new THREE.HemisphereLight(0xf4efe6, 0x2a2d33, 0.32);
   function applyPlayerTheme() {
     const dark = document.documentElement.dataset.theme === 'dark';
-    scene3.background = backdrop(dark);
+    scene3.background = slideBackground();
     hemi.intensity = dark ? 0.32 : 0.45;
     renderer.toneMappingExposure = dark ? 0.95 : 1.05;
     needsRender = true;
@@ -509,74 +504,6 @@
     halves.left.rotation.z = eased * 0.10;         //: the halves tip away from the blade
     halves.right.rotation.z = -eased * 0.10;
   }
-  //: the poured liquid: a steady stream of droplets on the parabola out of the tilted
-  //: container. Every droplet's position follows from its phase, so the stream is fully
-  //: there in any single frame instead of building up over time. The recording carries
-  //: the container's pose, not its contents, so this is an effect
-  const DROPLET_RADIUS = 0.009, STREAM_DROPS = 34;
-  function liquidStream(slot) {
-    if (slot.liquid) return slot.liquid;
-    const group = new THREE.Group();
-    const material = new THREE.MeshStandardMaterial({
-      color: new THREE.Color('#eef5ff'), roughness: 0.1, metalness: 0.0,
-      transparent: true, opacity: 0.92,
-    });
-    const geometry = new THREE.SphereGeometry(DROPLET_RADIUS, 7, 6);
-    const drops = [];
-    for (let i = 0; i < STREAM_DROPS; i++) {
-      const drop = new THREE.Mesh(geometry, material);
-      drop.visible = false;
-      group.add(drop);
-      drops.push(drop);
-    }
-    slot.group.add(group);
-    slot.liquid = { group: group, drops: drops };
-    return slot.liquid;
-  }
-  function poseAt(slot, frame, key) {
-    const objects = slot.traj && slot.traj.objects;
-    if (!objects) return null;
-    const at = objects[Math.min(objects.length - 1, Math.max(0, Math.floor(frame)))];
-    return at && at[key] ? at[key] : null;
-  }
-  const _cupQuaternion = new THREE.Quaternion();
-  const _cupUp = new THREE.Vector3();
-  const _spout = new THREE.Vector3();
-  function applyLiquid(slot, frame) {
-    const config = episodeOf(activeName).liquid;
-    if (!config) return;
-    const stream = liquidStream(slot);
-    const source = poseAt(slot, frame, config.source);
-    const target = poseAt(slot, frame, config.target);
-    //: the container's own up axis says how far it is tipped: 1 upright, 0 on its side.
-    //: Its yaw, which the raw quaternion also carries, must not count as pouring
-    _cupQuaternion.set(source[3], source[4], source[5], source[6]);
-    _cupUp.set(0, 0, 1).applyQuaternion(_cupQuaternion);
-    if (!source || !target || _cupUp.z > config.tipped) {
-      stream.drops.forEach(function (drop) { drop.visible = false; });
-      return;
-    }
-    //: the liquid leaves at the rim, not at the pose, which sits in the container's base
-    _spout.set(source[0], source[1], source[2]).addScaledVector(_cupUp, config.rim);
-    //: droplets vanish at the target's rim, not at its base, or the container hides them
-    //: the arc from the rim to the target's mouth: the recorded geometry has the two only
-    //: centimetres apart vertically but a hand's width apart sideways, so a straight fall
-    //: would be hidden inside the container
-    const mouth = new THREE.Vector3(target[0], target[1], target[2] + config.targetRim);
-    const sag = 0.016;
-    const now = clock.getElapsedTime();
-    for (let i = 0; i < stream.drops.length; i++) {
-      const drop = stream.drops[i];
-      const along = (now / config.seconds + i / stream.drops.length) % 1;
-      const wobble = Math.sin(i * 12.9898) * 0.004;
-      drop.position.lerpVectors(_spout, mouth, along);
-      drop.position.z -= sag * Math.sin(Math.PI * along);
-      drop.position.x += wobble * (1 - along);
-      drop.position.y += Math.cos(i * 78.233) * 0.004 * (1 - along);
-      drop.visible = true;
-    }
-    needsRender = true;
-  }
   function applyFrame(slot, f) {
     const traj = slot.traj;
     if (!traj) return;
@@ -775,7 +702,6 @@
       if (playhead >= last) playhead = first;
       needsRender = true;
     }
-    if (active && active.traj) applyLiquid(active, playhead);
     if (active && active.traj && needsRender) {
       applyFrame(active, playhead);
       applySplit(active, playhead);
