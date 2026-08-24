@@ -17,16 +17,41 @@
   //: the bundle's own manifest, used only to say what is available when a scene is missing
   const sceneIndex = fetch(SCENES + 'index.json')
     .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
-  //: scene bundles in defense/scenes/, in the order the episode buttons offer them
-  const EPISODE_NAMES = ['pr2_cooking', 'pr2_breakfast', 'Franka_Montessori', 'garmi_pick_place'];
-  const ROBOT_LABEL = {
-    pr2_cooking: 'pr2', pr2_breakfast: 'pr2',
-    Franka_Montessori: 'panda', garmi_pick_place: 'garmi',
-  };
+  //: the recorded runs offered by the episode buttons, in that order; each is a scene
+  //: bundle in defense/scenes/ written by tools/record_thesis_experiment.py
+  const EPISODES = [
+    {
+      name: 'thesis_cut_boards', label: 'CUT · PR2', robot: 'pr2', world: 'apartment',
+      summary: 'Cutting bread on the PR2 — three boards worked, one of them only after ' +
+        'the bread was rotated 90° and the plan retried on the other arm.',
+    },
+    {
+      name: 'thesis_mix_tiago_isr', label: 'MIX · TIAGO', robot: 'tiago', world: 'ISR lab',
+      summary: 'Mixing on the TIAGo — the same template, one bowl on the primary arm and ' +
+        'one on the fallback arm.',
+    },
+    {
+      name: 'thesis_wipe_hsrb_apartment', label: 'WIPE · HSR', robot: 'hsrb', world: 'apartment',
+      summary: 'Wiping on the HSR — one arm, a sponge held against the surface, the same ' +
+        'approach–technique–retract structure as cutting and mixing.',
+    },
+    {
+      name: 'thesis_wipe_hsrb_vertical', label: 'WIPE ↕ · HSR', robot: 'hsrb',
+      world: 'apartment · cabinet fronts',
+      summary: 'The same wiping template on vertical surfaces — three cabinet fronts. Only ' +
+        'the surface normal changes, and with it the arm and wrist the grounding derives.',
+    },
+  ];
+  const EPISODE_NAMES = EPISODES.map(function (e) { return e.name; });
+  function episodeOf(name) {
+    return EPISODES.filter(function (e) { return e.name === name; })[0] || {};
+  }
+
   //: how long after a bundle load imported materials keep being re-tamed, in seconds
   const MATERIAL_SETTLE_SECONDS = 20;
 
   const titleStage = document.getElementById('titleStage');
+  const endStage = document.getElementById('endStage');
   const epStage = document.getElementById('epStage');
   if (!epStage) return;
 
@@ -341,21 +366,34 @@
     _q0.set(a[3], a[4], a[5], a[6]); _q1.set(b[3], b[4], b[5], b[6]);
     obj.quaternion.copy(_q0).slerp(_q1, t);
   }
-  function modelByPrefix(slot, prefix) {
-    for (let i = 0; i < slot.models.length; i++)
-      if (slot.models[i].prefix === prefix) return slot.models[i];
-    return null;
+  //: joint by trajectory key, across every model in the bundle: a bundle exported from a
+  //: composed world keeps the model prefix in its joint names and leaves the model prefix
+  //: empty, one built from plain URDFs does the opposite, so neither spelling can be assumed
+  function jointIndex(slot) {
+    const loaded = slot.models.length;
+    if (slot.joints && slot.jointsFor === loaded) return slot.joints;   //: models load one by one
+    const index = {};
+    slot.models.forEach(function (m) {
+      for (const name in m.obj.joints) {
+        index[name] = m.obj.joints[name];
+        if (m.prefix) index[m.prefix + '/' + name] = m.obj.joints[name];
+        const cut = name.indexOf('/');
+        if (cut > 0 && index[name.slice(cut + 1)] === undefined)
+          index[name.slice(cut + 1)] = m.obj.joints[name];
+      }
+    });
+    slot.joints = index;
+    slot.jointsFor = loaded;
+    return index;
   }
   function applyFrame(slot, f) {
     const traj = slot.traj;
     if (!traj) return;
     const F = traj.frames, i0 = Math.floor(f), i1 = Math.min(i0 + 1, F.length - 1), t = f - i0;
     const f0 = F[i0], f1 = F[i1];
+    const joints = jointIndex(slot);
     for (const k in f0) {
-      const cut = k.indexOf('/');
-      const m = modelByPrefix(slot, cut < 0 ? '' : k.slice(0, cut));
-      if (!m) continue;
-      const j = m.obj.joints[cut < 0 ? k : k.slice(cut + 1)];
+      const j = joints[k];
       if (j) j.setJointValue(f0[k] + ((f1[k] !== undefined ? f1[k] : f0[k]) - f0[k]) * t);
     }
     if (slot.robotModel && traj.base && traj.base[i0]) {
@@ -386,7 +424,11 @@
   }
   function fillHud(slot) {
     const sc = slot.sc;
-    chipsBox.innerHTML = (sc.segments || []).map(function (s) {
+    const segments = sc.segments || [];
+    //: only the chip row goes away for a single-segment run — the scrubber sits in the
+    //: same panel and must stay
+    document.getElementById('epChipsRow').style.display = segments.length > 1 ? '' : 'none';
+    chipsBox.innerHTML = segments.map(function (s) {
       return '<span class="pc">' + s.step.replace(/_/g, ' ') + '</span>';
     }).join('');
     Array.prototype.forEach.call(chipsBox.querySelectorAll('.pc'), function (c, i) {
@@ -401,9 +443,10 @@
         o.id.replace(/_/g, ' ') + '</span>';
     }).join('');
     const fps = (slot.traj && (slot.traj.fps || slot.traj.framesPerSecond)) || 30;
-    metaEl.innerHTML = 'robot: ' + ROBOT_LABEL[activeName] + ' · world: apartment · ' +
-      (slot.traj ? slot.traj.frames.length : 0) + ' frames @ ' + fps + ' fps<br>' +
-      'source: cram2/cram-scenes · full meshes &amp; textures · cramera stack';
+    const episode = episodeOf(activeName);
+    metaEl.innerHTML = 'robot: ' + episode.robot + ' · world: ' + episode.world + ' · ' +
+      (slot.traj ? slot.traj.frames.length : 0) + ' frames @ ' + fps.toFixed(0) + ' fps<br>' +
+      'recorded from the thesis experiment · full meshes &amp; textures · cramera stack';
     lastSegIdx = -1;
   }
   function updateHud(slot) {
@@ -418,14 +461,7 @@
         c.classList.toggle('done', i < si);
       });
       const s = (sc.segments || [])[si];
-      if (s) {
-        desigEl.innerHTML = s.picks
-          ? '<span style="color:var(--acc)">Transport</span>(object=<span style="color:var(--ok)">' + s.picks +
-            '</span>,<br>&nbsp;&nbsp;&nbsp;&nbsp;target=<span style="color:var(--ok)">(' +
-            (s.place ? s.place.slice(0, 3).map(function (v) { return v.toFixed(2); }).join(', ') : '…') +
-            ')</span>, robot=<span style="color:var(--ok)">' + ROBOT_LABEL[activeName] + '</span>)'
-          : '<span style="color:var(--acc)">ParkArms</span>(arm=<span style="color:var(--ok)">BOTH</span>)';
-      }
+      if (s) desigEl.textContent = episodeOf(activeName).summary || '';
     }
     const n = traj.frames.length;
     if (!scrubbing) scrubEl.value = String(Math.round(fi / (n - 1) * 1000));
@@ -594,6 +630,7 @@
   window.DeckPlayer = {
     onSlide: function (id) {
       if (id === 's1' && titleStage) moveTo(titleStage, true);
+      else if (id === 's20' && endStage) moveTo(endStage, true);   /* the closing slide reuses the ambient title view */
       else if (id === 'sEp') moveTo(epStage, false);
     },
   };

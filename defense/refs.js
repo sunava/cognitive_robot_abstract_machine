@@ -194,7 +194,7 @@ window.REFS = {
   "unitreeg1": "Robotics, \"Unitree G1 Humanoid Robot\", 2023.",
   "van2024": "Van, \"Exploring the Use of Designators for Improved Contextualization in Robotic Mixing Tasks\", University of Bremen, 2023.",
   "vernon2014artificial": "Vernon, \"Artificial Cognitive Systems: A Primer\", MIT Press, 2014.",
-  "vislab2026": "Systems & Robotics, \"Computer and Robot Vision Lab (VisLab)\", 2026.",
+  "isrobonet2026": "Intelligent Robots and Systems Group (iRSg), \"ISRoboNet@Home Testbed\", Institute for Systems and Robotics, Instituto Superior T\u00e9cnico, Lisbon, 2026. https://isr.tecnico.ulisboa.pt/isrobonet/",
   "vrb2024": "Institute for Artificial Intelligence, \"AICOR Virtual Research Building\", urlhttps://vrb.ease-crc.org, 2024.",
   "wang2024llm3": "Wang et al., \"LLM3: Large Language Model-based Task and Motion Planning\", Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), 2024.",
   "wang2025vlp": "Wang et al., \"Vision-Language-Policy Model for Dynamic Robot Task Planning\", 2025.",
