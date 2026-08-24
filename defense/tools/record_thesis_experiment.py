@@ -251,6 +251,12 @@ def add_cutting_boards() -> None:
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--task", required=True, help="cut | mix | pour | wipe")
+    parser.add_argument("--single", action="store_true",
+                        help="run the single-object demo: one action on one spawned object")
+    parser.add_argument("--object", default=None, help="single-object demo: what to act on")
+    parser.add_argument("--technique", default=None, help="single-object demo: technique to use")
+    parser.add_argument("--spawn-yaw", type=float, default=None,
+                        help="single-object demo: yaw the object is spawned at, in radians")
     parser.add_argument("--robot", default=None)
     parser.add_argument("--environment", default=None)
     parser.add_argument("--seed", type=int, default=None)
@@ -470,6 +476,60 @@ def save_bundle(name: str) -> None:
     print(f"[record] saved scene: {save_recording_bundle(name)}", flush=True)
 
 
+def export_demo_utilities() -> None:
+    """
+    Re-export the demo helpers on the ``utils`` package the single-object demo imports them
+    from; the package's own ``__init__`` is empty, so that import fails otherwise.
+    """
+    from thesis_new.src.utils import demo_utils
+
+    package = importlib.import_module("demos.thesis_new.src.utils")
+    for name in dir(demo_utils):
+        if not name.startswith("_") and not hasattr(package, name):
+            setattr(package, name, getattr(demo_utils, name))
+
+
+def record_single_object_demo(arguments) -> None:
+    """
+    Run the single-object demo, which performs one action on one spawned object.
+
+    It builds its world through ``world_setup.setup_thesis_world`` at call time rather
+    than through a runner-module attribute, so recording is started there.
+    """
+    export_demo_utilities()
+    from demos.thesis_single_object import single_object_cut_demo
+    from thesis_new.src import world_setup
+
+    run_single_object_demo = single_object_cut_demo.run_single_object_demo
+    original = single_object_cut_demo.setup_thesis_world
+
+    def build_and_record(*call_arguments, **keywords):
+        world = original(*call_arguments, **keywords)
+        start_recording(world)
+        return world
+
+    #: the demo binds the builder into its own namespace at import time
+    single_object_cut_demo.setup_thesis_world = build_and_record
+    try:
+        keywords = {}
+        if arguments.object is not None:
+            keywords["object_kind"] = arguments.object
+        if arguments.spawn_yaw is not None:
+            keywords["spawn_yaw"] = arguments.spawn_yaw
+        run_single_object_demo(
+            action=arguments.task,
+            technique=arguments.technique,
+            robot_name=world_setup.resolve_robot_name(arguments.robot),
+            environment_name=arguments.environment,
+            **keywords,
+        )
+    except Exception as failure:
+        # boundary guard: this demo performs a single attempt and lets a stalled motion
+        # escape, unlike the batch runners; the frames recorded up to that point are
+        # still worth bundling
+        print(f"[record] the demo failed: {type(failure).__name__}: {failure}", flush=True)
+
+
 def main() -> None:
     arguments = parse_arguments()
     alias_robot_parts_module()
@@ -484,6 +544,10 @@ def main() -> None:
         add_gaze_constraint()
     if arguments.cutting_boards:
         add_cutting_boards()
+    if arguments.single:
+        record_single_object_demo(arguments)
+        save_bundle(arguments.name)
+        return
     runner = get_thesis_demo_runner(arguments.task)
     runner_module = sys.modules[runner.__module__]
     patch_world_builders(runner_module)

@@ -42,6 +42,17 @@
         'the surface normal changes, and with it the arm and wrist the grounding derives.',
     },
   ];
+  //: the title background: the same recorded cut, trimmed to the stroke and looped, with a
+  //: scripted split of the bread — the motion is the recording, the split is an effect
+  const SHOWREEL = {
+    name: 'pr2_pouring', label: 'SHOWREEL', robot: 'pr2', world: 'apartment',
+    summary: 'Recorded pouring, played slowly.',
+    loop: { start: 1120, end: 1899 },
+    speed: 0.2,
+    focus: 'bowl.stl',
+    liquid: { source: 'jeroen_cup.stl', target: 'bowl.stl', tipped: 0.45, rim: 0.11, targetRim: 0.05, seconds: 0.9 },
+  };
+  EPISODES.push(SHOWREEL);
   const EPISODE_NAMES = EPISODES.map(function (e) { return e.name; });
   function episodeOf(name) {
     return EPISODES.filter(function (e) { return e.name === name; })[0] || {};
@@ -50,12 +61,12 @@
   //: how long after a bundle load imported materials keep being re-tamed, in seconds
   const MATERIAL_SETTLE_SECONDS = 20;
 
-  const titleStage = document.getElementById('titleStage');
-  const endStage = document.getElementById('endStage');
   const epStage = document.getElementById('epStage');
   if (!epStage) return;
 
   // %% host container, re-parented between slides
+  const titleStage = document.getElementById('titleStage');
+  const endStage = document.getElementById('endStage');
   const host = document.createElement('div');
   host.style.cssText = 'position:absolute;inset:0;';
   epStage.appendChild(host);
@@ -270,12 +281,26 @@
     return loader;
   }
 
+  //: the room's walls and ceiling wrap the whole scene and hide the action from any
+  //: camera outside them
+  const HIDDEN_STRUCTURE = /(^|\/)(wall|walls|ceiling)/i;
+  function hideRoomStructure(model) {
+    for (const name in (model.obj.links || {}))
+      if (HIDDEN_STRUCTURE.test(name)) model.obj.links[name].visible = false;
+  }
   function loadSlot(name, onReady) {
-    if (slots[name]) { onReady(slots[name]); return; }
+    //: a second request for a scene still being fetched has to wait for it, not run on a
+    //: slot whose scene.json has not landed yet
+    if (slots[name]) {
+      const known = slots[name];
+      if (known.ready) onReady(known);
+      else known.waiting.push(onReady);
+      return;
+    }
     const base = SCENES + name + '/';
     const slot = {
       group: new THREE.Group(), models: [], robotModel: null,
-      objectMeshes: {}, traj: null, sc: null, ready: false, settleT0: null,
+      objectMeshes: {}, traj: null, sc: null, ready: false, settleT0: null, waiting: [],
     };
     slots[name] = slot;
     slot.group.visible = false;
@@ -288,7 +313,7 @@
         makeUrdfLoader(manager).load(base + m.urdf, function (obj) {
           const entry = { name: m.name, prefix: m.prefix || '', robot: !!m.robot, obj: obj };
           slot.models.push(entry);
-          if (m.robot) slot.robotModel = entry;
+          if (m.robot) slot.robotModel = entry; else hideRoomStructure(entry);
           slot.group.add(obj);
           needsRender = true;
         });
@@ -318,6 +343,7 @@
             slot.models.forEach(tameModel);
             statusEl.textContent = '';
             onReady(slot);
+            slot.waiting.splice(0).forEach(function (pending) { pending(slot); });
             needsRender = true;
           });
       };
@@ -356,6 +382,9 @@
 
   // %% playback (from cramera, dt-based so speed is adjustable)
   let playing = true, playhead = 0, speed = 2, scrubbing = false, lastSegIdx = -1;
+  //: ?frame=N pins the playhead, for looking at one recorded frame
+  const PINNED_FRAME = new URLSearchParams(location.search).get('frame');
+  if (PINNED_FRAME !== null) { playing = false; playhead = +PINNED_FRAME; }
   let sweep = null;              // {t0, prev, amount} while the title sweep runs
   let onTitle = false;
   const _p0 = new THREE.Vector3(), _p1 = new THREE.Vector3();
@@ -385,6 +414,168 @@
     slot.joints = index;
     slot.jointsFor = loaded;
     return index;
+  }
+  //: the scripted half of the showreel: at the recorded stroke's contact frame the cut
+  //: object's mesh is doubled and the two halves are eased apart along its long axis
+  function nearestLink(slot, config) {
+    const toolPoint = new THREE.Vector3(), linkPoint = new THREE.Vector3();
+    let tool = null;
+    slot.models.forEach(function (m) {
+      for (const name in (m.obj.links || {})) if (config.tool.test(name)) tool = m.obj.links[name];
+    });
+    if (!tool) return null;
+    tool.getWorldPosition(toolPoint);
+    let best = null, bestDistance = Infinity;
+    slot.models.forEach(function (m) {
+      for (const name in (m.obj.links || {})) {
+        if (!config.pattern.test(name)) continue;
+        const link = m.obj.links[name];
+        if (!link.children.length) continue;
+        link.getWorldPosition(linkPoint);
+        const distance = linkPoint.distanceTo(toolPoint);
+        if (distance < bestDistance) { bestDistance = distance; best = { link: link, name: name, tool: tool }; }
+      }
+    });
+    return best;
+  }
+  //: the showreel keeps only the object being cut and its board — the rest of the run's
+  //: objects are scenery that clutters a background loop
+  function keepOnlyCutObject(slot, config) {
+    if (slot.cutTarget !== undefined) return slot.cutTarget;
+    slot.cutTarget = null;
+    const target = nearestLink(slot, config);
+    if (!target) { slot.cutTarget = undefined; return null; }   //: retry once the models are in
+    slot.models.forEach(function (m) {
+      for (const name in (m.obj.links || {})) {
+        const isOther = config.pattern.test(name) && name !== target.name;
+        const isOtherBoard = config.boards && config.boards.test(name) && name.indexOf(target.name) < 0;
+        if (isOther || isOtherBoard) m.obj.links[name].visible = false;
+      }
+    });
+    slot.cutTarget = target.link;
+    slot.toolLink = target.tool;
+    slot.splitAt = contactFrame(slot);
+    frameOnCut(slot);
+    return slot.cutTarget;
+  }
+  //: the frame where the blade is deepest in the object — the moment the halves part
+  function contactFrame(slot) {
+    const loop = episodeOf(activeName).loop;
+    if (!loop || !slot.toolLink || !slot.cutTarget) return null;
+    const toolPoint = new THREE.Vector3(), cutPoint = new THREE.Vector3();
+    let bestFrame = loop.start, bestDistance = Infinity;
+    for (let f = loop.start; f <= loop.end; f += 2) {
+      applyFrame(slot, f);
+      slot.group.updateMatrixWorld(true);
+      slot.toolLink.getWorldPosition(toolPoint);
+      slot.cutTarget.getWorldPosition(cutPoint);
+      const distance = toolPoint.distanceTo(cutPoint);
+      if (distance < bestDistance) { bestDistance = distance; bestFrame = f; }
+    }
+    return bestFrame;
+  }
+  function splitHalves(slot, config) {
+    if (slot.halves) return slot.halves;
+    const target = keepOnlyCutObject(slot, config);
+    if (!target || !target.children.length) return null;
+    const left = target.children[0];
+    const right = left.clone(true);
+    target.add(right);
+    slot.halves = { left: left, right: right };
+    return slot.halves;
+  }
+  function applySplit(slot, frame) {
+    const config = episodeOf(activeName).split;
+    if (!config) return;
+    keepOnlyCutObject(slot, config);
+    const at = slot.splitAt;
+    if (at === null || at === undefined) return;
+    const progress = Math.max(0, Math.min(1, (frame - at) / config.over));
+    if (progress <= 0) {
+      if (slot.halves) {
+        slot.halves.left.parent.remove(slot.halves.right);
+        slot.halves.left.position.x = 0;
+        slot.halves.left.rotation.z = 0;
+        slot.halves = null;
+      }
+      return;
+    }
+    const halves = splitHalves(slot, config);
+    if (!halves) return;
+    const eased = progress * progress * (3 - 2 * progress);
+    const gap = eased * config.distance;
+    halves.left.position.x = gap;
+    halves.right.position.x = -gap;
+    halves.left.rotation.z = eased * 0.10;         //: the halves tip away from the blade
+    halves.right.rotation.z = -eased * 0.10;
+  }
+  //: the poured liquid: a steady stream of droplets on the parabola out of the tilted
+  //: container. Every droplet's position follows from its phase, so the stream is fully
+  //: there in any single frame instead of building up over time. The recording carries
+  //: the container's pose, not its contents, so this is an effect
+  const DROPLET_RADIUS = 0.009, STREAM_DROPS = 34;
+  function liquidStream(slot) {
+    if (slot.liquid) return slot.liquid;
+    const group = new THREE.Group();
+    const material = new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#eef5ff'), roughness: 0.1, metalness: 0.0,
+      transparent: true, opacity: 0.92,
+    });
+    const geometry = new THREE.SphereGeometry(DROPLET_RADIUS, 7, 6);
+    const drops = [];
+    for (let i = 0; i < STREAM_DROPS; i++) {
+      const drop = new THREE.Mesh(geometry, material);
+      drop.visible = false;
+      group.add(drop);
+      drops.push(drop);
+    }
+    slot.group.add(group);
+    slot.liquid = { group: group, drops: drops };
+    return slot.liquid;
+  }
+  function poseAt(slot, frame, key) {
+    const objects = slot.traj && slot.traj.objects;
+    if (!objects) return null;
+    const at = objects[Math.min(objects.length - 1, Math.max(0, Math.floor(frame)))];
+    return at && at[key] ? at[key] : null;
+  }
+  const _cupQuaternion = new THREE.Quaternion();
+  const _cupUp = new THREE.Vector3();
+  const _spout = new THREE.Vector3();
+  function applyLiquid(slot, frame) {
+    const config = episodeOf(activeName).liquid;
+    if (!config) return;
+    const stream = liquidStream(slot);
+    const source = poseAt(slot, frame, config.source);
+    const target = poseAt(slot, frame, config.target);
+    //: the container's own up axis says how far it is tipped: 1 upright, 0 on its side.
+    //: Its yaw, which the raw quaternion also carries, must not count as pouring
+    _cupQuaternion.set(source[3], source[4], source[5], source[6]);
+    _cupUp.set(0, 0, 1).applyQuaternion(_cupQuaternion);
+    if (!source || !target || _cupUp.z > config.tipped) {
+      stream.drops.forEach(function (drop) { drop.visible = false; });
+      return;
+    }
+    //: the liquid leaves at the rim, not at the pose, which sits in the container's base
+    _spout.set(source[0], source[1], source[2]).addScaledVector(_cupUp, config.rim);
+    //: droplets vanish at the target's rim, not at its base, or the container hides them
+    //: the arc from the rim to the target's mouth: the recorded geometry has the two only
+    //: centimetres apart vertically but a hand's width apart sideways, so a straight fall
+    //: would be hidden inside the container
+    const mouth = new THREE.Vector3(target[0], target[1], target[2] + config.targetRim);
+    const sag = 0.016;
+    const now = clock.getElapsedTime();
+    for (let i = 0; i < stream.drops.length; i++) {
+      const drop = stream.drops[i];
+      const along = (now / config.seconds + i / stream.drops.length) % 1;
+      const wobble = Math.sin(i * 12.9898) * 0.004;
+      drop.position.lerpVectors(_spout, mouth, along);
+      drop.position.z -= sag * Math.sin(Math.PI * along);
+      drop.position.x += wobble * (1 - along);
+      drop.position.y += Math.cos(i * 78.233) * 0.004 * (1 - along);
+      drop.visible = true;
+    }
+    needsRender = true;
   }
   function applyFrame(slot, f) {
     const traj = slot.traj;
@@ -470,11 +661,15 @@
   }
 
   function setScene(name) {
+    if (activeName === name && active && active.ready) return;
     activeName = name;
     document.querySelectorAll('#epHud .actbtns button').forEach(function (b) {
       b.classList.toggle('sel', b.dataset.ep === name);
     });
-    playhead = 0; lastSegIdx = -1;
+    //: start where this episode's loop starts, and never clobber a pinned frame
+    const episode = episodeOf(name);
+    if (PINNED_FRAME === null) playhead = episode.loop ? episode.loop.start : 0;
+    lastSegIdx = -1;
     if (active) active.group.visible = false;
     loadSlot(name, function (slot) {
       if (activeName !== name) return;      // user switched again mid-load
@@ -483,7 +678,7 @@
       dropGroundToSlot(slot);
       applyFrame(slot, 0);
       fillHud(slot);
-      frameCamera(slot);
+      if (episodeOf(name).focus) frameOnCut(slot); else frameCamera(slot);
       if (onTitle) startSweep();
       needsRender = true;
     });
@@ -498,6 +693,24 @@
     const c = box.getCenter(new THREE.Vector3());
     controls.target.copy(c);
     camera.position.set(c.x + 3.2, c.y + 1.6, c.z + 3.4);
+    controls.update();
+    needsRender = true;
+  }
+  //: the showreel is a close shot on the object being cut, with the robot behind it —
+  //: the wide default framing leaves the action a few pixels tall
+  const SHOWREEL_CAMERA = { distance: 1.7, height: 0.75, swing: 0.7, lift: 0.12 };
+  function frameOnCut(slot) {
+    const focus = episodeOf(activeName).focus;
+    const anchorObject = focus ? slot.objectMeshes[focus] : slot.cutTarget;
+    if (!anchorObject || !slot.robotModel) return;
+    const cut = anchorObject.getWorldPosition(new THREE.Vector3());
+    const base = slot.robotModel.obj.getWorldPosition(new THREE.Vector3());
+    const away = cut.clone().sub(base).setY(0).normalize();
+    away.applyAxisAngle(new THREE.Vector3(0, 1, 0), SHOWREEL_CAMERA.swing);
+    controls.target.copy(cut).add(new THREE.Vector3(0, SHOWREEL_CAMERA.lift, 0));
+    camera.position.copy(cut)
+      .addScaledVector(away, SHOWREEL_CAMERA.distance)
+      .add(new THREE.Vector3(0, SHOWREEL_CAMERA.height, 0));
     controls.update();
     needsRender = true;
   }
@@ -552,14 +765,23 @@
     }
     if (active && active.traj && playing && !scrubbing) {
       const fps = active.traj.fps || active.traj.framesPerSecond || 30;
-      playhead += dt * fps * speed;
-      if (playhead >= active.traj.frames.length - 1) playhead = 0;
+      const episode = episodeOf(activeName);
+      const rate = episode.speed || speed;
+      const loop = episode.loop;
+      const first = loop ? loop.start : 0;
+      const last = loop ? loop.end : active.traj.frames.length - 1;
+      if (playhead < first) playhead = first;
+      playhead += dt * fps * rate;
+      if (playhead >= last) playhead = first;
       needsRender = true;
     }
+    if (active && active.traj) applyLiquid(active, playhead);
     if (active && active.traj && needsRender) {
       applyFrame(active, playhead);
+      applySplit(active, playhead);
       updateHud(active);
-      if (follow && robotCenter(_target)) controls.target.lerp(_target, 0.06);
+      if (follow && !episodeOf(activeName).split && robotCenter(_target))
+        controls.target.lerp(_target, 0.06);
     }
     if (!needsRender && !moved && !controls.autoRotate) return;
     renderFrame();
@@ -629,14 +851,17 @@
   }
   window.DeckPlayer = {
     onSlide: function (id) {
-      if (id === 's1' && titleStage) moveTo(titleStage, true);
-      else if (id === 's20' && endStage) moveTo(endStage, true);   /* the closing slide reuses the ambient title view */
-      else if (id === 'sEp') moveTo(epStage, false);
+      if (id === 's1' && titleStage) { moveTo(titleStage, true); setScene(SHOWREEL.name); }
+      else if (id === 's20' && endStage) { moveTo(endStage, true); setScene(SHOWREEL.name); }
+      else if (id === 'sEp') {
+        moveTo(epStage, false);
+        if (activeName === SHOWREEL.name) setScene(EPISODES[0].name);   //: back to a real run
+      }
     },
   };
 
   applyPlayerTheme();
-  setScene(EPISODE_NAMES[0]);
+  setScene(SHOWREEL.name);
   // route the initial slide (the deck's go() may have run before this script)
   const on = document.querySelector('.slide.on');
   if (on) window.DeckPlayer.onSlide(on.id);
