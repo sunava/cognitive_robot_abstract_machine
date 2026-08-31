@@ -58,3 +58,27 @@ fixture (13 presets, no download). The ten real recordings already in
 ~/.cramera/scenes answer 10 presets each; pr2_breakfast in the scenes submodule
 is the richest real one. Not Franka_Montessori: 20 of its 25 presets are
 requires_live and need the montessori package.
+**Statecharts in recordings (c1d8fa054).** Serialization moved out of the live
+bridge into `cramera/live/chart_structure.py` + `chart_observer.py`, shared by the
+bridge and the onboarder; a scene bundle now carries `statecharts.json`. The
+observer answers two questions, not one: `snapshot()` is the chart's current
+state, `change()` is what a viewer that already holds the last one needs. A
+recording must not dedupe the wire's way -- a recorded tick with nothing to say
+means the chart stopped, not that it stood still -- which had left 85 of 971
+frames carrying a chart; deduping in `RecordedStatecharts` keeps the file at 25 KB.
+
+**Segmind watch set (same commit).** A body entered it only while free, so an
+object a demo starts off fixed inside a drawer (the bullet-world spoon) was never
+seen picked up -- 2 of 3 transports detected. The world already separates the
+cases: `Spoon` is `IsPerceivable`, `Drawer` is `Furniture`, so the watch set
+follows that annotation too.
+
+**Next.**
+- Live questions: no demo calls `register_query_source`; wire `DetectedEvents`
+  plus a live query source into one.
+- Re-record `pr2_breakfast_detected` and `bullet_world_detected` so they gain
+  statecharts and the spoon pick-up the new rule sees. `g1_warehouse_wrench` is
+  already re-recorded (971 frames, 6 charts, 4 pick/place events).
+- `~/.cramera/scenes/index.json` still defaults to the non-existent `pr2_scuess`.
+- Onboarding a second scene while one runs dies with a raw
+  `OSError: Address already in use` on bridge port 8765; deserves a real message.
