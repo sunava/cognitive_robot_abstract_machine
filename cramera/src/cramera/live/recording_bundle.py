@@ -24,6 +24,10 @@ from semantic_digital_twin.world_description.world_entity import Body
 from cramera import paths
 from cramera.body_geometry import measure_body, POSE_PRECISION, rounded_scale
 from cramera.generated_json import write_json_atomically
+from cramera.knowledge.recorded_statecharts import (
+    RecordedStatecharts,
+    STATECHART_FILE,
+)
 from cramera.live.bridge import Bridge, ObjectCatalogEntry, ObjectKind
 from cramera.live.live_bundle import bundle_world_models
 from cramera.live.recording import Recording, RecordedFrame, RecordingState
@@ -92,6 +96,14 @@ def write_recording_bundle(
             "worldBound": True,
             "bundleSignature": bridge.bundle_signature(),
         }
+        statecharts = RecordedStatecharts.of_snapshots(
+            frame.statechart for frame in frames
+        )
+        if not statecharts.is_empty():
+            scene["statecharts"] = STATECHART_FILE
+            write_json_atomically(
+                output_directory / STATECHART_FILE, statecharts.to_payload()
+            )
         write_json_atomically(output_directory / "scene.json", scene, indent=1)
         write_json_atomically(
             output_directory / "trajectory.json",

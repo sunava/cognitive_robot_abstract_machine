@@ -13,7 +13,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from typing_extensions import Any, Dict, Iterable, List, Optional, Sequence, TYPE_CHECKING
+from typing_extensions import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    TYPE_CHECKING,
+)
 
 from cramera.generated_json import GeneratedJson
 from cramera.knowledge.scene_bundle import SceneBundle
@@ -170,7 +177,9 @@ class RecordedChart:
                 for entry in snapshot.nodes
             ],
             edges=[
-                RecordedChartEdge(source=edge.source, target=edge.target, kind=edge.kind)
+                RecordedChartEdge(
+                    source=edge.source, target=edge.target, kind=edge.kind
+                )
                 for edge in snapshot.edges
             ],
         )

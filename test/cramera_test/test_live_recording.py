@@ -7,7 +7,13 @@ from __future__ import annotations
 
 import pytest
 
-from cramera.live.bridge import WorldStateSnapshot
+from cramera.live.bridge import (
+    ChartEdgeEntry,
+    ChartNodeEntry,
+    ChartSnapshot,
+    ObservationName,
+    WorldStateSnapshot,
+)
 from cramera.live.recording import (
     FrameRange,
     InvalidFrameRange,
@@ -19,6 +25,27 @@ from cramera.live.recording import (
 
 def snapshot(frames=None, base=None, objects=None) -> WorldStateSnapshot:
     return WorldStateSnapshot(frames=frames or {}, base=base, objects=objects or {})
+
+
+def statechart(life_cycle: str = "RUNNING") -> ChartSnapshot:
+    """
+    A one-node motion statechart, as the bridge publishes it.
+    """
+    return ChartSnapshot(
+        signature="c1",
+        title="Reach",
+        nodes=[
+            ChartNodeEntry(
+                id="goal",
+                name="ReachGoal",
+                class_name="CartesianPose",
+                parent=None,
+                life_cycle=life_cycle,
+                observation=ObservationName.UNKNOWN,
+            )
+        ],
+        edges=[ChartEdgeEntry(source="goal", target="goal", kind="END")],
+    )
 
 
 class TestLifecycle:
@@ -265,3 +292,47 @@ class TestFrameRange:
     def test_the_whole_range_of_an_empty_recording_is_rejected(self):
         with pytest.raises(InvalidFrameRange):
             FrameRange.whole(0)
+
+
+# %% motion statecharts
+class TestStatechartCapture:
+    def test_a_tick_keeps_the_statechart_that_was_executing(self):
+        recording = Recording()
+        recording.start()
+        chart = statechart()
+
+        recording.append(snapshot(), statechart=chart)
+
+        assert recording.stop()[0].statechart == chart
+
+    def test_a_tick_without_a_statechart_keeps_none(self):
+        recording = Recording()
+        recording.start()
+
+        recording.append(snapshot())
+
+        assert recording.stop()[0].statechart is None
+
+    def test_consecutive_unchanged_ticks_share_one_snapshot(self):
+        """
+        A statechart ticks far more often than it changes; holding the published
+        snapshot rather than a copy of it keeps a long run's buffer small.
+        """
+        recording = Recording()
+        recording.start()
+
+        recording.append(snapshot(), statechart=statechart())
+        recording.append(snapshot(), statechart=statechart())
+
+        frames = recording.stop()
+        assert frames[0].statechart is frames[1].statechart
+
+    def test_a_trimmed_range_keeps_the_statechart_of_its_frames(self):
+        recording = Recording()
+        recording.start()
+        recording.append(snapshot())
+        recording.append(snapshot(), statechart=statechart())
+
+        kept = recording.frames_in(FrameRange(first=1, last=1))
+
+        assert [frame.statechart for frame in kept] == [statechart()]

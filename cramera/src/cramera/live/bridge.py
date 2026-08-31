@@ -1886,6 +1886,14 @@ class Bridge:
             signature=signature,
         )
 
+    def executing_statechart(self) -> Optional[ChartSnapshot]:
+        """
+        The statechart the executor is currently ticking, or None while no motion runs.
+        """
+        with self._lock:
+            chart = self.chart_state
+        return chart if chart.nodes else None
+
     def get_chart(self) -> Dict[str, Any]:
         """
         The newest statechart snapshot (safe to call from HTTP threads).

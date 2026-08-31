@@ -560,13 +560,27 @@ class Recorder:
         """
         return str(body.name).split("/")[-1]
 
+    def recorded_object_keys(self) -> List[str]:
+        """
+        The objects this recording followed: what it bound itself to when the run
+        started, the robot's own base aside.
+
+        Asked of the recording rather than of the world at the end: a run that carries
+        something re-parents it to the gripper, and a body under a gripper is no longer
+        one the world lets move freely -- so asking the world again would leave out
+        exactly the objects the run was about.
+        """
+        return [key for key in self._bodies if key != ROBOT_BASE_KEY]
+
     def free_floating_bodies(self) -> List[Body]:
         """
         Every body its world lets move freely, which is how a world states that a body is
         loose rather than part of the furniture.
 
         The robot's own bodies are left out: a mobile base is free-floating too, and it is
-        recorded as the robot rather than as an object.
+        recorded as the robot rather than as an object. So are bodies without geometry: a
+        world lets frames move as well as things -- a mobile robot's ``odom`` is free and
+        has no shape -- and a frame gives a viewer nothing to draw.
         """
         robot_body_names = (
             {str(body.name) for body in self.robot.bodies}
@@ -578,6 +592,7 @@ class Recorder:
             for body in self.world.bodies
             if isinstance(body.parent_connection, Connection6DoF)
             and str(body.name) not in robot_body_names
+            and (body.visual.shapes or body.collision.shapes)
         ]
 
     def bind_to_executor(self, executor: Executor) -> None:
@@ -1309,22 +1324,20 @@ class SceneBuilder:
             kept.append(frame_count - 1)
         return kept
 
-    def task(self) -> Optional[str]:
+    def task(self, steps: List[str]) -> Optional[str]:
         """
         What the recording says it is doing: the task it was named with, or the steps its
         plan performed, or None for a run that performed none.
 
-        Only the plan's own steps are named -- what a step does to get there is its
-        business, not the task.
+        :param steps: The plan steps of this recording, in the order they ran.
         """
         if self.recorder.task:
             return self.recorder.task
-        steps = []
-        for action in self.recorder.actions:
-            name = action["name"]
-            if not action.get("depth") and name not in steps:
-                steps.append(name)
-        return ", ".join(steps) or None
+        named: List[str] = []
+        for step in steps:
+            if step not in named:
+                named.append(step)
+        return ", ".join(named) or None
 
     def frame_times(self) -> List[float]:
         """
@@ -1441,11 +1454,14 @@ class SceneBuilder:
         # the loose objects of a world built in code: no source file named them, so their
         # geometry is written out of the world itself
         emitted = {entry["key"] for entry in objects}
-        for body in self.recorder.free_floating_bodies():
-            key = self.recorder.object_key(body)
+        for key in self.recorder.recorded_object_keys():
             if key in emitted or key not in self.recorder.object_frames[0]:
                 continue
-            objects.append(self._object_of_body(body, key, len(objects), palette))
+            objects.append(
+                self._object_of_body(
+                    self.recorder._bodies[key], key, len(objects), palette
+                )
+            )
 
         # %% place target + drag bounds
         places = [segment["place"] for segment in segments if segment.get("place")]
@@ -1522,7 +1538,9 @@ class SceneBuilder:
             "placeTarget": place_target,
             "dragBounds": drag_bounds,
             "missingAssets": sorted(set(missing)),
-            SceneField.TASK.value: self.task(),
+            SceneField.TASK.value: self.task(
+                [entry["step"] for entry in segments]
+            ),
             SceneField.DETECTED_EVENTS.value: self.detected_events(),
         }
         write_json_atomically(
@@ -1570,12 +1588,10 @@ def split_passthrough_arguments(arguments: List[str]) -> ArgumentSplit:
 
 
 # %% the cramera-onboard entry point
-def main() -> None:
+def onboarding_parser() -> argparse.ArgumentParser:
     """
-    ``cramera-onboard`` — record one demo run into a scene bundle.
+    What ``cramera-onboard`` accepts on its command line.
     """
-    # force: the demo's own imports configure the root logger before we get here
-    logging.basicConfig(level=logging.INFO, format="%(message)s", force=True)
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -1605,8 +1621,42 @@ def main() -> None:
         metavar="TICKS",
         help="run ticks between two detector ticks (default: %(default)s)",
     )
+    return parser
+
+
+def parse_onboarding_arguments(arguments: List[str]) -> argparse.Namespace:
+    """
+    One command line, read.
+
+    :param arguments: The command line, without the program name.
+    """
+    return onboarding_parser().parse_args(arguments)
+
+
+def recorder_for(arguments: argparse.Namespace) -> Recorder:
+    """
+    The recorder one command line asks for.
+
+    Every switch the command line offers has to reach the recorder, which is what this
+    one place is for.
+
+    :param arguments: The command line, as read.
+    """
+    return Recorder(
+        detect_events=arguments.detect,
+        detection_interval=arguments.detect_every,
+        task=arguments.task,
+    )
+
+
+def main() -> None:
+    """
+    ``cramera-onboard`` -- record one demo run into a scene bundle.
+    """
+    # force: the demo's own imports configure the root logger before we get here
+    logging.basicConfig(level=logging.INFO, format="%(message)s", force=True)
     argument_split = split_passthrough_arguments(sys.argv[1:])
-    args = parser.parse_args(argument_split.own)
+    args = parse_onboarding_arguments(argument_split.own)
 
     try:
         import coraplex  # noqa: F401
@@ -1616,7 +1666,7 @@ def main() -> None:
             "  the workspace venv (uv sync), then: cramera-onboard ..."
         )
 
-    recorder = Recorder(detect_events=args.detect, detection_interval=args.detect_every)
+    recorder = recorder_for(args)
     recorder.install_asset_hooks()
     recorder.install_tick_hook()
     recorder.install_segment_hook()

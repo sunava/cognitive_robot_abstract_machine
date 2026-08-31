@@ -17,7 +17,7 @@ from enum import StrEnum
 
 from typing_extensions import Dict, List, Optional
 
-from cramera.live.bridge import WorldStateSnapshot
+from cramera.live.bridge import ChartSnapshot, WorldStateSnapshot
 from cramera.live.frame_range import FrameRange, InvalidFrameRange
 
 
@@ -85,6 +85,14 @@ class RecordedFrame:
     labels off the recorded action list instead.
     """
 
+    statechart: Optional[ChartSnapshot] = None
+    """
+    The motion statechart executing on this tick, or None while no motion runs.
+
+    Held as the bridge published it, so a stretch of ticks that found the chart
+    unchanged shares one snapshot (see :meth:`Recording.append`).
+    """
+
 
 @dataclass
 class Recording:
@@ -133,12 +141,18 @@ class Recording:
             self._frames = []
             self._tick_times = []
 
-    def append(self, snapshot: WorldStateSnapshot, step: Optional[str] = None) -> None:
+    def append(
+        self,
+        snapshot: WorldStateSnapshot,
+        step: Optional[str] = None,
+        statechart: Optional[ChartSnapshot] = None,
+    ) -> None:
         """
         Buffer one tick, or do nothing while not actively recording.
 
         :param snapshot: The tick's world state, as the bridge just published it.
         :param step: Label of the action being performed on this tick, if any.
+        :param statechart: The motion statechart executing on this tick, if any.
         """
         with self._lock:
             if self.state is not RecordingState.RECORDING:
@@ -151,9 +165,24 @@ class Recording:
                         key: list(value) for key, value in snapshot.objects.items()
                     },
                     step=step,
+                    statechart=self._held_statechart(statechart),
                 )
             )
             self._tick_times.append(time.time())
+
+    def _held_statechart(
+        self, statechart: Optional[ChartSnapshot]
+    ) -> Optional[ChartSnapshot]:
+        """
+        The snapshot to store for a tick: the one the previous tick already holds when
+        the statechart has not changed since, so an unchanged stretch costs one object.
+
+        :param statechart: The statechart the bridge published for this tick, if any.
+        """
+        if not self._frames:
+            return statechart
+        held = self._frames[-1].statechart
+        return held if held == statechart else statechart
 
     def stop(self) -> List[RecordedFrame]:
         """

@@ -158,7 +158,9 @@ class AbstractDetector(MotionStatechartNode, Symbol, ABC):
         being watched when a plan has since grasped them.
 
         A body only enters the set while it is free, so the furniture and the robot's own
-        links never do.
+        links never do. A body without collision geometry never does either: a world
+        holds frames as well as things -- a mobile robot's ``odom`` is free to move and
+        has no shape -- and whether a frame touches anything is not a question.
 
         :param context: The context holding the world the bodies live in.
         :param segmind_context: The context remembering what is already watched.
@@ -166,7 +168,9 @@ class AbstractDetector(MotionStatechartNode, Symbol, ABC):
         present = set(context.world.bodies)
         segmind_context.watched_bodies &= present
         segmind_context.watched_bodies |= {
-            body for body in present if type(body.parent_connection) is Connection6DoF
+            body
+            for body in present
+            if type(body.parent_connection) is Connection6DoF and body.collision.shapes
         }
         return [
             body

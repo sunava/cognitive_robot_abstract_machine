@@ -21,6 +21,7 @@ import coraplex.orm.model
 import datetime
 import enum
 import krrood.adapters.json_serializer
+import krrood.entity_query_language.orm.model
 import krrood.ormatic.custom_types
 import krrood.ormatic.data_access_objects.alternative_mappings
 import krrood.ormatic.type_dict
@@ -30,6 +31,7 @@ import segmind.datastructures.event_plotter
 import segmind.datastructures.events
 import segmind.datastructures.object_tracker
 import segmind.detectors.atomic_event_detectors_nodes
+import segmind.detectors.attachment_detector_nodes
 import segmind.detectors.base
 import segmind.detectors.coarse_event_detector_nodes
 import segmind.detectors.spatial_relation_detector_nodes
@@ -61,7 +63,7 @@ from krrood.ormatic.custom_types import TypeType
 
 class Base(DeclarativeBase):
     type_mappings = {
-        numpy.ndarray: coraplex.orm.model.NumpyType,
+        numpy.ndarray: krrood.ormatic.custom_types.NumpyType,
         typing.Type: krrood.ormatic.custom_types.TypeType,
         builtins.type: krrood.ormatic.custom_types.TypeType,
         enum.Enum: krrood.ormatic.custom_types.PolymorphicEnumType,
@@ -74,6 +76,23 @@ class Base(DeclarativeBase):
 
 
 # Association tables for many-to-many relationships
+class SymbolGraphMappingDAO_instances_association(Base, AssociationDataAccessObject):
+    __tablename__ = "_81067648797638488542008423406786912563441407992272678641741406"
+
+    database_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    source_symbolgraphmappingdao_id: Mapped[int] = mapped_column(
+        ForeignKey("SymbolGraphMappingDAO.database_id")
+    )
+    target_wrappedinstancemappingdao_id: Mapped[int] = mapped_column(
+        ForeignKey("WrappedInstanceMappingDAO.database_id")
+    )
+
+    target: Mapped[WrappedInstanceMappingDAO] = relationship(
+        "WrappedInstanceMappingDAO",
+        foreign_keys=[target_wrappedinstancemappingdao_id],
+        lazy="selectin",
+    )
 
 
 class PlanMappingDAO(Base, DataAccessObject[coraplex.orm.model.PlanMapping]):
@@ -117,6 +136,37 @@ class FunctionMappingDAO(
     )
     class_name: Mapped[typing.Optional[builtins.str]] = mapped_column(
         sqlalchemy.sql.sqltypes.Text, use_existing_column=True
+    )
+
+
+class SymbolGraphMappingDAO(
+    Base, DataAccessObject[krrood.entity_query_language.orm.model.SymbolGraphMapping]
+):
+    __tablename__ = "SymbolGraphMappingDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        Integer, primary_key=True, use_existing_column=True
+    )
+
+    instances: Mapped[builtins.list[SymbolGraphMappingDAO_instances_association]] = (
+        relationship(
+            "SymbolGraphMappingDAO_instances_association",
+            collection_class=builtins.list,
+            cascade="all, delete-orphan",
+            foreign_keys="[SymbolGraphMappingDAO_instances_association.source_symbolgraphmappingdao_id]",
+            lazy="selectin",
+        )
+    )
+
+
+class WrappedInstanceMappingDAO(
+    Base,
+    DataAccessObject[krrood.entity_query_language.orm.model.WrappedInstanceMapping],
+):
+    __tablename__ = "WrappedInstanceMappingDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        Integer, primary_key=True, use_existing_column=True
     )
 
 
@@ -698,6 +748,25 @@ class TranslationDetectorDAO(
     }
 
 
+class AttachmentDetectorDAO(
+    AbstractDetectorDAO,
+    DataAccessObject[segmind.detectors.attachment_detector_nodes.AttachmentDetector],
+):
+    __tablename__ = "AttachmentDetectorDAO"
+
+    database_id: Mapped[builtins.int] = mapped_column(
+        ForeignKey(AbstractDetectorDAO.database_id),
+        primary_key=True,
+        use_existing_column=True,
+    )
+
+    __mapper_args__ = {
+        "polymorphic_identity": "AttachmentDetectorDAO",
+        "inherit_condition": database_id == AbstractDetectorDAO.database_id,
+        "polymorphic_load": "selectin",
+    }
+
+
 class DetectorStateChartDAO(
     Base, DataAccessObject[segmind.detectors.base.DetectorStateChart]
 ):
@@ -719,6 +788,9 @@ class SegmindContextDAO(Base, DataAccessObject[segmind.detectors.base.SegmindCon
         typing.List[
             semantic_digital_twin.semantic_annotations.semantic_annotations.Aperture
         ]
+    ] = mapped_column(JSON, nullable=False, use_existing_column=True)
+    watched_bodies: Mapped[
+        typing.Set[semantic_digital_twin.world_description.world_entity.Body]
     ] = mapped_column(JSON, nullable=False, use_existing_column=True)
 
     logger_id: Mapped[int] = mapped_column(

@@ -46,8 +46,10 @@ from cramera import paths
 from cramera.knowledge.detected_events import DetectedEventRecord, SceneField
 from cramera.onboard.detection_recorder import DetectionRecorder
 from cramera.onboard import bundle_urdf as bundler
+from cramera.onboard import demo as demo_module
 from cramera.onboard.bundle_world import BundledWorld
 from cramera.onboard.world_to_urdf import UrdfDocument
+from cramera.live.bridge import ROBOT_BASE_KEY
 from cramera.onboard.demo import (
     BundledModel,
     SceneBuilder,
@@ -1656,64 +1658,156 @@ class TestWhenEachFrameWasRecorded:
 
 class TestWhatARecordingSaysItIs:
     """
-    A bundle is one robot, in one environment, doing one task.
-
-    The robot and the environment fall out of what the run loaded; the task is the one
-    thing only the person recording it knows, so it is asked for, and a run that names
-    none falls back to the plan it executed.
+    A bundle is one robot, in one environment, doing one task. The robot and the
+    environment fall out of what the run loaded; the task is the one thing only the
+    person recording it knows, so it is asked for, and a run that names none falls back
+    to the steps its plan performed -- the same steps the viewer scrubs through.
     """
 
-    def builder(self, tmp_path, task=None, actions=None) -> SceneBuilder:
+    def builder(self, tmp_path, task=None) -> SceneBuilder:
         """
-        A builder over a recording of the given actions.
+        A builder over a recording, with or without a task named.
 
         :param tmp_path: Directory to bundle into.
         :param task: The task named on the command line, if any.
-        :param actions: The actions the recorded plan performed.
         """
-        recorder = recording([{}], actions=actions or [])
+        recorder = recording([{}])
         recorder.world = World()
         recorder.task = task
         return SceneBuilder(recorder, "scene", str(tmp_path / "bundle"), 1)
 
     def test_the_named_task_is_what_the_bundle_states(self, tmp_path):
-        assert self.builder(tmp_path, task="make breakfast").task() == "make breakfast"
+        builder = self.builder(tmp_path, task="make breakfast")
+
+        assert builder.task(["parkarms", "transport_milk"]) == "make breakfast"
 
     def test_a_run_naming_no_task_states_what_its_plan_did(self, tmp_path):
-        builder = self.builder(
-            tmp_path,
-            actions=[
-                {"name": "ParkArmsAction", "depth": 0},
-                {"name": "TransportAction", "depth": 0},
-            ],
-        )
+        builder = self.builder(tmp_path)
 
-        assert builder.task() == "ParkArmsAction, TransportAction"
+        assert builder.task(["parkarms", "transport_milk"]) == "parkarms, transport_milk"
 
-    def test_a_plan_step_is_named_once_however_often_it_ran(self, tmp_path):
-        builder = self.builder(
-            tmp_path,
-            actions=[
-                {"name": "TransportAction", "depth": 0},
-                {"name": "TransportAction", "depth": 0},
-            ],
-        )
+    def test_a_step_is_named_once_however_often_it_ran(self, tmp_path):
+        builder = self.builder(tmp_path)
 
-        assert builder.task() == "TransportAction"
+        assert builder.task(["transport_milk", "transport_milk"]) == "transport_milk"
 
-    def test_only_the_plans_own_steps_are_named(self, tmp_path):
-        builder = self.builder(
-            tmp_path,
-            actions=[
-                {"name": "TransportAction", "depth": 0},
-                {"name": "ReachAction", "depth": 1},
-            ],
-        )
-
-        assert builder.task() == "TransportAction"
-
-    def test_a_run_with_no_actions_at_all_states_no_task(self, tmp_path):
-        assert self.builder(tmp_path).task() is None
+    def test_a_run_with_no_steps_at_all_states_no_task(self, tmp_path):
+        assert self.builder(tmp_path).task([]) is None
 
     def test_the_recorder_is_told_no_task_unless_one_is_named(self):
         assert Recorder().task is None
+
+
+class TestWhatCountsAsALooseObject:
+    """
+    A world lets a body move freely to say it is loose rather than furniture -- but some
+    of what it lets move are frames rather than things. A mobile robot's ``odom`` is free
+    and has no geometry at all, and a recording that treats it as an object has nothing
+    to draw for it.
+    """
+
+    def world_with_a_frame(self) -> World:
+        """
+        A world holding a free body with geometry and a free frame without any.
+        """
+        world = World()
+        root = Body(name=PrefixedName("root"))
+        crate = Body(
+            name=PrefixedName("crate"),
+            collision=ShapeCollection(shapes=[Box(scale=Scale(0.2, 0.2, 0.2))]),
+        )
+        frame = Body(name=PrefixedName("odom"))
+        with world.modify_world():
+            world.add_body(root)
+            for body in (crate, frame):
+                world.add_connection(
+                    Connection6DoF.create_with_dofs(
+                        world=world, parent=root, child=body
+                    )
+                )
+        return world
+
+    def local_names(self, recorder: Recorder) -> List[str]:
+        """
+        What a recorder calls the loose objects it would record.
+
+        :param recorder: The recorder to ask.
+        """
+        return [recorder.object_key(body) for body in recorder.free_floating_bodies()]
+
+    def test_a_free_body_with_geometry_is_an_object(self):
+        recorder = Recorder()
+        recorder.world = self.world_with_a_frame()
+
+        assert self.local_names(recorder) == ["crate"]
+
+    def test_a_frame_without_geometry_is_not_an_object(self):
+        recorder = Recorder()
+        recorder.world = self.world_with_a_frame()
+
+        assert "odom" not in self.local_names(recorder)
+
+
+class TestWhatTheCommandLineAsksFor:
+    """
+    Every switch the command line offers has to reach the recorder. ``--task`` did not:
+    it was accepted, and then the recording stated the steps its plan performed as if
+    none had been given.
+    """
+
+    def recorder_for(self, *arguments: str) -> Recorder:
+        """
+        The recorder ``cramera-onboard`` builds for a command line.
+
+        :param arguments: The switches, without the demo and the name.
+        """
+        parsed = demo_module.parse_onboarding_arguments(
+            ["demo.py", "--name", "scene", *arguments]
+        )
+        return demo_module.recorder_for(parsed)
+
+    def test_a_named_task_reaches_the_recorder(self):
+        assert self.recorder_for("--task", "make breakfast").task == "make breakfast"
+
+    def test_no_task_named_leaves_it_to_the_plan(self):
+        assert self.recorder_for().task is None
+
+    def test_detection_is_off_unless_asked_for(self):
+        assert self.recorder_for().detect_events is False
+
+    def test_detection_is_turned_on_by_its_switch(self):
+        assert self.recorder_for("--detect").detect_events is True
+
+    def test_the_detection_interval_reaches_the_recorder(self):
+        assert self.recorder_for("--detect-every", "15").detection_interval == 15
+
+
+class TestObjectsThatWereCarried:
+    """
+    A run that carries something re-parents it to the gripper, and a body under a gripper
+    is no longer one the world lets move freely. What counts as a loose object is
+    therefore what was loose when the recording started -- asking again at the end leaves
+    out exactly the objects the run was about.
+    """
+
+    def recorder_that_recorded(self, keys: List[str]) -> Recorder:
+        """
+        A recorder that recorded a pose per frame for each of ``keys``.
+
+        :param keys: The objects it followed through the run.
+        """
+        recorder = recording([{key: RESTING for key in keys}])
+        recorder.world = World()
+        recorder._bodies = {key: Body(name=PrefixedName(key)) for key in keys}
+        return recorder
+
+    def test_everything_followed_through_the_run_is_an_object(self):
+        recorder = self.recorder_that_recorded(["crate", "wrench"])
+
+        assert sorted(recorder.recorded_object_keys()) == ["crate", "wrench"]
+
+    def test_the_robot_base_is_not_one_of_them(self):
+        recorder = self.recorder_that_recorded(["crate"])
+        recorder._bodies[ROBOT_BASE_KEY] = Body(name=PrefixedName("base"))
+
+        assert ROBOT_BASE_KEY not in recorder.recorded_object_keys()

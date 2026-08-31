@@ -21,9 +21,14 @@ from cramera.live.recording_bundle import (
     finalize_recording,
     write_recording_bundle,
 )
+from cramera.knowledge.recorded_statecharts import (
+    RecordedStatecharts,
+    STATECHART_FILE,
+)
 from cramera.live.recording_segments import derive_segments
 
 from .test_live_bundle import attached_bridge, laboratory_world, shaped
+from .test_live_recording import statechart
 
 MILK_SPAWN = [0.1, 0.2, 0.3, 0, 0, 0, 1]
 
@@ -327,3 +332,43 @@ class TestFinalizeRecording:
 
         assert scene_name == paths.RECORDING_SCENE_NAME
         assert marker.exists()
+
+
+class TestStatecharts:
+    """
+    A replay shows the motion statechart of the moment it is playing, which only exists
+    if the recording wrote what it went through beside its trajectory (see
+    :mod:`cramera.knowledge.recorded_statecharts`).
+    """
+
+    def test_a_run_without_a_motion_writes_no_statecharts(self, tmp_path):
+        bridge = attached_bridge()
+
+        scene = write_recording_bundle(
+            bridge, [frame_with_milk()], 20.0, tmp_path / "rec", "__recording__"
+        )
+
+        assert "statecharts" not in scene
+        assert not (tmp_path / "rec" / STATECHART_FILE).is_file()
+
+    def test_the_statecharts_the_run_went_through_are_written(self, tmp_path):
+        bridge = attached_bridge()
+        frames = [
+            frame_with_milk(),
+            RecordedFrame(
+                frames={},
+                base=None,
+                objects={"milk.stl": MILK_SPAWN},
+                statechart=statechart(),
+            ),
+        ]
+
+        scene = write_recording_bundle(
+            bridge, frames, 20.0, tmp_path / "rec", "__recording__"
+        )
+
+        assert scene["statecharts"] == STATECHART_FILE
+        written = json.loads((tmp_path / "rec" / STATECHART_FILE).read_text())
+        assert RecordedStatecharts.of_payload(
+            written
+        ) == RecordedStatecharts.of_snapshots([frame.statechart for frame in frames])

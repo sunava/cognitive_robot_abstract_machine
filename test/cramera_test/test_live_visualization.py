@@ -120,6 +120,33 @@ class TestWorldSync:
             "ParkArmsAction",
         ]
 
+    def test_a_recorded_tick_carries_the_statechart_that_was_executing(self, world):
+        """
+        The statechart the tick found running is what a replay shows at that moment; it
+        is gone by the time the recording is bundled, so it is captured per tick.
+        """
+        bridge = Bridge()
+        bridge.attach(world)
+        bridge.recording = Recording()
+        bridge.recording.start()
+        bridge.observe_chart(make_chart())
+        sync = WorldStateSync(_world=world, bridge=bridge)
+
+        sync.on_state_change()
+
+        assert bridge.recording.stop()[0].statechart == bridge.chart_state
+
+    def test_a_tick_before_any_motion_records_no_statechart(self, world):
+        bridge = Bridge()
+        bridge.attach(world)
+        bridge.recording = Recording()
+        bridge.recording.start()
+        sync = WorldStateSync(_world=world, bridge=bridge)
+
+        sync.on_state_change()
+
+        assert bridge.recording.stop()[0].statechart is None
+
     def test_a_state_change_without_a_recording_does_not_fail(self, world):
         bridge = Bridge()
         bridge.attach(world)

@@ -15,6 +15,7 @@ import pytest
 from typing_extensions import ClassVar, Dict, List
 
 from cramera.knowledge.eql_session import EqlSession
+from cramera.knowledge.recorded_statecharts import NO_STATECHART
 from cramera.mesh_format import MeshFormat
 from cramera.paths import LIVE_SCENE_NAME, RECORDING_SCENE_NAME, WEB_ROOT
 
@@ -274,6 +275,39 @@ class TestJsUnits:
 
     def test_shape_specs(self):
         self.run_node("test_shape_specs.js")
+
+
+# %% replayed statecharts
+class TestPlaybackFrameEvent:
+    """
+    The statechart tab of a replay follows the playhead, which reaches it only as this
+    bus event: the two panels are wired to each other by nothing else.
+    """
+
+    EVENT = "scene:frame"
+
+    def test_the_scene_panel_emits_it(self):
+        assert "emit('%s'" % self.EVENT in read("panels/robot_scene/panel.js")
+
+    def test_the_graph_panel_listens_for_it(self):
+        assert "on('%s'" % self.EVENT in read("panels/graph/panel.js")
+
+    def test_the_bus_contract_documents_it(self):
+        assert self.EVENT in read("core/bus.js")
+
+
+class TestNoStatechartMarker:
+    """
+    A recorded tick with no statechart executing is marked with the same number on both
+    sides of the wire; the frontend would otherwise render that marker as a moment
+    index.
+    """
+
+    DECLARED_PATTERN = re.compile(r"const NO_STATECHART = (-?\d+)")
+
+    def test_the_frontend_and_the_backend_mark_it_the_same(self):
+        [declared] = self.DECLARED_PATTERN.findall(read("panels/graph/panel.js"))
+        assert int(declared) == NO_STATECHART
 
 
 class TestLiveSceneName:

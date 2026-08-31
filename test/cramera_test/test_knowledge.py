@@ -43,9 +43,16 @@ from cramera.knowledge.enums import (  # noqa: E402
     NodeGroup,
     PlanNodeGroup,
 )
+from cramera.knowledge.recorded_statecharts import (  # noqa: E402
+    RecordedStatecharts,
+    STATECHART_FILE,
+)
 from cramera.knowledge.scene_bundle import SceneBundle  # noqa: E402
 
+from cramera.generated_json import write_json_atomically  # noqa: E402
+
 from .conftest import reset_knowledge_base_cache  # noqa: E402
+from .test_recorded_statecharts import snapshot as chart_snapshot  # noqa: E402
 from cramera.knowledge.subgraph import DetailEntry, GraphEdge  # noqa: E402
 from cramera.knowledge.views import plan_tree as plan_view  # noqa: E402
 from cramera.robot_parts import (  # noqa: E402
@@ -349,6 +356,15 @@ class TestActionLabelShortening:
         assert PlanViewPayload._shorten_action_label("Action") == "Action"
 
 
+def recorded_statecharts() -> RecordedStatecharts:
+    """
+    The statecharts of a two-tick run: one motion, ticked to completion.
+    """
+    return RecordedStatecharts.of_snapshots(
+        [chart_snapshot(), chart_snapshot(life_cycles=("DONE", "DONE"))]
+    )
+
+
 class TestViewPayloads:
     def test_knowledge_view(self, fixture_scene):
         payload = GraphPanelViews.of_active_scene().for_tab("knowledge")
@@ -441,6 +457,31 @@ class TestViewPayloads:
         rendered = payload.to_payload()
         assert payload.ok and rendered["nodes"] == []
         assert rendered["live"] == "chart" and rendered["empty"]
+
+    def test_the_chart_view_serves_what_a_recording_captured(self, fixture_scene):
+        """
+        A replay's statechart tab is filled from the bundle rather than from a bridge:
+
+        the recording kept every statechart the run ticked (see
+        :mod:`cramera.knowledge.recorded_statecharts`).
+        """
+        recorded = recorded_statecharts()
+        write_json_atomically(
+            fixture_scene / "scenes" / "fixture" / STATECHART_FILE,
+            recorded.to_payload(),
+        )
+        EpisodeKnowledgeBase.reset()
+
+        rendered = GraphPanelViews.of_active_scene().for_tab("chart").to_payload()
+
+        assert rendered["recorded"] == recorded.to_payload()
+
+    def test_the_chart_view_of_a_scene_without_a_recording_has_nothing(
+        self, fixture_scene
+    ):
+        rendered = GraphPanelViews.of_active_scene().for_tab("chart").to_payload()
+
+        assert "recorded" not in rendered
 
     def test_transform_view_is_live_only(self, fixture_scene):
         payload = GraphPanelViews.of_active_scene().for_tab("transforms")

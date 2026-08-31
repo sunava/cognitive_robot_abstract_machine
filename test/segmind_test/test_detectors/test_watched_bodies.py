@@ -129,3 +129,43 @@ class TestAGraspedBodyStaysWatched:
             executor.tick()
 
         assert self.translations_of(segmind_context, cup)
+
+
+class TestABodyWithoutGeometryIsNotWatched:
+    """
+    A world holds bodies that are frames rather than things: a mobile robot's ``odom``,
+    for one, is free to move and has no geometry at all. Watching one means asking
+    whether it touches something, which cannot be answered of a body with no shape.
+    """
+
+    def world_with_a_frame(self) -> World:
+        """
+        A world holding a free body with geometry and a free frame without any.
+        """
+        world = World()
+        root = Body(name=PrefixedName("root"))
+        cup = collidable_body("cup")
+        frame = Body(name=PrefixedName("odom"))
+        with world.modify_world():
+            world.add_body(root)
+            for body in (cup, frame):
+                world.add_connection(
+                    Connection6DoF.create_with_dofs(
+                        world=world, parent=root, child=body
+                    )
+                )
+        return world
+
+    def test_a_body_without_geometry_is_left_out(self):
+        world = self.world_with_a_frame()
+        executor = EpisodeSegmenterExecutor(
+            context=MotionStatechartContext(world=world)
+        )
+        segmind_context = executor.context.require_extension(SegmindContext)
+        executor.compile(SegmindStatechart().build_statechart([TranslationDetector()]))
+
+        executor.tick()
+
+        watched = {str(body.name) for body in segmind_context.watched_bodies}
+        assert any("cup" in name for name in watched)
+        assert not any("odom" in name for name in watched)

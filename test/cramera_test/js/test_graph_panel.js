@@ -62,7 +62,7 @@ function makeRoot() {
     '#gnav-home': makeElement(),
     '#gnav-path': makeElement(),
     '#gt-live': makeElement(),
-    '#graph': makeElement(),
+    '.graph-canvas': makeElement(),
     '#legend': makeElement(),
     '#graph-zoom-in': makeButton(),
     '#graph-zoom-out': makeButton(),
@@ -114,10 +114,11 @@ function loadPanel(responses, search) {
   const Panels = { define(id, f) { factory = f; } };
   const zooms = [];
   const resizes = [];
+  const statuses = [];
   const Graph = {
     attach() {}, build(payload) { lastBuild = payload; },
     onSelect() {}, onDoubleSelect() {}, highlight() {}, reset() {},
-    setStatuses() { return false; },
+    setStatuses(map) { statuses.push(map); return true; },
     zoomBy(factor) { zooms.push(factor); }, fit() { zooms.push('fit'); },
     resize() { resizes.push(1); },
   };
@@ -137,6 +138,7 @@ function loadPanel(responses, search) {
     requested: requested,
     zooms: zooms,
     resizes: resizes,
+    statuses: statuses,
     fire: function (name) { (listeners[name] || []).forEach(function (h) { h(); }); },
   };
 }
@@ -435,4 +437,140 @@ test('the graph is not re-fitted before the window changes', async function () {
   await flush();
 
   assert.strictEqual(panel.resizes.length, 0);
+});
+
+
+// %% replayed statecharts
+// without a bridge the Statechart tab is filled from what the recording captured
+// (cramera.knowledge.recorded_statecharts), following the played frame
+const RECORDED_STATECHARTS = {
+  charts: [
+    {
+      signature: 'c1',
+      title: 'Reach',
+      nodes: [
+        { id: 'g0', name: 'ReachGoal', class_name: 'Goal', parent: null },
+        { id: 'm1', name: 'PoseReached', class_name: 'PoseReached', parent: 'g0' },
+      ],
+      edges: [{ from: 'g0', to: 'm1', kind: 'START' }],
+    },
+    {
+      signature: 'c2',
+      title: 'Place',
+      nodes: [{ id: 'p0', name: 'PlaceGoal', class_name: 'Goal', parent: null }],
+      edges: [],
+    },
+  ],
+  moments: [
+    { chart: 0, lifeCycles: ['RUNNING', 'NOT_STARTED'], observations: ['UNKNOWN', 'FALSE'] },
+    { chart: 0, lifeCycles: ['DONE', 'DONE'], observations: ['TRUE', 'TRUE'] },
+    { chart: 1, lifeCycles: ['RUNNING'], observations: ['UNKNOWN'] },
+  ],
+  frames: [-1, 0, 1, 2],
+};
+
+function loadRecordedChartPanel() {
+  return loadPanel({
+    '/api/knowledge': { ok: true, nodes: [], edges: [], details: {} },
+    '/api/knowledge/view?name=chart': {
+      ok: true, nodes: [], edges: [], details: {}, live: 'chart',
+      empty: 'no motion here', recorded: RECORDED_STATECHARTS,
+    },
+  });
+}
+
+async function showRecordedChart(panel) {
+  const root = makeRoot();
+  const bus = makeBus();
+  const instance = panel.factory(root, bus);
+  await flush();
+  root.buttons.find(function (b) { return b.dataset.view === 'chart'; }).click();
+  await flush();
+  return { instance: instance, bus: bus, root: root };
+}
+
+test('the replayed statechart is the one the played frame recorded', async function () {
+  const panel = loadRecordedChartPanel();
+  const shown = await showRecordedChart(panel);
+  try {
+    shown.bus.emit('scene:frame', { index: 1 });
+
+    const byId = {};
+    panel.lastBuild().nodes.forEach(function (n) { byId[n.id] = n; });
+    assert.deepStrictEqual(Object.keys(byId).sort(), ['g0', 'm1']);
+    assert.strictEqual(byId.g0.status, 'RUNNING');
+    assert.strictEqual(byId.m1.status, 'NOT_STARTED');
+  } finally {
+    shown.instance.destroy();
+  }
+});
+
+test('playing on within one statechart re-colours it instead of rebuilding', async function () {
+  const panel = loadRecordedChartPanel();
+  const shown = await showRecordedChart(panel);
+  try {
+    shown.bus.emit('scene:frame', { index: 1 });
+    const built = panel.lastBuild();
+
+    shown.bus.emit('scene:frame', { index: 2 });
+
+    assert.strictEqual(panel.lastBuild(), built);
+    assert.deepStrictEqual(panel.statuses.at(-1), { g0: 'DONE', m1: 'DONE' });
+  } finally {
+    shown.instance.destroy();
+  }
+});
+
+test('a newly compiled statechart is drawn in place of the previous one', async function () {
+  const panel = loadRecordedChartPanel();
+  const shown = await showRecordedChart(panel);
+  try {
+    shown.bus.emit('scene:frame', { index: 1 });
+
+    shown.bus.emit('scene:frame', { index: 3 });
+
+    assert.deepStrictEqual(panel.lastBuild().nodes.map(function (n) { return n.id; }), ['p0']);
+  } finally {
+    shown.instance.destroy();
+  }
+});
+
+test('a frame recorded between motions shows the empty statechart view', async function () {
+  const panel = loadRecordedChartPanel();
+  const shown = await showRecordedChart(panel);
+  try {
+    shown.bus.emit('scene:frame', { index: 1 });
+
+    shown.bus.emit('scene:frame', { index: 0 });
+
+    assert.deepStrictEqual(panel.lastBuild().nodes, []);
+    assert.strictEqual(shown.root.control('#graph-empty').textContent, 'no motion here');
+  } finally {
+    shown.instance.destroy();
+  }
+});
+
+test('an attached bridge keeps the statechart tab, recorded or not', async function () {
+  const panel = loadPanel({
+    '/api/knowledge': { ok: true, nodes: [], edges: [], details: {} },
+    '/api/knowledge/view?name=chart': {
+      ok: true, nodes: [], edges: [], details: {}, live: 'chart', recorded: RECORDED_STATECHARTS,
+    },
+    'http://bridge/chart': {
+      signature: 'live', title: 'live reach',
+      nodes: [{ id: 'l0', name: 'LiveGoal', class_name: 'Goal', life_cycle: 'RUNNING', observation: 'UNKNOWN' }],
+      edges: [],
+    },
+  });
+  const shown = await showRecordedChart(panel);
+  try {
+    shown.bus.emit('live:changed', { on: true, url: 'http://bridge' });
+    await flush();
+
+    shown.bus.emit('scene:frame', { index: 1 });
+
+    assert.deepStrictEqual(panel.lastBuild().nodes.map(function (n) { return n.id; }), ['l0']);
+  } finally {
+    shown.instance.destroy();
+  }
 });

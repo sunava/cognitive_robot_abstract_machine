@@ -116,7 +116,7 @@ ROBOT_SPECIFICATIONS: dict[DemoRobot, RobotSpecification] = {
 }
 
 # Change this to switch which robot is spawned into the apartment.
-SELECTED_ROBOT = DemoRobot.GARMI
+SELECTED_ROBOT = DemoRobot.PR2
 robot_specification = ROBOT_SPECIFICATIONS[SELECTED_ROBOT]
 
 # %% World setup

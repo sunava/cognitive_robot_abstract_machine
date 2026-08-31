@@ -10,7 +10,12 @@ from cramera.knowledge.recorded_statecharts import (
     RecordedStatecharts,
     STATECHART_FILE,
 )
-from cramera.live.bridge import ChartEdgeEntry, ChartNodeEntry, ChartSnapshot, ObservationName
+from cramera.live.bridge import (
+    ChartEdgeEntry,
+    ChartNodeEntry,
+    ChartSnapshot,
+    ObservationName,
+)
 from cramera.generated_json import write_json_atomically
 
 
@@ -55,7 +60,11 @@ class TestRecordingSnapshots:
 
     def test_every_frame_maps_to_the_moment_it_was_in(self):
         recorded = RecordedStatecharts.of_snapshots(
-            [None, snapshot(life_cycles=("RUNNING", "NOT_STARTED")), snapshot(life_cycles=("DONE", "DONE"))]
+            [
+                None,
+                snapshot(life_cycles=("RUNNING", "NOT_STARTED")),
+                snapshot(life_cycles=("DONE", "DONE")),
+            ]
         )
 
         assert recorded.moment_of_frame == [NO_STATECHART, 0, 1]
@@ -87,7 +96,9 @@ class TestRecordingSnapshots:
         Two actions can compile the identical motion group; the statechart shown while
         replaying each must still carry the action it belongs to.
         """
-        recorded = RecordedStatecharts.of_snapshots([snapshot(), snapshot(title="Place")])
+        recorded = RecordedStatecharts.of_snapshots(
+            [snapshot(), snapshot(title="Place")]
+        )
 
         assert [chart.title for chart in recorded.charts] == ["Reach", "Place"]
 
@@ -102,7 +113,9 @@ class TestRecordingSnapshots:
 
 class TestWireShape:
     def test_a_recording_survives_a_round_trip(self):
-        recorded = RecordedStatecharts.of_snapshots([None, snapshot(), snapshot(life_cycles=("DONE", "DONE"))])
+        recorded = RecordedStatecharts.of_snapshots(
+            [None, snapshot(), snapshot(life_cycles=("DONE", "DONE"))]
+        )
 
         assert RecordedStatecharts.of_payload(recorded.to_payload()) == recorded
 
@@ -133,7 +146,9 @@ class TestReadingABundle:
 
         assert RecordedStatecharts.of_scene("run").is_empty()
 
-    def test_the_statecharts_written_beside_a_scene_are_read_back(self, tmp_path, monkeypatch):
+    def test_the_statecharts_written_beside_a_scene_are_read_back(
+        self, tmp_path, monkeypatch
+    ):
         monkeypatch.setenv("CRAMERA_SCENES", str(tmp_path))
         bundle(tmp_path)
         recorded = RecordedStatecharts.of_snapshots([snapshot()])

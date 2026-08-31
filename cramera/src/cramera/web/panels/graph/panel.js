@@ -9,12 +9,15 @@
  *
  * The tabs in LIVE_ENDPOINT take their node status from the cramera-live bridge
  * while it is attached: structure changes rebuild the graph, pure status
- * changes only re-colour the rings (no layout jumps).
+ * changes only re-colour the rings (no layout jumps). Without a bridge, the
+ * Statechart tab follows the playhead through the statecharts the played
+ * recording captured.
  *
  * Bus events:
  *   emits    entity:select {id, detail, relations}   node clicked
  *   listens  entity:highlight {ids, focus?}          spotlight matching nodes
  *   listens  scene:step {step}                       highlight the running episode
+ *   listens  scene:frame {index}                    follow the replay's statecharts
  *   listens  live:changed {on, url}                  start/stop the status poll
  *
  * Rendering is delegated to graph.js (window.Graph, vis-network wrapper).
@@ -162,6 +165,7 @@ Panels.define('graph', function (root, bus) {
     }
     setView(shown[name] || base[name]);
     liveRefresh(true);            // a live tab picks the bridge status up at once
+    showRecordedStatechart();     // and a replayed one, the moment it is playing
   }
   tabsEl.querySelectorAll('button').forEach(function (b) {
     b.addEventListener('click', function () { showTab(b.dataset.view); });
@@ -359,6 +363,67 @@ Panels.define('graph', function (root, bus) {
       liveTabs.forEach(function (t) { delete base[t]; delete shown[t]; stacks[t] = []; });
       if (liveTabs.indexOf(tab) >= 0) showTab(tab);
     }
+  });
+
+  // %% recorded statecharts (Statechart tab of a replay)
+  // A recording keeps every statechart its run ticked (see
+  // cramera.knowledge.recorded_statecharts); the tab follows the playhead through
+  // them, re-colouring rather than rebuilding while the played moments stay inside
+  // the same chart.
+  const NO_STATECHART = -1;           // mirrors recorded_statecharts.NO_STATECHART
+  let recordedFrame = 0;              // the played frame the tab is showing
+  let drawnChart = NO_STATECHART;     // index of the recorded chart currently drawn
+
+  function recordedStatecharts() {
+    return (base.chart && base.chart.recorded) || null;
+  }
+
+  function momentAt(index) {
+    const recorded = recordedStatecharts();
+    const at = recorded.frames[index];
+    return at === undefined || at === NO_STATECHART ? null : recorded.moments[at];
+  }
+
+  // one recorded moment in the shape the bridge publishes, so a statechart is drawn
+  // by the same renderer whether it is streaming or replayed
+  function recordedSnapshot(moment) {
+    const chart = recordedStatecharts().charts[moment.chart];
+    return {
+      signature: chart.signature,
+      title: chart.title,
+      nodes: chart.nodes.map(function (node, index) {
+        return { id: node.id, name: node.name, class_name: node.class_name,
+                 parent: node.parent, life_cycle: moment.lifeCycles[index],
+                 observation: moment.observations[index] };
+      }),
+      edges: chart.edges,
+    };
+  }
+
+  function showRecordedStatechart() {
+    if (tab !== 'chart' || liveState.on || stacks.chart.length) return;
+    if (!recordedStatecharts()) return;
+    const moment = momentAt(recordedFrame);
+    if (!moment) { drawnChart = NO_STATECHART; setView(base.chart); return; }
+    const payload = chartPayload(recordedSnapshot(moment));
+    payload.key = 'chart-recorded-' + moment.chart;
+    payload.empty = base.chart.empty;
+    if (moment.chart === drawnChart) {
+      const statuses = {};
+      payload.nodes.forEach(function (node) { statuses[node.id] = node.status; });
+      if (Graph.setStatuses(statuses)) {
+        shown.chart = payload;
+        if (view && view.details) view.details = payload.details;
+        return;
+      }
+    }
+    drawnChart = moment.chart;
+    setView(payload);
+  }
+
+  bus.on('scene:frame', function (p) {
+    recordedFrame = p.index;
+    showRecordedStatechart();
   });
 
   // %% boot

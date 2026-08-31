@@ -10,6 +10,7 @@
  * Bus events:
  *   emits    scene:part-clicked {id}   click on a robot part / object
  *   emits    scene:step {step}         playback entered a plan step ('__done__' at end)
+ *   emits    scene:frame {index}      playback moved onto another recorded tick
  *   emits    live:changed {on, url}    live bridge attached / detached
  *   listens  entity:highlight {ids}    glow the matching 3D objects
  *
@@ -689,6 +690,8 @@ Panels.define('robot-scene', function (root, bus) {
   // %% playback
   let playing = false, playhead = 0, stepCb = function () {}, playbackSpeedMultiplier = 1;
   let lastStep = null;
+  let frameCb = function () {};
+  let lastFrame = null;
   const playheadCbs = [];        // notified whenever the playhead moves (autoplay or a seek)
   const _p0 = new THREE.Vector3(), _p1 = new THREE.Vector3();
   const _q0 = new THREE.Quaternion(), _q1 = new THREE.Quaternion();
@@ -733,6 +736,7 @@ Panels.define('robot-scene', function (root, bus) {
       const seg = SCENE.segments.find(function (s) { return i0 >= s.start && i0 < s.end; });
       if (seg && seg.step !== lastStep) { lastStep = seg.step; stepCb(seg.step); }
     }
+    if (i0 !== lastFrame) { lastFrame = i0; frameCb(i0); }
   }
 
   // %% timeline previews
@@ -1755,6 +1759,9 @@ Panels.define('robot-scene', function (root, bus) {
     framesPerSecond: function () { return (traj && traj.framesPerSecond) || 30; },
     onPlayheadChange: function (cb) { playheadCbs.push(cb); },
     onStepStart: function (cb) { stepCb = cb; },
+    // which recorded tick the playhead is on, for the panels that show what was
+    // captured beside the trajectory rather than the trajectory itself
+    onFrame: function (cb) { frameCb = cb; },
     setAutoRotate: function (on) { controls.autoRotate = on; controls.autoRotateSpeed = 0.5; needsRender = true; },
     setFloorVisible: function (on) { ground.visible = on; needsRender = true; },
     setFollow: function (on) { follow = on; },
@@ -1823,6 +1830,7 @@ Panels.define('robot-scene', function (root, bus) {
       playBtn.classList.add('playing'); playBtn.textContent = '⏸ Stop';
     }
   });
+  RobotView.onFrame(function (index) { bus.emit('scene:frame', { index: index }); });
   RobotView.onStepStart(function (step) {
     if (step === '__done__') {
       playBtn.classList.remove('playing'); playBtn.textContent = '▶ Play NEEM';
