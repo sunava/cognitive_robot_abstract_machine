@@ -1156,6 +1156,19 @@ class SceneBuilder:
             hints=self.recorder.resolutions,
         )
 
+    @staticmethod
+    def _body_name_of(model: BundledModel, link: str) -> str:
+        """
+        What the composed world calls a link of one bundled model.
+
+        A model's own file names its links plainly; a world composed of several loaded
+        worlds gives each of them a prefix, and the bodies are named under it.
+
+        :param model: The model whose file the link is named in.
+        :param link: The link name as that file spells it.
+        """
+        return "%s/%s" % (model.prefix, link) if model.prefix else link
+
     def _bundle_unclaimed_bodies(
         self, bundled_models: List[BundledModel], objects: List[Dict[str, Any]]
     ) -> Optional[BundledModel]:
@@ -1172,7 +1185,11 @@ class SceneBuilder:
         :param bundled_models: The models built from the recorded sources.
         :param objects: The ``objects`` entries built for this scene.
         """
-        described = {link for model in bundled_models for link in model.report.links}
+        described = {
+            self._body_name_of(model, link)
+            for model in bundled_models
+            for link in model.report.links
+        }
         tracked = {entry["key"] for entry in objects}
         unclaimed = [
             body

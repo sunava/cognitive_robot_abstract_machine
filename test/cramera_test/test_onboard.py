@@ -1528,3 +1528,77 @@ class TestDetectingEveryNthTick:
 
     def test_the_default_interval_is_the_one_the_command_line_offers(self):
         assert Recorder().detection_interval == Recorder.DEFAULT_DETECTION_INTERVAL
+
+
+class TestClaimingBodiesOfAPrefixedWorld:
+    """
+    A world composed of several loaded worlds gives each of them a name prefix, so its
+    bodies are called ``pr2/base_link`` while the model bundled from the robot's own
+    file calls that link ``base_link``.
+
+    Both spellings are the same body, and a source that describes it has claimed it --
+    otherwise every body is bundled a second time as the environment and the viewer
+    draws the whole scene twice.
+    """
+
+    @pytest.fixture()
+    def builder(self, tmp_path) -> SceneBuilder:
+        world = World()
+        floor = Body(name=PrefixedName("floor", prefix="apartment"))
+        table = Body(
+            name=PrefixedName("table", prefix="apartment"),
+            visual=ShapeCollection(shapes=[Box(scale=Scale(1.0, 0.6, 0.7))]),
+        )
+        with world.modify_world():
+            for body in (floor, table):
+                world.add_kinematic_structure_entity(body)
+            world.add_connection(FixedConnection(parent=floor, child=table))
+        recorder = recording([{}])
+        recorder.world = world
+        return SceneBuilder(recorder, "scene", str(tmp_path / "bundle"), 1)
+
+    def prefixed_model(self, prefix: str, links: List[str]) -> BundledModel:
+        """
+        A model as bundling a recorded source would report it: link names as its own
+        file spells them, and the prefix the composed world gave it.
+
+        :param prefix: The model's world-name prefix.
+        :param links: The link names as the model's own URDF spells them.
+        """
+        return BundledModel(
+            name=prefix,
+            prefix=prefix,
+            is_robot=False,
+            report=bundler.BundleReport(
+                name=prefix,
+                urdf="%s.urdf" % prefix,
+                source="%s.urdf" % prefix,
+                links=links,
+                joints=[],
+                movable_joints=[],
+                meshes_copied=0,
+                mesh_suffixes=[],
+                references_rewritten=0,
+                missing=[],
+            ),
+        )
+
+    def test_a_source_describing_every_body_under_its_prefix_leaves_nothing(
+        self, builder
+    ):
+        assert (
+            builder._bundle_unclaimed_bodies(
+                [self.prefixed_model("apartment", ["floor", "table"])], objects=[]
+            )
+            is None
+        )
+
+    def test_a_body_the_prefixed_source_does_not_describe_is_still_bundled(
+        self, builder
+    ):
+        environment = builder._bundle_unclaimed_bodies(
+            [self.prefixed_model("apartment", ["floor"])], objects=[]
+        )
+
+        assert environment is not None
+        assert environment.report.links == ["apartment/table"]
