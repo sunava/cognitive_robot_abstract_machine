@@ -1652,3 +1652,68 @@ class TestWhenEachFrameWasRecorded:
         recorder = Recorder()
 
         assert recorder.frame_times == []
+
+
+class TestWhatARecordingSaysItIs:
+    """
+    A bundle is one robot, in one environment, doing one task.
+
+    The robot and the environment fall out of what the run loaded; the task is the one
+    thing only the person recording it knows, so it is asked for, and a run that names
+    none falls back to the plan it executed.
+    """
+
+    def builder(self, tmp_path, task=None, actions=None) -> SceneBuilder:
+        """
+        A builder over a recording of the given actions.
+
+        :param tmp_path: Directory to bundle into.
+        :param task: The task named on the command line, if any.
+        :param actions: The actions the recorded plan performed.
+        """
+        recorder = recording([{}], actions=actions or [])
+        recorder.world = World()
+        recorder.task = task
+        return SceneBuilder(recorder, "scene", str(tmp_path / "bundle"), 1)
+
+    def test_the_named_task_is_what_the_bundle_states(self, tmp_path):
+        assert self.builder(tmp_path, task="make breakfast").task() == "make breakfast"
+
+    def test_a_run_naming_no_task_states_what_its_plan_did(self, tmp_path):
+        builder = self.builder(
+            tmp_path,
+            actions=[
+                {"name": "ParkArmsAction", "depth": 0},
+                {"name": "TransportAction", "depth": 0},
+            ],
+        )
+
+        assert builder.task() == "ParkArmsAction, TransportAction"
+
+    def test_a_plan_step_is_named_once_however_often_it_ran(self, tmp_path):
+        builder = self.builder(
+            tmp_path,
+            actions=[
+                {"name": "TransportAction", "depth": 0},
+                {"name": "TransportAction", "depth": 0},
+            ],
+        )
+
+        assert builder.task() == "TransportAction"
+
+    def test_only_the_plans_own_steps_are_named(self, tmp_path):
+        builder = self.builder(
+            tmp_path,
+            actions=[
+                {"name": "TransportAction", "depth": 0},
+                {"name": "ReachAction", "depth": 1},
+            ],
+        )
+
+        assert builder.task() == "TransportAction"
+
+    def test_a_run_with_no_actions_at_all_states_no_task(self, tmp_path):
+        assert self.builder(tmp_path).task() is None
+
+    def test_the_recorder_is_told_no_task_unless_one_is_named(self):
+        assert Recorder().task is None

@@ -245,6 +245,12 @@ class Recorder:
     URDF/xacro files the world was built from, in load order.
     """
 
+    task: Optional[str] = None
+    """
+    What the run being recorded does, as the person recording it named it, or None to
+    take what its plan did.
+    """
+
     frame_times: List[float] = field(default_factory=list)
     """
     When each recorded frame was taken, in seconds since the epoch, one per entry of
@@ -1303,6 +1309,23 @@ class SceneBuilder:
             kept.append(frame_count - 1)
         return kept
 
+    def task(self) -> Optional[str]:
+        """
+        What the recording says it is doing: the task it was named with, or the steps its
+        plan performed, or None for a run that performed none.
+
+        Only the plan's own steps are named -- what a step does to get there is its
+        business, not the task.
+        """
+        if self.recorder.task:
+            return self.recorder.task
+        steps = []
+        for action in self.recorder.actions:
+            name = action["name"]
+            if not action.get("depth") and name not in steps:
+                steps.append(name)
+        return ", ".join(steps) or None
+
     def frame_times(self) -> List[float]:
         """
         When each frame the bundle keeps was taken, in seconds since the epoch, or
@@ -1499,6 +1522,7 @@ class SceneBuilder:
             "placeTarget": place_target,
             "dragBounds": drag_bounds,
             "missingAssets": sorted(set(missing)),
+            SceneField.TASK.value: self.task(),
             SceneField.DETECTED_EVENTS.value: self.detected_events(),
         }
         write_json_atomically(
@@ -1564,6 +1588,10 @@ def main() -> None:
     )
     parser.add_argument(
         "--step", type=int, default=0, help="downsample step (0 = auto)"
+    )
+    parser.add_argument(
+        "--task",
+        help="what the recorded run does, e.g. 'make breakfast' (default: the steps its plan performed)",
     )
     parser.add_argument(
         "--detect",

@@ -44,6 +44,8 @@ from cramera.knowledge.enums import (  # noqa: E402
     PlanNodeGroup,
 )
 from cramera.knowledge.scene_bundle import SceneBundle  # noqa: E402
+
+from .conftest import reset_knowledge_base_cache  # noqa: E402
 from cramera.knowledge.subgraph import DetailEntry, GraphEdge  # noqa: E402
 from cramera.knowledge.views import plan_tree as plan_view  # noqa: E402
 from cramera.robot_parts import (  # noqa: E402
@@ -695,16 +697,28 @@ class TestGraphPayloadStructure:
             GraphEdge("plan", "transport_milk", EdgeKind.TYPE, "spans"),
         ]
 
-    def test_the_status_names_the_recording_the_answers_come_from(self, fixture_scene):
+    def test_the_status_names_what_the_recording_is(self, fixture_scene):
         """
         The line above the questions says where an answer comes from -- the live bridge
-        names the demo, a bundle names the scene.
+        names the demo, a bundle names what it recorded: one robot, in one environment,
+        doing one task.
 
-        What the graph happens to hold is already on the screen beside it.
+        The scene's own name is in the picker beside it.
         """
         payload = GraphPanelViews.of_active_scene().for_tab("knowledge")
 
-        assert payload.status == "recorded · %s" % SceneBundle.active_name()
+        assert payload.status == "recorded · pr2"
+
+    def test_the_status_names_the_task_a_recording_states(self, fixture_scene):
+        scene_path = fixture_scene / "scenes" / "fixture" / "scene.json"
+        scene = json.loads(scene_path.read_text())
+        scene["task"] = "make breakfast"
+        scene_path.write_text(json.dumps(scene))
+        reset_knowledge_base_cache()
+
+        payload = GraphPanelViews.of_active_scene().for_tab("knowledge")
+
+        assert payload.status == "recorded · pr2 · make breakfast"
 
 
 # %% characterization: GraphPanelViews.of_active_scene().for_node() dispatch

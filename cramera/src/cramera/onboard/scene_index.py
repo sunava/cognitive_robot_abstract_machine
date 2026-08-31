@@ -18,6 +18,7 @@ from pathlib import Path
 from typing_extensions import Any, Dict, List, Optional
 
 from cramera import paths
+from cramera.knowledge.detected_events import SceneField
 from cramera.generated_json import GeneratedJson, write_json_atomically
 
 RESERVED_SCENE_NAMES = (paths.LIVE_SCENE_NAME, paths.RECORDING_SCENE_NAME)
@@ -84,6 +85,11 @@ class SceneIndexEntry:
     The scene's environment models joined by ``+``, or None for a bench-only scene.
     """
 
+    task: Optional[str] = None
+    """
+    What the recorded run did, or None for a recording that named no task.
+    """
+
     @classmethod
     def of_directory(cls, scenes_directory: Path) -> List[SceneIndexEntry]:
         """
@@ -98,16 +104,28 @@ class SceneIndexEntry:
             scene_path = bundle_directory / "scene.json"
             if not scene_path.is_file():
                 continue
-            scene = json.loads(scene_path.read_text(encoding="utf-8"))
-            robot = scene.get("robot") or {}
             entries.append(
-                cls(
-                    name=bundle_directory.name,
-                    robot=robot.get("name", ""),
-                    environment=cls._environment_of(scene["models"]),
+                cls.of_scene(
+                    bundle_directory.name,
+                    json.loads(scene_path.read_text(encoding="utf-8")),
                 )
             )
         return entries
+
+    @classmethod
+    def of_scene(cls, name: str, scene: Dict[str, Any]) -> SceneIndexEntry:
+        """
+        What one bundle is, read from its ``scene.json``.
+
+        :param name: Name of the bundle.
+        :param scene: The bundle's ``scene.json`` content.
+        """
+        return cls(
+            name=name,
+            robot=(scene.get("robot") or {}).get("name", ""),
+            environment=cls._environment_of(scene.get("models") or []),
+            task=scene.get(SceneField.TASK.value),
+        )
 
     @staticmethod
     def _environment_of(models: List[Dict[str, Any]]) -> Optional[str]:
@@ -119,6 +137,15 @@ class SceneIndexEntry:
         environments = [model["name"] for model in models if not model["robot"]]
         return "+".join(environments) if environments else None
 
+    def describes(self) -> str:
+        """
+        What this recording is, in the words the viewer shows above the questions: one
+        robot, in one environment, doing one task, and nothing of that which is unknown.
+        """
+        return " · ".join(
+            part for part in [self.robot, self.environment, self.task] if part
+        )
+
     def to_payload(self) -> Dict[str, Any]:
         """
         The JSON-serializable shape ``index.json`` carries.
@@ -127,6 +154,7 @@ class SceneIndexEntry:
             "name": self.name,
             "robot": self.robot,
             "environment": self.environment,
+            "task": self.task,
         }
 
 

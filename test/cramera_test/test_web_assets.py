@@ -131,6 +131,45 @@ class TestAssetConsistency:
             assert "'static/" not in panel_js.read_text(), panel_js.name
 
 
+# %% graph canvas layout
+class TestGraphCanvasLayout:
+    """
+    The graph renderer draws into an element the stylesheet has to position: the panel
+    stacks it under a tab bar, so without that rule the canvas keeps its own height and
+    the graph is cut off at the bottom of the panel.
+    """
+
+    ATTACHED_SELECTOR_PATTERN = re.compile(
+        r"Graph\.attach\(root\.querySelector\('([^']+)'\)"
+    )
+
+    def attached_selector(self) -> str:
+        """
+        The selector the graph panel resolves its canvas element with.
+        """
+        [selector] = self.ATTACHED_SELECTOR_PATTERN.findall(
+            read("panels/graph/panel.js")
+        )
+        return selector
+
+    def test_the_panel_markup_declares_the_canvas_it_attaches(self):
+        markup_attribute = {".": 'class="%s"', "#": 'id="%s"'}[
+            self.attached_selector()[0]
+        ]
+        assert markup_attribute % self.attached_selector()[1:] in read(
+            "panels/graph/panel.js"
+        )
+
+    def test_the_stylesheet_positions_the_attached_canvas(self):
+        selector = self.attached_selector()
+        rules = [
+            block
+            for block in re.findall(r"^([^{}]+)\{", read("app.css"), re.M)
+            if re.search(r"%s(?![\w-])" % re.escape(selector), block)
+        ]
+        assert rules, selector
+
+
 # %% mesh format loaders
 class TestBinaryGltfLoading:
     """

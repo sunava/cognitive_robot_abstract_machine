@@ -16,6 +16,7 @@ from cramera.knowledge.enums import EdgeKind, NodeGroup
 from cramera.knowledge.knowledge_base import EpisodeKnowledgeBase
 from cramera.knowledge.presets import Preset
 from cramera.knowledge.scene_bundle import SceneBundle
+from cramera.onboard.scene_index import SceneIndexEntry
 from cramera.knowledge.subgraph import (
     DetailEntry,
     GraphEdge,
@@ -242,8 +243,11 @@ class KnowledgeGraphPayload(GraphPanelPayload):
             for episode in knowledge_base.episodes:
                 view.add_edge("plan", episode.name, EdgeKind.TYPE, "spans")
 
-        status = "recorded · %s" % (
-            knowledge_base.scene_name or SceneBundle.active_name()
+        status = (
+            "recorded · %s"
+            % SceneIndexEntry.of_scene(
+                knowledge_base.scene_name or SceneBundle.active_name() or "", scene
+            ).describes()
         )
         return cls(
             status=status,

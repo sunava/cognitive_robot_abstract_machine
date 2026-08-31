@@ -30,7 +30,7 @@ Panels.define('graph', function (root, bus) {
     '    <button data-view="transforms" title="the world\'s connection graph — which frame hangs from which, and how recently it moved">Transforms</button>' +
     '    <span class="gt-live" id="gt-live" title="node status is streaming from the running demo">◉ live status</span>' +
     '  </div>' +
-    '  <div id="graph"></div>' +
+    '  <div class="graph-canvas"></div>' +
     '  <div class="graph-zoom">' +
     '    <button id="graph-zoom-in" title="Zoom in — or pinch on a touchpad">+</button>' +
     '    <button id="graph-zoom-out" title="Zoom out — or pinch on a touchpad">−</button>' +
@@ -52,7 +52,7 @@ Panels.define('graph', function (root, bus) {
   const navPath = root.querySelector('#gnav-path');
   const tabsEl = root.querySelector('#graph-tabs');
   const liveBadge = root.querySelector('#gt-live');
-  Graph.attach(root.querySelector('#graph'), root.querySelector('#legend'));
+  Graph.attach(root.querySelector('.graph-canvas'), root.querySelector('#legend'));
 
   // vis-network draws onto a canvas of the size it had when it was built, so a window
   // the reader drags to another size leaves the graph in the old one. Re-fitted once the

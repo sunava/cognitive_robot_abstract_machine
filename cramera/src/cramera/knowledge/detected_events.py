@@ -45,6 +45,7 @@ class SceneField(StrEnum):
     """
 
     DETECTED_EVENTS = "detectedEvents"
+    TASK = "task"
 
 
 class EventField(StrEnum):
