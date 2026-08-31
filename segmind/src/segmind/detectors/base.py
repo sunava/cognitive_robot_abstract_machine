@@ -95,6 +95,15 @@ class SegmindContext(ContextExtension):
     The object tracker registry.    
     """
 
+    watched_bodies: Set[Body] = field(default_factory=set)
+    """
+    Every body a detector has watched so far, whether or not it is still free.
+
+    A plan that grasps something re-parents it to the gripper with a fixed joint, which
+    takes it out of the world's free bodies -- while what it does in the gripper is
+    exactly what a pick-up is made of. Once watched, a body stays watched.
+    """
+
 
 @dataclass(repr=False, eq=False)
 class AbstractDetector(MotionStatechartNode, Symbol, ABC):
@@ -129,11 +138,7 @@ class AbstractDetector(MotionStatechartNode, Symbol, ABC):
         objects_to_check = (
             [self.tracked_object]
             if self.tracked_object
-            else [
-                body
-                for body in context.world.bodies
-                if type(body.parent_connection) is Connection6DoF
-            ]
+            else self._bodies_to_watch(context, segmind_context_extension)
         )
         events = self.update_context_and_events(
             context, segmind_context_extension, objects_to_check
@@ -143,6 +148,31 @@ class AbstractDetector(MotionStatechartNode, Symbol, ABC):
                 e, segmind_context_extension.tracker_registry
             )
         return ObservationStateValues.TRUE if events else ObservationStateValues.FALSE
+
+    @staticmethod
+    def _bodies_to_watch(
+        context: MotionStatechartContext, segmind_context: SegmindContext
+    ) -> List[Body]:
+        """
+        The bodies this tick is about: the world's free bodies, plus the ones already
+        being watched when a plan has since grasped them.
+
+        A body only enters the set while it is free, so the furniture and the robot's own
+        links never do.
+
+        :param context: The context holding the world the bodies live in.
+        :param segmind_context: The context remembering what is already watched.
+        """
+        present = set(context.world.bodies)
+        segmind_context.watched_bodies &= present
+        segmind_context.watched_bodies |= {
+            body for body in present if type(body.parent_connection) is Connection6DoF
+        }
+        return [
+            body
+            for body in context.world.bodies
+            if body in segmind_context.watched_bodies
+        ]
 
     def get_relation(
         self, context: MotionStatechartContext, tracked_objects: List[Body], predicate
