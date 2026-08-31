@@ -63,6 +63,15 @@ class DetectionRecorder:
         self._executor = executor
         logger.info("detecting events with segmind's default detectors")
 
+    def owns_executor(self, executor: object) -> bool:
+        """
+        Whether an executor is the one ticking these detectors, whose own tick is not a
+        step of the run being recorded.
+
+        :param executor: The executor whose tick is being handled.
+        """
+        return self._executor is not None and executor is self._executor
+
     def tick(self) -> None:
         """
         Let the detectors look at the world as it now stands.

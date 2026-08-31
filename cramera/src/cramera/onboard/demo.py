@@ -490,11 +490,20 @@ class Recorder:
         """
         Run the real tick, then record its resulting world state.
 
+        The detectors are ticked by an executor of their own, and this patch is
+        installed on every executor there is: its tick is not a step of the run, so it
+        is run and nothing else.
+
         :param original: The real, unpatched ``Executor.tick`` bound method.
         :param executor: The executor whose tick is being run.
         :param args: Positional arguments forwarded to the wrapped call.
         :param kwargs: Keyword arguments forwarded to the wrapped call.
         """
+        if (
+            self._detection_recorder is not None
+            and self._detection_recorder.owns_executor(executor)
+        ):
+            return original(executor, *args, **kwargs)
         result = original(executor, *args, **kwargs)
         self.record_frame(executor)
         self.record_detections()

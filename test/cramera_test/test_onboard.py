@@ -44,6 +44,7 @@ from typing_extensions import Any, Dict, List, Optional
 
 from cramera import paths
 from cramera.knowledge.detected_events import DetectedEventRecord, SceneField
+from cramera.onboard.detection_recorder import DetectionRecorder
 from cramera.onboard import bundle_urdf as bundler
 from cramera.onboard.bundle_world import BundledWorld
 from cramera.onboard.world_to_urdf import UrdfDocument
@@ -1432,3 +1433,55 @@ class TestDetectingAlongTheRun:
         recorder.record_detections()
 
         assert recorder.detections == []
+
+
+class TestDetectorTicksAreNotStepsOfTheRun:
+    """
+    The detectors are ticked by an executor of their own, and ``Executor.tick`` is
+    patched for every executor there is -- so without telling the two apart, ticking the
+    detectors re-enters the recorder and recurses until the stack runs out.
+    """
+
+    def recorder_detecting_with(self, detector_executor: object) -> Recorder:
+        """
+        A recorder whose detectors are ticked by ``detector_executor``.
+
+        :param detector_executor: Stands in for the executor of the detector statechart.
+        """
+        recorder = Recorder(detect_events=True)
+        detection_recorder = DetectionRecorder(world=World())
+        detection_recorder._executor = detector_executor
+        recorder._detection_recorder = detection_recorder
+        return recorder
+
+    def test_a_detection_recorder_knows_its_own_executor(self):
+        detection_recorder = DetectionRecorder(world=World())
+        detection_recorder._executor = object()
+
+        assert detection_recorder.owns_executor(detection_recorder._executor)
+        assert not detection_recorder.owns_executor(object())
+
+    def test_a_recorder_without_detectors_owns_no_executor(self):
+        assert not DetectionRecorder(world=World()).owns_executor(object())
+
+    def test_the_detectors_own_tick_records_no_frame(self):
+        detector_executor = object()
+        recorder = self.recorder_detecting_with(detector_executor)
+        ticked = []
+
+        recorder._record_tick(
+            lambda executor: ticked.append(executor), detector_executor
+        )
+
+        assert ticked == [detector_executor]
+        assert recorder.frames == []
+
+    def test_the_detectors_own_tick_does_not_tick_them_again(self):
+        detector_executor = object()
+        recorder = self.recorder_detecting_with(detector_executor)
+        ticks = []
+        recorder._detection_recorder.tick = lambda: ticks.append(1)
+
+        recorder._record_tick(lambda executor: None, detector_executor)
+
+        assert ticks == []
