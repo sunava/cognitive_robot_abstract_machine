@@ -30,6 +30,7 @@ function coreModules(recognizer) {
   loadCore('core/answer_table.js', scope);
   loadCore('core/response.js', scope);
   loadCore('core/voice.js', scope);
+  loadCore('core/folding.js', scope);
   return scope;
 }
 
@@ -166,6 +167,15 @@ const ANSWER = {
   },
 };
 
+// what a browser remembers between pages, for as long as one test runs
+function remembering() {
+  const data = {};
+  return {
+    getItem: function (key) { return key in data ? data[key] : null; },
+    setItem: function (key, value) { data[key] = value; },
+  };
+}
+
 function mountPanel(overrides, recognizer) {
   const core = coreModules(recognizer);
   const root = makeRoot();
@@ -188,15 +198,16 @@ function mountPanel(overrides, recognizer) {
   new Function(
     'Panels', 'SceneContext', 'QuerySource', 'QuestionDisplay', 'PresetGroups',
     'AnswerTable', 'ResponseUtil', 'VoiceCapture', 'EqlSuggestions', 'Replay',
-    'fetch', 'window', 'document',
+    'Folding', 'fetch', 'window', 'document',
     SOURCE
   )(
     { define: define }, core.SceneContext, core.QuerySource, core.QuestionDisplay,
     core.PresetGroups, core.AnswerTable, core.ResponseUtil, core.VoiceCapture,
     { of() { return { forget() {}, handledKey() { return false; } }; } },
     { popupUrl() { return ''; } },
+    core.Folding,
     makeFetch(routes, requests),
-    { location: { pathname: '/', search: '' }, open() {} },
+    { location: { pathname: '/', search: '' }, open() {}, localStorage: remembering() },
     { createElement: makeElement }
   );
   panelFactory(root, bus);
@@ -402,4 +413,76 @@ test('a described entity is shown where the answer is, without scrolling to it',
   const answer = panel.root.part('#answer');
   assert.ok(answer.innerHTML.indexOf('Tracy') >= 0, answer.innerHTML);
   assert.strictEqual(answer.scrolledIntoView, 0);
+});
+
+
+// %% folding a group of questions away
+
+const GROUPED_KNOWLEDGE = {
+  ok: true,
+  status: 'EQL ready',
+  presets: [
+    { text: 'which robot is this?', code: 'the(entity(robot))', scope: 'current_state' },
+    { text: 'give me all pick up events', code: 'an(entity(event))', scope: 'detected_events' },
+  ],
+  scopes: [
+    { name: 'current_state', label: 'Current State Queries', variables: [] },
+    { name: 'detected_events', label: 'Detected Events Queries', variables: [] },
+  ],
+  details: {},
+};
+
+function headings(root) {
+  const found = [];
+  (function walk(children) {
+    children.forEach(function (child) {
+      if (child.className === 'preset-group') found.push(child);
+      walk(child.children);
+    });
+  })(root.children);
+  return found;
+}
+
+function foldButtonOf(heading) {
+  return heading.children.filter(function (child) {
+    return child.className.indexOf('lp-fold') >= 0;
+  })[0];
+}
+
+test('every group of questions offers to fold away', async function () {
+  const panel = mountPanel({ '/api/knowledge': GROUPED_KNOWLEDGE });
+  await tick();
+
+  const found = headings(panel.root);
+
+  assert.strictEqual(found.length, 2);
+  found.forEach(function (heading) { assert.ok(foldButtonOf(heading)); });
+});
+
+test('a group starts open and folds when its heading is clicked', async function () {
+  const panel = mountPanel({ '/api/knowledge': GROUPED_KNOWLEDGE });
+  await tick();
+  const heading = headings(panel.root)[1];
+  const row = heading.parentNode.children[heading.parentNode.children.indexOf(heading) + 1];
+
+  assert.ok(!row.classList.contains('folded'));
+  heading.dispatch('click', { preventDefault: function () {} });
+
+  assert.ok(row.classList.contains('folded'));
+  assert.strictEqual(foldButtonOf(heading).textContent, '\u25b8');
+});
+
+test('folding one group leaves the others open', async function () {
+  const panel = mountPanel({ '/api/knowledge': GROUPED_KNOWLEDGE });
+  await tick();
+  const found = headings(panel.root);
+  const rowOf = function (heading) {
+    const siblings = heading.parentNode.children;
+    return siblings[siblings.indexOf(heading) + 1];
+  };
+
+  found[1].dispatch('click', { preventDefault: function () {} });
+
+  assert.ok(!rowOf(found[0]).classList.contains('folded'));
+  assert.ok(rowOf(found[1]).classList.contains('folded'));
 });

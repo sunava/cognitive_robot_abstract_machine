@@ -317,7 +317,7 @@ class TestEveryLoadedModuleHasAConsumer:
         "core/completion.js": "Completion",
         "core/query_source.js": "QuerySource",
         "core/preset_groups.js": "PresetGroups",
-        "core/layers-panel.js": "LayersPanel",
+        "core/folding.js": "Folding",
         "core/replay.js": "Replay",
     }
     """

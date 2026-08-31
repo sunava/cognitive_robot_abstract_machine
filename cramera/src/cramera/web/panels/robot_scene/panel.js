@@ -2160,12 +2160,13 @@ Panels.define('robot-scene', function (root, bus) {
   });
 
   // %% folding the overlay away, so it stops covering the view
+  const LAYERS_SECTION = 'layers';
   const layersPanelEl = $('layers-panel');
   const layersFoldEl = $('layers-fold');
-  let layersFolded = LayersPanel.collapsed(window.localStorage);
+  let layersFolded = Folding.folded(window.localStorage, LAYERS_SECTION);
 
   function showFold() {
-    const face = LayersPanel.button(layersFolded);
+    const face = Folding.button(layersFolded, 'the layers');
     layersFoldEl.textContent = face.glyph;
     layersFoldEl.title = face.title;
     layersPanelEl.classList.toggle('folded', layersFolded);
@@ -2174,7 +2175,7 @@ Panels.define('robot-scene', function (root, bus) {
   layersFoldEl.addEventListener('click', function (event) {
     event.preventDefault();
     layersFolded = !layersFolded;
-    LayersPanel.remember(window.localStorage, layersFolded);
+    Folding.remember(window.localStorage, LAYERS_SECTION, layersFolded);
     showFold();
   });
 

@@ -192,17 +192,46 @@ Panels.define('eql', function (root, bus) {
   function buildPresets(presets, scopes) {
     presetsEl.innerHTML = '';
     PresetGroups.of(presets, scopes).forEach(function (group) {
-      if (group.label) {
-        const heading = document.createElement('div');
-        heading.className = 'preset-group';
-        heading.textContent = group.label;
-        presetsEl.appendChild(heading);
-      }
       const row = document.createElement('div');
       row.className = 'preset-row';
       group.presets.forEach(function (p) { row.appendChild(presetButton(p, group.name)); });
+      // a group with a heading of its own folds away under it, so a long list of
+      // questions stops pushing the answer down the panel; the only group there is has
+      // no heading, and nothing to fold it under
+      if (group.label) {
+        presetsEl.appendChild(foldableHeading(group, row));
+      }
       presetsEl.appendChild(row);
     });
+  }
+
+  // the heading of one group of questions, folding its row away and remembering it
+  function foldableHeading(group, row) {
+    const section = 'presets:' + group.name;
+    const heading = document.createElement('div');
+    heading.className = 'preset-group';
+    const label = document.createElement('span');
+    label.textContent = group.label;
+    const fold = document.createElement('button');
+    fold.className = 'layer-gear lp-fold';
+    heading.appendChild(label);
+    heading.appendChild(fold);
+
+    let folded = Folding.folded(window.localStorage, section);
+    function show() {
+      const face = Folding.button(folded, 'these questions');
+      fold.textContent = face.glyph;
+      fold.title = face.title;
+      row.classList.toggle('folded', folded);
+    }
+    show();
+    heading.addEventListener('click', function (event) {
+      event.preventDefault();
+      folded = !folded;
+      Folding.remember(window.localStorage, section, folded);
+      show();
+    });
+    return heading;
   }
 
   function presetButton(p, scope) {
