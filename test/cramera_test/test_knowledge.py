@@ -695,21 +695,16 @@ class TestGraphPayloadStructure:
             GraphEdge("plan", "transport_milk", EdgeKind.TYPE, "spans"),
         ]
 
-    def test_status_string_reports_derived_counts(self, fixture_scene):
+    def test_the_status_names_the_recording_the_answers_come_from(self, fixture_scene):
         """
-        The status line's numbers must track the live payload/knowledge base, not a
-        second hardcoded copy of them.
+        The line above the questions says where an answer comes from -- the live bridge
+        names the demo, a bundle names the scene.
+
+        What the graph happens to hold is already on the screen beside it.
         """
         payload = GraphPanelViews.of_active_scene().for_tab("knowledge")
-        knowledge_base = EpisodeKnowledgeBase.of_active_scene()
-        assert payload.status == (
-            "EQL ready · %d graph nodes · %d joints · %d CRAM classes"
-            % (
-                len(payload.nodes),
-                len(knowledge_base.joints),
-                len(knowledge_base.classes),
-            )
-        )
+
+        assert payload.status == "recorded · %s" % SceneBundle.active_name()
 
 
 # %% characterization: GraphPanelViews.of_active_scene().for_node() dispatch

@@ -242,10 +242,8 @@ class KnowledgeGraphPayload(GraphPanelPayload):
             for episode in knowledge_base.episodes:
                 view.add_edge("plan", episode.name, EdgeKind.TYPE, "spans")
 
-        status = "EQL ready · %d graph nodes · %d joints · %d CRAM classes" % (
-            len(view.nodes),
-            len(knowledge_base.joints),
-            len(knowledge_base.classes),
+        status = "recorded · %s" % (
+            knowledge_base.scene_name or SceneBundle.active_name()
         )
         return cls(
             status=status,
@@ -282,4 +280,3 @@ class KnowledgeGraphPayload(GraphPanelPayload):
         :param side: The arm side to label.
         """
         return side.name.lower() if side is not None else "unknown"
-
