@@ -1658,10 +1658,12 @@ class TestWhenEachFrameWasRecorded:
 
 class TestWhatARecordingSaysItIs:
     """
-    A bundle is one robot, in one environment, doing one task. The robot and the
-    environment fall out of what the run loaded; the task is the one thing only the
-    person recording it knows, so it is asked for, and a run that names none falls back
-    to the steps its plan performed -- the same steps the viewer scrubs through.
+    A bundle is one robot, in one environment, doing one task.
+
+    The robot and the environment fall out of what the run loaded; the task is the one
+    thing only the person recording it knows, so it is asked for, and a run that names
+    none falls back to the steps its plan performed -- the same steps the viewer scrubs
+    through.
     """
 
     def builder(self, tmp_path, task=None) -> SceneBuilder:
@@ -1684,7 +1686,9 @@ class TestWhatARecordingSaysItIs:
     def test_a_run_naming_no_task_states_what_its_plan_did(self, tmp_path):
         builder = self.builder(tmp_path)
 
-        assert builder.task(["parkarms", "transport_milk"]) == "parkarms, transport_milk"
+        assert (
+            builder.task(["parkarms", "transport_milk"]) == "parkarms, transport_milk"
+        )
 
     def test_a_step_is_named_once_however_often_it_ran(self, tmp_path):
         builder = self.builder(tmp_path)
@@ -1701,9 +1705,10 @@ class TestWhatARecordingSaysItIs:
 class TestWhatCountsAsALooseObject:
     """
     A world lets a body move freely to say it is loose rather than furniture -- but some
-    of what it lets move are frames rather than things. A mobile robot's ``odom`` is free
-    and has no geometry at all, and a recording that treats it as an object has nothing
-    to draw for it.
+    of what it lets move are frames rather than things.
+
+    A mobile robot's ``odom`` is free and has no geometry at all, and a recording that
+    treats it as an object has nothing to draw for it.
     """
 
     def world_with_a_frame(self) -> World:
@@ -1750,9 +1755,10 @@ class TestWhatCountsAsALooseObject:
 
 class TestWhatTheCommandLineAsksFor:
     """
-    Every switch the command line offers has to reach the recorder. ``--task`` did not:
-    it was accepted, and then the recording stated the steps its plan performed as if
-    none had been given.
+    Every switch the command line offers has to reach the recorder.
+
+    ``--task`` did not: it was accepted, and then the recording stated the steps its
+    plan performed as if none had been given.
     """
 
     def recorder_for(self, *arguments: str) -> Recorder:
@@ -1784,10 +1790,11 @@ class TestWhatTheCommandLineAsksFor:
 
 class TestObjectsThatWereCarried:
     """
-    A run that carries something re-parents it to the gripper, and a body under a gripper
-    is no longer one the world lets move freely. What counts as a loose object is
-    therefore what was loose when the recording started -- asking again at the end leaves
-    out exactly the objects the run was about.
+    A run that carries something re-parents it to the gripper, and a body under a
+    gripper is no longer one the world lets move freely.
+
+    What counts as a loose object is therefore what was loose when the recording started
+    -- asking again at the end leaves out exactly the objects the run was about.
     """
 
     def recorder_that_recorded(self, keys: List[str]) -> Recorder:
@@ -1804,10 +1811,10 @@ class TestObjectsThatWereCarried:
     def test_everything_followed_through_the_run_is_an_object(self):
         recorder = self.recorder_that_recorded(["crate", "wrench"])
 
-        assert sorted(recorder.recorded_object_keys()) == ["crate", "wrench"]
+        assert sorted(recorder.recorded_objects()) == ["crate", "wrench"]
 
     def test_the_robot_base_is_not_one_of_them(self):
         recorder = self.recorder_that_recorded(["crate"])
         recorder._bodies[ROBOT_BASE_KEY] = Body(name=PrefixedName("base"))
 
-        assert ROBOT_BASE_KEY not in recorder.recorded_object_keys()
+        assert ROBOT_BASE_KEY not in recorder.recorded_objects()

@@ -560,17 +560,19 @@ class Recorder:
         """
         return str(body.name).split("/")[-1]
 
-    def recorded_object_keys(self) -> List[str]:
+    def recorded_objects(self) -> Dict[str, Body]:
         """
-        The objects this recording followed: what it bound itself to when the run
-        started, the robot's own base aside.
+        The objects this recording followed, by the key it followed them under: what it
+        bound itself to when the run started, the robot's own base aside.
 
         Asked of the recording rather than of the world at the end: a run that carries
         something re-parents it to the gripper, and a body under a gripper is no longer
         one the world lets move freely -- so asking the world again would leave out
         exactly the objects the run was about.
         """
-        return [key for key in self._bodies if key != ROBOT_BASE_KEY]
+        return {
+            key: body for key, body in self._bodies.items() if key != ROBOT_BASE_KEY
+        }
 
     def free_floating_bodies(self) -> List[Body]:
         """
@@ -1454,14 +1456,10 @@ class SceneBuilder:
         # the loose objects of a world built in code: no source file named them, so their
         # geometry is written out of the world itself
         emitted = {entry["key"] for entry in objects}
-        for key in self.recorder.recorded_object_keys():
+        for key, body in self.recorder.recorded_objects().items():
             if key in emitted or key not in self.recorder.object_frames[0]:
                 continue
-            objects.append(
-                self._object_of_body(
-                    self.recorder._bodies[key], key, len(objects), palette
-                )
-            )
+            objects.append(self._object_of_body(body, key, len(objects), palette))
 
         # %% place target + drag bounds
         places = [segment["place"] for segment in segments if segment.get("place")]
@@ -1538,9 +1536,7 @@ class SceneBuilder:
             "placeTarget": place_target,
             "dragBounds": drag_bounds,
             "missingAssets": sorted(set(missing)),
-            SceneField.TASK.value: self.task(
-                [entry["step"] for entry in segments]
-            ),
+            SceneField.TASK.value: self.task([entry["step"] for entry in segments]),
             SceneField.DETECTED_EVENTS.value: self.detected_events(),
         }
         write_json_atomically(
