@@ -1,9 +1,13 @@
 """
-What segmind detected while a demo ran, as something a query can range over.
+What a run's detectors saw, as something a query can range over.
 
 A detector produces events about bodies of the running world; a question is asked about
 them in the same language as everything else, so each event is flattened to the names
 and the moment a question actually asks for.
+
+Only that flattened form lives here, and nothing of the detectors themselves: this
+module is read by the recorded viewer, which is meant to serve without the detectors'
+own package -- and without the ROS overlay that one needs.
 """
 
 from __future__ import annotations
@@ -12,9 +16,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
-from segmind.datastructures.events import DetectionEvent, EventWithTrackedObjects
-from segmind.event_logger import EventLogger
-from typing_extensions import Any, Dict, List, Optional, Tuple, Type
+from typing_extensions import Any, Dict, List, Optional
 
 from cramera.knowledge.query_domain import QueryDomain
 from cramera.knowledge.queryable_knowledge import QueryableKnowledge, QueryScope
@@ -92,31 +94,6 @@ class DetectedEventRecord:
     Name of the second body the event relates the first one to, if any.
     """
 
-    @classmethod
-    def of_event(cls, event: DetectionEvent) -> DetectedEventRecord:
-        """
-        One detected event as a record.
-
-        :param event: The event a detector produced.
-        """
-        tracked, second = cls._involved_names(event)
-        return cls(
-            name=" ".join(part for part in [tracked, type(event).__name__] if part),
-            event_type=type(event).__name__,
-            timestamp=event.timestamp,
-            tracked_object=tracked,
-            with_object=second,
-        )
-
-    @classmethod
-    def of_events(cls, events: List[DetectionEvent]) -> List[DetectedEventRecord]:
-        """
-        Every detected event as a record, in the order they were detected.
-
-        :param events: The events a detector produced.
-        """
-        return [cls.of_event(event) for event in events]
-
     def to_payload(self) -> Dict[str, Any]:
         """
         The record as a recorded bundle carries it, with the moment as an ISO instant.
@@ -156,47 +133,3 @@ class DetectedEventRecord:
             cls.of_payload(payload)
             for payload in scene.get(SceneField.DETECTED_EVENTS.value) or []
         ]
-
-    @classmethod
-    def recordable_event_types(cls) -> Tuple[str, ...]:
-        """
-        The type of every event a record can be written for, in alphabetical order.
-
-        A type that only serves as the base of others is left out: no detector produces
-        one, so no question can ask for it. Only the types this process has imported are
-        found, which for a running demo is every type its own detectors can produce.
-        """
-        return tuple(
-            sorted(event_type.__name__ for event_type in cls._detectable_types())
-        )
-
-    @classmethod
-    def _detectable_types(cls) -> List[Type[DetectionEvent]]:
-        """
-        Every event type a detector can produce: the leaves of segmind's event tree.
-        """
-
-        def leaves(base: Type[DetectionEvent]) -> List[Type[DetectionEvent]]:
-            found: List[Type[DetectionEvent]] = []
-            for subclass in base.__subclasses__():
-                found.extend(
-                    leaves(subclass) if subclass.__subclasses__() else [subclass]
-                )
-            return found
-
-        return leaves(DetectionEvent)
-
-    @staticmethod
-    def _involved_names(event: DetectionEvent) -> Tuple[Optional[str], Optional[str]]:
-        """
-        The names of the bodies an event happened to, the primary one first.
-
-        :param event: The event a detector produced.
-        """
-        if not isinstance(event, EventWithTrackedObjects):
-            return None, None
-        second = event.with_object
-        return (
-            event.tracked_object.name.name,
-            second.name.name if second is not None else None,
-        )

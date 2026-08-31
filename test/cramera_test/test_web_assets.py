@@ -12,6 +12,8 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import ast
+
 from typing_extensions import ClassVar, Dict, List
 
 from cramera.knowledge.eql_session import EqlSession
@@ -425,3 +427,54 @@ class TestEveryLoadedModuleHasAConsumer:
         assert "panels/robot_scene/panel.js" in self.callers_of(
             "HighlightArrow", "core/highlight_arrow.js"
         )
+
+
+class TestTheViewerServesWithoutTheFullStack:
+    """
+    The server and the recorded viewer are meant to run on a machine without the full
+    CRAM stack -- ``cramera/requirements.txt`` says so, and krrood is imported lazily
+    for exactly that reason.
+
+    segmind is a ROS package: importing it needs an overlay
+    sourced, so anything the server imports on its way up must not reach it.
+    """
+
+    SERVED_MODULES: ClassVar[List[str]] = [
+        "cramera/src/cramera/knowledge/detected_events.py",
+        "cramera/src/cramera/knowledge/presets.py",
+        "cramera/src/cramera/knowledge/eql_session.py",
+        "cramera/src/cramera/knowledge/query_runner.py",
+        "cramera/src/cramera/knowledge/knowledge_base.py",
+        "cramera/src/cramera/onboard/scene_index.py",
+    ]
+    """
+    Modules the recorded server pulls in when it starts.
+    """
+
+    def imported_packages(self, source: Path) -> List[str]:
+        """
+        The top-level packages one module imports.
+
+        :param source: Path of the module, relative to the repository.
+        """
+        tree = ast.parse(source.read_text(encoding="utf-8"))
+        packages = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                packages.extend(alias.name.split(".")[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+                packages.append(node.module.split(".")[0])
+        return packages
+
+    def test_nothing_the_server_imports_reaches_segmind(self):
+        repository = Path(__file__).resolve().parents[2]
+        reaching = {
+            module: sorted(
+                package
+                for package in self.imported_packages(repository / module)
+                if package == "segmind"
+            )
+            for module in self.SERVED_MODULES
+        }
+
+        assert {module: found for module, found in reaching.items() if found} == {}

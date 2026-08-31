@@ -24,6 +24,7 @@ from semantic_digital_twin.world import World
 from typing_extensions import List, Optional
 
 from cramera.knowledge.detected_events import DetectedEventRecord
+from cramera.live.detections import records_of
 from cramera.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -109,4 +110,4 @@ class DetectionRecorder:
         """
         if self._context is None:
             return []
-        return DetectedEventRecord.of_events(list(self._context.logger.get_events()))
+        return records_of(list(self._context.logger.get_events()))

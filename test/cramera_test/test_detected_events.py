@@ -40,7 +40,11 @@ from cramera.knowledge.detected_events import (  # noqa: E402
     EventField,
     SceneField,
 )
-from cramera.live.detections import DetectedEvents  # noqa: E402
+from cramera.live.detections import (  # noqa: E402
+    DetectedEvents,
+    detectable_event_types,
+    record_of,
+)
 from cramera.onboard.detection_recorder import DetectionRecorder  # noqa: E402
 from segmind.detectors.attachment_detector_nodes import (  # noqa: E402
     AttachmentDetector,
@@ -110,7 +114,7 @@ def detections():
 
 class TestRecordOfAnEvent:
     def test_a_record_names_the_event_and_what_it_happened_to(self, detections):
-        record = DetectedEventRecord.of_event(detections.timeline[0])
+        record = record_of(detections.timeline[0])
 
         assert record.event_type == PickUpEvent.__name__
         assert record.tracked_object == "milk"
@@ -118,22 +122,20 @@ class TestRecordOfAnEvent:
         assert record.timestamp == detections.timeline[0].timestamp
 
     def test_a_record_is_named_by_what_happened_to_what(self, detections):
-        assert DetectedEventRecord.of_event(detections.timeline[0]).name == (
-            "milk PickUpEvent"
-        )
+        assert record_of(detections.timeline[0]).name == ("milk PickUpEvent")
 
     def test_an_event_without_a_second_object_names_only_the_first(self):
         body = collidable_body("spoon")
         world_with(body)
 
-        record = DetectedEventRecord.of_event(PickUpEvent(tracked_object=body))
+        record = record_of(PickUpEvent(tracked_object=body))
 
         assert record.tracked_object == "spoon" and record.with_object is None
 
 
 class TestRecordableEventTypes:
     def test_every_leaf_event_type_can_be_asked_for(self):
-        types = DetectedEventRecord.recordable_event_types()
+        types = detectable_event_types()
 
         assert PickUpEvent.__name__ in types and ContactEvent.__name__ in types
 
@@ -144,12 +146,10 @@ class TestRecordableEventTypes:
             if event_type.__subclasses__()
         }
 
-        assert subclassed and not subclassed & set(
-            DetectedEventRecord.recordable_event_types()
-        )
+        assert subclassed and not subclassed & set(detectable_event_types())
 
     def test_the_types_are_offered_in_a_stable_order(self):
-        types = DetectedEventRecord.recordable_event_types()
+        types = detectable_event_types()
 
         assert list(types) == sorted(types)
 
@@ -298,12 +298,12 @@ class TestAskingTheBridge:
 
 class TestRecordAsBundlePayload:
     def test_a_record_round_trips_through_its_payload(self, detections):
-        record = DetectedEventRecord.of_event(detections.timeline[0])
+        record = record_of(detections.timeline[0])
 
         assert DetectedEventRecord.of_payload(record.to_payload()) == record
 
     def test_a_payload_states_the_moment_in_a_form_json_can_hold(self, detections):
-        payload = DetectedEventRecord.of_event(detections.timeline[0]).to_payload()
+        payload = record_of(detections.timeline[0]).to_payload()
 
         assert payload[EventField.TIMESTAMP] == (
             detections.timeline[0].timestamp.isoformat()
@@ -312,7 +312,7 @@ class TestRecordAsBundlePayload:
     def test_a_payload_without_a_second_body_reads_back_as_none(self):
         body = collidable_body("spoon")
         world_with(body)
-        record = DetectedEventRecord.of_event(PickUpEvent(tracked_object=body))
+        record = record_of(PickUpEvent(tracked_object=body))
 
         assert DetectedEventRecord.of_payload(record.to_payload()).with_object is None
 
