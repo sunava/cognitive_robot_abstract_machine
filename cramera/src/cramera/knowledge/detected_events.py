@@ -31,6 +31,14 @@ when a question asks for it out loud.
 """
 
 
+class TrajectoryField(StrEnum):
+    """
+    Key a recorded scene's trajectory carries its frame stamps under.
+    """
+
+    FRAME_TIMES = "at"
+
+
 class SceneField(StrEnum):
     """
     Key a recorded scene bundle carries its detections under.

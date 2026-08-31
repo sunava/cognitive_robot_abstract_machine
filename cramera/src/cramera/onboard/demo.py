@@ -75,7 +75,11 @@ from cramera.body_geometry import (
     rounded_pose,
     rounded_scale,
 )
-from cramera.knowledge.detected_events import DetectedEventRecord, SceneField
+from cramera.knowledge.detected_events import (
+    DetectedEventRecord,
+    SceneField,
+    TrajectoryField,
+)
 from cramera.onboard.detection_recorder import DetectionRecorder
 from cramera.generated_json import write_json_atomically
 from cramera.live.bridge import ROBOT_BASE_KEY
@@ -239,6 +243,15 @@ class Recorder:
     urdf_sources: List[str] = field(default_factory=list)
     """
     URDF/xacro files the world was built from, in load order.
+    """
+
+    frame_times: List[float] = field(default_factory=list)
+    """
+    When each recorded frame was taken, in seconds since the epoch, one per entry of
+    :attr:`frames`.
+
+    An answer names a moment in wall-clock time, so a replay needs to know which frames
+    were taken around it.
     """
 
     detections: List[DetectedEventRecord] = field(default_factory=list)
@@ -633,6 +646,7 @@ class Recorder:
         """
         if self._connections is None:
             self.bind_to_executor(executor)
+        self.frame_times.append(time.time())
         self.frames.append(
             {
                 str(connection.name): round(float(connection.position), POSE_PRECISION)
@@ -1279,6 +1293,24 @@ class SceneBuilder:
         body.combined_mesh.export(destination)
         return "meshes/objects/" + os.path.basename(destination)
 
+    def _kept_indices(self) -> List[int]:
+        """
+        The recorded frames the bundle keeps: every step-th one, and always the last.
+        """
+        frame_count = len(self.recorder.frames)
+        kept = list(range(0, frame_count, self.step))
+        if kept and kept[-1] != frame_count - 1:
+            kept.append(frame_count - 1)
+        return kept
+
+    def frame_times(self) -> List[float]:
+        """
+        When each frame the bundle keeps was taken, in seconds since the epoch, or
+        nothing for a recording that stamped none.
+        """
+        stamps = self.recorder.frame_times
+        return [stamps[index] for index in self._kept_indices() if index < len(stamps)]
+
     def detected_events(self) -> List[Dict[str, Any]]:
         """
         What the run's detectors saw, as the bundle carries it, or nothing for a run
@@ -1291,10 +1323,7 @@ class SceneBuilder:
         Downsample the recording to every step-th frame (always keeping the last) and
         assemble scene.json + trajectory.json from it.
         """
-        frame_count = len(self.recorder.frames)
-        kept_indices = list(range(0, frame_count, self.step))
-        if kept_indices and kept_indices[-1] != frame_count - 1:
-            kept_indices.append(frame_count - 1)
+        kept_indices = self._kept_indices()
         downsampled_index = {
             raw_index: kept for kept, raw_index in enumerate(kept_indices)
         }
@@ -1480,6 +1509,7 @@ class SceneBuilder:
             {
                 "framesPerSecond": frames_per_second,
                 "frames": frames,
+                TrajectoryField.FRAME_TIMES.value: self.frame_times(),
                 "base": base,
                 "objects": object_poses,
             },

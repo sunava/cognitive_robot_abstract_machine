@@ -599,6 +599,7 @@ Panels.define('robot-scene', function (root, bus) {
         traj = d;
         setupTransports();
         if (traj) applyFrame(0);
+        startReplay();
         frameCamera();
         if (statusEl) statusEl.classList.add('hidden');
         readyCbs.forEach(function (cb) { cb(); });
@@ -788,6 +789,46 @@ Panels.define('robot-scene', function (root, bus) {
     return true;
   }
   function stopTrajectory() { playing = false; }
+
+  // a ?replay= page is the popup a replay button in the EQL answer opens: the ordinary
+  // recorded page, except that it loops the frames taken around one answered moment
+  // instead of playing the run from the start. The recording is the loaded scene's own
+  // trajectory, which stamps every frame it kept (core/replay.js holds the timing).
+  const replayWindow = Replay.fromSearch(window.location.search);
+  let replayClip = null;         // [{at, index}] of the frames inside the window
+  let replayStartedAt = 0;
+
+  function startReplay() {
+    if (!replayWindow || !traj) return;
+    const stamps = traj.at || [];
+    replayClip = [];
+    for (let index = 0; index < stamps.length; index++) {
+      if (stamps[index] >= replayWindow.start && stamps[index] <= replayWindow.end) {
+        replayClip.push({ at: stamps[index], index: index });
+      }
+    }
+    if (!replayClip.length) {
+      replayClip = null;
+      if (statusEl) {
+        statusEl.textContent = 'Nothing was recorded around ' + Replay.label(replayWindow);
+        statusEl.classList.remove('hidden');
+      }
+      return;
+    }
+    playing = false;             // the loop below drives the frames, not the playhead
+    replayStartedAt = performance.now();
+    if (statusEl) {
+      statusEl.textContent = '▶ REPLAY · ' + Replay.label(replayWindow);
+      statusEl.classList.remove('hidden');
+    }
+  }
+
+  function stepReplay() {
+    const shown = Replay.frameAt(replayClip, (performance.now() - replayStartedAt) / 1000);
+    if (!shown) return;
+    applyFrame(shown.index);
+    needsRender = true;
+  }
 
   function seekTo(frame) {
     if (!traj) return;
@@ -1658,6 +1699,7 @@ Panels.define('robot-scene', function (root, bus) {
       upgradeMaterials();
       needsRender = true;
     }
+    if (replayClip) stepReplay();
     const arrowKeys = Object.keys(highlightArrows);
     if (arrowKeys.length) {
       const bob = HighlightArrow.bobOffset(clock.getElapsedTime());

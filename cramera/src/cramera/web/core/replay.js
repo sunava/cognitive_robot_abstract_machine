@@ -27,12 +27,16 @@
     return { start: start, end: end };
   }
 
-  // the URL a popup replays `window_` at; an explicit live= bridge address in the
-  // opener's search is carried along so the popup asks the same bridge
+  // the URL a popup replays `window_` at. What the opener was looking at travels with
+  // it: the scene whose recording holds the moment, and an explicit live= bridge
+  // address so the popup asks the same bridge.
   function popupUrl(pathname, search, window_) {
-    const live = /[?&](live=[\w.:-]+)/.exec(search || '');
-    return pathname + '?replay=' + window_.start + ',' + window_.end +
-      (live ? '&' + live[1] : '');
+    const carried = ['scene=[\\w-]+', 'live=[\\w.:-]+']
+      .map(function (pattern) { return new RegExp('[?&](' + pattern + ')').exec(search || ''); })
+      .filter(Boolean)
+      .map(function (match) { return '&' + match[1]; })
+      .join('');
+    return pathname + '?replay=' + window_.start + ',' + window_.end + carried;
   }
 
   // how long the recorded clip runs, in seconds

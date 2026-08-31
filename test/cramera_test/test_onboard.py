@@ -1602,3 +1602,53 @@ class TestClaimingBodiesOfAPrefixedWorld:
 
         assert environment is not None
         assert environment.report.links == ["apartment/table"]
+
+
+class TestWhenEachFrameWasRecorded:
+    """
+    An answer names a moment in wall-clock time, and a replay has to find the frames
+    around it, so the recording says when each frame it kept was taken.
+
+    Stamped per
+    frame rather than counted from a start time and a rate: the frames are downsampled,
+    and a tick takes however long it takes.
+    """
+
+    def recorder_with_frames(self, times: List[float]) -> Recorder:
+        """
+        A recorder holding one frame per given moment.
+
+        :param times: When each frame was recorded, in seconds since the epoch.
+        """
+        recorder = recording([{} for _ in times])
+        recorder.frame_times = list(times)
+        return recorder
+
+    def test_every_kept_frame_says_when_it_was_taken(self, tmp_path):
+        recorder = self.recorder_with_frames([10.0, 10.5, 11.0])
+        recorder.world = World()
+
+        builder = SceneBuilder(recorder, "scene", str(tmp_path / "bundle"), 1)
+
+        assert builder.frame_times() == [10.0, 10.5, 11.0]
+
+    def test_the_stamps_are_downsampled_with_the_frames(self, tmp_path):
+        recorder = self.recorder_with_frames([10.0, 10.5, 11.0, 11.5, 12.0])
+        recorder.world = World()
+
+        builder = SceneBuilder(recorder, "scene", str(tmp_path / "bundle"), 2)
+
+        assert builder.frame_times() == [10.0, 11.0, 12.0]
+
+    def test_a_recording_that_stamped_nothing_says_nothing(self, tmp_path):
+        recorder = recording([{}, {}])
+        recorder.world = World()
+
+        builder = SceneBuilder(recorder, "scene", str(tmp_path / "bundle"), 1)
+
+        assert builder.frame_times() == []
+
+    def test_the_recorder_stamps_a_frame_as_it_records_it(self):
+        recorder = Recorder()
+
+        assert recorder.frame_times == []

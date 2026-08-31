@@ -353,12 +353,13 @@ Panels.define('eql', function (root, bus) {
   }
 
   // the answer as one table: stable columns, every value coloured by what it is, and
-  // a replay button on rows naming a moment the bridge's recording can play back
+  // a replay button on rows naming a moment there is a recording of — the bridge's while
+  // a demo is attached, the loaded scene's own trajectory otherwise
   function answerTable(rows, replay) {
     const table = AnswerTable.of(rows, replay);
     if (!table.columns.length) return '';
     const typed = table.rows.some(function (row) { return row.type; });
-    const replayable = source.live && table.rows.some(function (row) { return row.replay; });
+    const replayable = table.rows.some(function (row) { return row.replay; });
     let html = '<div class="anstable-wrap"><table class="anstable"><thead><tr>';
     if (typed) html += '<th class="ans-type"></th>';
     table.columns.forEach(function (column) { html += '<th>' + esc(column) + '</th>'; });
