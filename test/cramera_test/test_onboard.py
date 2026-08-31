@@ -1485,3 +1485,46 @@ class TestDetectorTicksAreNotStepsOfTheRun:
         recorder._record_tick(lambda executor: None, detector_executor)
 
         assert ticks == []
+
+
+class TestDetectingEveryNthTick:
+    """
+    One detector tick costs seconds on a world of any size, and a run is tens of
+    thousands of ticks, so the detectors look at every n-th one.
+    """
+
+    def recorder(self, interval: int) -> Recorder:
+        """
+        A recorder whose detectors are ticked every ``interval`` ticks.
+
+        :param interval: How many run ticks pass between two detector ticks.
+        """
+        recorder = Recorder(detect_events=True, detection_interval=interval)
+        recorder._detection_recorder = DetectionRecorder(world=World())
+        return recorder
+
+    def ticks_of(self, recorder: Recorder, count: int) -> int:
+        """
+        How often the detectors were ticked over ``count`` run ticks.
+
+        :param recorder: The recorder whose detectors are counted.
+        :param count: How many run ticks to simulate.
+        """
+        ticked = []
+        recorder._detection_recorder.tick = lambda: ticked.append(1)
+        recorder._detection_recorder.records = lambda: []
+        for _ in range(count):
+            recorder.record_detections()
+        return len(ticked)
+
+    def test_the_detectors_look_at_every_nth_tick(self):
+        assert self.ticks_of(self.recorder(50), 500) == 10
+
+    def test_the_first_tick_is_looked_at(self):
+        assert self.ticks_of(self.recorder(50), 1) == 1
+
+    def test_an_interval_of_one_looks_at_every_tick(self):
+        assert self.ticks_of(self.recorder(1), 7) == 7
+
+    def test_the_default_interval_is_the_one_the_command_line_offers(self):
+        assert Recorder().detection_interval == Recorder.DEFAULT_DETECTION_INTERVAL

@@ -220,6 +220,17 @@ class Recorder:
     Upper bound on the plan nodes written into a bundle.
     """
 
+    DEFAULT_DETECTION_INTERVAL: ClassVar[int] = 50
+    """
+    How many run ticks pass between two detector ticks by default.
+
+    One tick of segmind's detectors compares every tracked object against every body
+    with collision geometry in the world, which on a furnished world costs seconds -
+    times the tens of thousands of ticks a run takes. Looking at every 50th tick keeps
+    the moments it recognizes within a third of a second of when they happened, which is
+    finer than the events themselves.
+    """
+
     resolutions: Dict[str, str] = field(default_factory=dict)
     """
     ``package://`` URI to the path it resolved to while the demo ran.
@@ -240,6 +251,17 @@ class Recorder:
     """
     Whether to tick segmind's detectors along the run, which is what gives the bundle
     its detections.
+    """
+
+    detection_interval: int = 50
+    """
+    How many run ticks pass between two detector ticks.
+    """
+
+    _ticks_since_detection: int = field(default=0, init=False)
+    """
+    Run ticks since the detectors last looked, counted up to
+    :attr:`detection_interval`.
     """
 
     _detection_recorder: Optional[DetectionRecorder] = field(default=None, init=False)
@@ -595,6 +617,10 @@ class Recorder:
         """
         if self._detection_recorder is None:
             return
+        if self._ticks_since_detection % self.detection_interval:
+            self._ticks_since_detection += 1
+            return
+        self._ticks_since_detection += 1
         self._detection_recorder.tick()
         self.detections = self._detection_recorder.records()
 
@@ -1497,6 +1523,13 @@ def main() -> None:
         action="store_true",
         help="tick segmind's detectors along the run and record what they saw",
     )
+    parser.add_argument(
+        "--detect-every",
+        type=int,
+        default=Recorder.DEFAULT_DETECTION_INTERVAL,
+        metavar="TICKS",
+        help="run ticks between two detector ticks (default: %(default)s)",
+    )
     argument_split = split_passthrough_arguments(sys.argv[1:])
     args = parser.parse_args(argument_split.own)
 
@@ -1508,7 +1541,7 @@ def main() -> None:
             "  the workspace venv (uv sync), then: cramera-onboard ..."
         )
 
-    recorder = Recorder(detect_events=args.detect)
+    recorder = Recorder(detect_events=args.detect, detection_interval=args.detect_every)
     recorder.install_asset_hooks()
     recorder.install_tick_hook()
     recorder.install_segment_hook()
