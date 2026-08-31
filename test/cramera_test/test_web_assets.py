@@ -12,7 +12,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from typing_extensions import List
+from typing_extensions import ClassVar, Dict, List
 
 from cramera.knowledge.eql_session import EqlSession
 from cramera.mesh_format import MeshFormat
@@ -134,8 +134,8 @@ class TestAssetConsistency:
 # %% mesh format loaders
 class TestBinaryGltfLoading:
     """
-    The viewer must be able to load the compact mesh format scene bundles are
-    converted to, wherever it loads a mesh from.
+    The viewer must be able to load the compact mesh format scene bundles are converted
+    to, wherever it loads a mesh from.
     """
 
     SCENE_PANEL = "panels/robot_scene/panel.js"
@@ -301,3 +301,53 @@ class TestQueryPanelHints:
             placeholder.group(1).replace("\\'", "'")
         )
         assert result.ok
+
+
+class TestEveryLoadedModuleHasAConsumer:
+    """
+    A page that loads a module nobody calls looks finished and does nothing: the
+    highlight arrow shipped that way once, drawn by no panel.
+    """
+
+    CONSUMED_GLOBALS: ClassVar[Dict[str, str]] = {
+        "core/highlight_arrow.js": "HighlightArrow",
+        "core/answer_table.js": "AnswerTable",
+        "core/question_display.js": "QuestionDisplay",
+        "core/voice.js": "VoiceCapture",
+        "core/completion.js": "Completion",
+        "core/query_source.js": "QuerySource",
+        "core/preset_groups.js": "PresetGroups",
+        "core/replay.js": "Replay",
+    }
+    """
+    The global each of these modules defines, which some other script has to call.
+    """
+
+    def callers_of(self, name: str, defined_in: str) -> List[str]:
+        """
+        Every script other than the module itself that names ``name``.
+
+        :param name: The global the module defines.
+        :param defined_in: Path of the module defining it, relative to the web root.
+        """
+        return [
+            str(script.relative_to(WEB_ROOT))
+            for script in sorted(WEB_ROOT.glob("**/*.js"))
+            if script != WEB_ROOT / defined_in
+            and script.parts[-2] != "vendor"
+            and ("%s." % name) in script.read_text(encoding="utf-8")
+        ]
+
+    def test_every_loaded_module_is_called_by_something(self):
+        unused = {
+            module: name
+            for module, name in self.CONSUMED_GLOBALS.items()
+            if not self.callers_of(name, module)
+        }
+
+        assert unused == {}
+
+    def test_the_highlight_arrow_is_drawn_by_the_scene(self):
+        assert "panels/robot_scene/panel.js" in self.callers_of(
+            "HighlightArrow", "core/highlight_arrow.js"
+        )
