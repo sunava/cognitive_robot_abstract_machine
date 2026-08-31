@@ -13,6 +13,8 @@ import pytest
 from cramera import paths
 from cramera.live.recording_storage import SceneDestination
 
+from .conftest import reset_knowledge_base_cache
+
 
 @pytest.fixture()
 def server(fixture_scene):
@@ -38,6 +40,16 @@ def get_json(url):
     status, body = get(url)
     assert status == 200
     return json.loads(body)
+
+
+def posted_answer(url, payload):
+    """
+    The decoded answer to a POST, error responses included.
+
+    :param url: The endpoint to post to.
+    :param payload: The JSON-serializable request body.
+    """
+    return post(url, payload)[1]
 
 
 def post(url, payload=None, timeout=10):
@@ -76,6 +88,18 @@ class TestStatic:
         assert scene["name"] == "fixture"
         index = get_json(server + "/scenes/index.json")
         assert index["default"] == "fixture"
+
+    def test_a_static_asset_may_not_be_stored_by_the_browser(self, server):
+        """
+        The frontend is edited while a browser holds it open, and the only cache
+        validator this server offers is the file's modification time — so a stored copy
+        outlives every edit that leaves that time behind the date the copy carries.
+
+        Forbidding the store is what keeps an edited frontend from being served from an
+        old page load.
+        """
+        with urllib.request.urlopen(server + "/config.js", timeout=10) as response:
+            assert response.headers["Cache-Control"] == "no-store"
 
     def test_scene_path_traversal_is_blocked(self, server):
         request = urllib.request.Request(server + "/scenes/../../etc/passwd")
@@ -328,11 +352,26 @@ class TestApi:
         assert payload["ok"]
         assert any(n["id"] == "milk" for n in payload["nodes"])
 
+    def test_knowledge_overview_presets_are_worded(self, server):
+        """
+        The overview's presets carry their questions read back as English, so the
+        panel's question display has words to show before a query has run.
+        """
+        pytest.importorskip("krrood")
+        payload = get_json(server + "/api/knowledge")
+        preset = next(
+            entry
+            for entry in payload["presets"]
+            if entry["text"] == "which robot is this?"
+        )
+        assert preset["verbalization"]["text"]
+        assert "<span" in preset["verbalization"]["html"]
+
     def test_knowledge_views(self, server):
         pytest.importorskip("krrood")
         for name, expect_live in (
             ("kinematics", None),
-            ("plan", "plan"),
+            ("plan", None),  # the plan panel knows its own live source
             ("chart", "chart"),
             ("transforms", "transforms"),
         ):
@@ -373,6 +412,117 @@ class TestApi:
             status, body = err.code, err.read()
         assert status == 404
         assert json.loads(body)["ok"] is False
+
+
+class TestVocabularyApi:
+    """
+    What the query box is told it may name, served from the recorded scene.
+    """
+
+    def test_the_vocabulary_offers_the_scene_variables_and_workspace_classes(
+        self, server
+    ):
+        pytest.importorskip("krrood")
+        payload = get_json(server + "/api/eql/vocabulary")
+
+        assert payload["ok"]
+        offered = {entry["name"]: entry for entry in payload["entries"]}
+        assert offered["scene_object"]["kind"] == "variable"
+        assert offered["scene_object"]["type"] == "BenchObject"
+        assert offered["entity"]["kind"] == "factory"
+        # a class of the scanned architecture, which the fixture keeps miniature
+        assert offered["Plan"]["kind"] == "class"
+        assert offered["Plan"]["module"] == "coraplex.plans.plan"
+
+    def test_the_members_of_a_variable_are_served_for_its_type(self, server):
+        pytest.importorskip("krrood")
+        payload = get_json(server + "/api/eql/members?name=scene_object")
+
+        assert payload["ok"] and payload["name"] == "scene_object"
+        assert "name" in [member["name"] for member in payload["members"]]
+
+    def test_the_members_of_an_unknown_name_are_refused(self, server):
+        pytest.importorskip("krrood")
+        payload = get_json(server + "/api/eql/members?name=NoSuchType")
+
+        assert payload["ok"] is False
+        assert "NoSuchType" in payload["error"]
+
+
+class TestAskedQuestions:
+    """
+    A natural-language question — spoken or typed — is matched to the presets the
+    recorded scene can answer, and either runs as if its button had been clicked or is
+    declined with the sorry reply.
+    """
+
+    def test_a_question_is_recognized_and_its_query_runs(self, server):
+        """
+        The full voice flow, minus the microphone: transcript in, matched preset out,
+        the preset's own code answered — exactly what clicking its button runs.
+        """
+        pytest.importorskip("krrood")
+        match = posted_answer(server + "/api/question", {"text": "which robot is this"})
+
+        assert match["ok"] is True
+        assert match["matched"] is True
+        assert match["preset"]["code"] == "the(entity(robot))"
+
+        answer = posted_answer(server + "/api/eql", {"code": match["preset"]["code"]})
+        assert answer["ok"] is True
+        assert answer["count"] == 1
+
+    def test_a_paraphrase_is_recognized_too(self, server):
+        pytest.importorskip("krrood")
+        match = posted_answer(
+            server + "/api/question", {"text": "can you tell me what is in the scene"}
+        )
+
+        assert match["matched"] is True
+        assert match["preset"]["code"] == "an(entity(scene_object))"
+
+    def test_an_unanswerable_question_gets_the_sorry_reply(self, server):
+        pytest.importorskip("krrood")
+        from cramera.knowledge.question_matching import UNMATCHED_QUESTION_REPLY
+
+        match = posted_answer(
+            server + "/api/question", {"text": "what's the weather like today"}
+        )
+
+        assert match["ok"] is True
+        assert match["matched"] is False
+        assert match["reply"] == UNMATCHED_QUESTION_REPLY
+
+    def test_an_empty_question_is_an_error(self, server):
+        pytest.importorskip("krrood")
+        assert posted_answer(server + "/api/question", {"text": "   "})["ok"] is False
+
+    def test_a_preset_needing_a_running_demo_is_not_offered(self, server):
+        """
+        A bundle-declared preset ranges over a demo the recording does not have;
+        matching it here would hand the panel a query it cannot run.
+        """
+        pytest.importorskip("krrood")
+        bundle_directory = paths.scenes_directory() / "fixture"
+        (bundle_directory / "presets.json").write_text(
+            json.dumps(
+                {
+                    "presets": [
+                        {
+                            "text": "which shapes are inserted?",
+                            "code": "an(entity(shape))",
+                        }
+                    ]
+                }
+            )
+        )
+        reset_knowledge_base_cache()
+
+        match = posted_answer(
+            server + "/api/question", {"text": "which shapes are inserted"}
+        )
+
+        assert match["matched"] is False
 
 
 # %% the command line

@@ -77,6 +77,8 @@ try:
 
     from cramera.knowledge.eql_session import EqlSession
     from cramera.knowledge.knowledge_base import EpisodeKnowledgeBase
+    from cramera.knowledge.presets import Preset
+    from cramera.knowledge.question_matching import QuestionMatcher
     from cramera.knowledge.views.dispatcher import GraphPanelViews
 
     EQL_AVAILABLE = True
@@ -247,6 +249,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if route == "/api/knowledge/expand":
             node = (self._query_parameters().get("node") or [""])[0]
             return self._guarded(lambda: self._expanded_node(node, scene))
+        if route == "/api/eql/vocabulary":
+            return self._guarded(
+                lambda: EqlSession.of_scene(scene).runner().vocabulary().to_payload()
+            )
+        if route == "/api/eql/members":
+            name = (self._query_parameters().get("name") or [""])[0]
+            return self._guarded(
+                lambda: EqlSession.of_scene(scene)
+                .runner()
+                .vocabulary()
+                .members_payload(name)
+            )
         if route == "/api/models/state":
             if not PROBABILISTIC_MODELS_AVAILABLE:
                 return self._send_error(NO_MODELS_MESSAGE)
@@ -270,11 +284,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_POST(self) -> None:
         """
-        Route the write-ish endpoints: EQL queries and the models workbench.
+        Route the write-ish endpoints: EQL queries, asked questions and the models
+        workbench.
         """
         route = self.path.split("?")[0]
         if route == "/api/eql":
             return self._run_eql()
+        if route == "/api/question":
+            return self._answer_asked_question()
         if route.startswith("/api/models/"):
             return self._run_models_request(route)
         if route == "/api/recording/save":
@@ -339,6 +356,29 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return self._send_json(session.run(code))
         except Exception as error:
             # a SyntaxError from the query is named by its own type, like any other
+            return self._send_exception(error)
+
+    def _answer_asked_question(self) -> None:
+        """
+        Match a natural-language question to the presets this scene can answer.
+
+        Bundle-declared presets need a running demo, which the recorded scene does not
+        have, so only the presets answerable here are on offer to match.
+        """
+        if not EQL_AVAILABLE:
+            return self._send_error(self.NO_EQL_MESSAGE)
+        try:
+            text = (self._request_body().get("text") or "").strip()
+            if not text:
+                return self._send_error("empty question")
+            with _EQL_LOCK:
+                answerable = [
+                    preset
+                    for preset in Preset.of_scene(self._requested_scene())
+                    if not preset.requires_live
+                ]
+                return self._send_json(QuestionMatcher(answerable).match(text))
+        except Exception as error:
             return self._send_exception(error)
 
     def _run_models_request(self, route: str) -> None:

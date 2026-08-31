@@ -18,10 +18,16 @@ from semantic_digital_twin.spatial_types import Point3  # noqa: E402
 from semantic_digital_twin.world_description.world_entity import Body  # noqa: E402
 
 from cramera.knowledge.entities import BenchObject  # noqa: E402
-from cramera.knowledge.eql_session import EqlSession, RowRenderer  # noqa: E402
+from cramera.knowledge.eql_session import EqlSession  # noqa: E402
+from cramera.knowledge.query_runner import RowRenderer  # noqa: E402
 from cramera.knowledge.graph_payload import KnowledgeGraphPayload  # noqa: E402
 from cramera.knowledge.knowledge_base import EpisodeKnowledgeBase  # noqa: E402
-from cramera.knowledge.presets import Preset  # noqa: E402
+from cramera.knowledge.presets import (  # noqa: E402
+    ARCHITECTURE_PRESETS,
+    Preset,
+    PresetsPerType,
+)
+from cramera.knowledge.queryable_knowledge import QueryScope  # noqa: E402
 from cramera.knowledge.views.architecture import SubgraphViewPayload  # noqa: E402
 from cramera.knowledge.views.dispatcher import GraphPanelViews  # noqa: E402
 from cramera.knowledge.views.plan_tree import PlanViewPayload  # noqa: E402
@@ -245,8 +251,8 @@ class TestQueries:
 
         assert result.ok
         assert result.rows == [
-            {"BenchObject.name": "milk", "BenchObject.kind": "object"},
-            {"BenchObject.name": "place_area", "BenchObject.kind": "location"},
+            {"name": "milk", "kind": "object"},
+            {"name": "place_area", "kind": "location"},
         ]
 
     def test_only_a_real_entity_is_treated_as_one(self):
@@ -413,7 +419,7 @@ class TestViewPayloads:
         payload = GraphPanelViews.of_active_scene().for_tab("plan")
         rendered = payload.to_payload()
         assert payload.ok and rendered["layout"] == "hier"
-        assert rendered["live"] == "plan" and rendered["statusLegend"]
+        assert rendered["statusLegend"]
         by_label = {n.label: n for n in payload.nodes}
         assert by_label["SequentialNode"].status == "SUCCEEDED"
         # recorded inner nodes stay CREATED (only the root is performed)
@@ -923,6 +929,125 @@ class TestSceneSelection:
         assert any(node["id"] == "second_robot" for node in payload["nodes"])
 
 
+class TestBundleDeclaredPresets:
+    """
+    A bundle may ship the questions worth asking about the demo it was recorded from,
+    which replace the generated scene presets for that scene only.
+    """
+
+    def declare_presets(self, fixture_scene, presets):
+        """
+        Write a ``presets.json`` into the fixture bundle.
+
+        :param fixture_scene: The fixture scene's data directory.
+        :param presets: The preset entries to declare.
+        """
+        (fixture_scene / "scenes" / "fixture" / "presets.json").write_text(
+            json.dumps({"presets": presets})
+        )
+        EpisodeKnowledgeBase.reset()
+
+    def test_a_declared_preset_replaces_the_generated_scene_presets(
+        self, fixture_scene
+    ):
+        self.declare_presets(
+            fixture_scene,
+            [{"text": "which shapes are inserted?", "code": "an(entity(shape))"}],
+        )
+
+        presets = Preset.of_scene()
+
+        assert presets[0] == Preset(
+            "which shapes are inserted?", "an(entity(shape))", requires_live=True
+        )
+        assert not any(preset.text == "what is in the scene?" for preset in presets)
+
+    def test_the_architecture_presets_survive_a_declaration(self, fixture_scene):
+        """
+        They range over the repository scan rather than the scene, so they answer with
+        or without the demo the bundle's own questions need.
+        """
+        self.declare_presets(
+            fixture_scene, [{"text": "anything", "code": "an(entity(shape))"}]
+        )
+
+        runner = EqlSession.of_active_scene().runner()
+        assert ARCHITECTURE_PRESETS[0].worded(runner) in Preset.of_scene()
+
+    def test_a_declared_preset_is_marked_as_needing_a_running_demo(self, fixture_scene):
+        """
+        A bundle's questions range over variables only the live demo offers, so the
+        panel has to know it cannot answer them from the recording alone.
+        """
+        self.declare_presets(
+            fixture_scene, [{"text": "anything", "code": "an(entity(shape))"}]
+        )
+
+        assert Preset.of_scene()[0].requires_live is True
+
+    def test_a_generated_preset_does_not_need_a_running_demo(self, fixture_scene):
+        assert all(
+            preset.requires_live is False
+            for preset in Preset.of_scene()
+            if preset.text == "what is in the scene?"
+        )
+
+    def test_a_bundle_without_declared_presets_is_unchanged(self, fixture_scene):
+        assert any(
+            preset.text == "what is in the scene?" for preset in Preset.of_scene()
+        )
+
+
+class TestPresetWording:
+    """
+    Every preset carries its question read back as English, so the panel can show what
+    is asked instead of EQL source.
+    """
+
+    def test_every_scene_preset_is_worded_by_the_scenes_own_runner(self, fixture_scene):
+        runner = EqlSession.of_active_scene().runner()
+        for preset in Preset.of_scene():
+            assert preset.verbalization == runner.verbalize(preset.code), preset.text
+
+    def test_a_generated_preset_carries_both_renderings(self, fixture_scene):
+        preset = next(
+            entry for entry in Preset.of_scene() if entry.text == "which robot is this?"
+        )
+
+        assert preset.verbalization is not None
+        assert preset.verbalization.text
+        assert "<span" in preset.verbalization.html
+
+    def test_wording_returns_a_copy_and_leaves_the_original_untouched(
+        self, fixture_scene
+    ):
+        preset = Preset("which robot is this?", "the(entity(robot))")
+        worded = preset.worded(EqlSession.of_active_scene().runner())
+
+        assert preset.verbalization is None
+        assert worded.verbalization is not None
+        assert (worded.text, worded.code, worded.requires_live, worded.scope) == (
+            preset.text,
+            preset.code,
+            preset.requires_live,
+            preset.scope,
+        )
+
+    def test_a_declared_preset_stays_unworded_in_the_recorded_scene(
+        self, fixture_scene
+    ):
+        """
+        A bundle's questions range over a demo's own variables, which only the live
+        bridge knows; the recorded scene offers their labels unworded.
+        """
+        (fixture_scene / "scenes" / "fixture" / "presets.json").write_text(
+            json.dumps({"presets": [{"text": "anything", "code": "an(entity(shape))"}]})
+        )
+        EpisodeKnowledgeBase.reset()
+
+        assert Preset.of_scene()[0].verbalization is None
+
+
 class TestPresetSmoke:
     def test_every_preset_runs_and_returns_rows(self, fixture_scene):
         """
@@ -935,3 +1060,48 @@ class TestPresetSmoke:
             result = EqlSession.of_active_scene().run(preset.code)
             assert result.ok, "%s: %s" % (preset.text, result)
             assert result.count == len(result.rows)
+
+
+# %% one question per type a record can be
+class TestPresetsPerType:
+    """
+    A question that names one type out of many is worth recognizing for every type,
+    which is what :class:`PresetsPerType` writes out.
+    """
+
+    def test_a_camel_case_class_name_is_asked_for_in_plain_words(self):
+        questions = PresetsPerType(
+            class_suffix="Event",
+            class_names=("PickUpEvent", "LossOfContainmentEvent"),
+            code="an(entity(event).where(event.event_type == '%s'))",
+        ).questions()
+
+        assert [question.text for question in questions] == [
+            "give me all pick up events",
+            "give me all loss of containment events",
+        ]
+
+    def test_each_question_names_its_own_type_in_the_query(self):
+        [question] = PresetsPerType(
+            class_suffix="Action",
+            class_names=("PickUpAction",),
+            code="an(entity(action).where(action.action_type == '%s'))",
+        ).questions()
+
+        assert (
+            question.code
+            == "an(entity(action).where(action.action_type == 'PickUpAction'))"
+        )
+
+    def test_every_question_is_about_the_scope_the_family_declares(self):
+        questions = PresetsPerType(
+            class_suffix="Event",
+            class_names=("PickUpEvent", "InsertionEvent"),
+            code="an(entity(event).where(event.event_type == '%s'))",
+            scope=QueryScope.DETECTED_EVENTS,
+        ).questions()
+
+        assert [question.scope for question in questions] == [
+            QueryScope.DETECTED_EVENTS,
+            QueryScope.DETECTED_EVENTS,
+        ]

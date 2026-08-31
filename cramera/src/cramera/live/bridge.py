@@ -31,6 +31,7 @@ from typing_extensions import (
     Any,
     ClassVar,
     Dict,
+    FrozenSet,
     List,
     Optional,
     Protocol,
@@ -54,6 +55,17 @@ from semantic_digital_twin.world_description.connections import (
 )
 
 from cramera.knowledge.enums import PlanNodeGroup
+from cramera.knowledge.presets import Preset
+from cramera.knowledge.query_runner import EqlQueryRunner, RenderResult
+from cramera.knowledge.query_vocabulary import QueryVocabulary
+from cramera.knowledge.queryable_knowledge import (
+    QueryableKnowledge,
+    QueryScope,
+    UnknownQueryScope,
+)
+from cramera.knowledge.question_matching import QuestionMatcher, QuestionMatchResult
+from cramera.knowledge.workspace_classes import WorkspaceClassIndex
+from cramera.live.query import LiveQuerySource, NoQuerySourceRegistered
 from cramera.live.markers import MarkerEntry, MarkerStore
 from cramera.live.shape_catalog import ShapeEntry, served_mesh_file, shape_entry
 from cramera.live.transforms import TransformGraph, TransformSnapshot
@@ -551,6 +563,12 @@ class BridgeStatus:
     movable: bool
     plan: bool
     chart: bool
+    query: bool
+    """
+    Whether a running demo offered its state to be questioned (see
+    :meth:`Bridge.register_query_source`).
+    """
+
     sequence_number: int
     model_version: int = 0
     """
@@ -648,6 +666,21 @@ class Bridge:
     transform_state: TransformSnapshot = field(default_factory=TransformSnapshot)
     """
     The newest transform-graph snapshot (see :mod:`cramera.live.transforms`).
+    """
+
+    query_source: Optional[LiveQuerySource] = None
+    """
+    What the running demo offers to be queried about, once it registers itself.
+    """
+
+    _query_lock: threading.Lock = field(default_factory=threading.Lock)
+    """
+    Serializes queries: EQL evaluation is not written to run twice at once, and the
+    bridge answers several viewers from its own thread pool.
+
+    ..note:: This does not keep a query apart from the demo thread, which evaluates EQL
+        of its own; what they share is the ``SymbolGraph`` singleton, which serializes
+        itself.
     """
 
     _transforms: TransformGraph = field(default_factory=TransformGraph)
@@ -1123,6 +1156,7 @@ class Bridge:
                 movable=True,
                 plan=bool(self.plan_state.nodes),
                 chart=bool(self.chart_state.nodes),
+                query=self.query_source is not None,
                 sequence_number=self.sequence_number,
                 model_version=self._model_revision,
                 bundle_signature=bundle_signature,
@@ -1132,6 +1166,158 @@ class Bridge:
                     else []
                 ),
             ).to_payload()
+
+    # %% viewer -> questions about the running demo
+    def register_query_source(self, source: LiveQuerySource) -> None:
+        """
+        Offer the running demo's state to the viewer's queries.
+
+        :param source: What the demo declares as queryable.
+        """
+        self.query_source = source
+        logger.info("live queries answered by '%s'", source.title())
+
+    def _registered_query_source(self) -> LiveQuerySource:
+        """
+        The registered query source.
+
+        :raises NoQuerySourceRegistered: When no demo offered one.
+        """
+        if self.query_source is None:
+            raise NoQuerySourceRegistered()
+        return self.query_source
+
+    def query_title(self) -> str:
+        """
+        Short name of what queries are answered from.
+
+        :raises NoQuerySourceRegistered: When no demo offered one.
+        """
+        return self._registered_query_source().title()
+
+    def query_presets(self) -> List[Preset]:
+        """
+        The ready-made queries the panel offers as buttons, each with its question read
+        back as English by the scope it declares.
+
+        :raises NoQuerySourceRegistered: When no demo offered one.
+        """
+        presets = self._registered_query_source().presets()
+        with self._query_lock:
+            return [
+                preset.worded(self._scope_runner(preset.scope)) for preset in presets
+            ]
+
+    def match_question(self, text: str) -> QuestionMatchResult:
+        """
+        Recognize which of the running demo's ready-made queries a natural-language
+        question is asking, if any.
+
+        The questions the panel shows are matched against their English wording as well
+        as their label; the ones it does not show are matched against their label alone,
+        which is already the words they are asked in, and wording each of them would
+        mean building that many queries per asked question.
+
+        :param text: The question as asked, in natural language.
+        :raises NoQuerySourceRegistered: When no demo offered one.
+        """
+        unlisted = self._registered_query_source().unlisted_presets()
+        return QuestionMatcher(self.query_presets() + unlisted).match(text)
+
+    def query_scopes(self) -> List[QueryScope]:
+        """
+        The bodies of knowledge the running demo offers, in the order it offers them.
+
+        :raises NoQuerySourceRegistered: When no demo offered one.
+        """
+        return [
+            knowledge.scope for knowledge in self._registered_query_source().knowledge()
+        ]
+
+    def query_variables(
+        self, scope: QueryScope = QueryScope.CURRENT_STATE
+    ) -> List[str]:
+        """
+        Names a query of one scope may range over, for the panel to advertise.
+
+        :param scope: The body of knowledge the names belong to.
+        :raises NoQuerySourceRegistered: When no demo offered one.
+        :raises UnknownQueryScope: When the demo offers no such body of knowledge.
+        """
+        return [domain.name for domain in self._queryable_knowledge(scope).domains]
+
+    def query_vocabulary(
+        self, scope: QueryScope = QueryScope.CURRENT_STATE
+    ) -> QueryVocabulary:
+        """
+        Everything a query of one scope may name, for the query box to offer.
+
+        :param scope: The body of knowledge the names belong to.
+        :raises NoQuerySourceRegistered: When no demo offered one.
+        :raises UnknownQueryScope: When the demo offers no such body of knowledge.
+        """
+        knowledge = self._queryable_knowledge(scope)
+        return QueryVocabulary(
+            domains=knowledge.domains,
+            extra_names=knowledge.extra_names,
+            class_index=WorkspaceClassIndex.of_repository(),
+        )
+
+    def _queryable_knowledge(self, scope: QueryScope) -> QueryableKnowledge:
+        """
+        What answers questions of one scope.
+
+        :param scope: The body of knowledge being asked.
+        :raises NoQuerySourceRegistered: When no demo offered one.
+        :raises UnknownQueryScope: When the demo offers no such body of knowledge.
+        """
+        for knowledge in self._registered_query_source().knowledge():
+            if knowledge.scope is scope:
+                return knowledge
+        raise UnknownQueryScope(name=scope.value)
+
+    def highlightable_ids(self) -> FrozenSet[str]:
+        """
+        Ids the viewer can light up: every published object, by key and by display id.
+
+        An answer value naming one of these glows in the scene, whatever the query
+        asked for (see :attr:`~cramera.knowledge.query_runner.RowRenderer.highlightable_ids`).
+        """
+        keys = self.object_keys()
+        return frozenset(keys) | frozenset(Path(key).stem for key in keys)
+
+    def run_query(
+        self, code: str, scope: QueryScope = QueryScope.CURRENT_STATE
+    ) -> RenderResult:
+        """
+        Answer one EQL query about the running demo.
+
+        :param code: The EQL query source.
+        :param scope: Which of the demo's bodies of knowledge to ask.
+        :raises NoQuerySourceRegistered: When no demo offered one.
+        :raises UnknownQueryScope: When the demo offers no such body of knowledge.
+        """
+        with self._query_lock:
+            return self._scope_runner(scope).run(code)
+
+    def _scope_runner(self, scope: QueryScope) -> EqlQueryRunner:
+        """
+        The runner answering questions of one scope, over the demo's current state.
+
+        Krrood's SymbolGraph singleton is not threadsafe, so callers hold
+        :attr:`_query_lock` around whatever they do with the runner.
+
+        :param scope: The body of knowledge being asked.
+        :raises NoQuerySourceRegistered: When no demo offered one.
+        :raises UnknownQueryScope: When the demo offers no such body of knowledge.
+        """
+        knowledge = self._queryable_knowledge(scope)
+        return EqlQueryRunner(
+            domains=knowledge.domains,
+            extra_names=knowledge.extra_names,
+            evaluation=knowledge.evaluation,
+            highlightable_ids=self.highlightable_ids(),
+        )
 
     # %% viewer -> world
     def queue_move(self, request: MoveRequest) -> None:

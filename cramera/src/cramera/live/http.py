@@ -50,9 +50,14 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from dataclasses import asdict
+
 from typing_extensions import Any, ClassVar, Dict, Optional, Tuple, Type
 
+from cramera.knowledge.query_vocabulary import UnknownVocabularyName
+from cramera.knowledge.queryable_knowledge import QueryScope, UnknownQueryScope
 from cramera.live.bridge import Bridge, MalformedMoveRequest, MoveRequest
+from cramera.live.query import NoQuerySourceRegistered
 from cramera.live.frame_range import FrameRange, InvalidFrameRange
 from cramera.live.live_bundle import build_live_scene
 from cramera.live.recording import Recording, RecordingState
@@ -134,12 +139,81 @@ class BridgeRequestHandler(BaseHTTPRequestHandler):
             return self._send_json({"scene": build_live_scene(self.bridge)})
         if self.path.startswith("/markers"):
             return self._send_json(self.bridge.get_markers())
+        if self.path.startswith("/presets"):
+            return self._send_query_presets()
+        if self.path.startswith("/vocabulary"):
+            return self._send_query_vocabulary()
+        if self.path.startswith("/members"):
+            return self._send_query_members()
         if self.path.startswith("/info"):
             return self._send_json(self.bridge.status())
         if self.path.startswith("/recording"):
             return self._send_json(self._recording_status())
         self.send_response(404)
         self.end_headers()
+
+    def _send_query_presets(self) -> None:
+        """
+        Serve the running demo's ready-made queries, or say why there are none.
+        """
+        try:
+            payload = {
+                "ok": True,
+                "title": self.bridge.query_title(),
+                "presets": [asdict(preset) for preset in self.bridge.query_presets()],
+                "scopes": [
+                    {
+                        "name": scope.value,
+                        "label": scope.label,
+                        "variables": self.bridge.query_variables(scope),
+                    }
+                    for scope in self.bridge.query_scopes()
+                ],
+                "variables": self.bridge.query_variables(),
+            }
+        except NoQuerySourceRegistered as error:
+            payload = {"ok": False, "error": str(error), "presets": []}
+        self._send_json(payload)
+
+    def _send_query_vocabulary(self) -> None:
+        """
+        Serve every name a query of the asked-for scope may use.
+        """
+        try:
+            payload = self.bridge.query_vocabulary(self._requested_scope()).to_payload()
+        except (
+            NoQuerySourceRegistered,
+            UnknownQueryScope,
+        ) as error:
+            payload = {"ok": False, "error": str(error), "entries": []}
+        self._send_json(payload)
+
+    def _send_query_members(self) -> None:
+        """
+        Serve the members that follow one name's dot.
+        """
+        name = self._query_value("name") or ""
+        try:
+            payload = self.bridge.query_vocabulary(
+                self._requested_scope()
+            ).members_payload(name)
+        except (
+            NoQuerySourceRegistered,
+            UnknownQueryScope,
+            UnknownVocabularyName,
+        ) as error:
+            payload = {"ok": False, "error": str(error), "members": []}
+        self._send_json(payload)
+
+    def _requested_scope(self) -> QueryScope:
+        """
+        The body of knowledge the request asks about, the current state by default.
+
+        :raises UnknownQueryScope: When the request names no such body of knowledge.
+        """
+        return QueryScope.of_name(
+            self._query_value("scope") or QueryScope.CURRENT_STATE.value
+        )
 
     def _recording_status(self) -> Dict[str, Any]:
         """
@@ -202,6 +276,10 @@ class BridgeRequestHandler(BaseHTTPRequestHandler):
         Entry point :class:`~http.server.BaseHTTPRequestHandler` dispatches a ``POST``
         request to, found by name as ``"do_" + self.command``.
         """
+        if self.path.startswith("/eql"):
+            return self.answer_requested_query()
+        if self.path.startswith("/question"):
+            return self.answer_asked_question()
         if self.path.startswith("/marker_topics"):
             return self.set_marker_topic()
         if self.path == "/recording/stop":
@@ -211,6 +289,65 @@ class BridgeRequestHandler(BaseHTTPRequestHandler):
         if self.path == "/recording/save":
             return self._save_recording()
         self.queue_requested_move()
+
+    def _posted_payload(self) -> Optional[Dict[str, Any]]:
+        """
+        The request's JSON body as an object, or None when it is not one.
+        """
+        length = int(self.headers.get("Content-Length") or 0)
+        try:
+            payload = json.loads(self.rfile.read(length) or b"{}")
+        except json.JSONDecodeError:
+            return None
+        return payload if isinstance(payload, dict) else None
+
+    def answer_requested_query(self) -> None:
+        """
+        Answer one EQL query about the running demo.
+
+        A query is arbitrary user input, so every way it can go wrong is reported as an
+        answer the panel can render rather than as a dead request.
+        """
+        payload = self._posted_payload()
+        if payload is None:
+            return self._send_json(
+                {"ok": False, "error": "body must be a JSON object"}, code=400
+            )
+        code = (payload.get("code") or "").strip()
+        if not code:
+            return self._send_json({"ok": False, "error": "empty query"})
+        try:
+            scope = QueryScope.of_name(
+                payload.get("scope") or QueryScope.CURRENT_STATE.value
+            )
+        except UnknownQueryScope as error:
+            return self._send_json({"ok": False, "error": str(error)}, code=400)
+        try:
+            return self._send_json(self.bridge.run_query(code, scope).to_payload())
+        except (NoQuerySourceRegistered, UnknownQueryScope) as error:
+            return self._send_json({"ok": False, "error": str(error)})
+        except Exception as error:
+            # a SyntaxError from the query is named by its own type, like any other
+            return self._send_json(
+                {"ok": False, "error": "%s: %s" % (type(error).__name__, error)}
+            )
+
+    def answer_asked_question(self) -> None:
+        """
+        Match a natural-language question to the running demo's ready-made queries.
+        """
+        payload = self._posted_payload()
+        if payload is None:
+            return self._send_json(
+                {"ok": False, "error": "body must be a JSON object"}, code=400
+            )
+        text = (payload.get("text") or "").strip()
+        if not text:
+            return self._send_json({"ok": False, "error": "empty question"})
+        try:
+            return self._send_json(self.bridge.match_question(text).to_payload())
+        except NoQuerySourceRegistered as error:
+            return self._send_json({"ok": False, "error": str(error)})
 
     def _stop_recording(self) -> None:
         """

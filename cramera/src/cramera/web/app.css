@@ -35,11 +35,16 @@ body{
 
 /* %% split */
 .split{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px;min-height:0}
+/* a slot the layout mounts nothing into takes no room: the ?replay= popup shows the
+   scene alone and it gets the whole width */
+.split:has(>.slot:empty){grid-template-columns:1fr}
+.split>.slot:empty{display:none}
 /* panel slots: config.js mounts panels into these; several ids stack vertically */
 .slot{display:flex;flex-direction:column;gap:16px;min-height:0;min-width:0}
 .slot>.panel{flex:1;min-height:0}
 .slot>.panel-eql{flex:0 1 auto;min-height:150px}
-.slot>.panel-graph{flex:1 1 0}
+/* the tab group holding the graph takes the share the graph used to take on its own */
+.slot>.panel-tabs{flex:1 1 0}
 .panel-error{margin:auto;color:var(--danger);font-size:13px;padding:20px;text-align:center}
 .panel{
   background:linear-gradient(180deg,var(--panel),var(--panel2));
@@ -95,6 +100,13 @@ body{
 .live-indicator.on{display:inline-flex}
 @keyframes live-pulse{0%,100%{opacity:1}50%{opacity:.55}}
 @media (prefers-reduced-motion:reduce){.live-indicator{animation:none}}
+
+/* blue REPLAY badge — the popup playing a recorded clip instead of the live stream */
+.live-indicator.replay{
+  background:rgba(53,167,255,.94);border-color:#8fdcff;
+  box-shadow:0 0 0 1px rgba(0,0,0,.35),0 10px 26px rgba(53,167,255,.45);
+  animation:none;font-size:15px;letter-spacing:1.2px
+}
 
 .step-caption{
   position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:4;
@@ -177,28 +189,100 @@ body{
 /* %% query box */
 .knowledge-status{font-size:12px;color:var(--faint)}
 .knowledge-status.ready{color:var(--accent)}
-.query-box{padding:14px 16px;border-bottom:1px solid var(--line);background:var(--panel2)}
-.query-row{display:flex;gap:8px}
-#query-input{
-  flex:1;background:var(--bg);border:1px solid var(--line2);border-radius:4px;
-  color:var(--ink);font-family:var(--mono);font-size:13px;padding:11px 13px;outline:none;
-  resize:vertical;min-height:44px;line-height:1.45
+/* position:relative so the suggestion menu hangs below the box it belongs to */
+.query-box{
+  padding:14px 16px;border-bottom:1px solid var(--line);background:var(--panel2);
+  position:relative
 }
-#query-input:focus{border-color:var(--accent)}
+/* the text bar: the query input with its buttons sitting inside it, on the right */
+.query-bar{
+  display:flex;align-items:stretch;gap:6px;background:var(--bg);
+  border:1px solid var(--line2);border-radius:4px;padding:4px
+}
+.query-bar:focus-within{border-color:var(--accent)}
+#query-input{
+  flex:1;background:transparent;border:0;color:var(--ink);font-family:var(--mono);
+  font-size:13px;padding:7px 9px;outline:none;resize:vertical;min-height:36px;line-height:1.45
+}
 #query-run{
   background:linear-gradient(135deg,var(--accent),var(--accent2));border:0;color:#04121a;
   font-weight:700;font-size:13px;padding:0 20px;border-radius:4px;cursor:pointer
 }
 #query-run:active{transform:translateY(1px)}
-.presets{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+/* one press records one spoken question; sits inside the bar beside Run */
+.voice-ask{
+  background:var(--bg2);border:1px solid var(--line2);border-radius:4px;color:var(--ink);
+  font-size:15px;padding:0 13px;cursor:pointer;transition:.15s
+}
+.voice-ask:hover{border-color:var(--accent)}
+.voice-ask:disabled{opacity:.4;cursor:not-allowed}
+.voice-ask.listening{border-color:#ff5470;animation:voice-listening 1.1s ease-in-out infinite}
+@keyframes voice-listening{
+  0%,100%{box-shadow:0 0 0 0 rgba(255,84,112,.55)}
+  50%{box-shadow:0 0 0 6px rgba(255,84,112,0)}
+}
+/* the asked question, big under the bar, in English; the role colours are krrood's
+   own inline spans, and its words link to their documentation or source */
+.question{
+  background:var(--bg);border:1px solid var(--line2);
+  border-left:3px solid var(--accent);border-radius:4px;color:var(--ink);
+  font-size:17px;line-height:1.55;padding:13px 15px;min-height:24px
+}
+.question .question-hint{color:var(--faint);font-size:14px;font-style:italic}
+.question a{color:inherit;text-decoration:underline dotted;text-underline-offset:3px}
+.question a:hover{color:var(--accent);text-decoration:underline solid}
+
+/* %% suggestion menu */
+/* hangs under the query box like an editor's completion popup: one row per name, the
+   kind it is, what it is, and the module a class comes from. Fixed rather than absolute,
+   and placed from the box's own rectangle, because every panel clips its overflow and a
+   menu longer than the panel would be cut off inside it. */
+.completion-menu{
+  position:fixed;z-index:60;
+  background:var(--panel);border:1px solid var(--line2);border-radius:var(--radius);
+  box-shadow:var(--shadow);overflow:auto
+}
+.completion-item{
+  display:grid;grid-template-columns:74px minmax(120px,auto) 1fr auto;gap:10px;
+  align-items:baseline;padding:5px 10px;cursor:pointer;font-size:12px
+}
+.completion-item.active{background:var(--bg2)}
+.completion-kind{
+  font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--faint)
+}
+.completion-name{font-family:var(--mono);color:var(--ink)}
+.completion-item.active .completion-name{color:var(--accent)}
+.completion-detail{
+  color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.completion-origin{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+
+/* everything the bar produces, in one scrolling region: the question read back, the
+   questions on offer and the answer. A long verbalization would otherwise push the
+   answer past the bottom of a panel that clips whatever does not fit. */
+.console-body{flex:1;min-height:0;overflow-y:auto;padding:14px 16px}
+
+.presets{margin-top:11px}
+/* the heading a body of knowledge's questions are offered under; a scene that only asks
+   about one thing gets no heading at all, so the row stands alone as it always did */
+.preset-group{
+  font-size:10.5px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--faint);margin:12px 0 6px
+}
+.preset-group:first-child{margin-top:0}
+.preset-row{display:flex;flex-wrap:wrap;gap:7px}
 .preset{
   font-size:12px;color:var(--muted);background:var(--bg2);border:1px solid var(--line2);
   padding:6px 11px;border-radius:4px;cursor:pointer;transition:.15s
 }
 .preset:hover{border-color:var(--accent);color:var(--ink)}
+/* a question about a demo that is not attached: shown, so the set of questions the
+   scene answers stays visible, but not clickable */
+.preset.unavailable{opacity:.45;cursor:not-allowed;border-style:dashed}
+.preset.unavailable:hover{border-color:var(--line2);color:var(--muted)}
 
 /* %% answer */
-.answer{padding:14px 16px;max-height:34%;overflow:auto;border-bottom:1px solid var(--line)}
+.answer{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
 .answer-empty{color:var(--faint);font-size:13px;font-style:italic}
 .answer .goal{font-family:var(--mono);font-size:12px;color:var(--accent);margin-bottom:8px;word-break:break-all}
 .answer .headline{font-size:13.5px;color:var(--ink);margin:0 0 10px;line-height:1.5}
@@ -215,17 +299,113 @@ body{
 .ansrow .body .name{font-weight:600;color:var(--ink)}
 .ansrow .body .sub{color:var(--muted);display:block;margin-top:2px}
 .ansrow .body code{font-family:var(--mono);font-size:11.5px;color:var(--accent2);background:rgba(91,140,255,.1);padding:1px 5px;border-radius:5px}
+
+/* %% answer table — a query's rows share their columns, so they are read as a table.
+   Each cell is coloured by what its value is; colouring them all alike turns an answer
+   into a wall of one colour that has to be read word by word. */
+.anstable-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg2)}
+.anstable{border-collapse:collapse;width:100%;font-size:12.5px}
+.anstable th{
+  position:sticky;top:0;z-index:1;background:var(--panel);
+  font-size:10.5px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--faint);text-align:left;padding:7px 12px;white-space:nowrap;
+  border-bottom:1px solid var(--line2)
+}
+.anstable td{padding:7px 12px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.45}
+.anstable tbody tr:last-child td{border-bottom:0}
+.anstable tbody tr:nth-child(even){background:rgba(255,255,255,.018)}
+.anstable tbody tr:hover{background:rgba(57,213,200,.06)}
+.anstable .ans-type{width:1%;white-space:nowrap;padding-right:4px}
+.anstable .ans-type .tag{display:inline-block}
+.anstable .ans-name{color:var(--ink);font-weight:600}
+.anstable .ans-number{color:var(--warn);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.anstable .ans-true{color:var(--accent);font-weight:600}
+.anstable .ans-false{color:var(--danger);font-weight:600}
+.anstable .ans-empty{color:var(--faint)}
+.anstable .ans-text{color:var(--muted)}
+.anstable .ans-replay{width:1%;white-space:nowrap;text-align:right}
+.replay-btn{
+  background:rgba(53,167,255,.14);border:1px solid #35a7ff;color:#8fdcff;
+  font:inherit;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:4px;
+  cursor:pointer;transition:.15s;white-space:nowrap
+}
+.replay-btn:hover{background:rgba(53,167,255,.28)}
 .nores{color:var(--warn);font-size:13px}
 .qerr{color:var(--danger);font-family:var(--mono);font-size:12px;white-space:pre-wrap}
 .ansub{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:#93a4c4;margin:12px 0 6px}
 .answer .rel{font-family:var(--mono);font-size:11px;color:var(--accent2);padding:0 3px}
 .hint-txt{font-size:12px;color:var(--muted);line-height:1.5;margin:10px 0 0}
 
+/* %% panel tabs — several panels sharing one frame, one shown at a time */
+.panel-tabs{display:flex;flex-direction:column;min-height:0;min-width:0}
+.tab-bar{
+  display:flex;align-items:center;gap:2px;padding:0 4px;flex:0 0 auto;
+}
+.tab-bar button{
+  appearance:none;background:none;border:0;border-bottom:2px solid transparent;
+  color:var(--muted);font:700 11.5px/1 Inter,sans-serif;letter-spacing:.4px;
+  text-transform:uppercase;padding:8px 12px 6px;cursor:pointer;transition:.15s
+}
+.tab-bar button:hover{color:var(--ink)}
+.tab-bar button.active{color:var(--accent);border-bottom-color:var(--accent)}
+/* a tab body is the frame the panel inside it fills, so the panel keeps its own chrome */
+.tab-body{flex:1 1 0;min-height:0;display:flex}
+.tab-body>.panel{flex:1;min-height:0;min-width:0}
+
+/* %% event timeline */
+.timeline-wrap{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
+.timeline-head{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:8px 14px;border-bottom:1px solid var(--line2);flex:0 0 auto;
+  font:600 11.5px/1 Inter,sans-serif;letter-spacing:.3px;color:var(--muted)
+}
+.timeline-title{color:var(--ink)}
+.timeline-body{position:relative;flex:1;min-height:0}
+.timeline-plot{position:absolute;inset:0;overflow:hidden}
+/* one lane per kind of event, labelled at the left edge over its own rule */
+.timeline-lane{
+  position:absolute;z-index:1;left:0;right:0;transform:translateY(-50%);
+  padding-left:10px;border-top:1px dashed var(--line2);
+  font:600 10.5px/18px Inter,sans-serif;letter-spacing:.3px;color:var(--muted);
+  white-space:nowrap;pointer-events:none
+}
+.timeline-mark{
+  position:absolute;z-index:2;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;
+  border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--bg2);
+  cursor:default
+}
+.timeline-mark:hover{background:var(--warn);box-shadow:0 0 0 3px var(--bg2)}
+/* what a pointed-at mark says: the kind of event, what it happened to, and when */
+.timeline-summary{
+  position:absolute;z-index:9;pointer-events:none;max-width:60%;
+  --summary-across:-50%;--summary-down:-100%;
+  transform:translate(var(--summary-across),var(--summary-down));
+  padding:6px 9px;border:1px solid var(--line2);border-radius:6px;
+  background:var(--bg2);box-shadow:0 6px 18px rgba(0,0,0,.35);
+  font:500 11px/1.45 Inter,sans-serif;white-space:normal
+}
+.timeline-summary.from-left{--summary-across:0}
+.timeline-summary.from-right{--summary-across:-100%}
+.timeline-summary.above{margin-top:-11px}
+.timeline-summary.below{--summary-down:0;margin-top:11px}
+.timeline-summary-kind{font-weight:700;color:var(--ink)}
+.timeline-summary-objects{color:var(--ink);opacity:.85}
+.timeline-summary-time{color:var(--muted);font-size:10.5px;letter-spacing:.2px}
+.timeline-now{
+  position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;
+  background:var(--warn);opacity:.85;pointer-events:none
+}
+.timeline-empty{
+  position:absolute;inset:0;display:grid;place-items:center;padding:0 16%;
+  text-align:center;color:var(--muted);font-size:12.5px;pointer-events:none
+}
+
 /* %% graph */
 .graph-wrap{position:relative;flex:1;min-height:0}
-#graph{position:absolute;inset:34px 0 0}
+/* a class rather than an id: every panel drawing a graph has a canvas of its own */
+.graph-canvas{position:absolute;inset:34px 0 0}
 
-/* view tabs: knowledge graph / kinematics / plan / motion statechart */
+/* view tabs: knowledge graph / kinematics / motion statechart */
 .graph-tabs{
   position:absolute;left:0;right:0;top:0;height:34px;z-index:7;display:flex;align-items:center;gap:2px;
   padding:0 10px;background:var(--bg2);border-bottom:1px solid var(--line2)
@@ -256,6 +436,25 @@ body{
 .legend .dot{width:11px;height:11px;border-radius:50%}
 /* execution status shows up as a node ring, so the legend uses rings too */
 .legend .ring{width:18px;height:18px;border-radius:50%;border:6px solid;border-style:solid;box-sizing:border-box}
+
+/* %% plan graph — the head line above the tree names the step being executed */
+.plan-head{
+  position:absolute;left:0;right:0;top:0;height:34px;z-index:7;display:flex;align-items:center;gap:10px;
+  padding:0 10px;background:var(--bg2);border-bottom:1px solid var(--line2)
+}
+.plan-executing{
+  font:600 11.5px/1 Inter,sans-serif;letter-spacing:.3px;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+.plan-follow{
+  margin-left:auto;display:flex;align-items:center;gap:5px;flex:none;
+  font:600 10.5px/1 Inter,sans-serif;letter-spacing:.3px;color:var(--muted);cursor:pointer
+}
+.plan-head .gt-live{
+  display:none;font:600 10.5px/1 Inter,sans-serif;letter-spacing:.4px;
+  color:#0b1220;background:var(--warn);border-radius:3px;padding:4px 7px
+}
+.plan-head .gt-live.on{display:inline-block}
 
 /* %% resizable split — core/split-resize.js inserts these between two panes */
 .pane-divider{position:relative;z-index:6;border-radius:4px;transition:background .15s}
@@ -310,7 +509,7 @@ body{
   position:fixed;inset:0;z-index:1000;background:var(--bg);
   border:none;border-radius:0;padding:0;margin:0;
 }
-.graph-wrap.graph-fullscreen #graph{inset:34px 0 0}
+.graph-wrap.graph-fullscreen .graph-canvas{inset:34px 0 0}
 /* keep the page from scrolling behind the overlay */
 body.graph-full-open{overflow:hidden}
 
@@ -337,6 +536,13 @@ body.graph-full-open{overflow:hidden}
 .scene-select:hover,.scene-select:focus{border-color:var(--accent);outline:none}
 
 /* live mode button */
+/* driving the running demo: pause / restart / loop, beside the Live button */
+.run-controls{display:inline-flex;gap:6px}
+.play-btn.run{color:#ffd18a;border-color:#ffb648;background:rgba(255,182,72,.12)}
+.play-btn.run:hover{background:rgba(255,182,72,.24)}
+.play-btn.run.on{background:linear-gradient(135deg,#ffb648,#ff8f48);color:#1a1005;border-color:transparent}
+.play-btn.run.pending{opacity:.6;font-style:italic}
+.run-status{font-family:var(--mono);font-size:11px;color:var(--muted);align-self:center}
 .play-btn.live{color:#ff8091;border-color:#ff6b8b;background:rgba(255,107,139,.12)}
 .play-btn.live:hover{background:rgba(255,107,139,.22)}
 .play-btn.live.on{background:linear-gradient(135deg,#ff6b8b,#ff9d6b);color:#1a0509;border-color:transparent;animation:livePulse 1.6s ease-in-out infinite}
