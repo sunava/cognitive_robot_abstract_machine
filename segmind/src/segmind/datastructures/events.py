@@ -8,7 +8,11 @@ from functools import cached_property
 from geometry_msgs.msg import PoseStamped
 from typing_extensions import Optional, List
 
-from segmind.datastructures.object_tracker import ObjectEventTracker, ObjectTrackerFactory
+from krrood.symbol_graph.symbol_graph import Symbol
+from segmind.datastructures.object_tracker import (
+    ObjectEventTracker,
+    ObjectTrackerFactory,
+)
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Aperture
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world_description.geometry import BoundingBox
@@ -16,7 +20,13 @@ from semantic_digital_twin.world_description.world_entity import Body
 
 
 @dataclass
-class DetectionEvent(ABC):
+class DetectionEvent(Symbol, ABC):
+    """
+    Base class for events detected while segmenting an episode.
+
+    As a :class:`Symbol`, every instance is tracked in the SymbolGraph.
+    """
+
     timestamp: datetime = field(default_factory=datetime.now)
     """
     The time at which the event occurred, defaults to current time.
@@ -58,7 +68,11 @@ class EventWithTrackedObjects(DetectionEvent, ABC):
         """
         :return: the primary object, plus the secondary object when present.
         """
-        return [self.tracked_object] if self.with_object is None else [self.tracked_object, self.with_object]
+        return (
+            [self.tracked_object]
+            if self.with_object is None
+            else [self.tracked_object, self.with_object]
+        )
 
     @cached_property
     def object_tracker(self) -> ObjectEventTracker:
@@ -72,7 +86,11 @@ class EventWithTrackedObjects(DetectionEvent, ABC):
         """
         :return: the event tracker for :attr:`with_object`, or ``None`` if absent.
         """
-        return ObjectTrackerFactory.get_tracker(self.with_object) if self.with_object is not None else None
+        return (
+            ObjectTrackerFactory.get_tracker(self.with_object)
+            if self.with_object is not None
+            else None
+        )
 
     def update_object_trackers_with_event(self, factory: ObjectTrackerFactory) -> None:
         """
@@ -88,9 +106,11 @@ class EventWithTrackedObjects(DetectionEvent, ABC):
         return f"{self.__class__.__name__}: {names} - {self.timestamp}"
 
     def __eq__(self, other) -> bool:
-        return (other.__class__ == self.__class__
-                and self.tracked_objects == other.tracked_objects
-                and self.timestamp == other.timestamp)
+        return (
+            other.__class__ == self.__class__
+            and self.tracked_objects == other.tracked_objects
+            and self.timestamp == other.timestamp
+        )
 
     def __hash__(self) -> int:
         return hash((self.__class__, tuple(self.tracked_objects), self.timestamp))
@@ -117,6 +137,7 @@ class MotionEvent(EventWithTrackedObjects, ABC):
     Used to represent an event that involves an object that was stationary and then moved or
     vice versa.
     """
+
     start_pose: Pose = field(default_factory=Pose)
     """
     The pose of the object at the start of the event.
@@ -127,13 +148,12 @@ class MotionEvent(EventWithTrackedObjects, ABC):
     """
 
 
-
-
 @dataclass(init=False, unsafe_hash=True)
 class TranslationEvent(MotionEvent):
     """
     Represents an event where an object moves from one location to another.
     """
+
     ...
 
 
@@ -142,6 +162,7 @@ class RotationEvent(MotionEvent):
     """
     Represents an event where an object rotates around a center point.
     """
+
     ...
 
 
@@ -150,6 +171,7 @@ class StopTranslationEvent(MotionEvent):
     """
     Represents an event where an object stops moving.
     """
+
     ...
 
 
@@ -158,6 +180,7 @@ class StopRotationEvent(MotionEvent):
     """
     Represents an event where an object stops rotating.
     """
+
     ...
 
 
@@ -200,14 +223,14 @@ class AbstractContactEvent(EventWithTrackedObjects, ABC):
     def __post_init__(self):
         self.bounding_box = BoundingBox.from_mesh(
             self.tracked_object.collision.combined_mesh,
-            origin=self.tracked_object.global_pose.to_homogeneous_matrix()
+            origin=self.tracked_object.global_pose.to_homogeneous_matrix(),
         )
         self.pose = self.tracked_object.global_pose
 
         if self.with_object is not None:
             self.with_object_bounding_box = BoundingBox.from_mesh(
                 self.with_object.collision.combined_mesh,
-                origin=self.with_object.global_pose.to_homogeneous_matrix()
+                origin=self.with_object.global_pose.to_homogeneous_matrix(),
             )
             self.with_object_pose = self.with_object.global_pose
 
@@ -217,9 +240,8 @@ class ContactEvent(AbstractContactEvent):
     """
     Represents an event where two objects are in contact with each other.
     """
+
     ...
-
-
 
 
 @dataclass(init=False, unsafe_hash=True)
@@ -227,6 +249,7 @@ class LossOfContactEvent(AbstractContactEvent):
     """
     Represents an event where two objects are no longer in contact with each other.
     """
+
     ...
 
 
@@ -235,6 +258,7 @@ class PickUpEvent(EventWithTrackedObjects):
     """
     Represents an event where an object is picked up by another object.
     """
+
     ...
 
 
@@ -243,8 +267,8 @@ class PlacingEvent(EventWithTrackedObjects):
     """
     Represents an event where an object is placed on another object.
     """
-    ...
 
+    ...
 
 
 @dataclass(unsafe_hash=True)
@@ -262,22 +286,26 @@ class InsertionEvent(EventWithTrackedObjects):
     def through_hole(self) -> Aperture:
         return self.with_object.get_semantic_annotations_by_type(type_=Aperture)[0]
 
-
     def __str__(self) -> str:
-        with_object_name = " - " + " - ".join([str(obj.name) for obj in self.inserted_into_objects])
+        with_object_name = " - " + " - ".join(
+            [str(obj.name) for obj in self.inserted_into_objects]
+        )
         return f"{self.__class__.__name__}: {self.tracked_object.name}{with_object_name} - {self.timestamp}"
+
 
 @dataclass(unsafe_hash=True)
 class ContainmentEvent(EventWithTrackedObjects):
     """
     Represents an event where an object is contained in another object.
     """
+
     ...
+
 
 @dataclass(unsafe_hash=True)
 class LossOfContainmentEvent(EventWithTrackedObjects):
     """
     Represents an event where an object is no longer contained in another object.
     """
-    ...
 
+    ...
