@@ -329,6 +329,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             name = save_recording_bundle(
                 str(body.get("name") or ""),
                 SceneDestination(body.get("destination", SceneDestination.LOCAL)),
+                robot=body.get("robot"),
+                environment=body.get("environment"),
+                task=body.get("task"),
             )
         except InvalidSceneName as error:
             return self._send_json({"ok": False, "error": str(error)}, 400)

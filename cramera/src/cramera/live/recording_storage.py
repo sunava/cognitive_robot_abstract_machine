@@ -17,7 +17,10 @@ import shutil
 from enum import StrEnum
 from pathlib import Path
 
+from typing_extensions import Optional
+
 from cramera import paths
+from cramera.knowledge.detected_events import SceneField
 from cramera.generated_json import write_json_atomically
 from cramera.live.frame_range import FrameRange, InvalidFrameRange
 from cramera.live.recording_segments import clip_segment_payloads
@@ -88,7 +91,11 @@ class SceneDestination(StrEnum):
 
 
 def save_recording_bundle(
-    name: str, destination: SceneDestination = SceneDestination.LOCAL
+    name: str,
+    destination: SceneDestination = SceneDestination.LOCAL,
+    robot: Optional[str] = None,
+    environment: Optional[str] = None,
+    task: Optional[str] = None,
 ) -> str:
     """
     Promote the finalized ``__recording__`` bundle to a permanent, saved scene.
@@ -98,6 +105,10 @@ def save_recording_bundle(
 
     :param name: Name to save the recording under.
     :param destination: Which scenes root to save it into.
+    :param robot: What the person saving it calls the robot, or None to leave the
+        recording's own answer standing.
+    :param environment: What they call the environment, likewise.
+    :param task: What the run was doing, which only they can say.
     :raises cramera.onboard.scene_index.InvalidSceneName: If ``name`` is unsafe or
         reserved.
     :raises NoSavedRecording: If no finalized ``__recording__`` bundle exists on disk.
@@ -125,6 +136,17 @@ def save_recording_bundle(
     scene_path = scene_directory / "scene.json"
     scene = json.loads(scene_path.read_text(encoding="utf-8"))
     scene["name"] = name
+    scene.update(
+        {
+            field.value: given
+            for field, given in [
+                (SceneField.ROBOT_NAME, robot),
+                (SceneField.ENVIRONMENT_NAME, environment),
+                (SceneField.TASK, task),
+            ]
+            if given
+        }
+    )
     write_json_atomically(scene_path, scene, indent=1)
     write_scene_index(root / "index.json", name)
     return name

@@ -43,11 +43,17 @@ class TrajectoryField(StrEnum):
 
 class SceneField(StrEnum):
     """
-    Key a recorded scene bundle carries its detections under.
+    Key a recorded scene bundle carries what it is, and what it saw, under.
+
+    The robot and the environment are derived from what the run loaded; the two name
+    fields hold what a person called them instead, which a thin derivation makes worth
+    saying -- every world built in code calls its environment ``environment``.
     """
 
     DETECTED_EVENTS = "detectedEvents"
     TASK = "task"
+    ROBOT_NAME = "robotName"
+    ENVIRONMENT_NAME = "environmentName"
 
 
 class EventField(StrEnum):

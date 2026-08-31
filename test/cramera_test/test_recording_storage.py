@@ -13,6 +13,9 @@ from cramera import paths
 from cramera.live.bridge import WorldStateSnapshot
 from cramera.live.recording import FrameRange, InvalidFrameRange, Recording
 from cramera.live.recording_bundle import finalize_recording
+from cramera.knowledge.detected_events import SceneField
+from cramera.paths import RECORDING_SCENE_NAME
+from typing_extensions import Any, Dict
 from cramera.live.recording_storage import (
     NoSavedRecording,
     SceneDestination,
@@ -284,3 +287,54 @@ class TestSharingARecording:
 
         with pytest.raises(SharedScenesUnavailable):
             save_recording_bundle("my_run", SceneDestination.SHARED)
+
+
+class TestNamingWhatWasRecorded:
+    """
+    A person saving a recording knows more about it than the run does: that the world
+    built in code is a warehouse, and what the robot was doing in it.
+
+    Whatever they say is written into the saved bundle, and what they leave out stays as
+    derived.
+    """
+
+    def saved(self, tmp_path, monkeypatch, **given: str) -> Dict[str, Any]:
+        """
+        A finalized recording, saved under a name, read back.
+
+        :param tmp_path: The scenes root to save into.
+        :param monkeypatch: The active monkeypatch fixture.
+        :param given: What the person saving it called it.
+        """
+        monkeypatch.setenv("CRAMERA_DATA", str(tmp_path))
+        recording = tmp_path / "scenes" / RECORDING_SCENE_NAME
+        recording.mkdir(parents=True)
+        (recording / "scene.json").write_text(
+            json.dumps({"robot": {"name": "unitreeg1"}, "models": []})
+        )
+
+        save_recording_bundle("run", **given)
+
+        return json.loads(
+            (tmp_path / "scenes" / "run" / "scene.json").read_text(encoding="utf-8")
+        )
+
+    def test_the_task_is_written_into_the_bundle(self, tmp_path, monkeypatch):
+        scene = self.saved(tmp_path, monkeypatch, task="fetch a wrench")
+
+        assert scene[SceneField.TASK] == "fetch a wrench"
+
+    def test_the_names_are_written_into_the_bundle(self, tmp_path, monkeypatch):
+        scene = self.saved(
+            tmp_path, monkeypatch, robot="Unitree G1", environment="warehouse"
+        )
+
+        assert scene[SceneField.ROBOT_NAME] == "Unitree G1"
+        assert scene[SceneField.ENVIRONMENT_NAME] == "warehouse"
+
+    def test_what_nobody_named_is_left_to_the_recording(self, tmp_path, monkeypatch):
+        scene = self.saved(tmp_path, monkeypatch)
+
+        assert SceneField.TASK not in scene
+        assert SceneField.ROBOT_NAME not in scene
+        assert SceneField.ENVIRONMENT_NAME not in scene

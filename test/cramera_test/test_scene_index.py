@@ -300,3 +300,66 @@ class TestTheTaskARecordingShows:
         [entry] = SceneIndexEntry.of_directory(tmp_path)
 
         assert entry.describes() == "pr2 · apartment"
+
+
+class TestWhatAPersonCalledTheRecording:
+    """
+    What a bundle is gets derived from what the run loaded: the robot's own name, and
+    the models that are not the robot.
+
+    For a world built in code that derivation is
+    thin -- every such world's environment is called ``environment`` -- so a person
+    saving a recording can say what it really is, and what they say wins.
+    """
+
+    def bundle(self, directory: Path, **given: str) -> None:
+        """
+        A scene bundle on disk, with whatever a person named written into it.
+
+        :param directory: The scenes directory to write into.
+        :param given: The names a person gave, if any.
+        """
+        bundle = directory / "run"
+        bundle.mkdir(parents=True)
+        scene = {
+            "robot": {"name": "unitreeg1"},
+            "models": [
+                {"name": "environment", "robot": False},
+                {"name": "unitreeg1", "robot": True},
+            ],
+        }
+        scene.update(given)
+        (bundle / "scene.json").write_text(json.dumps(scene))
+
+    def test_without_names_it_states_what_it_derived(self, tmp_path):
+        self.bundle(tmp_path)
+
+        [entry] = SceneIndexEntry.of_directory(tmp_path)
+
+        assert entry.describes() == "unitreeg1 · environment"
+
+    def test_a_named_environment_replaces_the_derived_one(self, tmp_path):
+        self.bundle(tmp_path, environmentName="warehouse")
+
+        [entry] = SceneIndexEntry.of_directory(tmp_path)
+
+        assert entry.environment == "warehouse"
+
+    def test_a_named_robot_replaces_the_derived_one(self, tmp_path):
+        self.bundle(tmp_path, robotName="Unitree G1")
+
+        [entry] = SceneIndexEntry.of_directory(tmp_path)
+
+        assert entry.robot == "Unitree G1"
+
+    def test_all_three_together_are_what_it_states(self, tmp_path):
+        self.bundle(
+            tmp_path,
+            robotName="Unitree G1",
+            environmentName="warehouse",
+            task="fetch a wrench",
+        )
+
+        [entry] = SceneIndexEntry.of_directory(tmp_path)
+
+        assert entry.describes() == "Unitree G1 · warehouse · fetch a wrench"

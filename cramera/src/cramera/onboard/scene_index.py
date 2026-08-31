@@ -117,13 +117,20 @@ class SceneIndexEntry:
         """
         What one bundle is, read from its ``scene.json``.
 
+        What a person called the robot and the environment when saving wins over what
+        the run itself says they are: the derivation knows the robot's model name and
+        that a world built in code has one environment, which is thinner than what a
+        person watching the run knows.
+
         :param name: Name of the bundle.
         :param scene: The bundle's ``scene.json`` content.
         """
         return cls(
             name=name,
-            robot=(scene.get("robot") or {}).get("name", ""),
-            environment=cls._environment_of(scene.get("models") or []),
+            robot=scene.get(SceneField.ROBOT_NAME.value)
+            or (scene.get("robot") or {}).get("name", ""),
+            environment=scene.get(SceneField.ENVIRONMENT_NAME.value)
+            or cls._environment_of(scene.get("models") or []),
             task=scene.get(SceneField.TASK.value),
         )
 

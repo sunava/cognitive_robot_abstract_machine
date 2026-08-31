@@ -63,6 +63,9 @@ Panels.define('robot-scene', function (root, bus) {
     '  </span></div>' +
     '  <div id="record-save-panel" class="record-save-panel" style="display:none">' +
     '    <label class="record-save-field">Name<input type="text" id="record-name" class="record-name" placeholder="my_episode" maxlength="64"></label>' +
+    '    <label class="record-save-field">Robot<input type="text" id="record-robot" class="record-name" placeholder="as recorded" maxlength="64"></label>' +
+    '    <label class="record-save-field">Environment<input type="text" id="record-environment" class="record-name" placeholder="as recorded" maxlength="64"></label>' +
+    '    <label class="record-save-field">Task<input type="text" id="record-task" class="record-name" placeholder="what the robot did" maxlength="120"></label>' +
     '    <label class="record-save-field">From<input type="range" id="record-trim-first" class="record-trim" min="0" max="0" step="1" value="0"></label>' +
     '    <label class="record-save-field">To<input type="range" id="record-trim-last" class="record-trim" min="0" max="0" step="1" value="0"></label>' +
     '    <span id="record-trim-summary" class="record-trim-summary"></span>' +
@@ -1970,6 +1973,11 @@ Panels.define('robot-scene', function (root, bus) {
   const recordBtn = $('record-btn');
   const recordSavePanel = $('record-save-panel');
   const recordName = $('record-name');
+  // what the recording itself cannot say: a world built in code calls its environment
+  // "environment", and nothing in a run states what it was for
+  const recordRobot = $('record-robot');
+  const recordEnvironment = $('record-environment');
+  const recordTask = $('record-task');
   const recordTrimFirst = $('record-trim-first');
   const recordTrimLast = $('record-trim-last');
   const recordTrimSummary = $('record-trim-summary');
@@ -2141,6 +2149,12 @@ Panels.define('robot-scene', function (root, bus) {
     }
     const trim = currentTrim();
     const body = { name: name, destination: destination };
+    // left empty means "as recorded": the bundle keeps what the run itself says
+    [['robot', recordRobot], ['environment', recordEnvironment], ['task', recordTask]]
+      .forEach(function (field) {
+        const given = field[1].value.trim();
+        if (given) body[field[0]] = given;
+      });
     // Only ask for a trim that removes something: an untouched range would rewrite the
     // bundle for nothing.
     if (!RecordingMode.isWholeTrim(trim, recordedFrameCount)) {

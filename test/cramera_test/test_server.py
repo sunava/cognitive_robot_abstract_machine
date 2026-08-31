@@ -11,6 +11,8 @@ import urllib.request
 import pytest
 
 from cramera import paths
+from cramera.knowledge.detected_events import SceneField
+from cramera.paths import RECORDING_SCENE_NAME
 from cramera.live.recording_storage import SceneDestination
 
 from .conftest import reset_knowledge_base_cache
@@ -587,3 +589,63 @@ class TestMainOpensTheViewerPage:
 
     def test_no_browser_opts_out(self, monkeypatch):
         assert self.run_main(monkeypatch, ["--no-browser", "8123"]) == []
+
+
+# %% naming a saved recording
+
+
+class TestSavingARecordingWithItsNames:
+    """
+    A person saving a recording says what the run itself cannot: what the environment
+    really is, and what the robot was doing.
+
+    Whatever they leave out stays as recorded.
+    """
+
+    def saved_scene(self, server, tmp_path, monkeypatch, **given) -> dict:
+        """
+        A finalized recording saved through the API, read back off disk.
+
+        :param server: The running server's base URL.
+        :param tmp_path: The data directory the recording lives in.
+        :param monkeypatch: The active monkeypatch fixture.
+        :param given: What the person saving it called it.
+        """
+        recording = tmp_path / "scenes" / RECORDING_SCENE_NAME
+        recording.mkdir(parents=True, exist_ok=True)
+        (recording / "scene.json").write_text(
+            json.dumps({"robot": {"name": "unitreeg1"}, "models": []})
+        )
+
+        answer = posted_answer(
+            server + "/api/recording/save", dict(name="saved_run", **given)
+        )
+
+        assert answer["ok"], answer
+        return json.loads(
+            (tmp_path / "scenes" / "saved_run" / "scene.json").read_text()
+        )
+
+    def test_the_names_travel_into_the_saved_bundle(
+        self, server, fixture_scene, monkeypatch
+    ):
+        scene = self.saved_scene(
+            server,
+            fixture_scene,
+            monkeypatch,
+            robot="Unitree G1",
+            environment="warehouse",
+            task="fetch a wrench",
+        )
+
+        assert scene[SceneField.ROBOT_NAME] == "Unitree G1"
+        assert scene[SceneField.ENVIRONMENT_NAME] == "warehouse"
+        assert scene[SceneField.TASK] == "fetch a wrench"
+
+    def test_a_recording_saved_without_them_keeps_what_it_recorded(
+        self, server, fixture_scene, monkeypatch
+    ):
+        scene = self.saved_scene(server, fixture_scene, monkeypatch)
+
+        assert SceneField.TASK not in scene
+        assert scene["robot"]["name"] == "unitreeg1"
