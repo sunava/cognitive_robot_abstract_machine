@@ -42,6 +42,14 @@ from cramera.knowledge.detected_events import (  # noqa: E402
 )
 from cramera.live.detections import DetectedEvents  # noqa: E402
 from cramera.onboard.detection_recorder import DetectionRecorder  # noqa: E402
+from segmind.detectors.attachment_detector_nodes import (  # noqa: E402
+    AttachmentDetector,
+)
+from segmind.detectors.coarse_event_detector_nodes import (  # noqa: E402
+    PickUpDetector,
+    PlacingDetector,
+)
+from segmind.statecharts.segmind_statechart import SegmindStatechart  # noqa: E402
 from cramera.knowledge.knowledge_base import EpisodeKnowledgeBase  # noqa: E402
 from cramera.knowledge.eql_session import EqlSession  # noqa: E402
 from cramera.knowledge.presets import Preset  # noqa: E402
@@ -449,3 +457,36 @@ class TestRecordingDetections:
 
         assert contact.tracked_object == milk.name.name
         assert contact.name == "%s %s" % (milk.name.name, ContactEvent.__name__)
+
+
+# %% which detectors a recording ticks
+
+
+class TestDetectorsOfARecording:
+    """
+    A recording asks what was picked up, and the answer has to be one pick-up per grasp.
+
+    The detectors that infer one from an object's motion and whatever it stopped resting
+    on give several, so the recording watches the attachment itself instead.
+    """
+
+    def detector_types(self) -> set:
+        """
+        The type of every detector a recording ticks.
+        """
+        return {
+            type(detector) for detector in DetectionRecorder(world=World()).detectors()
+        }
+
+    def test_a_recording_recognizes_a_pick_up_from_the_attachment(self):
+        assert AttachmentDetector in self.detector_types()
+
+    def test_a_recording_does_not_also_infer_pick_ups_from_motion(self):
+        assert not {PickUpDetector, PlacingDetector} & self.detector_types()
+
+    def test_a_recording_keeps_every_other_detector_segmind_offers(self):
+        offered = {
+            type(detector) for detector in SegmindStatechart().build_statechart().nodes
+        }
+
+        assert offered - {PickUpDetector, PlacingDetector} <= self.detector_types()

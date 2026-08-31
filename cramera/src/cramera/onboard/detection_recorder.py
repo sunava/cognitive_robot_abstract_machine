@@ -12,7 +12,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from giskardpy.motion_statechart.context import MotionStatechartContext
-from segmind.detectors.base import SegmindContext
+from segmind.detectors.attachment_detector_nodes import AttachmentDetector
+from segmind.detectors.base import AbstractDetector, SegmindContext
+from segmind.detectors.coarse_event_detector_nodes import (
+    PickUpDetector,
+    PlacingDetector,
+)
 from segmind.episode_segmenter import EpisodeSegmenterExecutor
 from segmind.statecharts.segmind_statechart import SegmindStatechart
 from semantic_digital_twin.world import World
@@ -48,20 +53,36 @@ class DetectionRecorder:
     Where the detectors log what they saw.
     """
 
+    def detectors(self) -> List[AbstractDetector]:
+        """
+        The detectors a recording ticks: every one segmind offers, except that the pick-
+        up and the putting-down are read from the attachment itself.
+
+        The detectors those two replace infer a pick-up from an object's motion paired
+        with whatever it stopped resting on, which gives one per surface the object
+        happened to rest on rather than one per grasp.
+        """
+        inferred = (PickUpDetector, PlacingDetector)
+        return [
+            detector
+            for detector in SegmindStatechart().build_statechart().nodes
+            if not isinstance(detector, inferred)
+        ] + [AttachmentDetector()]
+
     def start(self) -> None:
         """
-        Compile segmind's detectors against the world, ready to be ticked.
+        Compile the detectors against the world, ready to be ticked.
 
-        Every detector segmind offers by default is compiled: what a run is worth asking
-        about afterwards is not known while it is being recorded.
+        Every detector is compiled: what a run is worth asking about afterwards is not
+        known while it is being recorded.
         """
         executor = EpisodeSegmenterExecutor(
             context=MotionStatechartContext(world=self.world)
         )
         self._context = executor.context.require_extension(SegmindContext)
-        executor.compile(SegmindStatechart().build_statechart())
+        executor.compile(SegmindStatechart().build_statechart(self.detectors()))
         self._executor = executor
-        logger.info("detecting events with segmind's default detectors")
+        logger.info("detecting events with %d detectors", len(self.detectors()))
 
     def owns_executor(self, executor: object) -> bool:
         """
