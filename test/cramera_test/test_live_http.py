@@ -145,8 +145,6 @@ class TestReadOnlyEndpoints:
             "plan": False,
             "chart": False,
             "query": False,
-            "events": False,
-            "control": None,
             "sequenceNumber": 0,
             "modelVersion": 0,
             "bundleSignature": Bridge().bundle_signature(),
@@ -445,72 +443,6 @@ class TestRecordingEndpoints:
         assert body["ok"] is False
 
 
-class TestModels:
-    def test_models_reflects_a_fresh_bridge(self, server):
-        assert get_json(server + "/models") == {"models": []}
-
-    def test_models_reports_a_remembered_source(self, server, bridge, tmp_path):
-        urdf = tmp_path / "pr2.urdf"
-        urdf.write_text('<robot name="demo">\n  <link name="base_link"/>\n</robot>\n')
-        bridge.remember_urdf_source(str(urdf))
-
-        assert get_json(server + "/models") == {
-            "models": [{"index": 0, "prefix": "", "robot": False}]
-        }
-
-    def test_model_urdf_serves_the_rewritten_text(self, server, bridge, tmp_path):
-        urdf = tmp_path / "pr2.urdf"
-        urdf.write_text(
-            '<robot name="demo">\n'
-            '  <link name="base_link">\n'
-            "    <visual><geometry>\n"
-            '      <mesh filename="meshes/cup.stl"/>\n'
-            "    </geometry></visual>\n"
-            "  </link>\n"
-            "</robot>\n"
-        )
-        bridge.remember_urdf_source(str(urdf))
-
-        status, body = get(server + "/model_urdf?model=0")
-
-        assert status == 200
-        assert b'filename="model_mesh/0/0.stl"' in body
-
-    def test_an_out_of_range_model_urdf_is_404(self, server):
-        with pytest.raises(urllib.error.HTTPError) as error:
-            get(server + "/model_urdf?model=0")
-        assert error.value.code == 404
-
-    def test_model_mesh_serves_the_resolved_file(self, server, bridge, tmp_path):
-        (tmp_path / "meshes").mkdir()
-        (tmp_path / "meshes" / "cup.stl").write_bytes(b"solid cup endsolid")
-        urdf = tmp_path / "pr2.urdf"
-        urdf.write_text(
-            '<robot name="demo">\n'
-            '  <link name="base_link">\n'
-            "    <visual><geometry>\n"
-            '      <mesh filename="meshes/cup.stl"/>\n'
-            "    </geometry></visual>\n"
-            "  </link>\n"
-            "</robot>\n"
-        )
-        bridge.remember_urdf_source(str(urdf))
-
-        status, body = get(server + "/model_mesh/0/0.stl")
-
-        assert status == 200
-        assert body == b"solid cup endsolid"
-
-    def test_an_out_of_range_model_mesh_is_404(self, server, bridge, tmp_path):
-        urdf = tmp_path / "pr2.urdf"
-        urdf.write_text('<robot name="demo">\n  <link name="base_link"/>\n</robot>\n')
-        bridge.remember_urdf_source(str(urdf))
-
-        with pytest.raises(urllib.error.HTTPError) as error:
-            get(server + "/model_mesh/0/9.stl")
-        assert error.value.code == 404
-
-
 class TestMove:
     def test_a_valid_move_is_queued_on_the_injected_bridge(self, server, bridge):
         request = urllib.request.Request(
@@ -710,94 +642,6 @@ class TestAskedQuestionsOverTheBridge:
         assert "no query source" in payload["error"].lower()
 
 
-class TestRunControlEndpoints:
-    """
-    The viewer drives the demo over the same bridge it polls for state.
-    """
-
-    @pytest.fixture()
-    def controlled_bridge(self, bridge):
-        from .test_live_run_control import RecordingRunControl
-
-        control = RecordingRunControl()
-        bridge.register_run_control(control)
-        return bridge, control
-
-    def test_the_run_state_is_served(self, server, controlled_bridge):
-        payload = get_json(server + "/run")
-
-        assert payload["ok"] is True
-        assert payload["title"] == "record demo"
-        assert payload["paused"] is False
-
-    def test_the_run_state_without_a_demo_reports_why(self, server):
-        payload = get_json(server + "/run")
-
-        assert payload["ok"] is False
-        assert "no run control" in payload["error"].lower()
-
-    def test_a_command_reaches_the_demo(self, server, controlled_bridge):
-        _, control = controlled_bridge
-
-        payload = posted_answer(server + "/run", {"command": "pause"})
-
-        assert payload["ok"] is True
-        assert payload["paused"] is True
-        assert [command.value for command in control.applied] == ["pause"]
-
-    def test_an_unknown_command_is_refused_rather_than_ignored(
-        self, server, controlled_bridge
-    ):
-        _, control = controlled_bridge
-
-        payload = posted_answer(server + "/run", {"command": "self_destruct"})
-
-        assert payload["ok"] is False
-        assert "self_destruct" in payload["error"]
-        assert control.applied == []
-
-    def test_a_command_without_a_demo_reports_why(self, server):
-        payload = posted_answer(server + "/run", {"command": "pause"})
-
-        assert payload["ok"] is False
-        assert "no run control" in payload["error"].lower()
-
-    def test_info_carries_the_run_state_the_controls_render(
-        self, server, controlled_bridge
-    ):
-        posted_answer(server + "/run", {"command": "enable_loop"})
-
-        assert get_json(server + "/info")["control"]["looping"] is True
-
-
-class TestReplay:
-    def test_recorded_frames_within_the_window_are_served(self, server, bridge):
-        bridge.recording.record(100.0, WorldStateSnapshot(sequence_number=1))
-
-        assert get_json(server + "/replay?start=99&end=101") == {
-            "ok": True,
-            "start": 99.0,
-            "end": 101.0,
-            "frames": [{"at": 100.0, "frames": {}, "base": None, "objects": {}}],
-        }
-
-    def test_an_unrecorded_window_is_empty_rather_than_an_error(self, server):
-        payload = get_json(server + "/replay?start=0&end=1")
-
-        assert payload["ok"] is True
-        assert payload["frames"] == []
-
-    def test_a_window_missing_a_bound_is_rejected(self, server):
-        with pytest.raises(urllib.error.HTTPError) as error:
-            get(server + "/replay?start=5")
-        assert error.value.code == 400
-
-    def test_a_backwards_window_is_rejected(self, server):
-        with pytest.raises(urllib.error.HTTPError) as error:
-            get(server + "/replay?start=5&end=4")
-        assert error.value.code == 400
-
-
 class TestOptions:
     def test_preflight_returns_cors_headers(self, server):
         request = urllib.request.Request(server + "/move", method="OPTIONS")
@@ -805,39 +649,6 @@ class TestOptions:
             assert response.status == 204
             assert response.headers["Access-Control-Allow-Origin"] == "*"
             assert "POST" in response.headers["Access-Control-Allow-Methods"]
-
-
-class TestDetectedEvents:
-    """
-    The timeline polls the same bridge the rest of the viewer does.
-    """
-
-    @pytest.fixture()
-    def watching_bridge(self, bridge):
-        from .test_live_events import ReportingEventSource, event_at
-
-        source = ReportingEventSource(detected=[event_at(1), event_at(2)])
-        bridge.register_event_source(source)
-        return bridge, source
-
-    def test_the_detections_are_served(self, server, watching_bridge):
-        _, source = watching_bridge
-
-        payload = get_json(server + "/events")
-
-        assert payload["ok"] is True
-        assert payload["title"] == "record demo"
-        assert payload["events"] == [event.to_payload() for event in source.detected]
-
-    def test_the_detections_without_a_demo_report_why(self, server):
-        payload = get_json(server + "/events")
-
-        assert payload["ok"] is False
-        assert "no event source" in payload["error"].lower()
-        assert payload["events"] == []
-
-    def test_info_says_whether_anything_is_detecting(self, server, watching_bridge):
-        assert get_json(server + "/info")["events"] is True
 
 
 class TestTwoIndependentBridges:
