@@ -36,7 +36,9 @@ Panels.define('robot-scene', function (root, bus) {
     '  <div id="viewer"></div>' +
     '  <div id="viewer-status" class="viewer-status">Loading scene…</div>' +
     '  <div id="layers-panel" class="layers-panel">' +
-    '    <div class="lp-title">Layers</div>' +
+    '    <div class="lp-title">Layers' +
+    '      <button id="layers-fold" class="layer-gear lp-fold"></button>' +
+    '    </div>' +
     '    <label class="lp-row"><input type="checkbox" id="lyr-objects" checked><span>Bench objects</span></label>' +
     '    <label class="lp-row" title="debug markers the CRAM system publishes (collisions, costmaps, spatial types)"><input type="checkbox" id="lyr-markers" checked><span>ROS markers</span><button id="marker-gear" class="marker-gear" title="marker topics and namespaces">⚙</button></label>' +
     '    <div id="marker-settings" class="marker-settings hidden"></div>' +
@@ -2155,6 +2157,25 @@ Panels.define('robot-scene', function (root, bus) {
   });
   recordShareConfirm.addEventListener('click', function () {
     saveEpisode(RecordingMode.DESTINATION.SHARED);
+  });
+
+  // %% folding the overlay away, so it stops covering the view
+  const layersPanelEl = $('layers-panel');
+  const layersFoldEl = $('layers-fold');
+  let layersFolded = LayersPanel.collapsed(window.localStorage);
+
+  function showFold() {
+    const face = LayersPanel.button(layersFolded);
+    layersFoldEl.textContent = face.glyph;
+    layersFoldEl.title = face.title;
+    layersPanelEl.classList.toggle('folded', layersFolded);
+  }
+  showFold();
+  layersFoldEl.addEventListener('click', function (event) {
+    event.preventDefault();
+    layersFolded = !layersFolded;
+    LayersPanel.remember(window.localStorage, layersFolded);
+    showFold();
   });
 
   // %% layers panel
