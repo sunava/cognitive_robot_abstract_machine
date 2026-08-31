@@ -80,6 +80,9 @@ from cramera.knowledge.detected_events import (
     SceneField,
     TrajectoryField,
 )
+from cramera.knowledge.recorded_statecharts import STATECHART_FILE, RecordedStatecharts
+from cramera.live.chart_observer import ChartObserver
+from cramera.live.chart_structure import ChartSnapshot
 from cramera.onboard.detection_recorder import DetectionRecorder
 from cramera.generated_json import write_json_atomically
 from cramera.live.bridge import ROBOT_BASE_KEY
@@ -249,6 +252,20 @@ class Recorder:
     """
     What the run being recorded does, as the person recording it named it, or None to
     take what its plan did.
+    """
+
+    chart_frames: List[Optional[ChartSnapshot]] = field(default_factory=list)
+    """
+    What the motion statechart looked like at each recorded frame, None for a frame with
+    nothing executing.
+
+    A statechart exists only while it is being ticked, so replaying one afterwards is
+    only possible from what was kept of it while it ran.
+    """
+
+    _chart_observer: ChartObserver = field(default_factory=ChartObserver, init=False)
+    """
+    Reads what the executing statechart looks like, remembering what it last saw.
     """
 
     frame_times: List[float] = field(default_factory=list)
@@ -670,6 +687,9 @@ class Recorder:
         if self._connections is None:
             self.bind_to_executor(executor)
         self.frame_times.append(time.time())
+        self.chart_frames.append(
+            self._chart_observer.snapshot(executor.motion_statechart)
+        )
         self.frames.append(
             {
                 str(connection.name): round(float(connection.position), POSE_PRECISION)
@@ -1341,6 +1361,33 @@ class SceneBuilder:
                 named.append(step)
         return ", ".join(named) or None
 
+    def write_statecharts(self, scene: Dict[str, Any]) -> None:
+        """
+        Write what the run's statecharts looked like beside its trajectory, and name the
+        file in the scene, or leave both alone for a run that executed none.
+
+        The same file a live recording writes, so the viewer replays either the same way.
+
+        :param scene: The scene being assembled, named into when there is something to
+            name.
+        """
+        statecharts = RecordedStatecharts.of_snapshots(self.chart_frames())
+        if statecharts.is_empty():
+            return
+        scene["statecharts"] = STATECHART_FILE
+        write_json_atomically(
+            Path(self.output_directory) / STATECHART_FILE, statecharts.to_payload()
+        )
+
+    def chart_frames(self) -> List[Optional[ChartSnapshot]]:
+        """
+        The statechart snapshot of each frame the bundle keeps.
+        """
+        snapshots = self.recorder.chart_frames
+        return [
+            snapshots[index] for index in self._kept_indices() if index < len(snapshots)
+        ]
+
     def frame_times(self) -> List[float]:
         """
         When each frame the bundle keeps was taken, in seconds since the epoch, or
@@ -1539,6 +1586,7 @@ class SceneBuilder:
             SceneField.TASK.value: self.task([entry["step"] for entry in segments]),
             SceneField.DETECTED_EVENTS.value: self.detected_events(),
         }
+        self.write_statecharts(scene)
         write_json_atomically(
             Path(self.output_directory) / "scene.json", scene, indent=1
         )

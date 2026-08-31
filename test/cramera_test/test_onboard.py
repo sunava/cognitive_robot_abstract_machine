@@ -44,6 +44,10 @@ from typing_extensions import Any, Dict, List, Optional
 
 from cramera import paths
 from cramera.knowledge.detected_events import DetectedEventRecord, SceneField
+from .test_live_bridge import make_chart
+
+from cramera.knowledge.recorded_statecharts import STATECHART_FILE
+from cramera.live.chart_observer import ChartObserver
 from cramera.onboard.detection_recorder import DetectionRecorder
 from cramera.onboard import bundle_urdf as bundler
 from cramera.onboard import demo as demo_module
@@ -1818,3 +1822,97 @@ class TestObjectsThatWereCarried:
         recorder._bodies[ROBOT_BASE_KEY] = Body(name=PrefixedName("base"))
 
         assert ROBOT_BASE_KEY not in recorder.recorded_objects()
+
+
+class TestTheStatechartsARunTicked:
+    """
+    A motion statechart exists only while it is executed, so a recording that wants to
+    replay one has to keep a snapshot per tick. The viewer has always been able to show
+    them -- a live recording writes them -- and an onboarded one did not.
+    """
+
+    def recorder_that_saw(self, charts: List[object]) -> Recorder:
+        """
+        A recorder that saw one statechart snapshot per recorded frame.
+
+        :param charts: The snapshot of each frame, None where nothing was executing.
+        """
+        recorder = recording([{} for _ in charts])
+        recorder.world = World()
+        recorder.chart_frames = list(charts)
+        return recorder
+
+    def test_the_snapshots_are_kept_with_the_frames(self, tmp_path):
+        recorder = self.recorder_that_saw(["a", "b", "c"])
+
+        builder = SceneBuilder(recorder, "scene", str(tmp_path / "bundle"), 1)
+
+        assert builder.chart_frames() == ["a", "b", "c"]
+
+    def test_they_are_downsampled_with_the_frames(self, tmp_path):
+        recorder = self.recorder_that_saw(["a", "b", "c", "d", "e"])
+
+        builder = SceneBuilder(recorder, "scene", str(tmp_path / "bundle"), 2)
+
+        assert builder.chart_frames() == ["a", "c", "e"]
+
+    def test_a_run_that_executed_none_has_none(self, tmp_path):
+        recorder = recording([{}])
+        recorder.world = World()
+
+        builder = SceneBuilder(recorder, "scene", str(tmp_path / "bundle"), 1)
+
+        assert builder.chart_frames() == []
+
+    def test_the_recorder_starts_with_no_statecharts(self):
+        assert Recorder().chart_frames == []
+
+
+def make_chart_snapshot():
+    """
+    One statechart snapshot, taken from the same mimic the bridge tests use.
+    """
+    return ChartObserver().snapshot(make_chart())
+
+
+class TestTheBundleCarriesItsStatecharts:
+    """
+    What the viewer replays a statechart from is a file beside the trajectory, named in
+    the scene -- the same one a live recording writes.
+    """
+
+    def recorder_that_saw(self, charts: List[object]) -> Recorder:
+        """
+        A recorder that saw one statechart snapshot per recorded frame.
+
+        :param charts: The snapshot of each frame.
+        """
+        recorder = recording([{} for _ in charts] or [{}])
+        recorder.world = World()
+        recorder.chart_frames = list(charts)
+        return recorder
+
+    def test_a_run_that_executed_none_writes_no_file(self, tmp_path):
+        scene = {}
+        output = tmp_path / "bundle"
+        output.mkdir()
+
+        SceneBuilder(
+            self.recorder_that_saw([]), "scene", str(output), 1
+        ).write_statecharts(scene)
+
+        assert "statecharts" not in scene
+        assert not (output / STATECHART_FILE).is_file()
+
+    def test_a_run_that_executed_one_writes_it_beside_the_trajectory(self, tmp_path):
+        scene = {}
+        output = tmp_path / "bundle"
+        output.mkdir()
+
+        SceneBuilder(
+            self.recorder_that_saw([make_chart_snapshot()]), "scene", str(output), 1
+        ).write_statecharts(scene)
+
+        assert scene["statecharts"] == STATECHART_FILE
+        written = json.loads((output / STATECHART_FILE).read_text())
+        assert written["charts"]

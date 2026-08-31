@@ -10,6 +10,7 @@ from segmind.episode_segmenter import EpisodeSegmenterExecutor
 from segmind.statecharts.segmind_statechart import SegmindStatechart
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Spoon
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import (
     Connection6DoF,
@@ -134,8 +135,10 @@ class TestAGraspedBodyStaysWatched:
 class TestABodyWithoutGeometryIsNotWatched:
     """
     A world holds bodies that are frames rather than things: a mobile robot's ``odom``,
-    for one, is free to move and has no geometry at all. Watching one means asking
-    whether it touches something, which cannot be answered of a body with no shape.
+    for one, is free to move and has no geometry at all.
+
+    Watching one means asking whether it touches something, which cannot be answered of
+    a body with no shape.
     """
 
     def world_with_a_frame(self) -> World:
@@ -169,3 +172,52 @@ class TestABodyWithoutGeometryIsNotWatched:
         watched = {str(body.name) for body in segmind_context.watched_bodies}
         assert any("cup" in name for name in watched)
         assert not any("odom" in name for name in watched)
+
+
+# %% objects a world states are objects rather than furniture
+
+
+class TestAPerceivableBodyIsWatchedWhereverItSits:
+    """
+    A demo may start an object off fixed to the furniture -- a spoon lying in a drawer
+    -- rather than loose in the world. Being fixed is how the world says the spoon does
+    not fall over, not that it is part of the cabinet, and a plan still picks it up.
+
+    What separates the spoon from the drawer holding it is the annotation the world
+    carries: the spoon is perceivable, the drawer is furniture.
+    """
+
+    def world_with_a_spoon_in_a_drawer(self) -> World:
+        """
+        A world whose drawer is fixed to its root and whose spoon is fixed to the
+        drawer, with only the spoon annotated as something perceivable.
+        """
+        world = World()
+        root = Body(name=PrefixedName("root"))
+        drawer, spoon = collidable_body("drawer"), collidable_body("spoon")
+        with world.modify_world():
+            world.add_body(root)
+            for parent, child in ((root, drawer), (drawer, spoon)):
+                world.add_connection(
+                    FixedConnection(
+                        parent=parent,
+                        child=child,
+                        parent_T_connection_expression=HomogeneousTransformationMatrix(),
+                    )
+                )
+            world.add_semantic_annotations([Spoon(root=spoon)])
+        return world
+
+    def test_the_spoon_is_watched_and_the_drawer_is_not(self):
+        world = self.world_with_a_spoon_in_a_drawer()
+        executor = EpisodeSegmenterExecutor(
+            context=MotionStatechartContext(world=world)
+        )
+        segmind_context = executor.context.require_extension(SegmindContext)
+        executor.compile(SegmindStatechart().build_statechart([TranslationDetector()]))
+
+        executor.tick()
+
+        watched = {str(body.name) for body in segmind_context.watched_bodies}
+        assert any("spoon" in name for name in watched)
+        assert not any("drawer" in name for name in watched)

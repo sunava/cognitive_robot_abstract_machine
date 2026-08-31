@@ -55,6 +55,13 @@ from semantic_digital_twin.world_description.connections import (
 )
 
 from cramera.knowledge.enums import PlanNodeGroup
+from cramera.live.chart_observer import ChartObserver
+from cramera.live.chart_structure import (
+    ChartEdgeEntry,
+    ChartNodeEntry,
+    ChartSnapshot,
+    ObservationName,
+)
 from cramera.knowledge.presets import Preset
 from cramera.knowledge.query_runner import EqlQueryRunner, RenderResult
 from cramera.knowledge.query_vocabulary import QueryVocabulary
@@ -406,104 +413,6 @@ class PlanSnapshot:
 
 
 @dataclass(frozen=True)
-class ChartNodeStructure:
-    """
-    The structural part of one statechart node: what does not change per tick.
-    """
-
-    id: str
-    name: str
-    class_name: str
-    parent: Optional[str]
-
-
-@dataclass(frozen=True)
-class ChartEdgeEntry:
-    """
-    One transition edge between two statechart nodes.
-    """
-
-    source: str
-    target: str
-    kind: str
-
-    def to_payload(self) -> Dict[str, str]:
-        """
-        This edge as the wire shape the frontend reads.
-
-        Uses ``from``/``to`` rather than :attr:`source`/:attr:`target`, since ``from`` is a
-        Python keyword and cannot be a dataclass field name.
-        """
-        return {"from": self.source, "to": self.target, "kind": self.kind}
-
-
-@dataclass(frozen=True)
-class _ChartStructure:
-    """
-    A statechart's cached structure, rebuilt only when the executor compiles a new one.
-    """
-
-    nodes: List[ChartNodeStructure] = field(default_factory=list)
-    edges: List[ChartEdgeEntry] = field(default_factory=list)
-    node_state_indices: List[int] = field(default_factory=list)
-    """
-    Each node's index into the chart's life-cycle/observation state vectors.
-    """
-
-    signature: str = ""
-    """
-    Node-id signature of the structure, stable while it does not change.
-    """
-
-
-class ObservationName(StrEnum):
-    """
-    A statechart node's trinary observation value, by name.
-    """
-
-    TRUE = "TRUE"
-    FALSE = "FALSE"
-    UNKNOWN = "UNKNOWN"
-
-
-@dataclass(frozen=True)
-class ChartNodeEntry:
-    """
-    One statechart node's structure plus its current life cycle and observation.
-    """
-
-    id: str
-    name: str
-    class_name: str
-    parent: Optional[str]
-    life_cycle: str
-    """
-    The node's ``LifeCycleValues`` name (e.g. ``RUNNING``).
-    """
-
-    observation: ObservationName
-    """
-    The node's trinary observation name.
-    """
-
-
-@dataclass(frozen=True)
-class ChartSnapshot:
-    """
-    The motion statechart in the shape the viewer renders.
-    """
-
-    signature: str = ""
-    title: str = ""
-    """
-    Name of the action whose motion group this statechart belongs to.
-    """
-
-    nodes: List[ChartNodeEntry] = field(default_factory=list)
-    edges: List[ChartEdgeEntry] = field(default_factory=list)
-
-
-@dataclass(frozen=True)
 class WorldStateSnapshot:
     """
     The world's joints, base pose and object poses at one simulation tick.
@@ -728,14 +637,9 @@ class Bridge:
     The coraplex plan captured by the ``Plan.perform`` hook.
     """
 
-    _chart: Optional[MotionStatechart] = None
+    _chart_observer: ChartObserver = field(default_factory=ChartObserver)
     """
-    The motion statechart the executor is currently ticking.
-    """
-
-    _chart_structure: Optional[_ChartStructure] = None
-    """
-    Serialized structure of :attr:`_chart`, rebuilt when it changes.
+    Reads what the executing statechart looks like, remembering what it last saw.
     """
 
     _chart_title: str = ""
@@ -766,11 +670,6 @@ class Bridge:
 
     Walking the plan tree is the expensive part of a tick, and the tree changes far
     more slowly than the world pose does.
-    """
-
-    _last_node_states: Optional[Tuple[List[int], List[float]]] = None
-    """
-    Life-cycle and observation vectors of the last published chart snapshot.
     """
 
     _model_revision: int = 0
@@ -1785,106 +1684,17 @@ class Bridge:
         """
         Publish the executing statechart's structure and node states.
 
-        Called from the tick hook. The structure is re-serialized only when the executor
-        compiled a new chart; the life-cycle and observation vectors are cheap and
-        republished whenever either of them changes.
+        Called from the tick hook. What the chart looks like is read by the observer,
+        which is what a recording reads it with too; published only when it changed.
 
         :param chart: The motion statechart the executor is currently ticking, if any.
         """
-        if chart is None:
+        self._chart_observer.title = self._chart_title
+        snapshot = self._chart_observer.change(chart)
+        if snapshot is None:
             return
-        if chart is not self._chart or self._chart_structure is None:
-            self._chart = chart
-            self._chart_structure = self._serialize_chart_structure(chart)
-            self._last_node_states = None
-        structure = self._chart_structure
-        if structure is None:
-            return
-        from giskardpy.motion_statechart.data_types import LifeCycleValues
-
-        life_cycle = [
-            int(chart.life_cycle_state.data[index])
-            for index in structure.node_state_indices
-        ]
-        observations = [
-            float(chart.observation_state.data[index])
-            for index in structure.node_state_indices
-        ]
-        if (life_cycle, observations) == self._last_node_states:
-            return
-        self._last_node_states = (life_cycle, observations)
-        nodes = [
-            ChartNodeEntry(
-                id=node.id,
-                name=node.name,
-                class_name=node.class_name,
-                parent=node.parent,
-                life_cycle=LifeCycleValues(life_cycle[position]).name,
-                observation=self._observation_name(observations[position]),
-            )
-            for position, node in enumerate(structure.nodes)
-        ]
         with self._lock:
-            self.chart_state = ChartSnapshot(
-                signature=structure.signature,
-                title=self._chart_title,
-                nodes=nodes,
-                edges=structure.edges,
-            )
-
-    @staticmethod
-    def _observation_name(observation: float) -> ObservationName:
-        """
-        Trinary observation value → name (0 false, 0.5 unknown, 1 true).
-
-        :param observation: The raw trinary observation value.
-        """
-        if observation >= 0.75:
-            return ObservationName.TRUE
-        if observation <= 0.25:
-            return ObservationName.FALSE
-        return ObservationName.UNKNOWN
-
-    @staticmethod
-    def _serialize_chart_structure(chart: MotionStatechart) -> _ChartStructure:
-        """
-        Nodes and transition edges of a statechart.
-
-        :param chart: The statechart to serialize.
-        """
-        nodes: List[ChartNodeStructure] = []
-        node_state_indices: List[int] = []
-        for node in chart.nodes:
-            parent_index = node.parent_node_index
-            nodes.append(
-                ChartNodeStructure(
-                    id="chart_node_%d" % node.index,
-                    name=node.name,
-                    class_name=type(node).__name__,
-                    parent=(
-                        ("chart_node_%d" % parent_index)
-                        if parent_index is not None
-                        else None
-                    ),
-                )
-            )
-            node_state_indices.append(node.index)
-        edges = []
-        for source, target, transition in chart.rx_graph.edge_index_map().values():
-            edges.append(
-                ChartEdgeEntry(
-                    source="chart_node_%d" % chart.rx_graph.get_node_data(source).index,
-                    target="chart_node_%d" % chart.rx_graph.get_node_data(target).index,
-                    kind=transition.kind.name,
-                )
-            )
-        signature = "|".join(node.id + ":" + node.name for node in nodes)
-        return _ChartStructure(
-            nodes=nodes,
-            edges=edges,
-            node_state_indices=node_state_indices,
-            signature=signature,
-        )
+            self.chart_state = snapshot
 
     def executing_statechart(self) -> Optional[ChartSnapshot]:
         """

@@ -16,6 +16,10 @@ from segmind.datastructures.events import MotionEvent, DetectionEvent, RotationE
 from segmind.datastructures.object_tracker import ObjectTrackerFactory
 from segmind.event_logger import EventLogger
 from semantic_digital_twin.semantic_annotations.semantic_annotations import Aperture
+from semantic_digital_twin.semantic_annotations.mixins import (
+    HasRootBody,
+    IsPerceivable,
+)
 from semantic_digital_twin.world_description.connections import Connection6DoF
 from semantic_digital_twin.world_description.world_entity import Body
 
@@ -154,11 +158,14 @@ class AbstractDetector(MotionStatechartNode, Symbol, ABC):
         context: MotionStatechartContext, segmind_context: SegmindContext
     ) -> List[Body]:
         """
-        The bodies this tick is about: the world's free bodies, plus the ones already
-        being watched when a plan has since grasped them.
+        The bodies this tick is about: the world's objects, plus the ones already being
+        watched when a plan has since grasped them.
 
-        A body only enters the set while it is free, so the furniture and the robot's own
-        links never do. A body without collision geometry never does either: a world
+        A body counts as an object either because the world lets it move freely or
+        because the world annotates it as something perceivable -- a demo may start a
+        spoon off fixed inside a drawer, which says the spoon stays put rather than that
+        it is part of the cabinet. Furniture and the robot's own links are neither, so
+        they never enter. A body without collision geometry never does either: a world
         holds frames as well as things -- a mobile robot's ``odom`` is free to move and
         has no shape -- and whether a frame touches anything is not a question.
 
@@ -166,11 +173,19 @@ class AbstractDetector(MotionStatechartNode, Symbol, ABC):
         :param segmind_context: The context remembering what is already watched.
         """
         present = set(context.world.bodies)
+        perceivable = {
+            annotation.root
+            for annotation in context.world.get_semantic_annotations_by_type(
+                IsPerceivable
+            )
+            if isinstance(annotation, HasRootBody)
+        }
         segmind_context.watched_bodies &= present
         segmind_context.watched_bodies |= {
             body
             for body in present
-            if type(body.parent_connection) is Connection6DoF and body.collision.shapes
+            if body.collision.shapes
+            and (type(body.parent_connection) is Connection6DoF or body in perceivable)
         }
         return [
             body
