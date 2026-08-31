@@ -32,8 +32,29 @@ bridge has no `/replay`: our own recording layer would have to serve the clip.
 **Next.** Verify in a working environment (see below), then decide whether to
 bring the montessori package for the live-demo features.
 
-**Cannot be verified here.** No environment on this machine has coraplex,
-cramera or segmind installed (krrood and semantic_digital_twin only), `test/conftest.py`
-needs objgraph, and there is no node for the JS tests. Everything above was
-checked statically (parse + pyflakes clean, no undefined names, endpoint/JS
-contract matched by hand) and black-formatted; none of it has been executed.
+**Verified.** `cram-env` now has every workspace package (it was missing
+coraplex/cramera/segmind/experiments earlier), plus rapidfuzz and ruff, which I
+installed - ruff is not in any extra but krrood shells out to it.
+
+    test/cramera_test  ->  749 passed, 22 skipped   (skips = JS tests, no node)
+    test/segmind_test  ->   45 passed,  1 skipped
+    test/krrood_test   -> 2156 passed,  6 skipped
+
+Fixed while getting there: Cache-Control no-cache -> no-store (a real bug the
+stack had already fixed); dropped the ported tests for endpoints this branch has
+no demo for (/run, /events, /replay, the live model catalog) and held /info to
+the fields the bridge reports; restored this branch's segmind detector test,
+whose ported version imports HoleContactDetector and so interrupted the whole
+segmind collection.
+
+**Open question for the developer.** `MINIMUM_SIMILARITY` (70) in
+question_matching lets "what is the weather like today" match "what is in the
+scene?" at 71.0 on the fixture scene - the PR's calibration holds for the
+montessori wordings, not for short generic ones. Not touched: the number was
+chosen deliberately.
+
+**A scene to try it on.** ~/.local/share/cramera-demo/run.sh serves the test
+fixture (13 presets, no download). The ten real recordings already in
+~/.cramera/scenes answer 10 presets each; pr2_breakfast in the scenes submodule
+is the richest real one. Not Franka_Montessori: 20 of its 25 presets are
+requires_live and need the montessori package.
