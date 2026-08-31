@@ -92,7 +92,9 @@ function makePanel(id) {
 
 // the shell as config.js lays it out: the scene on the left, EQL above the graph
 // on the right
-function install(stored) {
+function install(stored, options) {
+  const scene = !options || options.scene !== false;
+  const knowledge = !options || options.knowledge !== false;
   const split = makeElement('split');
   const left = makeElement('slot');
   const right = makeElement('slot');
@@ -102,8 +104,11 @@ function install(stored) {
   const graph = makePanel('graph');
   eql.appendChild(makeElement('panel-head'));
   graph.appendChild(makeElement('graph-wrap'));
-  right.appendChild(eql);
-  right.appendChild(graph);
+  if (knowledge) {
+    right.appendChild(eql);
+    right.appendChild(graph);
+  }
+  if (scene) left.appendChild(makePanel('robot-scene'));
   split.appendChild(left);
   split.appendChild(right);
 
@@ -186,4 +191,24 @@ test('dragging the column divider resizes the knowledge column against the scene
 test('a remembered column size is restored on load', function () {
   const shell = install({ 'splitRight:index.html': '0.6' });
   assert.strictEqual(shell.split.style.gridTemplateColumns, 'minmax(0,40fr) auto minmax(0,60fr)');
+});
+
+
+// %% one panel alone, as the ?replay= popup shows it
+test('a layout with a panel on one side only gets no column divider', function () {
+  const shell = install({}, { knowledge: false });
+
+  assert.strictEqual(shell.columnDivider, undefined);
+});
+
+test('the one panel keeps the full width app.css gives it', function () {
+  const shell = install({}, { knowledge: false });
+
+  assert.strictEqual(shell.split.style.gridTemplateColumns, undefined);
+});
+
+test('both sides mounted still get their divider', function () {
+  const shell = install({});
+
+  assert.ok(shell.columnDivider);
 });

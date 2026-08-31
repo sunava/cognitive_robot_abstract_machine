@@ -119,7 +119,20 @@
     };
   }
 
-  const columns = installDivider(split, right, COLUMNS, 'splitRight:' + page);
+  /* Nothing to resize the scene against when the layout mounts a panel on one side
+     only -- the ?replay= popup shows the scene alone. A divider would still claim a
+     column, and its inline grid-template would beat the rule in app.css that gives the
+     one panel the full width. */
+  function holdsAPanel(slot) {
+    return Array.prototype.some.call(slot.children, function (child) {
+      return child.dataset.panel;
+    });
+  }
+
+  const columns =
+    holdsAPanel(left) && holdsAPanel(right)
+      ? installDivider(split, right, COLUMNS, 'splitRight:' + page)
+      : null;
 
   // %% the panels a slot stacks
   /* A three-track grid holds one divider, so a slot is only made resizable when
@@ -142,8 +155,8 @@
       const max = split.classList.toggle('kg-maximized');
       btn.textContent = max ? '⊟' : '⛶';
       btn.title = max ? 'Back to the split view' : 'Maximize the knowledge graph';
-      if (max) columns.release();
-      else columns.restore();
+      if (max && columns) columns.release();
+      else if (columns) columns.restore();
       reflow();
       refit();
     });
