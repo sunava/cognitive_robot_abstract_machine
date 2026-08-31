@@ -54,6 +54,16 @@ Panels.define('graph', function (root, bus) {
   const liveBadge = root.querySelector('#gt-live');
   Graph.attach(root.querySelector('#graph'), root.querySelector('#legend'));
 
+  // vis-network draws onto a canvas of the size it had when it was built, so a window
+  // the reader drags to another size leaves the graph in the old one. Re-fitted once the
+  // dragging settles rather than per resize event, of which a drag fires many.
+  const REFIT_DELAY_MILLISECONDS = 120;
+  let refit = null;
+  window.addEventListener('resize', function () {
+    if (refit) window.clearTimeout(refit);
+    refit = window.setTimeout(function () { refit = null; Graph.resize(); }, REFIT_DELAY_MILLISECONDS);
+  });
+
   // %% zoom controls
   // one step in and its exact inverse out, so clicking + then − lands where it started
   const ZOOM_STEP = 1.3;

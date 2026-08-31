@@ -113,20 +113,31 @@ function loadPanel(responses, search) {
   const requested = [];
   const Panels = { define(id, f) { factory = f; } };
   const zooms = [];
+  const resizes = [];
   const Graph = {
     attach() {}, build(payload) { lastBuild = payload; },
     onSelect() {}, onDoubleSelect() {}, highlight() {}, reset() {},
     setStatuses() { return false; },
     zoomBy(factor) { zooms.push(factor); }, fit() { zooms.push('fit'); },
+    resize() { resizes.push(1); },
   };
-  new Function('Panels', 'Graph', 'fetch', 'ResponseUtil', 'SceneContext', SOURCE)(
-    Panels, Graph, makeFetch(responses, requested), loadResponseUtil(), loadSceneContext(search)
+  const listeners = {};
+  const window = {
+    addEventListener(name, handler) { (listeners[name] = listeners[name] || []).push(handler); },
+    setTimeout(handler) { handler(); return 1; },
+    clearTimeout() {},
+  };
+  new Function('Panels', 'Graph', 'fetch', 'ResponseUtil', 'SceneContext', 'window', SOURCE)(
+    Panels, Graph, makeFetch(responses, requested), loadResponseUtil(), loadSceneContext(search),
+    window
   );
   return {
     factory: factory,
     lastBuild: function () { return lastBuild; },
     requested: requested,
     zooms: zooms,
+    resizes: resizes,
+    fire: function (name) { (listeners[name] || []).forEach(function (h) { h(); }); },
   };
 }
 
@@ -398,4 +409,30 @@ test('the zoom controls step the graph in, out and back to a full fit', async fu
   } finally {
     instance.destroy();
   }
+});
+
+
+// %% following the window
+// vis-network draws onto a canvas of the size it had when it was built, so a window the
+// reader drags wider leaves the graph in the old one until something re-fits it
+function mountedPanel() {
+  const panel = loadPanel({ '/api/knowledge': { ok: true, nodes: [], edges: [], details: {} } });
+  panel.factory(makeRoot(), makeBus());
+  return panel;
+}
+
+test('the graph re-fits when the window is resized', async function () {
+  const panel = mountedPanel();
+  await flush();
+
+  panel.fire('resize');
+
+  assert.strictEqual(panel.resizes.length, 1);
+});
+
+test('the graph is not re-fitted before the window changes', async function () {
+  const panel = mountedPanel();
+  await flush();
+
+  assert.strictEqual(panel.resizes.length, 0);
 });
