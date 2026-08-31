@@ -179,3 +179,61 @@ class TestAShorterWordingWinsATie:
         result = matcher.match("please give me all pick up actions now")
 
         assert result.preset == exact
+
+
+# %% questions that differ only in the words that matter
+
+EVENT_TYPE_PRESETS = [
+    Preset("give me all pick up events", "an(entity(event))"),
+    Preset("give me all placing events", "an(entity(event))"),
+    Preset("give me all support events", "an(entity(event))"),
+    Preset("give me all contact events", "an(entity(event))"),
+]
+"""
+One question per type of event, as a recording offers them: the same sentence except for
+the words naming the type.
+"""
+
+
+def event_matcher() -> QuestionMatcher:
+    """
+    A matcher over the questions a recording offers about its detected events, plus the
+    plainly-labelled ones a scene offers besides them.
+    """
+    return QuestionMatcher(
+        EVENT_TYPE_PRESETS + [ROBOT_PRESET, SCENE_PRESET, MOVED_PRESET]
+    )
+
+
+class TestQuestionsSharingTheirWording:
+    """
+    Questions offered one per type share every word but the type's own, so the words that
+    distinguish them are the few that have to decide the match.
+    """
+
+    def test_the_named_type_decides_which_question_is_recognized(self):
+        result = event_matcher().match("show me all the pick up events")
+
+        assert result.preset is EVENT_TYPE_PRESETS[0]
+
+    def test_a_type_written_as_one_word_is_still_that_type(self):
+        result = event_matcher().match("show me the pickup events")
+
+        assert result.preset is EVENT_TYPE_PRESETS[0]
+
+    def test_naming_no_type_matches_none_of_them(self):
+        result = event_matcher().match("show me the events")
+
+        assert result.preset not in EVENT_TYPE_PRESETS
+
+    def test_a_question_about_the_weather_is_still_refused(self):
+        result = event_matcher().match("what is the weather like today")
+
+        assert not result.matched
+
+    def test_the_type_that_was_asked_for_beats_the_others_clearly(self):
+        matcher = event_matcher()
+
+        asked = matcher.match("give me all support events")
+
+        assert asked.preset is EVENT_TYPE_PRESETS[2]
