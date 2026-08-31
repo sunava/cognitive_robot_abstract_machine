@@ -1,6 +1,6 @@
 """
-A Unitree G1 takes a crate off a warehouse shelf, sets it on a workbench, and carries the
-wrench out of it to another shelf.
+A Unitree G1 takes a crate off a warehouse shelf, sets it on a workbench, and carries
+the wrench out of it to another shelf.
 
 The hall, the crate and the wrench are the downloaded collections, prepared once by
 ``prepare_assets.py``: the hall with its roof cut off so the run can be watched from
@@ -73,8 +73,8 @@ robot's feet to rest on the floor rather than sink through it.
 
 SHELF_SURFACE_HEIGHT = 0.73
 """
-Height of the shelf the crate starts on, measured off the hall's own geometry: the
-level with enough room above it to lift a crate straight out.
+Height of the shelf the crate starts on, measured off the hall's own geometry: the level
+with enough room above it to lift a crate straight out.
 """
 
 CRATE_BOTTOM_BELOW_ORIGIN = 0.110
@@ -154,7 +154,6 @@ ROBOT_START_POSE = Pose.from_xyz_rpy(-5.5, -13.37, PELVIS_HEIGHT_ABOVE_FLOOR, ya
 """
 Where the robot starts: in the aisle, facing the rack the crate is on.
 """
-
 
 # %% building the world and the plan
 
@@ -238,7 +237,9 @@ def build_plan(world: World, robot: UnitreeG1) -> Plan:
     context = Context(world=world, robot=robot, evaluate_conditions=False)
 
     def placed(pose: Pose) -> Pose:
-        return Pose(pose.to_position(), pose.to_quaternion(), reference_frame=world.root)
+        return Pose(
+            pose.to_position(), pose.to_quaternion(), reference_frame=world.root
+        )
 
     return sequential(
         [
@@ -266,9 +267,15 @@ def build_plan(world: World, robot: UnitreeG1) -> Plan:
 
 world = build_world()
 robot = world.get_semantic_annotations_by_type(UnitreeG1)[0]
-WorldVisualization.from_environment(
+
+# the viewer follows the run live: the world through the visualization, and the plan
+# through the plan attached to it -- its tree, each step's progress and the motion
+# statechart being executed appear in the viewer's panels while the run happens
+visualization = WorldVisualization.from_environment(
     world, default_backend=VisualizationBackend.CRAMERA
 ).start()
+plan = build_plan(world, robot)
+visualization.attach_plan(plan)
 
 with simulated_robot:
-    build_plan(world, robot).perform()
+    plan.perform()

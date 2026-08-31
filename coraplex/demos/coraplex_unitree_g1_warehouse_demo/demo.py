@@ -11,7 +11,12 @@ from __future__ import annotations
 import numpy as np
 
 from coraplex.datastructures.dataclasses import Context
-from coraplex.datastructures.enums import Arms, ApproachDirection, VerticalAlignment, VisualizationBackend
+from coraplex.datastructures.enums import (
+    Arms,
+    ApproachDirection,
+    VerticalAlignment,
+    VisualizationBackend,
+)
 from coraplex.datastructures.grasp import GraspDescription
 from coraplex.execution_environment import simulated_robot
 from coraplex.plans.factories import sequential
@@ -21,7 +26,7 @@ from coraplex.robot_plans.actions.core.navigation import NavigateAction
 from coraplex.robot_plans.actions.core.pick_up import PickUpAction
 from coraplex.robot_plans.actions.core.placing import PlaceAction
 from coraplex.robot_plans.actions.core.robot_body import ParkArmsAction
-from coraplex.testing import start_visualization
+from coraplex.testing import setup_world, start_visualization
 from coraplex.view_manager import ViewManager
 from semantic_digital_twin.api import (
     BodySpecification,
@@ -32,14 +37,9 @@ from semantic_digital_twin.robots.unitree_g1 import UnitreeG1
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.geometry import Color, Scale
-from coraplex.testing import setup_world, start_visualization
 from coraplex.visualization import WorldVisualization
 
 world = setup_world()
-
-visualization = WorldVisualization.from_environment(
-    world, default_backend=VisualizationBackend.CRAMERA
-).start()
 # %% where everything stands in the warehouse
 
 WORLD_URI = (
@@ -70,7 +70,9 @@ The extents of the transported parcel.
 
 PICK_POSE = Pose.from_xyz_rpy(2.75, 9.3, 0.793)
 """
-Where the parcel starts. Rotated 90 degrees so a FRONT grasp approach can reach it.
+Where the parcel starts.
+
+Rotated 90 degrees so a FRONT grasp approach can reach it.
 """
 
 PLACE_POSE = Pose.from_xyz_rpy(2.6, 7.7, 0.8)
@@ -247,14 +249,30 @@ robot = world.get_semantic_annotations_by_type(UnitreeG1)[0]
 # sink into it or hover above it.
 assert abs(lowest_collision_point_of(robot, world)) < 1e-3
 
-start_visualization(world)
+# the visualization the CORAPLEX_VISUALIZATION environment variable selects, which is
+# what keeps this demo headless in CI and shows it in the viewer here
+visualization = start_visualization(world)
+
+
+def watched(plan: Plan) -> Plan:
+    """
+    One plan, with the viewer following it.
+
+    Attached per plan rather than once: a plan carries the callbacks it is followed by,
+    and every run here builds a new one.
+
+    :param plan: The plan about to run.
+    """
+    visualization.attach_plan(plan)
+    return plan
+
 
 with simulated_robot:
+    # ten round trips, and then the delivery the parcel is left at
     for _ in range(10):
-        build_plan(world, robot).perform()
-        build_plan2(world, robot).perform()
-    visualization.attach_plan(build_plan)
-    build_plan(world, robot).perform()
+        watched(build_plan(world, robot)).perform()
+        watched(build_plan2(world, robot)).perform()
+    watched(build_plan(world, robot)).perform()
 
 
 parcel_position = world.get_body_by_name("parcel").global_pose
