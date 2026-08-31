@@ -10,12 +10,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 
 from segmind.datastructures.events import DetectionEvent, EventWithTrackedObjects
 from segmind.event_logger import EventLogger
-from typing_extensions import List, Optional, Tuple, Type
+from typing_extensions import Any, Dict, List, Optional, Tuple, Type
 
-from cramera.knowledge.presets import Preset, PresetsPerType
 from cramera.knowledge.query_domain import QueryDomain
 from cramera.knowledge.queryable_knowledge import QueryableKnowledge, QueryScope
 
@@ -29,6 +29,26 @@ EVENT_CLASS_SUFFIX = "Event"
 The word every detected event's class name ends in, which is what one of them is called
 when a question asks for it out loud.
 """
+
+
+class SceneField(StrEnum):
+    """
+    Key a recorded scene bundle carries its detections under.
+    """
+
+    DETECTED_EVENTS = "detectedEvents"
+
+
+class EventField(StrEnum):
+    """
+    Key one detected event is written to a bundle under.
+    """
+
+    NAME = "name"
+    EVENT_TYPE = "eventType"
+    TIMESTAMP = "timestamp"
+    TRACKED_OBJECT = "trackedObject"
+    WITH_OBJECT = "withObject"
 
 
 @dataclass(frozen=True)
@@ -88,6 +108,46 @@ class DetectedEventRecord:
         """
         return [cls.of_event(event) for event in events]
 
+    def to_payload(self) -> Dict[str, Any]:
+        """
+        The record as a recorded bundle carries it, with the moment as an ISO instant.
+        """
+        return {
+            EventField.NAME.value: self.name,
+            EventField.EVENT_TYPE.value: self.event_type,
+            EventField.TIMESTAMP.value: self.timestamp.isoformat(),
+            EventField.TRACKED_OBJECT.value: self.tracked_object,
+            EventField.WITH_OBJECT.value: self.with_object,
+        }
+
+    @classmethod
+    def of_payload(cls, payload: Dict[str, Any]) -> DetectedEventRecord:
+        """
+        One record as a bundle carries it.
+
+        :param payload: The event as :meth:`to_payload` wrote it.
+        """
+        return cls(
+            name=payload[EventField.NAME.value],
+            event_type=payload[EventField.EVENT_TYPE.value],
+            timestamp=datetime.fromisoformat(payload[EventField.TIMESTAMP.value]),
+            tracked_object=payload.get(EventField.TRACKED_OBJECT.value),
+            with_object=payload.get(EventField.WITH_OBJECT.value),
+        )
+
+    @classmethod
+    def of_scene(cls, scene: Dict[str, Any]) -> List[DetectedEventRecord]:
+        """
+        Every detection a recorded scene carries, or none for a scene recorded without
+        detectors.
+
+        :param scene: The scene bundle's ``scene.json`` content.
+        """
+        return [
+            cls.of_payload(payload)
+            for payload in scene.get(SceneField.DETECTED_EVENTS.value) or []
+        ]
+
     @classmethod
     def recordable_event_types(cls) -> Tuple[str, ...]:
         """
@@ -131,67 +191,3 @@ class DetectedEventRecord:
             event.tracked_object.name.name,
             second.name.name if second is not None else None,
         )
-
-
-@dataclass
-class DetectedEvents:
-    """
-    A running demo's detections, as a body of knowledge questions can be asked of.
-
-    Any demo that ticks segmind detectors offers this alongside its own knowledge, so
-    what a question about the detections may name does not have to be written twice.
-    """
-
-    logger: EventLogger
-    """
-    The event logger the demo's detectors write their events to.
-    """
-
-    def knowledge(self) -> QueryableKnowledge:
-        """
-        What a question about the detections may range over.
-
-        Read fresh on every call, so an answer names every moment detected up to now.
-        """
-        return QueryableKnowledge(
-            scope=QueryScope.DETECTED_EVENTS,
-            domains=[
-                QueryDomain(
-                    EVENT_VARIABLE,
-                    DetectedEventRecord,
-                    self.records(),
-                )
-            ],
-        )
-
-    def records(self) -> List[DetectedEventRecord]:
-        """
-        Everything detected so far, oldest first.
-        """
-        with self.logger.timeline_lock:
-            return DetectedEventRecord.of_events(list(self.logger.timeline))
-
-    def presets(self) -> List[Preset]:
-        """
-        The ready-made questions the panel offers as buttons.
-        """
-        return [
-            Preset(
-                "what was detected, and when?",
-                "set_of(event.name, event.event_type, event.timestamp)",
-                scope=QueryScope.DETECTED_EVENTS,
-            )
-        ]
-
-    def unlisted_presets(self) -> List[Preset]:
-        """
-        "Give me all pick up events", written out for every type of event a detector can
-        produce -- more questions than a panel has room to show as buttons.
-        """
-        return PresetsPerType(
-            class_suffix=EVENT_CLASS_SUFFIX,
-            class_names=DetectedEventRecord.recordable_event_types(),
-            code="an(entity(%s).where(%s.event_type == '%%s'))"
-            % (EVENT_VARIABLE, EVENT_VARIABLE),
-            scope=QueryScope.DETECTED_EVENTS,
-        ).questions()

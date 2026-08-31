@@ -2,6 +2,8 @@
 Tests for asking a query what segmind detected.
 """
 
+import json
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -23,13 +25,25 @@ from semantic_digital_twin.world_description.geometry import Box, Scale  # noqa:
 from semantic_digital_twin.world_description.shape_collection import (  # noqa: E402
     ShapeCollection,
 )
+from semantic_digital_twin.spatial_types import (  # noqa: E402
+    HomogeneousTransformationMatrix,
+)
+from semantic_digital_twin.world import World  # noqa: E402
+from semantic_digital_twin.world_description.connections import (  # noqa: E402
+    FixedConnection,
+)
 from semantic_digital_twin.world_description.world_entity import Body  # noqa: E402
 
 from cramera.knowledge.query_runner import EqlQueryRunner  # noqa: E402
 from cramera.knowledge.detected_events import (  # noqa: E402
     DetectedEventRecord,
-    DetectedEvents,
+    EventField,
+    SceneField,
 )
+from cramera.live.detections import DetectedEvents  # noqa: E402
+from cramera.onboard.detection_recorder import DetectionRecorder  # noqa: E402
+from cramera.knowledge.knowledge_base import EpisodeKnowledgeBase  # noqa: E402
+from cramera.knowledge.eql_session import EqlSession  # noqa: E402
 from cramera.knowledge.presets import Preset  # noqa: E402
 from cramera.knowledge.queryable_knowledge import (  # noqa: E402
     QueryableKnowledge,
@@ -38,6 +52,7 @@ from cramera.knowledge.queryable_knowledge import (  # noqa: E402
 from cramera.live.bridge import Bridge  # noqa: E402
 from cramera.live.query import LiveQuerySource  # noqa: E402
 
+from .conftest import reset_knowledge_base_cache  # noqa: E402
 from .test_live_bridge import world_with  # noqa: E402
 
 
@@ -268,3 +283,169 @@ class TestAskingTheBridge:
         offered = bridge.query_variables(QueryScope.DETECTED_EVENTS)
 
         assert offered == ["event"]
+
+
+# %% detections carried by a recorded bundle
+
+
+class TestRecordAsBundlePayload:
+    def test_a_record_round_trips_through_its_payload(self, detections):
+        record = DetectedEventRecord.of_event(detections.timeline[0])
+
+        assert DetectedEventRecord.of_payload(record.to_payload()) == record
+
+    def test_a_payload_states_the_moment_in_a_form_json_can_hold(self, detections):
+        payload = DetectedEventRecord.of_event(detections.timeline[0]).to_payload()
+
+        assert payload[EventField.TIMESTAMP] == (
+            detections.timeline[0].timestamp.isoformat()
+        )
+
+    def test_a_payload_without_a_second_body_reads_back_as_none(self):
+        body = collidable_body("spoon")
+        world_with(body)
+        record = DetectedEventRecord.of_event(PickUpEvent(tracked_object=body))
+
+        assert DetectedEventRecord.of_payload(record.to_payload()).with_object is None
+
+
+# %% asking a recorded scene what was detected
+
+
+@pytest.fixture()
+def scene_with_detections(fixture_scene, monkeypatch):
+    """
+    The fixture scene bundle, re-recorded with two detections in it.
+    """
+    scene_path = fixture_scene / "scenes" / "fixture" / "scene.json"
+    scene = json.loads(scene_path.read_text())
+    scene[SceneField.DETECTED_EVENTS] = [
+        DetectedEventRecord(
+            name="milk PickUpEvent",
+            event_type=PickUpEvent.__name__,
+            timestamp=datetime(2026, 8, 31, 12, 0, 0),
+            tracked_object="milk",
+        ).to_payload(),
+        DetectedEventRecord(
+            name="milk PlacingEvent",
+            event_type="PlacingEvent",
+            timestamp=datetime(2026, 8, 31, 12, 0, 9),
+            tracked_object="milk",
+            with_object="table",
+        ).to_payload(),
+    ]
+    scene_path.write_text(json.dumps(scene))
+    reset_knowledge_base_cache()
+    yield fixture_scene
+    reset_knowledge_base_cache()
+
+
+class TestRecordedDetections:
+    def test_the_knowledge_base_reads_the_detections_of_the_bundle(
+        self, scene_with_detections
+    ):
+        events = EpisodeKnowledgeBase.of_scene(None).detected_events
+
+        assert [record.event_type for record in events] == [
+            PickUpEvent.__name__,
+            "PlacingEvent",
+        ]
+
+    def test_a_scene_recorded_without_detectors_has_no_detections(self, fixture_scene):
+        assert EpisodeKnowledgeBase.of_scene(None).detected_events == []
+
+    def test_a_query_of_the_recorded_scene_may_name_the_events(
+        self, scene_with_detections
+    ):
+        answered = EqlSession.of_scene(None).run(
+            "an(entity(event).where(event.event_type == 'PickUpEvent'))"
+        )
+
+        assert [row["__entity__"] for row in answered.rows] == ["milk PickUpEvent"]
+
+    def test_the_recorded_scene_offers_a_question_per_detected_type(
+        self, scene_with_detections
+    ):
+        offered = [preset.text for preset in Preset.of_scene(None)]
+
+        assert "give me all pick up events" in offered
+        assert "give me all placing events" in offered
+
+    def test_a_type_that_was_not_detected_is_not_asked_about(
+        self, scene_with_detections
+    ):
+        offered = [preset.text for preset in Preset.of_scene(None)]
+
+        assert "give me all insertion events" not in offered
+
+    def test_a_scene_without_detections_offers_no_event_question(self, fixture_scene):
+        offered = [preset.text for preset in Preset.of_scene(None)]
+
+        assert not [text for text in offered if text.endswith(" events")]
+
+
+# %% recording the detections of a run
+
+
+@pytest.fixture()
+def apartment(_simple_apartment_setup):
+    """
+    A copy of the shared apartment, so moving a body in it is this test's business only.
+    """
+    return deepcopy(_simple_apartment_setup)
+
+
+class TestRecordingDetections:
+    def test_a_recorder_that_never_started_detects_nothing(self):
+        assert DetectionRecorder(world=World()).records() == []
+
+    def test_ticking_before_the_detectors_are_compiled_is_harmless(self):
+        recorder = DetectionRecorder(world=World())
+
+        recorder.tick()
+
+        assert recorder.records() == []
+
+    def test_a_started_recorder_detects_what_the_world_does(self, apartment):
+        world = apartment
+        milk = world.get_body_by_name("milk.stl")
+        box = world.get_body_by_name("box")
+        recorder = DetectionRecorder(world=world)
+        recorder.start()
+        recorder.tick()
+
+        milk.parent_connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(
+            box.global_pose.x,
+            box.global_pose.y,
+            box.global_pose.z,
+            reference_frame=milk.parent_connection.parent,
+        )
+        recorder.tick()
+
+        assert ContactEvent.__name__ in [
+            record.event_type for record in recorder.records()
+        ]
+
+    def test_a_detected_record_names_the_bodies_it_was_detected_on(self, apartment):
+        world = apartment
+        milk = world.get_body_by_name("milk.stl")
+        box = world.get_body_by_name("box")
+        recorder = DetectionRecorder(world=world)
+        recorder.start()
+        recorder.tick()
+        milk.parent_connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(
+            box.global_pose.x,
+            box.global_pose.y,
+            box.global_pose.z,
+            reference_frame=milk.parent_connection.parent,
+        )
+        recorder.tick()
+
+        [contact] = [
+            record
+            for record in recorder.records()
+            if record.event_type == ContactEvent.__name__
+        ]
+
+        assert contact.tracked_object == milk.name.name
+        assert contact.name == "%s %s" % (milk.name.name, ContactEvent.__name__)

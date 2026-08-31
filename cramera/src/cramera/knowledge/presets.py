@@ -16,6 +16,12 @@ from cramera.knowledge.query_verbalization import QueryVerbalization
 from cramera.knowledge.queryable_knowledge import QueryScope
 from cramera.knowledge.scene_bundle import SceneBundle
 
+from cramera.knowledge.detected_events import (
+    EVENT_CLASS_SUFFIX,
+    EVENT_VARIABLE,
+    DetectedEventRecord,
+)
+
 if TYPE_CHECKING:
     from cramera.knowledge.query_runner import EqlQueryRunner
 
@@ -172,7 +178,8 @@ class Preset:
                         % repr(manipulation.name),
                     )
                 )
-        return presets
+        questions = DetectedEventQuestions.of_records(knowledge_base.detected_events)
+        return presets + questions.listed() + questions.unlisted()
 
 
 @dataclass(frozen=True)
@@ -232,6 +239,59 @@ class PresetsPerType:
         :param class_name: The type's class name.
         """
         return WORD_START.sub(" ", class_name[: -len(self.class_suffix)]).lower()
+
+
+@dataclass(frozen=True)
+class DetectedEventQuestions:
+    """
+    The questions asked about detected events, for whatever set of types is on offer.
+
+    A running demo offers every type its detectors can produce; a recorded scene offers
+    the types it actually detected, so it never asks about a moment it cannot answer
+    with.
+    """
+
+    event_types: Tuple[str, ...]
+    """
+    The class name of every event type a question may name.
+    """
+
+    @classmethod
+    def of_records(cls, events: List[DetectedEventRecord]) -> DetectedEventQuestions:
+        """
+        The questions a set of detections can answer, one per type among them.
+
+        :param events: The detections on offer.
+        """
+        return cls(tuple(sorted({record.event_type for record in events})))
+
+    def listed(self) -> List[Preset]:
+        """
+        The questions the panel offers as buttons, or none when nothing was detected.
+        """
+        if not self.event_types:
+            return []
+        return [
+            Preset(
+                "what was detected, and when?",
+                "set_of(%s.name, %s.event_type, %s.timestamp)"
+                % (EVENT_VARIABLE, EVENT_VARIABLE, EVENT_VARIABLE),
+                scope=QueryScope.DETECTED_EVENTS,
+            )
+        ]
+
+    def unlisted(self) -> List[Preset]:
+        """
+        "Give me all pick up events", written out once per type -- more questions than a
+        panel has room to show as buttons.
+        """
+        return PresetsPerType(
+            class_suffix=EVENT_CLASS_SUFFIX,
+            class_names=self.event_types,
+            code="an(entity(%s).where(%s.event_type == '%%s'))"
+            % (EVENT_VARIABLE, EVENT_VARIABLE),
+            scope=QueryScope.DETECTED_EVENTS,
+        ).questions()
 
 
 ARCHITECTURE_PRESETS: Tuple[Preset, ...] = (

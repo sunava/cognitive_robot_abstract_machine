@@ -10,6 +10,7 @@ URDF self-contained. Those are covered here against hand-built recordings.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 
 import inspect
 import json
@@ -42,6 +43,7 @@ from semantic_digital_twin.world_description.world_entity import Body
 from typing_extensions import Any, Dict, List, Optional
 
 from cramera import paths
+from cramera.knowledge.detected_events import DetectedEventRecord, SceneField
 from cramera.onboard import bundle_urdf as bundler
 from cramera.onboard.bundle_world import BundledWorld
 from cramera.onboard.world_to_urdf import UrdfDocument
@@ -1357,9 +1359,7 @@ class TestUnsupportedConnections:
         world, root, base = self.drive_world()
         connection_types = dict(UrdfDocument.CONNECTION_JOINT_TYPES)
         del connection_types[OmniDrive]
-        monkeypatch.setattr(
-            UrdfDocument, "CONNECTION_JOINT_TYPES", connection_types
-        )
+        monkeypatch.setattr(UrdfDocument, "CONNECTION_JOINT_TYPES", connection_types)
 
         report = UrdfDocument.of_bodies(
             bodies=[root, base],
@@ -1371,3 +1371,64 @@ class TestUnsupportedConnections:
         urdf = Path(report.urdf).read_text()
         graft_name = "%s_to_%s" % (UrdfDocument.SYNTHESIZED_ROOT_LINK, "pr2/base_link")
         assert graft_name in urdf
+
+
+# %% detections a run recorded
+
+
+class TestRecordedDetections:
+    """
+    A run recorded with segmind detectors ticking carries what they saw, so the scene
+    answers questions about it without the demo still running.
+    """
+
+    @pytest.fixture()
+    def builder(self, tmp_path) -> SceneBuilder:
+        recorder = recording([{}])
+        recorder.world = World()
+        return SceneBuilder(recorder, "scene", str(tmp_path / "bundle"), 1)
+
+    def test_the_bundle_carries_what_was_detected(self, builder):
+        detected = DetectedEventRecord(
+            name="cup ContactEvent",
+            event_type="ContactEvent",
+            timestamp=datetime(2026, 8, 31, 12, 0, 0),
+            tracked_object="cup",
+        )
+        builder.recorder.detections = [detected]
+
+        assert builder.detected_events() == [detected.to_payload()]
+
+    def test_a_run_recorded_without_detectors_carries_no_detections(self, builder):
+        assert builder.detected_events() == []
+
+    def test_the_scene_field_is_the_one_the_knowledge_base_reads(self, builder):
+        detected = DetectedEventRecord(
+            name="cup ContactEvent",
+            event_type="ContactEvent",
+            timestamp=datetime(2026, 8, 31, 12, 0, 0),
+        )
+        builder.recorder.detections = [detected]
+
+        read_back = DetectedEventRecord.of_scene(
+            {SceneField.DETECTED_EVENTS: builder.detected_events()}
+        )
+
+        assert read_back == [detected]
+
+
+class TestDetectingAlongTheRun:
+    """
+    Detection is opt-in: every recording pays for the detectors that tick along it, and
+    a run nobody asks about afterwards should not.
+    """
+
+    def test_a_recorder_detects_nothing_unless_it_is_asked_to(self):
+        assert Recorder().detect_events is False
+
+    def test_nothing_is_detected_without_the_detectors(self):
+        recorder = Recorder()
+
+        recorder.record_detections()
+
+        assert recorder.detections == []

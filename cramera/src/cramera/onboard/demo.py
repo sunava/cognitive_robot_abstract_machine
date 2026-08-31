@@ -75,6 +75,8 @@ from cramera.body_geometry import (
     rounded_pose,
     rounded_scale,
 )
+from cramera.knowledge.detected_events import DetectedEventRecord, SceneField
+from cramera.onboard.detection_recorder import DetectionRecorder
 from cramera.generated_json import write_json_atomically
 from cramera.live.bridge import ROBOT_BASE_KEY
 from cramera.monkey_patch import MethodPatch
@@ -226,6 +228,23 @@ class Recorder:
     urdf_sources: List[str] = field(default_factory=list)
     """
     URDF/xacro files the world was built from, in load order.
+    """
+
+    detections: List[DetectedEventRecord] = field(default_factory=list)
+    """
+    What segmind's detectors saw while the run was recorded, oldest first, or nothing
+    for a run recorded without them.
+    """
+
+    detect_events: bool = False
+    """
+    Whether to tick segmind's detectors along the run, which is what gives the bundle
+    its detections.
+    """
+
+    _detection_recorder: Optional[DetectionRecorder] = field(default=None, init=False)
+    """
+    The detectors watching the run, once the world they watch exists.
     """
 
     gazebo_sources: List[str] = field(default_factory=list)
@@ -478,6 +497,7 @@ class Recorder:
         """
         result = original(executor, *args, **kwargs)
         self.record_frame(executor)
+        self.record_detections()
         return result
 
     @staticmethod
@@ -519,6 +539,9 @@ class Recorder:
         :param executor: The executor whose world is bound to.
         """
         self.world = executor.context.world
+        if self.detect_events:
+            self._detection_recorder = DetectionRecorder(world=self.world)
+            self._detection_recorder.start()
         self.control_timestep = executor.context.qp_controller_config.control_dt
         robots = self.world.get_semantic_annotations_by_type(AbstractRobot)
         self.robot = robots[0] if robots else None
@@ -551,6 +574,20 @@ class Recorder:
                 [key for key in self._bodies if key != ROBOT_BASE_KEY],
             )
         )
+
+    def record_detections(self) -> None:
+        """
+        Let the detectors look at the world the tick just left behind, and keep what they
+        saw.
+
+        Ticked inline here rather than on a thread of its own: segmind builds CasADi
+        expressions, which are reference counted without atomics, so detecting while the
+        planner builds expressions of its own corrupts them.
+        """
+        if self._detection_recorder is None:
+            return
+        self._detection_recorder.tick()
+        self.detections = self._detection_recorder.records()
 
     def record_frame(self, executor: Executor) -> None:
         """
@@ -1190,6 +1227,13 @@ class SceneBuilder:
         body.combined_mesh.export(destination)
         return "meshes/objects/" + os.path.basename(destination)
 
+    def detected_events(self) -> List[Dict[str, Any]]:
+        """
+        What the run's detectors saw, as the bundle carries it, or nothing for a run
+        recorded without them.
+        """
+        return [record.to_payload() for record in self.recorder.detections]
+
     def build(self) -> Dict[str, Any]:
         """
         Downsample the recording to every step-th frame (always keeping the last) and
@@ -1374,6 +1418,7 @@ class SceneBuilder:
             "placeTarget": place_target,
             "dragBounds": drag_bounds,
             "missingAssets": sorted(set(missing)),
+            SceneField.DETECTED_EVENTS.value: self.detected_events(),
         }
         write_json_atomically(
             Path(self.output_directory) / "scene.json", scene, indent=1
@@ -1438,6 +1483,11 @@ def main() -> None:
     parser.add_argument(
         "--step", type=int, default=0, help="downsample step (0 = auto)"
     )
+    parser.add_argument(
+        "--detect",
+        action="store_true",
+        help="tick segmind's detectors along the run and record what they saw",
+    )
     argument_split = split_passthrough_arguments(sys.argv[1:])
     args = parser.parse_args(argument_split.own)
 
@@ -1449,7 +1499,7 @@ def main() -> None:
             "  the workspace venv (uv sync), then: cramera-onboard ..."
         )
 
-    recorder = Recorder()
+    recorder = Recorder(detect_events=args.detect)
     recorder.install_asset_hooks()
     recorder.install_tick_hook()
     recorder.install_segment_hook()

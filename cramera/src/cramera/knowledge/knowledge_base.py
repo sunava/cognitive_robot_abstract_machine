@@ -13,6 +13,7 @@ from semantic_digital_twin.spatial_types import Point3
 
 from cramera.knowledge.architecture_entities import PythonClass, SubPackage
 from cramera.knowledge.architecture_scan import ArchitectureScanner
+from cramera.knowledge.detected_events import DetectedEventRecord
 from cramera.knowledge.entities import (
     ActionEpisode,
     Arm,
@@ -99,6 +100,10 @@ class EpisodeKnowledgeBase:
     Modification stamp of the bundle this instance was built from, compared by
     :meth:`of_scene` to serve a rewritten bundle fresh.
     """
+    detected_events: List[DetectedEventRecord]
+    """
+    What the run's detectors saw, or nothing for a scene recorded without them.
+    """
 
     def __init__(self, scene_name: Optional[str] = None) -> None:
         """
@@ -132,6 +137,7 @@ class EpisodeKnowledgeBase:
             scene, frames_per_second, objects_by_id, place_area
         )
         self.joints = self._build_joint_motions(trajectory, parts, robot_prefix)
+        self.detected_events = DetectedEventRecord.of_scene(scene)
 
         architecture_scan = ArchitectureScanner.of_configured_root().load()
         self.packages = architecture_scan.packages

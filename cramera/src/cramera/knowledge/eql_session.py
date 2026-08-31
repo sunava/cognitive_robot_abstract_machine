@@ -19,6 +19,7 @@ from cramera.knowledge.entities import (
     JointMotion,
     Robot,
 )
+from cramera.knowledge.detected_events import EVENT_VARIABLE, DetectedEventRecord
 from cramera.knowledge.knowledge_base import EpisodeKnowledgeBase
 from cramera.knowledge.query_domain import QueryDomain
 from cramera.knowledge.query_runner import (
@@ -67,6 +68,9 @@ class EqlSession:
             QueryDomain("episode", ActionEpisode, self.knowledge_base.episodes),
             QueryDomain("arm", Arm, self.knowledge_base.arms),
             QueryDomain("joint", JointMotion, self.knowledge_base.joints),
+            QueryDomain(
+                EVENT_VARIABLE, DetectedEventRecord, self.knowledge_base.detected_events
+            ),
             QueryDomain("robot", Robot, [self.knowledge_base.robot]),
             QueryDomain("package", Package, self.knowledge_base.packages),
             QueryDomain("subpackage", SubPackage, self.knowledge_base.subpackages),
@@ -87,6 +91,7 @@ class EqlSession:
                 "arms": self.knowledge_base.arms,
                 "grippers": self.knowledge_base.grippers,
                 "joints": self.knowledge_base.joints,
+                "events": self.knowledge_base.detected_events,
                 "robots": [self.knowledge_base.robot],
                 "packages": self.knowledge_base.packages,
                 "subpackages": self.knowledge_base.subpackages,
