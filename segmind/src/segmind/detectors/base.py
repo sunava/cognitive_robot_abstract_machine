@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import numpy as np
+
 from abc import abstractmethod, ABC
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Set, List, Any
@@ -194,22 +196,44 @@ class AbstractDetector(MotionStatechartNode, Symbol, ABC):
         ]
 
     def get_relation(
-        self, context: MotionStatechartContext, tracked_objects: List[Body], predicate
+        self,
+        context: MotionStatechartContext,
+        tracked_objects: List[Body],
+        predicate,
+        reach: float,
     ) -> Dict[Body, Set[Body]]:
         """
         Get the relation between tracked objects.
 
+        Pairs whose collision geometry cannot come within ``reach`` of each other are
+        ruled out by their bounding spheres before the predicate is asked: deciding that
+        is far cheaper than measuring a pair exactly, and in a world of any size almost
+        every pair is far apart.
+
         :param context: The context containing world information.
         :param tracked_objects: List of bodies to check for contact changes.
         :param predicate: Function that returns true if the objects are related.
+        :param reach: The furthest apart two bodies' surfaces can be while the predicate
+            still holds.
         :return: Dictionary mapping bodies to sets of related bodies.
         """
 
         related_bodies: Dict[Body, Set[Body]] = {}
         bodies_with_collision = context.world.bodies_with_collision
+        centre = {
+            body: body.global_transform.to_np()[:3, 3]
+            for body in set(bodies_with_collision) | set(tracked_objects)
+        }
         for obj in tracked_objects:
             for body in bodies_with_collision:
                 if body is obj:
+                    continue
+                separation = float(np.linalg.norm(centre[obj] - centre[body]))
+                if separation > (
+                    obj.collision_bounding_radius
+                    + body.collision_bounding_radius
+                    + reach
+                ):
                     continue
                 if predicate(obj, body):
                     related_bodies.setdefault(obj, set()).add(body)

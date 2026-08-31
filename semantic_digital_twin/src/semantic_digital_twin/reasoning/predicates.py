@@ -40,7 +40,8 @@ from semantic_digital_twin.world_description.geometry import BoundingBox
 from semantic_digital_twin.world_description.world_entity import (
     Body,
     Region,
-    KinematicStructureEntity, SemanticAnnotation,
+    KinematicStructureEntity,
+    SemanticAnnotation,
 )
 
 if TYPE_CHECKING:
@@ -65,11 +66,17 @@ def stable(obj: Body) -> bool:
     raise NotImplementedError("Needs multiverse")
 
 
+CONTACT_DISTANCE_THRESHOLD = 0.001
+"""
+How close two surfaces have to be, in metres, to count as touching.
+"""
+
+
 @symbolic_function
 def contact(
     body1: Body,
     body2: Body,
-    threshold: float = 0.001,
+    threshold: float = CONTACT_DISTANCE_THRESHOLD,
 ) -> bool:
     """
     Checks if two objects are in contact or not.

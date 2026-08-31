@@ -121,7 +121,8 @@ class WorldEntity(Symbol):
     @synchronized_attribute_modification
     def update_name(self, name: PrefixedName) -> None:
         """
-        Rename this world entity and record the change in the world's modification history.
+        Rename this world entity and record the change in the world's modification
+        history.
 
         :param name: The new name for this world entity.
         """
@@ -522,6 +523,20 @@ class Body(KinematicStructureEntity):
         if not self.collision:
             return None
         return self.collision.combined_mesh
+
+    @cached_property
+    def collision_bounding_radius(self) -> float:
+        """
+        How far this body's collision geometry reaches from its own origin.
+
+        An upper bound, so a pair of bodies further apart than the sum of their radii
+        cannot touch and need not be measured exactly. Zero for a body that is a frame
+        rather than a thing.
+        """
+        mesh = self.combined_mesh
+        if mesh is None or not len(mesh.vertices):
+            return 0.0
+        return float(np.linalg.norm(mesh.vertices, axis=1).max())
 
     def has_collision(
         self, volume_threshold: float = 1.001e-6, surface_threshold: float = 0.00061
