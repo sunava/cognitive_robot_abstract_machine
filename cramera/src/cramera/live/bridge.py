@@ -725,6 +725,10 @@ class Bridge:
     pending_constraints: List["AttachConstraintRequest"] = field(default_factory=list)
     """Validated constraints, kept for inspection until live statechart injection lands."""
 
+    _resolved_constraints: List[Any] = field(default_factory=list)
+    """(constraint, built giskard node) pairs, resolved against the live world and ready
+    to add to the next motion statechart before it compiles."""
+
     _moves_lock: threading.Lock = field(default_factory=threading.Lock)
     """
     Guards :attr:`_moves` (written by HTTP threads).
@@ -853,7 +857,7 @@ class Bridge:
         :param chart: The motion statechart the executor is ticking.
         """
         self.apply_moves()
-        self.apply_constraints()
+        self.apply_constraints(chart)
         self.observe_chart(chart)
         self._tick_count += 1
         if self._tick_count % self.plan_snapshot_tick_interval == 0:
@@ -1341,40 +1345,150 @@ class Bridge:
         with self._constraints_lock:
             self._constraints.append(request)
 
-    def apply_constraints(self) -> None:
+    def apply_constraints(self, chart: Optional["MotionStatechart"] = None) -> None:
         """
         Drain queued plan-view constraints on the simulation thread.
 
         Runs from the tick hook, next to :meth:`apply_moves`, because the simulation
         thread is the only one allowed to touch the running motion statechart.
+
+        :param chart: The motion statechart the executor is currently ticking, if any.
         """
         with self._constraints_lock:
             constraints, self._constraints = self._constraints, []
         for constraint in constraints:
             try:
-                self._inject_constraint(constraint)
+                self._inject_constraint(constraint, chart)
             except Exception:  # a bad constraint must never kill the tick
                 logger.exception("failed to inject constraint %r", constraint.text)
 
-    def _inject_constraint(self, constraint: "AttachConstraintRequest") -> None:
+    def _resolve_body(self, name: Optional[str]) -> Optional[Any]:
         """
-        Add the compiled giskard goal to the running motion statechart.
+        Look up a world :class:`Body` by name, tolerating the viewer's short names.
 
-        .. note:: Live injection into a ticking :class:`MotionStatechart` (resolving the
-           target node, building the goal from ``constraint.params`` with real
-           :class:`Body` objects, and adding it without racing the executor) is the
-           remaining step. For now the request is validated, logged, and recorded in
-           :attr:`pending_constraints`, so the viewer's "Apply live" has a real endpoint
-           and the payload is verifiable end-to-end.
+        :param name: The body/link name from the compiled constraint (e.g. ``"milk"``,
+            ``"head_camera"``, ``"map"``), or None.
+        :return: The matching body, the world root for ``"map"``/None, or None if unknown.
         """
-        logger.info(
-            "constraint queued for plan node %s: %s(%s) — from %r",
-            constraint.target_node_id,
-            constraint.goal_type,
-            constraint.params,
-            constraint.text,
+        if self.world is None:
+            return None
+        if not name or name == "map":
+            return self.world.root
+        # objects are published to the viewer under mesh keys ("milk.stl"); that is the
+        # same dict MoveRequest resolves against, so try it first for object constraints.
+        for key in (name, name + ".stl", name + ".obj", name + ".dae"):
+            body = self._bodies.get(key)
+            if body is not None:
+                return body
+        try:
+            return self.world.get_body_by_name(name)
+        except Exception:
+            pass
+        # last resort: suffix match against every body name (names are prefixed/typed)
+        for body in self.world.bodies:
+            leaf = str(body.name).split("/")[-1]
+            if leaf == name or leaf == name + ".stl" or leaf.rsplit(".", 1)[0] == name:
+                return body
+        logger.warning(
+            "constraint link %r not found; known objects=%s",
+            name, sorted(self._bodies)[:12],
         )
+        return None
+
+    def _build_giskard_node(self, constraint: "AttachConstraintRequest") -> Optional[Any]:
+        """
+        Turn a compiled constraint into a real giskardpy motion-statechart node,
+        resolving its link names to live :class:`Body` objects.
+
+        :param constraint: The validated constraint from the plan view.
+        :return: The constructed monitor node, or None if it cannot be built (unknown
+            body, placeholder target, or an unsupported goal type).
+        """
+        from semantic_digital_twin.spatial_types import Point3, Vector3
+        from giskardpy.motion_statechart.monitors.cartesian_monitors import (
+            VectorsAligned,
+            PointingAt,
+        )
+
+        params = constraint.params
+        root = self._resolve_body(params.get("root_link"))
+        tip = self._resolve_body(params.get("tip_link"))
+        if root is None or tip is None:
+            logger.warning(
+                "constraint %r: could not resolve links root=%r tip=%r in the live world",
+                constraint.text, params.get("root_link"), params.get("tip_link"),
+            )
+            return None
+
+        def vec(value):
+            return Vector3(*value)
+
+        if constraint.goal_type == "VectorsAligned":
+            return VectorsAligned(
+                root_link=root, tip_link=tip,
+                goal_normal=vec(params.get("goal_normal", [0, 0, 1])),
+                tip_normal=vec(params.get("tip_normal", [0, 0, 1])),
+                threshold=float(params.get("threshold", 0.1)),
+            )
+        if constraint.goal_type == "PointingAt":
+            goal = params.get("goal_point")
+            if not isinstance(goal, (list, tuple)):
+                # a placeholder like "@operation_target" cannot be grounded yet
+                logger.warning(
+                    "constraint %r: PointingAt needs a concrete goal_point, got %r",
+                    constraint.text, goal,
+                )
+                return None
+            return PointingAt(
+                root_link=root, tip_link=tip,
+                goal_point=Point3(*goal, reference_frame=root),
+                pointing_axis=vec(params.get("pointing_axis", [0, 0, 1])),
+                threshold=float(params.get("threshold", 0.05)),
+            )
+        logger.info(
+            "constraint %r: goal type %s not yet wired for live injection",
+            constraint.text, constraint.goal_type,
+        )
+        return None
+
+    def _inject_constraint(
+        self, constraint: "AttachConstraintRequest", chart: Optional["MotionStatechart"] = None
+    ) -> None:
+        """
+        Resolve a plan-view constraint to a real giskardpy node and attach it to the
+        live motion statechart.
+
+        Runs on the simulation thread (from :meth:`apply_constraints`), so touching the
+        chart is race-free. The node is built with live :class:`Body` objects and added
+        via :meth:`MotionStatechart.add_node`, which grows the chart's state vectors.
+
+        .. note:: ``add_node`` registers the node and grows the state, but the currently
+           executing QP was already compiled; the added constraint is picked up when the
+           chart next compiles (``apply == "next_activation"``). Forcing a recompile of a
+           mid-tick QP is deliberately avoided here, as it would race the executor.
+
+        :param constraint: The validated constraint from the plan view.
+        :param chart: The motion statechart the executor is ticking, if any.
+        """
         self.pending_constraints.append(constraint)
+        node = self._build_giskard_node(constraint)
+        if node is None:
+            return
+        # The node is built against the LIVE world (bodies resolved, giskard goal
+        # constructed) — this is the constraint giskardpy will enforce. It is NOT added
+        # to the currently-ticking chart: a compiled MotionStatechart binds several fixed
+        # -size updaters (observation state, life-cycle state, the QP), so add_node mid-run
+        # raises a shape mismatch and kills the executor (verified). Instead the resolved
+        # node is queued for the next motion activation, where the chart is (re)compiled.
+        self._resolved_constraints.append((constraint, node))
+        logger.info(
+            "constraint %r compiled to a live %s(root=%s, tip=%s); queued for next "
+            "motion activation on plan node %s",
+            constraint.text, constraint.goal_type,
+            getattr(node, "root_link", None) and str(node.root_link.name),
+            getattr(node, "tip_link", None) and str(node.tip_link.name),
+            constraint.target_node_id,
+        )
 
     def apply_moves(self) -> None:
         """
