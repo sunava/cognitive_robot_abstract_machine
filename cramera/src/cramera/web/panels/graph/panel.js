@@ -34,6 +34,9 @@ Panels.define('graph', function (root, bus) {
     '    <span class="gt-live" id="gt-live" title="node status is streaming from the running demo">◉ live status</span>' +
     '  </div>' +
     '  <div class="graph-canvas"></div>' +
+    '  <div class="graph-steps" id="graph-steps" style="display:none"></div>' +
+    '  <button class="graph-steps-toggle" id="graph-steps-toggle" style="display:none" '
+    +   'title="Switch between the plan graph and a readable step list">\u2630 Steps</button>' +
     '  <div class="graph-zoom">' +
     '    <button id="graph-zoom-in" title="Zoom in — or pinch on a touchpad">+</button>' +
     '    <button id="graph-zoom-out" title="Zoom out — or pinch on a touchpad">−</button>' +
@@ -92,6 +95,98 @@ Panels.define('graph', function (root, bus) {
   Object.keys(TABS).forEach(function (t) { stacks[t] = []; });
   let inGraphSet = {};
 
+  // %% Plan tab: readable step-list rendering (an alternative to the vis graph)
+  let stepsMode = false;
+  const stepsEl = root.querySelector('#graph-steps');
+  const stepsToggle = root.querySelector('#graph-steps-toggle');
+  const STEP_KINDS = { ActionNode: 'action', AttachNode: 'attach', DetachNode: 'attach' };
+  const DETAIL_KINDS = { ConditionNode: 'condition', MotionNode: 'motion', MonitorNode: 'monitor' };
+  const STRUCT_KINDS = { SequentialNode: 1, ParallelNode: 1, UnderspecifiedNode: 1 };
+  const STEP_STATUS = { SUCCEEDED: 'done', DONE: 'done', RUNNING: 'running', FAILED: 'failed', CREATED: 'not started', NOT_STARTED: 'not started' };
+  function stepWords(x) { return String(x || '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').trim().toLowerCase().replace(/^./, function (c) { return c.toUpperCase(); }); }
+  function stepLabel(n) {
+    if (n.kind === 'ConditionNode') return 'condition check';
+    if (n.kind === 'AttachNode') return 'grasp' + (n.target ? ' ' + String(n.target).replace(/\.(stl|obj|dae)$/i, '') : '');
+    if (n.kind === 'DetachNode') return 'release' + (n.target ? ' ' + String(n.target).replace(/\.(stl|obj|dae)$/i, '') : '');
+    if (n.kind === 'MotionNode') return stepWords((n.label || 'motion').replace(/Motion$/, '')) || 'motion';
+    var l = stepWords((n.label || n.kind).replace(/(Action|Node)$/, ''));
+    if (n.target) l += ' ' + String(n.target).replace(/\.(stl|obj|dae)$/i, '');
+    return l || 'step';
+  }
+  function stepTreeFrom(nodes) {
+    const by = {}, roots = [];
+    nodes.forEach(function (n) { by[n.id] = { n: n, kids: [] }; });
+    nodes.forEach(function (n) { const o = by[n.id]; if (n.parent && by[n.parent]) by[n.parent].kids.push(o); else roots.push(o); });
+    return roots;
+  }
+  function stepPill(status) {
+    const key = status === 'NOT_STARTED' ? 'CREATED' : (status || 'CREATED');
+    return '<span class="sp sp-' + key + '">' + (STEP_STATUS[status] || String(status || '').toLowerCase()) + '</span>';
+  }
+  // flatten structural containers; keep action/attach as numbered steps, details collapsed
+  function stepItems(node) {
+    const out = [];
+    (node.kids || []).forEach(function (c) {
+      const k = c.n.kind;
+      if (STEP_KINDS[k]) out.push(c);
+      else if (STRUCT_KINDS[k]) Array.prototype.push.apply(out, stepItems(c));
+    });
+    return out;
+  }
+  function renderSteps(payload) {
+    const roots = stepTreeFrom(payload.nodes || []);
+    const top = roots.length === 1 && STRUCT_KINDS[roots[0].n.kind] ? stepItems(roots[0]) : roots;
+    const html = ['<div class="steps-tree">'];
+    function walk(item, number) {
+      const n = item.n;
+      const sub = stepItems(item);
+      const details = (item.kids || []).filter(function (c) { return DETAIL_KINDS[c.n.kind]; });
+      const hk = sub.length || details.length;
+      html.push('<div class="st-row' + (hk ? ' hk' : '') + '" data-id="' + n.id + '">' +
+        '<span class="st-tw">' + (hk ? '▸' : '') + '</span>' +
+        '<span class="st-num">' + number + '</span>' +
+        '<span class="st-name">' + stepLabel(n) + '</span>' +
+        '<span class="st-meta">' + (details.length ? '<span class="st-dc">' + details.length + ' detail' + (details.length > 1 ? 's' : '') + '</span>' : '') + stepPill(n.status) + '</span>' +
+        '</div>');
+      if (hk) {
+        html.push('<div class="st-kids">');
+        details.forEach(function (d) { html.push('<div class="st-leaf"><span class="st-name detail">' + stepLabel(d.n) + '</span>' + stepPill(d.n.status) + '</div>'); });
+        var i = 1; sub.forEach(function (c) { walk(c, number + '.' + (i++)); });
+        html.push('</div>');
+      }
+    }
+    var i = 1; top.forEach(function (c) { walk(c, String(i++)); });
+    html.push('</div>');
+    stepsEl.innerHTML = html.join('');
+    // collapse/expand
+    stepsEl.querySelectorAll('.st-row.hk').forEach(function (r) {
+      r.addEventListener('click', function () {
+        const kids = r.nextElementSibling;
+        if (kids && kids.classList.contains('st-kids')) {
+          const open = kids.style.display !== 'none';
+          kids.style.display = open ? 'none' : '';
+          r.querySelector('.st-tw').textContent = open ? '▸' : '▾';
+        }
+      });
+    });
+  }
+  function maybeRenderSteps(payload) {
+    const on = stepsMode && tab === 'plan';
+    const canvas = root.querySelector('.graph-canvas');
+    const legend = root.querySelector('#legend');
+    if (on && payload && (payload.nodes || []).length) {
+      canvas.style.display = 'none'; if (legend) legend.style.display = 'none';
+      stepsEl.style.display = ''; renderSteps(payload);
+    } else {
+      stepsEl.style.display = 'none'; canvas.style.display = ''; if (legend) legend.style.display = '';
+    }
+  }
+  if (stepsToggle) stepsToggle.addEventListener('click', function () {
+    stepsMode = !stepsMode;
+    stepsToggle.classList.toggle('on', stepsMode);
+    maybeRenderSteps(shown[tab] || base[tab]);
+  });
+
   function setView(payload) {
     view = payload;
     shown[tab] = payload;
@@ -110,6 +205,7 @@ Panels.define('graph', function (root, bus) {
       key: (payload.key || tab) + '#' + stacks[tab].length,
     });
     updateNav();
+    maybeRenderSteps(payload);
   }
   function updateNav() {
     const inside = stacks[tab].length > 0;
@@ -163,6 +259,7 @@ Panels.define('graph', function (root, bus) {
         return;
       }
     }
+    if (stepsToggle) stepsToggle.style.display = (name === 'plan') ? '' : 'none';
     setView(shown[name] || base[name]);
     liveRefresh(true);            // a live tab picks the bridge status up at once
     showRecordedStatechart();     // and a replayed one, the moment it is playing
@@ -347,6 +444,7 @@ Panels.define('graph', function (root, bus) {
     if (!Graph.setStatuses(map)) { base[tab] = payload; setView(payload); return; }
     base[tab] = payload;
     if (view && view.details) view.details = payload.details;
+    maybeRenderSteps(payload);
   }
 
   bus.on('live:changed', function (p) {
