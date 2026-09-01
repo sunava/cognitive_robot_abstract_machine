@@ -96,7 +96,7 @@ Panels.define('graph', function (root, bus) {
   let inGraphSet = {};
 
   // %% Plan tab: readable step-list rendering (an alternative to the vis graph)
-  let stepsMode = false;
+  let stepsMode = true;   // Plan tab opens in the readable Steps view; the toggle switches to the graph
   const stepsEl = root.querySelector('#graph-steps');
   const stepsToggle = root.querySelector('#graph-steps-toggle');
   const STEP_KINDS = { ActionNode: 'action', AttachNode: 'attach', DetachNode: 'attach' };
@@ -340,7 +340,7 @@ Panels.define('graph', function (root, bus) {
         return;
       }
     }
-    if (stepsToggle) stepsToggle.style.display = (name === 'plan') ? '' : 'none';
+    if (stepsToggle) { stepsToggle.style.display = (name === 'plan') ? '' : 'none'; stepsToggle.classList.toggle('on', stepsMode); }
     setView(shown[name] || base[name]);
     liveRefresh(true);            // a live tab picks the bridge status up at once
     showRecordedStatechart();     // and a replayed one, the moment it is playing
