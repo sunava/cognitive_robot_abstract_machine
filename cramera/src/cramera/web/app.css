@@ -722,3 +722,20 @@ body.graph-full-open{overflow:hidden}
 .sp-RUNNING{background:rgba(255,182,72,.16);color:#ffcf8a}
 .sp-FAILED{background:rgba(255,107,139,.16);color:#ff9db1}
 .sp-CREATED,.sp-NOT_STARTED{background:rgba(70,85,122,.25);color:#9aa7c4}
+
+/* in-tab constraints palette (Plan tab Steps view) */
+.cpal{max-width:900px;margin:0 auto 14px;border:1px solid var(--line,#26324d);border-radius:9px;background:var(--bg2,#0c1526);padding:11px 13px}
+.cpal-h{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint,#5f7196);margin-bottom:9px}
+.cpal-list{display:flex;flex-wrap:wrap;gap:7px}
+.cpal-card{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink,#dfe8fb);background:var(--panel,#0f1729);border:1px dashed #34405f;border-radius:7px;padding:6px 9px;cursor:grab}
+.cpal-card:hover{border-color:var(--par,#5b8cff);background:rgba(91,140,255,.07)}
+.cpal-grip{color:var(--faint,#5f7196)}
+.cpal-del{color:var(--faint,#5f7196);cursor:pointer;padding-left:2px}
+.cpal-del:hover{color:#ff9db1}
+.cpal-add{display:flex;gap:6px;margin-top:9px}
+.cpal-in{flex:1;background:#0a1122;border:1px solid var(--line,#26324d);border-radius:6px;color:var(--ink,#dfe8fb);font:inherit;font-size:12px;padding:6px 9px}
+.cpal-in:focus{outline:none;border-color:var(--par,#5b8cff)}
+.cpal-btn{background:rgba(91,140,255,.16);border:1px solid var(--par,#5b8cff);color:#bcd2ff;font:inherit;font-size:12px;font-weight:600;border-radius:6px;padding:0 12px;cursor:pointer}
+.st-row.st-drop{background:rgba(91,140,255,.12);box-shadow:inset 0 0 0 1px var(--par,#5b8cff)}
+.st-cflash{font-size:10px;font-weight:700;color:#bcd2ff;background:rgba(91,140,255,.18);border:1px solid rgba(91,140,255,.4);padding:1px 6px;border-radius:999px}
+.st-cflash.bad{color:#ff9db1;background:rgba(255,107,139,.16);border-color:rgba(255,107,139,.4)}

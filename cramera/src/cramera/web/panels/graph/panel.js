@@ -133,12 +133,92 @@ Panels.define('graph', function (root, bus) {
     });
     return out;
   }
+  // %% constraints palette (in-tab): natural-language -> real giskard goal -> POST /constraint
+  let CONSTRAINTS = [
+    { id: 'c1', text: 'Milk must always stay upright' },
+    { id: 'c2', text: 'Robot must look where it operates' },
+    { id: 'c3', text: 'Keep the gripper closed while carrying' },
+  ];
+  let cSeq = 4;
+  function objIn(text, node) {
+    const m = String(text).toLowerCase().match(/\b(milk|bowl|spoon|plate|cup|tray|bottle|flask|vial|sample)\b/);
+    if (m) return m[1];
+    if (node && node.target) return String(node.target).replace(/\.(stl|obj|dae)$/i, '');
+    return 'object';
+  }
+  function compileConstraint(text, node) {
+    const t = String(text).toLowerCase();
+    if (/upright|stay up|vertical|tip over|spill/.test(t)) {
+      const o = objIn(text, node);
+      return { goal: 'VectorsAligned', params: { root_link: 'map', tip_link: o, tip_normal: [0, 0, 1], goal_normal: [0, 0, 1], threshold: 0.1 } };
+    }
+    if (/look|watch|gaze|point|face|operat/.test(t))
+      return { goal: 'PointingAt', params: { tip_link: 'head_camera', root_link: 'map', pointing_axis: [0, 0, 1], goal_point: '@operation_target', threshold: 0.05 } };
+    if (/gripper.*clos|clos.*gripper|hold.*tight|carry/.test(t))
+      return { goal: 'JointPositionReached', params: { joint: 'gripper_joint', goal_position: 0.0, threshold: 0.005 } };
+    return { goal: null, params: {} };
+  }
+  const stepNodeById = {};   // id -> raw plan node, filled during renderSteps
+  function postConstraint(nodeId, cid) {
+    const node = stepNodeById[nodeId];
+    const c = CONSTRAINTS.find(function (x) { return x.id === cid; });
+    if (!node || !c) return;
+    const comp = compileConstraint(c.text, node);
+    if (!comp.goal) { flashStep(nodeId, 'no match', false); return; }
+    if (!liveState.url) { flashStep(nodeId, 'not live', false); return; }
+    const body = { op: 'attach_monitor', text: c.text, apply: 'next_activation',
+      target_plan_node: { id: node.id, kind: node.kind, label: node.label },
+      giskard_node: { type: comp.goal, params: comp.params } };
+    fetch(liveState.url + '/constraint', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { flashStep(nodeId, j.ok ? (comp.goal + ' ✓') : ('✗ ' + (j.error || 'error')), !!j.ok); })
+      .catch(function (e) { flashStep(nodeId, '✗ ' + e, false); });
+  }
+  function flashStep(nodeId, msg, ok) {
+    const row = stepsEl.querySelector('.st-row[data-id="' + nodeId + '"]');
+    if (!row) return;
+    let tag = row.querySelector('.st-cflash');
+    if (!tag) { tag = document.createElement('span'); tag.className = 'st-cflash'; row.querySelector('.st-meta').prepend(tag); }
+    tag.textContent = '⛓ ' + msg; tag.classList.toggle('bad', !ok);
+  }
+  function renderPalette() {
+    const items = CONSTRAINTS.map(function (c) {
+      return '<div class="cpal-card" draggable="true" data-cid="' + c.id + '"><span class="cpal-grip">⠿</span>' + c.text + '<span class="cpal-del" data-del="' + c.id + '">×</span></div>';
+    }).join('');
+    return '<div class="cpal"><div class="cpal-h">Constraints — drag onto a step (live)</div>' +
+      '<div class="cpal-list">' + items + '</div>' +
+      '<div class="cpal-add"><input class="cpal-in" placeholder="e.g. milk must stay upright"><button class="cpal-btn">Add</button></div></div>';
+  }
+  function wirePalette() {
+    stepsEl.querySelectorAll('.cpal-card').forEach(function (card) {
+      card.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/plain', 'c:' + card.dataset.cid); e.dataTransfer.effectAllowed = 'copy'; });
+    });
+    stepsEl.querySelectorAll('.cpal-del').forEach(function (x) {
+      x.addEventListener('click', function (e) { e.stopPropagation(); CONSTRAINTS = CONSTRAINTS.filter(function (c) { return c.id !== x.dataset.del; }); renderSteps(shown[tab] || base[tab]); });
+    });
+    const inp = stepsEl.querySelector('.cpal-in'), btn = stepsEl.querySelector('.cpal-btn');
+    function add() { const v = inp.value.trim(); if (!v) return; CONSTRAINTS.push({ id: 'c' + (cSeq++), text: v }); renderSteps(shown[tab] || base[tab]); }
+    if (btn) btn.addEventListener('click', add);
+    if (inp) inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+    stepsEl.querySelectorAll('.st-row[data-id]').forEach(function (row) {
+      row.addEventListener('dragover', function (e) { e.preventDefault(); row.classList.add('st-drop'); });
+      row.addEventListener('dragleave', function () { row.classList.remove('st-drop'); });
+      row.addEventListener('drop', function (e) {
+        e.preventDefault(); e.stopPropagation(); row.classList.remove('st-drop');
+        const d = e.dataTransfer.getData('text/plain') || '';
+        if (d.indexOf('c:') === 0) postConstraint(row.dataset.id, d.slice(2));
+      });
+    });
+  }
+
   function renderSteps(payload) {
     const roots = stepTreeFrom(payload.nodes || []);
     const top = roots.length === 1 && STRUCT_KINDS[roots[0].n.kind] ? stepItems(roots[0]) : roots;
-    const html = ['<div class="steps-tree">'];
+    for (const k in stepNodeById) delete stepNodeById[k];
+    const html = [renderPalette(), '<div class="steps-tree">'];
     function walk(item, number) {
       const n = item.n;
+      stepNodeById[n.id] = n;
       const sub = stepItems(item);
       const details = (item.kids || []).filter(function (c) { return DETAIL_KINDS[c.n.kind]; });
       const hk = sub.length || details.length;
@@ -158,6 +238,7 @@ Panels.define('graph', function (root, bus) {
     var i = 1; top.forEach(function (c) { walk(c, String(i++)); });
     html.push('</div>');
     stepsEl.innerHTML = html.join('');
+    wirePalette();
     // collapse/expand
     stepsEl.querySelectorAll('.st-row.hk').forEach(function (r) {
       r.addEventListener('click', function () {
