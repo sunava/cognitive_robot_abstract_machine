@@ -72,6 +72,9 @@ class PlanViewPayload(GraphPanelPayload):
             "legend": [asdict(entry) for entry in PLAN_LEGEND],
             "layout": "hier",
             "statusLegend": True,
+            # marks the plan tab as live-capable, so the graph panel attaches it to the
+            # bridge's /plan when a demo is running (mirrors chart.py / transforms.py)
+            "live": "plan",
             "empty": self.empty_message,
         }
 
