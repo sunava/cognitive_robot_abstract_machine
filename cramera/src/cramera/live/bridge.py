@@ -168,6 +168,100 @@ class NamesAWorldEntity(Protocol):
     name: Any
 
 
+ALLOWED_CONSTRAINT_GOALS = (
+    "VectorsAligned",
+    "PointingAt",
+    "JointPositionReached",
+    "HeightMonitor",
+    "DistanceMonitor",
+)
+"""giskardpy goal/monitor class names the plan view may request (verified in
+``giskardpy/motion_statechart/monitors``)."""
+
+
+class MalformedConstraintRequest(Exception):
+    """
+    Raised when the plan view's constraint payload cannot be read.
+    """
+
+
+@dataclass(frozen=True)
+class AttachConstraintRequest:
+    """
+    A natural-language constraint the plan view attached to a plan node, already
+    compiled (viewer-side) to a giskardpy motion-statechart goal/monitor. The bridge
+    validates it here and, once live injection lands, adds the corresponding node to
+    the running :class:`MotionStatechart` at :attr:`target_node_id`.
+    """
+
+    target_node_id: str
+    """Stable id of the plan node the constraint is attached to (viewer-assigned)."""
+
+    text: str
+    """The original natural-language constraint, kept for provenance and logging."""
+
+    goal_type: str
+    """giskardpy goal/monitor class name, e.g. ``"VectorsAligned"`` or ``"PointingAt"``."""
+
+    params: Dict[str, Any] = field(default_factory=dict)
+    """Keyword arguments for the giskard goal, as compiled by the plan view."""
+
+    node_kind: Optional[str] = None
+    """Plan-node kind (e.g. ``"ActionNode"``), for logging and targeting."""
+
+    node_label: Optional[str] = None
+    """Plan-node label, for logging."""
+
+    apply: str = "next_activation"
+    """When to apply: ``"next_activation"`` (default) or ``"immediate"``."""
+
+    @classmethod
+    def from_payload(cls, payload: Dict[str, Any]) -> "AttachConstraintRequest":
+        """
+        Build a request from a decoded ``POST /constraint`` body.
+
+        :param payload: The decoded JSON body of a ``POST /constraint`` request.
+        :raises MalformedConstraintRequest: If a required field is missing or unusable.
+            Validating here keeps bad input off the simulation tick.
+        """
+        node = payload.get("target_plan_node") or {}
+        if not isinstance(node, dict):
+            raise MalformedConstraintRequest("'target_plan_node' must be an object")
+        node_id = node.get("id")
+        if not isinstance(node_id, str) or not node_id:
+            raise MalformedConstraintRequest(
+                "'target_plan_node.id' must be a non-empty string"
+            )
+        giskard = payload.get("giskard_node") or {}
+        if not isinstance(giskard, dict):
+            raise MalformedConstraintRequest("'giskard_node' must be an object")
+        goal_type = giskard.get("type")
+        if goal_type not in ALLOWED_CONSTRAINT_GOALS:
+            raise MalformedConstraintRequest(
+                "'giskard_node.type' must be one of %s" % (ALLOWED_CONSTRAINT_GOALS,)
+            )
+        params = giskard.get("params") or {}
+        if not isinstance(params, dict):
+            raise MalformedConstraintRequest("'giskard_node.params' must be an object")
+        text = payload.get("text")
+        if not isinstance(text, str):
+            text = ""
+        apply_when = payload.get("apply") or "next_activation"
+        if apply_when not in ("next_activation", "immediate"):
+            raise MalformedConstraintRequest(
+                "'apply' must be 'next_activation' or 'immediate'"
+            )
+        return cls(
+            target_node_id=node_id,
+            text=text,
+            goal_type=goal_type,
+            params=dict(params),
+            node_kind=node.get("kind"),
+            node_label=node.get("label"),
+            apply=apply_when,
+        )
+
+
 class MalformedMoveRequest(Exception):
     """
     Raised when the viewer's move payload cannot be read as a pose.
@@ -622,6 +716,15 @@ class Bridge:
     Object moves queued by the viewer, applied on the simulation thread.
     """
 
+    _constraints: List["AttachConstraintRequest"] = field(default_factory=list)
+    """Constraints attached from the plan view, drained on the simulation thread."""
+
+    _constraints_lock: threading.Lock = field(default_factory=threading.Lock)
+    """Guards :attr:`_constraints`."""
+
+    pending_constraints: List["AttachConstraintRequest"] = field(default_factory=list)
+    """Validated constraints, kept for inspection until live statechart injection lands."""
+
     _moves_lock: threading.Lock = field(default_factory=threading.Lock)
     """
     Guards :attr:`_moves` (written by HTTP threads).
@@ -750,6 +853,7 @@ class Bridge:
         :param chart: The motion statechart the executor is ticking.
         """
         self.apply_moves()
+        self.apply_constraints()
         self.observe_chart(chart)
         self._tick_count += 1
         if self._tick_count % self.plan_snapshot_tick_interval == 0:
@@ -1227,6 +1331,50 @@ class Bridge:
         """
         with self._moves_lock:
             self._moves.append(request)
+
+    def queue_constraint(self, request: "AttachConstraintRequest") -> None:
+        """
+        Queue a constraint attached from the plan view (called on an HTTP thread).
+
+        :param request: The constraint to apply on the next simulation tick.
+        """
+        with self._constraints_lock:
+            self._constraints.append(request)
+
+    def apply_constraints(self) -> None:
+        """
+        Drain queued plan-view constraints on the simulation thread.
+
+        Runs from the tick hook, next to :meth:`apply_moves`, because the simulation
+        thread is the only one allowed to touch the running motion statechart.
+        """
+        with self._constraints_lock:
+            constraints, self._constraints = self._constraints, []
+        for constraint in constraints:
+            try:
+                self._inject_constraint(constraint)
+            except Exception:  # a bad constraint must never kill the tick
+                logger.exception("failed to inject constraint %r", constraint.text)
+
+    def _inject_constraint(self, constraint: "AttachConstraintRequest") -> None:
+        """
+        Add the compiled giskard goal to the running motion statechart.
+
+        .. note:: Live injection into a ticking :class:`MotionStatechart` (resolving the
+           target node, building the goal from ``constraint.params`` with real
+           :class:`Body` objects, and adding it without racing the executor) is the
+           remaining step. For now the request is validated, logged, and recorded in
+           :attr:`pending_constraints`, so the viewer's "Apply live" has a real endpoint
+           and the payload is verifiable end-to-end.
+        """
+        logger.info(
+            "constraint queued for plan node %s: %s(%s) — from %r",
+            constraint.target_node_id,
+            constraint.goal_type,
+            constraint.params,
+            constraint.text,
+        )
+        self.pending_constraints.append(constraint)
 
     def apply_moves(self) -> None:
         """

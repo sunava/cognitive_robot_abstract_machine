@@ -63,13 +63,13 @@
   // (CREATED/RUNNING/SUCCEEDED/FAILED/INTERRUPTED/PAUSE) and giskardpy
   // LifeCycleValues on statechart nodes (NOT_STARTED/RUNNING/PAUSED/DONE/FAILED).
   const STATUS_STYLE = {
-    RUNNING:     { c: '#ffb648', w: 20, text: 'running', legend: 'running' },
-    SUCCEEDED:   { c: '#4bd38a', w: 16, text: 'succeeded', legend: 'succeeded / done' },
-    DONE:        { c: '#4bd38a', w: 16, text: 'done', legend: 'succeeded / done' },
-    FAILED:      { c: '#ff6b8b', w: 20, text: 'failed', legend: 'failed' },
-    INTERRUPTED: { c: '#ff9d6b', w: 16, d: [9, 7], text: 'interrupted', legend: 'interrupted' },
-    PAUSE:       { c: '#5b8cff', w: 16, d: [9, 7], text: 'paused', legend: 'paused' },
-    PAUSED:      { c: '#5b8cff', w: 16, d: [9, 7], text: 'paused', legend: 'paused' },
+    RUNNING:     { c: '#ffb648', w: 16, text: 'running', legend: 'running' },
+    SUCCEEDED:   { c: '#4bd38a', w: 12, text: 'succeeded', legend: 'succeeded / done' },
+    DONE:        { c: '#4bd38a', w: 12, text: 'done', legend: 'succeeded / done' },
+    FAILED:      { c: '#ff6b8b', w: 16, text: 'failed', legend: 'failed' },
+    INTERRUPTED: { c: '#ff9d6b', w: 12, d: [9, 7], text: 'interrupted', legend: 'interrupted' },
+    PAUSE:       { c: '#5b8cff', w: 12, d: [9, 7], text: 'paused', legend: 'paused' },
+    PAUSED:      { c: '#5b8cff', w: 12, d: [9, 7], text: 'paused', legend: 'paused' },
     CREATED:     { c: '#46557a', w: 7, d: [4, 5], legend: 'not started' },
     NOT_STARTED: { c: '#46557a', w: 7, d: [4, 5], legend: 'not started' },
     // transform freshness (cramera.live.transforms), on the frame a connection carries
@@ -195,7 +195,6 @@
         color: { background: st.color, border: st.ring, highlight: { background: st.ring, border: '#fff' } },
         font: { color: '#dfe8fb', size: hasStatus ? 17 : 13, face: 'Inter',
                 strokeWidth: 3, strokeColor: '#0b1220' },
-        borderWidth: 2,
       };
     });
 
@@ -211,7 +210,7 @@
 
     network = new vis.Network(el, { nodes: nodes, edges: edges }, {
       groups: groups,
-      nodes: { scaling: hasStatus ? { min: 34, max: 56 } : { min: 12, max: 30 } },
+      nodes: { borderWidth: 2, scaling: hasStatus ? { min: 34, max: 56 } : { min: 12, max: 30 } },
       // straight edges render far cheaper than smooth curves at hundreds of edges
       edges: {
         smooth: hier ? { type: 'cubicBezier', forceDirection: data.layout === 'hier-lr' ? 'horizontal' : 'vertical', roundness: 0.5 } : false,

@@ -56,7 +56,13 @@ from typing_extensions import Any, ClassVar, Dict, Optional, Tuple, Type
 
 from cramera.knowledge.query_vocabulary import UnknownVocabularyName
 from cramera.knowledge.queryable_knowledge import QueryScope, UnknownQueryScope
-from cramera.live.bridge import Bridge, MalformedMoveRequest, MoveRequest
+from cramera.live.bridge import (
+    AttachConstraintRequest,
+    Bridge,
+    MalformedConstraintRequest,
+    MalformedMoveRequest,
+    MoveRequest,
+)
 from cramera.live.query import NoQuerySourceRegistered
 from cramera.live.frame_range import FrameRange, InvalidFrameRange
 from cramera.live.live_bundle import build_live_scene
@@ -288,6 +294,8 @@ class BridgeRequestHandler(BaseHTTPRequestHandler):
             return self._discard_recording()
         if self.path == "/recording/save":
             return self._save_recording()
+        if self.path.startswith("/constraint"):
+            return self.queue_requested_constraint()
         self.queue_requested_move()
 
     def _posted_payload(self) -> Optional[Dict[str, Any]]:
@@ -453,6 +461,29 @@ class BridgeRequestHandler(BaseHTTPRequestHandler):
         except MalformedMoveRequest as error:
             return self._send_json({"ok": False, "error": str(error)}, code=400)
         self.bridge.queue_move(move)
+        return self._send_json({"ok": True})
+
+    def queue_requested_constraint(self) -> None:
+        """
+        Queue a constraint the plan view attached to a plan node.
+
+        Validated on the HTTP thread so malformed input is rejected here rather than
+        raising later inside the simulation tick.
+        """
+        length = int(self.headers.get("Content-Length") or 0)
+        try:
+            payload = json.loads(self.rfile.read(length) or b"{}")
+        except json.JSONDecodeError as error:
+            return self._send_json({"ok": False, "error": str(error)}, code=400)
+        if not isinstance(payload, dict):
+            return self._send_json(
+                {"ok": False, "error": "body must be a JSON object"}, code=400
+            )
+        try:
+            request = AttachConstraintRequest.from_payload(payload)
+        except MalformedConstraintRequest as error:
+            return self._send_json({"ok": False, "error": str(error)}, code=400)
+        self.bridge.queue_constraint(request)
         return self._send_json({"ok": True})
 
     def do_OPTIONS(self) -> None:
