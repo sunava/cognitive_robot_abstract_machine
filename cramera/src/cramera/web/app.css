@@ -757,3 +757,26 @@ body.graph-full-open{overflow:hidden}
 .st-row.lvl2 .st-name,.st-row.lvl3 .st-name{font-size:12.5px;font-weight:400;color:var(--muted,#8b9bc0)}
 .st-kids{margin-left:16px;border-left:2px solid var(--line2,#2b3a57);padding-left:10px}
 .st-row.lvl0 .st-name::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent,#39d5c8);margin-right:8px;vertical-align:middle;opacity:.7}
+
+/* ===== Plan Steps: strong tree hierarchy (overrides the earlier weaker rules) ===== */
+.st-row{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;position:relative}
+.st-row:hover{background:rgba(255,255,255,.03)}
+.st-row .st-name{font-size:13px;font-weight:600;color:var(--ink,#e8eef6)}
+/* top-level phases: card-like header with an accent bar */
+.st-row.lvl0{margin-top:10px;padding:10px 12px 10px 14px;background:var(--bg2,#0c0e12);
+  border:1px solid var(--line,#20242c);border-left:4px solid var(--accent,#39d5c8);border-radius:8px}
+.steps-tree > .st-row.lvl0:first-child{margin-top:0}
+.st-row.lvl0 .st-name{font-size:15px;font-weight:800;color:var(--ink,#e8eef6)}
+.st-row.lvl0 .st-num{font-weight:800;color:var(--muted,#8b93a3)}
+.st-row.lvl0 .st-name::before{content:none}
+/* nested groups: indent + a clear vertical guide line + connector ticks */
+.st-kids{position:relative;margin-left:18px;padding-left:20px;border-left:2px solid var(--line2,#2c313b)}
+.st-kids > .st-row::before,
+.st-kids > .st-leaf::before{content:"";position:absolute;left:-20px;top:50%;width:16px;height:2px;background:var(--line2,#2c313b)}
+/* depth de-emphasis */
+.st-row.lvl2 .st-name{font-weight:500;color:#c7cede;font-size:12.5px}
+.st-row.lvl3 .st-name{font-weight:400;color:var(--muted,#8b93a3);font-size:12.5px}
+/* details (motions) recede clearly */
+.st-leaf{display:flex;align-items:center;gap:8px;padding:4px 10px;position:relative}
+.st-leaf .st-name{font-weight:400;color:var(--muted,#8b93a3);font-size:12px;font-style:italic}
+.st-leaf .st-name.detail::before{content:"↳ ";color:var(--faint,#5a6270);font-style:normal}

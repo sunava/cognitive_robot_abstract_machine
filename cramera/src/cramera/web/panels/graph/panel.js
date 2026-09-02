@@ -274,7 +274,7 @@ Panels.define('graph', function (root, bus) {
         '</div>');
       if (hk) {
         html.push('<div class="st-kids"' + (collapsed ? ' style="display:none"' : '') + '>');
-        details.forEach(function (d) { html.push('<div class="st-leaf"><span class="st-name detail">' + stepLabel(d.n) + '</span>' + stepPill(d.n.status) + '</div>'); });
+        details.forEach(function (d) { html.push('<div class="st-leaf"><span class="st-name detail">' + stepLabel(d.n) + '</span><span class="st-meta">' + stepPill(d.n.status) + '</span></div>'); });
         var i = 1; sub.forEach(function (c) { walk(c, number + '.' + (i++), depth + 1); });
         html.push('</div>');
       }
