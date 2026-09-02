@@ -8,8 +8,13 @@
  * ==========================================================================*/
 // ?replay= (recorded clip popup) and ?scene (Plan Builder's embedded 3D view) both want
 // just the 3D scene; ?scene also drops the topbar chrome (see app.css .scene-only).
-var _sceneOnly = /[?&](replay=|scene(\b|=))/.test(window.location.search);
-if (/[?&]scene(\b|=)/.test(window.location.search)) {
+// Safety net: only strip the chrome / reduce the layout when we're actually embedded
+// in an iframe (Plan Builder / replay popup). If ?scene ends up in a *top-level* tab,
+// keep the full page (topbar + EQL + graph) so the user isn't stranded on a bare scene
+// with no way to navigate back.
+var _framed = window.self !== window.top;
+var _sceneOnly = _framed && /[?&](replay=|scene(\b|=))/.test(window.location.search);
+if (_sceneOnly) {
   document.documentElement.classList.add('scene-only');
 }
 window.CRAMERA_CONFIG = {
