@@ -160,7 +160,9 @@
   // ---------- plan steps ----------
   function addStep(type) {
     const b = BLOCKS[type]; if (!b) return;
-    steps.push({ id: 's' + (stepSeq++), type: type, params: Object.assign({}, b.params) });
+    const params = Object.assign({}, b.params);
+    if (type === 'transport' && !params.object && objects.length) params.object = objects[0].mesh;
+    steps.push({ id: 's' + (stepSeq++), type: type, params: params });
     renderSteps();
   }
   function renderSteps() {
@@ -193,6 +195,9 @@
   function num(s, k) { return '<label>' + k.toUpperCase() + '<input class="pb-num xyz" data-sid="' + s.id + '" data-k="' + k + '" type="number" step="0.05" value="' + s.params[k] + '"></label>'; }
   function sel(s, k, opts) { return '<label>' + k + '<select class="pb-sel" data-sid="' + s.id + '" data-k="' + k + '">' + opts.map(function (o) { return '<option' + (s.params[k] === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label>'; }
   function objSel(s) {
+    // keep the param in sync with the visibly-selected first option, so capture works
+    // even for a Transport step whose object dropdown was never touched
+    if (!s.params.object && objects.length) s.params.object = objects[0].mesh;
     const opts = objects.map(function (o) { return '<option value="' + o.mesh + '"' + (s.params.object === o.mesh ? ' selected' : '') + '>' + o.name + '</option>'; }).join('');
     return '<label>object<select class="pb-sel" data-sid="' + s.id + '" data-k="object">' + (opts || '<option value="">— add an object —</option>') + '</select></label>' +
       '<label>target<button class="pb-capbtn" data-capstep="' + s.id + '" title="use the object\'s current pose in the live 3D scene as this step\'s target">◎ capture from 3D</button></label>';
