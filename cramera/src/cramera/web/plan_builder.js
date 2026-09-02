@@ -335,8 +335,8 @@
           '<button class="pb-capbtn" data-capstep="' + s.id + '" title="drag the object to its drop-off in the 3D scene, then capture that pose as this step\'s target">◎ capture</button>');
       return (
         row(objSel(s)) +
-        row('<span class="pb-group-lbl start">start (from) →</span>' + objNum(s, 'x') + objNum(s, 'y') + objNum(s, 'z') +
-          '<button class="pb-capbtn start" data-capstart="' + s.id + '" title="drag the object to its START in the 3D scene, then capture that as its start pose">◎ capture</button>') +
+        row('<span class="pb-group-lbl start">start (from) →</span>' +
+          '<button class="pb-capbtn start" data-capstart="' + s.id + '" title="drag the object to its START in the 3D scene, then capture that as its start pose (shown on the object card)">◎ capture</button>') +
         row('<span class="pb-group-lbl">target →</span>' + modeSel(s)) +
         dropRow +
         row(sel(s, 'arm', ARMS))
@@ -345,12 +345,6 @@
     return '';
   }
   function num(s, k) { return '<label>' + k.toUpperCase() + '<input class="pb-num xyz" data-sid="' + s.id + '" data-k="' + k + '" type="number" step="0.05" value="' + s.params[k] + '"></label>'; }
-  // a start-pose field bound to the transported object (the "from"), shown on the step
-  function objNum(s, k) {
-    const o = objects.find(function (x) { return x.mesh === s.params.object; });
-    const v = o ? o[k] : 0;
-    return '<label>' + k.toUpperCase() + '<input class="pb-num xyz pb-objnum" data-omesh="' + (s.params.object || '') + '" data-k="' + k + '" type="number" step="0.05" value="' + v + '"></label>';
-  }
   function sel(s, k, opts) { return '<label>' + k + '<select class="pb-sel" data-sid="' + s.id + '" data-k="' + k + '">' + opts.map(function (o) { return '<option' + (s.params[k] === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label>'; }
   // a select whose option values differ from their labels: pairs = [[value, label], ...]
   function selPairs(s, k, pairs) {
@@ -393,12 +387,6 @@
     el.querySelectorAll('[data-down]').forEach(function (b) { b.addEventListener('click', function () { moveStep(b.dataset.down, 1); }); });
     el.querySelectorAll('[data-capstep]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); captureStepTarget(b.dataset.capstep); }); });
     el.querySelectorAll('[data-capstart]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); captureStepStart(b.dataset.capstart); }); });
-    el.querySelectorAll('.pb-objnum').forEach(function (inp) {
-      inp.addEventListener('input', function () {
-        const o = objects.find(function (x) { return x.mesh === inp.dataset.omesh; });
-        if (o) { o[inp.dataset.k] = parseFloat(inp.value) || 0; renderObjects(); }
-      });
-    });
     // remove an attached constraint chip
     el.querySelectorAll('[data-scon-del]').forEach(function (x) {
       x.addEventListener('click', function (e) { e.stopPropagation(); detachConstraint(x.dataset.sconDel, parseInt(x.dataset.sconIdx, 10)); });
