@@ -754,6 +754,11 @@ class Bridge:
     Name of the action whose motion group is executing.
     """
 
+    _ever_running: set = field(default_factory=set)
+    """ids of plan nodes that have been RUNNING at least once, so a node that has run
+    and gone idle (and not failed) reads as SUCCEEDED — a monotonic done-progression
+    the raw coraplex status does not keep (expanded nodes revert to CREATED)."""
+
     _motion_nodes: Dict[int, MotionNodeProgress] = field(default_factory=dict)
     """
     Execution progress per plan node, keyed by the node's :func:`id`.
@@ -898,6 +903,7 @@ class Bridge:
         """
         self._plan = plan
         self._motion_nodes.clear()
+        self._ever_running.clear()
         self.snapshot_plan()
 
     def observe_model_change(self) -> None:
@@ -1866,6 +1872,13 @@ class Bridge:
             if derived:
                 entry.status = derived
                 entry.derived = True
+        # sticky completion: once a node has run and is idle again (not running/failed),
+        # keep it SUCCEEDED so the plan view shows a monotonic done-progression.
+        if entry.status == "RUNNING":
+            self._ever_running.add(id(node))
+        elif id(node) in self._ever_running and entry.status == "CREATED":
+            entry.status = "SUCCEEDED"
+            entry.derived = True
         return entry.status
 
     def _add_designator_metadata(
