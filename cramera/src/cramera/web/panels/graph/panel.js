@@ -35,8 +35,6 @@ Panels.define('graph', function (root, bus) {
     '  </div>' +
     '  <div class="graph-canvas"></div>' +
     '  <div class="graph-steps" id="graph-steps" style="display:none"></div>' +
-    '  <button class="graph-steps-toggle" id="graph-steps-toggle" style="display:none" '
-    +   'title="Switch between the readable step list and the node graph"></button>' +
     '  <div class="graph-zoom">' +
     '    <button id="graph-zoom-in" title="Zoom in — or pinch on a touchpad">+</button>' +
     '    <button id="graph-zoom-out" title="Zoom out — or pinch on a touchpad">−</button>' +
