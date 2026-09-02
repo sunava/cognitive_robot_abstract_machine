@@ -62,7 +62,7 @@
       d.innerHTML =
         '<div class="row1"><span class="pb-swatch" style="background:' + o.color + '"></span>' +
         '<span class="oname" title="' + o.mesh + '">' + o.name + '</span>' +
-        '<span class="ocap" data-cap="' + o.id + '" title="capture its pose from the live 3D scene">⟳ capture</span>' +
+        '<span class="ocap" data-cap="' + o.id + '" title="drag the object to its start position in the 3D scene, then click to capture that as its start pose">⟳ capture start</span>' +
         '<span class="odel" data-del="' + o.id + '">×</span></div>' +
         '<div class="fields">' +
         field(o, 'x') + field(o, 'y') + field(o, 'z') + field(o, 'yaw') + '</div>';
@@ -189,7 +189,7 @@
     if (s.type === 'park_arms') return sel(s, 'arm', ARMS);
     if (s.type === 'move_torso') return sel(s, 'torso', TORSO);
     if (s.type === 'navigate') return num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw');
-    if (s.type === 'transport') return objSel(s) + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw') + sel(s, 'arm', ARMS);
+    if (s.type === 'transport') return objSel(s) + '<span class="pb-group-lbl">drop-off (where it goes) →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw') + sel(s, 'arm', ARMS);
     return '';
   }
   function num(s, k) { return '<label>' + k.toUpperCase() + '<input class="pb-num xyz" data-sid="' + s.id + '" data-k="' + k + '" type="number" step="0.05" value="' + s.params[k] + '"></label>'; }
@@ -200,7 +200,7 @@
     if (!s.params.object && objects.length) s.params.object = objects[0].mesh;
     const opts = objects.map(function (o) { return '<option value="' + o.mesh + '"' + (s.params.object === o.mesh ? ' selected' : '') + '>' + o.name + '</option>'; }).join('');
     return '<label>object<select class="pb-sel" data-sid="' + s.id + '" data-k="object">' + (opts || '<option value="">— add an object —</option>') + '</select></label>' +
-      '<label>target<button class="pb-capbtn" data-capstep="' + s.id + '" title="use the object\'s current pose in the live 3D scene as this step\'s target">◎ capture from 3D</button></label>';
+      '<label>&nbsp;<button class="pb-capbtn" data-capstep="' + s.id + '" title="drag the object to its drop-off in the 3D scene, then click to capture that pose as this step\'s target">◎ capture drop-off from 3D</button></label>';
   }
   function wireStepEvents() {
     const el = $('pb-steps');
@@ -391,7 +391,7 @@
   function pollLive(n) {
     fetch(bridgeUrl() + '/captured_objects').then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
-        if (d) { liveStatus('● live — drag objects in the 3D view, then capture', 'ok'); const f=$('pb-3d'); if (f && f.src.indexOf('index.html')<0) f.src='index.html'; }
+        if (d) { liveStatus('● live — drag objects in the 3D view, then capture', 'ok'); const f=$('pb-3d'); if (f && f.src.indexOf('index.html')<0) f.src='index.html?scene'; }
         else if (n < 40) { setTimeout(function () { pollLive(n + 1); }, 3000); }
         else liveStatus('scene did not come up — check the terminal', 'err');
       })

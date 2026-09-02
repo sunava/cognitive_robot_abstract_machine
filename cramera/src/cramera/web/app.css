@@ -805,3 +805,7 @@ body.graph-full-open{overflow:hidden}
 .cpal-info .ci-table td.goal{color:#bcd2ff;font-weight:600;white-space:nowrap}
 .cpal-info .ci-foot{font-size:10.5px;color:var(--faint,#5a6270);margin-top:8px;line-height:1.5}
 .cpal-info .ci-foot code{background:rgba(255,255,255,.05);padding:0 3px;border-radius:3px;color:var(--muted,#8b93a3)}
+
+/* scene-only mode (Plan Builder's embedded 3D view via index.html?scene) */
+:root.scene-only .topbar{display:none}
+:root.scene-only .split{position:absolute;inset:0}

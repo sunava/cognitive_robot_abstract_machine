@@ -6,10 +6,14 @@
  * Slots are the data-slot elements in index.html ('left', 'right'); a slot
  * with several panel ids stacks them vertically.
  * ==========================================================================*/
+// ?replay= (recorded clip popup) and ?scene (Plan Builder's embedded 3D view) both want
+// just the 3D scene; ?scene also drops the topbar chrome (see app.css .scene-only).
+var _sceneOnly = /[?&](replay=|scene(\b|=))/.test(window.location.search);
+if (/[?&]scene(\b|=)/.test(window.location.search)) {
+  document.documentElement.classList.add('scene-only');
+}
 window.CRAMERA_CONFIG = {
-  // a ?replay= popup is just the 3D scene playing a recorded clip of the demo;
-  // every other page gets the full layout
-  layout: /[?&]replay=/.test(window.location.search)
+  layout: _sceneOnly
     ? { left: ['robot-scene'] }
     : {
         left: ['robot-scene'],
