@@ -903,22 +903,42 @@
   function outputStyle() { const s = $('pb-style'); return s ? s.value : 'script'; }
   function generateSelected() { return outputStyle() === 'class' ? generateClass() : generate(); }
 
-  function showCode() { $('pb-code').textContent = generateSelected(); status('', ''); }
+  function showCode() {
+    $('pb-code').textContent = generateSelected(); status('', '');
+    // the preview sits below the 3D view (often off-screen), so bring it into view and
+    // give a visible confirmation — otherwise Generate looks like it did nothing
+    const pre = $('pb-code'); if (pre && pre.scrollIntoView) pre.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast('Generated ' + fileName() + ' — see preview below', 'ok');
+  }
   function status(msg, cls) { const el = $('pb-status'); el.textContent = msg; el.className = 'pb-status ' + (cls || ''); }
+  // a short-lived floating confirmation near the top, so button actions are noticed even
+  // when the status line / code preview are scrolled out of view
+  let _toastTimer = null;
+  function toast(msg, cls) {
+    let t = $('pb-toast');
+    if (!t) { t = document.createElement('div'); t.id = 'pb-toast'; document.body.appendChild(t); }
+    t.textContent = msg; t.className = 'pb-toast show ' + (cls || '');
+    if (_toastTimer) clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(function () { t.className = 'pb-toast ' + (cls || ''); }, 3200);
+  }
   function fileName() { return (($('pb-name').value || 'my_demo').replace(/[^a-z0-9_\-]/gi, '_')) + '.py'; }
 
   function download() {
     const code = generateSelected();
     const blob = new Blob([code], { type: 'text/x-python' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName(); a.click();
-    URL.revokeObjectURL(a.href); status('downloaded ' + fileName(), 'ok');
+    URL.revokeObjectURL(a.href); status('downloaded ' + fileName(), 'ok'); toast('Downloaded ' + fileName(), 'ok');
   }
   function save() {
     const code = generateSelected();
+    toast('Saving ' + fileName() + '…', '');
     fetch('/api/plan/save', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: fileName(), code: code }) })
       .then(function (r) { return r.json(); })
-      .then(function (j) { if (j.ok) status('saved → ' + j.path + '  (run: cramera-live ' + j.path + ')', 'ok'); else status('save failed: ' + (j.error || '?'), 'err'); })
-      .catch(function (e) { status('save failed: ' + e, 'err'); });
+      .then(function (j) {
+        if (j.ok) { status('saved → ' + j.path + '  (run: cramera-live ' + j.path + ')', 'ok'); toast('✓ Saved to ' + j.path.replace(/^.*\/coraplex\//, 'coraplex/'), 'ok'); }
+        else { status('save failed: ' + (j.error || '?'), 'err'); toast('Save failed: ' + (j.error || '?'), 'err'); }
+      })
+      .catch(function (e) { status('save failed: ' + e, 'err'); toast('Save failed: ' + e, 'err'); });
   }
 
   // ---------- live 3D capture ----------

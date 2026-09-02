@@ -150,3 +150,11 @@
 /* collapsible pose section toggle */
 .pb-pose-toggle{margin-top:7px;background:none;border:none;color:var(--muted,#8b93a3);font:inherit;font-size:10.5px;font-weight:600;cursor:pointer;padding:2px 0;letter-spacing:.03em}
 .pb-pose-toggle:hover{color:var(--pb-accent,#39d5c8)}
+
+/* transient confirmation toast (Generate / Save / Download) */
+#pb-toast{position:fixed;top:64px;left:50%;translate:-50% -8px;
+  background:var(--panel,#0b0d11);border:1px solid var(--pb-accent,#39d5c8);color:#aef3ec;
+  font-size:12.5px;font-weight:600;padding:9px 16px;border-radius:8px;z-index:200;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .2s,translate .2s;max-width:70vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pb-toast.show{opacity:1;translate:-50% 0}
+#pb-toast.err{border-color:#ff6b8b;color:#ff9db1}
