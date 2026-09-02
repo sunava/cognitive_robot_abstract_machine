@@ -785,3 +785,8 @@ body.graph-full-open{overflow:hidden}
 .cpal-resizer{flex:none;width:6px;cursor:col-resize;background:var(--line,#20242c);position:relative}
 .cpal-resizer:hover,.cpal-resizer.dragging{background:var(--accent,#39d5c8)}
 .cpal-resizer::before{content:"";position:absolute;inset:0 -4px}
+
+/* expand/collapse-all controls at the top of the constraints column */
+.cpal-tree-ctl{display:flex;gap:6px;margin-bottom:10px}
+.cpal-mini{flex:1;font:inherit;font-size:11px;color:var(--muted,#8b93a3);background:var(--panel,#0b0d11);border:1px solid var(--line,#20242c);border-radius:6px;padding:5px 6px;cursor:pointer}
+.cpal-mini:hover{color:var(--ink,#e8eef6);border-color:var(--accent,#39d5c8)}

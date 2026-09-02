@@ -1432,6 +1432,10 @@ class Bridge:
             VectorsAligned,
             PointingAt,
         )
+        from giskardpy.motion_statechart.monitors.feature_monitors import (
+            HeightMonitor,
+            DistanceMonitor,
+        )
 
         params = constraint.params
         root = self._resolve_body(params.get("root_link"))
@@ -1455,18 +1459,34 @@ class Bridge:
             )
         if constraint.goal_type == "PointingAt":
             goal = params.get("goal_point")
-            if not isinstance(goal, (list, tuple)):
-                # a placeholder like "@operation_target" cannot be grounded yet
-                logger.warning(
-                    "constraint %r: PointingAt needs a concrete goal_point, got %r",
-                    constraint.text, goal,
-                )
-                return None
+            if isinstance(goal, (list, tuple)):
+                goal_point = Point3(*goal, reference_frame=root)
+            else:
+                # a placeholder like "@operation_target": point at the object being
+                # handled, if we can resolve it, else give up gracefully
+                target = self._resolve_body(params.get("goal_point_body"))
+                if target is None:
+                    logger.warning(
+                        "constraint %r: PointingAt has no concrete target to aim at",
+                        constraint.text,
+                    )
+                    return None
+                goal_point = Point3(0, 0, 0, reference_frame=target)
             return PointingAt(
                 root_link=root, tip_link=tip,
-                goal_point=Point3(*goal, reference_frame=root),
+                goal_point=goal_point,
                 pointing_axis=vec(params.get("pointing_axis", [0, 0, 1])),
                 threshold=float(params.get("threshold", 0.05)),
+            )
+        if constraint.goal_type in ("HeightMonitor", "DistanceMonitor"):
+            # reference is the world root; the monitored point is the object's origin.
+            cls = HeightMonitor if constraint.goal_type == "HeightMonitor" else DistanceMonitor
+            return cls(
+                root_link=root, tip_link=tip,
+                reference_point=Point3(0, 0, 0, reference_frame=root),
+                tip_point=Point3(0, 0, 0, reference_frame=tip),
+                lower_limit=float(params.get("lower_limit", 0.0)),
+                upper_limit=float(params.get("upper_limit", 2.0)),
             )
         logger.info(
             "constraint %r: goal type %s not yet wired for live injection",

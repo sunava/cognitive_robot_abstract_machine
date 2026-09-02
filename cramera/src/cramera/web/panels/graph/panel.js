@@ -141,21 +141,45 @@ Panels.define('graph', function (root, bus) {
   ];
   let cSeq = 4;
   function objIn(text, node) {
-    const m = String(text).toLowerCase().match(/\b(milk|bowl|spoon|plate|cup|tray|bottle|flask|vial|sample)\b/);
+    const m = String(text).toLowerCase().match(/\b(milk|bowl|spoon|fork|knife|plate|cup|mug|tray|bottle|flask|vial|beaker|tube|rack|sample|cereal|box|jar|glass|can)\b/);
     if (m) return m[1];
     if (node && node.target) return String(node.target).replace(/\.(stl|obj|dae)$/i, '');
     return 'object';
   }
+  // read a length in metres from the text ("10 cm", "0.1 m", "5mm"), or null
+  function lenIn(text) {
+    const m = String(text).toLowerCase().match(/(\d+(?:\.\d+)?)\s*(mm|cm|centimet(?:er|re)s?|m\b|met(?:er|re)s?)/);
+    if (!m) return null;
+    const v = parseFloat(m[1]), u = m[2];
+    if (u.indexOf('mm') === 0) return v / 1000;
+    if (u.indexOf('c') === 0) return v / 100;
+    return v;
+  }
   function compileConstraint(text, node) {
     const t = String(text).toLowerCase();
-    if (/upright|stay up|vertical|tip over|spill/.test(t)) {
-      const o = objIn(text, node);
+    const o = objIn(text, node);
+    const d = lenIn(t);
+    // orientation: keep upright / level / from tipping or spilling
+    if (/upright|stand up|stay up|vertical|straight up|tip over|tips?\b|tilt|spill|level|flat|horizontal|steady|balanc|no spill|don.?t (tip|spill|tilt)/.test(t))
       return { goal: 'VectorsAligned', params: { root_link: 'map', tip_link: o, tip_normal: [0, 0, 1], goal_normal: [0, 0, 1], threshold: 0.1 } };
-    }
-    if (/look|watch|gaze|point|face|operat/.test(t))
-      return { goal: 'PointingAt', params: { tip_link: 'head_camera', root_link: 'map', pointing_axis: [0, 0, 1], goal_point: '@operation_target', threshold: 0.05 } };
-    if (/gripper.*clos|clos.*gripper|hold.*tight|carry/.test(t))
-      return { goal: 'JointPositionReached', params: { joint: 'gripper_joint', goal_position: 0.0, threshold: 0.005 } };
+    // gaze: look at / watch / keep in view  (check before generic words)
+    if (/look|watch|gaze|point (at|the camera)|face the|observ|keep .*(in view|an eye)|focus on|keep sight|see the|where it (operat|work)/.test(t))
+      return { goal: 'PointingAt', params: { tip_link: 'head_camera', root_link: 'map', pointing_axis: [0, 0, 1], goal_point: '@operation_target', goal_point_body: o, threshold: 0.05 } };
+    // gripper open / release
+    if (/(open|release|let go|drop).*(gripper|grip|hand|object|it)|gripper.*(open|release)|release it/.test(t))
+      return { goal: 'JointPositionReached', params: { joint: 'gripper', position: 0.08, threshold: 0.005 } };
+    // gripper closed / hold firmly
+    if (/gripper.*clos|clos.*gripper|hold (it|tight|firm)|grip (it|firm)|grasp firm|clamp|secure|don.?t drop|keep hold|while carrying|carry/.test(t))
+      return { goal: 'JointPositionReached', params: { joint: 'gripper', position: 0.0, threshold: 0.005 } };
+    // height: keep high / above / off the surface
+    if (/above|higher|over the|off the (table|ground|surface|bench)|keep .*(high|up high|elevated)|lift(ed)? (up|above)?/.test(t))
+      return { goal: 'HeightMonitor', params: { tip_link: o, lower_limit: (d != null ? d : 0.05), upper_limit: 2.0 } };
+    // height: keep low / below
+    if (/below|under(neath)?|lower than|keep .*(low|down|close to the (table|surface|ground))/.test(t))
+      return { goal: 'HeightMonitor', params: { tip_link: o, lower_limit: 0.0, upper_limit: (d != null ? d : 0.1) } };
+    // distance / clearance / avoid
+    if (/away from|keep .*clear|clearance|distance|avoid|don.?t (hit|touch|collide|bump)|too close|stay .*away|far from|min(imum)? distance/.test(t))
+      return { goal: 'DistanceMonitor', params: { tip_link: o, lower_limit: (d != null ? d : 0.05), upper_limit: 5.0 } };
     return { goal: null, params: {} };
   }
   const stepNodeById = {};   // id -> raw plan node, filled during renderSteps
@@ -220,6 +244,13 @@ Panels.define('graph', function (root, bus) {
   }
 
   const stepsCollapsed = {};   // node id -> true when the user collapsed that step (kept across live refreshes)
+  let stepCollapsibleIds = [];  // ids of steps that have children, filled during render (for expand/collapse all)
+  let lastStepsPayload = null;  // last plan payload rendered, so the all-buttons can re-render
+  function collapseAllSteps(collapse) {
+    if (collapse) stepCollapsibleIds.forEach(function (id) { stepsCollapsed[id] = true; });
+    else Object.keys(stepsCollapsed).forEach(function (k) { delete stepsCollapsed[k]; });
+    if (lastStepsPayload) renderSteps(lastStepsPayload);
+  }
   function renderPaletteCards() {
     return CONSTRAINTS.map(function (c) {
       return '<div class="cpal-card" draggable="true" data-cid="' + c.id + '"><span class="cpal-grip">⠿</span>' + c.text + '<span class="cpal-del" data-del="' + c.id + '">×</span></div>';
@@ -241,12 +272,18 @@ Panels.define('graph', function (root, bus) {
   function ensurePalette() {
     if (stepsEl.querySelector('.cpal')) return;
     stepsEl.innerHTML =
-      '<div class="cpal"><div class="cpal-h">Constraints</div><div class="cpal-sub">drag onto a step →</div>' +
-      '<div class="cpal-list">' + renderPaletteCards() + '</div>' +
-      '<div class="cpal-add"><input class="cpal-in" placeholder="e.g. milk must stay upright"><button class="cpal-btn">Add</button></div></div>' +
+      '<div class="cpal">' +
+      '  <div class="cpal-tree-ctl"><button class="cpal-mini" data-tree="expand" title="Expand all steps">⊕ Expand all</button>' +
+      '     <button class="cpal-mini" data-tree="collapse" title="Collapse all steps">⊖ Collapse all</button></div>' +
+      '  <div class="cpal-h">Constraints</div><div class="cpal-sub">drag onto a step →</div>' +
+      '  <div class="cpal-list">' + renderPaletteCards() + '</div>' +
+      '  <div class="cpal-add"><input class="cpal-in" placeholder="e.g. milk must stay upright"><button class="cpal-btn">Add</button></div></div>' +
       '<div class="cpal-resizer" title="Drag to resize"></div>' +
       '<div class="steps-tree"></div>';
     wirePaletteCards();
+    stepsEl.querySelectorAll('.cpal-mini').forEach(function (b) {
+      b.addEventListener('click', function () { collapseAllSteps(b.dataset.tree === 'collapse'); });
+    });
     const inp = stepsEl.querySelector('.cpal-in'), btn = stepsEl.querySelector('.cpal-btn');
     function add() { const v = inp.value.trim(); if (!v) return; CONSTRAINTS.push({ id: 'c' + (cSeq++), text: v }); inp.value = ''; refreshPaletteCards(); inp.focus(); }
     if (btn) btn.addEventListener('click', add);
@@ -277,10 +314,12 @@ Panels.define('graph', function (root, bus) {
   }
   function renderSteps(payload) {
     ensurePalette();
+    lastStepsPayload = payload;
     const treeEl = stepsEl.querySelector('.steps-tree'); if (!treeEl) return;
     const roots = stepTreeFrom(payload.nodes || []);
     const top = roots.length === 1 && STRUCT_KINDS[roots[0].n.kind] ? stepItems(roots[0]) : roots;
     for (const k in stepNodeById) delete stepNodeById[k];
+    stepCollapsibleIds = [];
     const html = [];
     function walk(item, number, depth) {
       const n = item.n;
@@ -288,6 +327,7 @@ Panels.define('graph', function (root, bus) {
       const sub = stepItems(item);
       const details = (item.kids || []).filter(function (c) { return DETAIL_KINDS[c.n.kind]; });
       const hk = sub.length || details.length;
+      if (hk) stepCollapsibleIds.push(n.id);
       const collapsed = !!stepsCollapsed[n.id];
       const lvl = Math.min(depth, 3);
       html.push('<div class="st-row lvl' + lvl + (hk ? ' hk' : '') + '" data-id="' + n.id + '">' +
