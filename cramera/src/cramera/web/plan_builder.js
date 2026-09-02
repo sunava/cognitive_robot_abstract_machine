@@ -189,7 +189,11 @@
     if (s.type === 'park_arms') return sel(s, 'arm', ARMS);
     if (s.type === 'move_torso') return sel(s, 'torso', TORSO);
     if (s.type === 'navigate') return num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw');
-    if (s.type === 'transport') return objSel(s) + '<span class="pb-group-lbl">drop-off (where it goes) →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw') + sel(s, 'arm', ARMS);
+    if (s.type === 'transport') return objSel(s) +
+      '<label>&nbsp;<button class="pb-capbtn start" data-capstart="' + s.id + '" title="drag the object to its START in the 3D scene, then capture that as its start pose">◎ capture start (from)</button></label>' +
+      '<span class="pb-group-lbl">drop-off (where it goes) →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw') +
+      '<label>&nbsp;<button class="pb-capbtn" data-capstep="' + s.id + '" title="drag the object to its drop-off in the 3D scene, then capture that pose as this step\'s target">◎ capture drop-off (to)</button></label>' +
+      sel(s, 'arm', ARMS);
     return '';
   }
   function num(s, k) { return '<label>' + k.toUpperCase() + '<input class="pb-num xyz" data-sid="' + s.id + '" data-k="' + k + '" type="number" step="0.05" value="' + s.params[k] + '"></label>'; }
@@ -199,8 +203,7 @@
     // even for a Transport step whose object dropdown was never touched
     if (!s.params.object && objects.length) s.params.object = objects[0].mesh;
     const opts = objects.map(function (o) { return '<option value="' + o.mesh + '"' + (s.params.object === o.mesh ? ' selected' : '') + '>' + o.name + '</option>'; }).join('');
-    return '<label>object<select class="pb-sel" data-sid="' + s.id + '" data-k="object">' + (opts || '<option value="">— add an object —</option>') + '</select></label>' +
-      '<label>&nbsp;<button class="pb-capbtn" data-capstep="' + s.id + '" title="drag the object to its drop-off in the 3D scene, then click to capture that pose as this step\'s target">◎ capture drop-off from 3D</button></label>';
+    return '<label>object<select class="pb-sel" data-sid="' + s.id + '" data-k="object">' + (opts || '<option value="">— add an object —</option>') + '</select></label>';
   }
   function wireStepEvents() {
     const el = $('pb-steps');
@@ -215,7 +218,8 @@
     el.querySelectorAll('[data-del]').forEach(function (b) { b.addEventListener('click', function () { steps = steps.filter(function (s) { return s.id !== b.dataset.del; }); renderSteps(); }); });
     el.querySelectorAll('[data-up]').forEach(function (b) { b.addEventListener('click', function () { moveStep(b.dataset.up, -1); }); });
     el.querySelectorAll('[data-down]').forEach(function (b) { b.addEventListener('click', function () { moveStep(b.dataset.down, 1); }); });
-    el.querySelectorAll('.pb-capbtn').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); captureStepTarget(b.dataset.capstep); }); });
+    el.querySelectorAll('[data-capstep]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); captureStepTarget(b.dataset.capstep); }); });
+    el.querySelectorAll('[data-capstart]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); captureStepStart(b.dataset.capstart); }); });
   }
   function moveStep(id, dir) {
     const i = steps.findIndex(function (s) { return s.id === id; }); const j = i + dir;
@@ -369,6 +373,14 @@
       o.x = pz.x; o.y = pz.y; o.z = pz.z; o.yaw = pz.yaw; renderObjects();
       status('captured ' + o.name + ' → (' + pz.x + ', ' + pz.y + ', ' + pz.z + ')', 'ok');
     }).catch(function () { status('capture failed — start the live scene first', 'err'); });
+  }
+  function captureStepStart(sid) {
+    // capture the transported object's live pose as ITS start pose (the "from")
+    const s = steps.find(function (x) { return x.id === sid; }); if (!s) return;
+    if (!s.params.object) { status('pick an object for this Transport step first', 'err'); return; }
+    const o = objects.find(function (x) { return x.mesh === s.params.object; });
+    if (!o) { status('object ' + s.params.object + ' is not in the objects list', 'err'); return; }
+    captureObject(o.id);
   }
   function captureStepTarget(sid) {
     const s = steps.find(function (x) { return x.id === sid; }); if (!s) return;

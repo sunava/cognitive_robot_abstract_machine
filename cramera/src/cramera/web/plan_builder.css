@@ -94,3 +94,5 @@
 
 .pb-group-lbl{font-size:9.5px;color:var(--pb-accent,#39d5c8);align-self:center;font-weight:600;white-space:nowrap}
 .pb-obj .fields::before{content:"start pose";grid-column:1 / -1;font-size:9px;color:var(--faint,#5a6270);margin-bottom:-2px}
+.pb-capbtn.start{background:rgba(255,182,72,.14);border-color:#e0a94a;color:#ffcf8a}
+.pb-capbtn.start:hover{background:rgba(255,182,72,.25)}
