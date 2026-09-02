@@ -70,6 +70,22 @@ A constraints palette lives in a fixed left column of the Plan tab.
   status ring drew identically. Rings now render at their real width (running/failed
   thickest, not-started thinnest).
 
+## Plan Builder — constraints on the plan structure
+The Plan Builder (`plan_builder.html`) gets the same natural-language constraints as the
+Plan view, now attachable to the plan you are composing.
+
+- **Constraints palette** in the left column: type a constraint ("milk must stay
+  upright", "keep the bowl above the table"), each card shows the giskardpy goal it
+  compiles to (or **no match**). Same rule-based mapping as the Plan view (`ⓘ` explains it).
+- **Drag a constraint onto a plan step** → it attaches as a chip on that step (⛓ text +
+  goal), removable with ×. Constraints are part of the step, so they move/save with it.
+- **Live push:** while the embedded 3D scene is running, attaching a constraint also POSTs
+  it to the scaffold's bridge (`/constraint`), so it takes effect on the next activation —
+  exactly like the Plan view.
+- **Written into the generated demo:** steps with constraints emit a documented
+  `# constraints` comment block + a `CONSTRAINTS = [...]` metadata list (step, text, goal,
+  params), so the plan file records them.
+
 ## Dev tooling
 - **`start_demo.sh [demo.py]`** and **`start_viewer.sh`** — source the ROS workspace, set
   the cramera backend, and launch the demo (+ live bridge on :8765) / the web viewer on
@@ -81,4 +97,5 @@ A constraints palette lives in a fixed left column of the Plan tab.
 `live/bridge.py`, `live/http.py`, `knowledge/views/plan_tree.py`,
 `web/panels/graph/panel.js`, `web/panels/graph/graph.js`, `web/app.css`,
 `web/plan_view.html` + `web/plan_sample.json` (standalone version of the plan view),
+`web/plan_builder.html` + `web/plan_builder.js` + `web/plan_builder.css` (Plan Builder),
 `start_demo.sh`, `start_viewer.sh`.

@@ -21,11 +21,58 @@
   const ARMS = ['LEFT', 'RIGHT', 'BOTH'];
   const TORSO = ['HIGH', 'MID', 'LOW'];
 
+  // ---- constraints: natural language -> giskardpy goal (same rule-based mapping as the Plan view) ----
+  let CONSTRAINTS = [
+    { id: 'c1', text: 'Milk must always stay upright' },
+    { id: 'c2', text: 'Robot must look where it operates' },
+    { id: 'c3', text: 'Keep the bowl above the table' },
+  ];
+  let conSeq = 4;
+  function objIn(text, node) {
+    const m = String(text).toLowerCase().match(/\b(milk|bowl|spoon|fork|knife|plate|cup|mug|tray|bottle|flask|vial|beaker|tube|rack|sample|cereal|box|jar|glass|can|whisk|bread)\b/);
+    if (m) return m[1];
+    if (node && node.object) return String(node.object).replace(/\.(stl|obj|dae)$/i, '');
+    return 'object';
+  }
+  function lenIn(text) {
+    const m = String(text).toLowerCase().match(/(\d+(?:\.\d+)?)\s*(mm|cm|centimet(?:er|re)s?|m\b|met(?:er|re)s?)/);
+    if (!m) return null;
+    const v = parseFloat(m[1]), u = m[2];
+    if (u.indexOf('mm') === 0) return v / 1000;
+    if (u.indexOf('c') === 0) return v / 100;
+    return v;
+  }
+  // node = the step's params (so a Transport step's `object` is the fallback body)
+  function compileConstraint(text, node) {
+    const t = String(text).toLowerCase();
+    const o = objIn(text, node);
+    const d = lenIn(t);
+    if (/upright|stand up|stay up|vertical|straight up|tip over|tips?\b|tilt|spill|level|flat|horizontal|steady|balanc|no spill|don.?t (tip|spill|tilt)/.test(t))
+      return { goal: 'VectorsAligned', params: { root_link: 'map', tip_link: o, tip_normal: [0, 0, 1], goal_normal: [0, 0, 1], threshold: 0.1 } };
+    if (/look|watch|gaze|point (at|the camera)|face the|observ|keep .*(in view|an eye)|focus on|keep sight|see the|where it (operat|work)/.test(t))
+      return { goal: 'PointingAt', params: { tip_link: 'head_camera', root_link: 'map', pointing_axis: [0, 0, 1], goal_point: '@operation_target', goal_point_body: o, threshold: 0.05 } };
+    if (/above|higher|over the|off the (table|ground|surface|bench)|keep .*(high|up high|elevated)|lift(ed)? (up|above)?/.test(t))
+      return { goal: 'HeightMonitor', params: { tip_link: o, lower_limit: (d != null ? d : 0.05), upper_limit: 2.0 } };
+    if (/below|under(neath)?|lower than|keep .*(low|down|close to the (table|surface|ground))/.test(t))
+      return { goal: 'HeightMonitor', params: { tip_link: o, lower_limit: 0.0, upper_limit: (d != null ? d : 0.1) } };
+    if (/away from|keep .*clear|clearance|distance|avoid|don.?t (hit|touch|collide|bump)|too close|stay .*away|far from|min(imum)? distance/.test(t))
+      return { goal: 'DistanceMonitor', params: { tip_link: o, lower_limit: (d != null ? d : 0.05), upper_limit: 5.0 } };
+    return { goal: null, params: {} };
+  }
+  const CON_INFO_ROWS = [
+    ['upright, level, flat, tilt, spill, steady, balanced', 'VectorsAligned', "keep the object's up-axis aligned with world up"],
+    ['look, watch, observe, "keep in view", gaze, face', 'PointingAt', 'aim the head camera at the object'],
+    ['above, higher, "off the table", "keep high", lift', 'HeightMonitor', 'keep the object at/above a height'],
+    ['below, under, "lower than", "keep low"', 'HeightMonitor', 'keep the object below a height'],
+    ['"away from", clearance, distance, avoid, "keep clear"', 'DistanceMonitor', 'keep a minimum distance / clearance'],
+  ];
+
   // ---- state ----
   let steps = [];       // [{type, params:{...}}]
   let objects = [];      // [{id, mesh, name, x, y, z, yaw, color}]
   let objSeq = 1, stepSeq = 1;
   let robotXY = { x: 1.5, y: 2.5 };   // robot spawn (draggable in the scene)
+  let liveOn = false;                 // true while the scaffold scene is up (constraints can be pushed live)
 
   // scene mapping: origin offset so the typical apartment area sits centred
   const SCALE = 40, ORIGIN_X = 2.5, ORIGIN_Y = 2.0;
@@ -96,6 +143,71 @@
   function resetAllObjects() { objects.forEach(function (o) { resetObject(o.id); }); }
   function field(o, k) {
     return '<label>' + k.toUpperCase() + '<input class="pb-num" data-oid="' + o.id + '" data-k="' + k + '" type="number" step="0.05" value="' + o[k] + '"' + (o.base && k !== 'yaw' ? '' : '') + '></label>';
+  }
+
+  // ---------- constraints palette ----------
+  function renderConstraints() {
+    const el = $('pb-cons'); if (!el) return;
+    el.innerHTML = CONSTRAINTS.map(function (c) {
+      const comp = compileConstraint(c.text, null);
+      const badge = comp.goal ? '<span class="pb-con-goal" title="translates to giskardpy ' + comp.goal + '">' + comp.goal + '</span>'
+        : '<span class="pb-con-goal nomatch" title="no rule matched — this text will not translate to a goal">no match</span>';
+      return '<div class="pb-con" draggable="true" data-cid="' + c.id + '">' +
+        '<span class="pb-con-grip">⠿</span><span class="pb-con-txt">' + c.text + '</span>' + badge +
+        '<span class="pb-con-del" data-del="' + c.id + '">×</span></div>';
+    }).join('');
+    el.querySelectorAll('.pb-con').forEach(function (card) {
+      card.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/plain', 'con:' + card.dataset.cid); e.dataTransfer.effectAllowed = 'copy'; });
+    });
+    el.querySelectorAll('.pb-con-del').forEach(function (x) {
+      x.addEventListener('click', function (e) { e.stopPropagation(); CONSTRAINTS = CONSTRAINTS.filter(function (c) { return c.id !== x.dataset.del; }); renderConstraints(); });
+    });
+  }
+  function addConstraintText(txt) {
+    const v = String(txt || '').trim(); if (!v) return;
+    CONSTRAINTS.push({ id: 'c' + (conSeq++), text: v }); renderConstraints();
+  }
+  // attach a constraint (by palette id) to a plan step
+  function attachConstraint(stepId, cid) {
+    const s = steps.find(function (x) { return x.id === stepId; });
+    const c = CONSTRAINTS.find(function (x) { return x.id === cid; });
+    if (!s || !c) return;
+    const comp = compileConstraint(c.text, s.params);
+    if (!comp.goal) { status('“' + c.text + '” — no rule matched, not attached', 'err'); return; }
+    s.constraints = s.constraints || [];
+    if (s.constraints.some(function (a) { return a.text === c.text; })) { status('already attached to this step', ''); return; }
+    s.constraints.push({ text: c.text, goal: comp.goal, params: comp.params });
+    renderSteps();
+    if (liveOn) pushConstraintLive(s, { text: c.text, goal: comp.goal, params: comp.params });
+    else status('attached “' + c.text + '” → ' + comp.goal + ' (start the live scene to apply it)', 'ok');
+  }
+  function detachConstraint(stepId, idx) {
+    const s = steps.find(function (x) { return x.id === stepId; }); if (!s || !s.constraints) return;
+    s.constraints.splice(idx, 1); renderSteps();
+  }
+  // push a constraint to the running scaffold's bridge (same endpoint the Plan view uses)
+  function pushConstraintLive(s, a) {
+    const b = BLOCKS[s.type];
+    const body = { op: 'attach_monitor', text: a.text, apply: 'next_activation',
+      target_plan_node: { id: s.id, kind: s.type, label: (b ? b.name : s.type) },
+      giskard_node: { type: a.goal, params: a.params } };
+    fetch(bridgeUrl() + '/constraint', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j && j.ok) status('attached “' + a.text + '” → ' + a.goal + ' — queued in the live plan (next activation)', 'ok');
+        else status('live attach failed: ' + ((j && j.error) || '?'), 'err');
+      })
+      .catch(function (e) { status('live attach failed: ' + e, 'err'); });
+  }
+  function conInfoHtml() {
+    const rows = CON_INFO_ROWS.map(function (r) {
+      return '<tr><td>' + r[0] + '</td><td class="goal">' + r[1] + '</td><td>' + r[2] + '</td></tr>';
+    }).join('');
+    return '<div class="ci-h">How constraints are translated <span class="ci-note">(rule-based, not an LLM)</span></div>' +
+      '<table class="ci-table"><thead><tr><th>Phrasing</th><th>giskardpy goal</th><th>Effect</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<div class="ci-foot">A length in the text (<code>10 cm</code>, <code>0.1 m</code>) sets the thresholds. ' +
+      'The object comes from the sentence or, on a Transport step, its transported object. ' +
+      'Applied to the running plan on the next motion activation.</div>';
   }
 
   // ---------- scene (top-down) ----------
@@ -186,16 +298,27 @@
     steps.forEach(function (s, i) {
       const b = BLOCKS[s.type];
       const d = document.createElement('div'); d.className = 'pb-step'; d.style.borderLeftColor = b.color;
+      d.dataset.sid = s.id;
       d.innerHTML =
         '<div class="sh"><span class="snum">' + (i + 1) + '</span><span class="sname">' + b.name + '</span>' +
         '<span class="sctl"><button data-up="' + s.id + '" title="Move up">↑</button>' +
         '<button data-down="' + s.id + '" title="Move down">↓</button>' +
         '<button data-del="' + s.id + '" title="Remove">×</button></span></div>' +
+        stepChips(s) +
         '<div class="sparams">' + stepParams(s) + '</div>';
       el.appendChild(d);
     });
     wireStepEvents();
     renderScene();
+  }
+  function stepChips(s) {
+    const cs = s.constraints || [];
+    if (!cs.length) return '';
+    return '<div class="sconstraints">' + cs.map(function (a, idx) {
+      return '<span class="scon-chip" title="' + a.text + ' → giskardpy ' + a.goal + '">⛓ ' + a.text +
+        '<span class="scon-goal">' + a.goal + '</span>' +
+        '<span class="scon-x" data-scon-del="' + s.id + '" data-scon-idx="' + idx + '">×</span></span>';
+    }).join('') + '</div>';
   }
   function row(html) { return '<div class="sparam-row">' + html + '</div>'; }
   function stepParams(s) {
@@ -248,6 +371,24 @@
         if (o) { o[inp.dataset.k] = parseFloat(inp.value) || 0; renderObjects(); }
       });
     });
+    // remove an attached constraint chip
+    el.querySelectorAll('[data-scon-del]').forEach(function (x) {
+      x.addEventListener('click', function (e) { e.stopPropagation(); detachConstraint(x.dataset.sconDel, parseInt(x.dataset.sconIdx, 10)); });
+    });
+    // each step is a drop target for a constraint card
+    el.querySelectorAll('.pb-step').forEach(function (st) {
+      st.addEventListener('dragover', function (e) {
+        // the dragged payload isn't readable during dragover, so allow the drop and
+        // decide on drop() below (only con: payloads actually attach)
+        e.preventDefault(); st.classList.add('con-drop');
+      });
+      st.addEventListener('dragleave', function () { st.classList.remove('con-drop'); });
+      st.addEventListener('drop', function (e) {
+        st.classList.remove('con-drop');
+        const d = e.dataTransfer.getData('text/plain') || '';
+        if (d.indexOf('con:') === 0) { e.preventDefault(); e.stopPropagation(); attachConstraint(st.dataset.sid, d.slice(4)); }
+      });
+    });
   }
   function moveStep(id, dir) {
     const i = steps.findIndex(function (s) { return s.id === id; }); const j = i + dir;
@@ -268,6 +409,17 @@
 
   // ---------- code generation ----------
   function py(v) { return (Math.round(v * 1000) / 1000).toString(); }
+  function jsonStr(s) { return JSON.stringify(String(s)); }
+  // python literal for a constraint param value (list / string / number)
+  function jsonPy(v) {
+    if (Array.isArray(v)) return '[' + v.map(jsonPy).join(', ') + ']';
+    if (typeof v === 'object' && v) return '{' + Object.keys(v).map(function (k) { return jsonStr(k) + ': ' + jsonPy(v[k]); }).join(', ') + '}';
+    if (typeof v === 'string') return jsonStr(v);
+    return String(v);
+  }
+  function pyKwargs(params) {
+    return Object.keys(params).map(function (k) { return k + '=' + jsonPy(params[k]); }).join(', ');
+  }
   function pose(p) { return 'Pose.from_xyz_rpy(' + py(p.x) + ', ' + py(p.y) + ', ' + py(p.z) + ', yaw=' + py(p.yaw) + ', reference_frame=world.root)'; }
   function body(mesh) { return 'world.get_body_by_name("' + mesh + '")'; }
   function generate(stepsOverride) {
@@ -347,6 +499,30 @@
     L.push('], context=context).plan');
     L.push('visualization.attach_plan(plan)');
     L.push('');
+    // --- constraints attached to steps (natural language -> giskardpy goals) ---
+    const withCon = useSteps.filter(function (s) { return (s.constraints || []).length; });
+    if (withCon.length) {
+      L.push('# --- constraints (natural language -> giskardpy goals) ---');
+      L.push('# Attached in the Plan Builder. When this demo runs under `cramera-live`, the');
+      L.push('# viewer applies them to the motion statechart on the next activation of the');
+      L.push('# step (via the live bridge /constraint endpoint). Listed here as plan metadata.');
+      useSteps.forEach(function (s, i) {
+        (s.constraints || []).forEach(function (a) {
+          L.push('#   step ' + (i + 1) + ' ' + (BLOCKS[s.type] ? BLOCKS[s.type].name : s.type) +
+            ': "' + a.text + '"');
+          L.push('#     -> ' + a.goal + '(' + pyKwargs(a.params) + ')');
+        });
+      });
+      L.push('CONSTRAINTS = [');
+      useSteps.forEach(function (s, i) {
+        (s.constraints || []).forEach(function (a) {
+          L.push('    {"step": ' + (i + 1) + ', "text": ' + jsonStr(a.text) +
+            ', "goal": ' + jsonStr(a.goal) + ', "params": ' + jsonPy(a.params) + '},');
+        });
+      });
+      L.push(']');
+      L.push('');
+    }
     L.push('with simulated_robot:');
     L.push('    plan.perform()');
     L.push('');
@@ -438,19 +614,27 @@
   function pollLive(n) {
     fetch(bridgeUrl() + '/captured_objects').then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
-        if (d) { liveStatus('● live — drag objects in the 3D view, then capture', 'ok'); const f=$('pb-3d'); if (f && f.src.indexOf('index.html')<0) f.src='index.html?scene'; }
+        if (d) { liveOn = true; liveStatus('● live — drag objects in the 3D view, then capture', 'ok'); const f=$('pb-3d'); if (f && f.src.indexOf('index.html')<0) f.src='index.html?scene'; }
         else if (n < 40) { setTimeout(function () { pollLive(n + 1); }, 3000); }
         else liveStatus('scene did not come up — check the terminal', 'err');
       })
       .catch(function () { if (n < 40) setTimeout(function () { pollLive(n + 1); }, 3000); else liveStatus('scene did not come up', 'err'); });
   }
   function stopLive() {
+    liveOn = false;
     fetch('/api/plan/scaffold/stop', { method: 'POST' }).then(function () { liveStatus('stopped', ''); const f=$('pb-3d'); if (f) f.src='about:blank'; }).catch(function () {});
   }
 
   // ---------- boot ----------
   renderBlocks();
+  renderConstraints();
   $('pb-add-obj').addEventListener('click', function () { addObject($('pb-mesh').value); });
+  $('pb-con-add').addEventListener('click', function () { const inp = $('pb-con-in'); addConstraintText(inp.value); inp.value = ''; inp.focus(); });
+  $('pb-con-in').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addConstraintText(this.value); this.value = ''; } });
+  (function () {
+    const box = $('pb-con-info-box'); if (box) box.innerHTML = conInfoHtml();
+    const btn = $('pb-con-info'); if (btn && box) btn.addEventListener('click', function () { box.classList.toggle('open'); });
+  })();
   $('pb-env').addEventListener('change', renderScene);
   $('pb-live-start').addEventListener('click', startLive);
   $('pb-live-stop').addEventListener('click', stopLive);

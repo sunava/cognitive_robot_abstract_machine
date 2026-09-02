@@ -102,3 +102,34 @@
 .oreset{color:var(--faint,#5a6270);cursor:pointer;font-size:13px;padding:0 3px}
 .oreset:hover{color:var(--warn,#ffb648)}
 .pb-group-lbl.start{color:#ffcf8a}
+
+/* ---- constraints palette ---- */
+.pb-info-btn{background:none;border:none;color:var(--faint,#5a6270);cursor:pointer;font-size:12px;padding:0 2px}
+.pb-info-btn:hover{color:var(--pb-accent)}
+.pb-con{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:6px 7px;background:var(--panel,#0b0d11);border:1px dashed #4a3f6b;border-radius:8px;padding:8px 22px 8px 10px;margin-bottom:7px;cursor:grab;font-size:12px}
+.pb-con:hover{border-color:#a78bff;background:rgba(140,110,255,.08)}
+.pb-con-grip{color:var(--faint);font-size:11px;flex:none}
+.pb-con-txt{flex:1 1 auto;min-width:0;color:var(--ink);line-height:1.35}
+.pb-con-goal{order:4;flex:0 0 100%;justify-self:start;align-self:start;width:max-content;font-size:9.5px;font-weight:700;letter-spacing:.02em;color:#c9b8ff;background:rgba(140,110,255,.14);border-radius:4px;padding:2px 6px}
+.pb-con-goal.nomatch{color:#ff9db1;background:rgba(255,120,140,.12)}
+.pb-con-del{position:absolute;top:6px;right:8px;color:var(--faint);cursor:pointer;font-size:14px;line-height:1}
+.pb-con-del:hover{color:#ff9db1}
+.pb-con-in{width:100%;flex:1}
+.pb-con-info{display:none;margin-top:9px;background:var(--panel,#0b0d11);border:1px solid var(--line,#20242c);border-radius:8px;padding:10px 11px;font-size:11px;color:var(--muted,#8b93a3)}
+.pb-con-info.open{display:block}
+.pb-con-info .ci-h{font-weight:700;color:var(--ink);margin-bottom:7px;font-size:11.5px}
+.pb-con-info .ci-note{font-weight:400;color:var(--faint)}
+.pb-con-info .ci-table{width:100%;border-collapse:collapse;font-size:10px}
+.pb-con-info .ci-table th{text-align:left;color:var(--faint);font-weight:600;padding:2px 4px;border-bottom:1px solid var(--line)}
+.pb-con-info .ci-table td{padding:3px 4px;vertical-align:top;border-bottom:1px solid rgba(255,255,255,.04)}
+.pb-con-info .ci-table td.goal{color:#c9b8ff;font-weight:700;white-space:nowrap}
+.pb-con-info .ci-foot{margin-top:8px;line-height:1.5;color:var(--faint)}
+.pb-con-info code{background:rgba(255,255,255,.06);border-radius:3px;padding:1px 4px;font-size:10px}
+
+/* ---- constraint chips on a plan step ---- */
+.pb-step.con-drop{outline:2px dashed #a78bff;outline-offset:-3px;background:rgba(140,110,255,.06)}
+.pb-step .sconstraints{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.scon-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(140,110,255,.13);border:1px solid rgba(140,110,255,.35);border-radius:20px;padding:3px 6px 3px 9px;font-size:11px;color:#dcd2ff}
+.scon-chip .scon-goal{font-size:9px;font-weight:700;color:#c9b8ff;background:rgba(140,110,255,.2);border-radius:10px;padding:1px 6px}
+.scon-chip .scon-x{cursor:pointer;color:#b9a9e6;font-size:13px;line-height:1}
+.scon-chip .scon-x:hover{color:#ff9db1}
