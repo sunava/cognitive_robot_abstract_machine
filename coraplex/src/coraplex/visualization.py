@@ -250,7 +250,8 @@ class WorldVisualization:
                 backend=self.backend,
                 reason="rclpy is not importable; RViz needs a ROS 2 environment",
             )
-        rclpy.init()
+        if not rclpy.ok():  # compose with a context someone else (e.g. a demonstration) owns
+            rclpy.init()
         self.ros_node = rclpy.create_node("viz_marker")
         VizMarkerPublisher(_world=self.world, node=self.ros_node).with_tf_publisher()
 

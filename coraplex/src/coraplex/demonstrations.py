@@ -16,16 +16,14 @@ from dataclasses import dataclass, field
 import rclpy
 from rclpy.executors import ExternalShutdownException, SingleThreadedExecutor
 from rclpy.node import Node
-from typing_extensions import ClassVar, List, Type
+from typing_extensions import ClassVar, List, Optional, Type
 
 from coraplex.alternative_motion_mapping import AlternativeMotion
 from coraplex.datastructures.dataclasses import Context
-from coraplex.datastructures.enums import ExecutionType
+from coraplex.datastructures.enums import ExecutionType, VisualizationBackend
 from coraplex.execution_environment import ExecutionEnvironment
 from coraplex.plans.plan_node import PlanNode
-from semantic_digital_twin.adapters.ros.visualization.viz_marker import (
-    VizMarkerPublisher,
-)
+from coraplex.visualization import WorldVisualization
 from semantic_digital_twin.adapters.ros.world_fetcher import fetch_world_from_service
 from semantic_digital_twin.adapters.ros.world_synchronizer import WorldSynchronizer
 from semantic_digital_twin.robots.robot_parts import AbstractRobot
@@ -180,9 +178,24 @@ class RobotDemonstration(ABC):
     Whether collision avoidance is added to every motion state chart of this run.
     """
 
+    default_visualization_backend: VisualizationBackend = VisualizationBackend.RVIZ
+    """
+    The renderer a simulated run watches the world with, unless the ``CORAPLEX_*``
+    environment overrides it. Set to :attr:`VisualizationBackend.CRAMERA` to serve the
+    run to the browser viewer, :attr:`VisualizationBackend.NONE` to run headless, etc.
+    Exposed so a caller decides the backend from the outside without touching the plan.
+    """
+
     ros_session: RobotDemonstrationRosSession | None = field(init=False, default=None)
     """
     Session held for the duration of a real run, and ``None`` in simulation.
+    """
+
+    visualization: Optional[WorldVisualization] = field(init=False, default=None)
+    """
+    The visualization backend started for a simulated run (``None`` until then, and for a
+    real run whose world comes from the controller). The plan is attached to it in
+    :meth:`run` so executed actions and motions appear on its timeline.
     """
 
     @abstractmethod
@@ -245,8 +258,11 @@ class RobotDemonstration(ABC):
 
         if self.execution_type is not ExecutionType.REAL:
             world = self.build_simulated_world()
-            viz = VizMarkerPublisher(node=self.ros_node, _world=world)
-            viz.with_tf_publisher()
+            # The backend (RViz markers, cramera browser viewer, Rerun, or none) is chosen
+            # by default_visualization_backend, overridable through the CORAPLEX_* env vars.
+            self.visualization = WorldVisualization.from_environment(
+                world, default_backend=self.default_visualization_backend
+            ).start()
             return world
 
         world = self.ros_session.fetch_world()
@@ -264,6 +280,8 @@ class RobotDemonstration(ABC):
             if not self.is_scene_populated(world):
                 self.populate_scene(world)
             plan = self.build_plan(self.build_context(world))
+            if self.visualization is not None:
+                self.visualization.attach_plan(plan)
             with ExecutionEnvironment(
                 execution_type=self.execution_type,
                 collision_avoidance=self.collision_avoidance,
@@ -281,6 +299,9 @@ class RobotDemonstration(ABC):
         decides when its nodes go away, and destroying this one early can drop world
         modifications that have not reached the controller yet.
         """
+        if self.visualization is not None:
+            self.visualization.stop()
+            self.visualization = None
         if self.ros_session is None or not self.ros_session.owns_context:
             return
         self.ros_session.stop()

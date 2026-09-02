@@ -117,10 +117,24 @@ heading (was buried below the cards), so writing a new constraint is immediately
 **Output style — `RobotDemonstration` subclass.** A header toggle picks the generated
 form: a flat script (as before) or a proper `coraplex.demonstrations.RobotDemonstration`
 subclass (default). The class version implements `build_simulated_world`,
-`is_scene_populated`, `populate_scene`, `build_context` and `build_plan`, with a `main()`
-that runs it under the cramera viewer (`WorldVisualization … CRAMERA` + `attach_plan`), so
-the live bridge/capture/constraints keep working. `ENV_FILE`, `ROBOT_XY` and an `OBJECTS`
-table are module constants at the top for easy editing.
+`is_scene_populated`, `populate_scene`, `build_context` and `build_plan`. `ENV_FILE`,
+`ROBOT_XY` and an `OBJECTS` table are module constants at the top for easy editing.
+
+- `build_simulated_world` uses `WorldSpecification.from_urdf(… robots=[RobotSpecification(…)])`
+  and `populate_scene` uses `BodySpecification.mesh(…).spawn(world)` (each object on a
+  `Connection6DoFSpecification` so it can be transported) — no hand-rolled URDF/STL parsing.
+- `build_context` resolves the robot with `get_semantic_annotations_by_type(self.used_robot)[0]`
+  (the spec annotates it on spawn), so no `from_world` is needed.
+- `main()` is just `Demo(used_robot=PR2, default_visualization_backend=CRAMERA).run()`.
+
+**`RobotDemonstration.run()` now owns the visualization.** The visualization backend moved
+into the abstract base (was hard-coded RViz markers in `acquire_world`): a new
+`default_visualization_backend` field (default `RVIZ`) is materialized through
+`WorldVisualization.from_environment`, `run()` attaches the plan to it, and `tear_down()`
+stops it. So callers choose the backend from the outside — `CRAMERA` for the browser
+viewer, `NONE` for headless — and `CORAPLEX_VISUALIZATION` still overrides it (so
+`cramera-live` works unchanged). `WorldVisualization._start_rviz` now guards `rclpy.init()`
+so it composes with a context the demonstration already owns.
 
 ## Dev tooling
 - **`start_demo.sh [demo.py]`** and **`start_viewer.sh`** — source the ROS workspace, set
