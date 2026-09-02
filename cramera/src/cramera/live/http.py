@@ -137,6 +137,8 @@ class BridgeRequestHandler(BaseHTTPRequestHandler):
             return self._send_json(self.bridge.get_chart())
         if self.path.startswith("/transforms"):
             return self._send_json(self.bridge.get_transforms())
+        if self.path.startswith("/captured_objects"):
+            return self._send_json(self.bridge.get_captured_objects())
         if self.path.startswith("/objects"):
             return self._send_json({"objects": self.bridge.object_catalog()})
         if self.path.startswith("/mesh"):

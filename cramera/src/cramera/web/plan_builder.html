@@ -52,12 +52,24 @@
     <div id="pb-steps" class="pb-steps"><div class="pb-drop-hint">Drop action blocks here to build the sequence</div></div>
   </section>
 
-  <!-- scene + code -->
+  <!-- live scene + code -->
   <section class="pb-col pb-scene-col">
-    <h2>Scene (top-down) <span class="pb-hint2">drag markers to set X/Y</span></h2>
-    <div id="pb-scene" class="pb-scene"></div>
-    <div class="pb-scene-scale">1 grid = 1 m · origin at centre</div>
-    <h2 style="margin-top:14px">Generated <code>demo.py</code></h2>
+    <h2>Live 3D scene</h2>
+    <div class="pb-live-ctl">
+      <button id="pb-live-start" class="pb-btn primary sm">▶ Start live scene</button>
+      <button id="pb-live-stop" class="pb-btn sm">■ Stop</button>
+      <a id="pb-open-3d" class="pb-btn sm" href="index.html" target="_blank">↗ Open 3D view</a>
+    </div>
+    <div id="pb-live-status" class="pb-live-status">not running</div>
+    <div class="pb-hint2" style="margin-top:8px;line-height:1.5">
+      Start the scene → in the 3D view click <b>◉ Live</b> → <b>drag objects</b> to where you want them →
+      come back and hit <b>⟳ capture</b> on an object (its start pose) or <b>◎ from…</b> on a Transport step (its target).
+    </div>
+    <div class="pb-robot-spawn">Robot spawn:
+      <label>X<input id="pb-rx" class="pb-num" type="number" step="0.05" value="1.5"></label>
+      <label>Y<input id="pb-ry" class="pb-num" type="number" step="0.05" value="2.5"></label>
+    </div>
+    <h2 style="margin-top:16px">Generated <code>demo.py</code></h2>
     <pre id="pb-code" class="pb-code">Click “Generate demo.py”.</pre>
     <div id="pb-status" class="pb-status"></div>
   </section>

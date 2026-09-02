@@ -717,6 +717,12 @@ class Bridge:
     Object moves queued by the viewer, applied on the simulation thread.
     """
 
+    _last_moves: Dict[str, List[float]] = field(default_factory=dict)
+    """
+    Latest drag target per object mesh key (``[x, y, z, qx, qy, qz, qw]``), recorded on
+    every move whether or not the sim applied it, for the Plan Builder's pose capture.
+    """
+
     _constraints: List["AttachConstraintRequest"] = field(default_factory=list)
     """Constraints attached from the plan view, drained on the simulation thread."""
 
@@ -1342,6 +1348,23 @@ class Bridge:
         """
         with self._moves_lock:
             self._moves.append(request)
+            # remember the drag target regardless of whether the sim applies it (it only
+            # applies on a motion tick); the Plan Builder reads these via /captured_objects
+            # to snap an object's pose into a start point or an action target.
+            quat = request.quaternion or [0.0, 0.0, 0.0, 1.0]
+            self._last_moves[request.object_key] = list(request.position) + list(quat)
+
+    def get_captured_objects(self) -> Dict[str, Any]:
+        """
+        Object poses for the Plan Builder: the live world snapshot, overlaid with the
+        latest drag target per object (so a drag that the idle sim has not applied is
+        still capturable). Each pose is ``[x, y, z, qx, qy, qz, qw]``.
+        """
+        with self._lock:
+            objects = dict(self.state.objects)
+        with self._moves_lock:
+            objects.update(self._last_moves)
+        return {"objects": objects}
 
     def queue_constraint(self, request: "AttachConstraintRequest") -> None:
         """

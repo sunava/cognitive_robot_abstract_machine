@@ -74,3 +74,16 @@
 /* transport destination (ghost target) marker */
 .pb-marker.pb-tmarker{background:transparent;color:var(--pb-accent,#39d5c8);border:2px dashed var(--pb-accent,#39d5c8);font-size:13px}
 .pb-marker.pb-rm{border-color:#8fa0d0}
+
+/* live capture controls */
+.pb-live-ctl{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.pb-live-status{font-size:12px;color:var(--muted,#8b93a3);padding:6px 9px;border:1px solid var(--line,#20242c);border-radius:6px;background:var(--panel,#0b0d11)}
+.pb-live-status.ok{color:#7fe0a8;border-color:rgba(75,211,138,.4)}
+.pb-live-status.err{color:#ff9db1;border-color:rgba(255,107,139,.4)}
+.pb-robot-spawn{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--faint,#5a6270);margin-top:12px}
+.pb-robot-spawn label{display:flex;align-items:center;gap:3px}
+.pb-robot-spawn .pb-num{width:56px}
+.ocap{color:var(--faint,#5a6270);cursor:pointer;font-size:13px;padding:0 3px}
+.ocap:hover{color:var(--pb-accent,#39d5c8)}
+.pb-capbtn{background:rgba(57,213,200,.14);border:1px solid var(--pb-accent,#39d5c8);color:#aef3ec;font:inherit;font-size:10.5px;border-radius:5px;padding:4px 7px;cursor:pointer;white-space:nowrap}
+.pb-capbtn:hover{background:rgba(57,213,200,.25)}

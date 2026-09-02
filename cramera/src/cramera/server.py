@@ -305,6 +305,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._discard_recording()
         if route == "/api/plan/save":
             return self._save_generated_plan()
+        if route == "/api/plan/scaffold":
+            return self._launch_scaffold()
+        if route == "/api/plan/scaffold/stop":
+            return self._stop_scaffold()
         return self._send_error("unknown endpoint", 404)
 
     def _generated_demos_directory(self):
@@ -325,6 +329,54 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if candidate.is_dir():
                 return candidate / "coraplex_generated"
         return here.parent / "generated_demos"  # fallback: never resolves meshes, but writes
+
+    _scaffold_proc = None  # class-level: the running Plan-Builder scaffold demo, if any
+
+    def _launch_scaffold(self) -> None:
+        """
+        Write a Plan-Builder scaffold demo (environment + objects, idle) and run it with
+        cramera-live so its live world comes up on the bridge (:8765). The user drags
+        objects in the Scene view; the builder captures their poses via /captured_objects.
+        """
+        import os
+        import subprocess
+
+        body = self._request_body()
+        code = body.get("code")
+        if not isinstance(code, str) or not code.strip():
+            return self._send_json({"ok": False, "error": "empty code"}, 400)
+        try:
+            out_dir = self._generated_demos_directory()
+            out_dir.mkdir(parents=True, exist_ok=True)
+            path = out_dir / "_builder_scaffold.py"
+            path.write_text(code)
+            repo = out_dir.parent.parent.parent  # coraplex_generated -> demos -> coraplex -> repo
+            live = repo / ".venv" / "bin" / "cramera-live"
+            self._stop_scaffold(reply=False)
+            env = dict(os.environ, CORAPLEX_VISUALIZATION="cramera")
+            type(self)._scaffold_proc = subprocess.Popen(
+                [str(live), str(path)], cwd=str(repo), env=env,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+        except (OSError, ValueError) as error:
+            return self._send_json({"ok": False, "error": str(error)}, 500)
+        self._send_json({"ok": True, "path": str(path)})
+
+    def _stop_scaffold(self, reply: bool = True) -> None:
+        """
+        Stop the running scaffold demo, if any.
+
+        :param reply: Whether to send a JSON response (False for internal calls).
+        """
+        proc = type(self)._scaffold_proc
+        if proc is not None and proc.poll() is None:
+            try:
+                proc.terminate()
+            except OSError:
+                pass
+        type(self)._scaffold_proc = None
+        if reply:
+            self._send_json({"ok": True})
 
     def _save_generated_plan(self) -> None:
         """
