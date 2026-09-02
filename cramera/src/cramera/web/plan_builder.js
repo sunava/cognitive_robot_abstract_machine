@@ -42,7 +42,7 @@
   // (e.g. Garmi: the class expects `arm_0_fr3_link8` but the installed garmi_description
   // uses `r100-0603/*_fr3_link8`) crash on spawn — a stack model/URDF mismatch, not a
   // Plan Builder bug. Add a name here once its description is verified to load.
-  const WORKING_ROBOTS = ['PR2'];
+  const WORKING_ROBOTS = ['PR2', 'Garmi'];
   function robotInfo() { const v = ($('pb-robot') && $('pb-robot').value) || 'PR2'; return ROBOTS[v] || ROBOTS.PR2; }
   // semantic place targets: supporting surfaces ("on") and case containers ("in").
   // Both expose HasSupportingSurface.sample_points_from_surface, so resolution is identical.

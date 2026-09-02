@@ -577,8 +577,22 @@ class Garmi(AbstractRobot, HasMobileBase[GarmiMobileBase]):
     @classmethod
     def get_ros_file_path(cls) -> str:
         """
-        Returns the ROS file path for the GARMI robot description.
+        Returns the file path for the GARMI robot description.
+
+        This class describes the ``arm_0_``/``arm_1_`` Garmi with a pan/tilt head. The
+        ``garmi_description`` ROS package currently installed is a different variant
+        (``left_``/``right_`` links, a fixed head), which does not match — spawning it
+        raises ``No world entity with name 'arm_0_fr3_link8'``. The matching URDF (with
+        its meshes) ships in the cram_viz ``garmi_apartment`` scene, so prefer it when
+        present and fall back to the ROS package otherwise.
         """
+        from pathlib import Path
+
+        here = Path(__file__).resolve()
+        for parent in here.parents:
+            candidate = parent / "cram_viz" / "scenes" / "garmi_apartment" / "garmi.urdf"
+            if candidate.is_file():
+                return str(candidate)
         return "package://garmi_description/urdf/garmi.urdf"
 
     @classmethod
