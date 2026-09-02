@@ -86,12 +86,14 @@ Plan view, now attachable to the plan you are composing.
   `# constraints` comment block + a `CONSTRAINTS = [...]` metadata list (step, text, goal,
   params), so the plan file records them.
 
-**Symbolic place targets — "on a surface".** A Transport step's target can now be a
-semantic surface instead of exact XYZ. The step gets a target-mode toggle (*exact pose* /
-*on a surface*); in surface mode you pick a supporting-surface type (CounterTop / Table /
-ShelfLayer / Floor) and — while the live scene runs — a concrete named instance (else the
-first found). The generated demo resolves the place pose **at runtime** via
-`semantic_digital_twin`:
+**Symbolic place targets — "semantic location" (default).** A Transport step's target is a
+semantic location by default instead of exact XYZ (toggle: *semantic location* / *exact
+pose*). You pick a type grouped into **on a surface** (CounterTop / Table / ShelfLayer /
+Floor / Sofa) or **in a container** (Drawer / Fridge / Cabinet / Cupboard / Dresser /
+Dishwasher) — containers reuse the same `HasSupportingSurface.sample_points_from_surface`
+via `HasCaseAsRootBody`, so "in a fridge" and "on a counter" resolve identically. While the
+live scene runs you can pick a concrete named instance (else the first found). The generated
+demo resolves the place pose **at runtime** via `semantic_digital_twin`:
 
 ```python
 _surface = world.get_semantic_annotations_by_type(CounterTop)[0]
@@ -101,9 +103,16 @@ TransportAction(obj, _target, Arms.LEFT)
 ```
 
 So the pose is sampled fresh each run and stays valid when the scene changes. A new bridge
-endpoint `GET /surfaces` enumerates the live world's supporting surfaces to populate the
-instance dropdown. (Caveat: the chosen environment must actually carry such annotations —
-`[0]` raises if a type is absent; the live `/surfaces` list shows what's really there.)
+endpoint `GET /surfaces` enumerates the live world's surfaces and containers to populate the
+instance dropdown. Missing surfaces raise a **clear error** naming the step, object and type
+(with a pointer to the `/surfaces` list) instead of a bare IndexError/StopIteration.
+
+**Default start pose.** A Transport step whose object was never placed/captured no longer
+crashes the demo: the object is spawned at a default start pose (and still listed in the
+`OBJECTS` table) so the plan runs.
+
+**Add-constraint field moved up.** The "+ Add" input now sits directly under the Constraints
+heading (was buried below the cards), so writing a new constraint is immediately visible.
 
 **Output style — `RobotDemonstration` subclass.** A header toggle picks the generated
 form: a flat script (as before) or a proper `coraplex.demonstrations.RobotDemonstration`

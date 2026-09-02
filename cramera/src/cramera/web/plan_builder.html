@@ -23,6 +23,7 @@
       <option value="kitchen.urdf">Kitchen</option>
       <option value="kitchen-small.urdf">Kitchen (small)</option>
       <option value="IAI_kitchen.urdf">IAI Kitchen</option>
+      <option value="warehouse6.urdf">Warehouse</option>
     </select>
     <select id="pb-robot" class="pb-sel" title="Robot"><option value="PR2">PR2</option></select>
     <select id="pb-style" class="pb-sel" title="Output style">
@@ -50,13 +51,13 @@
     <div id="pb-objects"></div>
 
     <h2 style="margin-top:18px">Constraints <button id="pb-con-info" class="pb-info-btn" title="How natural-language constraints are translated">ⓘ</button></h2>
-    <div class="pb-hint2">Drag onto a plan step →</div>
-    <div id="pb-cons"></div>
+    <div class="pb-hint2">Write one, then drag it onto a plan step →</div>
     <div class="pb-add-obj">
       <input id="pb-con-in" class="pb-sel pb-con-in" placeholder="e.g. milk must stay upright" />
       <button id="pb-con-add" class="pb-btn sm">+ Add</button>
     </div>
     <div id="pb-con-info-box" class="pb-con-info"></div>
+    <div id="pb-cons"></div>
   </aside>
 
   <!-- plan -->

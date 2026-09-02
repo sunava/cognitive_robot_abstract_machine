@@ -1378,14 +1378,26 @@ class Bridge:
             return {"surfaces": out}
         try:
             from semantic_digital_twin.semantic_annotations.semantic_annotations import (
+                Cabinet,
                 CounterTop,
+                Cupboard,
+                Dishwasher,
+                Drawer,
+                Dresser,
                 Floor,
+                Fridge,
                 ShelfLayer,
+                Sofa,
                 Table,
             )
         except Exception:  # semantic annotations unavailable — return nothing
             return {"surfaces": out}
-        for surface_type in (CounterTop, Table, ShelfLayer, Floor):
+        # supporting surfaces ("on") + case containers ("in"): both expose the same
+        # sample_points_from_surface via HasSupportingSurface / HasCaseAsRootBody.
+        for surface_type in (
+            CounterTop, Table, ShelfLayer, Floor, Sofa,
+            Drawer, Fridge, Cabinet, Cupboard, Dresser, Dishwasher,
+        ):
             try:
                 annotations = self.world.get_semantic_annotations_by_type(surface_type)
             except Exception:

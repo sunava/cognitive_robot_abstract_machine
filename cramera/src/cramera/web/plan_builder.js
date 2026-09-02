@@ -16,11 +16,18 @@
     park_arms: { name: 'Park arms', color: '#b98cff', params: { arm: 'BOTH' } },
     move_torso: { name: 'Move torso', color: '#ff9db1', params: { torso: 'HIGH' } },
     navigate: { name: 'Navigate', color: '#8fd6c8', params: { x: 2.6, y: 1.8, z: 0.0, yaw: 0.0 } },
-    transport: { name: 'Transport object', color: '#5b8cff', params: { object: '', x: 5.0, y: 3.3, z: 0.8, yaw: 1.57, arm: 'LEFT', targetMode: 'pose', surfaceType: 'CounterTop', surfaceName: '' } },
+    transport: { name: 'Transport object', color: '#5b8cff', params: { object: '', x: 5.0, y: 3.3, z: 0.8, yaw: 1.57, arm: 'LEFT', targetMode: 'semantic', surfaceType: 'CounterTop', surfaceName: '' } },
   };
   const ARMS = ['LEFT', 'RIGHT', 'BOTH'];
   const TORSO = ['HIGH', 'MID', 'LOW'];
-  const SURFACE_TYPES = ['CounterTop', 'Table', 'ShelfLayer', 'Floor'];
+  // semantic place targets: supporting surfaces ("on") and case containers ("in").
+  // Both expose HasSupportingSurface.sample_points_from_surface, so resolution is identical.
+  const SEMANTIC_SURFACES = ['CounterTop', 'Table', 'ShelfLayer', 'Floor', 'Sofa'];
+  const SEMANTIC_CONTAINERS = ['Drawer', 'Fridge', 'Cabinet', 'Cupboard', 'Dresser', 'Dishwasher'];
+  const SEMANTIC_TYPES = SEMANTIC_SURFACES.concat(SEMANTIC_CONTAINERS);
+  function isContainer(t) { return SEMANTIC_CONTAINERS.indexOf(t) >= 0; }
+  function prep(t) { return isContainer(t) ? 'in' : 'on'; }
+  const DEFAULT_START = { x: 2.4, y: 2.2, z: 0.95, yaw: 0.0 };   // start pose used when an object was never placed/captured
   let liveSurfaces = [];   // [{type, name}] fetched from the live world when the scene runs
 
   // ---- constraints: natural language -> giskardpy goal (same rule-based mapping as the Plan view) ----
@@ -328,9 +335,9 @@
     if (s.type === 'move_torso') return row(sel(s, 'torso', TORSO));
     if (s.type === 'navigate') return row('<span class="pb-group-lbl">go to →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw'));
     if (s.type === 'transport') {
-      const mode = s.params.targetMode || 'pose';
-      const dropRow = (mode === 'surface')
-        ? row('<span class="pb-group-lbl">on →</span>' + surfaceTypeSel(s) + surfaceInstanceSel(s))
+      const mode = s.params.targetMode || 'semantic';
+      const dropRow = (mode === 'semantic')
+        ? row('<span class="pb-group-lbl">place →</span>' + semanticTypeSel(s) + surfaceInstanceSel(s))
         : row('<span class="pb-group-lbl">drop-off (to) →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw') +
           '<button class="pb-capbtn" data-capstep="' + s.id + '" title="drag the object to its drop-off in the 3D scene, then capture that pose as this step\'s target">◎ capture</button>');
       return (
@@ -352,9 +359,18 @@
       return '<option value="' + p[0] + '"' + ((s.params[k] || '') === p[0] ? ' selected' : '') + '>' + p[1] + '</option>';
     }).join('') + '</select>';
   }
-  function modeSel(s) { return selPairs(s, 'targetMode', [['pose', 'exact pose (XYZ)'], ['surface', 'on a surface']]); }
-  function surfaceTypeSel(s) { return selPairs(s, 'surfaceType', SURFACE_TYPES.map(function (t) { return [t, t]; })); }
-  // instance dropdown: "first found" + any live-enumerated surfaces of the chosen type
+  function modeSel(s) { return selPairs(s, 'targetMode', [['semantic', 'semantic location'], ['pose', 'exact pose (XYZ)']]); }
+  // semantic type dropdown, grouped into "on a surface" / "in a container"
+  function semanticTypeSel(s) {
+    function grp(label, types) {
+      return '<optgroup label="' + label + '">' + types.map(function (t) {
+        return '<option value="' + t + '"' + ((s.params.surfaceType || '') === t ? ' selected' : '') + '>' + prep(t) + ' ' + t + '</option>';
+      }).join('') + '</optgroup>';
+    }
+    return '<select class="pb-sel" data-sid="' + s.id + '" data-k="surfaceType">' +
+      grp('on a surface', SEMANTIC_SURFACES) + grp('in a container', SEMANTIC_CONTAINERS) + '</select>';
+  }
+  // instance dropdown: "first found" + any live-enumerated instances of the chosen type
   function surfaceInstanceSel(s) {
     const t = s.params.surfaceType || 'CounterTop';
     const inst = liveSurfaces.filter(function (x) { return x.type === t; });
@@ -438,7 +454,7 @@
   }
   // --- "place on a surface": symbolic target resolution via semantic_digital_twin ---
   function surfaceSteps(useSteps) {
-    return useSteps.filter(function (s) { return s.type === 'transport' && s.params.targetMode === 'surface'; });
+    return useSteps.filter(function (s) { return s.type === 'transport' && s.params.targetMode === 'semantic'; });
   }
   function surfaceTypesUsed(useSteps) {
     const set = {}; surfaceSteps(useSteps).forEach(function (s) { set[s.params.surfaceType || 'CounterTop'] = 1; });
@@ -450,12 +466,12 @@
   function surfaceResolveLines(useSteps, indent) {
     const L = [];
     useSteps.forEach(function (s, i) {
-      if (!(s.type === 'transport' && s.params.targetMode === 'surface')) return;
+      if (!(s.type === 'transport' && s.params.targetMode === 'semantic')) return;
       const T = s.params.surfaceType || 'CounterTop';
       const mesh = s.params.object || 'object';
       const id = s.id;
       const where = 'step ' + (i + 1) + ' (transport ' + mesh + ')';
-      L.push(indent + '# place "' + mesh + '" on a ' + T + ' — pose sampled by semantic_digital_twin');
+      L.push(indent + '# place "' + mesh + '" ' + prep(T) + ' a ' + T + ' — pose sampled by semantic_digital_twin');
       if (s.params.surfaceName) {
         L.push(indent + '_surface_' + id + ' = next(');
         L.push(indent + '    (s for s in world.get_semantic_annotations_by_type(' + T + ')');
@@ -472,7 +488,7 @@
         L.push(indent + '_surfaces_' + id + ' = world.get_semantic_annotations_by_type(' + T + ')');
         L.push(indent + 'if not _surfaces_' + id + ':');
         L.push(indent + '    raise RuntimeError(');
-        L.push(indent + '        "no ' + T + ' surface in this world for ' + where + '. "');
+        L.push(indent + '        "no ' + T + ' in this world for ' + where + '. "');
         L.push(indent + '        "This environment may not carry that annotation — "');
         L.push(indent + '        "see the Plan Builder\'s live /surfaces list for what is available."');
         L.push(indent + '    )');
@@ -482,12 +498,27 @@
       L.push(indent + '    body_to_sample_for=' + body(mesh) + ')');
       L.push(indent + 'if not _pts_' + id + ':');
       L.push(indent + '    raise RuntimeError(');
-      L.push(indent + '        "could not sample a free place pose on ' + T + ' for ' + where + ' "');
+      L.push(indent + '        "could not sample a free place pose ' + prep(T) + ' ' + T + ' for ' + where + ' "');
       L.push(indent + '        "(surface full or too small for ' + mesh + ')."');
       L.push(indent + '    )');
       L.push(indent + '_target_' + id + ' = Pose(_pts_' + id + '[0], reference_frame=_pts_' + id + '[0].reference_frame)');
     });
     return L;
+  }
+  // objects to spawn: the placed ones, plus any object a transport step references but that
+  // was never placed/captured — spawned at DEFAULT_START so the demo still runs.
+  function effectiveObjects(useSteps) {
+    const list = objects.slice();
+    const have = {}; list.forEach(function (o) { have[o.mesh] = 1; });
+    useSteps.forEach(function (s) {
+      if (s.type === 'transport' && s.params.object && !have[s.params.object]) {
+        have[s.params.object] = 1;
+        list.push({ mesh: s.params.object, name: s.params.object,
+          x: DEFAULT_START.x, y: DEFAULT_START.y, z: DEFAULT_START.z, yaw: DEFAULT_START.yaw,
+          color: '#cccccc', _defaulted: true });
+      }
+    });
+    return list;
   }
   function surfaceImportLine(useSteps) {
     const types = surfaceTypesUsed(useSteps);
@@ -523,8 +554,8 @@
   function pose(p) { return 'Pose.from_xyz_rpy(' + py(p.x) + ', ' + py(p.y) + ', ' + py(p.z) + ', yaw=' + py(p.yaw) + ', reference_frame=world.root)'; }
   function body(mesh) { return 'world.get_body_by_name("' + mesh + '")'; }
   function generate(stepsOverride) {
-    const added = objects;
     const useSteps = stepsOverride || steps;
+    const added = effectiveObjects(useSteps);
     const env = ($('pb-env') && $('pb-env').value) || 'apartment.urdf';
     const L = [];
     L.push('"""Generated by the cramera Plan Builder."""');
@@ -615,7 +646,7 @@
     if (s.type === 'move_torso') return 'MoveTorsoAction(TorsoState.' + p.torso + ')';
     if (s.type === 'navigate') return 'NavigateAction(' + pose(p) + ')';
     if (s.type === 'transport') {
-      const target = (p.targetMode === 'surface') ? ('_target_' + s.id) : pose(p);
+      const target = (p.targetMode === 'semantic') ? ('_target_' + s.id) : pose(p);
       return 'TransportAction(' + body(p.object || 'object') + ', ' + target + ', Arms.' + p.arm + ')';
     }
     return 'None';
@@ -630,8 +661,8 @@
   }
   // ---- output style: a coraplex.demonstrations.RobotDemonstration subclass ----
   function generateClass(stepsOverride) {
-    const added = objects;
     const useSteps = stepsOverride || steps;
+    const added = effectiveObjects(useSteps);
     const env = ($('pb-env') && $('pb-env').value) || 'apartment.urdf';
     const cls = className();
     const L = [];
@@ -848,7 +879,7 @@
         const next = (d && d.surfaces) || [];
         const changed = JSON.stringify(next) !== JSON.stringify(liveSurfaces);
         liveSurfaces = next;
-        if (changed && steps.some(function (s) { return s.type === 'transport' && s.params.targetMode === 'surface'; })) renderSteps();
+        if (changed && steps.some(function (s) { return s.type === 'transport' && s.params.targetMode === 'semantic'; })) renderSteps();
       }).catch(function () {});
   }
   function stopLive() {
