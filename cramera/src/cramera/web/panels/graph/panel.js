@@ -165,12 +165,9 @@ Panels.define('graph', function (root, bus) {
     // gaze: look at / watch / keep in view  (check before generic words)
     if (/look|watch|gaze|point (at|the camera)|face the|observ|keep .*(in view|an eye)|focus on|keep sight|see the|where it (operat|work)/.test(t))
       return { goal: 'PointingAt', params: { tip_link: 'head_camera', root_link: 'map', pointing_axis: [0, 0, 1], goal_point: '@operation_target', goal_point_body: o, threshold: 0.05 } };
-    // gripper open / release
-    if (/(open|release|let go|drop).*(gripper|grip|hand|object|it)|gripper.*(open|release)|release it/.test(t))
-      return { goal: 'JointPositionReached', params: { joint: 'gripper', position: 0.08, threshold: 0.005 } };
-    // gripper closed / hold firmly
-    if (/gripper.*clos|clos.*gripper|hold (it|tight|firm)|grip (it|firm)|grasp firm|clamp|secure|don.?t drop|keep hold|while carrying|carry/.test(t))
-      return { goal: 'JointPositionReached', params: { joint: 'gripper', position: 0.0, threshold: 0.005 } };
+    // (gripper open/close is intentionally not mapped yet — the bridge can't resolve the
+    //  joint reliably across robots, so such phrasings return "no match" rather than
+    //  looking accepted and then failing as "not applicable")
     // height: keep high / above / off the surface
     if (/above|higher|over the|off the (table|ground|surface|bench)|keep .*(high|up high|elevated)|lift(ed)? (up|above)?/.test(t))
       return { goal: 'HeightMonitor', params: { tip_link: o, lower_limit: (d != null ? d : 0.05), upper_limit: 2.0 } };
@@ -182,6 +179,28 @@ Panels.define('graph', function (root, bus) {
       return { goal: 'DistanceMonitor', params: { tip_link: o, lower_limit: (d != null ? d : 0.05), upper_limit: 5.0 } };
     return { goal: null, params: {} };
   }
+  // the ⓘ panel: how the rule-based translation maps phrasings to giskardpy goals
+  function constraintInfoHtml() {
+    const rows = [
+      ['upright, level, flat, tilt, spill, steady, balanced, "don\'t tip"', 'VectorsAligned', "keep the object's up-axis aligned with world up (stays upright / level)"],
+      ['look, watch, observe, "keep in view", focus, gaze, face', 'PointingAt', 'aim the head camera at the object'],
+      ['above, higher, "off the table", "keep high", lift', 'HeightMonitor', 'keep the object at/above a height over the reference'],
+      ['below, under, "lower than", "keep low"', 'HeightMonitor', 'keep the object below a height'],
+      ['"away from", clearance, distance, avoid, "too close", "keep clear"', 'DistanceMonitor', 'keep a minimum distance / clearance'],
+    ];
+    let body = rows.map(function (r) {
+      return '<tr><td>' + r[0] + '</td><td class="goal">' + r[1] + '</td><td>' + r[2] + '</td></tr>';
+    }).join('');
+    return '<div class="cpal-info">' +
+      '<div class="ci-h">How constraints are translated <span class="ci-note">(rule-based, not an LLM)</span></div>' +
+      '<table class="ci-table"><thead><tr><th>Phrasing (examples)</th><th>giskardpy goal</th><th>Effect</th></tr></thead><tbody>' + body + '</tbody></table>' +
+      '<div class="ci-foot">A length in the text — <code>10 cm</code>, <code>0.1 m</code>, <code>5mm</code> — sets the thresholds/limits. ' +
+      'The object is taken from the sentence (milk, bowl, spoon, tray, flask, vial, beaker, …) or falls back to the step\'s target. ' +
+      'Anything that matches no rule shows <b>no match</b> and is not sent. ' +
+      'Gripper open/close is not wired yet (the joint can\'t be resolved reliably across robots).</div>' +
+      '</div>';
+  }
+
   const stepNodeById = {};   // id -> raw plan node, filled during renderSteps
   const stepAttached = {};   // id -> [{goal, text}]  attached constraints, shown as persistent chips
   function attachedChips(nodeId) {
@@ -273,17 +292,23 @@ Panels.define('graph', function (root, bus) {
     if (stepsEl.querySelector('.cpal')) return;
     stepsEl.innerHTML =
       '<div class="cpal">' +
-      '  <div class="cpal-tree-ctl"><button class="cpal-mini" data-tree="expand" title="Expand all steps">⊕ Expand all</button>' +
-      '     <button class="cpal-mini" data-tree="collapse" title="Collapse all steps">⊖ Collapse all</button></div>' +
-      '  <div class="cpal-h">Constraints</div><div class="cpal-sub">drag onto a step →</div>' +
+      '  <div class="cpal-h">Constraints <button class="cpal-info-btn" title="How natural-language constraints are translated">ⓘ</button></div>' +
+      '  <div class="cpal-sub">drag onto a step →</div>' +
       '  <div class="cpal-list">' + renderPaletteCards() + '</div>' +
-      '  <div class="cpal-add"><input class="cpal-in" placeholder="e.g. milk must stay upright"><button class="cpal-btn">Add</button></div></div>' +
+      '  <div class="cpal-add"><input class="cpal-in" placeholder="e.g. milk must stay upright"><button class="cpal-btn">Add</button></div>' +
+      constraintInfoHtml() +
+      '</div>' +
       '<div class="cpal-resizer" title="Drag to resize"></div>' +
-      '<div class="steps-tree"></div>';
+      '<div class="steps-pane">' +
+      '  <div class="steps-toolbar"><button class="steps-tool-btn" data-tree="expand" title="Expand all steps">⊕ Expand all</button>' +
+      '     <button class="steps-tool-btn" data-tree="collapse" title="Collapse all steps">⊖ Collapse all</button></div>' +
+      '  <div class="steps-tree"></div></div>';
     wirePaletteCards();
-    stepsEl.querySelectorAll('.cpal-mini').forEach(function (b) {
+    stepsEl.querySelectorAll('.steps-tool-btn').forEach(function (b) {
       b.addEventListener('click', function () { collapseAllSteps(b.dataset.tree === 'collapse'); });
     });
+    const infoBtn = stepsEl.querySelector('.cpal-info-btn'), infoBox = stepsEl.querySelector('.cpal-info');
+    if (infoBtn && infoBox) infoBtn.addEventListener('click', function () { infoBox.classList.toggle('open'); });
     const inp = stepsEl.querySelector('.cpal-in'), btn = stepsEl.querySelector('.cpal-btn');
     function add() { const v = inp.value.trim(); if (!v) return; CONSTRAINTS.push({ id: 'c' + (cSeq++), text: v }); inp.value = ''; refreshPaletteCards(); inp.focus(); }
     if (btn) btn.addEventListener('click', add);
