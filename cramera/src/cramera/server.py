@@ -303,7 +303,54 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._save_recording()
         if route == "/api/recording/discard":
             return self._discard_recording()
+        if route == "/api/plan/save":
+            return self._save_generated_plan()
         return self._send_error("unknown endpoint", 404)
+
+    def _generated_demos_directory(self):
+        """
+        Where the Plan Builder writes generated demos: ``coraplex/demos/coraplex_generated``
+        (overridable via ``CRAMERA_GENERATED_DEMOS``). Sits two levels under ``coraplex/`` so
+        the generated ``os.path.dirname(__file__)/../../resources/objects`` mesh paths resolve.
+        """
+        import os
+        from pathlib import Path
+
+        override = os.environ.get("CRAMERA_GENERATED_DEMOS")
+        if override:
+            return Path(override)
+        here = Path(__file__).resolve()
+        for parent in here.parents:
+            candidate = parent / "coraplex" / "demos"
+            if candidate.is_dir():
+                return candidate / "coraplex_generated"
+        return here.parent / "generated_demos"  # fallback: never resolves meshes, but writes
+
+    def _save_generated_plan(self) -> None:
+        """
+        Write a Plan-Builder-generated demo to the generated-demos directory and return
+        its path (so the UI can show ``cramera-live <path>``).
+        """
+        import re
+        from pathlib import Path
+
+        body = self._request_body()
+        name = str(body.get("name") or "").strip()
+        code = body.get("code")
+        if not name.endswith(".py"):
+            name += ".py"
+        if not re.match(r"^[A-Za-z0-9_\-]+\.py$", name):
+            return self._send_json({"ok": False, "error": "invalid file name"}, 400)
+        if not isinstance(code, str) or not code.strip():
+            return self._send_json({"ok": False, "error": "empty code"}, 400)
+        try:
+            out_dir = self._generated_demos_directory()
+            out_dir.mkdir(parents=True, exist_ok=True)
+            path = out_dir / name
+            path.write_text(code)
+        except OSError as error:
+            return self._send_json({"ok": False, "error": str(error)}, 500)
+        self._send_json({"ok": True, "path": str(path)})
 
     def _save_recording(self) -> None:
         """

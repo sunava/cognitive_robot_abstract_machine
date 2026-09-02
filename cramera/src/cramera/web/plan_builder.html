@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Plan Builder · cramera</title>
+<link rel="stylesheet" href="app.css" />
+<link rel="stylesheet" href="plan_builder.css" />
+</head>
+<body>
+<header class="topbar">
+  <nav class="page-tabs">
+    <a href="index.html">Scene</a>
+    <a href="models.html">Models</a>
+    <a href="plan_builder.html" class="active">Plan Builder</a>
+  </nav>
+  <div class="pb-title">Plan Builder <span class="pb-hint">compose a plan &amp; place objects → generate a demo file</span></div>
+  <div class="pb-actions">
+    <input id="pb-name" class="pb-name" placeholder="demo name" value="my_demo" />
+    <select id="pb-robot" class="pb-sel" title="Robot"><option value="PR2">PR2</option></select>
+    <button id="pb-generate" class="pb-btn primary">⚙ Generate demo.py</button>
+    <button id="pb-download" class="pb-btn">⭳ Download</button>
+    <button id="pb-save" class="pb-btn">💾 Save to demos</button>
+  </div>
+</header>
+
+<main class="pb-main">
+  <!-- palette -->
+  <aside class="pb-col pb-palette">
+    <h2>Action blocks</h2>
+    <div class="pb-hint2">Drag into the plan →</div>
+    <div id="pb-blocks"></div>
+    <h2 style="margin-top:18px">Objects</h2>
+    <div class="pb-hint2">Add, then drag in the scene to place</div>
+    <div class="pb-add-obj">
+      <select id="pb-mesh" class="pb-sel"></select>
+      <button id="pb-add-obj" class="pb-btn sm">+ Add</button>
+    </div>
+    <div id="pb-objects"></div>
+  </aside>
+
+  <!-- plan -->
+  <section class="pb-col pb-plan">
+    <h2>Plan <span class="pb-count" id="pb-step-count"></span></h2>
+    <div id="pb-steps" class="pb-steps"><div class="pb-drop-hint">Drop action blocks here to build the sequence</div></div>
+  </section>
+
+  <!-- scene + code -->
+  <section class="pb-col pb-scene-col">
+    <h2>Scene (top-down) <span class="pb-hint2">drag markers to set X/Y</span></h2>
+    <div id="pb-scene" class="pb-scene">
+      <div class="pb-robot-marker" id="pb-robot-marker" title="robot start">🤖</div>
+    </div>
+    <div class="pb-scene-scale">1 grid = 1 m · origin at centre</div>
+    <h2 style="margin-top:14px">Generated <code>demo.py</code></h2>
+    <pre id="pb-code" class="pb-code">Click “Generate demo.py”.</pre>
+    <div id="pb-status" class="pb-status"></div>
+  </section>
+</main>
+
+<script src="core/response.js"></script>
+<script src="plan_builder.js"></script>
+</body>
+</html>
