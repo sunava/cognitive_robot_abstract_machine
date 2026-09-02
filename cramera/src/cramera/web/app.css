@@ -740,3 +740,20 @@ body.graph-full-open{overflow:hidden}
 .st-cflash{font-size:10px;font-weight:700;color:#bcd2ff;background:rgba(91,140,255,.18);border:1px solid rgba(91,140,255,.4);padding:1px 6px;border-radius:999px}
 .st-cflash.bad{color:#ff9db1;background:rgba(255,107,139,.16);border-color:rgba(255,107,139,.4)}
 .st-chip{font-size:10px;font-weight:700;color:#bcd2ff;background:rgba(91,140,255,.16);border:1px solid rgba(91,140,255,.4);padding:1px 6px;border-radius:999px}
+
+/* ---- Plan Steps view: fixed constraints column on the left + clearer hierarchy ---- */
+.graph-steps{position:absolute;inset:0;display:flex;overflow:hidden;padding:0}
+.graph-steps .cpal{width:232px;flex:none;max-width:none;margin:0;border:0;border-right:1px solid var(--line,#26324d);border-radius:0;overflow:auto;background:var(--panel2,#0c1526)}
+.graph-steps .cpal-list{flex-direction:column}
+.graph-steps .cpal-sub{font-size:10.5px;color:var(--faint,#5f7196);margin:2px 0 10px}
+.graph-steps .steps-tree{flex:1;max-width:none;margin:0;overflow:auto;padding:14px 18px}
+
+/* hierarchy: top-level "phases" stand out; deeper steps recede */
+.st-row.lvl0{margin-top:6px;padding-top:9px;border-top:1px solid var(--line,#26324d)}
+.steps-tree > .step:first-child > .st-row.lvl0{border-top:0;margin-top:0}
+.st-row.lvl0 .st-name{font-size:14.5px;font-weight:700;color:var(--ink,#dfe8fb)}
+.st-row.lvl0 .st-num{font-weight:700;color:var(--muted,#8b9bc0)}
+.st-row.lvl1 .st-name{font-size:13px;font-weight:600}
+.st-row.lvl2 .st-name,.st-row.lvl3 .st-name{font-size:12.5px;font-weight:400;color:var(--muted,#8b9bc0)}
+.st-kids{margin-left:16px;border-left:2px solid var(--line2,#2b3a57);padding-left:10px}
+.st-row.lvl0 .st-name::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent,#39d5c8);margin-right:8px;vertical-align:middle;opacity:.7}

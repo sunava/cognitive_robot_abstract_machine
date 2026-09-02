@@ -243,7 +243,7 @@ Panels.define('graph', function (root, bus) {
   function ensurePalette() {
     if (stepsEl.querySelector('.cpal')) return;
     stepsEl.innerHTML =
-      '<div class="cpal"><div class="cpal-h">Constraints — drag onto a step (live)</div>' +
+      '<div class="cpal"><div class="cpal-h">Constraints</div><div class="cpal-sub">drag onto a step →</div>' +
       '<div class="cpal-list">' + renderPaletteCards() + '</div>' +
       '<div class="cpal-add"><input class="cpal-in" placeholder="e.g. milk must stay upright"><button class="cpal-btn">Add</button></div></div>' +
       '<div class="steps-tree"></div>';
@@ -260,14 +260,15 @@ Panels.define('graph', function (root, bus) {
     const top = roots.length === 1 && STRUCT_KINDS[roots[0].n.kind] ? stepItems(roots[0]) : roots;
     for (const k in stepNodeById) delete stepNodeById[k];
     const html = [];
-    function walk(item, number) {
+    function walk(item, number, depth) {
       const n = item.n;
       stepNodeById[n.id] = n;
       const sub = stepItems(item);
       const details = (item.kids || []).filter(function (c) { return DETAIL_KINDS[c.n.kind]; });
       const hk = sub.length || details.length;
       const collapsed = !!stepsCollapsed[n.id];
-      html.push('<div class="st-row' + (hk ? ' hk' : '') + '" data-id="' + n.id + '">' +
+      const lvl = Math.min(depth, 3);
+      html.push('<div class="st-row lvl' + lvl + (hk ? ' hk' : '') + '" data-id="' + n.id + '">' +
         '<span class="st-tw">' + (hk ? (collapsed ? '▸' : '▾') : '') + '</span>' +
         '<span class="st-num">' + number + '</span>' +
         '<span class="st-name">' + stepLabel(n) + '</span>' +
@@ -276,11 +277,11 @@ Panels.define('graph', function (root, bus) {
       if (hk) {
         html.push('<div class="st-kids"' + (collapsed ? ' style="display:none"' : '') + '>');
         details.forEach(function (d) { html.push('<div class="st-leaf"><span class="st-name detail">' + stepLabel(d.n) + '</span>' + stepPill(d.n.status) + '</div>'); });
-        var i = 1; sub.forEach(function (c) { walk(c, number + '.' + (i++)); });
+        var i = 1; sub.forEach(function (c) { walk(c, number + '.' + (i++), depth + 1); });
         html.push('</div>');
       }
     }
-    var i = 1; top.forEach(function (c) { walk(c, String(i++)); });
+    var i = 1; top.forEach(function (c) { walk(c, String(i++), 0); });
     treeEl.innerHTML = html.join('');
     // collapse/expand (persist the state so the 700ms live refresh keeps it)
     treeEl.querySelectorAll('.st-row.hk').forEach(function (r) {
