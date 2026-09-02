@@ -38,6 +38,11 @@
   Object.keys(ROBOTS).forEach(function (k) {
     const r = ROBOTS[k]; r.import = 'from semantic_digital_twin.robots.' + r.module + ' import ' + r.cls;
   });
+  // only robots whose description actually loads in this workspace are offered. Others
+  // (e.g. Garmi: the class expects `arm_0_fr3_link8` but the installed garmi_description
+  // uses `r100-0603/*_fr3_link8`) crash on spawn — a stack model/URDF mismatch, not a
+  // Plan Builder bug. Add a name here once its description is verified to load.
+  const WORKING_ROBOTS = ['PR2'];
   function robotInfo() { const v = ($('pb-robot') && $('pb-robot').value) || 'PR2'; return ROBOTS[v] || ROBOTS.PR2; }
   // semantic place targets: supporting surfaces ("on") and case containers ("in").
   // Both expose HasSupportingSurface.sample_points_from_surface, so resolution is identical.
@@ -121,7 +126,7 @@
     });
     const meshSel = $('pb-mesh'); meshSel.innerHTML = MESHES.map(function (m) { return '<option>' + m + '</option>'; }).join('');
     const robotSel = $('pb-robot');
-    if (robotSel) robotSel.innerHTML = Object.keys(ROBOTS).map(function (k) { return '<option value="' + k + '">' + k + '</option>'; }).join('');
+    if (robotSel) robotSel.innerHTML = WORKING_ROBOTS.map(function (k) { return '<option value="' + k + '">' + k + '</option>'; }).join('');
   }
 
   // ---------- objects ----------
@@ -964,7 +969,33 @@
   function quatToYaw(q) { // q = [qx,qy,qz,qw] -> yaw
     return Math.atan2(2 * (q[3] * q[2] + q[0] * q[1]), 1 - 2 * (q[1] * q[1] + q[2] * q[2]));
   }
-  function liveStatus(msg, cls) { const el = $('pb-live-status'); el.textContent = msg; el.className = 'pb-live-status ' + (cls || ''); }
+  function liveStatus(msg, cls) { endBusy(); const el = $('pb-live-status'); el.textContent = msg; el.className = 'pb-live-status ' + (cls || ''); }
+  // a spinner + live seconds counter for the long wait while a scene comes up, so it is
+  // clear the run is alive and how far in it is; endBusy() runs on any final liveStatus()
+  let _busyTimer = 0, _busyStart = 0, _busyBase = '', _busyDetail = '';
+  function beginBusy(base) {
+    _busyBase = base; _busyDetail = ''; _busyStart = Date.now();
+    if (_busyTimer) clearInterval(_busyTimer);
+    renderBusy(); _busyTimer = setInterval(renderBusy, 1000);
+  }
+  function busyDetail(detail) { if (_busyTimer) { _busyDetail = detail || ''; renderBusy(); } }
+  function renderBusy() {
+    const el = $('pb-live-status'); if (!el) return;
+    const s = Math.round((Date.now() - _busyStart) / 1000);
+    const esc = function (t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
+    const detail = _busyDetail ? ' — ' + esc(_busyDetail) : '';
+    el.className = 'pb-live-status';
+    el.innerHTML = '<span class="cr-busy"><span class="cr-spinner"></span>' + esc(_busyBase) + detail + ' · ' + s + 's</span>';
+  }
+  function endBusy() { if (_busyTimer) { clearInterval(_busyTimer); _busyTimer = 0; } }
+  // the last meaningful line of the demo's log, tidied, so the wait shows where it is
+  function lastLogLine(text) {
+    if (!text) return '';
+    const lines = text.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+    if (!lines.length) return '';
+    let line = lines[lines.length - 1].replace(/^(INFO|WARNING|DEBUG|ERROR):[^:]*:/, '').trim();
+    return line.length > 72 ? line.slice(0, 71) + '…' : line;
+  }
   function fetchCaptured() {
     return fetch(bridgeUrl() + '/captured_objects').then(function (r) { return r.json(); }).then(function (d) { return (d && d.objects) || {}; });
   }
@@ -1021,7 +1052,7 @@
   function hideScaffoldLog() { const el = $('pb-scaffold-log'); if (el) { el.style.display = 'none'; el.textContent = ''; } }
   function startLive() {
     const code = generate([{ type: 'park_arms', params: { arm: 'BOTH' } }]);   // scaffold: world + objects, idle
-    liveStatus('starting… (first run parses meshes, ~1 min)', ''); hideScaffoldLog();
+    beginBusy('Starting scene — parsing meshes'); hideScaffoldLog();
     fetch('/api/plan/scaffold', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: code }) })
       .then(function (r) { return r.json(); })
       .then(function (j) { if (!j.ok) { liveStatus('failed: ' + (j.error || '?'), 'err'); return; } pollLive(0); monitorRun(); })
@@ -1032,7 +1063,7 @@
   function runPlan() {
     if (!steps.length) { liveStatus('add plan steps first', 'err'); return; }
     const code = generateSelected();   // full demo (matches the chosen output style), ends by performing the plan
-    liveStatus('running plan… (first run parses meshes, ~1 min)', ''); hideScaffoldLog();
+    beginBusy('Running plan — parsing meshes'); hideScaffoldLog();
     fetch('/api/plan/scaffold', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: code }) })
       .then(function (r) { return r.json(); })
       .then(function (j) { if (!j.ok) { liveStatus('failed: ' + (j.error || '?'), 'err'); return; } pollLive(0, '● running — watch the robot in the 3D view'); monitorRun(); })
@@ -1079,7 +1110,7 @@
             liveStatus('demo failed to start (exit ' + lg.returncode + ') — see the run log below', 'err');
             toast('Demo failed to start — run log opened', 'err'); showScaffoldLog(lg.log); return;
           }
-          if (n < 40) setTimeout(function () { pollLive(n + 1, okMsg); }, 3000);
+          if (n < 40) { busyDetail(lastLogLine(lg && lg.log)); setTimeout(function () { pollLive(n + 1, okMsg); }, 3000); }
           else { liveStatus('scene did not come up — see the run log below', 'err'); if (lg) showScaffoldLog(lg.log); }
         });
       })
