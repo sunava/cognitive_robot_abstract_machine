@@ -357,6 +357,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             type(self)._scaffold_proc = subprocess.Popen(
                 [str(live), str(path)], cwd=str(repo), env=env,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                start_new_session=True,  # own process group, so stop can kill children too
             )
         except (OSError, ValueError) as error:
             return self._send_json({"ok": False, "error": str(error)}, 500)
@@ -368,11 +369,22 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         :param reply: Whether to send a JSON response (False for internal calls).
         """
+        import os
+        import signal
+        import time
+
         proc = type(self)._scaffold_proc
         if proc is not None and proc.poll() is None:
             try:
-                proc.terminate()
-            except OSError:
+                pgid = os.getpgid(proc.pid)
+                os.killpg(pgid, signal.SIGTERM)
+                for _ in range(20):  # give it up to ~2s to exit, then SIGKILL the group
+                    if proc.poll() is not None:
+                        break
+                    time.sleep(0.1)
+                if proc.poll() is None:
+                    os.killpg(pgid, signal.SIGKILL)
+            except (OSError, ProcessLookupError):
                 pass
         type(self)._scaffold_proc = None
         if reply:
