@@ -24,8 +24,12 @@
       <option value="kitchen-small.urdf">Kitchen (small)</option>
       <option value="IAI_kitchen.urdf">IAI Kitchen</option>
       <option value="warehouse6.urdf">Warehouse</option>
+      <option value="warehouse_demo_hall.urdf">Warehouse (demo hall)</option>
     </select>
-    <select id="pb-robot" class="pb-sel" title="Robot"><option value="PR2">PR2</option></select>
+    <select id="pb-robot" class="pb-sel" title="Robot">
+      <option value="PR2">PR2</option>
+      <option value="Garmi">Garmi</option>
+    </select>
     <select id="pb-style" class="pb-sel" title="Output style">
       <option value="class">RobotDemonstration class</option>
       <option value="script">Flat script</option>
@@ -70,7 +74,8 @@
   <section class="pb-col pb-scene-col">
     <h2>Live 3D scene</h2>
     <div class="pb-live-ctl">
-      <button id="pb-live-start" class="pb-btn primary sm">▶ Start live scene</button>
+      <button id="pb-run" class="pb-btn primary sm" title="run the built plan and watch the robot perform it live">▶ Run plan</button>
+      <button id="pb-live-start" class="pb-btn sm" title="bring up the world idle, to drag objects into place and capture their poses">▶ Start live scene</button>
       <button id="pb-live-stop" class="pb-btn sm">■ Stop</button>
       <button id="pb-reset-all" class="pb-btn sm" title="move every object back to its builder coordinates">⟲ Reset objects</button>
       <a id="pb-open-3d" class="pb-btn sm" href="index.html" target="_blank">↗ Pop out</a>
