@@ -926,6 +926,13 @@
         if (changed && steps.some(function (s) { return s.type === 'transport' && s.params.targetMode === 'semantic'; })) renderSteps();
       }).catch(function () {});
   }
+  // reload ONLY the embedded 3D view (it sometimes loads partially) without touching the
+  // plan/objects/constraints on this page. Cache-busts so a stuck load is force-refreshed.
+  function reloadScene() {
+    const f = $('pb-3d'); if (!f) return;
+    f.src = 'index.html?scene&r=' + Date.now();
+    liveStatus('reloading 3D view…', '');
+  }
   function stopLive() {
     liveOn = false; liveSurfaces = [];
     fetch('/api/plan/scaffold/stop', { method: 'POST' }).then(function () { liveStatus('stopped', ''); const f=$('pb-3d'); if (f) f.src='about:blank'; }).catch(function () {});
@@ -946,6 +953,7 @@
   $('pb-live-start').addEventListener('click', startLive);
   $('pb-live-stop').addEventListener('click', stopLive);
   $('pb-reset-all').addEventListener('click', resetAllObjects);
+  $('pb-reload-3d').addEventListener('click', reloadScene);
   $('pb-rx').addEventListener('input', function () { robotXY.x = parseFloat(this.value) || 0; });
   $('pb-ry').addEventListener('input', function () { robotXY.y = parseFloat(this.value) || 0; });
   addObject('milk.stl', { x: 2.5, y: 2.3, z: 0.9 });
