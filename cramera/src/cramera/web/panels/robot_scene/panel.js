@@ -1315,6 +1315,18 @@ Panels.define('robot-scene', function (root, bus) {
       g.position.set(d.position[0], d.position[1], d.position[2]);
       if (Array.isArray(d.quaternion)) g.quaternion.set(d.quaternion[0], d.quaternion[1], d.quaternion[2], d.quaternion[3]);
       needsRender = true;
+    } else if (d.type === 'cramera-settle-objects' && Array.isArray(d.keys)) {
+      // let each object fall straight down onto the nearest surface below it, then report
+      // the settled pose back so the Plan Builder can store it
+      d.keys.forEach(function (key) {
+        const g = objectMeshes[key]; if (!g) return;
+        snapToSurface(g, key);
+        const q = g.quaternion, px = round3(g.position.x), py = round3(g.position.y), pz = round3(g.position.z);
+        fetch(liveUrl() + '/move', { method: 'POST',
+          body: JSON.stringify({ object: key, position: [px, py, pz], quaternion: [round3(q.x), round3(q.y), round3(q.z), round3(q.w)], final: true }) }).catch(function () {});
+        if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'cramera-object-settled', key: key, position: [px, py, pz] }, '*');
+      });
+      needsRender = true;
     } else if (d.type === 'cramera-highlight-objects' && Array.isArray(d.keys)) {
       // flag these objects with a bobbing arrow so they're easy to spot (e.g. staged ones);
       // objects not yet spawned get flagged when they appear (see place()).

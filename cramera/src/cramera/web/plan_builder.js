@@ -248,6 +248,24 @@
     if (f && f.contentWindow) f.contentWindow.postMessage(
       { type: 'cramera-highlight-objects', keys: objects.map(function (o) { return o.mesh; }) }, '*');
   }
+  // physics-ish "drop": ask the 3D view to let every object fall straight down onto the
+  // nearest surface below it (raycast). The viewer reports each settled pose back, which
+  // we write into the object cards so the generated demo spawns them resting on the surface.
+  function dropObjects() {
+    const f = $('pb-3d');
+    if (!f || !f.contentWindow) { toast('start the live scene first', 'err'); return; }
+    f.contentWindow.postMessage({ type: 'cramera-settle-objects', keys: objects.map(function (o) { return o.mesh; }) }, '*');
+    toast('Dropping objects onto the nearest surface…', 'ok');
+  }
+  // the 3D view reports poses back (settle / drag-release); write them into the object cards
+  window.addEventListener('message', function (ev) {
+    const d = ev && ev.data; if (!d || d.type !== 'cramera-object-settled' || !d.key || !Array.isArray(d.position)) return;
+    const o = objects.find(function (x) { return x.mesh === d.key; }); if (!o) return;
+    o.x = Math.round(d.position[0] * 100) / 100;
+    o.y = Math.round(d.position[1] * 100) / 100;
+    o.z = Math.round(d.position[2] * 100) / 100;
+    renderObjects();
+  });
   // one pose control = a slider + a number input, kept in sync. Angles are shown in
   // degrees (state stores radians); position in metres.
   function ctl(o, k, min, max, step) {
@@ -950,17 +968,29 @@
   function fetchCaptured() {
     return fetch(bridgeUrl() + '/captured_objects').then(function (r) { return r.json(); }).then(function (d) { return (d && d.objects) || {}; });
   }
+  function quatToRpy(q) { // q = [qx,qy,qz,qw] -> [roll, pitch, yaw] (ROS convention)
+    const x = q[0], y = q[1], z = q[2], w = q[3];
+    const roll = Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y));
+    const sp = 2 * (w * y - z * x);
+    const pitch = Math.abs(sp) >= 1 ? Math.sign(sp) * Math.PI / 2 : Math.asin(sp);
+    const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
+    return [roll, pitch, yaw];
+  }
+  function r3(v) { return Math.round(v * 1000) / 1000; }
   function poseFromCaptured(objs, mesh) {
     const p = objs[mesh]; if (!p || p.length < 7) return null;
-    return { x: Math.round(p[0] * 100) / 100, y: Math.round(p[1] * 100) / 100, z: Math.round(p[2] * 100) / 100, yaw: Math.round(quatToYaw(p.slice(3)) * 1000) / 1000 };
+    const rpy = quatToRpy(p.slice(3));
+    return { x: Math.round(p[0] * 100) / 100, y: Math.round(p[1] * 100) / 100, z: Math.round(p[2] * 100) / 100,
+      roll: r3(rpy[0]), pitch: r3(rpy[1]), yaw: r3(rpy[2]) };
   }
   function captureObject(oid) {
     const o = objects.find(function (x) { return x.id === oid; }); if (!o) return;
     fetchCaptured().then(function (objs) {
       const pz = poseFromCaptured(objs, o.mesh);
       if (!pz) { status('no live pose for ' + o.mesh + ' — is the scene running?', 'err'); return; }
-      o.x = pz.x; o.y = pz.y; o.z = pz.z; o.yaw = pz.yaw; renderObjects();
+      o.x = pz.x; o.y = pz.y; o.z = pz.z; o.roll = pz.roll; o.pitch = pz.pitch; o.yaw = pz.yaw; renderObjects();
       status('captured ' + o.name + ' → (' + pz.x + ', ' + pz.y + ', ' + pz.z + ')', 'ok');
+      toast('Captured ' + o.name + '’s start pose', 'ok');
     }).catch(function () { status('capture failed — start the live scene first', 'err'); });
   }
   function captureStepStart(sid) {
@@ -972,7 +1002,7 @@
     fetchCaptured().then(function (objs) {
       const pz = poseFromCaptured(objs, o.mesh);
       if (!pz) { status('no live pose for ' + o.mesh + ' — is the scene running?', 'err'); return; }
-      o.x = pz.x; o.y = pz.y; o.z = pz.z; o.yaw = pz.yaw;
+      o.x = pz.x; o.y = pz.y; o.z = pz.z; o.roll = pz.roll; o.pitch = pz.pitch; o.yaw = pz.yaw;
       renderObjects();   // left panel
       renderSteps();     // the start (from) fields on the step read from the object
       status('captured start for ' + o.name + ' → (' + pz.x + ', ' + pz.y + ', ' + pz.z + ')', 'ok');
@@ -1090,13 +1120,14 @@
   $('pb-live-stop').addEventListener('click', stopLive);
   wireColumnResizers();
   $('pb-reset-all').addEventListener('click', resetAllObjects);
+  $('pb-drop').addEventListener('click', dropObjects);
   $('pb-reload-3d').addEventListener('click', reloadScene);
   // whenever the embedded scene (re)loads, (re)send the objects to flag with arrows
   $('pb-3d').addEventListener('load', function () { setTimeout(highlightObjectsInScene, 400); });
   $('pb-rx').addEventListener('input', function () { robotXY.x = parseFloat(this.value) || 0; });
   $('pb-ry').addEventListener('input', function () { robotXY.y = parseFloat(this.value) || 0; });
-  addObject('milk.stl', { x: 2.5, y: 2.3, z: 0.9 });
-  addObject('bowl.stl', { x: 2.4, y: 2.0, z: 0.95 });
+  addObject('milk.stl');   // staged above the robot (never inside furniture); drop/drag to place
+  addObject('bowl.stl');
   renderSteps();
   // a friendly starter plan
   addStep('park_arms'); addStep('move_torso');
