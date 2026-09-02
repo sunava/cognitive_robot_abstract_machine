@@ -10,7 +10,7 @@
 .pb-btn.sm{padding:5px 9px;font-size:11px}
 .pb-btn.primary{background:rgba(57,213,200,.16);border-color:var(--pb-accent);color:#aef3ec}
 
-.pb-main{display:grid;grid-template-columns:250px 1fr 420px;gap:0;height:calc(100vh - 58px)}
+.pb-main{display:grid;grid-template-columns:230px 1fr 560px;gap:0;height:calc(100vh - 58px)}
 .pb-col{overflow:auto;padding:14px 16px;border-right:1px solid var(--line,#20242c);min-width:0}
 .pb-scene-col{border-right:0}
 .pb-col h2{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint,#5a6270);margin:0 0 8px}
@@ -88,3 +88,6 @@
 .pb-obj .odel{margin-left:6px}
 .pb-capbtn{background:rgba(57,213,200,.14);border:1px solid var(--pb-accent,#39d5c8);color:#aef3ec;font:inherit;font-size:10.5px;border-radius:5px;padding:4px 7px;cursor:pointer;white-space:nowrap}
 .pb-capbtn:hover{background:rgba(57,213,200,.25)}
+
+/* embedded live 3D scene */
+.pb-3d{width:100%;height:420px;border:1px solid var(--line,#20242c);border-radius:10px;background:#000;margin:8px 0 10px;display:block}

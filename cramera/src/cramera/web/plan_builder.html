@@ -58,12 +58,13 @@
     <div class="pb-live-ctl">
       <button id="pb-live-start" class="pb-btn primary sm">▶ Start live scene</button>
       <button id="pb-live-stop" class="pb-btn sm">■ Stop</button>
-      <a id="pb-open-3d" class="pb-btn sm" href="index.html" target="_blank">↗ Open 3D view</a>
+      <a id="pb-open-3d" class="pb-btn sm" href="index.html" target="_blank">↗ Pop out</a>
     </div>
     <div id="pb-live-status" class="pb-live-status">not running</div>
-    <div class="pb-hint2" style="margin-top:8px;line-height:1.5">
-      Start the scene → in the 3D view click <b>◉ Live</b> → <b>drag objects</b> to where you want them →
-      come back and hit <b>⟳ capture</b> on an object (its start pose) or <b>◎ from…</b> on a Transport step (its target).
+    <iframe id="pb-3d" class="pb-3d" title="live 3D scene" src="about:blank"></iframe>
+    <div class="pb-hint2" style="line-height:1.5">
+      Start the scene → in the 3D view <b>drag objects</b> where you want them → hit
+      <b>⟳ capture</b> on an object (its start pose) or <b>◎ from…</b> on a Transport step (its target).
     </div>
     <div class="pb-robot-spawn">Robot spawn:
       <label>X<input id="pb-rx" class="pb-num" type="number" step="0.05" value="1.5"></label>

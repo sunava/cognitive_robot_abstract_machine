@@ -386,14 +386,14 @@
   function pollLive(n) {
     fetch(bridgeUrl() + '/captured_objects').then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
-        if (d) { liveStatus('● live — open the 3D view, click ◉ Live, drag objects, then capture', 'ok'); }
+        if (d) { liveStatus('● live — drag objects in the 3D view, then capture', 'ok'); const f=$('pb-3d'); if (f && f.src.indexOf('index.html')<0) f.src='index.html'; }
         else if (n < 40) { setTimeout(function () { pollLive(n + 1); }, 3000); }
         else liveStatus('scene did not come up — check the terminal', 'err');
       })
       .catch(function () { if (n < 40) setTimeout(function () { pollLive(n + 1); }, 3000); else liveStatus('scene did not come up', 'err'); });
   }
   function stopLive() {
-    fetch('/api/plan/scaffold/stop', { method: 'POST' }).then(function () { liveStatus('stopped', ''); }).catch(function () {});
+    fetch('/api/plan/scaffold/stop', { method: 'POST' }).then(function () { liveStatus('stopped', ''); const f=$('pb-3d'); if (f) f.src='about:blank'; }).catch(function () {});
   }
 
   // ---------- boot ----------
