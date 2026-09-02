@@ -456,24 +456,47 @@
     const set = {}; surfaceSteps(useSteps).forEach(function (s) { set[s.params.surfaceType || 'CounterTop'] = 1; });
     return Object.keys(set);
   }
-  // lines that resolve each surface-mode transport into a `_target_<id>` Pose, given `world`
+  // lines that resolve each surface-mode transport into a `_target_<id>` Pose, given `world`.
+  // Fails with a clear message (not a bare IndexError/StopIteration) when the surface is
+  // missing, so a mismatched environment is obvious.
   function surfaceResolveLines(useSteps, indent) {
     const L = [];
-    surfaceSteps(useSteps).forEach(function (s) {
+    useSteps.forEach(function (s, i) {
+      if (!(s.type === 'transport' && s.params.targetMode === 'surface')) return;
       const T = s.params.surfaceType || 'CounterTop';
       const mesh = s.params.object || 'object';
       const id = s.id;
+      const where = 'step ' + (i + 1) + ' (transport ' + mesh + ')';
       L.push(indent + '# place "' + mesh + '" on a ' + T + ' — pose sampled by semantic_digital_twin');
       if (s.params.surfaceName) {
         L.push(indent + '_surface_' + id + ' = next(');
-        L.push(indent + '    s for s in world.get_semantic_annotations_by_type(' + T + ')');
-        L.push(indent + '    if str(s.root.name) == ' + jsonStr(s.params.surfaceName));
+        L.push(indent + '    (s for s in world.get_semantic_annotations_by_type(' + T + ')');
+        L.push(indent + '     if str(s.root.name) == ' + jsonStr(s.params.surfaceName) + '),');
+        L.push(indent + '    None,');
         L.push(indent + ')');
+        L.push(indent + 'if _surface_' + id + ' is None:');
+        L.push(indent + '    raise RuntimeError(');
+        L.push(indent + '        "' + T + ' ' + jsonStr(s.params.surfaceName).slice(1, -1) +
+          ' not found in this world for ' + where + '. "');
+        L.push(indent + '        "See the Plan Builder\'s live /surfaces list for available surfaces."');
+        L.push(indent + '    )');
       } else {
-        L.push(indent + '_surface_' + id + ' = world.get_semantic_annotations_by_type(' + T + ')[0]');
+        L.push(indent + '_surfaces_' + id + ' = world.get_semantic_annotations_by_type(' + T + ')');
+        L.push(indent + 'if not _surfaces_' + id + ':');
+        L.push(indent + '    raise RuntimeError(');
+        L.push(indent + '        "no ' + T + ' surface in this world for ' + where + '. "');
+        L.push(indent + '        "This environment may not carry that annotation — "');
+        L.push(indent + '        "see the Plan Builder\'s live /surfaces list for what is available."');
+        L.push(indent + '    )');
+        L.push(indent + '_surface_' + id + ' = _surfaces_' + id + '[0]');
       }
       L.push(indent + '_pts_' + id + ' = _surface_' + id + '.sample_points_from_surface(');
       L.push(indent + '    body_to_sample_for=' + body(mesh) + ')');
+      L.push(indent + 'if not _pts_' + id + ':');
+      L.push(indent + '    raise RuntimeError(');
+      L.push(indent + '        "could not sample a free place pose on ' + T + ' for ' + where + ' "');
+      L.push(indent + '        "(surface full or too small for ' + mesh + ')."');
+      L.push(indent + '    )');
       L.push(indent + '_target_' + id + ' = Pose(_pts_' + id + '[0], reference_frame=_pts_' + id + '[0].reference_frame)');
     });
     return L;
