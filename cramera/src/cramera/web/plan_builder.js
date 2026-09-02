@@ -123,17 +123,17 @@
   }
 
   // ---------- objects ----------
-  // A clear, visible staging pose for a freshly added object: a row beside the robot,
-  // lifted above typical furniture so it never spawns hidden inside a box/cabinet. The
-  // robot's own spot is collision-free, so its surroundings are a safe place to appear;
-  // you then drag the object onto its real target (the drag snaps it to the surface).
+  // A clear, visible staging pose for a freshly added object: floating directly above the
+  // robot, so it can never spawn hidden inside a box/cabinet or behind furniture (the robot
+  // spot is collision-free and always in view). Objects stack upward and fan out slightly so
+  // several don't overlap; you then drag each onto its real target (the drag snaps it down).
   function stagingPose() {
     const n = objects.length;
-    const perRow = 5, gap = 0.28;
+    const ang = n * 2.39996;                       // golden-angle spread so they fan out
     return {
-      x: robotXY.x + 0.7 + (n % perRow) * gap,   // a row extending beside the robot
-      y: robotXY.y - 0.7 - Math.floor(n / perRow) * gap,
-      z: 1.35,                                    // above counters/tables, so it's visible
+      x: robotXY.x + Math.cos(ang) * 0.12,
+      y: robotXY.y + Math.sin(ang) * 0.12,
+      z: 1.9 + n * 0.16,                           // a little tower above the robot's head
     };
   }
   function addObject(mesh, opts) {
