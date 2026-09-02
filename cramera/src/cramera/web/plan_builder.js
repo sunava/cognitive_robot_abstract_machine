@@ -62,7 +62,8 @@
       d.innerHTML =
         '<div class="row1"><span class="pb-swatch" style="background:' + o.color + '"></span>' +
         '<span class="oname" title="' + o.mesh + '">' + o.name + '</span>' +
-        '<span class="ocap" data-cap="' + o.id + '" title="drag the object to its start position in the 3D scene, then click to capture that as its start pose">⟳ capture start</span>' +
+        '<span class="ocap" data-cap="' + o.id + '" title="drag the object to its start position in the 3D scene, then click to capture that as its start pose">⟳ capture</span>' +
+        '<span class="oreset" data-reset="' + o.id + '" title="move the object in the 3D scene back to these coordinates (undo a bad drag/snap)">⟲</span>' +
         '<span class="odel" data-del="' + o.id + '">×</span></div>' +
         '<div class="fields">' +
         field(o, 'x') + field(o, 'y') + field(o, 'z') + field(o, 'yaw') + '</div>';
@@ -80,7 +81,19 @@
     el.querySelectorAll('.ocap').forEach(function (x) {
       x.addEventListener('click', function () { captureObject(x.dataset.cap); });
     });
+    el.querySelectorAll('.oreset').forEach(function (x) {
+      x.addEventListener('click', function () { resetObject(x.dataset.reset); });
+    });
   }
+  // move an object in the live 3D scene back to its builder coordinates (undo a bad snap)
+  function resetObject(oid) {
+    const o = objects.find(function (x) { return x.id === oid; }); if (!o) return;
+    fetch(bridgeUrl() + '/move', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ object: o.mesh, position: [o.x, o.y, o.z], final: true }) })
+      .then(function () { status('reset ' + o.name + ' in the 3D scene → (' + o.x + ', ' + o.y + ', ' + o.z + ')', 'ok'); })
+      .catch(function () { status('reset failed — start the live scene first', 'err'); });
+  }
+  function resetAllObjects() { objects.forEach(function (o) { resetObject(o.id); }); }
   function field(o, k) {
     return '<label>' + k.toUpperCase() + '<input class="pb-num" data-oid="' + o.id + '" data-k="' + k + '" type="number" step="0.05" value="' + o[k] + '"' + (o.base && k !== 'yaw' ? '' : '') + '></label>';
   }
@@ -190,13 +203,20 @@
     if (s.type === 'move_torso') return sel(s, 'torso', TORSO);
     if (s.type === 'navigate') return num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw');
     if (s.type === 'transport') return objSel(s) +
-      '<label>&nbsp;<button class="pb-capbtn start" data-capstart="' + s.id + '" title="drag the object to its START in the 3D scene, then capture that as its start pose">◎ capture start (from)</button></label>' +
-      '<span class="pb-group-lbl">drop-off (where it goes) →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw') +
-      '<label>&nbsp;<button class="pb-capbtn" data-capstep="' + s.id + '" title="drag the object to its drop-off in the 3D scene, then capture that pose as this step\'s target">◎ capture drop-off (to)</button></label>' +
+      '<span class="pb-group-lbl start">start (from) →</span>' + objNum(s, 'x') + objNum(s, 'y') + objNum(s, 'z') +
+      '<label>&nbsp;<button class="pb-capbtn start" data-capstart="' + s.id + '" title="drag the object to its START in the 3D scene, then capture that as its start pose">◎ capture</button></label>' +
+      '<span class="pb-group-lbl">drop-off (to) →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw') +
+      '<label>&nbsp;<button class="pb-capbtn" data-capstep="' + s.id + '" title="drag the object to its drop-off in the 3D scene, then capture that pose as this step\'s target">◎ capture</button></label>' +
       sel(s, 'arm', ARMS);
     return '';
   }
   function num(s, k) { return '<label>' + k.toUpperCase() + '<input class="pb-num xyz" data-sid="' + s.id + '" data-k="' + k + '" type="number" step="0.05" value="' + s.params[k] + '"></label>'; }
+  // a start-pose field bound to the transported object (the "from"), shown on the step
+  function objNum(s, k) {
+    const o = objects.find(function (x) { return x.mesh === s.params.object; });
+    const v = o ? o[k] : 0;
+    return '<label>' + k.toUpperCase() + '<input class="pb-num xyz pb-objnum" data-omesh="' + (s.params.object || '') + '" data-k="' + k + '" type="number" step="0.05" value="' + v + '"></label>';
+  }
   function sel(s, k, opts) { return '<label>' + k + '<select class="pb-sel" data-sid="' + s.id + '" data-k="' + k + '">' + opts.map(function (o) { return '<option' + (s.params[k] === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label>'; }
   function objSel(s) {
     // keep the param in sync with the visibly-selected first option, so capture works
@@ -220,6 +240,12 @@
     el.querySelectorAll('[data-down]').forEach(function (b) { b.addEventListener('click', function () { moveStep(b.dataset.down, 1); }); });
     el.querySelectorAll('[data-capstep]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); captureStepTarget(b.dataset.capstep); }); });
     el.querySelectorAll('[data-capstart]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); captureStepStart(b.dataset.capstart); }); });
+    el.querySelectorAll('.pb-objnum').forEach(function (inp) {
+      inp.addEventListener('input', function () {
+        const o = objects.find(function (x) { return x.mesh === inp.dataset.omesh; });
+        if (o) { o[inp.dataset.k] = parseFloat(inp.value) || 0; renderObjects(); }
+      });
+    });
   }
   function moveStep(id, dir) {
     const i = steps.findIndex(function (s) { return s.id === id; }); const j = i + dir;
@@ -419,6 +445,7 @@
   $('pb-env').addEventListener('change', renderScene);
   $('pb-live-start').addEventListener('click', startLive);
   $('pb-live-stop').addEventListener('click', stopLive);
+  $('pb-reset-all').addEventListener('click', resetAllObjects);
   $('pb-rx').addEventListener('input', function () { robotXY.x = parseFloat(this.value) || 0; });
   $('pb-ry').addEventListener('input', function () { robotXY.y = parseFloat(this.value) || 0; });
   addObject('milk.stl', { x: 2.5, y: 2.3, z: 0.9 });

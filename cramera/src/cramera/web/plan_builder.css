@@ -96,3 +96,6 @@
 .pb-obj .fields::before{content:"start pose";grid-column:1 / -1;font-size:9px;color:var(--faint,#5a6270);margin-bottom:-2px}
 .pb-capbtn.start{background:rgba(255,182,72,.14);border-color:#e0a94a;color:#ffcf8a}
 .pb-capbtn.start:hover{background:rgba(255,182,72,.25)}
+.oreset{color:var(--faint,#5a6270);cursor:pointer;font-size:13px;padding:0 3px}
+.oreset:hover{color:var(--warn,#ffb648)}
+.pb-group-lbl.start{color:#ffcf8a}
