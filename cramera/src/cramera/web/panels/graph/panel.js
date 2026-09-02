@@ -244,12 +244,36 @@ Panels.define('graph', function (root, bus) {
       '<div class="cpal"><div class="cpal-h">Constraints</div><div class="cpal-sub">drag onto a step →</div>' +
       '<div class="cpal-list">' + renderPaletteCards() + '</div>' +
       '<div class="cpal-add"><input class="cpal-in" placeholder="e.g. milk must stay upright"><button class="cpal-btn">Add</button></div></div>' +
+      '<div class="cpal-resizer" title="Drag to resize"></div>' +
       '<div class="steps-tree"></div>';
     wirePaletteCards();
     const inp = stepsEl.querySelector('.cpal-in'), btn = stepsEl.querySelector('.cpal-btn');
     function add() { const v = inp.value.trim(); if (!v) return; CONSTRAINTS.push({ id: 'c' + (cSeq++), text: v }); inp.value = ''; refreshPaletteCards(); inp.focus(); }
     if (btn) btn.addEventListener('click', add);
     if (inp) inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+    wireResizer();
+  }
+  // drag the divider between the constraints column and the step list; width persists
+  function wireResizer() {
+    const cpal = stepsEl.querySelector('.cpal'), rez = stepsEl.querySelector('.cpal-resizer');
+    if (!cpal || !rez) return;
+    const saved = parseInt(localStorage.getItem('cramera.plan.cpalWidth') || '', 10);
+    if (saved >= 140 && saved <= 560) cpal.style.width = saved + 'px';
+    rez.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      const startX = e.clientX, startW = cpal.getBoundingClientRect().width;
+      document.body.style.userSelect = 'none'; rez.classList.add('dragging');
+      function move(ev) {
+        const w = Math.max(140, Math.min(560, startW + (ev.clientX - startX)));
+        cpal.style.width = w + 'px';
+      }
+      function up() {
+        document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
+        document.body.style.userSelect = ''; rez.classList.remove('dragging');
+        localStorage.setItem('cramera.plan.cpalWidth', String(Math.round(cpal.getBoundingClientRect().width)));
+      }
+      document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+    });
   }
   function renderSteps(payload) {
     ensurePalette();
@@ -308,6 +332,11 @@ Panels.define('graph', function (root, bus) {
     const on = stepsMode && tab === 'plan';
     const canvas = root.querySelector('.graph-canvas');
     const legend = root.querySelector('#legend');
+    // the graph's overlay controls (zoom, fullscreen) sit on the left and would cover
+    // the constraints column, so hide them while the step list is shown
+    ['.graph-zoom', '.graph-max-btn'].forEach(function (sel) {
+      const e = root.querySelector(sel); if (e) e.style.display = on ? 'none' : '';
+    });
     if (on && payload && (payload.nodes || []).length) {
       canvas.style.display = 'none'; if (legend) legend.style.display = 'none';
       stepsEl.style.display = ''; renderSteps(payload);

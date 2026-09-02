@@ -780,3 +780,8 @@ body.graph-full-open{overflow:hidden}
 .st-leaf{display:flex;align-items:center;gap:8px;padding:4px 10px;position:relative}
 .st-leaf .st-name{font-weight:400;color:var(--muted,#8b93a3);font-size:12px;font-style:italic}
 .st-leaf .st-name.detail::before{content:"↳ ";color:var(--faint,#5a6270);font-style:normal}
+
+/* draggable divider between the constraints column and the step list */
+.cpal-resizer{flex:none;width:6px;cursor:col-resize;background:var(--line,#20242c);position:relative}
+.cpal-resizer:hover,.cpal-resizer.dragging{background:var(--accent,#39d5c8)}
+.cpal-resizer::before{content:"";position:absolute;inset:0 -4px}
