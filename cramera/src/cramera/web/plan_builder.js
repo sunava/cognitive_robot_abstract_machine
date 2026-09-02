@@ -10,7 +10,7 @@
   // kitchen items + an industrial/factory set (a robot carries these A->B on a shop floor)
   const MESHES = ['milk.stl', 'bowl.stl', 'spoon.stl', 'breakfast_cereal.stl', 'jeroen_cup.stl',
     'Static_CokeBottle.stl', 'big-knife.stl', 'whisk.stl', 'bread.stl', 'apartment_bowl.stl',
-    'wrench.stl', 'axle.stl', 'plate.stl', 'mounting_plate.obj', 'Pipe00.obj', 'open_crate.stl'];
+    'wrench.stl', 'axle.stl', 'plate.stl', 'base.stl', 'open_crate.stl'];
   const OBJ_COLORS = ['#e6ecff', '#e6c07f', '#9aa1ad', '#8fd6c8', '#c9a0ff', '#ff9db1', '#9ecb6b'];
 
   // ---- action blocks ----
