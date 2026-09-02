@@ -7,8 +7,10 @@
   'use strict';
 
   // ---- available object meshes (coraplex/resources/objects) ----
+  // kitchen items + an industrial/factory set (a robot carries these A->B on a shop floor)
   const MESHES = ['milk.stl', 'bowl.stl', 'spoon.stl', 'breakfast_cereal.stl', 'jeroen_cup.stl',
-    'Static_CokeBottle.stl', 'big-knife.stl', 'whisk.stl', 'bread.stl', 'apartment_bowl.stl'];
+    'Static_CokeBottle.stl', 'big-knife.stl', 'whisk.stl', 'bread.stl', 'apartment_bowl.stl',
+    'wrench.stl', 'axle.stl', 'plate.stl', 'mounting_plate.obj', 'Pipe00.obj', 'open_crate.stl'];
   const OBJ_COLORS = ['#e6ecff', '#e6c07f', '#9aa1ad', '#8fd6c8', '#c9a0ff', '#ff9db1', '#9ecb6b'];
 
   // ---- action blocks ----
@@ -23,9 +25,19 @@
   // selectable robots -> the class + import to emit; RobotSpecification derives the drive
   // from the robot's mobile base, so no drive type needs spelling out here.
   const ROBOTS = {
-    PR2: { cls: 'PR2', import: 'from semantic_digital_twin.robots.pr2 import PR2' },
-    Garmi: { cls: 'Garmi', import: 'from semantic_digital_twin.robots.garmi import Garmi' },
+    PR2: { cls: 'PR2', module: 'pr2' },
+    Garmi: { cls: 'Garmi', module: 'garmi' },
+    HSRB: { cls: 'HSRB', module: 'hsrb' },
+    Tiago: { cls: 'Tiago', module: 'tiago' },
+    Stretch: { cls: 'Stretch', module: 'stretch' },
+    Armar7: { cls: 'Armar7', module: 'armar7' },
+    Justin: { cls: 'Justin', module: 'justin' },
+    ICub3: { cls: 'ICub3', module: 'icub3' },
+    MMPDresden: { cls: 'MMPDresden', module: 'mmp_dresden' },
   };
+  Object.keys(ROBOTS).forEach(function (k) {
+    const r = ROBOTS[k]; r.import = 'from semantic_digital_twin.robots.' + r.module + ' import ' + r.cls;
+  });
   function robotInfo() { const v = ($('pb-robot') && $('pb-robot').value) || 'PR2'; return ROBOTS[v] || ROBOTS.PR2; }
   // semantic place targets: supporting surfaces ("on") and case containers ("in").
   // Both expose HasSupportingSurface.sample_points_from_surface, so resolution is identical.
@@ -106,6 +118,8 @@
       el.appendChild(d);
     });
     const meshSel = $('pb-mesh'); meshSel.innerHTML = MESHES.map(function (m) { return '<option>' + m + '</option>'; }).join('');
+    const robotSel = $('pb-robot');
+    if (robotSel) robotSel.innerHTML = Object.keys(ROBOTS).map(function (k) { return '<option value="' + k + '">' + k + '</option>'; }).join('');
   }
 
   // ---------- objects ----------
@@ -576,7 +590,7 @@
     L.push('from coraplex.robot_plans.actions.composite.transporting import TransportAction');
     L.push('from coraplex.robot_plans.actions.core.navigation import NavigateAction');
     L.push('from coraplex.robot_plans.actions.core.robot_body import ParkArmsAction, MoveTorsoAction');
-    L.push('from semantic_digital_twin.adapters.mesh import STLParser');
+    L.push('from semantic_digital_twin.adapters.mesh import DAEParser, OBJParser, STLParser');
     L.push('from semantic_digital_twin.adapters.urdf import URDFParser');
     L.push('from semantic_digital_twin.datastructures.definitions import TorsoState');
     L.push('from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner');
@@ -590,6 +604,13 @@
     L.push('_HERE = os.path.dirname(__file__)');
     L.push('_WORLDS = os.path.join(_HERE, "..", "..", "resources", "worlds")');
     L.push('_OBJECTS = os.path.join(_HERE, "..", "..", "resources", "objects")');
+    L.push('_MESH_PARSERS = {".stl": STLParser, ".obj": OBJParser, ".dae": DAEParser}');
+    L.push('');
+    L.push('');
+    L.push('def _parse_mesh(mesh):');
+    L.push('    """Parse an object mesh into a world, picking the parser by file extension."""');
+    L.push('    ext = os.path.splitext(mesh)[1].lower()');
+    L.push('    return _MESH_PARSERS.get(ext, STLParser)(os.path.join(_OBJECTS, mesh)).parse()');
     L.push('');
     L.push('');
     L.push('def build_world(env_file, robot_xy):');
@@ -616,7 +637,7 @@
     if (added.length) {
       L.push('# --- objects placed in the Plan Builder ---');
       added.forEach(function (o, i) {
-        L.push('_obj' + i + ' = STLParser(os.path.join(_OBJECTS, "' + o.mesh + '")).parse()');
+        L.push('_obj' + i + ' = _parse_mesh("' + o.mesh + '")');
       });
       L.push('with world.modify_world():');
       added.forEach(function (o, i) {
