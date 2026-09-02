@@ -36,7 +36,7 @@ Panels.define('graph', function (root, bus) {
     '  <div class="graph-canvas"></div>' +
     '  <div class="graph-steps" id="graph-steps" style="display:none"></div>' +
     '  <button class="graph-steps-toggle" id="graph-steps-toggle" style="display:none" '
-    +   'title="Switch between the plan graph and a readable step list">\u2630 Steps</button>' +
+    +   'title="Switch between the readable step list and the node graph"></button>' +
     '  <div class="graph-zoom">' +
     '    <button id="graph-zoom-in" title="Zoom in — or pinch on a touchpad">+</button>' +
     '    <button id="graph-zoom-out" title="Zoom out — or pinch on a touchpad">−</button>' +
@@ -317,9 +317,15 @@ Panels.define('graph', function (root, bus) {
       stepsEl.style.display = 'none'; canvas.style.display = ''; if (legend) legend.style.display = '';
     }
   }
+  // the toggle label names the view you switch TO, so its state is never ambiguous
+  function updateStepsToggle() {
+    if (!stepsToggle) return;
+    stepsToggle.textContent = stepsMode ? '◫ Graph view' : '☰ Step list';
+    stepsToggle.classList.toggle('on', stepsMode);
+  }
   if (stepsToggle) stepsToggle.addEventListener('click', function () {
     stepsMode = !stepsMode;
-    stepsToggle.classList.toggle('on', stepsMode);
+    updateStepsToggle();
     maybeRenderSteps(shown[tab] || base[tab]);
   });
 
@@ -395,7 +401,7 @@ Panels.define('graph', function (root, bus) {
         return;
       }
     }
-    if (stepsToggle) { stepsToggle.style.display = (name === 'plan') ? '' : 'none'; stepsToggle.classList.toggle('on', stepsMode); }
+    if (stepsToggle) { stepsToggle.style.display = (name === 'plan') ? '' : 'none'; updateStepsToggle(); }
     setView(shown[name] || base[name]);
     liveRefresh(true);            // a live tab picks the bridge status up at once
     showRecordedStatechart();     // and a replayed one, the moment it is playing
