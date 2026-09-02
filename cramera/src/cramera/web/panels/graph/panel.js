@@ -487,7 +487,8 @@ Panels.define('graph', function (root, bus) {
                      'status: ' + n.status + (n.derived ? ' (derived from the motion statechart)' : '')];
       if (n.arm) lines.push('arm: ' + n.arm);
       if (n.target) lines.push('target: ' + n.target);
-      nodes.push({ id: n.id, label: label, group: n.group,
+      nodes.push({ id: n.id, label: n.label, group: n.group,
+                   kind: n.kind, parent: n.parent, target: n.target, arm: n.arm,
                    title: [label].concat(lines).join('\n'), status: n.status });
       details[n.id] = { label: label, group: n.group, lines: lines };
       if (n.parent) edges.push({ from: n.parent, to: n.id, kind: 'property', label: 'has step' });
