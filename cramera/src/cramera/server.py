@@ -274,6 +274,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(
                 {"state": "finalized" if has_saveable_recording() else "idle"}
             )
+        if route == "/api/plan/scaffold/log":
+            return self._scaffold_log()
         return super().do_GET()
 
     @staticmethod
@@ -331,6 +333,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         return here.parent / "generated_demos"  # fallback: never resolves meshes, but writes
 
     _scaffold_proc = None  # class-level: the running Plan-Builder scaffold demo, if any
+    _scaffold_log_path = None  # where that process's stdout+stderr are captured
 
     def _launch_scaffold(self) -> None:
         """
@@ -354,14 +357,44 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             live = repo / ".venv" / "bin" / "cramera-live"
             self._stop_scaffold(reply=False)
             env = dict(os.environ, CORAPLEX_VISUALIZATION="cramera")
+            # capture stdout+stderr so the Plan Builder can show a traceback if the demo
+            # fails, instead of the error vanishing into a detached process
+            log_path = out_dir / "_builder_scaffold.log"
+            type(self)._scaffold_log_path = log_path
+            log_file = open(log_path, "wb")  # noqa: SIM115 (the child process owns it)
             type(self)._scaffold_proc = subprocess.Popen(
                 [str(live), str(path)], cwd=str(repo), env=env,
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                stdout=log_file, stderr=subprocess.STDOUT,
                 start_new_session=True,  # own process group, so stop can kill children too
             )
         except (OSError, ValueError) as error:
             return self._send_json({"ok": False, "error": str(error)}, 500)
         self._send_json({"ok": True, "path": str(path)})
+
+    def _scaffold_log(self) -> None:
+        """
+        The running (or last) scaffold's captured output, and whether it is still alive.
+
+        Lets the Plan Builder surface a demo's traceback instead of losing it to a
+        detached process.
+        """
+        from pathlib import Path
+
+        proc = type(self)._scaffold_proc
+        log_path = type(self)._scaffold_log_path
+        returncode = None if proc is None else proc.poll()
+        text = ""
+        if log_path is not None:
+            try:
+                text = Path(log_path).read_text(errors="replace")[-8000:]
+            except OSError:
+                text = ""
+        self._send_json({
+            "ok": True,
+            "alive": proc is not None and returncode is None,
+            "returncode": returncode,
+            "log": text,
+        })
 
     def _stop_scaffold(self, reply: bool = True) -> None:
         """

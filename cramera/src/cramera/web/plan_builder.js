@@ -1018,33 +1018,72 @@
       status('captured target for ' + s.params.object + ' → (' + pz.x + ', ' + pz.y + ', ' + pz.z + ')', 'ok');
     }).catch(function () { status('capture failed — start the live scene first', 'err'); });
   }
+  function hideScaffoldLog() { const el = $('pb-scaffold-log'); if (el) { el.style.display = 'none'; el.textContent = ''; } }
   function startLive() {
     const code = generate([{ type: 'park_arms', params: { arm: 'BOTH' } }]);   // scaffold: world + objects, idle
-    liveStatus('starting… (first run parses meshes, ~1 min)', '');
+    liveStatus('starting… (first run parses meshes, ~1 min)', ''); hideScaffoldLog();
     fetch('/api/plan/scaffold', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: code }) })
       .then(function (r) { return r.json(); })
-      .then(function (j) { if (!j.ok) { liveStatus('failed: ' + (j.error || '?'), 'err'); return; } pollLive(0); })
+      .then(function (j) { if (!j.ok) { liveStatus('failed: ' + (j.error || '?'), 'err'); return; } pollLive(0); monitorRun(); })
       .catch(function (e) { liveStatus('failed: ' + e, 'err'); });
   }
   // run the built plan itself (not the idle scaffold) and watch the robot perform it:
   // the full generated demo ends in `plan.perform()`, launched through the same endpoint
   function runPlan() {
     if (!steps.length) { liveStatus('add plan steps first', 'err'); return; }
-    const code = generate();   // full demo, real steps, ends with plan.perform()
-    liveStatus('running plan… (first run parses meshes, ~1 min)', '');
+    const code = generateSelected();   // full demo (matches the chosen output style), ends by performing the plan
+    liveStatus('running plan… (first run parses meshes, ~1 min)', ''); hideScaffoldLog();
     fetch('/api/plan/scaffold', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: code }) })
       .then(function (r) { return r.json(); })
-      .then(function (j) { if (!j.ok) { liveStatus('failed: ' + (j.error || '?'), 'err'); return; } pollLive(0, '● running — watch the robot in the 3D view'); })
+      .then(function (j) { if (!j.ok) { liveStatus('failed: ' + (j.error || '?'), 'err'); return; } pollLive(0, '● running — watch the robot in the 3D view'); monitorRun(); })
       .catch(function (e) { liveStatus('failed: ' + e, 'err'); });
   }
+  // ---- run log: surface the demo subprocess's stdout/stderr (tracebacks) ----
+  function fetchScaffoldLog() {
+    return fetch('/api/plan/scaffold/log').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+  }
+  function showScaffoldLog(text) {
+    const el = $('pb-scaffold-log'); if (!el) return;
+    el.textContent = (text && text.trim()) ? text : '(no output yet)';
+    el.style.display = 'block';
+    el.scrollTop = el.scrollHeight;
+    if (el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  let _runMonitor = 0;
+  // poll the log while a demo runs; if the process exits non-zero, show the traceback
+  function monitorRun() {
+    const my = ++_runMonitor;
+    (function tick() {
+      if (my !== _runMonitor) return;                      // superseded by a newer run/stop
+      fetchScaffoldLog().then(function (d) {
+        if (my !== _runMonitor || !d) { if (my === _runMonitor) setTimeout(tick, 2500); return; }
+        if (d.returncode !== null && d.returncode !== 0) {   // the demo crashed
+          liveOn = false;
+          liveStatus('demo exited (code ' + d.returncode + ') — see the run log below', 'err');
+          toast('Demo crashed (exit ' + d.returncode + ') — run log opened', 'err');
+          showScaffoldLog(d.log);
+          return;                                            // stop monitoring
+        }
+        setTimeout(tick, 2500);
+      });
+    })();
+  }
+  function stopRunMonitor() { _runMonitor++; }
   function pollLive(n, okMsg) {
     fetch(bridgeUrl() + '/captured_objects').then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
-        if (d) { liveOn = true; liveStatus(okMsg || '● live — drag objects in the 3D view, then capture', 'ok'); const f=$('pb-3d'); if (f && f.src.indexOf('index.html')<0) f.src='index.html?scene'; fetchSurfaces(); }
-        else if (n < 40) { setTimeout(function () { pollLive(n + 1, okMsg); }, 3000); }
-        else liveStatus('scene did not come up — check the terminal', 'err');
+        if (d) { liveOn = true; liveStatus(okMsg || '● live — drag objects in the 3D view, then capture', 'ok'); const f=$('pb-3d'); if (f && f.src.indexOf('index.html')<0) f.src='index.html?scene'; fetchSurfaces(); return; }
+        // bridge not up yet — but if the demo process already died, show why now
+        fetchScaffoldLog().then(function (lg) {
+          if (lg && lg.returncode !== null && lg.returncode !== 0) {
+            liveStatus('demo failed to start (exit ' + lg.returncode + ') — see the run log below', 'err');
+            toast('Demo failed to start — run log opened', 'err'); showScaffoldLog(lg.log); return;
+          }
+          if (n < 40) setTimeout(function () { pollLive(n + 1, okMsg); }, 3000);
+          else { liveStatus('scene did not come up — see the run log below', 'err'); if (lg) showScaffoldLog(lg.log); }
+        });
       })
-      .catch(function () { if (n < 40) setTimeout(function () { pollLive(n + 1, okMsg); }, 3000); else liveStatus('scene did not come up', 'err'); });
+      .catch(function () { if (n < 40) setTimeout(function () { pollLive(n + 1, okMsg); }, 3000); else { liveStatus('scene did not come up', 'err'); fetchScaffoldLog().then(function (lg) { if (lg) showScaffoldLog(lg.log); }); } });
   }
   // enumerate placement surfaces from the live world (for the "on a surface" target mode)
   function fetchSurfaces() {
@@ -1094,7 +1133,7 @@
     });
   }
   function stopLive() {
-    liveOn = false; liveSurfaces = [];
+    liveOn = false; liveSurfaces = []; stopRunMonitor();
     fetch('/api/plan/scaffold/stop', { method: 'POST' }).then(function () { liveStatus('stopped', ''); const f=$('pb-3d'); if (f) f.src='about:blank'; }).catch(function () {});
   }
 
@@ -1122,6 +1161,14 @@
   $('pb-reset-all').addEventListener('click', resetAllObjects);
   $('pb-drop').addEventListener('click', dropObjects);
   $('pb-reload-3d').addEventListener('click', reloadScene);
+  $('pb-log').addEventListener('click', function () {
+    fetchScaffoldLog().then(function (d) {
+      if (!d) { toast('no run log yet — start a scene or run the plan first', 'err'); return; }
+      showScaffoldLog(d.log);
+      const st = d.returncode === null ? 'running' : ('exited ' + d.returncode);
+      toast('Run log (' + st + ')', d.returncode ? 'err' : 'ok');
+    });
+  });
   // whenever the embedded scene (re)loads, (re)send the objects to flag with arrows
   $('pb-3d').addEventListener('load', function () { setTimeout(highlightObjectsInScene, 400); });
   $('pb-rx').addEventListener('input', function () { robotXY.x = parseFloat(this.value) || 0; });
