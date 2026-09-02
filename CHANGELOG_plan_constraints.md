@@ -86,6 +86,14 @@ Plan view, now attachable to the plan you are composing.
   `# constraints` comment block + a `CONSTRAINTS = [...]` metadata list (step, text, goal,
   params), so the plan file records them.
 
+**Output style — `RobotDemonstration` subclass.** A header toggle picks the generated
+form: a flat script (as before) or a proper `coraplex.demonstrations.RobotDemonstration`
+subclass (default). The class version implements `build_simulated_world`,
+`is_scene_populated`, `populate_scene`, `build_context` and `build_plan`, with a `main()`
+that runs it under the cramera viewer (`WorldVisualization … CRAMERA` + `attach_plan`), so
+the live bridge/capture/constraints keep working. `ENV_FILE`, `ROBOT_XY` and an `OBJECTS`
+table are module constants at the top for easy editing.
+
 ## Dev tooling
 - **`start_demo.sh [demo.py]`** and **`start_viewer.sh`** — source the ROS workspace, set
   the cramera backend, and launch the demo (+ live bridge on :8765) / the web viewer on
