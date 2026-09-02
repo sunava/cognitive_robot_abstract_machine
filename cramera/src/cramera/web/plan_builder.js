@@ -955,6 +955,36 @@
     f.src = 'index.html?scene&r=' + Date.now();
     liveStatus('reloading 3D view…', '');
   }
+  // draggable dividers between the three columns (palette | plan | scene); widths persist
+  function wireColumnResizers() {
+    const main = document.querySelector('.pb-main'); if (!main) return;
+    const c1 = parseInt(localStorage.getItem('cramera.pb.c1') || '', 10);
+    const c3 = parseInt(localStorage.getItem('cramera.pb.c3') || '', 10);
+    if (c1 >= 160 && c1 <= 520) main.style.setProperty('--pb-c1', c1 + 'px');
+    if (c3 >= 300 && c3 <= 1000) main.style.setProperty('--pb-c3', c3 + 'px');
+    main.querySelectorAll('.pb-divider').forEach(function (div) {
+      div.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        const which = div.dataset.div;
+        div.classList.add('dragging');
+        document.body.style.userSelect = 'none'; document.body.style.cursor = 'col-resize';
+        function move(ev) {
+          const r = main.getBoundingClientRect();
+          if (which === '1') main.style.setProperty('--pb-c1', Math.max(160, Math.min(520, ev.clientX - r.left)) + 'px');
+          else main.style.setProperty('--pb-c3', Math.max(300, Math.min(1000, r.right - ev.clientX)) + 'px');
+        }
+        function up() {
+          document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
+          div.classList.remove('dragging');
+          document.body.style.userSelect = ''; document.body.style.cursor = '';
+          const key = which === '1' ? 'cramera.pb.c1' : 'cramera.pb.c3';
+          const v = parseInt(main.style.getPropertyValue(which === '1' ? '--pb-c1' : '--pb-c3'), 10);
+          if (v) localStorage.setItem(key, String(v));
+        }
+        document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+      });
+    });
+  }
   function stopLive() {
     liveOn = false; liveSurfaces = [];
     fetch('/api/plan/scaffold/stop', { method: 'POST' }).then(function () { liveStatus('stopped', ''); const f=$('pb-3d'); if (f) f.src='about:blank'; }).catch(function () {});
@@ -980,6 +1010,7 @@
   $('pb-run').addEventListener('click', runPlan);
   $('pb-live-start').addEventListener('click', startLive);
   $('pb-live-stop').addEventListener('click', stopLive);
+  wireColumnResizers();
   $('pb-reset-all').addEventListener('click', resetAllObjects);
   $('pb-reload-3d').addEventListener('click', reloadScene);
   // whenever the embedded scene (re)loads, (re)send the objects to flag with arrows
