@@ -137,3 +137,12 @@
 .scon-chip .scon-goal{font-size:9px;font-weight:700;color:#c9b8ff;background:rgba(140,110,255,.2);border-radius:10px;padding:1px 6px}
 .scon-chip .scon-x{cursor:pointer;color:#b9a9e6;font-size:13px;line-height:1}
 .scon-chip .scon-x:hover{color:#ff9db1}
+
+/* ---- object pose controls (XYZ + RPY, slider + number) ---- */
+.pb-pose{margin-top:8px;display:flex;flex-direction:column;gap:8px}
+.pb-pose-grp{display:flex;flex-direction:column;gap:4px}
+.pb-pose-h{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint,#5a6270)}
+.pb-ctl{display:flex;align-items:center;gap:6px}
+.pb-ctl-k{width:12px;flex:none;font-size:10px;color:var(--faint,#5a6270);text-align:center}
+.pb-ctl .pb-slider{flex:1;min-width:0;height:16px;accent-color:var(--pb-accent,#39d5c8);cursor:pointer}
+.pb-ctl .pb-num{width:52px;flex:none}

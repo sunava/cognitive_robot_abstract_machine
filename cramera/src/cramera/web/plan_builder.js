@@ -47,6 +47,8 @@
   function isContainer(t) { return SEMANTIC_CONTAINERS.indexOf(t) >= 0; }
   function prep(t) { return isContainer(t) ? 'in' : 'on'; }
   const DEFAULT_START = { x: 2.4, y: 2.2, z: 0.95, yaw: 0.0 };   // start pose used when an object was never placed/captured
+  const ANGLE_KEYS = { roll: 1, pitch: 1, yaw: 1 };              // stored in radians, edited in degrees
+  const CTL_LABEL = { x: 'X', y: 'Y', z: 'Z', roll: 'R', pitch: 'P', yaw: 'Y' };
   let liveSurfaces = [];   // [{type, name}] fetched from the live world when the scene runs
 
   // ---- constraints: natural language -> giskardpy goal (same rule-based mapping as the Plan view) ----
@@ -141,7 +143,9 @@
     const stage = stagingPose();
     const o = { id: 'o' + (objSeq++), mesh: mesh, name: mesh,
       x: opts.x != null ? opts.x : stage.x, y: opts.y != null ? opts.y : stage.y,
-      z: opts.z != null ? opts.z : stage.z, yaw: opts.yaw != null ? opts.yaw : 0.0,
+      z: opts.z != null ? opts.z : stage.z,
+      roll: opts.roll != null ? opts.roll : 0.0, pitch: opts.pitch != null ? opts.pitch : 0.0,
+      yaw: opts.yaw != null ? opts.yaw : 0.0,   // roll/pitch/yaw in radians (codegen uses radians)
       color: OBJ_COLORS[(objSeq) % OBJ_COLORS.length] };
     objects.push(o); renderObjects(); renderScene(); refreshObjectSelects();
     return o;
@@ -156,14 +160,27 @@
         '<span class="ocap" data-cap="' + o.id + '" title="drag the object to its start position in the 3D scene, then click to capture that as its start pose">⟳ capture</span>' +
         '<span class="oreset" data-reset="' + o.id + '" title="move the object in the 3D scene back to these coordinates (undo a bad drag/snap)">⟲</span>' +
         '<span class="odel" data-del="' + o.id + '">×</span></div>' +
-        '<div class="fields">' +
-        field(o, 'x') + field(o, 'y') + field(o, 'z') + field(o, 'yaw') + '</div>';
+        '<div class="pb-pose">' +
+        '<div class="pb-pose-grp"><span class="pb-pose-h">position (m)</span>' +
+        ctl(o, 'x', -6, 6, 0.05) + ctl(o, 'y', -6, 6, 0.05) + ctl(o, 'z', 0, 3, 0.05) + '</div>' +
+        '<div class="pb-pose-grp"><span class="pb-pose-h">rotation (rpy°)</span>' +
+        ctl(o, 'roll', -180, 180, 1) + ctl(o, 'pitch', -180, 180, 1) + ctl(o, 'yaw', -180, 180, 1) + '</div>' +
+        '</div>';
       el.appendChild(d);
     });
-    el.querySelectorAll('.pb-num').forEach(function (inp) {
+    // slider + number for the same field stay in sync; both write object state
+    el.querySelectorAll('.pb-obj [data-oid]').forEach(function (inp) {
       inp.addEventListener('input', function () {
-        const o = objects.find(function (x) { return x.id === inp.dataset.oid; });
-        if (o) { o[inp.dataset.k] = parseFloat(inp.value) || 0; renderScene(); }
+        const o = objects.find(function (x) { return x.id === inp.dataset.oid; }); if (!o) return;
+        const k = inp.dataset.k, isAngle = ANGLE_KEYS[k];
+        const raw = parseFloat(inp.value) || 0;
+        o[k] = isAngle ? raw * Math.PI / 180 : raw;                 // store angles in radians
+        // sync the sibling control (the other input for the same field)
+        inp.parentNode.querySelectorAll('[data-k="' + k + '"]').forEach(function (other) {
+          if (other !== inp) other.value = inp.value;
+        });
+        renderScene();
+        pushObjectPose(o);                                          // move it live so you see it
       });
     });
     el.querySelectorAll('.odel').forEach(function (x) {
@@ -191,6 +208,20 @@
       .catch(function () { status('reset failed — start the live scene first', 'err'); });
   }
   function resetAllObjects() { objects.forEach(function (o) { resetObject(o.id); }); }
+  // live-sync an object's position to the 3D scene as the sliders/fields change (rotation
+  // is applied in the generated demo / on the next scene start). postMessage moves the mesh
+  // smoothly; the /move fetch is throttled so we don't spam the bridge.
+  let _lastPosePush = 0;
+  function pushObjectPose(o) {
+    const f = $('pb-3d');
+    if (f && f.contentWindow) f.contentWindow.postMessage(
+      { type: 'cramera-reset-object', key: o.mesh, position: [o.x, o.y, o.z] }, '*');
+    const now = Date.now();
+    if (now - _lastPosePush < 120) return;
+    _lastPosePush = now;
+    fetch(bridgeUrl() + '/move', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ object: o.mesh, position: [o.x, o.y, o.z], final: true }) }).catch(function () {});
+  }
   // ask the embedded 3D view to flag every builder object with a bobbing arrow, so staged
   // objects (which spawn lifted, beside the robot) are easy to find; the arrow clears once
   // the object is grabbed. Applied on each scene load and whenever the object set changes.
@@ -199,8 +230,14 @@
     if (f && f.contentWindow) f.contentWindow.postMessage(
       { type: 'cramera-highlight-objects', keys: objects.map(function (o) { return o.mesh; }) }, '*');
   }
-  function field(o, k) {
-    return '<label>' + k.toUpperCase() + '<input class="pb-num" data-oid="' + o.id + '" data-k="' + k + '" type="number" step="0.05" value="' + o[k] + '"' + (o.base && k !== 'yaw' ? '' : '') + '></label>';
+  // one pose control = a slider + a number input, kept in sync. Angles are shown in
+  // degrees (state stores radians); position in metres.
+  function ctl(o, k, min, max, step) {
+    const isAngle = ANGLE_KEYS[k];
+    const v = isAngle ? Math.round(o[k] * 180 / Math.PI) : Math.round(o[k] * 100) / 100;
+    return '<label class="pb-ctl"><span class="pb-ctl-k">' + CTL_LABEL[k] + '</span>' +
+      '<input class="pb-slider" type="range" data-oid="' + o.id + '" data-k="' + k + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + v + '">' +
+      '<input class="pb-num" data-oid="' + o.id + '" data-k="' + k + '" type="number" step="' + step + '" value="' + v + '"></label>';
   }
 
   // ---------- constraints palette ----------
@@ -563,7 +600,8 @@
       if (s.type === 'transport' && s.params.object && !have[s.params.object]) {
         have[s.params.object] = 1;
         list.push({ mesh: s.params.object, name: s.params.object,
-          x: DEFAULT_START.x, y: DEFAULT_START.y, z: DEFAULT_START.z, yaw: DEFAULT_START.yaw,
+          x: DEFAULT_START.x, y: DEFAULT_START.y, z: DEFAULT_START.z,
+          roll: 0.0, pitch: 0.0, yaw: DEFAULT_START.yaw,
           color: '#cccccc', _defaulted: true });
       }
     });
@@ -670,7 +708,8 @@
       L.push('with world.modify_world():');
       added.forEach(function (o, i) {
         L.push('    world.merge_world_at_pose(_obj' + i + ', HomogeneousTransformationMatrix.from_xyz_rpy(');
-        L.push('        ' + py(o.x) + ', ' + py(o.y) + ', ' + py(o.z) + ', yaw=' + py(o.yaw) + ', reference_frame=world.root))');
+        L.push('        ' + py(o.x) + ', ' + py(o.y) + ', ' + py(o.z) +
+          ', roll=' + py(o.roll) + ', pitch=' + py(o.pitch) + ', yaw=' + py(o.yaw) + ', reference_frame=world.root))');
       });
       added.forEach(function (o) {
         const c = hexToRgb(o.color);
@@ -759,11 +798,12 @@
     L.push('ENV_FILE = "' + env + '"');
     L.push('ROBOT_XY = (' + py(robotXY.x) + ', ' + py(robotXY.y) + ')');
     L.push('');
-    L.push('# objects placed in the Plan Builder: (mesh, x, y, z, yaw, (r, g, b))');
+    L.push('# objects placed in the Plan Builder: (mesh, x, y, z, roll, pitch, yaw, (r, g, b))');
     L.push('OBJECTS = [');
     added.forEach(function (o) {
       const c = hexToRgb(o.color);
-      L.push('    ("' + o.mesh + '", ' + py(o.x) + ', ' + py(o.y) + ', ' + py(o.z) + ', ' + py(o.yaw) +
+      L.push('    ("' + o.mesh + '", ' + py(o.x) + ', ' + py(o.y) + ', ' + py(o.z) +
+        ', ' + py(o.roll) + ', ' + py(o.pitch) + ', ' + py(o.yaw) +
         ', (' + c[0] + ', ' + c[1] + ', ' + c[2] + ')),');
     });
     L.push(']');
@@ -796,13 +836,13 @@
     L.push('');
     L.push('    def populate_scene(self, world: World) -> None:');
     L.push('        # each object is free to move (Connection6DoF), so the robot can transport it');
-    L.push('        for mesh, x, y, z, yaw, rgb in OBJECTS:');
+    L.push('        for mesh, x, y, z, roll, pitch, yaw, rgb in OBJECTS:');
     L.push('            BodySpecification.mesh(');
     L.push('                mesh,');
     L.push('                os.path.join(_OBJECTS, mesh),');
     L.push('                color=Color(*rgb),');
     L.push('                parent_T_self=HomogeneousTransformationMatrix.from_xyz_rpy(');
-    L.push('                    x, y, z, yaw=yaw),');
+    L.push('                    x, y, z, roll=roll, pitch=pitch, yaw=yaw),');
     L.push('                connection_specification=Connection6DoFSpecification(),');
     L.push('            ).spawn(world)');
     L.push('');
