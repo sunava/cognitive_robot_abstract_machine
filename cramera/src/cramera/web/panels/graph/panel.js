@@ -100,7 +100,9 @@ Panels.define('graph', function (root, bus) {
   const stepsEl = root.querySelector('#graph-steps');
   const stepsToggle = root.querySelector('#graph-steps-toggle');
   const STEP_KINDS = { ActionNode: 'action', AttachNode: 'attach', DetachNode: 'attach' };
-  const DETAIL_KINDS = { ConditionNode: 'condition', MotionNode: 'motion', MonitorNode: 'monitor' };
+  // conditions are internal checks that never execute — hidden from this view entirely
+  const DETAIL_KINDS = { MotionNode: 'motion', MonitorNode: 'monitor' };
+  const IGNORE_KINDS = { ConditionNode: 1 };
   const STRUCT_KINDS = { SequentialNode: 1, ParallelNode: 1, UnderspecifiedNode: 1 };
   const STEP_STATUS = { SUCCEEDED: 'done', DONE: 'done', RUNNING: 'running', FAILED: 'failed', CREATED: 'not started', NOT_STARTED: 'not started' };
   function stepWords(x) { return String(x || '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').trim().toLowerCase().replace(/^./, function (c) { return c.toUpperCase(); }); }
@@ -193,26 +195,30 @@ Panels.define('graph', function (root, bus) {
     if (!tag) { tag = document.createElement('span'); tag.className = 'st-cflash'; row.querySelector('.st-meta').prepend(tag); }
     tag.textContent = '⛓ ' + msg; tag.classList.toggle('bad', !ok);
   }
-  // status is reported on the leaf motion/condition nodes, not propagated up to the
-  // action node shown as a step — so derive a step's status from its whole subtree
+  // status is reported on the leaf motion nodes, not on the action node shown as a step;
+  // conditions never execute (stay CREATED), so they are excluded. A node with real
+  // children derives purely from them (all done -> done), so a stale own "RUNNING" never
+  // keeps a step running once its motions have finished.
   function derivedStatus(item) {
-    const own = item.n.status;
-    let anyRunning = false, anyFailed = false, sawLeaf = false, allDone = true;
+    let anyRunning = false, anyFailed = false, seen = 0, done = 0;
     (function scan(it) {
       (it.kids || []).forEach(function (c) {
-        sawLeaf = true;
+        if (IGNORE_KINDS[c.n.kind]) return;      // ignore conditions entirely
+        seen++;
         const s = c.n.status;
         if (s === 'RUNNING') anyRunning = true;
         if (s === 'FAILED') anyFailed = true;
-        if (s !== 'SUCCEEDED' && s !== 'DONE') allDone = false;
+        if (s === 'SUCCEEDED' || s === 'DONE') done++;
         scan(c);
       });
     })(item);
-    if (anyFailed || own === 'FAILED') return 'FAILED';
-    if (own === 'RUNNING' || anyRunning) return 'RUNNING';
-    if (own === 'SUCCEEDED' || own === 'DONE') return own;
-    if (sawLeaf && allDone) return 'SUCCEEDED';
-    return own;
+    if (anyFailed) return 'FAILED';
+    if (seen > 0) {                              // has real children: derive from them
+      if (done === seen) return 'SUCCEEDED';
+      if (anyRunning || done > 0) return 'RUNNING';
+      return 'CREATED';
+    }
+    return item.n.status;                        // a leaf uses its own status
   }
 
   const stepsCollapsed = {};   // node id -> true when the user collapsed that step (kept across live refreshes)
