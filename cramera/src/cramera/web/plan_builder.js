@@ -7,7 +7,7 @@
   'use strict';
 
   // ---- available object meshes (coraplex/resources/objects) ----
-  const MESHES = ['bowl.stl', 'spoon.stl', 'breakfast_cereal.stl', 'jeroen_cup.stl',
+  const MESHES = ['milk.stl', 'bowl.stl', 'spoon.stl', 'breakfast_cereal.stl', 'jeroen_cup.stl',
     'Static_CokeBottle.stl', 'big-knife.stl', 'whisk.stl', 'bread.stl', 'apartment_bowl.stl'];
   const OBJ_COLORS = ['#e6ecff', '#e6c07f', '#9aa1ad', '#8fd6c8', '#c9a0ff', '#ff9db1', '#9ecb6b'];
 
@@ -23,8 +23,9 @@
 
   // ---- state ----
   let steps = [];       // [{type, params:{...}}]
-  let objects = [];      // [{id, mesh, name, base, x, y, z, yaw, color}]
+  let objects = [];      // [{id, mesh, name, x, y, z, yaw, color}]
   let objSeq = 1, stepSeq = 1;
+  let robotXY = { x: 1.5, y: 2.5 };   // robot spawn (draggable in the scene)
 
   // scene mapping: origin offset so the typical apartment area sits centred
   const SCALE = 40, ORIGIN_X = 2.5, ORIGIN_Y = 2.0;
@@ -47,7 +48,7 @@
   // ---------- objects ----------
   function addObject(mesh, opts) {
     opts = opts || {};
-    const o = { id: 'o' + (objSeq++), mesh: mesh, name: mesh, base: !!opts.base,
+    const o = { id: 'o' + (objSeq++), mesh: mesh, name: mesh,
       x: opts.x != null ? opts.x : 2.4, y: opts.y != null ? opts.y : 2.2,
       z: opts.z != null ? opts.z : 0.95, yaw: opts.yaw != null ? opts.yaw : 0.0,
       color: OBJ_COLORS[(objSeq) % OBJ_COLORS.length] };
@@ -60,8 +61,8 @@
       const d = document.createElement('div'); d.className = 'pb-obj';
       d.innerHTML =
         '<div class="row1"><span class="pb-swatch" style="background:' + o.color + '"></span>' +
-        '<span class="oname" title="' + o.mesh + '">' + o.name + (o.base ? ' · base' : '') + '</span>' +
-        (o.base ? '' : '<span class="odel" data-del="' + o.id + '">×</span>') + '</div>' +
+        '<span class="oname" title="' + o.mesh + '">' + o.name + '</span>' +
+        '<span class="odel" data-del="' + o.id + '">×</span></div>' +
         '<div class="fields">' +
         field(o, 'x') + field(o, 'y') + field(o, 'z') + field(o, 'yaw') + '</div>';
       el.appendChild(d);
@@ -91,17 +92,41 @@
   }
   function renderScene() {
     const sc = $('pb-scene');
-    sc.querySelectorAll('.pb-marker').forEach(function (m) { m.remove(); });
+    sc.querySelectorAll('.pb-marker,.pb-tmarker').forEach(function (m) { m.remove(); });
+    // robot spawn (draggable)
+    const rp = worldToPx(robotXY.x, robotXY.y);
+    const rm = document.createElement('div'); rm.className = 'pb-marker pb-rm';
+    rm.style.left = rp.px + 'px'; rm.style.top = rp.py + 'px'; rm.style.background = '#38405c'; rm.style.fontSize = '13px';
+    rm.innerHTML = '<span class="lbl">robot</span>🤖';
+    rm.addEventListener('mousedown', function (e) {
+      dragMarker(e, rm, function (x, y) { robotXY.x = x; robotXY.y = y; }, function () {});
+    });
+    sc.appendChild(rm);
+    // objects (draggable)
     objects.forEach(function (o) {
       const p = worldToPx(o.x, o.y);
-      const m = document.createElement('div'); m.className = 'pb-marker'; m.dataset.oid = o.id;
+      const m = document.createElement('div'); m.className = 'pb-marker';
       m.style.left = p.px + 'px'; m.style.top = p.py + 'px'; m.style.background = o.color;
       m.innerHTML = '<span class="lbl">' + o.name.replace(/\.stl$/i, '') + '</span>' + o.name.charAt(0).toUpperCase();
-      m.addEventListener('mousedown', function (e) { startDragMarker(e, o, m); });
+      m.addEventListener('mousedown', function (e) {
+        dragMarker(e, m, function (x, y) { o.x = x; o.y = y; syncNum(o.id); }, function () { renderObjects(); });
+      });
+      sc.appendChild(m);
+    });
+    // transport destinations (ghost target, draggable) — "where the object should go"
+    steps.forEach(function (s, i) {
+      if (s.type !== 'transport') return;
+      const p = worldToPx(s.params.x, s.params.y);
+      const m = document.createElement('div'); m.className = 'pb-marker pb-tmarker';
+      m.style.left = p.px + 'px'; m.style.top = p.py + 'px';
+      m.innerHTML = '<span class="lbl">→ ' + (s.params.object ? s.params.object.replace(/\.stl$/i, '') : 'step ' + (i + 1)) + '</span>◎';
+      m.addEventListener('mousedown', function (e) {
+        dragMarker(e, m, function (x, y) { s.params.x = x; s.params.y = y; syncStepNum(s.id); }, function () { renderSteps(); });
+      });
       sc.appendChild(m);
     });
   }
-  function startDragMarker(e, o, m) {
+  function dragMarker(e, m, apply, onEnd) {
     e.preventDefault();
     const sc = $('pb-scene');
     function move(ev) {
@@ -109,15 +134,21 @@
       const px = Math.max(0, Math.min(r.width, ev.clientX - r.left));
       const py = Math.max(0, Math.min(r.height, ev.clientY - r.top));
       m.style.left = px + 'px'; m.style.top = py + 'px';
-      const w = pxToWorld(px, py); o.x = Math.round(w.x * 100) / 100; o.y = Math.round(w.y * 100) / 100;
-      syncObjectFields(o);
+      const w = pxToWorld(px, py); apply(Math.round(w.x * 100) / 100, Math.round(w.y * 100) / 100);
     }
-    function up() { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); renderObjects(); }
+    function up() { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); onEnd(); }
     document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
   }
-  function syncObjectFields(o) {
-    document.querySelectorAll('.pb-num[data-oid="' + o.id + '"]').forEach(function (inp) {
+  function syncNum(oid) {
+    document.querySelectorAll('.pb-num[data-oid="' + oid + '"]').forEach(function (inp) {
+      const o = objects.find(function (x) { return x.id === oid; }); if (!o) return;
       if (inp.dataset.k === 'x') inp.value = o.x; if (inp.dataset.k === 'y') inp.value = o.y;
+    });
+  }
+  function syncStepNum(sid) {
+    document.querySelectorAll('.pb-num[data-sid="' + sid + '"]').forEach(function (inp) {
+      const s = steps.find(function (x) { return x.id === sid; }); if (!s) return;
+      if (inp.dataset.k === 'x') inp.value = s.params.x; if (inp.dataset.k === 'y') inp.value = s.params.y;
     });
   }
 
@@ -130,7 +161,7 @@
   function renderSteps() {
     const el = $('pb-steps');
     $('pb-step-count').textContent = steps.length ? '(' + steps.length + ')' : '';
-    if (!steps.length) { el.innerHTML = '<div class="pb-drop-hint">Drop action blocks here to build the sequence</div>'; return; }
+    if (!steps.length) { el.innerHTML = '<div class="pb-drop-hint">Drop action blocks here to build the sequence</div>'; renderScene(); return; }
     el.innerHTML = '';
     steps.forEach(function (s, i) {
       const b = BLOCKS[s.type];
@@ -144,6 +175,7 @@
       el.appendChild(d);
     });
     wireStepEvents();
+    renderScene();
   }
   function stepParams(s) {
     const p = s.params;
@@ -166,6 +198,7 @@
         const s = steps.find(function (x) { return x.id === inp.dataset.sid; }); if (!s) return;
         const v = inp.classList.contains('pb-num') ? (parseFloat(inp.value) || 0) : inp.value;
         s.params[inp.dataset.k] = v;
+        renderScene();
       });
     });
     el.querySelectorAll('[data-del]').forEach(function (b) { b.addEventListener('click', function () { steps = steps.filter(function (s) { return s.id !== b.dataset.del; }); renderSteps(); }); });
@@ -194,7 +227,8 @@
   function pose(p) { return 'Pose.from_xyz_rpy(' + py(p.x) + ', ' + py(p.y) + ', ' + py(p.z) + ', yaw=' + py(p.yaw) + ', reference_frame=world.root)'; }
   function body(mesh) { return 'world.get_body_by_name("' + mesh + '")'; }
   function generate() {
-    const added = objects.filter(function (o) { return !o.base; });
+    const added = objects;
+    const env = ($('pb-env') && $('pb-env').value) || 'apartment.urdf';
     const L = [];
     L.push('"""Generated by the cramera Plan Builder."""');
     L.push('import os');
@@ -206,8 +240,8 @@
     L.push('from coraplex.robot_plans.actions.composite.transporting import TransportAction');
     L.push('from coraplex.robot_plans.actions.core.navigation import NavigateAction');
     L.push('from coraplex.robot_plans.actions.core.robot_body import ParkArmsAction, MoveTorsoAction');
-    L.push('from coraplex.testing import setup_world');
     L.push('from semantic_digital_twin.adapters.mesh import STLParser');
+    L.push('from semantic_digital_twin.adapters.urdf import URDFParser');
     L.push('from semantic_digital_twin.datastructures.definitions import TorsoState');
     L.push('from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner');
     L.push('from semantic_digital_twin.robots.pr2 import PR2');
@@ -215,15 +249,36 @@
     L.push('from semantic_digital_twin.spatial_types.spatial_types import Pose');
     L.push('from semantic_digital_twin.world_description.geometry import Color');
     L.push('');
-    L.push('world = setup_world()');
+    L.push('_HERE = os.path.dirname(__file__)');
+    L.push('_WORLDS = os.path.join(_HERE, "..", "..", "resources", "worlds")');
+    L.push('_OBJECTS = os.path.join(_HERE, "..", "..", "resources", "objects")');
+    L.push('');
+    L.push('');
+    L.push('def build_world(env_file, robot_xy):');
+    L.push('    """Parse the chosen environment + PR2 and spawn the robot at robot_xy."""');
+    L.push('    robot_world = URDFParser.from_file(PR2.get_ros_file_path()).parse()');
+    L.push('    world = URDFParser.from_file(os.path.join(_WORLDS, env_file)).parse()');
+    L.push('    with world.modify_world():');
+    L.push('        robot_root = robot_world.get_body_by_name(PR2._get_root_body_name())');
+    L.push('        drive = PR2.get_drive_connection_type().create_with_dofs(');
+    L.push('            parent=world.root, child=robot_root, world=world)');
+    L.push('        world.merge_world(robot_world, drive)');
+    L.push('        drive.origin = HomogeneousTransformationMatrix.from_xyz_rpy(robot_xy[0], robot_xy[1], 0)');
+    L.push('    standing = max(0.0, -world.height_of_lowest_collision_point_of_branch(robot_root))');
+    L.push('    with world.modify_world():');
+    L.push('        drive.parent_T_connection_expression = HomogeneousTransformationMatrix.from_xyz_rpy(');
+    L.push('            z=standing, reference_frame=world.root)');
+    L.push('    return world');
+    L.push('');
+    L.push('');
+    L.push('world = build_world("' + env + '", (' + py(robotXY.x) + ', ' + py(robotXY.y) + '))');
     L.push('visualization = WorldVisualization.from_environment(');
     L.push('    world, default_backend=VisualizationBackend.CRAMERA).start()');
     L.push('');
     if (added.length) {
       L.push('# --- objects placed in the Plan Builder ---');
       added.forEach(function (o, i) {
-        L.push('_obj' + i + ' = STLParser(os.path.join(os.path.dirname(__file__),');
-        L.push('    "..", "..", "resources", "objects", "' + o.mesh + '")).parse()');
+        L.push('_obj' + i + ' = STLParser(os.path.join(_OBJECTS, "' + o.mesh + '")).parse()');
       });
       L.push('with world.modify_world():');
       added.forEach(function (o, i) {
@@ -282,7 +337,9 @@
 
   // ---------- boot ----------
   renderBlocks();
-  addObject('milk.stl', { base: true, x: 2.5, y: 2.3, z: 0.9 });   // milk is already in the apartment
+  $('pb-add-obj').addEventListener('click', function () { addObject($('pb-mesh').value); });
+  $('pb-env').addEventListener('change', renderScene);
+  addObject('milk.stl', { x: 2.5, y: 2.3, z: 0.9 });
   addObject('bowl.stl', { x: 2.4, y: 2.0, z: 0.95 });
   renderSteps();
   // a friendly starter plan

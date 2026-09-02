@@ -17,6 +17,13 @@
   <div class="pb-title">Plan Builder <span class="pb-hint">compose a plan &amp; place objects → generate a demo file</span></div>
   <div class="pb-actions">
     <input id="pb-name" class="pb-name" placeholder="demo name" value="my_demo" />
+    <select id="pb-env" class="pb-sel" title="Environment">
+      <option value="apartment.urdf">Apartment</option>
+      <option value="apartment_without_walls.urdf">Apartment (no walls)</option>
+      <option value="kitchen.urdf">Kitchen</option>
+      <option value="kitchen-small.urdf">Kitchen (small)</option>
+      <option value="IAI_kitchen.urdf">IAI Kitchen</option>
+    </select>
     <select id="pb-robot" class="pb-sel" title="Robot"><option value="PR2">PR2</option></select>
     <button id="pb-generate" class="pb-btn primary">⚙ Generate demo.py</button>
     <button id="pb-download" class="pb-btn">⭳ Download</button>
@@ -48,9 +55,7 @@
   <!-- scene + code -->
   <section class="pb-col pb-scene-col">
     <h2>Scene (top-down) <span class="pb-hint2">drag markers to set X/Y</span></h2>
-    <div id="pb-scene" class="pb-scene">
-      <div class="pb-robot-marker" id="pb-robot-marker" title="robot start">🤖</div>
-    </div>
+    <div id="pb-scene" class="pb-scene"></div>
     <div class="pb-scene-scale">1 grid = 1 m · origin at centre</div>
     <h2 style="margin-top:14px">Generated <code>demo.py</code></h2>
     <pre id="pb-code" class="pb-code">Click “Generate demo.py”.</pre>
