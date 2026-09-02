@@ -86,6 +86,25 @@ Plan view, now attachable to the plan you are composing.
   `# constraints` comment block + a `CONSTRAINTS = [...]` metadata list (step, text, goal,
   params), so the plan file records them.
 
+**Symbolic place targets — "on a surface".** A Transport step's target can now be a
+semantic surface instead of exact XYZ. The step gets a target-mode toggle (*exact pose* /
+*on a surface*); in surface mode you pick a supporting-surface type (CounterTop / Table /
+ShelfLayer / Floor) and — while the live scene runs — a concrete named instance (else the
+first found). The generated demo resolves the place pose **at runtime** via
+`semantic_digital_twin`:
+
+```python
+_surface = world.get_semantic_annotations_by_type(CounterTop)[0]
+_pts = _surface.sample_points_from_surface(body_to_sample_for=world.get_body_by_name("milk.stl"))
+_target = Pose(_pts[0], reference_frame=_pts[0].reference_frame)
+TransportAction(obj, _target, Arms.LEFT)
+```
+
+So the pose is sampled fresh each run and stays valid when the scene changes. A new bridge
+endpoint `GET /surfaces` enumerates the live world's supporting surfaces to populate the
+instance dropdown. (Caveat: the chosen environment must actually carry such annotations —
+`[0]` raises if a type is absent; the live `/surfaces` list shows what's really there.)
+
 **Output style — `RobotDemonstration` subclass.** A header toggle picks the generated
 form: a flat script (as before) or a proper `coraplex.demonstrations.RobotDemonstration`
 subclass (default). The class version implements `build_simulated_world`,

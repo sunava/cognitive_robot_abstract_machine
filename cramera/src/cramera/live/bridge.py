@@ -1366,6 +1366,36 @@ class Bridge:
             objects.update(self._last_moves)
         return {"objects": objects}
 
+    def get_surfaces(self) -> Dict[str, Any]:
+        """
+        Placement surfaces in the live world, for the Plan Builder's "place on a surface"
+        target mode. Returns supporting-surface annotations (counters, tables, shelves,
+        floors) as ``{"type": <class>, "name": <root body name>}`` so the UI can offer a
+        concrete instance to sample a place pose on.
+        """
+        out: List[Dict[str, str]] = []
+        if self.world is None:
+            return {"surfaces": out}
+        try:
+            from semantic_digital_twin.semantic_annotations.semantic_annotations import (
+                CounterTop,
+                Floor,
+                ShelfLayer,
+                Table,
+            )
+        except Exception:  # semantic annotations unavailable — return nothing
+            return {"surfaces": out}
+        for surface_type in (CounterTop, Table, ShelfLayer, Floor):
+            try:
+                annotations = self.world.get_semantic_annotations_by_type(surface_type)
+            except Exception:
+                continue
+            for annotation in annotations:
+                root = getattr(annotation, "root", None)
+                name = str(root.name) if root is not None else surface_type.__name__
+                out.append({"type": surface_type.__name__, "name": name})
+        return {"surfaces": out}
+
     def queue_constraint(self, request: "AttachConstraintRequest") -> None:
         """
         Queue a constraint attached from the plan view (called on an HTTP thread).

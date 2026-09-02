@@ -16,10 +16,12 @@
     park_arms: { name: 'Park arms', color: '#b98cff', params: { arm: 'BOTH' } },
     move_torso: { name: 'Move torso', color: '#ff9db1', params: { torso: 'HIGH' } },
     navigate: { name: 'Navigate', color: '#8fd6c8', params: { x: 2.6, y: 1.8, z: 0.0, yaw: 0.0 } },
-    transport: { name: 'Transport object', color: '#5b8cff', params: { object: '', x: 5.0, y: 3.3, z: 0.8, yaw: 1.57, arm: 'LEFT' } },
+    transport: { name: 'Transport object', color: '#5b8cff', params: { object: '', x: 5.0, y: 3.3, z: 0.8, yaw: 1.57, arm: 'LEFT', targetMode: 'pose', surfaceType: 'CounterTop', surfaceName: '' } },
   };
   const ARMS = ['LEFT', 'RIGHT', 'BOTH'];
   const TORSO = ['HIGH', 'MID', 'LOW'];
+  const SURFACE_TYPES = ['CounterTop', 'Table', 'ShelfLayer', 'Floor'];
+  let liveSurfaces = [];   // [{type, name}] fetched from the live world when the scene runs
 
   // ---- constraints: natural language -> giskardpy goal (same rule-based mapping as the Plan view) ----
   let CONSTRAINTS = [
@@ -325,14 +327,21 @@
     if (s.type === 'park_arms') return row(sel(s, 'arm', ARMS));
     if (s.type === 'move_torso') return row(sel(s, 'torso', TORSO));
     if (s.type === 'navigate') return row('<span class="pb-group-lbl">go to →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw'));
-    if (s.type === 'transport') return (
-      row(objSel(s)) +
-      row('<span class="pb-group-lbl start">start (from) →</span>' + objNum(s, 'x') + objNum(s, 'y') + objNum(s, 'z') +
-        '<button class="pb-capbtn start" data-capstart="' + s.id + '" title="drag the object to its START in the 3D scene, then capture that as its start pose">◎ capture</button>') +
-      row('<span class="pb-group-lbl">drop-off (to) →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw') +
-        '<button class="pb-capbtn" data-capstep="' + s.id + '" title="drag the object to its drop-off in the 3D scene, then capture that pose as this step\'s target">◎ capture</button>') +
-      row(sel(s, 'arm', ARMS))
-    );
+    if (s.type === 'transport') {
+      const mode = s.params.targetMode || 'pose';
+      const dropRow = (mode === 'surface')
+        ? row('<span class="pb-group-lbl">on →</span>' + surfaceTypeSel(s) + surfaceInstanceSel(s))
+        : row('<span class="pb-group-lbl">drop-off (to) →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw') +
+          '<button class="pb-capbtn" data-capstep="' + s.id + '" title="drag the object to its drop-off in the 3D scene, then capture that pose as this step\'s target">◎ capture</button>');
+      return (
+        row(objSel(s)) +
+        row('<span class="pb-group-lbl start">start (from) →</span>' + objNum(s, 'x') + objNum(s, 'y') + objNum(s, 'z') +
+          '<button class="pb-capbtn start" data-capstart="' + s.id + '" title="drag the object to its START in the 3D scene, then capture that as its start pose">◎ capture</button>') +
+        row('<span class="pb-group-lbl">target →</span>' + modeSel(s)) +
+        dropRow +
+        row(sel(s, 'arm', ARMS))
+      );
+    }
     return '';
   }
   function num(s, k) { return '<label>' + k.toUpperCase() + '<input class="pb-num xyz" data-sid="' + s.id + '" data-k="' + k + '" type="number" step="0.05" value="' + s.params[k] + '"></label>'; }
@@ -343,6 +352,21 @@
     return '<label>' + k.toUpperCase() + '<input class="pb-num xyz pb-objnum" data-omesh="' + (s.params.object || '') + '" data-k="' + k + '" type="number" step="0.05" value="' + v + '"></label>';
   }
   function sel(s, k, opts) { return '<label>' + k + '<select class="pb-sel" data-sid="' + s.id + '" data-k="' + k + '">' + opts.map(function (o) { return '<option' + (s.params[k] === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label>'; }
+  // a select whose option values differ from their labels: pairs = [[value, label], ...]
+  function selPairs(s, k, pairs) {
+    return '<select class="pb-sel" data-sid="' + s.id + '" data-k="' + k + '">' + pairs.map(function (p) {
+      return '<option value="' + p[0] + '"' + ((s.params[k] || '') === p[0] ? ' selected' : '') + '>' + p[1] + '</option>';
+    }).join('') + '</select>';
+  }
+  function modeSel(s) { return selPairs(s, 'targetMode', [['pose', 'exact pose (XYZ)'], ['surface', 'on a surface']]); }
+  function surfaceTypeSel(s) { return selPairs(s, 'surfaceType', SURFACE_TYPES.map(function (t) { return [t, t]; })); }
+  // instance dropdown: "first found" + any live-enumerated surfaces of the chosen type
+  function surfaceInstanceSel(s) {
+    const t = s.params.surfaceType || 'CounterTop';
+    const inst = liveSurfaces.filter(function (x) { return x.type === t; });
+    const pairs = [['', 'first found']].concat(inst.map(function (x) { return [x.name, x.name]; }));
+    return selPairs(s, 'surfaceName', pairs);
+  }
   function objSel(s) {
     // keep the param in sync with the visibly-selected first option, so capture works
     // even for a Transport step whose object dropdown was never touched
@@ -355,9 +379,13 @@
     el.querySelectorAll('.pb-num,.pb-sel').forEach(function (inp) {
       inp.addEventListener('input', function () {
         const s = steps.find(function (x) { return x.id === inp.dataset.sid; }); if (!s) return;
+        const k = inp.dataset.k;
         const v = inp.classList.contains('pb-num') ? (parseFloat(inp.value) || 0) : inp.value;
-        s.params[inp.dataset.k] = v;
-        renderScene();
+        s.params[k] = v;
+        // switching target mode / surface type swaps which fields are shown -> re-render
+        if (k === 'surfaceType') { s.params.surfaceName = ''; renderSteps(); }
+        else if (k === 'targetMode') { renderSteps(); }
+        else { renderScene(); }
       });
     });
     el.querySelectorAll('[data-del]').forEach(function (b) { b.addEventListener('click', function () { steps = steps.filter(function (s) { return s.id !== b.dataset.del; }); renderSteps(); }); });
@@ -420,6 +448,41 @@
   function pyKwargs(params) {
     return Object.keys(params).map(function (k) { return k + '=' + jsonPy(params[k]); }).join(', ');
   }
+  // --- "place on a surface": symbolic target resolution via semantic_digital_twin ---
+  function surfaceSteps(useSteps) {
+    return useSteps.filter(function (s) { return s.type === 'transport' && s.params.targetMode === 'surface'; });
+  }
+  function surfaceTypesUsed(useSteps) {
+    const set = {}; surfaceSteps(useSteps).forEach(function (s) { set[s.params.surfaceType || 'CounterTop'] = 1; });
+    return Object.keys(set);
+  }
+  // lines that resolve each surface-mode transport into a `_target_<id>` Pose, given `world`
+  function surfaceResolveLines(useSteps, indent) {
+    const L = [];
+    surfaceSteps(useSteps).forEach(function (s) {
+      const T = s.params.surfaceType || 'CounterTop';
+      const mesh = s.params.object || 'object';
+      const id = s.id;
+      L.push(indent + '# place "' + mesh + '" on a ' + T + ' — pose sampled by semantic_digital_twin');
+      if (s.params.surfaceName) {
+        L.push(indent + '_surface_' + id + ' = next(');
+        L.push(indent + '    s for s in world.get_semantic_annotations_by_type(' + T + ')');
+        L.push(indent + '    if str(s.root.name) == ' + jsonStr(s.params.surfaceName));
+        L.push(indent + ')');
+      } else {
+        L.push(indent + '_surface_' + id + ' = world.get_semantic_annotations_by_type(' + T + ')[0]');
+      }
+      L.push(indent + '_pts_' + id + ' = _surface_' + id + '.sample_points_from_surface(');
+      L.push(indent + '    body_to_sample_for=' + body(mesh) + ')');
+      L.push(indent + '_target_' + id + ' = Pose(_pts_' + id + '[0], reference_frame=_pts_' + id + '[0].reference_frame)');
+    });
+    return L;
+  }
+  function surfaceImportLine(useSteps) {
+    const types = surfaceTypesUsed(useSteps);
+    if (!types.length) return null;
+    return 'from semantic_digital_twin.semantic_annotations.semantic_annotations import ' + types.sort().join(', ');
+  }
   // the constraints-metadata block (comment + CONSTRAINTS list), shared by both output styles
   function constraintBlock(useSteps) {
     const withCon = useSteps.filter(function (s) { return (s.constraints || []).length; });
@@ -471,6 +534,8 @@
     L.push('from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix');
     L.push('from semantic_digital_twin.spatial_types.spatial_types import Pose');
     L.push('from semantic_digital_twin.world_description.geometry import Color');
+    const _surfImp = surfaceImportLine(useSteps);
+    if (_surfImp) L.push(_surfImp);
     L.push('');
     L.push('_HERE = os.path.dirname(__file__)');
     L.push('_WORLDS = os.path.join(_HERE, "..", "..", "resources", "worlds")');
@@ -520,6 +585,8 @@
     L.push('    WorldReasoner(world).reason()');
     L.push('context.evaluate_conditions = False');
     L.push('');
+    surfaceResolveLines(useSteps, '').forEach(function (ln) { L.push(ln); });
+    if (surfaceSteps(useSteps).length) L.push('');
     L.push('plan = sequential([');
     useSteps.forEach(function (s) { L.push('    ' + stepCode(s) + ','); });
     L.push('], context=context).plan');
@@ -536,7 +603,10 @@
     if (s.type === 'park_arms') return 'ParkArmsAction(Arms.' + p.arm + ')';
     if (s.type === 'move_torso') return 'MoveTorsoAction(TorsoState.' + p.torso + ')';
     if (s.type === 'navigate') return 'NavigateAction(' + pose(p) + ')';
-    if (s.type === 'transport') return 'TransportAction(' + body(p.object || 'object') + ', ' + pose(p) + ', Arms.' + p.arm + ')';
+    if (s.type === 'transport') {
+      const target = (p.targetMode === 'surface') ? ('_target_' + s.id) : pose(p);
+      return 'TransportAction(' + body(p.object || 'object') + ', ' + target + ', Arms.' + p.arm + ')';
+    }
     return 'None';
   }
   function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255].map(function (v) { return Math.round(v * 100) / 100; }); }
@@ -577,6 +647,8 @@
     L.push('from semantic_digital_twin.spatial_types.spatial_types import Pose');
     L.push('from semantic_digital_twin.world import World');
     L.push('from semantic_digital_twin.world_description.geometry import Color');
+    const _surfImpC = surfaceImportLine(useSteps);
+    if (_surfImpC) L.push(_surfImpC);
     L.push('');
     L.push('_HERE = os.path.dirname(__file__)');
     L.push('_WORLDS = os.path.join(_HERE, "..", "..", "resources", "worlds")');
@@ -646,6 +718,7 @@
     L.push('');
     L.push('    def build_plan(self, context: Context) -> PlanNode:');
     L.push('        world = context.world  # bodies/poses below are resolved against it');
+    surfaceResolveLines(useSteps, '        ').forEach(function (ln) { L.push(ln); });
     L.push('        return sequential([');
     useSteps.forEach(function (s) { L.push('            ' + stepCode(s) + ','); });
     L.push('        ], context=context).plan');
@@ -751,14 +824,24 @@
   function pollLive(n) {
     fetch(bridgeUrl() + '/captured_objects').then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
-        if (d) { liveOn = true; liveStatus('● live — drag objects in the 3D view, then capture', 'ok'); const f=$('pb-3d'); if (f && f.src.indexOf('index.html')<0) f.src='index.html?scene'; }
+        if (d) { liveOn = true; liveStatus('● live — drag objects in the 3D view, then capture', 'ok'); const f=$('pb-3d'); if (f && f.src.indexOf('index.html')<0) f.src='index.html?scene'; fetchSurfaces(); }
         else if (n < 40) { setTimeout(function () { pollLive(n + 1); }, 3000); }
         else liveStatus('scene did not come up — check the terminal', 'err');
       })
       .catch(function () { if (n < 40) setTimeout(function () { pollLive(n + 1); }, 3000); else liveStatus('scene did not come up', 'err'); });
   }
+  // enumerate placement surfaces from the live world (for the "on a surface" target mode)
+  function fetchSurfaces() {
+    fetch(bridgeUrl() + '/surfaces').then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        const next = (d && d.surfaces) || [];
+        const changed = JSON.stringify(next) !== JSON.stringify(liveSurfaces);
+        liveSurfaces = next;
+        if (changed && steps.some(function (s) { return s.type === 'transport' && s.params.targetMode === 'surface'; })) renderSteps();
+      }).catch(function () {});
+  }
   function stopLive() {
-    liveOn = false;
+    liveOn = false; liveSurfaces = [];
     fetch('/api/plan/scaffold/stop', { method: 'POST' }).then(function () { liveStatus('stopped', ''); const f=$('pb-3d'); if (f) f.src='about:blank'; }).catch(function () {});
   }
 
