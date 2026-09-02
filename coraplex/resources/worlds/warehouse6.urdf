@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!--
+  warehouse6 as a coraplex world: a single fixed link whose visual and collision
+  geometry is the prepared warehouse6.glb (metres, Z-up, roof off), so the Plan
+  Builder can load it through URDFParser like the kitchen and apartment worlds.
+-->
+<robot name="warehouse6">
+  <link name="warehouse6">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="warehouse6.glb"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="warehouse6.glb"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>
