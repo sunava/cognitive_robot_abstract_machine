@@ -742,7 +742,7 @@ body.graph-full-open{overflow:hidden}
 .st-chip{font-size:10px;font-weight:700;color:#bcd2ff;background:rgba(91,140,255,.16);border:1px solid rgba(91,140,255,.4);padding:1px 6px;border-radius:999px}
 
 /* ---- Plan Steps view: fixed constraints column on the left + clearer hierarchy ---- */
-.graph-steps{position:absolute;inset:0;display:flex;overflow:hidden;padding:0}
+.graph-steps{position:absolute;inset:34px 0 0;display:flex;overflow:hidden;padding:0}
 .graph-steps .cpal{width:232px;flex:none;max-width:none;margin:0;border:0;border-right:1px solid var(--line,#26324d);border-radius:0;overflow:auto;background:var(--panel2,#0c1526)}
 .graph-steps .cpal-list{flex-direction:column}
 .graph-steps .cpal-sub{font-size:10.5px;color:var(--faint,#5f7196);margin:2px 0 10px}
