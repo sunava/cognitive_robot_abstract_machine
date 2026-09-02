@@ -1297,6 +1297,20 @@ Panels.define('robot-scene', function (root, bus) {
   }
   function round3(v) { return Math.round(v * 1000) / 1000; }
 
+  // Plan Builder (parent page) -> reset an object to given map coords: move the mesh
+  // there and post it as a final move, so a bad drag/snap can be undone even while the
+  // idle sim isn't ticking (the tick would otherwise never apply the queued move).
+  window.addEventListener('message', function (ev) {
+    const d = ev && ev.data;
+    if (!d || d.type !== 'cramera-reset-object' || !d.key || !Array.isArray(d.position)) return;
+    const g = objectMeshes[d.key];
+    if (!g) return;
+    g.position.set(d.position[0], d.position[1], d.position[2]);
+    liveDraggedKey = null;
+    postLiveMove(d.key, d.position[0], d.position[1], d.position[2], true);
+    needsRender = true;
+  });
+
   function liveUrl() {
     const m = /[?&]live=([\w.:-]+)/.exec(window.location.search);
     return 'http://' + (m ? m[1] : (window.location.hostname + ':8765'));

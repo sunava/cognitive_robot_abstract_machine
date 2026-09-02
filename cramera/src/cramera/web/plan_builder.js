@@ -165,6 +165,12 @@
   // move an object in the live 3D scene back to its builder coordinates (undo a bad snap)
   function resetObject(oid) {
     const o = objects.find(function (x) { return x.id === oid; }); if (!o) return;
+    // tell the embedded 3D scene to move the mesh back (the idle sim won't apply a
+    // queued /move, so a visual reset must go through the viewer itself)
+    const f = $('pb-3d');
+    if (f && f.contentWindow) f.contentWindow.postMessage(
+      { type: 'cramera-reset-object', key: o.mesh, position: [o.x, o.y, o.z] }, '*');
+    // also update the bridge's last-move overlay so a later capture reads the reset pose
     fetch(bridgeUrl() + '/move', { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ object: o.mesh, position: [o.x, o.y, o.z], final: true }) })
       .then(function () { status('reset ' + o.name + ' in the 3D scene → (' + o.x + ', ' + o.y + ', ' + o.z + ')', 'ok'); })
