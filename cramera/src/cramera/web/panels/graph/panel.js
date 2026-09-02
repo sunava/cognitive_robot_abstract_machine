@@ -159,6 +159,12 @@ Panels.define('graph', function (root, bus) {
     return { goal: null, params: {} };
   }
   const stepNodeById = {};   // id -> raw plan node, filled during renderSteps
+  const stepAttached = {};   // id -> [{goal, text}]  attached constraints, shown as persistent chips
+  function attachedChips(nodeId) {
+    return (stepAttached[nodeId] || []).map(function (a) {
+      return '<span class="st-chip" title="' + a.text + '">⛓ ' + a.goal + '</span>';
+    }).join('');
+  }
   function postConstraint(nodeId, cid) {
     const node = stepNodeById[nodeId];
     const c = CONSTRAINTS.find(function (x) { return x.id === cid; });
@@ -171,7 +177,13 @@ Panels.define('graph', function (root, bus) {
       giskard_node: { type: comp.goal, params: comp.params } };
     fetch(liveState.url + '/constraint', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
       .then(function (r) { return r.json(); })
-      .then(function (j) { flashStep(nodeId, j.ok ? (comp.goal + ' ✓') : ('✗ ' + (j.error || 'error')), !!j.ok); })
+      .then(function (j) {
+        if (j.ok) {
+          (stepAttached[nodeId] = stepAttached[nodeId] || []).push({ goal: comp.goal, text: c.text });
+          const meta = stepsEl.querySelector('.st-row[data-id="' + nodeId + '"] .st-meta');
+          if (meta) meta.insertAdjacentHTML('afterbegin', '<span class="st-chip" title="' + c.text + '">⛓ ' + comp.goal + '</span>');
+        } else { flashStep(nodeId, '✗ ' + (j.error || 'error'), false); }
+      })
       .catch(function (e) { flashStep(nodeId, '✗ ' + e, false); });
   }
   function flashStep(nodeId, msg, ok) {
@@ -181,73 +193,109 @@ Panels.define('graph', function (root, bus) {
     if (!tag) { tag = document.createElement('span'); tag.className = 'st-cflash'; row.querySelector('.st-meta').prepend(tag); }
     tag.textContent = '⛓ ' + msg; tag.classList.toggle('bad', !ok);
   }
-  function renderPalette() {
-    const items = CONSTRAINTS.map(function (c) {
-      return '<div class="cpal-card" draggable="true" data-cid="' + c.id + '"><span class="cpal-grip">⠿</span>' + c.text + '<span class="cpal-del" data-del="' + c.id + '">×</span></div>';
-    }).join('');
-    return '<div class="cpal"><div class="cpal-h">Constraints — drag onto a step (live)</div>' +
-      '<div class="cpal-list">' + items + '</div>' +
-      '<div class="cpal-add"><input class="cpal-in" placeholder="e.g. milk must stay upright"><button class="cpal-btn">Add</button></div></div>';
-  }
-  function wirePalette() {
-    stepsEl.querySelectorAll('.cpal-card').forEach(function (card) {
-      card.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/plain', 'c:' + card.dataset.cid); e.dataTransfer.effectAllowed = 'copy'; });
-    });
-    stepsEl.querySelectorAll('.cpal-del').forEach(function (x) {
-      x.addEventListener('click', function (e) { e.stopPropagation(); CONSTRAINTS = CONSTRAINTS.filter(function (c) { return c.id !== x.dataset.del; }); renderSteps(shown[tab] || base[tab]); });
-    });
-    const inp = stepsEl.querySelector('.cpal-in'), btn = stepsEl.querySelector('.cpal-btn');
-    function add() { const v = inp.value.trim(); if (!v) return; CONSTRAINTS.push({ id: 'c' + (cSeq++), text: v }); renderSteps(shown[tab] || base[tab]); }
-    if (btn) btn.addEventListener('click', add);
-    if (inp) inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
-    stepsEl.querySelectorAll('.st-row[data-id]').forEach(function (row) {
-      row.addEventListener('dragover', function (e) { e.preventDefault(); row.classList.add('st-drop'); });
-      row.addEventListener('dragleave', function () { row.classList.remove('st-drop'); });
-      row.addEventListener('drop', function (e) {
-        e.preventDefault(); e.stopPropagation(); row.classList.remove('st-drop');
-        const d = e.dataTransfer.getData('text/plain') || '';
-        if (d.indexOf('c:') === 0) postConstraint(row.dataset.id, d.slice(2));
+  // status is reported on the leaf motion/condition nodes, not propagated up to the
+  // action node shown as a step — so derive a step's status from its whole subtree
+  function derivedStatus(item) {
+    const own = item.n.status;
+    let anyRunning = false, anyFailed = false, sawLeaf = false, allDone = true;
+    (function scan(it) {
+      (it.kids || []).forEach(function (c) {
+        sawLeaf = true;
+        const s = c.n.status;
+        if (s === 'RUNNING') anyRunning = true;
+        if (s === 'FAILED') anyFailed = true;
+        if (s !== 'SUCCEEDED' && s !== 'DONE') allDone = false;
+        scan(c);
       });
-    });
+    })(item);
+    if (anyFailed || own === 'FAILED') return 'FAILED';
+    if (own === 'RUNNING' || anyRunning) return 'RUNNING';
+    if (own === 'SUCCEEDED' || own === 'DONE') return own;
+    if (sawLeaf && allDone) return 'SUCCEEDED';
+    return own;
   }
 
+  const stepsCollapsed = {};   // node id -> true when the user collapsed that step (kept across live refreshes)
+  function renderPaletteCards() {
+    return CONSTRAINTS.map(function (c) {
+      return '<div class="cpal-card" draggable="true" data-cid="' + c.id + '"><span class="cpal-grip">⠿</span>' + c.text + '<span class="cpal-del" data-del="' + c.id + '">×</span></div>';
+    }).join('');
+  }
+  function wirePaletteCards() {
+    const pal = stepsEl.querySelector('.cpal'); if (!pal) return;
+    pal.querySelectorAll('.cpal-card').forEach(function (card) {
+      card.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/plain', 'c:' + card.dataset.cid); e.dataTransfer.effectAllowed = 'copy'; });
+    });
+    pal.querySelectorAll('.cpal-del').forEach(function (x) {
+      x.addEventListener('click', function (e) { e.stopPropagation(); CONSTRAINTS = CONSTRAINTS.filter(function (c) { return c.id !== x.dataset.del; }); refreshPaletteCards(); });
+    });
+  }
+  function refreshPaletteCards() {
+    const list = stepsEl.querySelector('.cpal-list'); if (list) { list.innerHTML = renderPaletteCards(); wirePaletteCards(); }
+  }
+  // build the palette ONCE (so the live tree refresh never wipes the input or a card)
+  function ensurePalette() {
+    if (stepsEl.querySelector('.cpal')) return;
+    stepsEl.innerHTML =
+      '<div class="cpal"><div class="cpal-h">Constraints — drag onto a step (live)</div>' +
+      '<div class="cpal-list">' + renderPaletteCards() + '</div>' +
+      '<div class="cpal-add"><input class="cpal-in" placeholder="e.g. milk must stay upright"><button class="cpal-btn">Add</button></div></div>' +
+      '<div class="steps-tree"></div>';
+    wirePaletteCards();
+    const inp = stepsEl.querySelector('.cpal-in'), btn = stepsEl.querySelector('.cpal-btn');
+    function add() { const v = inp.value.trim(); if (!v) return; CONSTRAINTS.push({ id: 'c' + (cSeq++), text: v }); inp.value = ''; refreshPaletteCards(); inp.focus(); }
+    if (btn) btn.addEventListener('click', add);
+    if (inp) inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+  }
   function renderSteps(payload) {
+    ensurePalette();
+    const treeEl = stepsEl.querySelector('.steps-tree'); if (!treeEl) return;
     const roots = stepTreeFrom(payload.nodes || []);
     const top = roots.length === 1 && STRUCT_KINDS[roots[0].n.kind] ? stepItems(roots[0]) : roots;
     for (const k in stepNodeById) delete stepNodeById[k];
-    const html = [renderPalette(), '<div class="steps-tree">'];
+    const html = [];
     function walk(item, number) {
       const n = item.n;
       stepNodeById[n.id] = n;
       const sub = stepItems(item);
       const details = (item.kids || []).filter(function (c) { return DETAIL_KINDS[c.n.kind]; });
       const hk = sub.length || details.length;
+      const collapsed = !!stepsCollapsed[n.id];
       html.push('<div class="st-row' + (hk ? ' hk' : '') + '" data-id="' + n.id + '">' +
-        '<span class="st-tw">' + (hk ? '▸' : '') + '</span>' +
+        '<span class="st-tw">' + (hk ? (collapsed ? '▸' : '▾') : '') + '</span>' +
         '<span class="st-num">' + number + '</span>' +
         '<span class="st-name">' + stepLabel(n) + '</span>' +
-        '<span class="st-meta">' + (details.length ? '<span class="st-dc">' + details.length + ' detail' + (details.length > 1 ? 's' : '') + '</span>' : '') + stepPill(n.status) + '</span>' +
+        '<span class="st-meta">' + attachedChips(n.id) + (details.length ? '<span class="st-dc">' + details.length + ' detail' + (details.length > 1 ? 's' : '') + '</span>' : '') + stepPill(derivedStatus(item)) + '</span>' +
         '</div>');
       if (hk) {
-        html.push('<div class="st-kids">');
+        html.push('<div class="st-kids"' + (collapsed ? ' style="display:none"' : '') + '>');
         details.forEach(function (d) { html.push('<div class="st-leaf"><span class="st-name detail">' + stepLabel(d.n) + '</span>' + stepPill(d.n.status) + '</div>'); });
         var i = 1; sub.forEach(function (c) { walk(c, number + '.' + (i++)); });
         html.push('</div>');
       }
     }
     var i = 1; top.forEach(function (c) { walk(c, String(i++)); });
-    html.push('</div>');
-    stepsEl.innerHTML = html.join('');
-    wirePalette();
-    // collapse/expand
-    stepsEl.querySelectorAll('.st-row.hk').forEach(function (r) {
+    treeEl.innerHTML = html.join('');
+    // collapse/expand (persist the state so the 700ms live refresh keeps it)
+    treeEl.querySelectorAll('.st-row.hk').forEach(function (r) {
       r.addEventListener('click', function () {
-        const kids = r.nextElementSibling;
+        const id = r.dataset.id, kids = r.nextElementSibling;
         if (kids && kids.classList.contains('st-kids')) {
-          const open = kids.style.display !== 'none';
-          kids.style.display = open ? 'none' : '';
-          r.querySelector('.st-tw').textContent = open ? '▸' : '▾';
+          const nowCollapsed = kids.style.display !== 'none';
+          kids.style.display = nowCollapsed ? 'none' : '';
+          stepsCollapsed[id] = nowCollapsed;
+          r.querySelector('.st-tw').textContent = nowCollapsed ? '▸' : '▾';
         }
+      });
+    });
+    // each step row is a constraint drop target
+    treeEl.querySelectorAll('.st-row[data-id]').forEach(function (row) {
+      row.addEventListener('dragover', function (e) { e.preventDefault(); row.classList.add('st-drop'); });
+      row.addEventListener('dragleave', function () { row.classList.remove('st-drop'); });
+      row.addEventListener('drop', function (e) {
+        e.preventDefault(); e.stopPropagation(); row.classList.remove('st-drop');
+        const d = e.dataTransfer.getData('text/plain') || '';
+        if (d.indexOf('c:') === 0) postConstraint(row.dataset.id, d.slice(2));
       });
     });
   }

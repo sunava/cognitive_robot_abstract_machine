@@ -739,3 +739,4 @@ body.graph-full-open{overflow:hidden}
 .st-row.st-drop{background:rgba(91,140,255,.12);box-shadow:inset 0 0 0 1px var(--par,#5b8cff)}
 .st-cflash{font-size:10px;font-weight:700;color:#bcd2ff;background:rgba(91,140,255,.18);border:1px solid rgba(91,140,255,.4);padding:1px 6px;border-radius:999px}
 .st-cflash.bad{color:#ff9db1;background:rgba(255,107,139,.16);border-color:rgba(255,107,139,.4)}
+.st-chip{font-size:10px;font-weight:700;color:#bcd2ff;background:rgba(91,140,255,.16);border:1px solid rgba(91,140,255,.4);padding:1px 6px;border-radius:999px}
