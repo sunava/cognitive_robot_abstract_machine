@@ -408,7 +408,14 @@
     if (!s.params.object) { status('pick an object for this Transport step first', 'err'); return; }
     const o = objects.find(function (x) { return x.mesh === s.params.object; });
     if (!o) { status('object ' + s.params.object + ' is not in the objects list', 'err'); return; }
-    captureObject(o.id);
+    fetchCaptured().then(function (objs) {
+      const pz = poseFromCaptured(objs, o.mesh);
+      if (!pz) { status('no live pose for ' + o.mesh + ' — is the scene running?', 'err'); return; }
+      o.x = pz.x; o.y = pz.y; o.z = pz.z; o.yaw = pz.yaw;
+      renderObjects();   // left panel
+      renderSteps();     // the start (from) fields on the step read from the object
+      status('captured start for ' + o.name + ' → (' + pz.x + ', ' + pz.y + ', ' + pz.z + ')', 'ok');
+    }).catch(function () { status('capture failed — start the live scene first', 'err'); });
   }
   function captureStepTarget(sid) {
     const s = steps.find(function (x) { return x.id === sid; }); if (!s) return;
