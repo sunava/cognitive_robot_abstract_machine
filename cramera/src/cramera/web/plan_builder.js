@@ -191,6 +191,14 @@
       .catch(function () { status('reset failed — start the live scene first', 'err'); });
   }
   function resetAllObjects() { objects.forEach(function (o) { resetObject(o.id); }); }
+  // ask the embedded 3D view to flag every builder object with a bobbing arrow, so staged
+  // objects (which spawn lifted, beside the robot) are easy to find; the arrow clears once
+  // the object is grabbed. Applied on each scene load and whenever the object set changes.
+  function highlightObjectsInScene() {
+    const f = $('pb-3d');
+    if (f && f.contentWindow) f.contentWindow.postMessage(
+      { type: 'cramera-highlight-objects', keys: objects.map(function (o) { return o.mesh; }) }, '*');
+  }
   function field(o, k) {
     return '<label>' + k.toUpperCase() + '<input class="pb-num" data-oid="' + o.id + '" data-k="' + k + '" type="number" step="0.05" value="' + o[k] + '"' + (o.base && k !== 'yaw' ? '' : '') + '></label>';
   }
@@ -957,6 +965,7 @@
   renderConstraints();
   $('pb-add-obj').addEventListener('click', function () {
     const o = addObject($('pb-mesh').value);
+    highlightObjectsInScene();
     // objects are spawned when the scaffold is built, so one added mid-session needs a
     // (re)start to appear; it will show at its staging spot beside the robot, in the open.
     if (liveOn) status('added ' + o.name + ' — click “Start live scene” to (re)spawn it in the 3D view (staged beside the robot)', 'ok');
@@ -973,6 +982,8 @@
   $('pb-live-stop').addEventListener('click', stopLive);
   $('pb-reset-all').addEventListener('click', resetAllObjects);
   $('pb-reload-3d').addEventListener('click', reloadScene);
+  // whenever the embedded scene (re)loads, (re)send the objects to flag with arrows
+  $('pb-3d').addEventListener('load', function () { setTimeout(highlightObjectsInScene, 400); });
   $('pb-rx').addEventListener('input', function () { robotXY.x = parseFloat(this.value) || 0; });
   $('pb-ry').addEventListener('input', function () { robotXY.y = parseFloat(this.value) || 0; });
   addObject('milk.stl', { x: 2.5, y: 2.3, z: 0.9 });

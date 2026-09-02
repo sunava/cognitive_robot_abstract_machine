@@ -224,6 +224,7 @@ Panels.define('robot-scene', function (root, bus) {
   const models = [];              // {name, prefix, robot, obj}
   let robotModel = null;          // the bundle's own robot entry
   const objectMeshes = {};       // mesh key ('milk.stl') -> THREE.Group
+  const guidedKeys = new Set();  // keys the Plan Builder asked to flag with a bobbing arrow (until grabbed)
   const objectLabels = {};       // mesh key -> label sprite
   const liveSpawned = {};        // mesh key -> true for objects added by live mode
   const objectPending = {};      // mesh key -> true while its geometry is loading
@@ -268,6 +269,7 @@ Panels.define('robot-scene', function (root, bus) {
       delete objectPending[spec.key];
       worldRoot.add(g);
       refreshFrameAxes();            // the new object is a frame of its own
+      if (guidedKeys.has(spec.key)) arrowOver(spec.key, true);   // flag a staged object so it's easy to find
       needsRender = true;
     }
     // a recorded box is placed by its centre, like any other body; a fallback
@@ -1053,6 +1055,7 @@ Panels.define('robot-scene', function (root, bus) {
     const p = pickDraggable(e);
     if (!p) return;
     if (liveOn && p.marker) return;    // the place marker has no meaning live
+    if (p.name && guidedKeys.has(p.name)) { guidedKeys.delete(p.name); arrowOver(p.name, false); }  // grabbed -> stop guiding
     dragTarget = p; dragging = true;
     controls.enabled = false;
     renderer.domElement.setPointerCapture(e.pointerId);
@@ -1301,14 +1304,22 @@ Panels.define('robot-scene', function (root, bus) {
   // there and post it as a final move, so a bad drag/snap can be undone even while the
   // idle sim isn't ticking (the tick would otherwise never apply the queued move).
   window.addEventListener('message', function (ev) {
-    const d = ev && ev.data;
-    if (!d || d.type !== 'cramera-reset-object' || !d.key || !Array.isArray(d.position)) return;
-    const g = objectMeshes[d.key];
-    if (!g) return;
-    g.position.set(d.position[0], d.position[1], d.position[2]);
-    liveDraggedKey = null;
-    postLiveMove(d.key, d.position[0], d.position[1], d.position[2], true);
-    needsRender = true;
+    const d = ev && ev.data; if (!d) return;
+    if (d.type === 'cramera-reset-object' && d.key && Array.isArray(d.position)) {
+      const g = objectMeshes[d.key]; if (!g) return;
+      g.position.set(d.position[0], d.position[1], d.position[2]);
+      liveDraggedKey = null;
+      postLiveMove(d.key, d.position[0], d.position[1], d.position[2], true);
+      needsRender = true;
+    } else if (d.type === 'cramera-highlight-objects' && Array.isArray(d.keys)) {
+      // flag these objects with a bobbing arrow so they're easy to spot (e.g. staged ones);
+      // objects not yet spawned get flagged when they appear (see place()).
+      const want = new Set(d.keys);
+      guidedKeys.forEach(function (k) { if (!want.has(k)) arrowOver(k, false); });   // clear dropped ones
+      guidedKeys.clear();
+      want.forEach(function (k) { guidedKeys.add(k); if (objectMeshes[k]) arrowOver(k, true); });
+      needsRender = true;
+    }
   });
 
   function liveUrl() {
