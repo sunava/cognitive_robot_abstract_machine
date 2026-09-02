@@ -146,6 +146,7 @@
       z: opts.z != null ? opts.z : stage.z,
       roll: opts.roll != null ? opts.roll : 0.0, pitch: opts.pitch != null ? opts.pitch : 0.0,
       yaw: opts.yaw != null ? opts.yaw : 0.0,   // roll/pitch/yaw in radians (codegen uses radians)
+      poseOpen: false,                          // XYZ/RPY controls collapsed by default
       color: OBJ_COLORS[(objSeq) % OBJ_COLORS.length] };
     objects.push(o); renderObjects(); renderScene(); refreshObjectSelects();
     return o;
@@ -160,7 +161,8 @@
         '<span class="ocap" data-cap="' + o.id + '" title="drag the object to its start position in the 3D scene, then click to capture that as its start pose">⟳ capture</span>' +
         '<span class="oreset" data-reset="' + o.id + '" title="move the object in the 3D scene back to these coordinates (undo a bad drag/snap)">⟲</span>' +
         '<span class="odel" data-del="' + o.id + '">×</span></div>' +
-        '<div class="pb-pose">' +
+        '<button class="pb-pose-toggle" data-posetoggle="' + o.id + '">' + (o.poseOpen ? '▾' : '▸') + ' pose (xyz · rpy)</button>' +
+        '<div class="pb-pose"' + (o.poseOpen ? '' : ' style="display:none"') + '>' +
         '<div class="pb-pose-grp"><span class="pb-pose-h">position (m)</span>' +
         ctl(o, 'x', -6, 6, 0.05) + ctl(o, 'y', -6, 6, 0.05) + ctl(o, 'z', 0, 3, 0.05) + '</div>' +
         '<div class="pb-pose-grp"><span class="pb-pose-h">rotation (rpy°)</span>' +
@@ -192,18 +194,25 @@
     el.querySelectorAll('.oreset').forEach(function (x) {
       x.addEventListener('click', function () { resetObject(x.dataset.reset); });
     });
+    el.querySelectorAll('[data-posetoggle]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        const o = objects.find(function (x) { return x.id === b.dataset.posetoggle; });
+        if (o) { o.poseOpen = !o.poseOpen; renderObjects(); }
+      });
+    });
   }
   // move an object in the live 3D scene back to its builder coordinates (undo a bad snap)
   function resetObject(oid) {
     const o = objects.find(function (x) { return x.id === oid; }); if (!o) return;
     // tell the embedded 3D scene to move the mesh back (the idle sim won't apply a
     // queued /move, so a visual reset must go through the viewer itself)
+    const q = rpyToQuat(o.roll, o.pitch, o.yaw);
     const f = $('pb-3d');
     if (f && f.contentWindow) f.contentWindow.postMessage(
-      { type: 'cramera-reset-object', key: o.mesh, position: [o.x, o.y, o.z] }, '*');
+      { type: 'cramera-reset-object', key: o.mesh, position: [o.x, o.y, o.z], quaternion: q }, '*');
     // also update the bridge's last-move overlay so a later capture reads the reset pose
     fetch(bridgeUrl() + '/move', { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ object: o.mesh, position: [o.x, o.y, o.z], final: true }) })
+      body: JSON.stringify({ object: o.mesh, position: [o.x, o.y, o.z], quaternion: q, final: true }) })
       .then(function () { status('reset ' + o.name + ' in the 3D scene → (' + o.x + ', ' + o.y + ', ' + o.z + ')', 'ok'); })
       .catch(function () { status('reset failed — start the live scene first', 'err'); });
   }
@@ -211,16 +220,25 @@
   // live-sync an object's position to the 3D scene as the sliders/fields change (rotation
   // is applied in the generated demo / on the next scene start). postMessage moves the mesh
   // smoothly; the /move fetch is throttled so we don't spam the bridge.
+  // roll/pitch/yaw (rad, ROS/URDF convention) -> quaternion [x, y, z, w]
+  function rpyToQuat(r, p, y) {
+    const cr = Math.cos(r / 2), sr = Math.sin(r / 2);
+    const cp = Math.cos(p / 2), sp = Math.sin(p / 2);
+    const cy = Math.cos(y / 2), sy = Math.sin(y / 2);
+    return [sr * cp * cy - cr * sp * sy, cr * sp * cy + sr * cp * sy,
+            cr * cp * sy - sr * sp * cy, cr * cp * cy + sr * sp * sy];
+  }
   let _lastPosePush = 0;
   function pushObjectPose(o) {
+    const q = rpyToQuat(o.roll, o.pitch, o.yaw);
     const f = $('pb-3d');
     if (f && f.contentWindow) f.contentWindow.postMessage(
-      { type: 'cramera-reset-object', key: o.mesh, position: [o.x, o.y, o.z] }, '*');
+      { type: 'cramera-reset-object', key: o.mesh, position: [o.x, o.y, o.z], quaternion: q }, '*');
     const now = Date.now();
     if (now - _lastPosePush < 120) return;
     _lastPosePush = now;
     fetch(bridgeUrl() + '/move', { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ object: o.mesh, position: [o.x, o.y, o.z], final: true }) }).catch(function () {});
+      body: JSON.stringify({ object: o.mesh, position: [o.x, o.y, o.z], quaternion: q, final: true }) }).catch(function () {});
   }
   // ask the embedded 3D view to flag every builder object with a bobbing arrow, so staged
   // objects (which spawn lifted, beside the robot) are easy to find; the arrow clears once

@@ -1310,9 +1310,10 @@ Panels.define('robot-scene', function (root, bus) {
     const d = ev && ev.data; if (!d) return;
     if (d.type === 'cramera-reset-object' && d.key && Array.isArray(d.position)) {
       const g = objectMeshes[d.key]; if (!g) return;
+      // instant visual feedback; the parent posts the /move (with the quaternion) itself,
+      // and the idle /state overlay keeps this pose across polls
       g.position.set(d.position[0], d.position[1], d.position[2]);
-      liveDraggedKey = null;
-      postLiveMove(d.key, d.position[0], d.position[1], d.position[2], true);
+      if (Array.isArray(d.quaternion)) g.quaternion.set(d.quaternion[0], d.quaternion[1], d.quaternion[2], d.quaternion[3]);
       needsRender = true;
     } else if (d.type === 'cramera-highlight-objects' && Array.isArray(d.keys)) {
       // flag these objects with a bobbing arrow so they're easy to spot (e.g. staged ones);

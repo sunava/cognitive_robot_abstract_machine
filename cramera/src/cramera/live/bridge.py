@@ -783,6 +783,12 @@ class Bridge:
     Tick counter used to throttle the plan snapshot.
     """
 
+    _last_tick_time: float = 0.0
+    """
+    Monotonic time of the last motion tick. Used to tell when the sim is idle, so the
+    world snapshot can reflect queued viewer moves that no tick will apply.
+    """
+
     plan_snapshot_tick_interval: int = 5
     """
     How many simulation ticks pass between plan-tree snapshots.
@@ -871,6 +877,7 @@ class Bridge:
         self.apply_moves()
         self.apply_constraints(chart)
         self.observe_chart(chart)
+        self._last_tick_time = time.monotonic()
         self._tick_count += 1
         if self._tick_count % self.plan_snapshot_tick_interval == 0:
             self.snapshot_plan()
@@ -1926,9 +1933,21 @@ class Bridge:
     def get_state(self) -> Dict[str, Any]:
         """
         The newest world snapshot (safe to call from HTTP threads).
+
+        While the sim is idle (no recent motion tick, e.g. the Plan Builder scaffold sitting
+        still), overlay the queued viewer moves so a drag / reset / rotation shows up in the
+        3D view without waiting for a tick that isn't coming. During a motion the real world
+        poses win, so a running plan is shown faithfully.
         """
         with self._lock:
-            return self.state.to_payload()
+            payload = self.state.to_payload()
+        if time.monotonic() - self._last_tick_time > 0.5:
+            with self._moves_lock:
+                moves = dict(self._last_moves)
+            objs = payload.get("objects")
+            if moves and isinstance(objs, dict):
+                payload["objects"] = {**objs, **moves}
+        return payload
 
     def get_transforms(self) -> Dict[str, Any]:
         """
