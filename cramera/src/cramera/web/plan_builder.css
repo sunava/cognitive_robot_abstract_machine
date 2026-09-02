@@ -46,7 +46,10 @@
 .pb-step .sctl{margin-left:auto;display:flex;gap:4px}
 .pb-step .sctl button{background:none;border:1px solid var(--line2);color:var(--muted);border-radius:5px;width:26px;height:24px;cursor:pointer;font-size:12px}
 .pb-step .sctl button:hover{color:var(--ink);border-color:var(--pb-accent)}
-.pb-step .sparams{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
+.pb-step .sparams{display:flex;flex-direction:column;gap:7px;margin-top:9px}
+.pb-step .sparam-row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.pb-step .sparam-row .pb-capbtn{align-self:flex-end}
+.pb-step .sparam-row .pb-group-lbl{align-self:flex-end;padding-bottom:5px}
 .pb-step .sparams label{font-size:9.5px;color:var(--faint);display:flex;flex-direction:column;gap:2px}
 .pb-step .sparams .pb-num,.pb-step .sparams .pb-sel{width:auto}
 .pb-step .sparams .xyz{width:56px}

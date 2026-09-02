@@ -197,17 +197,19 @@
     wireStepEvents();
     renderScene();
   }
+  function row(html) { return '<div class="sparam-row">' + html + '</div>'; }
   function stepParams(s) {
-    const p = s.params;
-    if (s.type === 'park_arms') return sel(s, 'arm', ARMS);
-    if (s.type === 'move_torso') return sel(s, 'torso', TORSO);
-    if (s.type === 'navigate') return num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw');
-    if (s.type === 'transport') return objSel(s) +
-      '<span class="pb-group-lbl start">start (from) →</span>' + objNum(s, 'x') + objNum(s, 'y') + objNum(s, 'z') +
-      '<label>&nbsp;<button class="pb-capbtn start" data-capstart="' + s.id + '" title="drag the object to its START in the 3D scene, then capture that as its start pose">◎ capture</button></label>' +
-      '<span class="pb-group-lbl">drop-off (to) →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw') +
-      '<label>&nbsp;<button class="pb-capbtn" data-capstep="' + s.id + '" title="drag the object to its drop-off in the 3D scene, then capture that pose as this step\'s target">◎ capture</button></label>' +
-      sel(s, 'arm', ARMS);
+    if (s.type === 'park_arms') return row(sel(s, 'arm', ARMS));
+    if (s.type === 'move_torso') return row(sel(s, 'torso', TORSO));
+    if (s.type === 'navigate') return row('<span class="pb-group-lbl">go to →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw'));
+    if (s.type === 'transport') return (
+      row(objSel(s)) +
+      row('<span class="pb-group-lbl start">start (from) →</span>' + objNum(s, 'x') + objNum(s, 'y') + objNum(s, 'z') +
+        '<button class="pb-capbtn start" data-capstart="' + s.id + '" title="drag the object to its START in the 3D scene, then capture that as its start pose">◎ capture</button>') +
+      row('<span class="pb-group-lbl">drop-off (to) →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw') +
+        '<button class="pb-capbtn" data-capstep="' + s.id + '" title="drag the object to its drop-off in the 3D scene, then capture that pose as this step\'s target">◎ capture</button>') +
+      row(sel(s, 'arm', ARMS))
+    );
     return '';
   }
   function num(s, k) { return '<label>' + k.toUpperCase() + '<input class="pb-num xyz" data-sid="' + s.id + '" data-k="' + k + '" type="number" step="0.05" value="' + s.params[k] + '"></label>'; }
