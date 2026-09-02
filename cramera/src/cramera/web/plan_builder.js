@@ -123,11 +123,25 @@
   }
 
   // ---------- objects ----------
+  // A clear, visible staging pose for a freshly added object: a row beside the robot,
+  // lifted above typical furniture so it never spawns hidden inside a box/cabinet. The
+  // robot's own spot is collision-free, so its surroundings are a safe place to appear;
+  // you then drag the object onto its real target (the drag snaps it to the surface).
+  function stagingPose() {
+    const n = objects.length;
+    const perRow = 5, gap = 0.28;
+    return {
+      x: robotXY.x + 0.7 + (n % perRow) * gap,   // a row extending beside the robot
+      y: robotXY.y - 0.7 - Math.floor(n / perRow) * gap,
+      z: 1.35,                                    // above counters/tables, so it's visible
+    };
+  }
   function addObject(mesh, opts) {
     opts = opts || {};
+    const stage = stagingPose();
     const o = { id: 'o' + (objSeq++), mesh: mesh, name: mesh,
-      x: opts.x != null ? opts.x : 2.4, y: opts.y != null ? opts.y : 2.2,
-      z: opts.z != null ? opts.z : 0.95, yaw: opts.yaw != null ? opts.yaw : 0.0,
+      x: opts.x != null ? opts.x : stage.x, y: opts.y != null ? opts.y : stage.y,
+      z: opts.z != null ? opts.z : stage.z, yaw: opts.yaw != null ? opts.yaw : 0.0,
       color: OBJ_COLORS[(objSeq) % OBJ_COLORS.length] };
     objects.push(o); renderObjects(); renderScene(); refreshObjectSelects();
     return o;
@@ -941,7 +955,12 @@
   // ---------- boot ----------
   renderBlocks();
   renderConstraints();
-  $('pb-add-obj').addEventListener('click', function () { addObject($('pb-mesh').value); });
+  $('pb-add-obj').addEventListener('click', function () {
+    const o = addObject($('pb-mesh').value);
+    // objects are spawned when the scaffold is built, so one added mid-session needs a
+    // (re)start to appear; it will show at its staging spot beside the robot, in the open.
+    if (liveOn) status('added ' + o.name + ' — click “Start live scene” to (re)spawn it in the 3D view (staged beside the robot)', 'ok');
+  });
   $('pb-con-add').addEventListener('click', function () { const inp = $('pb-con-in'); addConstraintText(inp.value); inp.value = ''; inp.focus(); });
   $('pb-con-in').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addConstraintText(this.value); this.value = ''; } });
   (function () {
