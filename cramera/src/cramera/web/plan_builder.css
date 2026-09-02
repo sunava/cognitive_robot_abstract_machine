@@ -83,7 +83,8 @@
 .pb-robot-spawn{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--faint,#5a6270);margin-top:12px}
 .pb-robot-spawn label{display:flex;align-items:center;gap:3px}
 .pb-robot-spawn .pb-num{width:56px}
-.ocap{color:var(--faint,#5a6270);cursor:pointer;font-size:13px;padding:0 3px}
-.ocap:hover{color:var(--pb-accent,#39d5c8)}
+.ocap{color:#aef3ec;background:rgba(57,213,200,.14);border:1px solid var(--pb-accent,#39d5c8);border-radius:5px;cursor:pointer;font-size:11px;font-weight:700;padding:2px 7px;margin-left:auto}
+.ocap:hover{background:rgba(57,213,200,.28)}
+.pb-obj .odel{margin-left:6px}
 .pb-capbtn{background:rgba(57,213,200,.14);border:1px solid var(--pb-accent,#39d5c8);color:#aef3ec;font:inherit;font-size:10.5px;border-radius:5px;padding:4px 7px;cursor:pointer;white-space:nowrap}
 .pb-capbtn:hover{background:rgba(57,213,200,.25)}

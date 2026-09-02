@@ -62,7 +62,7 @@
       d.innerHTML =
         '<div class="row1"><span class="pb-swatch" style="background:' + o.color + '"></span>' +
         '<span class="oname" title="' + o.mesh + '">' + o.name + '</span>' +
-        '<span class="ocap" data-cap="' + o.id + '" title="capture its pose from the live 3D scene">⟳</span>' +
+        '<span class="ocap" data-cap="' + o.id + '" title="capture its pose from the live 3D scene">⟳ capture</span>' +
         '<span class="odel" data-del="' + o.id + '">×</span></div>' +
         '<div class="fields">' +
         field(o, 'x') + field(o, 'y') + field(o, 'z') + field(o, 'yaw') + '</div>';
