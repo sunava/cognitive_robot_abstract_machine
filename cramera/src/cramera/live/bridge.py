@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 import threading
 import time
 import urllib.parse
@@ -1346,8 +1347,24 @@ class Bridge:
         """
         Queue a constraint attached from the plan view (called on an HTTP thread).
 
+        Prints an immediate receipt to the demo terminal so inserting a constraint is
+        visible even between motions (the full resolve-against-the-world confirmation
+        follows on the next simulation tick, in :meth:`_inject_constraint`).
+
         :param request: The constraint to apply on the next simulation tick.
         """
+        params = ", ".join("%s=%s" % (k, v) for k, v in request.params.items())
+        line = "=" * 68
+        print(
+            "\n%s\n[CONSTRAINT] received from plan view\n"
+            "  text        : %r\n"
+            "  giskard node: %s(%s)\n"
+            "  plan node   : %s (%s)\n"
+            "  status      : queued — the motion statechart applies it on the next tick\n%s\n"
+            % (line, request.text, request.goal_type, params,
+               request.node_label, request.target_node_id, line),
+            file=sys.stderr, flush=True,
+        )
         with self._constraints_lock:
             self._constraints.append(request)
 
@@ -1479,6 +1496,7 @@ class Bridge:
         self.pending_constraints.append(constraint)
         node = self._build_giskard_node(constraint)
         if node is None:
+            self._announce_constraint(constraint, node, chart, ok=False)
             return
         # The node is built against the LIVE world (bodies resolved, giskard goal
         # constructed) — this is the constraint giskardpy will enforce. It is NOT added
@@ -1487,14 +1505,62 @@ class Bridge:
         # raises a shape mismatch and kills the executor (verified). Instead the resolved
         # node is queued for the next motion activation, where the chart is (re)compiled.
         self._resolved_constraints.append((constraint, node))
-        logger.info(
-            "constraint %r compiled to a live %s(root=%s, tip=%s); queued for next "
-            "motion activation on plan node %s",
-            constraint.text, constraint.goal_type,
-            getattr(node, "root_link", None) and str(node.root_link.name),
-            getattr(node, "tip_link", None) and str(node.tip_link.name),
-            constraint.target_node_id,
+        self._announce_constraint(constraint, node, chart, ok=True)
+
+    def _announce_constraint(
+        self,
+        constraint: "AttachConstraintRequest",
+        node: Optional[Any],
+        chart: Optional["MotionStatechart"],
+        ok: bool,
+    ) -> None:
+        """
+        Print a clear, terminal-visible confirmation that a plan-view constraint reached
+        the running demo and became a real giskardpy motion-statechart node.
+
+        Printed to stderr (not the logger) so it shows up in the demo terminal regardless
+        of the log level.
+
+        :param constraint: The constraint from the plan view.
+        :param node: The built giskardpy node, or None if it could not be built.
+        :param chart: The motion statechart currently ticking, if any.
+        :param ok: Whether a node was successfully built.
+        """
+        line = "=" * 68
+        if not ok or node is None:
+            msg = (
+                "\n%s\n[CONSTRAINT] received from plan view but NOT applicable\n"
+                "  text : %r\n  goal : %s\n  note : could not resolve links / goal against the live world\n%s\n"
+                % (line, constraint.text, constraint.goal_type, line)
+            )
+            print(msg, file=sys.stderr, flush=True)
+            return
+        root = getattr(node, "root_link", None)
+        tip = getattr(node, "tip_link", None)
+        params = ", ".join("%s=%s" % (k, v) for k, v in constraint.params.items())
+        chart_title = self._chart_title if chart is not None else None
+        msg = (
+            "\n%s\n[CONSTRAINT] plan view -> live giskardpy motion statechart\n"
+            "  text        : %r\n"
+            "  giskard node: %s(%s)\n"
+            "  resolved    : root_link=%s  tip_link=%s\n"
+            "  plan node   : %s (%s)\n"
+            "  current MS  : %s\n"
+            "  status      : compiled against the live world; the motion statechart will\n"
+            "                enforce it at the next motion activation (%d pending)\n%s\n"
+            % (
+                line,
+                constraint.text,
+                constraint.goal_type, params,
+                root is not None and str(root.name),
+                tip is not None and str(tip.name),
+                constraint.node_label, constraint.target_node_id,
+                chart_title or "(no motion running right now)",
+                len(self._resolved_constraints),
+                line,
+            )
         )
+        print(msg, file=sys.stderr, flush=True)
 
     def apply_moves(self) -> None:
         """
