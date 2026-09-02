@@ -938,8 +938,11 @@ Panels.define('robot-scene', function (root, bus) {
   // %% place-target marker (blue corner brackets)
   const marker = new THREE.Group();
   let MARKER_LIMIT = null;
+  // the Plan Builder embeds the scene with ?scene; the blue place target is a recording
+  // affordance with no meaning there, so never show it in that embed
+  const _embeddedScene = /[?&]scene(\b|=)/.test(window.location.search);
   function buildMarker(pt) {
-    if (!pt) { marker.visible = false; return; }
+    if (!pt || _embeddedScene) { marker.visible = false; return; }
     const blue = 0x35a7ff;
     const barMat = new THREE.MeshBasicMaterial({ color: blue });
     const hx = 0.30, hy = 0.22, L = 0.14, W = 0.022, H = 0.012;
@@ -1660,6 +1663,11 @@ Panels.define('robot-scene', function (root, bus) {
       return;
     }
     liveOn = on;
+    // the blue place-target marker (a translucent square with corner brackets) is a
+    // recording/place-demo affordance with no meaning in the live / Plan Builder view —
+    // hide it there so it doesn't hover in the middle of every scene.
+    marker.visible = !on && !!PLACE0;
+    needsRender = true;
     liveCbs.forEach(function (cb) { try { cb(on); } catch (e) {} });
     if (liveDot) liveDot.classList.toggle('on', on);
     if (liveBtn) {
