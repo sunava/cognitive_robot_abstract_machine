@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import math
 import threading
+import time
 import urllib.parse
 from dataclasses import dataclass, field
 
@@ -947,3 +948,119 @@ class TestChartSnapshot:
             "UNKNOWN",
             "TRUE",
         ]
+
+
+# %% dragging an object between two plans
+class TestDraggingWhileIdle:
+    """
+    Between plans nothing ticks, so a drag that waits for a motion never lands.
+
+    It is applied straight away instead — and an object a plan put down came to rest
+    fixed, so dragging it is also what frees it again.
+    """
+
+    MOVED_TO = [1.5, 0.5, 0.75]
+    """
+    Where the viewer drags the object to.
+    """
+
+    def dragged(self, bridge, key):
+        """
+        Ask the bridge to move a published object, as a drag release does.
+        """
+        bridge.queue_move(
+            MoveRequest(object_key=key, position=list(self.MOVED_TO), is_final=True)
+        )
+
+    def placed_world(self):
+        """
+        A world whose object was put down by a plan: fixed, under the world root.
+        """
+        world = world_with(shaped_body("demo", "milk.stl"))
+        return world, world.get_body_by_name("milk.stl")
+
+    def test_a_drag_between_plans_reaches_the_world(self):
+        world, milk = self.placed_world()
+        bridge = Bridge()
+        bridge.attach(world)
+
+        self.dragged(bridge, "milk.stl")
+
+        assert milk.global_pose.to_position().to_np()[:3] == pytest.approx(
+            self.MOVED_TO, abs=1e-6
+        )
+
+    def test_an_object_a_plan_put_down_can_be_dragged_again(self):
+        world, milk = self.placed_world()
+        bridge = Bridge()
+        bridge.attach(world)
+
+        self.dragged(bridge, "milk.stl")
+        bridge.queue_move(
+            MoveRequest(
+                object_key="milk.stl", position=[0.25, 0.25, 0.25], is_final=True
+            )
+        )
+
+        assert milk.global_pose.to_position().to_np()[:3] == pytest.approx(
+            [0.25, 0.25, 0.25], abs=1e-6
+        )
+
+    def test_dragging_it_leaves_the_world_as_free_as_it_was(self):
+        """
+        Giving the body a steerable connection instead would add degrees of freedom, and
+        the next plan's controller would be handed a command sized for the world before.
+        """
+        world, milk = self.placed_world()
+        bridge = Bridge()
+        bridge.attach(world)
+        before = len(world.degrees_of_freedom)
+
+        self.dragged(bridge, "milk.stl")
+
+        assert len(world.degrees_of_freedom) == before
+
+    def test_a_drag_during_a_motion_waits_for_the_tick_that_is_coming(self):
+        world, milk = self.placed_world()
+        before = milk.global_pose.to_position().to_np()[:3]
+        bridge = Bridge()
+        bridge.attach(world)
+        bridge._last_tick_time = time.monotonic()  # a plan is moving the robot
+
+        self.dragged(bridge, "milk.stl")
+
+        assert milk.global_pose.to_position().to_np()[:3] == pytest.approx(before)
+
+
+# %% a new plan starts from a clean slate
+class TestStartingAnotherPlan:
+    """
+    A scene performs one plan after another, so what the last one left behind must not
+    be shown as if it belonged to the next.
+    """
+
+    def begun(self):
+        """
+        A bridge that has just been told a plan started.
+        """
+        bridge = Bridge()
+        bridge.begin_plan(PlanWithRoot(root=make_plan_node("SequentialNode")))
+        return bridge
+
+    def test_the_drag_targets_of_the_last_plan_are_forgotten(self):
+        """
+        The idle overlay replays them, so a plan that has since carried an object
+        elsewhere would show it snapping back to where it was last dragged.
+        """
+        bridge = Bridge()
+        bridge.queue_move(
+            MoveRequest(object_key="milk.stl", position=[1.0, 1.0, 1.0], is_final=True)
+        )
+
+        bridge.begin_plan(PlanWithRoot(root=make_plan_node("SequentialNode")))
+
+        assert bridge.get_captured_objects()["objects"] == {}
+
+    def test_the_statechart_of_the_last_plan_is_forgotten(self):
+        bridge = self.begun()
+        assert bridge._chart_observer._chart is None

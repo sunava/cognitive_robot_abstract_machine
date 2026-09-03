@@ -44,7 +44,9 @@ from __future__ import annotations
 import functools
 import json
 import os
+import socket
 import sys
+import time
 import threading
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -63,6 +65,9 @@ from cramera.live.bridge import (
     MalformedMoveRequest,
     MoveRequest,
 )
+from cramera.live.placement_surface import UnknownPlacementSurface
+from cramera.live.plan_runner import PlanAlreadyRunning, PlanRunnerUnavailable
+from cramera.live.requested_plan import MalformedPlanRequest, RequestedPlan
 from cramera.live.teleop import (
     MalformedTeleopRequest,
     TeleopRequest,
@@ -88,6 +93,51 @@ from cramera.onboard.scene_index import InvalidSceneName
 logger = get_logger(__name__)
 
 DEFAULT_PORT = int(os.environ.get("LIVE_VIZ_PORT", "8765"))
+
+PORT_PROBE_TIMEOUT_SECONDS = 0.25
+"""
+How long to wait for a port to accept a connection before calling it free.
+"""
+
+PORT_RELEASE_TIMEOUT_SECONDS = 5.0
+"""
+How long a scene that was told to stop may take to let go of its port.
+
+Winding a scene down means shutting down ROS as well, which is not instant; asking
+straight away would blame the port on somebody else.
+"""
+
+
+def port_released(
+    port: int = DEFAULT_PORT, timeout: float = PORT_RELEASE_TIMEOUT_SECONDS
+) -> bool:
+    """
+    Wait for a port to stop accepting connections.
+
+    :param port: The port to wait on.
+    :param timeout: How long to wait before calling it still taken.
+    :return: Whether the port is free.
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not port_in_use(port):
+            return True
+        time.sleep(PORT_PROBE_TIMEOUT_SECONDS)
+    return not port_in_use(port)
+
+
+def port_in_use(port: int = DEFAULT_PORT) -> bool:
+    """
+    Whether something already serves the viewer on a port.
+
+    Asked before starting a second scene, which would otherwise die on ``Address already
+    in use``.
+
+    :param port: The port to probe.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.settimeout(PORT_PROBE_TIMEOUT_SECONDS)
+        return probe.connect_ex(("127.0.0.1", port)) == 0
 
 
 class BridgeRequestHandler(BaseHTTPRequestHandler):
@@ -164,6 +214,8 @@ class BridgeRequestHandler(BaseHTTPRequestHandler):
             return self._send_json(self.bridge.status())
         if self.path.startswith("/recording"):
             return self._send_json(self._recording_status())
+        if self.path.startswith("/run"):
+            return self._send_json(self.bridge.get_run())
         self.send_response(404)
         self.end_headers()
 
@@ -309,6 +361,8 @@ class BridgeRequestHandler(BaseHTTPRequestHandler):
             return self._stop_teleop()
         if self.path.startswith("/teleop"):
             return self.queue_requested_teleop()
+        if self.path.startswith("/run"):
+            return self.perform_requested_plan()
         self.queue_requested_move()
 
     def _posted_payload(self) -> Optional[Dict[str, Any]]:
@@ -480,7 +534,8 @@ class BridgeRequestHandler(BaseHTTPRequestHandler):
         """
         Feed one streamed hand target to the live teleop driver.
 
-        Validated on the HTTP thread; the driver does the world writes on its own thread.
+        Validated on the HTTP thread; the driver does the world writes on its own
+        thread.
         """
         payload = self._posted_payload()
         if payload is None:
@@ -497,8 +552,32 @@ class BridgeRequestHandler(BaseHTTPRequestHandler):
             return self._send_json({"ok": False, "error": str(error)}, code=409)
         return self._send_json({"ok": True})
 
+    def perform_requested_plan(self) -> None:
+        """
+        Perform a plan the Plan Builder composed, in the scene that is already running.
+
+        Validated on the HTTP thread; the runner performs it on its own thread, so the
+        answer says the plan started, not how it went — ``GET /run`` says that.
+        """
+        payload = self._posted_payload()
+        if payload is None:
+            return self._send_json(
+                {"ok": False, "error": "body must be a JSON object"}, code=400
+            )
+        try:
+            request = RequestedPlan.from_payload(payload)
+        except (MalformedPlanRequest, UnknownPlacementSurface) as error:
+            return self._send_json({"ok": False, "error": str(error)}, code=400)
+        try:
+            self.bridge.queue_plan(request)
+        except (PlanRunnerUnavailable, PlanAlreadyRunning) as error:
+            return self._send_json({"ok": False, "error": str(error)}, code=409)
+        return self._send_json({"ok": True}, code=202)
+
     def _stop_teleop(self) -> None:
-        """Stop the live teleop driver; the arm holds its last pose."""
+        """
+        Stop the live teleop driver; the arm holds its last pose.
+        """
         self.bridge.stop_teleop()
         return self._send_json({"ok": True})
 

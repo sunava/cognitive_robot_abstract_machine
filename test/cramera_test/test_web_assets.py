@@ -55,7 +55,7 @@ def panel_scripts() -> List[Path]:
     return sorted(WEB_ROOT.glob("panels/**/*.js"))
 
 
-PAGES = ["index.html", "models.html"]
+PAGES = ["index.html", "models.html", "plan_builder.html"]
 """
 Every page the server ships; each must reference only files that exist.
 """
@@ -277,6 +277,18 @@ class TestJsUnits:
 
     def test_shape_specs(self):
         self.run_node("test_shape_specs.js")
+
+    def test_builder_scene(self):
+        self.run_node("test_builder_scene.js")
+
+    def test_runnable_plan(self):
+        self.run_node("test_runnable_plan.js")
+
+    def test_plan_constraints(self):
+        self.run_node("test_plan_constraints.js")
+
+    def test_plan_request(self):
+        self.run_node("test_plan_request.js")
 
 
 # %% replayed statecharts

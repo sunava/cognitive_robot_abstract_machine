@@ -13,6 +13,7 @@ from pathlib import Path
 
 from typing_extensions import TYPE_CHECKING
 
+from cramera.live.bridge import BRIDGE
 from cramera.live.http import DEFAULT_PORT
 from cramera.logging_setup import get_logger
 
@@ -26,6 +27,11 @@ logger = get_logger(__name__)
 VISUALIZATION_BACKEND_VARIABLE = "CORAPLEX_VISUALIZATION"
 """
 The coraplex environment variable selecting the visualization backend.
+"""
+
+CRAMERA_BACKEND = "cramera"
+"""
+The value of :data:`VISUALIZATION_BACKEND_VARIABLE` that selects the browser viewer.
 """
 
 
@@ -60,10 +66,16 @@ def main() -> None:
     if len(sys.argv) < 2:
         sys.exit("usage: cramera-live path/to/demo.py")
     demo = Path(sys.argv[1]).resolve()
-    os.environ.setdefault(VISUALIZATION_BACKEND_VARIABLE, "cramera")
+    os.environ.setdefault(VISUALIZATION_BACKEND_VARIABLE, CRAMERA_BACKEND)
     sys.path.insert(0, str(demo.parent))
     logger.info("running demo: %s", demo)
     runpy.run_path(str(demo), run_name="__main__")
+    if BRIDGE.live_server is None:
+        # A demonstration stops its own visualization when it is done, which shuts the
+        # viewer's server down. Waiting then leaves a process behind that serves nobody
+        # and holds nothing -- and the next scene collides with the pile.
+        logger.info("demo finished and stopped its viewer — nothing left to serve")
+        return
     logger.info("demo finished — bridge stays up for inspection (Ctrl-C to quit)")
     try:
         signal.pause()  # wait for Ctrl-C (SIGINT) instead of a sleep loop

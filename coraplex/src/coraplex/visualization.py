@@ -21,6 +21,7 @@ from semantic_digital_twin.world import World
 if TYPE_CHECKING:
     import rclpy.node
 
+    from coraplex.datastructures.dataclasses import Context
     from coraplex.plans.plan import Plan
     from cramera.live.visualization import LiveVisualization
 
@@ -250,7 +251,9 @@ class WorldVisualization:
                 backend=self.backend,
                 reason="rclpy is not importable; RViz needs a ROS 2 environment",
             )
-        if not rclpy.ok():  # compose with a context someone else (e.g. a demonstration) owns
+        if (
+            not rclpy.ok()
+        ):  # compose with a context someone else (e.g. a demonstration) owns
             rclpy.init()
         self.ros_node = rclpy.create_node("viz_marker")
         VizMarkerPublisher(_world=self.world, node=self.ros_node).with_tf_publisher()
@@ -280,6 +283,19 @@ class WorldVisualization:
             )
         if self.cramera_visualization is not None:
             plan.node_callbacks.append(self.cramera_visualization.plan_callback(plan))
+
+    def serve_plans(self, context: Context) -> None:
+        """
+        Let the viewer ask this scene to perform plans, so a plan costs a motion instead
+        of a whole world being built for it.
+
+        Does nothing for backends with no viewer to ask.
+
+        :param context: The scene's context, which every requested plan is resolved
+            against.
+        """
+        if self.cramera_visualization is not None:
+            self.cramera_visualization.serve_plans(context, self)
 
     def stop(self) -> None:
         """

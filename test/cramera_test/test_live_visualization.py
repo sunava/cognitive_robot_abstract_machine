@@ -382,3 +382,33 @@ class TestLiveVisualization:
         assert isinstance(callback, BridgePlanCallback)
         assert callback.bridge is bridge
         assert nodes_by_kind(bridge)["SequentialNode"] is not None
+
+
+# %% a scene that stays up between plans
+class TestServingPlans:
+    """
+    A scene serves plans so the builder can run one, change something and run again
+    without a new world being built for each.
+    """
+
+    def test_a_scene_that_serves_plans_offers_its_context_to_the_viewer(self):
+        from coraplex.datastructures.dataclasses import Context
+
+        from cramera.live.bridge import Bridge
+        from cramera.live.visualization import LiveVisualization
+
+        from .test_live_bridge import world_with
+
+        world = world_with()
+        context = Context(world=world, robot=None)
+        bridge = Bridge()
+
+        runner = LiveVisualization(world=world, bridge=bridge).serve_plans(context)
+
+        assert bridge.plan_runner is runner
+        assert runner.context is context
+
+    def test_a_scene_serves_no_plans_until_it_offers_to(self):
+        from cramera.live.bridge import Bridge
+
+        assert Bridge().plan_runner is None

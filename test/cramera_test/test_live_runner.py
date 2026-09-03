@@ -14,6 +14,7 @@ from semantic_digital_twin.world import World
 from typing_extensions import Any, Dict, List
 
 from cramera.live import runner, visualization
+from cramera.live.bridge import BRIDGE
 
 
 @dataclass
@@ -77,3 +78,35 @@ class TestMain:
         runner.main()
 
         assert os.environ[runner.VISUALIZATION_BACKEND_VARIABLE] == "rerun"
+
+
+# %% what the runner does once the demo is over
+class TestWaitingForInspection:
+    """
+    ``cramera-live`` keeps the process alive so the finished demo's world stays
+    browsable.
+
+    A demo that stopped its own viewer leaves nothing to browse, and waiting for it
+    would leave a process behind that serves nobody.
+    """
+
+    def run_demo(self, monkeypatch) -> List[bool]:
+        """
+        Run ``main()`` on a demo that does nothing.
+
+        :return: One entry per wait for Ctrl-C the runner performed.
+        """
+        waits: List[bool] = []
+        monkeypatch.setattr(sys, "argv", ["cramera-live", "/demos/demo.py"])
+        monkeypatch.setattr(runpy, "run_path", lambda path, run_name: None)
+        monkeypatch.setattr(signal, "pause", lambda: waits.append(True))
+        runner.main()
+        return waits
+
+    def test_a_still_served_world_is_kept_up(self, monkeypatch):
+        monkeypatch.setattr(BRIDGE, "live_server", object())
+        assert self.run_demo(monkeypatch) == [True]
+
+    def test_a_demo_that_stopped_its_own_viewer_ends_the_run(self, monkeypatch):
+        monkeypatch.setattr(BRIDGE, "live_server", None)
+        assert self.run_demo(monkeypatch) == []

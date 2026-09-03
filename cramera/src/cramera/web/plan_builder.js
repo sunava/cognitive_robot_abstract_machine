@@ -56,47 +56,16 @@
   const CTL_LABEL = { x: 'X', y: 'Y', z: 'Z', roll: 'R', pitch: 'P', yaw: 'Y' };
   let liveSurfaces = [];   // [{type, name}] fetched from the live world when the scene runs
 
-  // ---- constraints: natural language -> giskardpy goal (same rule-based mapping as the Plan view) ----
+  // ---- constraints: plain sentences, compiled by core/plan_constraints.js ----
   let CONSTRAINTS = [
     { id: 'c1', text: 'Milk must always stay upright' },
     { id: 'c2', text: 'Robot must look where it operates' },
     { id: 'c3', text: 'Keep the bowl above the table' },
   ];
   let conSeq = 4;
-  function objIn(text, node) {
-    const m = String(text).toLowerCase().match(/\b(milk|bowl|spoon|fork|knife|plate|cup|mug|tray|bottle|flask|vial|beaker|tube|rack|sample|cereal|box|jar|glass|can|whisk|bread)\b/);
-    if (m) return m[1];
-    if (node && node.object) return String(node.object).replace(/\.(stl|obj|dae)$/i, '');
-    return 'object';
-  }
-  function lenIn(text) {
-    const m = String(text).toLowerCase().match(/(\d+(?:\.\d+)?)\s*(mm|cm|centimet(?:er|re)s?|m\b|met(?:er|re)s?)/);
-    if (!m) return null;
-    const v = parseFloat(m[1]), u = m[2];
-    if (u.indexOf('mm') === 0) return v / 1000;
-    if (u.indexOf('c') === 0) return v / 100;
-    return v;
-  }
-  // node = the step's params (so a Transport step's `object` is the fallback body)
-  function compileConstraint(text, node) {
-    const t = String(text).toLowerCase();
-    const o = objIn(text, node);
-    const d = lenIn(t);
-    if (/upright|stand up|stay up|vertical|straight up|tip over|tips?\b|tilt|spill|level|flat|horizontal|steady|balanc|no spill|don.?t (tip|spill|tilt)/.test(t))
-      return { goal: 'VectorsAligned', params: { root_link: 'map', tip_link: o, tip_normal: [0, 0, 1], goal_normal: [0, 0, 1], threshold: 0.1 } };
-    if (/look|watch|gaze|point (at|the camera)|face the|observ|keep .*(in view|an eye)|focus on|keep sight|see the|where it (operat|work)/.test(t))
-      return { goal: 'PointingAt', params: { tip_link: 'head_camera', root_link: 'map', pointing_axis: [0, 0, 1], goal_point: '@operation_target', goal_point_body: o, threshold: 0.05 } };
-    if (/above|higher|over the|off the (table|ground|surface|bench)|keep .*(high|up high|elevated)|lift(ed)? (up|above)?/.test(t))
-      return { goal: 'HeightMonitor', params: { tip_link: o, lower_limit: (d != null ? d : 0.05), upper_limit: 2.0 } };
-    if (/below|under(neath)?|lower than|keep .*(low|down|close to the (table|surface|ground))/.test(t))
-      return { goal: 'HeightMonitor', params: { tip_link: o, lower_limit: 0.0, upper_limit: (d != null ? d : 0.1) } };
-    if (/away from|keep .*clear|clearance|distance|avoid|don.?t (hit|touch|collide|bump)|too close|stay .*away|far from|min(imum)? distance/.test(t))
-      return { goal: 'DistanceMonitor', params: { tip_link: o, lower_limit: (d != null ? d : 0.05), upper_limit: 5.0 } };
-    return { goal: null, params: {} };
-  }
   const CON_INFO_ROWS = [
     ['upright, level, flat, tilt, spill, steady, balanced', 'VectorsAligned', "keep the object's up-axis aligned with world up"],
-    ['look, watch, observe, "keep in view", gaze, face', 'PointingAt', 'aim the head camera at the object'],
+    ['look, watch, observe, "keep in view", gaze, face', 'PointingAt', 'look at the object before picking it up and at the target before placing it — the only one the generated plan performs'],
     ['above, higher, "off the table", "keep high", lift', 'HeightMonitor', 'keep the object at/above a height'],
     ['below, under, "lower than", "keep low"', 'HeightMonitor', 'keep the object below a height'],
     ['"away from", clearance, distance, avoid, "keep clear"', 'DistanceMonitor', 'keep a minimum distance / clearance'],
@@ -108,6 +77,7 @@
   let objSeq = 1, stepSeq = 1;
   let robotXY = { x: 1.5, y: 2.5 };   // robot spawn (draggable in the scene)
   let liveOn = false;                 // true while the scaffold scene is up (constraints can be pushed live)
+  const RUN_STATE = { RUNNING: 'running', FINISHED: 'finished', FAILED: 'failed' };   // what the scene reports a plan did
 
   // scene mapping: origin offset so the typical apartment area sits centred
   const SCALE = 40, ORIGIN_X = 2.5, ORIGIN_Y = 2.0;
@@ -285,7 +255,7 @@
   function renderConstraints() {
     const el = $('pb-cons'); if (!el) return;
     el.innerHTML = CONSTRAINTS.map(function (c) {
-      const comp = compileConstraint(c.text, null);
+      const comp = PlanConstraints.compile(c.text, null);
       const badge = comp.goal ? '<span class="pb-con-goal" title="translates to giskardpy ' + comp.goal + '">' + comp.goal + '</span>'
         : '<span class="pb-con-goal nomatch" title="no rule matched — this text will not translate to a goal">no match</span>';
       return '<div class="pb-con" draggable="true" data-cid="' + c.id + '">' +
@@ -308,14 +278,17 @@
     const s = steps.find(function (x) { return x.id === stepId; });
     const c = CONSTRAINTS.find(function (x) { return x.id === cid; });
     if (!s || !c) return;
-    const comp = compileConstraint(c.text, s.params);
+    const comp = PlanConstraints.compile(c.text, s);
     if (!comp.goal) { status('“' + c.text + '” — no rule matched, not attached', 'err'); return; }
     s.constraints = s.constraints || [];
     if (s.constraints.some(function (a) { return a.text === c.text; })) { status('already attached to this step', ''); return; }
-    s.constraints.push({ text: c.text, goal: comp.goal, params: comp.params });
+    const attached = { text: c.text, goal: comp.goal, params: comp.params, stepArgument: comp.stepArgument };
+    s.constraints.push(attached);
     renderSteps();
-    if (liveOn) pushConstraintLive(s, { text: c.text, goal: comp.goal, params: comp.params });
-    else status('attached “' + c.text + '” → ' + comp.goal + ' (start the live scene to apply it)', 'ok');
+    if (attached.stepArgument) status('attached “' + c.text + '” → ' + attached.stepArgument + ' on the generated step'
+      + (liveOn ? ' — start the scene again to run it' : ''), 'ok');
+    else if (liveOn) pushConstraintLive(s, attached);
+    else status('attached “' + c.text + '” → ' + comp.goal + ' — only the live scene applies this one', 'ok');
   }
   function detachConstraint(stepId, idx) {
     const s = steps.find(function (x) { return x.id === stepId; }); if (!s || !s.constraints) return;
@@ -343,7 +316,7 @@
       '<table class="ci-table"><thead><tr><th>Phrasing</th><th>giskardpy goal</th><th>Effect</th></tr></thead><tbody>' + rows + '</tbody></table>' +
       '<div class="ci-foot">A length in the text (<code>10 cm</code>, <code>0.1 m</code>) sets the thresholds. ' +
       'The object comes from the sentence or, on a Transport step, its transported object. ' +
-      'Applied to the running plan on the next motion activation.</div>';
+      'The look-at is generated onto the Transport step itself; every other goal needs the live scene, since no coraplex action enforces it yet.</div>';
   }
 
   // ---------- scene (top-down) ----------
@@ -423,6 +396,10 @@
     const b = BLOCKS[type]; if (!b) return;
     const params = Object.assign({}, b.params);
     if (type === 'transport' && !params.object && objects.length) params.object = objects[0].mesh;
+    if (type === 'transport') {
+      params.surfaceType = BuilderScene.surfaceTypeFor(params.surfaceType, offeredSurfaceTypes());
+      params.targetMode = BuilderScene.targetModeFor(liveSurfaces, SEMANTIC_SURFACES);
+    }
     steps.push({ id: 's' + (stepSeq++), type: type, params: params });
     renderSteps();
   }
@@ -487,11 +464,21 @@
     }).join('') + '</select>';
   }
   function modeSel(s) { return selPairs(s, 'targetMode', [['semantic', 'semantic location'], ['pose', 'exact pose (XYZ)']]); }
+  // the surfaces a step can be asked to place on: what the running scene holds, or
+  // everything the builder knows while no scene has said
+  function offeredSurfaceTypes() {
+    return BuilderScene.surfaceTypesToOffer(liveSurfaces, SEMANTIC_TYPES);
+  }
   // semantic type dropdown, grouped into "on a surface" / "in a container"
   function semanticTypeSel(s) {
+    const offered = offeredSurfaceTypes();
+    const chosen = BuilderScene.surfaceTypeFor(s.params.surfaceType, offered);
+    s.params.surfaceType = chosen;   // a surface the scene has not got can only fail
     function grp(label, types) {
-      return '<optgroup label="' + label + '">' + types.map(function (t) {
-        return '<option value="' + t + '"' + ((s.params.surfaceType || '') === t ? ' selected' : '') + '>' + prep(t) + ' ' + t + '</option>';
+      const shown = types.filter(function (t) { return offered.indexOf(t) >= 0; });
+      if (!shown.length) return '';
+      return '<optgroup label="' + label + '">' + shown.map(function (t) {
+        return '<option value="' + t + '"' + (chosen === t ? ' selected' : '') + '>' + prep(t) + ' ' + t + '</option>';
       }).join('') + '</optgroup>';
     }
     return '<select class="pb-sel" data-sid="' + s.id + '" data-k="surfaceType">' +
@@ -576,9 +563,6 @@
     if (typeof v === 'string') return jsonStr(v);
     return String(v);
   }
-  function pyKwargs(params) {
-    return Object.keys(params).map(function (k) { return k + '=' + jsonPy(params[k]); }).join(', ');
-  }
   // --- "place on a surface": symbolic target resolution via semantic_digital_twin ---
   function surfaceSteps(useSteps) {
     return useSteps.filter(function (s) { return s.type === 'transport' && s.params.targetMode === 'semantic'; });
@@ -621,8 +605,9 @@
         L.push(indent + '    )');
         L.push(indent + '_surface_' + id + ' = _surfaces_' + id + '[0]');
       }
-      L.push(indent + '_pts_' + id + ' = _surface_' + id + '.sample_points_from_surface(');
-      L.push(indent + '    body_to_sample_for=' + body(mesh) + ')');
+      // the sampler sizes the free spot from an annotation's root body, and a placed
+      // mesh carries no annotation, so the spot is sized generically
+      L.push(indent + '_pts_' + id + ' = _surface_' + id + '.sample_points_from_surface()');
       L.push(indent + 'if not _pts_' + id + ':');
       L.push(indent + '    raise RuntimeError(');
       L.push(indent + '        "could not sample a free place pose ' + prep(T) + ' ' + T + ' for ' + where + ' "');
@@ -653,24 +638,24 @@
     if (!types.length) return null;
     return 'from semantic_digital_twin.semantic_annotations.semantic_annotations import ' + types.sort().join(', ');
   }
-  // the constraints-metadata block (comment + CONSTRAINTS list), shared by both output styles
+  // every constraint attached anywhere in the plan
+  function attachedConstraints(useSteps) {
+    const all = [];
+    useSteps.forEach(function (s) { (s.constraints || []).forEach(function (a) { all.push(a); }); });
+    return all;
+  }
+  // the constraints the generated plan cannot enforce on its own, listed as metadata so
+  // the demo still records what was asked for and the live bridge can pick them up
   function constraintBlock(useSteps) {
-    const withCon = useSteps.filter(function (s) { return (s.constraints || []).length; });
-    if (!withCon.length) return [];
+    const liveOnly = attachedConstraints(useSteps).filter(function (a) { return !a.stepArgument; });
+    if (!liveOnly.length) return [];
     const L = [];
-    L.push('# --- constraints (natural language -> giskardpy goals) ---');
-    L.push('# Attached in the Plan Builder. When this demo runs under `cramera-live`, the');
-    L.push('# viewer applies them to the motion statechart on the next activation of the');
-    L.push('# step (via the live bridge /constraint endpoint). Listed here as plan metadata.');
-    useSteps.forEach(function (s, i) {
-      (s.constraints || []).forEach(function (a) {
-        L.push('#   step ' + (i + 1) + ' ' + (BLOCKS[s.type] ? BLOCKS[s.type].name : s.type) + ': "' + a.text + '"');
-        L.push('#     -> ' + a.goal + '(' + pyKwargs(a.params) + ')');
-      });
-    });
+    L.push('# --- constraints the generated plan does not enforce ---');
+    L.push('# These have no coraplex action behind them yet, so they only apply when this');
+    L.push('# demo runs under `cramera-live` and the viewer pushes them to the bridge.');
     L.push('CONSTRAINTS = [');
     useSteps.forEach(function (s, i) {
-      (s.constraints || []).forEach(function (a) {
+      (s.constraints || []).filter(function (a) { return !a.stepArgument; }).forEach(function (a) {
         L.push('    {"step": ' + (i + 1) + ', "text": ' + jsonStr(a.text) +
           ', "goal": ' + jsonStr(a.goal) + ', "params": ' + jsonPy(a.params) + '},');
       });
@@ -681,7 +666,7 @@
   }
   function pose(p) { return 'Pose.from_xyz_rpy(' + py(p.x) + ', ' + py(p.y) + ', ' + py(p.z) + ', yaw=' + py(p.yaw) + ', reference_frame=world.root)'; }
   function body(mesh) { return 'world.get_body_by_name("' + mesh + '")'; }
-  function generate(stepsOverride) {
+  function generate(stepsOverride, servePlans) {
     const useSteps = stepsOverride || steps;
     const added = effectiveObjects(useSteps);
     const env = ($('pb-env') && $('pb-env').value) || 'apartment.urdf';
@@ -766,6 +751,13 @@
     L.push('');
     surfaceResolveLines(useSteps, '').forEach(function (ln) { L.push(ln); });
     if (surfaceSteps(useSteps).length) L.push('');
+    if (servePlans) {
+      // the scene stays up and performs whatever the builder asks it for, so a plan
+      // costs a motion instead of a whole world being built again
+      L.push('visualization.serve_plans(context)');
+      L.push('');
+      return L.join('\n');
+    }
     L.push('plan = sequential([');
     useSteps.forEach(function (s) { L.push('    ' + stepCode(s) + ','); });
     L.push('], context=context).plan');
@@ -784,7 +776,9 @@
     if (s.type === 'navigate') return 'NavigateAction(' + pose(p) + ')';
     if (s.type === 'transport') {
       const target = (p.targetMode === 'semantic') ? ('_target_' + s.id) : pose(p);
-      return 'TransportAction(' + body(p.object || 'object') + ', ' + target + ', Arms.' + p.arm + ')';
+      const given = [body(p.object || 'object'), target, 'Arms.' + p.arm]
+        .concat(PlanConstraints.stepArguments(s.constraints || []));
+      return 'TransportAction(' + given.join(', ') + ')';
     }
     return 'None';
   }
@@ -988,6 +982,7 @@
     el.innerHTML = '<span class="cr-busy"><span class="cr-spinner"></span>' + esc(_busyBase) + detail + ' · ' + s + 's</span>';
   }
   function endBusy() { if (_busyTimer) { clearInterval(_busyTimer); _busyTimer = 0; } }
+  function busyStarting() { return _busyTimer !== 0; }
   // the last meaningful line of the demo's log, tidied, so the wait shows where it is
   function lastLogLine(text) {
     if (!text) return '';
@@ -1051,7 +1046,7 @@
   }
   function hideScaffoldLog() { const el = $('pb-scaffold-log'); if (el) { el.style.display = 'none'; el.textContent = ''; } }
   function startLive() {
-    const code = generate([{ type: 'park_arms', params: { arm: 'BOTH' } }]);   // scaffold: world + objects, idle
+    const code = generate([], true);   // scaffold: world + objects, serving whatever plan is asked for
     beginBusy('Starting scene — parsing meshes'); hideScaffoldLog();
     fetch('/api/plan/scaffold', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: code }) })
       .then(function (r) { return r.json(); })
@@ -1060,14 +1055,38 @@
   }
   // run the built plan itself (not the idle scaffold) and watch the robot perform it:
   // the full generated demo ends in `plan.perform()`, launched through the same endpoint
+  // Ask the scene that is already up to perform the plan. Nothing is generated, written
+  // or started: the world, the robot and the objects where they were dragged all stay as
+  // they are, so the robot moves at once and can be asked again straight afterwards.
   function runPlan() {
-    if (!steps.length) { liveStatus('add plan steps first', 'err'); return; }
-    const code = generateSelected();   // full demo (matches the chosen output style), ends by performing the plan
-    beginBusy('Running plan — parsing meshes'); hideScaffoldLog();
-    fetch('/api/plan/scaffold', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: code }) })
+    const problems = RunnablePlan.problems(steps, objects.map(function (o) { return o.mesh; }));
+    if (problems.length) { liveStatus(RunnablePlan.describe(problems), 'err'); return; }
+    if (!liveOn) { liveStatus('start the live scene first — the plan runs inside it', 'err'); return; }
+    liveStatus('● running — watch the robot in the 3D view', 'ok');
+    fetch(bridgeUrl() + '/run', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(PlanRequest.of(steps)) })
       .then(function (r) { return r.json(); })
-      .then(function (j) { if (!j.ok) { liveStatus('failed: ' + (j.error || '?'), 'err'); return; } pollLive(0, '● running — watch the robot in the 3D view'); monitorRun(); })
-      .catch(function (e) { liveStatus('failed: ' + e, 'err'); });
+      .then(function (j) {
+        if (!j.ok) { liveStatus('cannot run: ' + (j.error || '?'), 'err'); return; }
+        watchRun();
+      })
+      .catch(function (e) { liveStatus('cannot run: ' + e, 'err'); });
+  }
+  // follow the run until the scene reports what became of it
+  function watchRun() {
+    fetch(bridgeUrl() + '/run').then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (outcome) {
+        if (!outcome) { setTimeout(watchRun, 1000); return; }
+        if (outcome.state === RUN_STATE.RUNNING) { setTimeout(watchRun, 1000); return; }
+        if (outcome.state === RUN_STATE.FAILED) {
+          liveStatus('the plan could not be performed: ' + outcome.error, 'err');
+          toast('Plan failed — ' + outcome.error, 'err');
+          return;
+        }
+        liveStatus('● live — plan performed; drag objects and run again', 'ok');
+        toast('Plan performed', 'ok');
+      })
+      .catch(function () { setTimeout(watchRun, 1000); });
   }
   // ---- run log: surface the demo subprocess's stdout/stderr (tracebacks) ----
   function fetchScaffoldLog() {
@@ -1080,22 +1099,49 @@
     el.scrollTop = el.scrollHeight;
     if (el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
+  // A performed plan takes its scene with it: the generated demonstration stops its own
+  // visualization once it is done, so the bridge is gone and nothing in the 3D view can
+  // be dragged or captured any more. Offer the one click that builds the start scene
+  // again, with every object back at its builder coordinates and free to move.
+  function offerStartSceneAgain() {
+    liveOn = false; liveSurfaces = []; endBusy();
+    const el = $('pb-live-status');
+    el.className = 'pb-live-status';
+    el.textContent = 'plan finished — the live scene ended with it ';
+    const restore = document.createElement('button');
+    restore.className = 'pb-btn sm';
+    restore.textContent = '⟲ Restore start scene';
+    restore.title = 'build the scene again from your objects, so they can be dragged and captured';
+    restore.addEventListener('click', restoreStartScene);
+    el.appendChild(restore);
+  }
+  // The viewer gives up on a bridge that stopped answering, so blank it first: pollLive
+  // points it back at the scene once the new one is up.
+  function restoreStartScene() {
+    const frame = $('pb-3d');
+    if (frame) frame.src = 'about:blank';
+    startLive();
+  }
   let _runMonitor = 0;
-  // poll the log while a demo runs; if the process exits non-zero, show the traceback
+  // poll the log while a demo runs; a crash shows its traceback, a finished plan offers
+  // the start scene again
   function monitorRun() {
     const my = ++_runMonitor;
     (function tick() {
       if (my !== _runMonitor) return;                      // superseded by a newer run/stop
       fetchScaffoldLog().then(function (d) {
         if (my !== _runMonitor || !d) { if (my === _runMonitor) setTimeout(tick, 2500); return; }
-        if (d.returncode !== null && d.returncode !== 0) {   // the demo crashed
+        const outcome = BuilderScene.outcomeOf(d.returncode);
+        if (outcome === BuilderScene.RUN.RUNNING) { setTimeout(tick, 2500); return; }
+        if (outcome === BuilderScene.RUN.CRASHED) {
           liveOn = false;
           liveStatus('demo exited (code ' + d.returncode + ') — see the run log below', 'err');
           toast('Demo crashed (exit ' + d.returncode + ') — run log opened', 'err');
           showScaffoldLog(d.log);
           return;                                            // stop monitoring
         }
-        setTimeout(tick, 2500);
+        offerStartSceneAgain();
+        toast('Plan finished — restore the start scene to keep building', 'ok');
       });
     })();
   }
@@ -1104,12 +1150,15 @@
     fetch(bridgeUrl() + '/captured_objects').then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (d) { liveOn = true; liveStatus(okMsg || '● live — drag objects in the 3D view, then capture', 'ok'); const f=$('pb-3d'); if (f && f.src.indexOf('index.html')<0) f.src='index.html?scene'; fetchSurfaces(); return; }
-        // bridge not up yet — but if the demo process already died, show why now
+        // bridge not up yet — but if the demo process already ended, say so now
         fetchScaffoldLog().then(function (lg) {
-          if (lg && lg.returncode !== null && lg.returncode !== 0) {
+          const outcome = BuilderScene.outcomeOf(lg && lg.returncode);
+          if (outcome === BuilderScene.RUN.CRASHED) {
             liveStatus('demo failed to start (exit ' + lg.returncode + ') — see the run log below', 'err');
             toast('Demo failed to start — run log opened', 'err'); showScaffoldLog(lg.log); return;
           }
+          // a plan short enough to be over before its scene was ever reached
+          if (outcome === BuilderScene.RUN.FINISHED) { offerStartSceneAgain(); return; }
           if (n < 40) { busyDetail(lastLogLine(lg && lg.log)); setTimeout(function () { pollLive(n + 1, okMsg); }, 3000); }
           else { liveStatus('scene did not come up — see the run log below', 'err'); if (lg) showScaffoldLog(lg.log); }
         });
@@ -1124,6 +1173,22 @@
         const changed = JSON.stringify(next) !== JSON.stringify(liveSurfaces);
         liveSurfaces = next;
         if (changed && steps.some(function (s) { return s.type === 'transport' && s.params.targetMode === 'semantic'; })) renderSteps();
+      }).catch(function () {});
+  }
+  // A scene may already be running when this page opens: one started before it, or one
+  // this page asked for in an earlier session. Nothing else points the 3D view at it —
+  // pollLive only runs for a scene this page started — so it would stay blank next to a
+  // perfectly healthy world. Keep looking, so one started elsewhere still turns up.
+  function adoptRunningScene() {
+    if (liveOn || busyStarting()) return;   // a scene we asked for reports itself through pollLive
+    fetch(bridgeUrl() + '/captured_objects').then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || liveOn || busyStarting()) return;
+        liveOn = true;
+        const frame = $('pb-3d');
+        if (frame && frame.src.indexOf('index.html') < 0) frame.src = 'index.html?scene';
+        liveStatus('● live — drag objects in the 3D view, then capture', 'ok');
+        fetchSurfaces();
       }).catch(function () {});
   }
   // reload ONLY the embedded 3D view (it sometimes loads partially) without touching the
@@ -1232,4 +1297,6 @@
   $('pb-download').addEventListener('click', download);
   $('pb-save').addEventListener('click', save);
   window.addEventListener('resize', renderScene);
+  adoptRunningScene();
+  setInterval(adoptRunningScene, BuilderScene.WATCH_INTERVAL_MS);
 })();

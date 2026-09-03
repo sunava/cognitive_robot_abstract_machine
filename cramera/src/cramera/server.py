@@ -49,6 +49,7 @@ from urllib.parse import parse_qs, urlparse
 
 from cramera import paths
 from cramera.live.frame_range import FrameRange, InvalidFrameRange
+from cramera.live.http import DEFAULT_PORT as BRIDGE_PORT, port_released
 from cramera.live.recording_storage import (
     NoSavedRecording,
     SceneDestination,
@@ -330,7 +331,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             candidate = parent / "coraplex" / "demos"
             if candidate.is_dir():
                 return candidate / "coraplex_generated"
-        return here.parent / "generated_demos"  # fallback: never resolves meshes, but writes
+        return (
+            here.parent / "generated_demos"
+        )  # fallback: never resolves meshes, but writes
 
     _scaffold_proc = None  # class-level: the running Plan-Builder scaffold demo, if any
     _scaffold_log_path = None  # where that process's stdout+stderr are captured
@@ -354,8 +357,22 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             out_dir.mkdir(parents=True, exist_ok=True)
             path = out_dir / "_builder_scaffold.py"
             path.write_text(code)
-            repo = out_dir.parent.parent.parent  # coraplex_generated -> demos -> coraplex -> repo
+            repo = (
+                out_dir.parent.parent.parent
+            )  # coraplex_generated -> demos -> coraplex -> repo
             self._stop_scaffold(reply=False)
+            if not port_released():
+                # Not ours to stop: a scene left over from an earlier server, or one
+                # started by hand. Starting anyway means a child that dies on
+                # "Address already in use" with the traceback as its only explanation.
+                return self._send_json(
+                    {
+                        "ok": False,
+                        "error": "another scene already serves the viewer on port %d — "
+                        "stop it before starting one here" % BRIDGE_PORT,
+                    },
+                    409,
+                )
             env = dict(os.environ, CORAPLEX_VISUALIZATION="cramera")
             # capture stdout+stderr so the Plan Builder can show a traceback if the demo
             # fails, instead of the error vanishing into a detached process
@@ -368,8 +385,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             # module behind the `cramera-live` console script.
             type(self)._scaffold_proc = subprocess.Popen(
                 [sys.executable, "-m", "cramera.live.runner", str(path)],
-                cwd=str(repo), env=env,
-                stdout=log_file, stderr=subprocess.STDOUT,
+                cwd=str(repo),
+                env=env,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
                 start_new_session=True,  # own process group, so stop can kill children too
             )
         except (OSError, ValueError) as error:
@@ -394,12 +413,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 text = Path(log_path).read_text(errors="replace")[-8000:]
             except OSError:
                 text = ""
-        self._send_json({
-            "ok": True,
-            "alive": proc is not None and returncode is None,
-            "returncode": returncode,
-            "log": text,
-        })
+        self._send_json(
+            {
+                "ok": True,
+                "alive": proc is not None and returncode is None,
+                "returncode": returncode,
+                "log": text,
+            }
+        )
 
     def _stop_scaffold(self, reply: bool = True) -> None:
         """

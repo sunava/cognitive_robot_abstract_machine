@@ -157,6 +157,48 @@ def test_cramera_backend_serves_the_world_and_publishes_plans(monkeypatch) -> No
     assert visualization.cramera_visualization is None
 
 
+def test_the_cramera_backend_lets_the_viewer_ask_for_plans(monkeypatch) -> None:
+    """
+    A scene that serves plans stays up between them, so the viewer can run one, change
+    something and run again without a new world being built for each.
+    """
+    cramera_visualization = pytest.importorskip("cramera.live.visualization")
+    from coraplex.datastructures.dataclasses import Context
+
+    monkeypatch.setattr(
+        cramera_visualization, "serve", lambda bridge, port: _ShutdownRecorder()
+    )
+    world = World()
+    visualization = WorldVisualization(
+        world=world, backend=VisualizationBackend.CRAMERA
+    ).start()
+    context = Context(world=world, robot=None)
+
+    visualization.serve_plans(context)
+
+    runner = visualization.cramera_visualization.bridge.plan_runner
+    assert runner.context is context
+    assert runner.visualization is visualization
+    visualization.stop()
+
+
+def test_a_backend_with_no_viewer_has_nobody_to_ask_for_plans() -> None:
+    """
+    Serving plans is what the viewer asks of a scene; a backend without one does nothing
+    rather than failing.
+    """
+    from coraplex.datastructures.dataclasses import Context
+
+    world = World()
+    visualization = WorldVisualization(
+        world=world, backend=VisualizationBackend.NONE
+    ).start()
+
+    visualization.serve_plans(Context(world=world, robot=None))
+
+    assert visualization.cramera_visualization is None
+
+
 class _ShutdownRecorder:
     """
     Stands in for the bridge's HTTP server during the cramera backend test.

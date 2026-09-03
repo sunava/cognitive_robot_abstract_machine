@@ -22,7 +22,7 @@ from coraplex.plans.plan_node import PlanNode
 from coraplex.robot_plans.actions.base import ActionDescription
 from coraplex.robot_plans.actions.composite.facing import FaceAtAction
 from coraplex.robot_plans.actions.core.container import OpenAction
-from coraplex.robot_plans.actions.core.navigation import NavigateAction
+from coraplex.robot_plans.actions.core.navigation import LookAtAction, NavigateAction
 from coraplex.robot_plans.actions.core.pick_up import PickUpAction
 from coraplex.robot_plans.actions.core.placing import PlaceAction
 from coraplex.robot_plans.actions.core.robot_body import ParkArmsAction, MoveTorsoAction
@@ -61,6 +61,12 @@ class TransportAction(ActionDescription):
     Grasp Description that should be used for picking up the object.
     """
 
+    look_at_operation_site: bool = ActionConfig.transport_look_at_operation_site
+    """
+    Whether the robot looks at the object before picking it up and at the target
+    location before placing it, each time from where it has already navigated to.
+    """
+
     def inside_container(self) -> List[Body]:
         bodies = []
         for body in self.world.bodies:
@@ -69,6 +75,16 @@ class TransportAction(ActionDescription):
             if InsideOf(self.object_designator, body).compute_containment_ratio() > 0.9:
                 bodies.append(body)
         return bodies
+
+    def _make_look_at_actions(self, pose: Pose) -> List[LookAtAction]:
+        """
+        :param pose: The place the robot is about to work at.
+        :return: The action aiming the robot's camera there, empty if this transport
+            does not look at what it operates on.
+        """
+        if not self.look_at_operation_site:
+            return []
+        return [LookAtAction(pose)]
 
     def _make_open_container_actions(self, container: Body) -> List:
         """
@@ -128,6 +144,7 @@ class TransportAction(ActionDescription):
                     ),
                     keep_joint_states=True,
                 ),
+                *self._make_look_at_actions(self.object_designator.global_pose),
                 a(PickUpAction)(
                     object_designator=self.object_designator,
                     arm=self.arm,
@@ -136,6 +153,7 @@ class TransportAction(ActionDescription):
                 ParkArmsAction(Arms.BOTH),
                 MoveTorsoAction(TorsoState.HIGH),
                 self._make_navigate_action_for_placing(self.grasp_description),
+                *self._make_look_at_actions(self.target_location),
                 a(PlaceAction)(
                     object_designator=self.object_designator,
                     target_location=self.target_location,

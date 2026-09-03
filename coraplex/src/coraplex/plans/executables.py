@@ -522,11 +522,17 @@ class UnderspecifiedExecutable(Executable):
     def execute(self) -> None:
         from coraplex.plans.failures import PlanFailure, EmptyUnderspecified
 
+        last_failure: Optional[PlanFailure] = None
         while self.node.advance():
             try:
                 self.node.current_candidate.parse().execute()
                 self.node.stop_grounding()
                 return
-            except PlanFailure:
+            except PlanFailure as failure:
+                # kept so the plan can say why the candidates ran out, instead of only
+                # that they did
+                last_failure = failure
                 continue
-        raise EmptyUnderspecified()
+        raise EmptyUnderspecified(
+            action=self.node.underspecified_action.type_, last_failure=last_failure
+        )

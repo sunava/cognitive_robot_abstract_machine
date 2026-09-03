@@ -57,6 +57,7 @@ from semantic_digital_twin.world_description.connections import (
 
 from cramera.knowledge.enums import PlanNodeGroup
 from cramera.live.chart_observer import ChartObserver
+from cramera.live.placement_surface import PLACEMENT_SURFACE_TYPES
 from cramera.live.chart_structure import (
     ChartEdgeEntry,
     ChartNodeEntry,
@@ -83,6 +84,8 @@ from cramera.robot_parts import RobotPartAnnotation
 
 if TYPE_CHECKING:
     from coraplex.plans.plan import Plan
+    from cramera.live.plan_runner import PlanRunner
+    from cramera.live.requested_plan import RequestedPlan
     from coraplex.plans.plan_node import MotionNode, PlanNode
     from giskardpy.motion_statechart.motion_statechart import MotionStatechart
     from semantic_digital_twin.world import World
@@ -622,6 +625,14 @@ class Bridge:
     How long a world binding stays fresh before bodies are re-discovered.
     """
 
+    IDLE_AFTER_SECONDS: ClassVar[float] = 0.5
+    """
+    How long after the last motion tick the scene counts as standing still.
+
+    Long enough to bridge the gap between two ticks of a running plan, short enough that
+    a scene between plans answers a drag at once.
+    """
+
     DEFAULT_OBJECT_SIZE: ClassVar[Tuple[float, float, float]] = (0.06, 0.06, 0.12)
     """
     Fallback size for an object whose shapes carry no scale, in metres.
@@ -721,6 +732,11 @@ class Bridge:
     """
     Latest drag target per object mesh key (``[x, y, z, qx, qy, qz, qw]``), recorded on
     every move whether or not the sim applied it, for the Plan Builder's pose capture.
+    """
+
+    plan_runner: Optional["PlanRunner"] = None
+    """
+    What performs a plan the viewer asks for, once a scene offered to.
     """
 
     _constraints: List["AttachConstraintRequest"] = field(default_factory=list)
@@ -912,6 +928,15 @@ class Bridge:
         )
         self.snapshot_plan()
 
+    def is_idle(self) -> bool:
+        """
+        Whether no plan is being performed, so nothing is moving the world.
+
+        A drag can then be applied at once, and a body may be re-connected, neither of
+        which is safe while a compiled motion is being solved.
+        """
+        return time.monotonic() - self._last_tick_time > self.IDLE_AFTER_SECONDS
+
     def begin_plan(self, plan: Plan) -> None:
         """
         Record the plan that started performing and publish its tree.
@@ -924,6 +949,8 @@ class Bridge:
         self._plan = plan
         self._motion_nodes.clear()
         self._ever_running.clear()
+        self.forget_viewer_moves()
+        self._chart_observer.forget()
         self.snapshot_plan()
 
     def observe_model_change(self) -> None:
@@ -1200,6 +1227,45 @@ class Bridge:
                 ),
             ).to_payload()
 
+    # %% viewer -> plans the running scene performs
+    def register_plan_runner(self, runner: "PlanRunner") -> None:
+        """
+        Offer the running scene's ability to perform plans to the viewer.
+
+        :param runner: What performs a plan the viewer asks for.
+        """
+        self.plan_runner = runner
+        logger.info("plans asked for by the viewer are performed in this scene")
+
+    def queue_plan(self, request: "RequestedPlan") -> None:
+        """
+        Perform a plan the viewer asked for (called on an HTTP thread).
+
+        The runner owns the world writes, on its own thread, exactly as the motion tick
+        does for queued moves.
+
+        :param request: The plan to perform.
+        :raises cramera.live.plan_runner.PlanRunnerUnavailable: If no scene serves plans.
+        :raises cramera.live.plan_runner.PlanAlreadyRunning: If one is still going.
+        """
+        from cramera.live.plan_runner import PlanRunnerUnavailable
+
+        if self.plan_runner is None:
+            raise PlanRunnerUnavailable(
+                "this scene does not perform plans -- start one from the Plan Builder"
+            )
+        self.plan_runner.submit(request)
+
+    def get_run(self) -> Dict[str, Any]:
+        """
+        What became of the plan this scene was last asked to perform.
+        """
+        from cramera.live.plan_runner import PlanRun
+
+        if self.plan_runner is None:
+            return PlanRun().payload()
+        return self.plan_runner.run.payload()
+
     # %% viewer -> questions about the running demo
     def register_query_source(self, source: LiveQuerySource) -> None:
         """
@@ -1377,7 +1443,7 @@ class Bridge:
             self._teleop = TeleopController(
                 self.world,
                 robot,
-                is_busy=lambda: time.monotonic() - self._last_tick_time < 0.5,
+                is_busy=lambda: not self.is_idle(),
             )
         self._teleop.submit(request)
 
@@ -1391,7 +1457,8 @@ class Bridge:
         """
         Queue an object move from the viewer (called on an HTTP thread).
 
-        :param request: The move to apply on the next simulation tick.
+        :param request: The move to apply — at once while the scene stands still, on the
+            next simulation tick while a plan is running.
         """
         with self._moves_lock:
             self._moves.append(request)
@@ -1400,6 +1467,22 @@ class Bridge:
             # to snap an object's pose into a start point or an action target.
             quat = request.quaternion or [0.0, 0.0, 0.0, 1.0]
             self._last_moves[request.object_key] = list(request.position) + list(quat)
+        if self.world is not None and self.is_idle():
+            # Between plans no tick is coming, so the drain has to happen here or the
+            # drag would only ever show in the idle overlay and never in the world. With
+            # no world yet the move waits, rather than being drained into nothing.
+            self.apply_moves()
+
+    def forget_viewer_moves(self) -> None:
+        """
+        Drop the drag targets the viewer sent, because the world has moved on.
+
+        The idle overlay in :meth:`get_state` replays them whenever no motion is
+        ticking, so a plan that has since carried an object elsewhere would see it snap
+        back to where it was last dragged.
+        """
+        with self._moves_lock:
+            self._last_moves.clear()
 
     def get_captured_objects(self) -> Dict[str, Any]:
         """
@@ -1423,28 +1506,7 @@ class Bridge:
         out: List[Dict[str, str]] = []
         if self.world is None:
             return {"surfaces": out}
-        try:
-            from semantic_digital_twin.semantic_annotations.semantic_annotations import (
-                Cabinet,
-                CounterTop,
-                Cupboard,
-                Dishwasher,
-                Drawer,
-                Dresser,
-                Floor,
-                Fridge,
-                ShelfLayer,
-                Sofa,
-                Table,
-            )
-        except Exception:  # semantic annotations unavailable — return nothing
-            return {"surfaces": out}
-        # supporting surfaces ("on") + case containers ("in"): both expose the same
-        # sample_points_from_surface via HasSupportingSurface / HasCaseAsRootBody.
-        for surface_type in (
-            CounterTop, Table, ShelfLayer, Floor, Sofa,
-            Drawer, Fridge, Cabinet, Cupboard, Dresser, Dishwasher,
-        ):
+        for surface_type in PLACEMENT_SURFACE_TYPES:
             try:
                 annotations = self.world.get_semantic_annotations_by_type(surface_type)
             except Exception:
@@ -1473,9 +1535,17 @@ class Bridge:
             "  giskard node: %s(%s)\n"
             "  plan node   : %s (%s)\n"
             "  status      : queued — the motion statechart applies it on the next tick\n%s\n"
-            % (line, request.text, request.goal_type, params,
-               request.node_label, request.target_node_id, line),
-            file=sys.stderr, flush=True,
+            % (
+                line,
+                request.text,
+                request.goal_type,
+                params,
+                request.node_label,
+                request.target_node_id,
+                line,
+            ),
+            file=sys.stderr,
+            flush=True,
         )
         with self._constraints_lock:
             self._constraints.append(request)
@@ -1526,11 +1596,14 @@ class Bridge:
                 return body
         logger.warning(
             "constraint link %r not found; known objects=%s",
-            name, sorted(self._bodies)[:12],
+            name,
+            sorted(self._bodies)[:12],
         )
         return None
 
-    def _build_giskard_node(self, constraint: "AttachConstraintRequest") -> Optional[Any]:
+    def _build_giskard_node(
+        self, constraint: "AttachConstraintRequest"
+    ) -> Optional[Any]:
         """
         Turn a compiled constraint into a real giskardpy motion-statechart node,
         resolving its link names to live :class:`Body` objects.
@@ -1555,7 +1628,9 @@ class Bridge:
         if root is None or tip is None:
             logger.warning(
                 "constraint %r: could not resolve links root=%r tip=%r in the live world",
-                constraint.text, params.get("root_link"), params.get("tip_link"),
+                constraint.text,
+                params.get("root_link"),
+                params.get("tip_link"),
             )
             return None
 
@@ -1564,7 +1639,8 @@ class Bridge:
 
         if constraint.goal_type == "VectorsAligned":
             return VectorsAligned(
-                root_link=root, tip_link=tip,
+                root_link=root,
+                tip_link=tip,
                 goal_normal=vec(params.get("goal_normal", [0, 0, 1])),
                 tip_normal=vec(params.get("tip_normal", [0, 0, 1])),
                 threshold=float(params.get("threshold", 0.1)),
@@ -1585,16 +1661,22 @@ class Bridge:
                     return None
                 goal_point = Point3(0, 0, 0, reference_frame=target)
             return PointingAt(
-                root_link=root, tip_link=tip,
+                root_link=root,
+                tip_link=tip,
                 goal_point=goal_point,
                 pointing_axis=vec(params.get("pointing_axis", [0, 0, 1])),
                 threshold=float(params.get("threshold", 0.05)),
             )
         if constraint.goal_type in ("HeightMonitor", "DistanceMonitor"):
             # reference is the world root; the monitored point is the object's origin.
-            cls = HeightMonitor if constraint.goal_type == "HeightMonitor" else DistanceMonitor
+            cls = (
+                HeightMonitor
+                if constraint.goal_type == "HeightMonitor"
+                else DistanceMonitor
+            )
             return cls(
-                root_link=root, tip_link=tip,
+                root_link=root,
+                tip_link=tip,
                 reference_point=Point3(0, 0, 0, reference_frame=root),
                 tip_point=Point3(0, 0, 0, reference_frame=tip),
                 lower_limit=float(params.get("lower_limit", 0.0)),
@@ -1602,12 +1684,15 @@ class Bridge:
             )
         logger.info(
             "constraint %r: goal type %s not yet wired for live injection",
-            constraint.text, constraint.goal_type,
+            constraint.text,
+            constraint.goal_type,
         )
         return None
 
     def _inject_constraint(
-        self, constraint: "AttachConstraintRequest", chart: Optional["MotionStatechart"] = None
+        self,
+        constraint: "AttachConstraintRequest",
+        chart: Optional["MotionStatechart"] = None,
     ) -> None:
         """
         Resolve a plan-view constraint to a real giskardpy node and attach it to the
@@ -1683,10 +1768,12 @@ class Bridge:
             % (
                 line,
                 constraint.text,
-                constraint.goal_type, params,
+                constraint.goal_type,
+                params,
                 root is not None and str(root.name),
                 tip is not None and str(tip.name),
-                constraint.node_label, constraint.target_node_id,
+                constraint.node_label,
+                constraint.target_node_id,
                 chart_title or "(no motion running right now)",
                 len(self._resolved_constraints),
                 line,
@@ -1712,6 +1799,31 @@ class Bridge:
                 continue
             self._apply_move(move, body)
 
+    def _relocate_fixed(
+        self, connection: Any, parent_T_object: HomogeneousTransformationMatrix
+    ) -> None:
+        """
+        Move a body that rests on a connection with nothing to steer.
+
+        An object a plan put down is held by a :class:`FixedConnection`, which has no
+        degrees of freedom to write a pose into — its place is the constant offset the
+        connection was built with, so that is what moves. Giving the body a steerable
+        connection instead would add free variables to the world, and the next plan's
+        controller would be handed a command of the length the world used to have.
+
+        :param connection: The fixed connection the body rests on.
+        :param parent_T_object: Where the body goes, in its parent's frame.
+        """
+        connection_T_child = connection.connection_T_child_expression
+        parent_T_connection = HomogeneousTransformationMatrix(
+            (parent_T_object @ connection_T_child.inverse()).evaluate()
+        )
+        # the product drops the frames, and a connection offset without one cannot be
+        # copied into another world -- which is what performing the next plan does
+        parent_T_connection.reference_frame = connection.parent
+        with self.world.modify_world():
+            connection.parent_T_connection_expression = parent_T_connection
+
     def _apply_move(self, move: MoveRequest, body: Body) -> None:
         """
         Write one viewer move into the world.
@@ -1731,9 +1843,9 @@ class Bridge:
         :param body: The body the move targets.
         """
         connection = body.parent_connection
-        if not isinstance(connection, Connection6DoF):
+        if not isinstance(connection, Connection6DoF) and not self.is_idle():
             logger.info(
-                "%s is fixed (%s) — not draggable, skipping",
+                "%s is fixed (%s) and a plan is running — leaving it where it is",
                 move.object_key,
                 type(connection).__name__,
             )
@@ -1764,7 +1876,10 @@ class Bridge:
         # frame it is handed into the parent frame, so label the result explicitly
         parent_T_object.reference_frame = connection.parent
         parent_T_object.child_frame = body
-        connection.origin = parent_T_object
+        if isinstance(connection, Connection6DoF):
+            connection.origin = parent_T_object
+        else:
+            self._relocate_fixed(connection, parent_T_object)
         self._transforms.note_viewer_write(str(connection.name))
         logger.info(
             "moved %s -> world (%.3f, %.3f, %.3f) [final=%s]",
@@ -1981,7 +2096,7 @@ class Bridge:
         """
         with self._lock:
             payload = self.state.to_payload()
-        if time.monotonic() - self._last_tick_time > 0.5:
+        if self.is_idle():
             with self._moves_lock:
                 moves = dict(self._last_moves)
             objs = payload.get("objects")

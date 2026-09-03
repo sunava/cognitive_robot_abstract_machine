@@ -649,3 +649,27 @@ class TestSavingARecordingWithItsNames:
 
         assert SceneField.TASK not in scene
         assert scene["robot"]["name"] == "unitreeg1"
+
+
+# %% starting a scene while another one already serves the viewer
+class TestScaffoldLaunch:
+    """
+    Only one scene can serve the viewer.
+
+    A second one used to be started anyway and die on ``Address already in use``, with
+    the traceback the only sign of what happened.
+    """
+
+    def test_a_taken_bridge_port_is_reported_instead_of_launched_into(
+        self, server, monkeypatch
+    ):
+        from cramera import server as server_module
+
+        monkeypatch.setattr(server_module, "port_released", lambda: False)
+        monkeypatch.setattr(server_module.Handler, "_scaffold_proc", None)
+
+        status, answer = post(server + "/api/plan/scaffold", {"code": "print('hello')"})
+
+        assert answer["ok"] is False
+        assert str(server_module.BRIDGE_PORT) in answer["error"]
+        assert server_module.Handler._scaffold_proc is None
