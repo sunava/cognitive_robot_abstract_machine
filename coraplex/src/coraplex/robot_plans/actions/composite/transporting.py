@@ -105,6 +105,7 @@ class TransportAction(ActionDescription):
         self.grasp_description = self.grasp_description or GraspDescription.robot_relative_default(
             ViewManager.get_end_effector_view(self.arm, self.robot),
             self.object_designator.global_pose,
+            self.object_designator,
         )
 
         children = []

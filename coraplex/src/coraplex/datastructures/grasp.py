@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Tuple
 
 import numpy as np
-from typing_extensions import Optional, Union, List, TYPE_CHECKING
+from typing_extensions import ClassVar, Optional, Union, List, TYPE_CHECKING
 
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.spatial_types.spatial_types import (
@@ -345,24 +345,34 @@ class GraspDescription:
 
         return grasp_configs
 
+    #: an object is grasped from above (top) rather than the side when it is this flat:
+    #: its height is at most this fraction of its smaller horizontal side ...
+    TOP_GRASP_FLATNESS_RATIO: ClassVar[float] = 0.5
+    #: ... or at most this many metres tall in absolute terms.
+    TOP_GRASP_MAX_HEIGHT: ClassVar[float] = 0.05
+
     @classmethod
     def robot_relative_default(
         cls,
         end_effector: "EndEffector",
         pose: Pose,
+        body: Optional[Body] = None,
         grasp_alignment: Optional["PreferredGraspAlignment"] = None,
     ) -> "GraspDescription":
         """
         A default grasp that approaches from the object side facing the robot instead of a
-        fixed object axis, so a rotated object is still grasped from where the robot stands
-        (almost always a robot-front grasp; top when a preferred vertical alignment asks for
-        it). Uses :meth:`calculate_grasp_descriptions` (which ranks the faces by how well
-        they face the robot) and takes the best one; falls back to the object's FRONT face
-        if that can't be computed.
+        fixed object axis, so a rotated object is still grasped from where the robot stands.
+        Almost always a robot-front side grasp; a **top** grasp is chosen automatically for
+        a clearly flat/short object (see :attr:`TOP_GRASP_FLATNESS_RATIO` /
+        :attr:`TOP_GRASP_MAX_HEIGHT`), for which a side grasp is awkward. The yaw still
+        follows the robot-facing side. Falls back to the object's FRONT face if the
+        robot-relative faces can't be computed.
 
         :param end_effector: The end effector that will grasp.
         :param pose: The pose of the object to grasp.
-        :param grasp_alignment: Optional preferred alignment (e.g. to allow a top grasp).
+        :param body: The object body, used to decide side-vs-top from its geometry.
+        :param grasp_alignment: Optional explicit preferred alignment (overrides the auto
+            side/top choice).
         :return: The robot-facing grasp description.
         """
         try:
@@ -371,10 +381,39 @@ class GraspDescription:
             )
         except Exception:
             candidates = []
-        if candidates:
-            return candidates[0]
-        return cls(
-            ApproachDirection.FRONT, VerticalAlignment.NoAlignment, end_effector
+        if not candidates:
+            return cls(
+                ApproachDirection.FRONT, VerticalAlignment.NoAlignment, end_effector
+            )
+        best = candidates[0]
+        # auto top grasp for flat objects, unless the caller asked for a specific alignment
+        if grasp_alignment is None and body is not None and cls._is_flat(body):
+            return cls(
+                approach_direction=best.approach_direction,   # keep the robot-facing yaw
+                vertical_alignment=VerticalAlignment.TOP,
+                rotate_gripper=best.rotate_gripper,
+                end_effector=end_effector,
+            )
+        return best
+
+    @classmethod
+    def _is_flat(cls, body: Body) -> bool:
+        """
+        Whether a body is flat/short enough to prefer a top grasp over a side grasp.
+        """
+        try:
+            dims = (
+                body.collision.as_bounding_box_collection_in_frame(body)
+                .bounding_box()
+                .dimensions
+            )
+        except Exception:
+            return False
+        height = dims[2]
+        footprint = min(dims[0], dims[1])
+        return (
+            height <= cls.TOP_GRASP_MAX_HEIGHT
+            or height <= cls.TOP_GRASP_FLATNESS_RATIO * footprint
         )
 
     @staticmethod
