@@ -100,10 +100,11 @@ class TransportAction(ActionDescription):
 
     @property
     def _action_plan(self) -> PlanNode:
-        self.grasp_description = self.grasp_description or GraspDescription(
-            ApproachDirection.FRONT,
-            VerticalAlignment.NoAlignment,
+        # grasp from the object side facing the robot (robot-front), not a fixed object
+        # axis, so a rotated object is still grasped from wherever the robot can stand
+        self.grasp_description = self.grasp_description or GraspDescription.robot_relative_default(
             ViewManager.get_end_effector_view(self.arm, self.robot),
+            self.object_designator.global_pose,
         )
 
         children = []

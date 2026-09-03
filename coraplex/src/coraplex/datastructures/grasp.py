@@ -345,6 +345,38 @@ class GraspDescription:
 
         return grasp_configs
 
+    @classmethod
+    def robot_relative_default(
+        cls,
+        end_effector: "EndEffector",
+        pose: Pose,
+        grasp_alignment: Optional["PreferredGraspAlignment"] = None,
+    ) -> "GraspDescription":
+        """
+        A default grasp that approaches from the object side facing the robot instead of a
+        fixed object axis, so a rotated object is still grasped from where the robot stands
+        (almost always a robot-front grasp; top when a preferred vertical alignment asks for
+        it). Uses :meth:`calculate_grasp_descriptions` (which ranks the faces by how well
+        they face the robot) and takes the best one; falls back to the object's FRONT face
+        if that can't be computed.
+
+        :param end_effector: The end effector that will grasp.
+        :param pose: The pose of the object to grasp.
+        :param grasp_alignment: Optional preferred alignment (e.g. to allow a top grasp).
+        :return: The robot-facing grasp description.
+        """
+        try:
+            candidates = cls.calculate_grasp_descriptions(
+                end_effector, pose, grasp_alignment
+            )
+        except Exception:
+            candidates = []
+        if candidates:
+            return candidates[0]
+        return cls(
+            ApproachDirection.FRONT, VerticalAlignment.NoAlignment, end_effector
+        )
+
     @staticmethod
     def calculate_closest_faces(
         pose_to_robot_vector: Vector3,
