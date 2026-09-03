@@ -343,6 +343,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         """
         import os
         import subprocess
+        import sys
 
         body = self._request_body()
         code = body.get("code")
@@ -354,7 +355,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             path = out_dir / "_builder_scaffold.py"
             path.write_text(code)
             repo = out_dir.parent.parent.parent  # coraplex_generated -> demos -> coraplex -> repo
-            live = repo / ".venv" / "bin" / "cramera-live"
             self._stop_scaffold(reply=False)
             env = dict(os.environ, CORAPLEX_VISUALIZATION="cramera")
             # capture stdout+stderr so the Plan Builder can show a traceback if the demo
@@ -362,8 +362,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             log_path = out_dir / "_builder_scaffold.log"
             type(self)._scaffold_log_path = log_path
             log_file = open(log_path, "wb")  # noqa: SIM115 (the child process owns it)
+            # run with the SAME interpreter that runs this server (its venv/env), instead of
+            # a hardcoded repo/.venv path — so a checkout with a differently placed or named
+            # environment works without editing anything. `-m cramera.live.runner` is the
+            # module behind the `cramera-live` console script.
             type(self)._scaffold_proc = subprocess.Popen(
-                [str(live), str(path)], cwd=str(repo), env=env,
+                [sys.executable, "-m", "cramera.live.runner", str(path)],
+                cwd=str(repo), env=env,
                 stdout=log_file, stderr=subprocess.STDOUT,
                 start_new_session=True,  # own process group, so stop can kill children too
             )

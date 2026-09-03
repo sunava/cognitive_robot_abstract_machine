@@ -11,6 +11,12 @@ source ~/ros2_ws/install/setup.bash 2>/dev/null || echo "warn: ~/ros2_ws/install
 
 cd "$REPO"
 export CORAPLEX_VISUALIZATION=cramera   # browser backend -> starts the live bridge on :8765
+# Resolve the cramera-live CLI without hardcoding a venv (honor $VENV, else repo .venv,
+# else PATH) — so a fresh checkout with a different venv works without editing this file.
+LIVE="${VENV:+$VENV/bin/cramera-live}"
+[ -n "$LIVE" ] && [ -x "$LIVE" ] || LIVE="$REPO/.venv/bin/cramera-live"
+[ -x "$LIVE" ] || LIVE="$(command -v cramera-live || true)"
+[ -n "$LIVE" ] || { echo "cramera-live not found — activate your venv or set VENV=/path/to/venv"; exit 1; }
 echo "▶ running demo: $DEMO"
 echo "  (first run caches meshes ~1 min; bridge stays up after — Ctrl-C to quit)"
-exec ./.venv/bin/cramera-live "$DEMO"
+exec "$LIVE" "$DEMO"
