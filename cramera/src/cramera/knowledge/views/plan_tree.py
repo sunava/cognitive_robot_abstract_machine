@@ -35,6 +35,7 @@ from cramera.knowledge.subgraph import (
     GraphPanelPayload,
     LegendEntry,
     SubgraphAccumulator,
+    TreePosition,
 )
 
 PLAN_LEGEND: Tuple[LegendEntry, ...] = tuple(
@@ -71,7 +72,10 @@ class PlanViewPayload(GraphPanelPayload):
             "breadcrumb": self.breadcrumb,
             "legend": [asdict(entry) for entry in PLAN_LEGEND],
             "layout": "hier",
-            "statusLegend": True,
+            # a replay shows no per-node status, so there is nothing for a status legend
+            # to explain; the live payload the panel builds while the bridge is attached
+            # switches it on for the statuses that bridge streams
+            "statusLegend": False,
             # marks the plan tab as live-capable, so the graph panel attaches it to the
             # bridge's /plan when a demo is running (mirrors chart.py / transforms.py)
             "live": "plan",
@@ -118,8 +122,8 @@ class PlanViewPayload(GraphPanelPayload):
         :param parent: Id of the node's parent entry, or None for the root.
         """
         node_id = "plan_tree_node_%d" % next(node_ids)
-        status = tree.get("status") or "CREATED"
-        lines = ["a " + tree.get("kind", "PlanNode"), "status: " + status]
+        kind = tree.get("kind", "PlanNode")
+        lines = ["a " + kind]
         if tree.get("arm"):
             lines.append("arm: " + tree["arm"])
         if tree.get("target"):
@@ -127,9 +131,9 @@ class PlanViewPayload(GraphPanelPayload):
         view.add(
             node_id,
             cls._shorten_action_label(tree.get("label", "?")),
-            PlanNodeGroup.of_plan_node_kind(tree.get("kind")),
+            PlanNodeGroup.of_plan_node_kind(kind),
             lines,
-            status=status,
+            tree_position=TreePosition(kind=kind, parent=parent),
         )
         if parent:
             view.add_edge(parent, node_id, EdgeKind.PROPERTY, "has step")
@@ -141,11 +145,11 @@ class PlanViewPayload(GraphPanelPayload):
         """
         The executed plan as a tree, one node per plan node the demo ran.
 
-        The recorded statuses are thin on purpose: coraplex performs only the plan
-        *root*, while ``ActionNode.notify`` merely expands its children into the merged
-        motion statechart. So every inner node of a recorded tree reads ``CREATED``, and
-        real per-step progress only shows up while the live bridge is attached (it
-        derives it from the statechart life cycle).
+        Without a status: which node was running when is only meaningful while a demo is
+        actually performing the plan, and the bridge streams that. A recording is
+        scrubbed back and forth, so a status recorded per node would be a claim about one
+        moment shown at every other one; the replayed tree therefore shows structure
+        only.
 
         :param knowledge_base: Unused — the plan tree is read from the scene bundle.
         """

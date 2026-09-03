@@ -37,9 +37,11 @@ function flush() {
 function makeElement() {
   return {
     style: {},
+    innerHTML: '',
     textContent: '',
     classList: { toggle() {}, add() {}, remove() {} },
     addEventListener() {},
+    querySelector() { return undefined; },
     querySelectorAll() { return []; },
   };
 }
@@ -63,12 +65,13 @@ function makeRoot() {
     '#gnav-path': makeElement(),
     '#gt-live': makeElement(),
     '.graph-canvas': makeElement(),
+    '#graph-steps': makeElement(),
     '#legend': makeElement(),
     '#graph-zoom-in': makeButton(),
     '#graph-zoom-out': makeButton(),
     '#graph-zoom-fit': makeButton(),
   };
-  const buttons = ['knowledge', 'kinematics', 'plan', 'chart', 'transforms'].map(makeButton);
+  const buttons = ['knowledge', 'plan', 'chart', 'kinematics', 'transforms'].map(makeButton);
   byId['#graph-tabs'] = { querySelectorAll() { return buttons; } };
   return {
     innerHTML: '',
@@ -89,7 +92,8 @@ function makeBus() {
 function makeFetch(responses, requested) {
   return async function fetch(url) {
     if (requested) requested.push(url);
-    const body = responses[url];
+    let body = responses[url];
+    if (typeof body === 'function') body = await body();   // a response the test releases
     if (!body) throw new Error('unexpected fetch: ' + url);
     if (typeof body === 'number') return errorPage(body);
     return { ok: true, status: 200, json: async function () { return body; } };
@@ -572,5 +576,46 @@ test('an attached bridge keeps the statechart tab, recorded or not', async funct
     assert.deepStrictEqual(panel.lastBuild().nodes.map(function (n) { return n.id; }), ['l0']);
   } finally {
     shown.instance.destroy();
+  }
+});
+
+
+// %% switching tabs while one is still loading
+// every tab is fetched, so the reader can be on another one by the time a response
+// arrives; the answer belongs to the tab that asked for it, not to the one on screen
+test('a view that arrives after the reader moved on is not drawn', async function () {
+  let releaseChart = null;
+  const chart = new Promise(function (resolve) { releaseChart = resolve; });
+  const panel = loadPanel({
+    '/api/knowledge': {
+      ok: true, details: {}, edges: [],
+      nodes: [{ id: 'milk', label: 'Milk', group: 'object' }],
+    },
+    '/api/knowledge/view?name=chart': function () {
+      return chart.then(function (body) {
+        return { ok: true, status: 200, json: async function () { return body; } };
+      });
+    },
+  });
+  const root = makeRoot();
+  const instance = panel.factory(root, makeBus());
+  try {
+    await flush();
+    root.buttons.find(function (b) { return b.dataset.view === 'chart'; }).click();
+    await flush();                                 // the statechart is still loading
+    root.buttons.find(function (b) { return b.dataset.view === 'knowledge'; }).click();
+    await flush();
+
+    releaseChart({
+      ok: true, details: {}, edges: [], live: 'chart',
+      nodes: [{ id: 'g0', label: 'ReachGoal', group: 'motion_goal' }],
+    });
+    await flush();
+    await flush();
+
+    assert.deepStrictEqual(
+      panel.lastBuild().nodes.map(function (n) { return n.id; }), ['milk']);
+  } finally {
+    instance.destroy();
   }
 });

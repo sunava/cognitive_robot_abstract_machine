@@ -106,6 +106,7 @@
 .oreset{color:var(--faint,#5a6270);cursor:pointer;font-size:13px;padding:0 3px}
 .oreset:hover{color:var(--warn,#ffb648)}
 .pb-group-lbl.start{color:#ffcf8a}
+.pb-hint3{font-size:9.5px;color:var(--faint,#5a6270);font-style:italic;align-self:center}
 
 /* ---- constraints palette ---- */
 .pb-info-btn{background:none;border:none;color:var(--faint,#5a6270);cursor:pointer;font-size:12px;padding:0 2px}

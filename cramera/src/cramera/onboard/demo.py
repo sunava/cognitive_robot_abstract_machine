@@ -94,6 +94,7 @@ from cramera.onboard.bundle_urdf import (
     BundledModel,
     BundleReport,
     bundle_model,
+    companion_material_library,
 )
 from cramera.onboard.bundle_world import BundledWorld
 from cramera.onboard.scene_index import write_scene_index
@@ -1310,6 +1311,13 @@ class SceneBuilder:
             entry["box"] = rounded_scale(shapes[0].scale, POSE_PRECISION)
             return entry
         entry["mesh"] = self._write_object_mesh(body, key, shapes)
+        # an OBJ brings its own materials and textures; without naming them the viewer
+        # can only paint the mesh in the scene's fallback colour
+        material_library = companion_material_library(
+            Path(self.output_directory), entry["mesh"]
+        )
+        if material_library is not None:
+            entry["mtl"] = material_library
         return entry
 
     def _write_object_mesh(self, body: Body, key: str, shapes: Sequence[Any]) -> str:
@@ -1486,6 +1494,11 @@ class SceneBuilder:
             extent = measure_body(body) if body is not None else None
             if extent is not None:
                 entry["height"] = round(extent.z, POSE_PRECISION)
+            material_library = companion_material_library(
+                Path(self.output_directory), entry["mesh"]
+            )
+            if material_library is not None:
+                entry["mtl"] = material_library
             objects.append(entry)
         for spawned in self.recorder.spawned_boxes:
             if spawned.name not in self.recorder.object_frames[0]:

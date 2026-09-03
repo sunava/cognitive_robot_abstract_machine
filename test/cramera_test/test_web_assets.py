@@ -198,6 +198,98 @@ class TestBinaryGltfLoading:
         assert "fmt === '%s'" % suffix in panel
 
 
+# %% plan builder environment choice
+class TestPlanBuilderEnvironmentChoice:
+    """
+    The Plan Builder's environment choice names world files the generated demo loads
+    from coraplex's ``resources/worlds``, so a value naming no file has to fail here
+    rather than when the demo is run.
+    """
+
+    OPTION_PATTERN: ClassVar[re.Pattern] = re.compile(
+        r'<option value="([\w.-]+\.urdf)">([^<]+)</option>'
+    )
+
+    def offered_worlds(self) -> Dict[str, str]:
+        """
+        The world files the Plan Builder offers, by file name and shown label.
+        """
+        found = self.OPTION_PATTERN.findall(read("plan_builder.html"))
+        assert found, "no environments found in plan_builder.html"
+        return dict(found)
+
+    def test_every_offered_world_is_a_file_coraplex_ships(self):
+        worlds = (
+            Path(__file__).resolve().parents[2] / "coraplex" / "resources" / "worlds"
+        )
+        for file_name in self.offered_worlds():
+            assert (worlds / file_name).is_file(), file_name
+
+    def test_no_two_worlds_share_a_label(self):
+        """
+        Two halls that look alike in the list cannot be told apart when choosing one.
+        """
+        labels = list(self.offered_worlds().values())
+        assert len(set(labels)) == len(labels), labels
+
+
+class TestPlanBuilderExecutionChoice:
+    """
+    The Plan Builder's "collision avoidance" choice names coraplex execution
+    environments the generated demo imports, so a renamed or re-flagged environment has
+    to fail here rather than in the generated file.
+    """
+
+    ENVIRONMENT_PATTERN: ClassVar[re.Pattern] = re.compile(
+        r"name: '(\w+)',\s*\n\s*label: '[^']*',\s*\n\s*collisionAvoidance: (true|false)"
+    )
+    """
+    How ``core/execution_environment.js`` spells one offered environment.
+    """
+
+    def offered_environments(self) -> Dict[str, bool]:
+        """
+        The environments the Plan Builder offers, by name and collision-avoidance flag.
+        """
+        source = read("core/execution_environment.js")
+        found = self.ENVIRONMENT_PATTERN.findall(source)
+        assert found, "no environments found in core/execution_environment.js"
+        return {name: flag == "true" for name, flag in found}
+
+    def test_every_offered_environment_is_one_coraplex_exports(self):
+        execution_environment = pytest.importorskip(
+            "coraplex.execution_environment", reason="coraplex not installed"
+        )
+
+        for name in self.offered_environments():
+            assert hasattr(execution_environment, name), name
+
+    def test_the_collision_flag_matches_the_environment_it_names(self):
+        """
+        Both output styles have to agree: a flat script enters the named environment, a
+        RobotDemonstration is handed the flag, and the two must plan the same way.
+        """
+        execution_environment = pytest.importorskip(
+            "coraplex.execution_environment", reason="coraplex not installed"
+        )
+
+        offered = self.offered_environments()
+
+        assert offered == {
+            name: getattr(execution_environment, name).collision_avoidance
+            for name in offered
+        }
+
+    def test_the_page_offers_the_choice(self):
+        """
+        The select is filled from the module, so the page only has to carry it.
+        """
+        page = read("plan_builder.html")
+
+        assert 'id="pb-collisions"' in page
+        assert '<script src="core/execution_environment.js">' in page
+
+
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
 class TestJsUnits:
     def run_node(self, name: str) -> None:
@@ -215,11 +307,23 @@ class TestJsUnits:
     def test_bus_and_registry(self):
         self.run_node("test_bus_registry.js")
 
+    def test_execution_environments(self):
+        self.run_node("test_execution_environment.js")
+
+    def test_plan_steps(self):
+        self.run_node("test_plan_steps.js")
+
+    def test_base_control(self):
+        self.run_node("test_base_control.js")
+
     def test_graph_status_rendering(self):
         self.run_node("test_graph_status.js")
 
     def test_graph_panel(self):
         self.run_node("test_graph_panel.js")
+
+    def test_graph_canvas_visibility(self):
+        self.run_node("test_graph_canvas_visibility.js")
 
     def test_model_constraints(self):
         self.run_node("test_model_constraints.js")
@@ -490,3 +594,47 @@ class TestTheViewerServesWithoutTheFullStack:
         }
 
         assert {module: found for module, found in reaching.items() if found} == {}
+
+
+# %% graph tab order
+class TestGraphTabOrder:
+    """
+    The graph panel declares its tabs twice — as buttons and as the ``TABS`` table it
+    resolves urls and the opening tab from — so the two have to stay in one order.
+    """
+
+    BUTTON_PATTERN = re.compile(r'<button data-view="(\w+)"(\s+class="active")?')
+    TABLE_PATTERN = re.compile(r"const TABS = \{(.*?)\n  \};", re.S)
+
+    def buttons(self) -> List[str]:
+        """
+        The tab names in the order the panel renders their buttons in.
+        """
+        return [name for name, _ in self.BUTTON_PATTERN.findall(self.source())]
+
+    def source(self) -> str:
+        """
+        The graph panel's script.
+        """
+        return read("panels/graph/panel.js")
+
+    def test_the_table_lists_the_tabs_in_the_rendered_order(self):
+        [table] = self.TABLE_PATTERN.findall(self.source())
+        assert re.findall(r"^\s+(\w+):", table, re.M) == self.buttons()
+
+    def test_the_panel_opens_on_the_first_tab(self):
+        active = [
+            name
+            for name, is_active in self.BUTTON_PATTERN.findall(self.source())
+            if is_active
+        ]
+        assert active == self.buttons()[:1]
+
+    def test_the_tabs_read_from_what_was_planned_to_where_it_moved(self):
+        assert self.buttons() == [
+            "knowledge",
+            "plan",
+            "chart",
+            "kinematics",
+            "transforms",
+        ]

@@ -34,7 +34,10 @@ class ModelChangeNode(ExecutionBoundaryNode):
 
     def parse(self) -> ModelChangeExecutable:
         return ModelChangeExecutable(
-            context=self.plan.context, body=self.body, new_parent=self.new_parent
+            context=self.plan.context,
+            body=self.body,
+            new_parent=self.new_parent,
+            node=self,
         )
 
 

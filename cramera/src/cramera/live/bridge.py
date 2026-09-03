@@ -151,6 +151,11 @@ ROBOT_BASE_KEY = "__base__"
 Key under which the robot's root body is published, instead of as a loose object.
 """
 
+IDENTITY_QUATERNION = (0.0, 0.0, 0.0, 1.0)
+"""
+``[qx, qy, qz, qw]`` of an unrotated pose, used where no orientation is known.
+"""
+
 
 @runtime_checkable
 class DescribesAnAction(Protocol):
@@ -536,10 +541,26 @@ class WorldStateSnapshot:
     Loose-object pose by mesh key, in the same 7-element form as :attr:`base`.
     """
 
+    ORIENTATION_START: ClassVar[int] = 3
+    """
+    Index the quaternion begins at in a ``[x, y, z, qx, qy, qz, qw]`` pose.
+    """
+
     markers_version: int = 0
     """
     Version of the debug-marker overlay; the viewer refetches ``/markers`` on change.
     """
+
+    def orientation_of(self, object_key: str) -> Optional[List[float]]:
+        """
+        The orientation one object stands at, or None if this snapshot has no pose for it.
+
+        :param object_key: Mesh key of the object whose orientation is read.
+        """
+        pose = self.objects.get(object_key)
+        if pose is None:
+            return None
+        return list(pose[self.ORIENTATION_START :])
 
     model_bases: Dict[str, List[float]] = field(default_factory=dict)
     """
@@ -1460,13 +1481,19 @@ class Bridge:
         :param request: The move to apply — at once while the scene stands still, on the
             next simulation tick while a plan is running.
         """
+        with self._lock:
+            snapshot_orientation = self.state.orientation_of(request.object_key)
         with self._moves_lock:
             self._moves.append(request)
             # remember the drag target regardless of whether the sim applies it (it only
             # applies on a motion tick); the Plan Builder reads these via /captured_objects
             # to snap an object's pose into a start point or an action target.
-            quat = request.quaternion or [0.0, 0.0, 0.0, 1.0]
-            self._last_moves[request.object_key] = list(request.position) + list(quat)
+            orientation = self._orientation_after(
+                request,
+                previous_target=self._last_moves.get(request.object_key),
+                snapshot_orientation=snapshot_orientation,
+            )
+            self._last_moves[request.object_key] = list(request.position) + orientation
         if self.world is not None and self.is_idle():
             # Between plans no tick is coming, so the drain has to happen here or the
             # drag would only ever show in the idle overlay and never in the world. With
@@ -1483,6 +1510,34 @@ class Bridge:
         """
         with self._moves_lock:
             self._last_moves.clear()
+
+    @staticmethod
+    def _orientation_after(
+        request: MoveRequest,
+        previous_target: Optional[List[float]],
+        snapshot_orientation: Optional[List[float]],
+    ) -> List[float]:
+        """
+        The orientation an object stands at once ``request`` is applied.
+
+        A drag naming no orientation keeps the object's current one, which is what
+        :meth:`_apply_move` writes into the world; the recorded target has to say the same,
+        or capturing after such a drag reports the object as unrotated. While the sim is
+        idle it has applied no earlier drag, so the newest of those is what the object
+        stands at, and the snapshot only speaks for an object never dragged.
+
+        :param request: The move whose resulting orientation is asked for.
+        :param previous_target: The drag target recorded for this object before, if any.
+        :param snapshot_orientation: The orientation of the newest world snapshot, if it
+            has a pose for this object.
+        """
+        if request.quaternion is not None:
+            return list(request.quaternion)
+        if previous_target is not None:
+            return list(previous_target[WorldStateSnapshot.ORIENTATION_START :])
+        if snapshot_orientation is not None:
+            return snapshot_orientation
+        return list(IDENTITY_QUATERNION)
 
     def get_captured_objects(self) -> Dict[str, Any]:
         """

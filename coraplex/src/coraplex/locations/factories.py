@@ -84,10 +84,10 @@ def reachability_location(
     )
     man = ViewManager.get_end_effector_view(arm, context.robot)
 
-    grasp_description = grasp_description or GraspDescription(
-        ApproachDirection.FRONT,
-        VerticalAlignment.NoAlignment,
-        man,
+    # the side to approach from follows the robot's reach (see _approach_side); a flat
+    # object (when target is a Body) is grasped from the top instead
+    grasp_description = grasp_description or GraspDescription.robot_relative_default(
+        man, target_pose, target_body
     )
 
     costmap = OccupancyCostmap.default_map(context, target_pose) & RingCostmap(

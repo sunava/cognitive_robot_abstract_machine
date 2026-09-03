@@ -25,7 +25,7 @@ import re
 import shutil
 import sys
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from typing_extensions import (
     Any,
@@ -290,7 +290,39 @@ class BundledAssets:
         return references
 
 
+# %% a bundled mesh's own materials
+
+
+def companion_material_library(bundle_root: Path, mesh_path: str) -> Optional[str]:
+    """
+    The bundle path of the ``.mtl`` a bundled OBJ names, or None when it names none.
+
+    An OBJ carries its material library by name, and the bundler copies it next to the
+    mesh, so the name it declares resolves inside the bundle even when the mesh itself
+    was copied under a different one.
+
+    :param bundle_root: Root of the bundle the mesh was written into.
+    :param mesh_path: The mesh's path relative to that root.
+    """
+    if not mesh_path.lower().endswith(MeshFormat.OBJ.value):
+        return None
+    mesh_file = bundle_root / mesh_path
+    if not mesh_file.is_file():
+        return None
+    declared = BundledAssets.MATERIAL_LIBRARY_PATTERN.search(
+        mesh_file.read_text(encoding="utf-8", errors="ignore")
+    )
+    if declared is None:
+        return None
+    library = str(PurePosixPath(mesh_path).parent / declared.group(1).strip())
+    if not (bundle_root / library).is_file():
+        return None
+    return library
+
+
 # %% bundling
+
+
 @dataclass
 class BundleReport:
     """

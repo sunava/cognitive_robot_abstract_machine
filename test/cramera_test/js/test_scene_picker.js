@@ -18,7 +18,7 @@ function load() {
 }
 
 const SCENES = [
-  { name: 'pr2_kitchen', robot: 'pr2', environment: 'apartment' },
+  { name: 'pr2_kitchen', robot: 'pr2', environment: 'apartment', task: 'make breakfast' },
   { name: 'pr2_lab', robot: 'pr2', environment: 'lab' },
   { name: 'garmi_apartment', robot: 'garmi', environment: 'apartment' },
   { name: 'tracy_lab', robot: 'tracy', environment: null },
@@ -85,26 +85,40 @@ test('describe() is null for a name not in the index', function () {
   assert.strictEqual(window.ScenePicker.describe(SCENES, 'unknown_scene'), null);
 });
 
-test('names() lists every scene name, alphabetically', function () {
+test('options() lists every scene alphabetically by name, labelled by its task', function () {
   load();
   assert.deepStrictEqual(
-    window.ScenePicker.names(SCENES),
-    ['garmi_apartment', 'pr2_kitchen', 'pr2_lab', 'tracy_lab']);
+    window.ScenePicker.options(SCENES),
+    [
+      { name: 'garmi_apartment', task: 'garmi_apartment' },
+      { name: 'pr2_kitchen', task: 'make breakfast' },
+      { name: 'pr2_lab', task: 'pr2_lab' },
+      { name: 'tracy_lab', task: 'tracy_lab' },
+    ]);
 });
 
-test('names() disambiguates scenes that share one (robot, environment) pair', function () {
+test('options() falls back to the scene name when no task was recorded', function () {
+  load();
+  const untasked = [{ name: 'run_1', robot: 'pr2', environment: 'environment', task: null }];
+  assert.deepStrictEqual(window.ScenePicker.options(untasked), [{ name: 'run_1', task: 'run_1' }]);
+});
+
+test('options() disambiguates scenes that share one (robot, environment) pair', function () {
   // several saved live recordings of the same demo: sceneFor() alone could only ever
-  // resolve to the first one, so names() is what the picker falls back to
+  // resolve to the first one, so options() is what the picker falls back to
   load();
   const recordings = [
-    { name: 'run_1', robot: 'pr2', environment: 'environment' },
-    { name: 'run_2', robot: 'pr2', environment: 'environment' },
+    { name: 'run_1', robot: 'pr2', environment: 'environment', task: 'transport' },
+    { name: 'run_2', robot: 'pr2', environment: 'environment', task: 'transport' },
   ];
-  assert.deepStrictEqual(window.ScenePicker.names(recordings), ['run_1', 'run_2']);
+  assert.deepStrictEqual(window.ScenePicker.options(recordings), [
+    { name: 'run_1', task: 'transport' },
+    { name: 'run_2', task: 'transport' },
+  ]);
 });
 
-test('names() is empty without any scenes', function () {
+test('options() is empty without any scenes', function () {
   load();
-  assert.deepStrictEqual(window.ScenePicker.names([]), []);
-  assert.deepStrictEqual(window.ScenePicker.names(undefined), []);
+  assert.deepStrictEqual(window.ScenePicker.options([]), []);
+  assert.deepStrictEqual(window.ScenePicker.options(undefined), []);
 });

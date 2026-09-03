@@ -17,6 +17,33 @@ if TYPE_CHECKING:
     from cramera.knowledge.knowledge_base import EpisodeKnowledgeBase
 
 
+class DuplicateNodeId(Exception):
+    """
+    Raised when a view adds two nodes under one id.
+
+    An id addresses one node, and the frontend builds its graph from a data set keyed by
+    it: a repeated id throws there, and the panel renders nothing at all.
+    """
+
+
+@dataclass
+class TreePosition:
+    """
+    Where one node sits in a tree the frontend rebuilds from a flat node list.
+    """
+
+    kind: str
+    """
+    Class name of the node the entry was built from, which the frontend groups and
+    filters the tree by.
+    """
+
+    parent: Optional[str] = None
+    """
+    Id of the node's parent entry, or None for a root.
+    """
+
+
 @dataclass
 class GraphNode:
     """
@@ -48,6 +75,12 @@ class GraphNode:
     Live execution status; only the plan view sets this.
     """
 
+    tree_position: Optional[TreePosition] = None
+    """
+    Placement in the node's tree; set by a view the frontend renders as a tree rather
+    than as a graph.
+    """
+
     def to_payload(self) -> Dict[str, Any]:
         """
         The JSON-serializable shape the frontend's graph panel expects.
@@ -60,6 +93,9 @@ class GraphNode:
         }
         if self.status is not None:
             payload["status"] = self.status
+        if self.tree_position is not None:
+            payload["kind"] = self.tree_position.kind
+            payload["parent"] = self.tree_position.parent
         return payload
 
 
@@ -171,6 +207,7 @@ class SubgraphAccumulator:
         group: ColourGroup,
         lines: List[str],
         status: Optional[str] = None,
+        tree_position: Optional[TreePosition] = None,
     ) -> None:
         """
         Append one graph node and its detail-panel entry.
@@ -180,9 +217,24 @@ class SubgraphAccumulator:
         :param group: Colour group the node and its detail entry belong to.
         :param lines: Detail-panel lines shown under the node's label.
         :param status: Status colouring for the node, if any.
+        :param tree_position: Placement in the node's tree, for a view rendered as one.
+        :raises DuplicateNodeId: If this subgraph already holds a node with that id.
         """
+        if node_id in self.details:
+            raise DuplicateNodeId(
+                "'%s' is already a node of this subgraph" % node_id
+            )
         title = "\n".join([label] + lines)
-        self.nodes.append(GraphNode(node_id, label, group, title, status=status))
+        self.nodes.append(
+            GraphNode(
+                node_id,
+                label,
+                group,
+                title,
+                status=status,
+                tree_position=tree_position,
+            )
+        )
         self.details[node_id] = DetailEntry(label, group, lines)
 
     def add_edge(self, source: str, target: str, kind: EdgeKind, label: str) -> None:

@@ -28,8 +28,8 @@
             <option value="kitchen.urdf">Kitchen</option>
             <option value="kitchen-small.urdf">Kitchen (small)</option>
             <option value="IAI_kitchen.urdf">IAI Kitchen</option>
-            <option value="warehouse6.urdf">Warehouse</option>
-            <option value="warehouse_demo_hall.urdf">Warehouse (demo hall)</option>
+            <option value="warehouse6.urdf">Warehouse Hall</option>
+            <option value="warehouse_demo_hall.urdf">Warehouse Hall (coraplex demo)</option>
           </select>
         </label>
         <label>Robot<select id="pb-robot" class="pb-sel"></select></label>
@@ -38,6 +38,14 @@
             <option value="class">RobotDemonstration class</option>
             <option value="script">Flat script</option>
           </select>
+        </label>
+        <label>Collision avoidance
+          <select id="pb-collisions" class="pb-sel"
+                  title="which coraplex execution environment the generated demo performs its plan in"></select>
+        </label>
+        <label>Base while reaching
+          <select id="pb-base" class="pb-sel"
+                  title="whether the base may drive to help an arm reach (whole-body control)"></select>
         </label>
         <div class="pb-menu-sep"></div>
         <button id="pb-download" class="pb-btn sm">⭳ Download</button>
@@ -51,7 +59,7 @@
 <main class="pb-main">
   <!-- palette -->
   <aside class="pb-col pb-palette">
-    <h2>Action blocks</h2>
+    <h2>Skills</h2>
     <div class="pb-hint2">Drag into the plan →</div>
     <div id="pb-blocks"></div>
     <h2 style="margin-top:18px">Objects</h2>
@@ -77,7 +85,7 @@
   <!-- plan -->
   <section class="pb-col pb-plan">
     <h2>Plan <span class="pb-count" id="pb-step-count"></span></h2>
-    <div id="pb-steps" class="pb-steps"><div class="pb-drop-hint">Drop action blocks here to build the sequence</div></div>
+    <div id="pb-steps" class="pb-steps"><div class="pb-drop-hint">Drop skills here to build the sequence</div></div>
   </section>
 
   <div class="pb-divider" data-div="2" title="Drag to resize"></div>
@@ -115,6 +123,9 @@
   </section>
 </main>
 
+<script src="core/base_control.js"></script>
+<script src="core/execution_environment.js"></script>
+<script src="core/plan_steps.js"></script>
 <script src="core/response.js"></script>
 <script src="core/builder-scene.js"></script>
 <script src="core/plan_constraints.js"></script>

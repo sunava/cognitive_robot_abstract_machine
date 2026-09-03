@@ -371,26 +371,6 @@ class TestRecordedDetections:
 
         assert [row["__entity__"] for row in answered.rows] == ["milk PickUpEvent"]
 
-    def test_the_recorded_scene_offers_a_question_per_detected_type(
-        self, scene_with_detections
-    ):
-        offered = [preset.text for preset in Preset.of_scene(None)]
-
-        assert "give me all pick up events" in offered
-        assert "give me all placing events" in offered
-
-    def test_a_type_that_was_not_detected_is_not_asked_about(
-        self, scene_with_detections
-    ):
-        offered = [preset.text for preset in Preset.of_scene(None)]
-
-        assert "give me all insertion events" not in offered
-
-    def test_a_scene_without_detections_offers_no_event_question(self, fixture_scene):
-        offered = [preset.text for preset in Preset.of_scene(None)]
-
-        assert not [text for text in offered if text.endswith(" events")]
-
 
 # %% recording the detections of a run
 

@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 
 import pytest
+import rclpy
 
 from cramera import paths
 
@@ -93,3 +94,17 @@ def fixture_scene(tmp_path, monkeypatch):
     reset_knowledge_base_cache()
     yield tmp_path
     reset_knowledge_base_cache()
+
+
+@pytest.fixture(autouse=True)
+def leave_no_ros_context():
+    """
+    Shut a ROS context down again that a cramera test started.
+
+    Serving markers or a live bridge initializes rclpy, and a context left running is
+    somebody else's context for every test that follows -- the ones asserting who owns
+    the context then read these leftovers instead of their own doing.
+    """
+    yield
+    if rclpy.ok():
+        rclpy.shutdown()

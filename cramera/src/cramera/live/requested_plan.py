@@ -21,8 +21,12 @@ from coraplex.plans.factories import sequential
 from coraplex.plans.plan_node import PlanNode
 from coraplex.robot_plans.actions.base import ActionDescription
 from coraplex.robot_plans.actions.composite.transporting import TransportAction
+from coraplex.datastructures.grasp import GraspDescription
 from coraplex.robot_plans.actions.core.navigation import NavigateAction
+from coraplex.robot_plans.actions.core.pick_up import PickUpAction
+from coraplex.robot_plans.actions.core.placing import PlaceAction
 from coraplex.robot_plans.actions.core.robot_body import MoveTorsoAction, ParkArmsAction
+from coraplex.view_manager import ViewManager
 from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.spatial_types.spatial_types import Pose
 from semantic_digital_twin.world import World
@@ -44,6 +48,8 @@ class StepType(StrEnum):
     MOVE_TORSO = "move_torso"
     NAVIGATE = "navigate"
     TRANSPORT = "transport"
+    PICK = "pick"
+    PLACE = "place"
 
 
 class TargetMode(StrEnum):
@@ -249,6 +255,29 @@ class SurfaceTarget(TransportTarget):
         return Pose(points[0], reference_frame=points[0].reference_frame)
 
 
+def transport_target(parameters: Dict[str, Any]) -> TransportTarget:
+    """
+    Where a step puts the object down, in whichever way it was given.
+
+    :param parameters: The step's parameters.
+    :raises MalformedPlanRequest: If the target mode is not one the builder offers.
+    :raises cramera.live.placement_surface.UnknownPlacementSurface: If a named surface
+        is not one a plan can place on.
+    """
+    mode = parameters.get("targetMode", TargetMode.POSE.value)
+    if mode == TargetMode.POSE:
+        return PoseTarget(where=LevelPose.from_parameters(parameters))
+    if mode == TargetMode.SEMANTIC:
+        return SurfaceTarget(
+            surface_type=placement_surface_type(str(parameters.get("surfaceType", ""))),
+            surface_name=str(parameters.get("surfaceName", "")),
+        )
+    raise MalformedPlanRequest(
+        "'targetMode' must be one of %s, got %r"
+        % ([offered.value for offered in TargetMode], mode)
+    )
+
+
 # %% the steps themselves
 
 
@@ -269,11 +298,12 @@ class PlanStep(ABC):
         """
 
     @abstractmethod
-    def action(self, world: World) -> ActionDescription:
+    def action(self, context: Context) -> ActionDescription:
         """
         The coraplex action carrying this step out.
 
-        :param world: The running world the step's bodies and poses are resolved in.
+        :param context: The running scene, whose world the step's bodies and poses are
+            resolved in and whose robot a grasp is chosen for.
         """
 
 
@@ -292,7 +322,7 @@ class ParkArms(PlanStep):
     def from_parameters(cls, parameters: Dict[str, Any]) -> ParkArms:
         return cls(arm=_member(Arms, parameters, "arm"))
 
-    def action(self, world: World) -> ActionDescription:
+    def action(self, context: Context) -> ActionDescription:
         return ParkArmsAction(self.arm)
 
 
@@ -311,7 +341,7 @@ class MoveTorso(PlanStep):
     def from_parameters(cls, parameters: Dict[str, Any]) -> MoveTorso:
         return cls(torso_state=_member(TorsoState, parameters, "torso"))
 
-    def action(self, world: World) -> ActionDescription:
+    def action(self, context: Context) -> ActionDescription:
         return MoveTorsoAction(self.torso_state)
 
 
@@ -330,8 +360,91 @@ class Navigate(PlanStep):
     def from_parameters(cls, parameters: Dict[str, Any]) -> Navigate:
         return cls(target=LevelPose.from_parameters(parameters))
 
-    def action(self, world: World) -> ActionDescription:
-        return NavigateAction(self.target.pose(world))
+    def action(self, context: Context) -> ActionDescription:
+        return NavigateAction(self.target.pose(context.world))
+
+
+def _object_name(parameters: Dict[str, Any]) -> str:
+    """
+    The body a step acts on, named by its mesh file.
+
+    :param parameters: The step's parameters.
+    :raises MalformedPlanRequest: If the step names no object.
+    """
+    named = parameters.get("object")
+    if not isinstance(named, str) or not named:
+        raise MalformedPlanRequest("this step must name the object it acts on")
+    return named
+
+
+@dataclass(frozen=True)
+class PickUp(PlanStep):
+    """
+    Take an object into a gripper.
+    """
+
+    object_name: str
+    """
+    The name of the body being picked up, which is its mesh file name.
+    """
+
+    arm: Arms
+    """
+    The arm that picks it up.
+    """
+
+    @classmethod
+    def from_parameters(cls, parameters: Dict[str, Any]) -> PickUp:
+        return cls(
+            object_name=_object_name(parameters),
+            arm=_member(Arms, parameters, "arm"),
+        )
+
+    def action(self, context: Context) -> ActionDescription:
+        picked = context.world.get_body_by_name(self.object_name)
+        return PickUpAction(
+            picked,
+            self.arm,
+            GraspDescription.robot_relative_default(
+                ViewManager.get_end_effector_view(self.arm, context.robot),
+                picked.global_pose,
+                picked,
+            ),
+        )
+
+
+@dataclass(frozen=True)
+class Place(PlanStep):
+    """
+    Put an object held in a gripper down somewhere.
+    """
+
+    object_name: str
+    """
+    The name of the body being put down, which is its mesh file name.
+    """
+
+    arm: Arms
+    """
+    The arm holding it.
+    """
+
+    target: TransportTarget
+    """
+    Where the object ends up.
+    """
+
+    @classmethod
+    def from_parameters(cls, parameters: Dict[str, Any]) -> Place:
+        return cls(
+            object_name=_object_name(parameters),
+            arm=_member(Arms, parameters, "arm"),
+            target=transport_target(parameters),
+        )
+
+    def action(self, context: Context) -> ActionDescription:
+        placed = context.world.get_body_by_name(self.object_name)
+        return PlaceAction(placed, self.target.pose(context.world, placed), self.arm)
 
 
 @dataclass(frozen=True)
@@ -363,48 +476,20 @@ class Transport(PlanStep):
 
     @classmethod
     def from_parameters(cls, parameters: Dict[str, Any]) -> Transport:
-        object_name = parameters.get("object")
-        if not isinstance(object_name, str) or not object_name:
-            raise MalformedPlanRequest("a transport step must name the object to carry")
         return cls(
-            object_name=object_name,
+            object_name=_object_name(parameters),
             arm=_member(Arms, parameters, "arm"),
-            target=cls._target(parameters),
+            target=transport_target(parameters),
             look_at_operation_site=bool(
                 parameters.get("look_at_operation_site", False)
             ),
         )
 
-    @staticmethod
-    def _target(parameters: Dict[str, Any]) -> TransportTarget:
-        """
-        Where this transport puts the object, in whichever way it was given.
-
-        :param parameters: The step's parameters.
-        :raises MalformedPlanRequest: If the target mode is not one the builder offers.
-        :raises cramera.live.placement_surface.UnknownPlacementSurface: If a named
-            surface is not one a plan can place on.
-        """
-        mode = parameters.get("targetMode", TargetMode.POSE.value)
-        if mode == TargetMode.POSE:
-            return PoseTarget(where=LevelPose.from_parameters(parameters))
-        if mode == TargetMode.SEMANTIC:
-            return SurfaceTarget(
-                surface_type=placement_surface_type(
-                    str(parameters.get("surfaceType", ""))
-                ),
-                surface_name=str(parameters.get("surfaceName", "")),
-            )
-        raise MalformedPlanRequest(
-            "'targetMode' must be one of %s, got %r"
-            % ([mode.value for mode in TargetMode], mode)
-        )
-
-    def action(self, world: World) -> ActionDescription:
-        transported = world.get_body_by_name(self.object_name)
+    def action(self, context: Context) -> ActionDescription:
+        transported = context.world.get_body_by_name(self.object_name)
         return TransportAction(
             transported,
-            self.target.pose(world, transported),
+            self.target.pose(context.world, transported),
             self.arm,
             look_at_operation_site=self.look_at_operation_site,
         )
@@ -415,6 +500,8 @@ STEP_TYPES: Dict[StepType, Type[PlanStep]] = {
     StepType.MOVE_TORSO: MoveTorso,
     StepType.NAVIGATE: Navigate,
     StepType.TRANSPORT: Transport,
+    StepType.PICK: PickUp,
+    StepType.PLACE: Place,
 }
 """
 The step each type in a posted plan is read as.
@@ -472,5 +559,5 @@ class RequestedPlan:
 
         :param context: The running scene's context, whose world the steps resolve in.
         """
-        actions = [step.action(context.world) for step in self.steps]
+        actions = [step.action(context) for step in self.steps]
         return sequential(actions, context=context).plan
