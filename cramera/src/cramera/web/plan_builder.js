@@ -15,14 +15,14 @@
     'screw_box.obj'];
   const OBJ_COLORS = ['#e6ecff', '#e6c07f', '#9aa1ad', '#8fd6c8', '#c9a0ff', '#ff9db1', '#9ecb6b'];
 
-  // ---- action blocks ----
+  // ---- skills ----
   const BLOCKS = {
     park_arms: { name: 'Park arms', color: '#b98cff', params: { arm: 'BOTH' } },
     move_torso: { name: 'Move torso', color: '#ff9db1', params: { torso: 'HIGH' } },
     navigate: { name: 'Navigate', color: '#8fd6c8', params: { x: 2.6, y: 1.8, z: 0.0, yaw: 0.0 } },
     transport: { name: 'Transport object', color: '#5b8cff', params: { object: '', x: 5.0, y: 3.3, z: 0.8, yaw: 1.57, arm: 'LEFT', targetMode: 'semantic', surfaceType: 'CounterTop', surfaceName: '' } },
-    pick: { name: 'Pick up object', color: '#7ec9ff', params: { object: '', arm: 'LEFT' } },
-    place: { name: 'Place object', color: '#ffc46b', params: { object: '', x: 2.4, y: 1.8, z: 0.8, yaw: 0.0, arm: 'LEFT', targetMode: 'pose', surfaceType: 'CounterTop', surfaceName: '' } },
+    pick: { name: 'Pick up', color: '#7ec9ff', params: { object: '', arm: 'LEFT' } },
+    place: { name: 'Place', color: '#ffc46b', params: { object: '', x: 2.4, y: 1.8, z: 0.8, yaw: 0.0, arm: 'LEFT', targetMode: 'pose', surfaceType: 'CounterTop', surfaceName: '' } },
   };
   // which step kinds act on a placed object (see core/plan_steps.js); a Pick or Place is a
   // Transport spelled out, for a world whose floor carries no costmap to search
@@ -471,7 +471,7 @@
   function renderSteps() {
     const el = $('pb-steps');
     $('pb-step-count').textContent = steps.length ? '(' + steps.length + ')' : '';
-    if (!steps.length) { el.innerHTML = '<div class="pb-drop-hint">Drop action blocks here to build the sequence</div>'; renderScene(); return; }
+    if (!steps.length) { el.innerHTML = '<div class="pb-drop-hint">Drop skills here to build the sequence</div>'; renderScene(); return; }
     el.innerHTML = '';
     steps.forEach(function (s, i) {
       const b = BLOCKS[s.type];
