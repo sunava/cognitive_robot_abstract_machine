@@ -352,7 +352,7 @@ class TestApi:
         pytest.importorskip("krrood")
         payload = get_json(server + "/api/knowledge")
         assert payload["ok"]
-        assert any(n["id"] == "milk" for n in payload["nodes"])
+        assert any(n["id"] == "cram" for n in payload["nodes"])
 
     def test_knowledge_overview_presets_are_worded(self, server):
         """
@@ -475,13 +475,19 @@ class TestAskedQuestions:
         assert answer["count"] == 1
 
     def test_a_paraphrase_is_recognized_too(self, server):
+        """
+        A reworded question reaches the same preset as the wording on its button.
+        """
         pytest.importorskip("krrood")
-        match = posted_answer(
-            server + "/api/question", {"text": "can you tell me what is in the scene"}
+        asked = posted_answer(server + "/api/question", {"text": "which robot is this"})
+
+        paraphrased = posted_answer(
+            server + "/api/question",
+            {"text": "can you tell me which robot this is"},
         )
 
-        assert match["matched"] is True
-        assert match["preset"]["code"] == "an(entity(scene_object))"
+        assert paraphrased["matched"] is True
+        assert paraphrased["preset"] == asked["preset"]
 
     def test_an_unanswerable_question_gets_the_sorry_reply(self, server):
         pytest.importorskip("krrood")

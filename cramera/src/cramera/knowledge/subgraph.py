@@ -17,6 +17,15 @@ if TYPE_CHECKING:
     from cramera.knowledge.knowledge_base import EpisodeKnowledgeBase
 
 
+class DuplicateNodeId(Exception):
+    """
+    Raised when a view adds two nodes under one id.
+
+    An id addresses one node, and the frontend builds its graph from a data set keyed by
+    it: a repeated id throws there, and the panel renders nothing at all.
+    """
+
+
 @dataclass
 class TreePosition:
     """
@@ -209,7 +218,12 @@ class SubgraphAccumulator:
         :param lines: Detail-panel lines shown under the node's label.
         :param status: Status colouring for the node, if any.
         :param tree_position: Placement in the node's tree, for a view rendered as one.
+        :raises DuplicateNodeId: If this subgraph already holds a node with that id.
         """
+        if node_id in self.details:
+            raise DuplicateNodeId(
+                "'%s' is already a node of this subgraph" % node_id
+            )
         title = "\n".join([label] + lines)
         self.nodes.append(
             GraphNode(

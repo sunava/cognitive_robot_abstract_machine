@@ -47,7 +47,11 @@ class TestStart:
 class TestMain:
     def test_main_preselects_the_cramera_backend_and_runs_the_demo(self, monkeypatch):
         run_calls: List[Dict[str, Any]] = []
-        monkeypatch.delenv(runner.VISUALIZATION_BACKEND_VARIABLE, raising=False)
+        # main() preselects the backend by writing the real environment, and monkeypatch
+        # records an undo only for a variable that was there: setting it first, then
+        # deleting it, leaves the test with none and still restores that afterwards
+        monkeypatch.setenv(runner.VISUALIZATION_BACKEND_VARIABLE, "restored-on-teardown")
+        monkeypatch.delenv(runner.VISUALIZATION_BACKEND_VARIABLE)
         monkeypatch.setattr(sys, "argv", ["cramera-live", "/demos/demo.py"])
         monkeypatch.setattr(
             runpy,

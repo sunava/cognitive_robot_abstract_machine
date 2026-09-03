@@ -85,7 +85,7 @@ Panels.define('eql', function (root, bus) {
     recordedStatus = payload.status;
     knowledgeStatus.classList.add('ready');
     if (!source.live) showSource(recordedStatus, payload.presets || []);
-    welcome();
+    answerEl.innerHTML = '';       // the loading note goes once the base is there
     bus.emit('knowledge:ready', { payload: payload });
   }
 
@@ -134,27 +134,6 @@ Panels.define('eql', function (root, bus) {
     entries: function () { return vocabulary; },
     fetchMembers: fetchMembers,
   });
-
-  function welcome() {
-    answerEl.innerHTML =
-      '<div class="goal">EQL · knowledge &amp; reasoning</div>' +
-      '<p class="headline"><b>Correctness, concepts and specifications</b> are captured as ' +
-      '<b>rules</b> and <b>description-logic axioms / predicates</b>, and made explorable as a ' +
-      '<b>graph</b> — queried with <b>EQL</b>, krrood’s pythonic entity query language from the ' +
-      'CRAM architecture.</p>' +
-      '<p class="hint-txt">Ready-made variables: <code>scene_object</code> (bench objects), ' +
-      '<code>episode</code> (action episodes), <code>arm</code>, <code>joint</code> (joint motion), ' +
-      '<code>robot</code>, <code>package</code> / <code>subpackage</code> / <code>python_class</code> ' +
-      '(CRAM packages, subpackages, classes). ' +
-      'Build queries like <code>the(entity(scene_object).where(scene_object.name == \'milk\'))</code> — ' +
-      'or click a preset below, or a node in the graph. The question asked is read back under the ' +
-      'bar as English, coloured by semantic role and linked to the documentation or source ' +
-      'of every class and attribute it names.</p>' +
-      '<p class="hint-txt">Start typing in the box to see everything this scene lets you ' +
-      'name — its variables, EQL’s own keywords and every class of the CRAM workspace — ' +
-      'and type a dot after a name for what it holds. ArrowUp / ArrowDown pick, ' +
-      'Tab or Enter accepts, Escape closes.</p>';
-  }
 
   // %% describe an entity in the answer panel
   // Two sources: our own knowledge.details (scene clicks) and graph panels, which send

@@ -2,9 +2,9 @@
  * panels/graph/panel.js — the graph view with five tabs.
  *
  *   Knowledge   the entity graph + CRAM architecture (double-click drills in)
- *   Kinematics  the robot's URDF tree (links as nodes, joints as edges)
  *   Plan        the executed plan tree, node border = execution status
  *   Statechart  the giskardpy motion statechart of the running motion group
+ *   Kinematics  the robot's URDF tree (links as nodes, joints as edges)
  *   Transforms  the executing world's connection graph, node border = freshness
  *
  * The tabs in LIVE_ENDPOINT take their node status from the cramera-live bridge
@@ -27,9 +27,9 @@ Panels.define('graph', function (root, bus) {
     '<div class="graph-wrap">' +
     '  <div class="graph-tabs" id="graph-tabs">' +
     '    <button data-view="knowledge" class="active" title="the entity graph (EQL / knowledge base)">Knowledge</button>' +
-    '    <button data-view="kinematics" title="the robot\'s kinematic structure — URDF links &amp; joints">Kinematics</button>' +
     '    <button data-view="plan" title="the plan tree, with the execution status of every node">Plan</button>' +
     '    <button data-view="chart" title="the giskardpy motion statechart of the running motion group">Statechart</button>' +
+    '    <button data-view="kinematics" title="the robot\'s kinematic structure — URDF links &amp; joints">Kinematics</button>' +
     '    <button data-view="transforms" title="the world\'s connection graph — which frame hangs from which, and how recently it moved">Transforms</button>' +
     '    <span class="gt-live" id="gt-live" title="node status is streaming from the running demo">◉ live status</span>' +
     '  </div>' +
@@ -57,16 +57,29 @@ Panels.define('graph', function (root, bus) {
   const tabsEl = root.querySelector('#graph-tabs');
   const liveBadge = root.querySelector('#gt-live');
   Graph.attach(root.querySelector('.graph-canvas'), root.querySelector('#legend'));
+  const canvasEl = root.querySelector('.graph-canvas');
 
-  // vis-network draws onto a canvas of the size it had when it was built, so a window
-  // the reader drags to another size leaves the graph in the old one. Re-fitted once the
-  // dragging settles rather than per resize event, of which a drag fires many.
+  // vis-network draws onto a canvas of the size it had when it was built, so a canvas
+  // that has changed size since leaves the graph in the old one. More than the window
+  // changes it: hiding a panel re-columns the layout, dragging a divider re-shares it,
+  // and the Plan tab's step list covers it entirely — so what is watched is the canvas
+  // itself, whoever resized it. Re-fitted once the change settles rather than per
+  // event, of which a drag fires many.
   const REFIT_DELAY_MILLISECONDS = 120;
   let refit = null;
-  window.addEventListener('resize', function () {
+  function refitWhenSettled() {
     if (refit) window.clearTimeout(refit);
     refit = window.setTimeout(function () { refit = null; Graph.resize(); }, REFIT_DELAY_MILLISECONDS);
-  });
+  }
+  if (window.ResizeObserver) {
+    new window.ResizeObserver(function (entries) {
+      // a canvas with no size is off screen; fitting it there would fit nothing
+      const box = entries[entries.length - 1].contentRect;
+      if (box.width && box.height) refitWhenSettled();
+    }).observe(canvasEl);
+  } else {
+    window.addEventListener('resize', refitWhenSettled);
+  }
 
   // %% zoom controls
   // one step in and its exact inverse out, so clicking + then − lands where it started
@@ -76,16 +89,19 @@ Panels.define('graph', function (root, bus) {
   root.querySelector('#graph-zoom-fit').addEventListener('click', function () { Graph.fit(); });
 
   // %% tabs
+  // in the order the tabs are rendered in
   const TABS = {
     knowledge:  { url: '/api/knowledge' },
-    kinematics: { url: '/api/knowledge/view?name=kinematics' },
     plan:       { url: '/api/knowledge/view?name=plan' },
     chart:      { url: '/api/knowledge/view?name=chart' },
+    kinematics: { url: '/api/knowledge/view?name=kinematics' },
     transforms: { url: '/api/knowledge/view?name=transforms' },
   };
+  // the tab the panel opens on: the first one, so the highlighted tab is the leftmost
+  const DEFAULT_TAB = Object.keys(TABS)[0];
   // the bridge endpoint each live view polls
   const LIVE_ENDPOINT = { plan: '/plan', chart: '/chart', transforms: '/transforms' };
-  let tab = 'knowledge';
+  let tab = DEFAULT_TAB;
   let view = null;            // the currently rendered payload
   const base = {};            // tab -> payload as loaded from the server
   const shown = {};           // tab -> payload currently rendered (drill-downs)
@@ -119,9 +135,12 @@ Panels.define('graph', function (root, bus) {
     nodes.forEach(function (n) { const o = by[n.id]; if (n.parent && by[n.parent]) by[n.parent].kids.push(o); else roots.push(o); });
     return roots;
   }
+  // a replayed plan carries no statuses (only the live bridge streams them), and a step
+  // with nothing to report shows no pill rather than an invented "not started"
   function stepPill(status) {
-    const key = status === 'NOT_STARTED' ? 'CREATED' : (status || 'CREATED');
-    return '<span class="sp sp-' + key + '">' + (STEP_STATUS[status] || String(status || '').toLowerCase()) + '</span>';
+    if (!status) return '';
+    const key = status === 'NOT_STARTED' ? 'CREATED' : status;
+    return '<span class="sp sp-' + key + '">' + (STEP_STATUS[status] || String(status).toLowerCase()) + '</span>';
   }
   // flatten structural containers; keep action/attach as numbered steps, details collapsed
   function stepItems(node) {
@@ -241,12 +260,13 @@ Panels.define('graph', function (root, bus) {
   // children derives purely from them (all done -> done), so a stale own "RUNNING" never
   // keeps a step running once its motions have finished.
   function derivedStatus(item) {
-    let anyRunning = false, anyFailed = false, seen = 0, done = 0;
+    let anyRunning = false, anyFailed = false, seen = 0, done = 0, reported = false;
     (function scan(it) {
       (it.kids || []).forEach(function (c) {
         if (IGNORE_KINDS[c.n.kind]) return;      // ignore conditions entirely
         seen++;
         const s = c.n.status;
+        if (s) reported = true;
         if (s === 'RUNNING') anyRunning = true;
         if (s === 'FAILED') anyFailed = true;
         if (s === 'SUCCEEDED' || s === 'DONE') done++;
@@ -255,6 +275,7 @@ Panels.define('graph', function (root, bus) {
     })(item);
     if (anyFailed) return 'FAILED';
     if (seen > 0) {                              // has real children: derive from them
+      if (!reported) return null;                // none of them reports one either
       if (done === seen) return 'SUCCEEDED';
       if (anyRunning || done > 0) return 'RUNNING';
       return 'CREATED';
@@ -395,7 +416,6 @@ Panels.define('graph', function (root, bus) {
   }
   function maybeRenderSteps(payload) {
     const on = stepsMode && tab === 'plan';
-    const canvas = root.querySelector('.graph-canvas');
     const legend = root.querySelector('#legend');
     // the graph's overlay controls (zoom, fullscreen) sit on the left and would cover
     // the constraints column, so hide them while the step list is shown
@@ -403,10 +423,10 @@ Panels.define('graph', function (root, bus) {
       const e = root.querySelector(sel); if (e) e.style.display = on ? 'none' : '';
     });
     if (on && payload && (payload.nodes || []).length) {
-      canvas.style.display = 'none'; if (legend) legend.style.display = 'none';
+      canvasEl.style.display = 'none'; if (legend) legend.style.display = 'none';
       stepsEl.style.display = ''; renderSteps(payload);
     } else {
-      stepsEl.style.display = 'none'; canvas.style.display = ''; if (legend) legend.style.display = '';
+      stepsEl.style.display = 'none'; canvasEl.style.display = ''; if (legend) legend.style.display = '';
     }
   }
   // the toggle label names the view you switch TO, so its state is never ambiguous
@@ -431,6 +451,9 @@ Panels.define('graph', function (root, bus) {
       emptyEl.style.display = empty ? '' : 'none';
       emptyEl.textContent = empty ? (payload.empty || 'Nothing to show in this view.') : '';
     }
+    // before building: the renderer sizes its canvas from the container it is handed,
+    // so a graph built while the step list still covers the canvas comes out empty
+    maybeRenderSteps(payload);
     Graph.build({
       nodes: payload.nodes, edges: payload.edges, legend: payload.legend,
       layout: payload.layout, arrows: !!payload.arrows,
@@ -439,7 +462,6 @@ Panels.define('graph', function (root, bus) {
       key: (payload.key || tab) + '#' + stacks[tab].length,
     });
     updateNav();
-    maybeRenderSteps(payload);
   }
   function updateNav() {
     const inside = stacks[tab].length > 0;
@@ -469,6 +491,22 @@ Panels.define('graph', function (root, bus) {
   navUp.addEventListener('click', goBack);
   navHome.addEventListener('click', goHome);
 
+  // %% loading a tab
+  // What one tab's request answered: its view, or why the reader cannot have it.
+  async function loadedView(name) {
+    try {
+      const response = await fetch(SceneContext.withScene(TABS[name].url));
+      if (response.status === 404) {
+        return { error: 'this build needs the /api/knowledge/view route — restart the server' };
+      }
+      const payload = await ResponseUtil.parseJson(response);
+      if (!payload.ok) return { error: payload.error || 'view unavailable' };
+      payload.key = name;
+      return { payload: payload };
+    } catch (err) {
+      return { error: 'Could not load this view: ' + ((err && err.message) || err) };
+    }
+  }
   async function showTab(name) {
     if (!TABS[name]) return;
     tab = name;
@@ -478,20 +516,12 @@ Panels.define('graph', function (root, bus) {
     if (!base[name]) {
       emptyEl.style.display = '';
       emptyEl.textContent = 'loading…';
-      try {
-        const r = await fetch(SceneContext.withScene(TABS[name].url));
-        if (r.status === 404) throw new Error('this build needs the /api/knowledge/view route — restart the server');
-        const p = await ResponseUtil.parseJson(r);
-        if (!p.ok) {
-          emptyEl.textContent = p.error || 'view unavailable';
-          return;
-        }
-        p.key = name;
-        base[name] = p;
-      } catch (err) {
-        emptyEl.textContent = 'Could not load this view: ' + ((err && err.message) || err);
-        return;
-      }
+      const loaded = await loadedView(name);
+      // a view is fetched, so the reader can be on another tab by the time it arrives:
+      // drawing it there would show one tab's graph under another tab's name
+      if (tab !== name) return;
+      if (loaded.error) { emptyEl.textContent = loaded.error; return; }
+      base[name] = loaded.payload;
     }
     if (stepsToggle) { stepsToggle.style.display = (name === 'plan') ? '' : 'none'; updateStepsToggle(); }
     setView(shown[name] || base[name]);
@@ -760,7 +790,7 @@ Panels.define('graph', function (root, bus) {
   });
 
   // %% boot
-  showTab('knowledge');
+  showTab(DEFAULT_TAB);
 
   return {
     destroy: function () {

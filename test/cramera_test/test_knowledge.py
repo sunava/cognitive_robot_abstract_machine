@@ -23,8 +23,8 @@ from cramera.knowledge.query_runner import RowRenderer  # noqa: E402
 from cramera.knowledge.graph_payload import KnowledgeGraphPayload  # noqa: E402
 from cramera.knowledge.knowledge_base import EpisodeKnowledgeBase  # noqa: E402
 from cramera.knowledge.presets import (  # noqa: E402
-    ARCHITECTURE_PRESETS,
     Preset,
+    SCENE_PRESETS,
     PresetsPerType,
 )
 from cramera.knowledge.queryable_knowledge import QueryScope  # noqa: E402
@@ -53,7 +53,12 @@ from cramera.generated_json import write_json_atomically  # noqa: E402
 
 from .conftest import reset_knowledge_base_cache  # noqa: E402
 from .test_recorded_statecharts import snapshot as chart_snapshot  # noqa: E402
-from cramera.knowledge.subgraph import DetailEntry, GraphEdge  # noqa: E402
+from cramera.knowledge.subgraph import (  # noqa: E402
+    DetailEntry,
+    DuplicateNodeId,
+    GraphEdge,
+    SubgraphAccumulator,
+)
 from cramera.knowledge.views import plan_tree as plan_view  # noqa: E402
 from cramera.robot_parts import (  # noqa: E402
     ArmSide,
@@ -330,13 +335,16 @@ class TestRecordedMeasurements:
         )
         assert milk.height_metres == 0.23
 
-    def test_unknown_measurements_are_left_out_of_the_graph(self, fixture_scene):
+    def test_an_unrecorded_measurement_stays_unknown(self, fixture_scene):
         """
-        A tooltip must not show a height the bundle never recorded.
+        A measurement the bundle never recorded must read as absent, not as zero.
         """
-        payload = GraphPanelViews.of_active_scene().for_tab("knowledge")
-        milk = payload.details["milk"]
-        assert not any(line.startswith("height:") for line in milk.lines)
+        milk = next(
+            entry
+            for entry in EpisodeKnowledgeBase.of_active_scene().objects
+            if entry.name == "milk"
+        )
+        assert milk.height_metres is None
 
 
 class TestActionLabelShortening:
@@ -370,7 +378,7 @@ class TestViewPayloads:
         payload = GraphPanelViews.of_active_scene().for_tab("knowledge")
         assert payload.ok
         ids = {n.id for n in payload.nodes}
-        assert {"pr2", "milk", "transport_milk", "plan"} <= ids
+        assert {"cram", "coraplex", "coraplex.plans"} <= ids
         assert payload.presets
 
     def test_kinematics_view(self, fixture_scene):
@@ -433,15 +441,27 @@ class TestViewPayloads:
         summary = next(line for line in root_lines if "movable" in line)
         assert summary.endswith("(%d movable)" % len(movable_edges))
 
-    def test_plan_view_carries_status(self, fixture_scene):
+    def test_plan_view_reports_no_status(self, fixture_scene):
+        """
+        A replay's plan tab shows structure only.
+
+        Which node was running when is a live statement, and a recording is scrubbed
+        back and forth; a status shown at every played moment would be a claim about one
+        of them. The bridge streams the statuses while a demo performs the plan.
+        """
         payload = GraphPanelViews.of_active_scene().for_tab("plan")
         rendered = payload.to_payload()
+
         assert payload.ok and rendered["layout"] == "hier"
-        assert rendered["statusLegend"]
-        by_label = {n.label: n for n in payload.nodes}
-        assert by_label["SequentialNode"].status == "SUCCEEDED"
-        # recorded inner nodes stay CREATED (only the root is performed)
-        assert by_label["Transport"].status == "CREATED"
+        assert rendered["statusLegend"] is False
+        assert {node.status for node in payload.nodes} == {None}
+        assert "status" not in rendered["nodes"][0]
+        assert not [
+            line
+            for entry in payload.details.values()
+            for line in entry.lines
+            if line.startswith("status")
+        ]
         assert len(payload.edges) == len(payload.nodes) - 1
 
     def test_plan_view_nodes_carry_tree_structure(self, fixture_scene):
@@ -567,105 +587,55 @@ class TestPlanGroups:
         assert node.group == PlanNodeGroup.ATTACHMENT
 
 
-# %% BUG-2 -- EQL preset splicing
-class TestPresetSafety:
-    def test_an_apostrophe_in_an_object_name_does_not_break_its_preset(
-        self, fixture_scene, monkeypatch
-    ):
-        """
-        ``Preset.of_scene()`` must escape object names, not splice them raw into EQL
-        source.
-        """
-        bundle = SceneBundle.of_active_scene()
-        scene, trajectory = bundle.scene, bundle.trajectory
-        scene["objects"][0]["id"] = "o'brien"
-        scene["segments"][1]["picks"] = "o'brien"
-        monkeypatch.setattr(
-            SceneBundle,
-            "of_scene",
-            lambda scene_name=None: SceneBundle(scene, trajectory),
-        )
-        EpisodeKnowledgeBase.reset()
-        preset = next(p for p in Preset.of_scene() if "scene_object.name" in p.code)
-        result = EqlSession.of_active_scene().run(preset.code)
-        assert result.ok and result.rows[0]["__entity__"] == "o'brien"
-
-    def test_an_apostrophe_in_an_episode_name_does_not_break_its_presets(
-        self, fixture_scene, monkeypatch
-    ):
-        """
-        Covers both the ``places_at`` and ``performed_by`` presets, which splice the
-        same episode name.
-        """
-        bundle = SceneBundle.of_active_scene()
-        scene, trajectory = bundle.scene, bundle.trajectory
-        scene["segments"][1]["step"] = "transport_o'brien"
-        monkeypatch.setattr(
-            SceneBundle,
-            "of_scene",
-            lambda scene_name=None: SceneBundle(scene, trajectory),
-        )
-        EpisodeKnowledgeBase.reset()
-        for preset in Preset.of_scene():
-            assert EqlSession.of_active_scene().run(preset.code).ok
-
-
 # %% characterization: GraphPanelViews.of_active_scene().for_tab("knowledge") structure
+# %% one node per id
+class TestSubgraphNodeIds:
+    """
+    A node id addresses one node: the frontend builds its graph from a keyed data set,
+    so a repeated id throws there and the whole panel renders nothing at all.
+    """
+
+    def test_a_repeated_id_is_refused(self):
+        view = SubgraphAccumulator()
+        view.add("plan", "executed plan", NodeGroup.PLAN, [])
+
+        with pytest.raises(DuplicateNodeId):
+            view.add("plan", "plan", NodeGroup.EVENT, [])
+
+    def test_the_refusal_names_the_id(self):
+        view = SubgraphAccumulator()
+        view.add("plan", "executed plan", NodeGroup.PLAN, [])
+
+        with pytest.raises(DuplicateNodeId, match="plan"):
+            view.add("plan", "plan", NodeGroup.EVENT, [])
+
+
 class TestGraphPayloadStructure:
-    def test_robot_arm_gripper_chain(self, fixture_scene):
+    def test_the_overview_holds_only_the_architecture(self, fixture_scene):
         payload = GraphPanelViews.of_active_scene().for_tab("knowledge")
-        by_id = {n.id: n for n in payload.nodes}
-        assert by_id["pr2"].label == "pr2" and by_id["pr2"].group == NodeGroup.ROBOT
-        assert by_id["left_arm"].label == "left arm"
-        assert by_id["left_gripper"].label == "left gripper"
-        chain_edges = [e for e in payload.edges if e.label == "has part"]
-        assert chain_edges == [
-            GraphEdge("pr2", "left_arm", EdgeKind.PROPERTY, "has part"),
-            GraphEdge("left_arm", "left_gripper", EdgeKind.PROPERTY, "has part"),
-        ]
-        assert payload.details["pr2"] == DetailEntry(
-            "pr2",
-            NodeGroup.ROBOT,
-            ["a Robot", "1 arm", "double-click: full URDF tree"],
-        )
 
-    def test_episode_chain(self, fixture_scene):
-        payload = GraphPanelViews.of_active_scene().for_tab("knowledge")
-        episode_edges = [
-            e
-            for e in payload.edges
-            if e.label in ("precedes", "performed by", "picks", "places at")
-        ]
-        assert episode_edges == [
-            GraphEdge("prepare", "transport_milk", EdgeKind.TYPE, "precedes"),
-            GraphEdge("transport_milk", "pr2", EdgeKind.PROPERTY, "performed by"),
-            GraphEdge("transport_milk", "milk", EdgeKind.PROPERTY, "picks"),
-            GraphEdge("transport_milk", "place_area", EdgeKind.PROPERTY, "places at"),
-        ]
+        assert {node.group for node in payload.nodes} == {
+            NodeGroup.ROOT,
+            NodeGroup.PACKAGE,
+            NodeGroup.SUBPACKAGE,
+        }
 
-    def test_object_detail_lines(self, fixture_scene):
+    def test_nothing_the_recording_itself_holds_is_drawn(self, fixture_scene):
+        """
+        The robot, its arms, the objects and the episodes each have a tab or a query of
+        their own; in the architecture graph they were unconnected strays.
+        """
+        knowledge_base = EpisodeKnowledgeBase.of_active_scene()
+        recorded = (
+            {knowledge_base.robot.name}
+            | {arm.name for arm in knowledge_base.arms}
+            | {bench_object.name for bench_object in knowledge_base.objects}
+            | {episode.name for episode in knowledge_base.episodes}
+        )
         payload = GraphPanelViews.of_active_scene().for_tab("knowledge")
-        assert payload.details["milk"] == DetailEntry(
-            "Milk",
-            NodeGroup.OBJECT,
-            [
-                "a BenchObject",
-                "kind: object",
-                "position: (2.37, 2.00, 1.05)",
-            ],
-        )
-        # place_area's height (0.0) is recorded, unlike milk's, so its measurement
-        # line is present
-        assert payload.details["place_area"] == DetailEntry(
-            "Place area",
-            NodeGroup.OBJECT,
-            [
-                "a BenchObject",
-                "kind: location",
-                "position: (4.90, 3.30, 0.72)",
-                "height: 0.00 m",
-            ],
-        )
+
+        assert recorded
+        assert not recorded & {node.id for node in payload.nodes}
 
     def test_architecture_cluster(self, fixture_scene):
         payload = GraphPanelViews.of_active_scene().for_tab("knowledge")
@@ -708,46 +678,6 @@ class TestGraphPayloadStructure:
         import_edges = [e for e in payload.edges if e.label == "imports"]
         assert import_edges == [
             GraphEdge("coraplex", "krrood", EdgeKind.TYPE, "imports")
-        ]
-
-    def test_link_grounding_edge_present_branch(self, fixture_scene):
-        """
-        ``link()`` wires the anchor episode to ``coraplex.plans``, which exists as a
-        node in the fixture architecture.
-        """
-        payload = GraphPanelViews.of_active_scene().for_tab("knowledge")
-        assert (
-            GraphEdge("transport_milk", "coraplex.plans", EdgeKind.TYPE, "planned by")
-            in payload.edges
-        )
-
-    def test_link_grounding_edge_absent_branch(self, fixture_scene):
-        """
-        ``link()`` silently drops edges whose target isn't a node in this view — neither
-        ``giskardpy.motion_statechart`` nor ``semantic_digital_twin`` exists in the
-        fixture architecture, so no edge may target them.
-        """
-        payload = GraphPanelViews.of_active_scene().for_tab("knowledge")
-        targets = {e.target for e in payload.edges}
-        assert "giskardpy.motion_statechart" not in targets
-        assert "semantic_digital_twin" not in targets
-
-    def test_plan_tree_cluster(self, fixture_scene):
-        payload = GraphPanelViews.of_active_scene().for_tab("knowledge")
-        assert payload.details["plan"] == DetailEntry(
-            "executed plan",
-            NodeGroup.PLAN,
-            [
-                "the plan tree the demo actually executed",
-                "4 nodes",
-                "double-click to open",
-            ],
-        )
-        plan_edges = [e for e in payload.edges if e.source == "plan"]
-        assert plan_edges == [
-            GraphEdge("plan", "pr2", EdgeKind.PROPERTY, "executed by"),
-            GraphEdge("plan", "prepare", EdgeKind.TYPE, "spans"),
-            GraphEdge("plan", "transport_milk", EdgeKind.TYPE, "spans"),
         ]
 
     def test_the_status_names_what_the_recording_is(self, fixture_scene):
@@ -988,76 +918,42 @@ class TestSceneSelection:
 
         payload = GraphPanelViews.of_scene(name).for_tab("knowledge").to_payload()
 
-        assert any(node["id"] == "second_robot" for node in payload["nodes"])
+        assert EpisodeKnowledgeBase.of_scene(name).robot.name in payload["status"]
 
 
-class TestBundleDeclaredPresets:
+class TestScenePresets:
     """
-    A bundle may ship the questions worth asking about the demo it was recorded from,
-    which replace the generated scene presets for that scene only.
+    The EQL panel offers one fixed pair of questions, whatever a scene holds and
+    whatever a bundle declares.
     """
 
-    def declare_presets(self, fixture_scene, presets):
+    def test_exactly_the_offered_pair_is_handed_to_the_panel(self, fixture_scene):
+        runner = EqlSession.of_active_scene().runner()
+
+        assert Preset.of_scene() == [preset.worded(runner) for preset in SCENE_PRESETS]
+
+    def test_a_bundle_cannot_declare_its_own(self, fixture_scene):
         """
-        Write a ``presets.json`` into the fixture bundle.
-
-        :param fixture_scene: The fixture scene's data directory.
-        :param presets: The preset entries to declare.
+        A demo's own questions range over variables only that demo offers; they reach
+        the panel from the live bridge, not from the recorded bundle.
         """
         (fixture_scene / "scenes" / "fixture" / "presets.json").write_text(
-            json.dumps({"presets": presets})
+            json.dumps(
+                {
+                    "presets": [
+                        {
+                            "text": "which shapes are inserted?",
+                            "code": "an(entity(shape))",
+                        }
+                    ]
+                }
+            )
         )
         EpisodeKnowledgeBase.reset()
 
-    def test_a_declared_preset_replaces_the_generated_scene_presets(
-        self, fixture_scene
-    ):
-        self.declare_presets(
-            fixture_scene,
-            [{"text": "which shapes are inserted?", "code": "an(entity(shape))"}],
-        )
-
-        presets = Preset.of_scene()
-
-        assert presets[0] == Preset(
-            "which shapes are inserted?", "an(entity(shape))", requires_live=True
-        )
-        assert not any(preset.text == "what is in the scene?" for preset in presets)
-
-    def test_the_architecture_presets_survive_a_declaration(self, fixture_scene):
-        """
-        They range over the repository scan rather than the scene, so they answer with
-        or without the demo the bundle's own questions need.
-        """
-        self.declare_presets(
-            fixture_scene, [{"text": "anything", "code": "an(entity(shape))"}]
-        )
-
-        runner = EqlSession.of_active_scene().runner()
-        assert ARCHITECTURE_PRESETS[0].worded(runner) in Preset.of_scene()
-
-    def test_a_declared_preset_is_marked_as_needing_a_running_demo(self, fixture_scene):
-        """
-        A bundle's questions range over variables only the live demo offers, so the
-        panel has to know it cannot answer them from the recording alone.
-        """
-        self.declare_presets(
-            fixture_scene, [{"text": "anything", "code": "an(entity(shape))"}]
-        )
-
-        assert Preset.of_scene()[0].requires_live is True
-
-    def test_a_generated_preset_does_not_need_a_running_demo(self, fixture_scene):
-        assert all(
-            preset.requires_live is False
-            for preset in Preset.of_scene()
-            if preset.text == "what is in the scene?"
-        )
-
-    def test_a_bundle_without_declared_presets_is_unchanged(self, fixture_scene):
-        assert any(
-            preset.text == "what is in the scene?" for preset in Preset.of_scene()
-        )
+        assert [preset.text for preset in Preset.of_scene()] == [
+            preset.text for preset in SCENE_PRESETS
+        ]
 
 
 class TestPresetWording:
@@ -1071,10 +967,8 @@ class TestPresetWording:
         for preset in Preset.of_scene():
             assert preset.verbalization == runner.verbalize(preset.code), preset.text
 
-    def test_a_generated_preset_carries_both_renderings(self, fixture_scene):
-        preset = next(
-            entry for entry in Preset.of_scene() if entry.text == "which robot is this?"
-        )
+    def test_an_offered_preset_carries_both_renderings(self, fixture_scene):
+        preset = Preset.of_scene()[0]
 
         assert preset.verbalization is not None
         assert preset.verbalization.text
@@ -1094,20 +988,6 @@ class TestPresetWording:
             preset.requires_live,
             preset.scope,
         )
-
-    def test_a_declared_preset_stays_unworded_in_the_recorded_scene(
-        self, fixture_scene
-    ):
-        """
-        A bundle's questions range over a demo's own variables, which only the live
-        bridge knows; the recorded scene offers their labels unworded.
-        """
-        (fixture_scene / "scenes" / "fixture" / "presets.json").write_text(
-            json.dumps({"presets": [{"text": "anything", "code": "an(entity(shape))"}]})
-        )
-        EpisodeKnowledgeBase.reset()
-
-        assert Preset.of_scene()[0].verbalization is None
 
 
 class TestPresetSmoke:

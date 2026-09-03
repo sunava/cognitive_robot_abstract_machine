@@ -22,7 +22,7 @@ from giskardpy.motion_statechart.motion_statechart import MotionStatechart
 from giskardpy.qp.qp_controller_config import QPControllerConfig
 from giskardpy.ros_executor import Ros2Executor
 from krrood.entity_query_language.factories import evaluate_condition
-from coraplex.datastructures.enums import ExecutionType
+from coraplex.datastructures.enums import ExecutionType, TaskStatus
 from coraplex.exceptions import (
     MotionDidNotFinish,
     ConditionNotSatisfied,
@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from coraplex.robot_plans.actions.base import ActionDescription
 
     from coraplex.plans.condition_nodes import ConditionNode
+    from coraplex.plans.attachment_nodes import ModelChangeNode
     from coraplex.plans.plan_node import MotionNode, UnderspecifiedNode, ActionNode
     from coraplex.datastructures.dataclasses import Context
 
@@ -55,8 +56,22 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MotionLifeCycleTracker:
     """
-    Emits plan node callbacks for motion nodes as their giskard tasks change life cycle
-    state during simulated execution.
+    Keeps motion nodes' statuses on their giskard tasks' life cycle, and emits the
+    plan's node callbacks as those change during simulated execution.
+
+    A motion node is realized by a statechart task rather than performed on its own, so
+    nothing else ever sets its status: without this it stays
+    :attr:`~coraplex.datastructures.enums.TaskStatus.CREATED` for the whole run, and
+    anything reading the plan tree afterwards -- the viewer, a recording -- shows a
+    finished plan as untouched.
+    """
+
+    STATUS_OF_TERMINAL_STATE: ClassVar[Dict[LifeCycleValues, TaskStatus]] = {
+        LifeCycleValues.DONE: TaskStatus.SUCCEEDED,
+        LifeCycleValues.FAILED: TaskStatus.FAILED,
+    }
+    """
+    The status a motion node ends in, per life cycle state its task reached.
     """
 
     motion_mappings: Dict[MotionNode, Task]
@@ -90,8 +105,10 @@ class MotionLifeCycleTracker:
                 continue
             self._last_states[motion_node] = current_state
             if last_state == LifeCycleValues.NOT_STARTED:
+                motion_node.status = TaskStatus.RUNNING
                 motion_node.plan.notify_node_started(motion_node)
-            if current_state in (LifeCycleValues.DONE, LifeCycleValues.FAILED):
+            if current_state in self.STATUS_OF_TERMINAL_STATE:
+                motion_node.status = self.STATUS_OF_TERMINAL_STATE[current_state]
                 motion_node.plan.notify_node_ended(motion_node)
 
 
@@ -462,6 +479,15 @@ class ModelChangeExecutable(Executable):
     The body the moved body is attached to afterwards.
     """
 
+    node: ModelChangeNode = field(kw_only=True)
+    """
+    The plan node this executable realizes, whose status follows the re-attachment.
+
+    Like a motion node, a model change is never performed on its own, so nothing else
+    would ever move its status off
+    :attr:`~coraplex.datastructures.enums.TaskStatus.CREATED`.
+    """
+
     giskard_idle_settle_delta: timedelta = field(
         default=timedelta(seconds=0.3), kw_only=True
     )
@@ -478,6 +504,8 @@ class ModelChangeExecutable(Executable):
         """
         Re-parent the body to ``new_parent`` while preserving its global pose.
         """
+        self.node.status = TaskStatus.RUNNING
+        self.node.plan.notify_node_started(self.node)
         obj_transform = self.context.world.compute_forward_kinematics(
             self.new_parent, self.body
         )
@@ -497,6 +525,8 @@ class ModelChangeExecutable(Executable):
             # connection.origin = obj_transform
         if GiskardExecutable.execution_type == ExecutionType.REAL:
             time.sleep(self.giskard_idle_settle_delta.total_seconds())
+        self.node.status = TaskStatus.SUCCEEDED
+        self.node.plan.notify_node_ended(self.node)
 
 
 @dataclass
