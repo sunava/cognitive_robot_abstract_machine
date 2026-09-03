@@ -284,12 +284,20 @@
   }
   // the 3D view reports poses back (settle / drag-release); write them into the object cards
   window.addEventListener('message', function (ev) {
-    const d = ev && ev.data; if (!d || d.type !== 'cramera-object-settled' || !d.key || !Array.isArray(d.position)) return;
-    const o = objects.find(function (x) { return x.mesh === d.key; }); if (!o) return;
-    o.x = Math.round(d.position[0] * 100) / 100;
-    o.y = Math.round(d.position[1] * 100) / 100;
-    o.z = Math.round(d.position[2] * 100) / 100;
-    renderObjects();
+    const d = ev && ev.data; if (!d) return;
+    if (d.type === 'cramera-object-settled' && d.key && Array.isArray(d.position)) {
+      const o = objects.find(function (x) { return x.mesh === d.key; }); if (!o) return;
+      o.x = Math.round(d.position[0] * 100) / 100;
+      o.y = Math.round(d.position[1] * 100) / 100;
+      o.z = Math.round(d.position[2] * 100) / 100;
+      renderObjects();
+    } else if (d.type === 'cramera-navigate-moved' && d.id) {
+      // a Navigate goal was dragged in the scene -> save into THAT step
+      const s = steps.find(function (x) { return x.id === d.id; }); if (!s || s.type !== 'navigate') return;
+      s.params.x = Math.round(d.x * 100) / 100; s.params.y = Math.round(d.y * 100) / 100;
+      if (d.final) renderSteps();          // persist + re-sync fields + re-emit the marker
+      else syncStepNum(s.id);              // live: just update the number fields (don't rebuild the marker mid-drag)
+    }
   });
   // one pose control = a slider + a number input, kept in sync. Angles are shown in
   // degrees (state stores radians); position in metres.
@@ -443,6 +451,12 @@
     const b = BLOCKS[type]; if (!b) return;
     const params = Object.assign({}, b.params);
     if (type === 'transport' && !params.object && objects.length) params.object = objects[0].mesh;
+    // a new Navigate starts as a copy of the last one (offset a bit), so its marker appears
+    // next to the previous goal and can be dragged from there instead of jumping to a default
+    if (type === 'navigate') {
+      const prev = steps.filter(function (s) { return s.type === 'navigate'; }).pop();
+      if (prev) { params.x = prev.params.x + 0.4; params.y = prev.params.y; params.z = prev.params.z; params.yaw = prev.params.yaw; }
+    }
     steps.push({ id: 's' + (stepSeq++), type: type, params: params });
     renderSteps();
   }

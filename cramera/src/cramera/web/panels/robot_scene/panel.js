@@ -27,7 +27,7 @@ Panels.define('robot-scene', function (root, bus) {
     '    <label id="environment-picker" class="scene-picker" style="display:none">Environment:' +
     '      <select id="environment-select" class="scene-select"></select>' +
     '    </label>' +
-    '    <label id="scene-name-picker" class="scene-picker" style="display:none" title="Every saved scene by name — several can share the same robot and environment (e.g. multiple saved live recordings)">Scene:' +
+    '    <label id="scene-name-picker" class="scene-picker" style="display:none" title="Every saved scene by the task it was recorded for — several can share the same robot and environment (e.g. multiple saved live recordings)">Task:' +
     '      <select id="scene-name-select" class="scene-select"></select>' +
     '    </label>' +
     '  </div>' +
@@ -520,14 +520,20 @@ Panels.define('robot-scene', function (root, bus) {
       sel.disabled = values.length <= 1;
     }
 
-    // Scene: every scene by name, independent of the robot/environment axes below.
-    // sceneFor() only ever resolves a (robot, environment) pair to its *first* match,
-    // so this is the exhaustive picker for choosing among several scenes that share
-    // one — e.g. multiple saved live recordings of the same demo.
-    const allNames = ScenePicker.names(scenes);
-    if (nameSel && namePicker && allNames.length > 1) {
+    // Scene: every scene, labelled by the task it was recorded for, independent of the
+    // robot/environment axes below. sceneFor() only ever resolves a (robot, environment)
+    // pair to its *first* match, so this is the exhaustive picker for choosing among
+    // several scenes that share one — e.g. multiple saved live recordings of the same demo.
+    // The option value stays the scene name (what navigation needs); only the visible
+    // label is the task.
+    const sceneOptions = ScenePicker.options(scenes);
+    if (nameSel && namePicker && sceneOptions.length > 1) {
       namePicker.style.display = '';
-      fillSelect(nameSel, allNames, activeName);
+      nameSel.innerHTML = sceneOptions.map(function (o) {
+        const selected = o.name === (activeName || '') ? ' selected' : '';
+        return '<option value="' + o.name + '"' + selected + '>' + o.task + '</option>';
+      }).join('');
+      nameSel.disabled = sceneOptions.length <= 1;
       nameSel.addEventListener('change', function () {
         window.location.search = '?scene=' + encodeURIComponent(nameSel.value);
       });
@@ -990,6 +996,10 @@ Panels.define('robot-scene', function (root, bus) {
     if (marker.visible !== false) {
       marker.traverse(function (c) { if (c.isMesh) { c.userData.simMarker = true; list.push(c); } });
     }
+    // Plan Builder Navigate goals are draggable too; each mesh carries its step id
+    navTargetsRoot.children.forEach(function (g) {
+      g.traverse(function (c) { if (c.isMesh) { c.userData.navGroup = g; list.push(c); } });
+    });
     return list;
   }
   function pickDraggable(e) {
@@ -999,6 +1009,7 @@ Panels.define('robot-scene', function (root, bus) {
     if (!hits.length) return null;
     const o = hits[0].object;
     if (o.userData.simMarker) return { group: marker, marker: true };
+    if (o.userData.navGroup) return { group: o.userData.navGroup, navId: o.userData.navGroup.userData.navId };
     return { group: objectMeshes[o.userData.simObj], name: o.userData.simObj };
   }
 
@@ -1102,6 +1113,17 @@ Panels.define('robot-scene', function (root, bus) {
       needsRender = true;
       return;
     }
+    // Navigate goal drag: slide the arrow on the floor; report back to the exact step
+    if (dragTarget.navId) {
+      const g = dragTarget.group, hit = surfacePointAt(e);
+      if (hit) {
+        worldRoot.worldToLocal(hit);
+        g.position.x = hit.x; g.position.y = hit.y;   // keep z (floor) and yaw
+        postNavigateMoved(dragTarget.navId, g.position.x, g.position.y, false);
+      }
+      needsRender = true;
+      return;
+    }
     // %% marker drag: camera-basis mapping, clamped to the table bounds
     pointerNdc(e);
     const dist = camera.position.distanceTo(dragStartWorld);
@@ -1127,6 +1149,9 @@ Panels.define('robot-scene', function (root, bus) {
     if (liveOn && dragTarget && dragTarget.name) {
       const g = objectMeshes[dragTarget.name];
       postLiveMove(dragTarget.name, g.position.x, g.position.y, g.position.z, true);
+    }
+    if (dragTarget && dragTarget.navId) {
+      postNavigateMoved(dragTarget.navId, dragTarget.group.position.x, dragTarget.group.position.y, true);
     }
     liveDraggedKey = null;
     dragging = false; dragTarget = null;
@@ -1362,11 +1387,22 @@ Panels.define('robot-scene', function (root, bus) {
       g.position.set(t.x || 0, t.y || 0, (t.z || 0) + 0.02);
       g.rotation.z = t.yaw || 0;          // map-frame yaw (worldRoot local z is up)
       g.renderOrder = 4;
+      g.userData.navId = t.id;            // so a drag writes back to this exact Navigate step
       navTargetsRoot.add(g);
     });
     needsRender = true;
   }
 
+  let _lastNavPost = 0;
+  // report a dragged Navigate goal back to the Plan Builder (throttled; final on release)
+  function postNavigateMoved(id, x, y, final) {
+    const now = performance.now();
+    if (!final && now - _lastNavPost < 80) return;
+    _lastNavPost = now;
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'cramera-navigate-moved', id: id, x: round3(x), y: round3(y), final: !!final }, '*');
+    }
+  }
   function liveUrl() {
     const m = /[?&]live=([\w.:-]+)/.exec(window.location.search);
     return 'http://' + (m ? m[1] : (window.location.hostname + ':8765'));
