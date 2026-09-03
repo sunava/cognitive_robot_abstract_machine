@@ -162,3 +162,21 @@
 /* run log (demo stdout/stderr, tracebacks) */
 .pb-scaffold-log{margin:8px 0 0;max-height:260px;white-space:pre-wrap;font-size:10.5px;line-height:1.45;
   border-color:#5a3340;color:#f3c7cf;background:#160d10}
+
+/* ---- scene column: big 3D view with floating controls ---- */
+.pb-scene-col{display:flex;flex-direction:column;gap:8px;padding:10px 12px}
+.pb-scene-wrap{position:relative;flex:1 1 auto;min-height:60vh;border:1px solid var(--line,#20242c);border-radius:10px;overflow:hidden;background:#000}
+.pb-scene-wrap .pb-3d{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;border-radius:10px}
+/* floating controls (top layer over the scene) */
+.pb-scene-tools{position:absolute;top:10px;right:10px;z-index:20}
+.pb-scene-tools #pb-menu-btn{background:rgba(11,13,17,.82);backdrop-filter:blur(4px)}
+.pb-menu{position:absolute;top:calc(100% + 6px);right:0;display:flex;flex-direction:column;gap:6px;
+  background:rgba(11,13,17,.96);border:1px solid var(--line2,#2b3a57);border-radius:9px;padding:10px;
+  min-width:180px;box-shadow:0 12px 34px rgba(0,0,0,.55)}
+.pb-menu[hidden]{display:none}
+.pb-menu .pb-btn{text-align:left}
+.pb-menu-sep{height:1px;background:var(--line,#20242c);margin:2px 0}
+.pb-menu .pb-robot-spawn{margin:0;flex-wrap:wrap}
+/* status pinned at the bottom-left of the scene */
+.pb-scene-status{position:absolute;left:10px;bottom:10px;right:56px;z-index:15;
+  background:rgba(11,13,17,.82);backdrop-filter:blur(4px)}

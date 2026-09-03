@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 
 from typing_extensions import Dict, Optional, Tuple, Union, List
@@ -8,6 +9,8 @@ from xacro import process_file
 
 from semantic_digital_twin.adapters.package_resolver import (
     CompositePathResolver,
+    FileUriResolver,
+    PackageUriResolver,
     PathResolver,
 )
 from semantic_digital_twin.adapters.world_model_parser import WorldModelParser
@@ -147,9 +150,17 @@ class URDFParser(WorldModelParser):
         if file_path.endswith(".xacro"):
             return cls.from_xacro(file_path, prefix)
 
-        path_resolver = path_resolver or CompositePathResolver()
-
-        file_path = path_resolver.resolve(file_path)
+        file_path = (path_resolver or CompositePathResolver()).resolve(file_path)
+        if path_resolver is None:
+            # A URDF that names its meshes by a path relative to itself (rather than by a
+            # package:// URI) is only portable if those paths resolve against the URDF's
+            # own directory instead of the current working directory.
+            path_resolver = CompositePathResolver(
+                resolvers=[
+                    FileUriResolver(base_directory=os.path.dirname(file_path)),
+                    PackageUriResolver(),
+                ]
+            )
         if file_path is not None:
             with open(file_path, "r") as file:
                 # Since parsing URDF causes a lot of warning messages which can't be deactivated, we suppress them

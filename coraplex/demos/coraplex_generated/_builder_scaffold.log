@@ -1,0 +1,10 @@
+INFO:cramera.live.runner:running demo: /Users/vanessa/cram_demo/cognitive_robot_abstract_machine/coraplex/demos/coraplex_generated/_builder_scaffold.py
+Unknown attribute "type" in /robot[@name='pr2']/link[@name='base_laser_link']
+Unknown attribute "type" in /robot[@name='pr2']/link[@name='wide_stereo_optical_frame']
+Unknown attribute "type" in /robot[@name='pr2']/link[@name='narrow_stereo_optical_frame']
+Unknown attribute "type" in /robot[@name='pr2']/link[@name='laser_tilt_link']
+Unknown tag "material" in /robot[@name='pr2']/link[@name='l_force_torque_link']/collision[1]
+Scalar element defined multiple times: limit
+INFO:cramera.live.bridge:attached to world (robot=?, 69 joints)
+INFO:cramera.live.ros_markers:watching markers on /semworld/viz_marker, /coraplex/viz_marker
+INFO:cramera.live.runner:demo finished — bridge stays up for inspection (Ctrl-C to quit)

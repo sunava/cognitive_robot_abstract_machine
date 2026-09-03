@@ -741,6 +741,12 @@ class Bridge:
     Guards :attr:`_moves` (written by HTTP threads).
     """
 
+    _teleop: Optional[Any] = None
+    """
+    The live teleop driver (a :class:`cramera.live.teleop.TeleopController`), created on
+    the first ``POST /teleop`` once a world is bound. None until then.
+    """
+
     _mesh_serve: Dict[str, str] = field(default_factory=dict)
     """
     Object key → absolute mesh path served via the ``/mesh`` endpoint.
@@ -1345,6 +1351,40 @@ class Bridge:
             evaluation=knowledge.evaluation,
             highlightable_ids=self.highlightable_ids(),
         )
+
+    # %% viewer -> world (teleoperation)
+    def queue_teleop(self, request: "TeleopRequest") -> None:
+        """
+        Feed one streamed hand target to the teleop driver, starting it on first call.
+
+        Called on an HTTP thread; the driver it hands off to owns the world writes, on
+        its own thread, exactly as the motion tick does for queued moves.
+
+        :param request: The latest hand target for one arm.
+        :raises TeleopUnavailable: If no world/robot is bound yet.
+        """
+        from cramera.live.teleop import TeleopController, TeleopUnavailable
+
+        # the robot annotation is added to the world by the demo (PR2.from_world) after
+        # the bridge first binds, so resolve it live rather than trusting the early bind
+        robot = self.robot
+        if robot is None and self.world is not None:
+            robots = self.world.get_semantic_annotations_by_type(AbstractRobot)
+            robot = robots[0] if robots else None
+        if self.world is None or robot is None:
+            raise TeleopUnavailable("no live robot bound yet -- start a scene first")
+        if self._teleop is None:
+            self._teleop = TeleopController(
+                self.world,
+                robot,
+                is_busy=lambda: time.monotonic() - self._last_tick_time < 0.5,
+            )
+        self._teleop.submit(request)
+
+    def stop_teleop(self) -> None:
+        """Stop the teleop driver, if one is running; the arm holds its last pose."""
+        if self._teleop is not None:
+            self._teleop.stop()
 
     # %% viewer -> world
     def queue_move(self, request: MoveRequest) -> None:

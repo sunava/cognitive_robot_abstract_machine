@@ -809,3 +809,12 @@ body.graph-full-open{overflow:hidden}
 /* scene-only mode (Plan Builder's embedded 3D view via index.html?scene) */
 :root.scene-only .topbar{display:none}
 :root.scene-only .split{position:absolute;inset:0}
+
+/* shared busy indicator: a spinner + elapsed time, used while a live scene comes up */
+@keyframes cr-spin { to { transform: rotate(360deg); } }
+.cr-busy { display: inline-flex; align-items: center; gap: 7px; }
+.cr-spinner {
+  display: inline-block; width: 13px; height: 13px; flex: 0 0 auto;
+  border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+  animation: cr-spin 0.7s linear infinite; opacity: 0.85;
+}

@@ -927,10 +927,10 @@
   function generateSelected() { return outputStyle() === 'class' ? generateClass() : generate(); }
 
   function showCode() {
-    $('pb-code').textContent = generateSelected(); status('', '');
-    // the preview sits below the 3D view (often off-screen), so bring it into view and
-    // give a visible confirmation — otherwise Generate looks like it did nothing
-    const pre = $('pb-code'); if (pre && pre.scrollIntoView) pre.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const pre = $('pb-code');
+    pre.textContent = generateSelected(); pre.style.display = 'block'; status('', '');
+    // the preview is collapsed to keep the scene big, so reveal it and bring it into view
+    if (pre.scrollIntoView) pre.scrollIntoView({ behavior: 'smooth', block: 'center' });
     toast('Generated ' + fileName() + ' — see preview below', 'ok');
   }
   function status(msg, cls) { const el = $('pb-status'); el.textContent = msg; el.className = 'pb-status ' + (cls || ''); }
@@ -1188,6 +1188,17 @@
   $('pb-run').addEventListener('click', runPlan);
   $('pb-live-start').addEventListener('click', startLive);
   $('pb-live-stop').addEventListener('click', stopLive);
+  // floating scene-controls dropdown (keeps the 3D view big)
+  (function () {
+    const btn = $('pb-menu-btn'), menu = $('pb-menu');
+    function close() { if (menu) menu.hidden = true; }
+    if (btn && menu) {
+      btn.addEventListener('click', function (e) { e.stopPropagation(); menu.hidden = !menu.hidden; });
+      menu.addEventListener('click', function (e) { if (e.target.closest('button, a') && e.target.id !== 'pb-show-code') close(); });
+      document.addEventListener('click', function (e) { if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) close(); });
+    }
+    const sc = $('pb-show-code'); if (sc) sc.addEventListener('click', function () { showCode(); close(); });
+  })();
   wireColumnResizers();
   $('pb-reset-all').addEventListener('click', resetAllObjects);
   $('pb-drop').addEventListener('click', dropObjects);

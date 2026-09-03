@@ -63,6 +63,11 @@ from cramera.live.bridge import (
     MalformedMoveRequest,
     MoveRequest,
 )
+from cramera.live.teleop import (
+    MalformedTeleopRequest,
+    TeleopRequest,
+    TeleopUnavailable,
+)
 from cramera.live.query import NoQuerySourceRegistered
 from cramera.live.frame_range import FrameRange, InvalidFrameRange
 from cramera.live.live_bundle import build_live_scene
@@ -300,6 +305,10 @@ class BridgeRequestHandler(BaseHTTPRequestHandler):
             return self._save_recording()
         if self.path.startswith("/constraint"):
             return self.queue_requested_constraint()
+        if self.path == "/teleop/stop":
+            return self._stop_teleop()
+        if self.path.startswith("/teleop"):
+            return self.queue_requested_teleop()
         self.queue_requested_move()
 
     def _posted_payload(self) -> Optional[Dict[str, Any]]:
@@ -465,6 +474,32 @@ class BridgeRequestHandler(BaseHTTPRequestHandler):
         except MalformedMoveRequest as error:
             return self._send_json({"ok": False, "error": str(error)}, code=400)
         self.bridge.queue_move(move)
+        return self._send_json({"ok": True})
+
+    def queue_requested_teleop(self) -> None:
+        """
+        Feed one streamed hand target to the live teleop driver.
+
+        Validated on the HTTP thread; the driver does the world writes on its own thread.
+        """
+        payload = self._posted_payload()
+        if payload is None:
+            return self._send_json(
+                {"ok": False, "error": "body must be a JSON object"}, code=400
+            )
+        try:
+            request = TeleopRequest.from_payload(payload)
+        except MalformedTeleopRequest as error:
+            return self._send_json({"ok": False, "error": str(error)}, code=400)
+        try:
+            self.bridge.queue_teleop(request)
+        except TeleopUnavailable as error:
+            return self._send_json({"ok": False, "error": str(error)}, code=409)
+        return self._send_json({"ok": True})
+
+    def _stop_teleop(self) -> None:
+        """Stop the live teleop driver; the arm holds its last pose."""
+        self.bridge.stop_teleop()
         return self._send_json({"ok": True})
 
     def queue_requested_constraint(self) -> None:
