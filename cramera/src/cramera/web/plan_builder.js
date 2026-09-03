@@ -10,7 +10,9 @@
   // kitchen items + an industrial/factory set (a robot carries these A->B on a shop floor)
   const MESHES = ['milk.stl', 'bowl.stl', 'spoon.stl', 'breakfast_cereal.stl', 'jeroen_cup.stl',
     'Static_CokeBottle.stl', 'big-knife.stl', 'whisk.stl', 'bread.stl', 'apartment_bowl.stl',
-    'wrench.stl', 'axle.stl', 'plate.stl', 'base.stl', 'open_crate.stl'];
+    'wrench.stl', 'axle.stl', 'plate.stl', 'base.stl', 'open_crate.stl',
+    // a labelled cardboard box, the size of milk.stl (scripts/make_transport_box_mesh.py)
+    'screw_box.obj'];
   const OBJ_COLORS = ['#e6ecff', '#e6c07f', '#9aa1ad', '#8fd6c8', '#c9a0ff', '#ff9db1', '#9ecb6b'];
 
   // ---- action blocks ----
@@ -19,7 +21,14 @@
     move_torso: { name: 'Move torso', color: '#ff9db1', params: { torso: 'HIGH' } },
     navigate: { name: 'Navigate', color: '#8fd6c8', params: { x: 2.6, y: 1.8, z: 0.0, yaw: 0.0 } },
     transport: { name: 'Transport object', color: '#5b8cff', params: { object: '', x: 5.0, y: 3.3, z: 0.8, yaw: 1.57, arm: 'LEFT', targetMode: 'semantic', surfaceType: 'CounterTop', surfaceName: '' } },
+    pick: { name: 'Pick up object', color: '#7ec9ff', params: { object: '', arm: 'LEFT' } },
+    place: { name: 'Place object', color: '#ffc46b', params: { object: '', x: 2.4, y: 1.8, z: 0.8, yaw: 0.0, arm: 'LEFT', targetMode: 'pose', surfaceType: 'CounterTop', surfaceName: '' } },
   };
+  // which step kinds act on a placed object (see core/plan_steps.js); a Pick or Place is a
+  // Transport spelled out, for a world whose floor carries no costmap to search
+  const actsOnAnObject = window.PlanSteps.actsOnAnObject;
+  const placesAnObject = window.PlanSteps.putsAnObjectDown;
+  const placesAtASemanticTarget = window.PlanSteps.putsAnObjectDownAtASemanticTarget;
   const ARMS = ['LEFT', 'RIGHT', 'BOTH'];
   const TORSO = ['HIGH', 'MID', 'LOW'];
   // selectable robots -> the class + import to emit; RobotSpecification derives the drive
@@ -39,9 +48,8 @@
     const r = ROBOTS[k]; r.import = 'from semantic_digital_twin.robots.' + r.module + ' import ' + r.cls;
   });
   // only robots whose description actually loads in this workspace are offered. Others
-  // (e.g. Garmi: the class expects `arm_0_fr3_link8` but the installed garmi_description
-  // uses `r100-0603/*_fr3_link8`) crash on spawn — a stack model/URDF mismatch, not a
-  // Plan Builder bug. Add a name here once its description is verified to load.
+  // crash on spawn — a model/URDF mismatch, not a Plan Builder bug. Add a name here once
+  // its description is verified to load.
   const WORKING_ROBOTS = ['PR2', 'Garmi'];
   function robotInfo() { const v = ($('pb-robot') && $('pb-robot').value) || 'PR2'; return ROBOTS[v] || ROBOTS.PR2; }
   // semantic place targets: supporting surfaces ("on") and case containers ("in").
@@ -409,7 +417,7 @@
     });
     // transport destinations (ghost target, draggable) — "where the object should go"
     steps.forEach(function (s, i) {
-      if (s.type !== 'transport') return;
+      if (!placesAnObject(s)) return;
       const p = worldToPx(s.params.x, s.params.y);
       const m = document.createElement('div'); m.className = 'pb-marker pb-tmarker';
       m.style.left = p.px + 'px'; m.style.top = p.py + 'px';
@@ -450,7 +458,7 @@
   function addStep(type) {
     const b = BLOCKS[type]; if (!b) return;
     const params = Object.assign({}, b.params);
-    if (type === 'transport' && !params.object && objects.length) params.object = objects[0].mesh;
+    if (window.PlanSteps.actingOnAnObject().indexOf(type) >= 0 && !params.object && objects.length) params.object = objects[0].mesh;
     // a new Navigate starts as a copy of the last one (offset a bit), so its marker appears
     // next to the previous goal and can be dragged from there instead of jumping to a default
     if (type === 'navigate') {
@@ -498,21 +506,44 @@
     if (s.type === 'navigate') return row('<span class="pb-group-lbl">go to →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw') +
       '<button class="pb-capbtn" data-capnav="' + s.id + '" title="drive/place the robot in the 3D scene, then capture its base pose as this navigate goal">◎ capture robot pose</button>');
     if (s.type === 'transport') {
-      const mode = s.params.targetMode || 'semantic';
-      const dropRow = (mode === 'semantic')
-        ? row('<span class="pb-group-lbl">place →</span>' + semanticTypeSel(s) + surfaceInstanceSel(s))
-        : row('<span class="pb-group-lbl">drop-off (to) →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw') +
-          '<button class="pb-capbtn" data-capstep="' + s.id + '" title="drag the object to its drop-off in the 3D scene, then capture that pose as this step\'s target">◎ capture</button>');
       return (
         row(objSel(s)) +
-        row('<span class="pb-group-lbl start">start (from) →</span>' +
-          '<button class="pb-capbtn start" data-capstart="' + s.id + '" title="drag the object to its START in the 3D scene, then capture that as its start pose (shown on the object card)">◎ capture</button>') +
+        row('<span class="pb-group-lbl start">start (from) →</span>' + startCaptureButton(s)) +
         row('<span class="pb-group-lbl">target →</span>' + modeSel(s)) +
-        dropRow +
+        dropOffRow(s) +
         row(sel(s, 'arm', ARMS))
       );
     }
+    if (s.type === 'pick') {
+      return (
+        row(objSel(s)) +
+        row('<span class="pb-group-lbl start">start (from) →</span>' + startCaptureButton(s)) +
+        row(sel(s, 'arm', ARMS)) +
+        row('<span class="pb-hint3">the robot grasps from where it stands — put a Navigate step in front of this one</span>')
+      );
+    }
+    if (s.type === 'place') {
+      return (
+        row(objSel(s)) +
+        row('<span class="pb-group-lbl">target →</span>' + modeSel(s)) +
+        dropOffRow(s) +
+        row(sel(s, 'arm', ARMS)) +
+        row('<span class="pb-hint3">places what this arm is holding — put a Pick step in front of this one</span>')
+      );
+    }
     return '';
+  }
+  // where a step puts the object down: a semantic location, or an exact pose to capture
+  function dropOffRow(s) {
+    if ((s.params.targetMode || 'pose') === 'semantic') {
+      return row('<span class="pb-group-lbl">place →</span>' + semanticTypeSel(s) + surfaceInstanceSel(s));
+    }
+    return row('<span class="pb-group-lbl">drop-off (to) →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw') +
+      '<button class="pb-capbtn" data-capstep="' + s.id + '" title="drag the object to its drop-off in the 3D scene, then capture that pose as this step\'s target">◎ capture</button>');
+  }
+  function startCaptureButton(s) {
+    return '<button class="pb-capbtn start" data-capstart="' + s.id +
+      '" title="drag the object to its START in the 3D scene, then capture that as its start pose (shown on the object card)">◎ capture</button>';
   }
   function num(s, k) { return '<label>' + k.toUpperCase() + '<input class="pb-num xyz" data-sid="' + s.id + '" data-k="' + k + '" type="number" step="0.05" value="' + s.params[k] + '"></label>'; }
   function sel(s, k, opts) { return '<label>' + k + '<select class="pb-sel" data-sid="' + s.id + '" data-k="' + k + '">' + opts.map(function (o) { return '<option' + (s.params[k] === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label>'; }
@@ -618,7 +649,7 @@
   }
   // --- "place on a surface": symbolic target resolution via semantic_digital_twin ---
   function surfaceSteps(useSteps) {
-    return useSteps.filter(function (s) { return s.type === 'transport' && s.params.targetMode === 'semantic'; });
+    return useSteps.filter(placesAtASemanticTarget);
   }
   function surfaceTypesUsed(useSteps) {
     const set = {}; surfaceSteps(useSteps).forEach(function (s) { set[s.params.surfaceType || 'CounterTop'] = 1; });
@@ -630,11 +661,11 @@
   function surfaceResolveLines(useSteps, indent) {
     const L = [];
     useSteps.forEach(function (s, i) {
-      if (!(s.type === 'transport' && s.params.targetMode === 'semantic')) return;
+      if (!placesAtASemanticTarget(s)) return;
       const T = s.params.surfaceType || 'CounterTop';
       const mesh = s.params.object || 'object';
       const id = s.id;
-      const where = 'step ' + (i + 1) + ' (transport ' + mesh + ')';
+      const where = 'step ' + (i + 1) + ' (' + s.type + ' ' + mesh + ')';
       L.push(indent + '# place "' + mesh + '" ' + prep(T) + ' a ' + T + ' — pose sampled by semantic_digital_twin');
       if (s.params.surfaceName) {
         L.push(indent + '_surface_' + id + ' = next(');
@@ -671,11 +702,29 @@
   }
   // objects to spawn: the placed ones, plus any object a transport step references but that
   // was never placed/captured — spawned at DEFAULT_START so the demo still runs.
+  // lines that resolve each Pick step's object and the grasp to take it with, given
+  // `world` and `context`. The side to approach from is left to the robot's reach rather
+  // than spelled out here, so a rotated object is still grasped from a side it can stand on.
+  function pickGraspLines(useSteps, indent) {
+    const L = [];
+    useSteps.forEach(function (s) {
+      if (s.type !== 'pick') return;
+      const mesh = s.params.object || 'object';
+      L.push(indent + '# pick "' + mesh + '" with the ' + s.params.arm.toLowerCase() + ' arm');
+      L.push(indent + '_pick_' + s.id + ' = ' + body(mesh));
+      L.push(indent + '_grasp_' + s.id + ' = GraspDescription.robot_relative_default(');
+      L.push(indent + '    ViewManager.get_end_effector_view(Arms.' + s.params.arm + ', context.robot),');
+      L.push(indent + '    _pick_' + s.id + '.global_pose,');
+      L.push(indent + '    _pick_' + s.id + ',');
+      L.push(indent + ')');
+    });
+    return L;
+  }
   function effectiveObjects(useSteps) {
     const list = objects.slice();
     const have = {}; list.forEach(function (o) { have[o.mesh] = 1; });
     useSteps.forEach(function (s) {
-      if (s.type === 'transport' && s.params.object && !have[s.params.object]) {
+      if (actsOnAnObject(s) && s.params.object && !have[s.params.object]) {
         have[s.params.object] = 1;
         list.push({ mesh: s.params.object, name: s.params.object,
           x: DEFAULT_START.x, y: DEFAULT_START.y, z: DEFAULT_START.z,
@@ -728,16 +777,23 @@
     L.push('import os');
     L.push('from coraplex.datastructures.dataclasses import Context');
     L.push('from coraplex.datastructures.enums import Arms, VisualizationBackend');
-    L.push('from coraplex.execution_environment import simulated_robot');
+    L.push('from coraplex.datastructures.grasp import GraspDescription');
+    L.push('from coraplex.execution_environment import ' + executionEnvironment().name);
     L.push('from coraplex.plans.factories import sequential');
     L.push('from coraplex.visualization import WorldVisualization');
     L.push('from coraplex.robot_plans.actions.composite.transporting import TransportAction');
     L.push('from coraplex.robot_plans.actions.core.navigation import NavigateAction');
+    L.push('from coraplex.robot_plans.actions.core.pick_up import PickUpAction');
+    L.push('from coraplex.robot_plans.actions.core.placing import PlaceAction');
     L.push('from coraplex.robot_plans.actions.core.robot_body import ParkArmsAction, MoveTorsoAction');
+    L.push('from coraplex.view_manager import ViewManager');
     L.push('from semantic_digital_twin.adapters.mesh import DAEParser, OBJParser, STLParser');
     L.push('from semantic_digital_twin.adapters.urdf import URDFParser');
     L.push('from semantic_digital_twin.datastructures.definitions import TorsoState');
     L.push('from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner');
+    if (window.BaseControl.pinsTheSetting(baseControl())) {
+      L.push('from semantic_digital_twin.robots.robot_part_mixins import HasMobileBase');
+    }
     L.push(R.import);
     L.push('from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix');
     L.push('from semantic_digital_twin.spatial_types.spatial_types import Pose');
@@ -774,6 +830,8 @@
     L.push('    return world');
     L.push('');
     L.push('');
+    baseControlConstant().forEach(function (ln) { L.push(ln); });
+    if (baseControlConstant().length) L.push('');
     L.push('world = build_world("' + env + '", (' + py(robotXY.x) + ', ' + py(robotXY.y) + '))');
     L.push('visualization = WorldVisualization.from_environment(');
     L.push('    world, default_backend=VisualizationBackend.CRAMERA).start()');
@@ -796,20 +854,22 @@
       L.push('');
     }
     L.push('robot = ' + R.cls + '.from_world(world)');
+    baseControlLines('').forEach(function (ln) { L.push(ln); });
     L.push('context = Context(world=world, robot=robot, _debug=False, ros_node=visualization.ros_node)');
     L.push('with world.modify_world():');
     L.push('    WorldReasoner(world).reason()');
     L.push('context.evaluate_conditions = False');
     L.push('');
     surfaceResolveLines(useSteps, '').forEach(function (ln) { L.push(ln); });
-    if (surfaceSteps(useSteps).length) L.push('');
+    pickGraspLines(useSteps, '').forEach(function (ln) { L.push(ln); });
+    if (surfaceSteps(useSteps).length || pickGraspLines(useSteps, '').length) L.push('');
     L.push('plan = sequential([');
     useSteps.forEach(function (s) { L.push('    ' + stepCode(s) + ','); });
     L.push('], context=context).plan');
     L.push('visualization.attach_plan(plan)');
     L.push('');
     constraintBlock(useSteps).forEach(function (ln) { L.push(ln); });
-    L.push('with simulated_robot:');
+    L.push('with ' + executionEnvironment().name + ':');
     L.push('    plan.perform()');
     L.push('');
     return L.join('\n');
@@ -820,10 +880,19 @@
     if (s.type === 'move_torso') return 'MoveTorsoAction(TorsoState.' + p.torso + ')';
     if (s.type === 'navigate') return 'NavigateAction(' + pose(p) + ')';
     if (s.type === 'transport') {
-      const target = (p.targetMode === 'semantic') ? ('_target_' + s.id) : pose(p);
-      return 'TransportAction(' + body(p.object || 'object') + ', ' + target + ', Arms.' + p.arm + ')';
+      return 'TransportAction(' + body(p.object || 'object') + ', ' + dropOffTarget(s) + ', Arms.' + p.arm + ')';
+    }
+    if (s.type === 'pick') {
+      return 'PickUpAction(_pick_' + s.id + ', Arms.' + p.arm + ', _grasp_' + s.id + ')';
+    }
+    if (s.type === 'place') {
+      return 'PlaceAction(' + body(p.object || 'object') + ', ' + dropOffTarget(s) + ', Arms.' + p.arm + ')';
     }
     return 'None';
+  }
+  // the pose expression a step puts the object at: the sampled semantic target, or the pose
+  function dropOffTarget(s) {
+    return (s.params.targetMode === 'semantic') ? ('_target_' + s.id) : pose(s.params);
   }
   function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255].map(function (v) { return Math.round(v * 100) / 100; }); }
 
@@ -847,12 +916,16 @@
     L.push('');
     L.push('from coraplex.datastructures.dataclasses import Context');
     L.push('from coraplex.datastructures.enums import Arms, VisualizationBackend');
+    L.push('from coraplex.datastructures.grasp import GraspDescription');
     L.push('from coraplex.demonstrations import RobotDemonstration');
     L.push('from coraplex.plans.factories import sequential');
     L.push('from coraplex.plans.plan_node import PlanNode');
     L.push('from coraplex.robot_plans.actions.composite.transporting import TransportAction');
     L.push('from coraplex.robot_plans.actions.core.navigation import NavigateAction');
+    L.push('from coraplex.robot_plans.actions.core.pick_up import PickUpAction');
+    L.push('from coraplex.robot_plans.actions.core.placing import PlaceAction');
     L.push('from coraplex.robot_plans.actions.core.robot_body import ParkArmsAction, MoveTorsoAction');
+    L.push('from coraplex.view_manager import ViewManager');
     L.push('from semantic_digital_twin.api import (');
     L.push('    BodySpecification,');
     L.push('    Connection6DoFSpecification,');
@@ -861,6 +934,9 @@
     L.push(')');
     L.push('from semantic_digital_twin.datastructures.definitions import TorsoState');
     L.push('from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner');
+    if (window.BaseControl.pinsTheSetting(baseControl())) {
+      L.push('from semantic_digital_twin.robots.robot_part_mixins import HasMobileBase');
+    }
     L.push(R.import);
     L.push('from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix');
     L.push('from semantic_digital_twin.spatial_types.spatial_types import Pose');
@@ -875,6 +951,7 @@
     L.push('');
     L.push('ENV_FILE = "' + env + '"');
     L.push('ROBOT_XY = (' + py(robotXY.x) + ', ' + py(robotXY.y) + ')');
+    baseControlConstant().forEach(function (ln) { L.push(ln); });
     L.push('');
     L.push('# objects placed in the Plan Builder: (mesh, x, y, z, roll, pitch, yaw, (r, g, b))');
     L.push('OBJECTS = [');
@@ -928,6 +1005,7 @@
     L.push('        with world.modify_world():');
     L.push('            WorldReasoner(world).reason()');
     L.push('        robot = world.get_semantic_annotations_by_type(self.used_robot)[0]');
+    baseControlLines('        ').forEach(function (ln) { L.push(ln); });
     L.push('        context = Context(world=world, robot=robot, _debug=False, ros_node=self.ros_node)');
     L.push('        context.evaluate_conditions = False');
     L.push('        return context');
@@ -935,6 +1013,7 @@
     L.push('    def build_plan(self, context: Context) -> PlanNode:');
     L.push('        world = context.world  # bodies/poses below are resolved against it');
     surfaceResolveLines(useSteps, '        ').forEach(function (ln) { L.push(ln); });
+    pickGraspLines(useSteps, '        ').forEach(function (ln) { L.push(ln); });
     L.push('        return sequential([');
     useSteps.forEach(function (s) { L.push('            ' + stepCode(s) + ','); });
     L.push('        ], context=context).plan');
@@ -950,6 +1029,7 @@
     L.push('    """');
     L.push('    ' + cls + '(');
     L.push('        used_robot=' + R.cls + ',');
+    L.push('        collision_avoidance=' + (executionEnvironment().collisionAvoidance ? 'True' : 'False') + ',');
     L.push('        default_visualization_backend=VisualizationBackend.CRAMERA,');
     L.push('    ).run()');
     L.push('');
@@ -961,6 +1041,34 @@
   }
   // pick the generator by the selected output style
   function outputStyle() { const s = $('pb-style'); return s ? s.value : 'script'; }
+  // the execution environment the generated demo performs its plan in
+  function executionEnvironment() {
+    const s = $('pb-collisions');
+    return window.ExecutionEnvironments.byName(s ? s.value : null);
+  }
+  // whether the generated demo lets the base drive while an arm reaches
+  function baseControl() {
+    const s = $('pb-base');
+    return window.BaseControl.byName(s ? s.value : null);
+  }
+  // the module-level constant a pinned base-control choice is written as
+  function baseControlConstant() {
+    const choice = baseControl();
+    if (!window.BaseControl.pinsTheSetting(choice)) return [];
+    return [
+      '# whether the base may drive to help an arm reach (whole-body control). A plan',
+      '# built in the Plan Builder says where the robot stands, with its Navigate steps.',
+      'BASE_MAY_DRIVE_WHILE_REACHING = ' + (choice.fullBodyControlled ? 'True' : 'False'),
+    ];
+  }
+  // the line applying it to the robot, once the robot is resolved
+  function baseControlLines(indent) {
+    if (!window.BaseControl.pinsTheSetting(baseControl())) return [];
+    return [
+      indent + 'if isinstance(robot, HasMobileBase):',
+      indent + '    robot.mobile_base.full_body_controlled = BASE_MAY_DRIVE_WHILE_REACHING',
+    ];
+  }
   function generateSelected() { return outputStyle() === 'class' ? generateClass() : generate(); }
 
   function showCode() {
@@ -1160,7 +1268,7 @@
         const next = (d && d.surfaces) || [];
         const changed = JSON.stringify(next) !== JSON.stringify(liveSurfaces);
         liveSurfaces = next;
-        if (changed && steps.some(function (s) { return s.type === 'transport' && s.params.targetMode === 'semantic'; })) renderSteps();
+        if (changed && steps.some(placesAtASemanticTarget)) renderSteps();
       }).catch(function () {});
   }
   // reload ONLY the embedded 3D view (it sometimes loads partially) without touching the
@@ -1263,6 +1371,14 @@
   function reshowIfGenerated() {
     const pre = $('pb-code'); if (pre && pre.textContent && pre.textContent.indexOf('Click') !== 0) showCode();
   }
+  $('pb-collisions').innerHTML = window.ExecutionEnvironments.all().map(function (e) {
+    return '<option value="' + e.name + '">' + e.label + '</option>';
+  }).join('');
+  $('pb-collisions').addEventListener('change', reshowIfGenerated);
+  $('pb-base').innerHTML = window.BaseControl.all().map(function (c) {
+    return '<option value="' + c.name + '">' + c.label + '</option>';
+  }).join('');
+  $('pb-base').addEventListener('change', reshowIfGenerated);
   $('pb-style').addEventListener('change', reshowIfGenerated);
   $('pb-robot').addEventListener('change', reshowIfGenerated);
   $('pb-env').addEventListener('change', reshowIfGenerated);

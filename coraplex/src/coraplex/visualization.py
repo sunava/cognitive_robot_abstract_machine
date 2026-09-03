@@ -216,6 +216,13 @@ class WorldVisualization:
             rerun_target=os.environ.get(RERUN_TARGET_VARIABLE),
         )
 
+    @property
+    def is_rendering(self) -> bool:
+        """
+        Whether a started backend is showing the world, as opposed to running headless.
+        """
+        return self.backend is not VisualizationBackend.NONE
+
     def start(self) -> Self:
         """
         Start the selected backend and return this visualization.
@@ -250,7 +257,8 @@ class WorldVisualization:
                 backend=self.backend,
                 reason="rclpy is not importable; RViz needs a ROS 2 environment",
             )
-        if not rclpy.ok():  # compose with a context someone else (e.g. a demonstration) owns
+        # compose with a context someone else (e.g. a demonstration) owns
+        if not rclpy.ok():
             rclpy.init()
         self.ros_node = rclpy.create_node("viz_marker")
         VizMarkerPublisher(_world=self.world, node=self.ros_node).with_tf_publisher()
@@ -290,7 +298,7 @@ class WorldVisualization:
             self.rerun_adapter = None
         if self.ros_node is not None:
             self.ros_node.destroy_node()
+            self.ros_node = None
         if self.cramera_visualization is not None:
             self.cramera_visualization.stop()
             self.cramera_visualization = None
-            self.ros_node = None

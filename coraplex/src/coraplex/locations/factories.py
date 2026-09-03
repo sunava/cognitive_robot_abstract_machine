@@ -84,8 +84,8 @@ def reachability_location(
     )
     man = ViewManager.get_end_effector_view(arm, context.robot)
 
-    # grasp from the side facing the robot (robot-front), regardless of object rotation;
-    # a flat object (when target is a Body) is grasped from the top instead
+    # the side to approach from follows the robot's reach (see _approach_side); a flat
+    # object (when target is a Body) is grasped from the top instead
     grasp_description = grasp_description or GraspDescription.robot_relative_default(
         man, target_pose, target_body
     )

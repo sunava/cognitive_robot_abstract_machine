@@ -444,6 +444,18 @@ class TestViewPayloads:
         assert by_label["Transport"].status == "CREATED"
         assert len(payload.edges) == len(payload.nodes) - 1
 
+    def test_plan_view_nodes_carry_tree_structure(self, fixture_scene):
+        """
+        The step list nests by ``parent`` and filters by ``kind``, so a recorded plan
+        node must carry both — without them every node reads as a top-level step.
+        """
+        payload = GraphPanelViews.of_active_scene().for_tab("plan")
+        by_label = {node["label"]: node for node in payload.to_payload()["nodes"]}
+        root, action = by_label["SequentialNode"], by_label["Transport"]
+        assert root["kind"] == "SequentialNode" and root["parent"] is None
+        assert action["kind"] == "ActionNode" and action["parent"] == root["id"]
+        assert by_label["ConditionNode"]["parent"] == action["id"]
+
     def test_plan_view_legend(self, fixture_scene):
         payload = GraphPanelViews.of_active_scene().for_tab("plan")
         expected = [

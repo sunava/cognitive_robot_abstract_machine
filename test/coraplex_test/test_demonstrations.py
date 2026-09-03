@@ -15,7 +15,7 @@ import rclpy
 from typing_extensions import List
 
 from coraplex.datastructures.dataclasses import Context
-from coraplex.datastructures.enums import ExecutionType
+from coraplex.datastructures.enums import ExecutionType, VisualizationBackend
 from coraplex.plans.executables import GiskardExecutable
 from coraplex.plans.factories import code
 from coraplex.plans.plan_node import PlanNode
@@ -51,6 +51,11 @@ class RecordingDemonstration(RobotDemonstration):
     world: World
     """
     World handed to this demonstration instead of one it builds itself.
+    """
+
+    default_visualization_backend: VisualizationBackend = VisualizationBackend.NONE
+    """
+    Headless unless a test asks to be watched, so a run leaves no viewer behind.
     """
 
     scene_already_populated: bool = False
@@ -210,6 +215,68 @@ def test_tear_down_runs_when_the_plan_fails(cylinder_bot_world):
         demonstration.run()
 
     assert demonstration.tear_down_calls == 1
+
+
+# %% the viewer outliving the plan
+
+
+def test_run_leaves_the_viewer_showing_the_finished_world(cylinder_bot_world):
+    """
+    A viewer closed the moment the plan ends shows nothing worth watching, and
+    ``cramera-live`` keeps the process alive precisely so the finished run can be
+    inspected.
+    """
+    demonstration = RecordingDemonstration(
+        world=cylinder_bot_world,
+        used_robot=MinimalRobot,
+        default_visualization_backend=VisualizationBackend.RVIZ,
+    )
+
+    demonstration.run()
+
+    assert demonstration.visualization is not None
+    assert demonstration.visualization.ros_node is not None
+    assert demonstration.ros_session is not None
+
+    demonstration.stop_visualization()
+
+
+def test_stopping_the_visualization_releases_the_session_it_published_through(
+    cylinder_bot_world,
+):
+    """
+    The RViz backend publishes through the demonstration's own session, so that session
+    outlives :meth:`tear_down` and is released together with the viewer.
+    """
+    assert not rclpy.ok(), "another test left a ROS context running"
+    demonstration = RecordingDemonstration(
+        world=cylinder_bot_world,
+        used_robot=MinimalRobot,
+        default_visualization_backend=VisualizationBackend.RVIZ,
+    )
+    demonstration.run()
+
+    demonstration.stop_visualization()
+
+    assert demonstration.visualization is None
+    assert demonstration.ros_session is None
+    assert not rclpy.ok()
+
+
+def test_leaving_the_context_manager_closes_the_viewer(cylinder_bot_world):
+    """
+    A caller that wants the viewer gone at a definite point says so with ``with``.
+    """
+    with RecordingDemonstration(
+        world=cylinder_bot_world,
+        used_robot=MinimalRobot,
+        default_visualization_backend=VisualizationBackend.RVIZ,
+    ) as demonstration:
+        demonstration.run()
+        assert demonstration.visualization is not None
+
+    assert demonstration.visualization is None
+    assert demonstration.ros_session is None
 
 
 # %% ros context ownership

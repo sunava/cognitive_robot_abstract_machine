@@ -235,7 +235,7 @@ Panels.define('robot-scene', function (root, bus) {
   const _objLoader = new THREE.STLLoader();   // no manager: for live/on-demand loads
 
   // add one draggable object to the scene (bundle load or live spawn). spec:
-  // {id, key, color, meshUrl?, format?  |  box:[x,y,z]  |  shapes:[ShapeSpecs spec]}.
+  // {id, key, color, meshUrl?, mtlUrl?, format?  |  box:[x,y,z]  |  shapes:[ShapeSpecs spec]}.
   // Any mesh format the vendored loaders support (stl/obj/dae) works; unknown →
   // placeholder box. `shapes` is how the live bridge publishes an arbitrary world
   // body: every shape with its own local pose, dimensions and colour.
@@ -371,10 +371,23 @@ Panels.define('robot-scene', function (root, bus) {
     if (spec.box) { box(spec.box, true); return; }
     const fmt = (spec.format || (spec.meshUrl || '').split('?')[0].split('.').pop() || '').toLowerCase();
     if (fmt === 'obj' && THREE.OBJLoader) {
-      new THREE.OBJLoader().load(spec.meshUrl, function (o) {
-        o.traverse(function (c) { if (c.isMesh) c.material = mat; });
-        place(o);
-      }, undefined, function () { box(); });
+      // an OBJ may bring its own materials and textures -- a printed cardboard box, say;
+      // only without them is the mesh painted in the object's flat colour
+      const loadObj = function (materials) {
+        const objLoader = new THREE.OBJLoader();
+        if (materials) { materials.preload(); objLoader.setMaterials(materials); spec.tame = true; }
+        objLoader.load(spec.meshUrl, function (o) {
+          if (!materials) o.traverse(function (c) { if (c.isMesh) c.material = mat; });
+          place(o);
+        }, undefined, function () { box(); });
+      };
+      if (spec.mtlUrl && THREE.MTLLoader) {
+        const directory = spec.meshUrl.slice(0, spec.meshUrl.lastIndexOf('/') + 1);
+        new THREE.MTLLoader().setResourcePath(directory)
+          .load(spec.mtlUrl, loadObj, undefined, function () { loadObj(null); });
+      } else {
+        loadObj(null);
+      }
     } else if (fmt === 'glb' && THREE.GLTFLoader) {
       spec.tame = true;                         // glb carries its own materials, as dae did
       new THREE.GLTFLoader().load(spec.meshUrl, function (g) { place(g.scene); },
@@ -587,6 +600,7 @@ Panels.define('robot-scene', function (root, bus) {
         id: o.id, key: o.key, color: o.color,
         box: o.box || null,
         meshUrl: o.mesh ? sceneBase + o.mesh : null,
+        mtlUrl: o.mtl ? sceneBase + o.mtl : null,
       });
     });
 

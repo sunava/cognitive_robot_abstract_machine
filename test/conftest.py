@@ -377,7 +377,7 @@ def supported_abstract_robots():
         UnitreeG1,
         MMPDresden,
         DAiSy,
-        # Garmi, We dont have the ROS Package yet
+        Garmi,
     ]
 
 

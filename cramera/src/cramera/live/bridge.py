@@ -148,6 +148,11 @@ ROBOT_BASE_KEY = "__base__"
 Key under which the robot's root body is published, instead of as a loose object.
 """
 
+IDENTITY_QUATERNION = (0.0, 0.0, 0.0, 1.0)
+"""
+``[qx, qy, qz, qw]`` of an unrotated pose, used where no orientation is known.
+"""
+
 
 @runtime_checkable
 class DescribesAnAction(Protocol):
@@ -533,10 +538,26 @@ class WorldStateSnapshot:
     Loose-object pose by mesh key, in the same 7-element form as :attr:`base`.
     """
 
+    ORIENTATION_START: ClassVar[int] = 3
+    """
+    Index the quaternion begins at in a ``[x, y, z, qx, qy, qz, qw]`` pose.
+    """
+
     markers_version: int = 0
     """
     Version of the debug-marker overlay; the viewer refetches ``/markers`` on change.
     """
+
+    def orientation_of(self, object_key: str) -> Optional[List[float]]:
+        """
+        The orientation one object stands at, or None if this snapshot has no pose for it.
+
+        :param object_key: Mesh key of the object whose orientation is read.
+        """
+        pose = self.objects.get(object_key)
+        if pose is None:
+            return None
+        return list(pose[self.ORIENTATION_START :])
 
     model_bases: Dict[str, List[float]] = field(default_factory=dict)
     """
@@ -1393,13 +1414,47 @@ class Bridge:
 
         :param request: The move to apply on the next simulation tick.
         """
+        with self._lock:
+            snapshot_orientation = self.state.orientation_of(request.object_key)
         with self._moves_lock:
             self._moves.append(request)
             # remember the drag target regardless of whether the sim applies it (it only
             # applies on a motion tick); the Plan Builder reads these via /captured_objects
             # to snap an object's pose into a start point or an action target.
-            quat = request.quaternion or [0.0, 0.0, 0.0, 1.0]
-            self._last_moves[request.object_key] = list(request.position) + list(quat)
+            orientation = self._orientation_after(
+                request,
+                previous_target=self._last_moves.get(request.object_key),
+                snapshot_orientation=snapshot_orientation,
+            )
+            self._last_moves[request.object_key] = list(request.position) + orientation
+
+    @staticmethod
+    def _orientation_after(
+        request: MoveRequest,
+        previous_target: Optional[List[float]],
+        snapshot_orientation: Optional[List[float]],
+    ) -> List[float]:
+        """
+        The orientation an object stands at once ``request`` is applied.
+
+        A drag naming no orientation keeps the object's current one, which is what
+        :meth:`_apply_move` writes into the world; the recorded target has to say the same,
+        or capturing after such a drag reports the object as unrotated. While the sim is
+        idle it has applied no earlier drag, so the newest of those is what the object
+        stands at, and the snapshot only speaks for an object never dragged.
+
+        :param request: The move whose resulting orientation is asked for.
+        :param previous_target: The drag target recorded for this object before, if any.
+        :param snapshot_orientation: The orientation of the newest world snapshot, if it
+            has a pose for this object.
+        """
+        if request.quaternion is not None:
+            return list(request.quaternion)
+        if previous_target is not None:
+            return list(previous_target[WorldStateSnapshot.ORIENTATION_START :])
+        if snapshot_orientation is not None:
+            return snapshot_orientation
+        return list(IDENTITY_QUATERNION)
 
     def get_captured_objects(self) -> Dict[str, Any]:
         """
@@ -1442,8 +1497,17 @@ class Bridge:
         # supporting surfaces ("on") + case containers ("in"): both expose the same
         # sample_points_from_surface via HasSupportingSurface / HasCaseAsRootBody.
         for surface_type in (
-            CounterTop, Table, ShelfLayer, Floor, Sofa,
-            Drawer, Fridge, Cabinet, Cupboard, Dresser, Dishwasher,
+            CounterTop,
+            Table,
+            ShelfLayer,
+            Floor,
+            Sofa,
+            Drawer,
+            Fridge,
+            Cabinet,
+            Cupboard,
+            Dresser,
+            Dishwasher,
         ):
             try:
                 annotations = self.world.get_semantic_annotations_by_type(surface_type)
@@ -1473,9 +1537,17 @@ class Bridge:
             "  giskard node: %s(%s)\n"
             "  plan node   : %s (%s)\n"
             "  status      : queued — the motion statechart applies it on the next tick\n%s\n"
-            % (line, request.text, request.goal_type, params,
-               request.node_label, request.target_node_id, line),
-            file=sys.stderr, flush=True,
+            % (
+                line,
+                request.text,
+                request.goal_type,
+                params,
+                request.node_label,
+                request.target_node_id,
+                line,
+            ),
+            file=sys.stderr,
+            flush=True,
         )
         with self._constraints_lock:
             self._constraints.append(request)
@@ -1526,11 +1598,14 @@ class Bridge:
                 return body
         logger.warning(
             "constraint link %r not found; known objects=%s",
-            name, sorted(self._bodies)[:12],
+            name,
+            sorted(self._bodies)[:12],
         )
         return None
 
-    def _build_giskard_node(self, constraint: "AttachConstraintRequest") -> Optional[Any]:
+    def _build_giskard_node(
+        self, constraint: "AttachConstraintRequest"
+    ) -> Optional[Any]:
         """
         Turn a compiled constraint into a real giskardpy motion-statechart node,
         resolving its link names to live :class:`Body` objects.
@@ -1555,7 +1630,9 @@ class Bridge:
         if root is None or tip is None:
             logger.warning(
                 "constraint %r: could not resolve links root=%r tip=%r in the live world",
-                constraint.text, params.get("root_link"), params.get("tip_link"),
+                constraint.text,
+                params.get("root_link"),
+                params.get("tip_link"),
             )
             return None
 
@@ -1564,7 +1641,8 @@ class Bridge:
 
         if constraint.goal_type == "VectorsAligned":
             return VectorsAligned(
-                root_link=root, tip_link=tip,
+                root_link=root,
+                tip_link=tip,
                 goal_normal=vec(params.get("goal_normal", [0, 0, 1])),
                 tip_normal=vec(params.get("tip_normal", [0, 0, 1])),
                 threshold=float(params.get("threshold", 0.1)),
@@ -1585,16 +1663,22 @@ class Bridge:
                     return None
                 goal_point = Point3(0, 0, 0, reference_frame=target)
             return PointingAt(
-                root_link=root, tip_link=tip,
+                root_link=root,
+                tip_link=tip,
                 goal_point=goal_point,
                 pointing_axis=vec(params.get("pointing_axis", [0, 0, 1])),
                 threshold=float(params.get("threshold", 0.05)),
             )
         if constraint.goal_type in ("HeightMonitor", "DistanceMonitor"):
             # reference is the world root; the monitored point is the object's origin.
-            cls = HeightMonitor if constraint.goal_type == "HeightMonitor" else DistanceMonitor
+            cls = (
+                HeightMonitor
+                if constraint.goal_type == "HeightMonitor"
+                else DistanceMonitor
+            )
             return cls(
-                root_link=root, tip_link=tip,
+                root_link=root,
+                tip_link=tip,
                 reference_point=Point3(0, 0, 0, reference_frame=root),
                 tip_point=Point3(0, 0, 0, reference_frame=tip),
                 lower_limit=float(params.get("lower_limit", 0.0)),
@@ -1602,12 +1686,15 @@ class Bridge:
             )
         logger.info(
             "constraint %r: goal type %s not yet wired for live injection",
-            constraint.text, constraint.goal_type,
+            constraint.text,
+            constraint.goal_type,
         )
         return None
 
     def _inject_constraint(
-        self, constraint: "AttachConstraintRequest", chart: Optional["MotionStatechart"] = None
+        self,
+        constraint: "AttachConstraintRequest",
+        chart: Optional["MotionStatechart"] = None,
     ) -> None:
         """
         Resolve a plan-view constraint to a real giskardpy node and attach it to the
@@ -1683,10 +1770,12 @@ class Bridge:
             % (
                 line,
                 constraint.text,
-                constraint.goal_type, params,
+                constraint.goal_type,
+                params,
                 root is not None and str(root.name),
                 tip is not None and str(tip.name),
-                constraint.node_label, constraint.target_node_id,
+                constraint.node_label,
+                constraint.target_node_id,
                 chart_title or "(no motion running right now)",
                 len(self._resolved_constraints),
                 line,

@@ -55,7 +55,7 @@ def panel_scripts() -> List[Path]:
     return sorted(WEB_ROOT.glob("panels/**/*.js"))
 
 
-PAGES = ["index.html", "models.html"]
+PAGES = ["index.html", "models.html", "plan_builder.html"]
 """
 Every page the server ships; each must reference only files that exist.
 """
@@ -198,6 +198,63 @@ class TestBinaryGltfLoading:
         assert "fmt === '%s'" % suffix in panel
 
 
+class TestPlanBuilderExecutionChoice:
+    """
+    The Plan Builder's "collision avoidance" choice names coraplex execution
+    environments the generated demo imports, so a renamed or re-flagged environment has
+    to fail here rather than in the generated file.
+    """
+
+    ENVIRONMENT_PATTERN: ClassVar[re.Pattern] = re.compile(
+        r"name: '(\w+)',\s*\n\s*label: '[^']*',\s*\n\s*collisionAvoidance: (true|false)"
+    )
+    """
+    How ``core/execution_environment.js`` spells one offered environment.
+    """
+
+    def offered_environments(self) -> Dict[str, bool]:
+        """
+        The environments the Plan Builder offers, by name and collision-avoidance flag.
+        """
+        source = read("core/execution_environment.js")
+        found = self.ENVIRONMENT_PATTERN.findall(source)
+        assert found, "no environments found in core/execution_environment.js"
+        return {name: flag == "true" for name, flag in found}
+
+    def test_every_offered_environment_is_one_coraplex_exports(self):
+        execution_environment = pytest.importorskip(
+            "coraplex.execution_environment", reason="coraplex not installed"
+        )
+
+        for name in self.offered_environments():
+            assert hasattr(execution_environment, name), name
+
+    def test_the_collision_flag_matches_the_environment_it_names(self):
+        """
+        Both output styles have to agree: a flat script enters the named environment, a
+        RobotDemonstration is handed the flag, and the two must plan the same way.
+        """
+        execution_environment = pytest.importorskip(
+            "coraplex.execution_environment", reason="coraplex not installed"
+        )
+
+        offered = self.offered_environments()
+
+        assert offered == {
+            name: getattr(execution_environment, name).collision_avoidance
+            for name in offered
+        }
+
+    def test_the_page_offers_the_choice(self):
+        """
+        The select is filled from the module, so the page only has to carry it.
+        """
+        page = read("plan_builder.html")
+
+        assert 'id="pb-collisions"' in page
+        assert '<script src="core/execution_environment.js">' in page
+
+
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
 class TestJsUnits:
     def run_node(self, name: str) -> None:
@@ -214,6 +271,15 @@ class TestJsUnits:
 
     def test_bus_and_registry(self):
         self.run_node("test_bus_registry.js")
+
+    def test_execution_environments(self):
+        self.run_node("test_execution_environment.js")
+
+    def test_plan_steps(self):
+        self.run_node("test_plan_steps.js")
+
+    def test_base_control(self):
+        self.run_node("test_base_control.js")
 
     def test_graph_status_rendering(self):
         self.run_node("test_graph_status.js")

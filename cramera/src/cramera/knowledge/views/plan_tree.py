@@ -35,6 +35,7 @@ from cramera.knowledge.subgraph import (
     GraphPanelPayload,
     LegendEntry,
     SubgraphAccumulator,
+    TreePosition,
 )
 
 PLAN_LEGEND: Tuple[LegendEntry, ...] = tuple(
@@ -119,7 +120,8 @@ class PlanViewPayload(GraphPanelPayload):
         """
         node_id = "plan_tree_node_%d" % next(node_ids)
         status = tree.get("status") or "CREATED"
-        lines = ["a " + tree.get("kind", "PlanNode"), "status: " + status]
+        kind = tree.get("kind", "PlanNode")
+        lines = ["a " + kind, "status: " + status]
         if tree.get("arm"):
             lines.append("arm: " + tree["arm"])
         if tree.get("target"):
@@ -127,9 +129,10 @@ class PlanViewPayload(GraphPanelPayload):
         view.add(
             node_id,
             cls._shorten_action_label(tree.get("label", "?")),
-            PlanNodeGroup.of_plan_node_kind(tree.get("kind")),
+            PlanNodeGroup.of_plan_node_kind(kind),
             lines,
             status=status,
+            tree_position=TreePosition(kind=kind, parent=parent),
         )
         if parent:
             view.add_edge(parent, node_id, EdgeKind.PROPERTY, "has step")

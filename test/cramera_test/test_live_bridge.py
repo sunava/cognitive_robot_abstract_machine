@@ -50,6 +50,7 @@ from cramera.live.bridge import (
     MoveRequest,
     ROBOT_BASE_KEY,
     TaskStatusName,
+    WorldStateSnapshot,
 )
 
 from .test_robot_parts import ArmPart, EndEffectorPart, NamedBody, OneArmedRobot
@@ -476,6 +477,141 @@ class TestApplyMove:
         pose = body.global_pose
         assert pose.to_position().to_np()[:3].tolist() == [1.0, 2.0, 3.0]
         assert np.allclose(pose.to_quaternion().to_np(), [0.0, 0.0, 1.0, 0.0])
+
+
+# %% what the Plan Builder captures
+class TestCapturedObjects:
+    """
+    ``/captured_objects`` is what the Plan Builder snaps an object's pose from, so it
+    has to report the pose a drag actually leaves the object in.
+    """
+
+    QUARTER_TURN = [0.0, 0.0, math.sin(math.pi / 4), math.cos(math.pi / 4)]
+    """
+    A quarter turn about the world's up axis, standing in for any orientation a user
+    set.
+    """
+
+    def bridge_with_a_turned_object(self) -> Bridge:
+        """
+        A bridge whose newest snapshot has one object standing at :attr:`QUARTER_TURN`.
+        """
+        bridge = Bridge()
+        bridge.state = WorldStateSnapshot(
+            objects={"wrench.stl": [1.0, 2.0, 0.5] + self.QUARTER_TURN}
+        )
+        return bridge
+
+    def test_a_position_only_drag_keeps_the_orientation_the_object_stands_at(self):
+        """
+        The viewer streams a drag as a position with no orientation, which
+        :meth:`Bridge._apply_move` reads as "keep the current one".
+
+        What the Plan Builder captures has to agree, or dragging an object the user
+        rotated flattens it back to the identity orientation.
+        """
+        bridge = self.bridge_with_a_turned_object()
+
+        bridge.queue_move(
+            MoveRequest(object_key="wrench.stl", position=[3.0, 4.0, 0.5])
+        )
+
+        assert (
+            bridge.get_captured_objects()["objects"]["wrench.stl"]
+            == [
+                3.0,
+                4.0,
+                0.5,
+            ]
+            + self.QUARTER_TURN
+        )
+
+    def test_a_drag_that_names_an_orientation_captures_that_one(self):
+        """
+        Setting an object's rotation in the Plan Builder posts the orientation along,
+        and that is then the one to capture.
+        """
+        bridge = self.bridge_with_a_turned_object()
+        upside_down = [1.0, 0.0, 0.0, 0.0]
+
+        bridge.queue_move(
+            MoveRequest(
+                object_key="wrench.stl",
+                position=[3.0, 4.0, 0.5],
+                quaternion=upside_down,
+            )
+        )
+
+        assert (
+            bridge.get_captured_objects()["objects"]["wrench.stl"]
+            == [3.0, 4.0, 0.5] + upside_down
+        )
+
+    def test_a_rotation_the_idle_sim_never_applied_survives_a_later_drag(self):
+        """
+        Setting an object's rotation while the sim is idle reaches no snapshot -- no tick
+        applies it -- so a drag afterwards has only the earlier drag target to keep the
+        orientation from. This is the Plan Builder's own order of work: rotate the object
+        on its card, place it in the 3D view, capture.
+        """
+        bridge = self.bridge_with_a_turned_object()
+        upside_down = [1.0, 0.0, 0.0, 0.0]
+        bridge.queue_move(
+            MoveRequest(
+                object_key="wrench.stl",
+                position=[3.0, 4.0, 0.5],
+                quaternion=upside_down,
+            )
+        )
+
+        bridge.queue_move(
+            MoveRequest(object_key="wrench.stl", position=[5.0, 6.0, 0.5])
+        )
+
+        assert (
+            bridge.get_captured_objects()["objects"]["wrench.stl"]
+            == [5.0, 6.0, 0.5] + upside_down
+        )
+
+    def test_an_object_the_snapshot_does_not_know_captures_no_rotation(self):
+        """
+        A drag that arrives before the first snapshot has no orientation to keep.
+        """
+        bridge = Bridge()
+
+        bridge.queue_move(MoveRequest(object_key="ghost.stl", position=[1.0, 1.0, 1.0]))
+
+        assert bridge.get_captured_objects()["objects"]["ghost.stl"] == [
+            1.0,
+            1.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+        ]
+
+    def test_the_idle_viewer_keeps_showing_the_orientation_after_a_drag(self):
+        """
+        While the sim is idle the state feed is overlaid with the same drag targets, so
+        an orientation dropped there makes the object visibly snap upright in the 3D
+        view.
+        """
+        bridge = self.bridge_with_a_turned_object()
+
+        bridge.queue_move(
+            MoveRequest(object_key="wrench.stl", position=[3.0, 4.0, 0.5])
+        )
+
+        assert (
+            bridge.get_state()["objects"]["wrench.stl"]
+            == [
+                3.0,
+                4.0,
+                0.5,
+            ]
+            + self.QUARTER_TURN
+        )
 
 
 # %% what the HTTP layer reads

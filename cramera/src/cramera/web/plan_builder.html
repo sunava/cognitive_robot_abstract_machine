@@ -39,6 +39,14 @@
             <option value="script">Flat script</option>
           </select>
         </label>
+        <label>Collision avoidance
+          <select id="pb-collisions" class="pb-sel"
+                  title="which coraplex execution environment the generated demo performs its plan in"></select>
+        </label>
+        <label>Base while reaching
+          <select id="pb-base" class="pb-sel"
+                  title="whether the base may drive to help an arm reach (whole-body control)"></select>
+        </label>
         <div class="pb-menu-sep"></div>
         <button id="pb-download" class="pb-btn sm">⭳ Download</button>
         <button id="pb-save" class="pb-btn sm">💾 Save to demos</button>
@@ -115,6 +123,9 @@
   </section>
 </main>
 
+<script src="core/base_control.js"></script>
+<script src="core/execution_environment.js"></script>
+<script src="core/plan_steps.js"></script>
 <script src="core/response.js"></script>
 <script src="plan_builder.js"></script>
 </body>

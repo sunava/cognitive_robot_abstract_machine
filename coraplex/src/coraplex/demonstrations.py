@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 import rclpy
 from rclpy.executors import ExternalShutdownException, SingleThreadedExecutor
 from rclpy.node import Node
-from typing_extensions import ClassVar, List, Optional, Type
+from typing_extensions import ClassVar, List, Optional, Self, Type
 
 from coraplex.alternative_motion_mapping import AlternativeMotion
 from coraplex.datastructures.dataclasses import Context
@@ -195,7 +195,8 @@ class RobotDemonstration(ABC):
     """
     The visualization backend started for a simulated run (``None`` until then, and for a
     real run whose world comes from the controller). The plan is attached to it in
-    :meth:`run` so executed actions and motions appear on its timeline.
+    :meth:`run` so executed actions and motions appear on its timeline, and it keeps
+    showing the world after the plan ends until :meth:`stop_visualization` closes it.
     """
 
     @abstractmethod
@@ -273,6 +274,10 @@ class RobotDemonstration(ABC):
         """
         Acquire a world, populate it if needed, and perform the plan against it.
 
+        The visualization outlives the plan, so the finished run can still be inspected;
+        use this demonstration as a context manager, or call :meth:`stop_visualization`,
+        to close the viewer.
+
         :return: The world the demonstration acted on.
         """
         world = self.acquire_world()
@@ -295,14 +300,31 @@ class RobotDemonstration(ABC):
         """
         Release the ROS session if this demonstration started the ROS context.
 
-        A session running inside a context somebody else owns is left alone: that owner
-        decides when its nodes go away, and destroying this one early can drop world
-        modifications that have not reached the controller yet.
+        A viewer still showing the world keeps the session, because the RViz backend
+        publishes markers and TF through it and the cramera bridge listens for them on
+        it. A session running inside a context somebody else owns is left alone: that
+        owner decides when its nodes go away, and destroying this one early can drop
+        world modifications that have not reached the controller yet.
         """
-        if self.visualization is not None:
-            self.visualization.stop()
-            self.visualization = None
+        if self.visualization is not None and self.visualization.is_rendering:
+            return
+        self.visualization = None
         if self.ros_session is None or not self.ros_session.owns_context:
             return
         self.ros_session.stop()
         self.ros_session = None
+
+    def stop_visualization(self) -> None:
+        """
+        Close the viewer the run was watched with, and release what only it still held.
+        """
+        if self.visualization is not None:
+            self.visualization.stop()
+            self.visualization = None
+        self.tear_down()
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, exception_type, exception, traceback) -> None:
+        self.stop_visualization()
