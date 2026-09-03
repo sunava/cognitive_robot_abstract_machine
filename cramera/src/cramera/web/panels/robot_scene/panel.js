@@ -211,6 +211,8 @@ Panels.define('robot-scene', function (root, bus) {
   const worldRoot = new THREE.Group();
   const markerRoot = new THREE.Group();   // the CRAM debug-marker overlay (/markers)
   worldRoot.add(markerRoot);
+  const navTargetsRoot = new THREE.Group();   // Plan Builder Navigate goals (ground arrows)
+  worldRoot.add(navTargetsRoot);
   worldRoot.rotation.x = -Math.PI / 2;
   scene3.add(worldRoot);
 
@@ -1335,8 +1337,35 @@ Panels.define('robot-scene', function (root, bus) {
       guidedKeys.clear();
       want.forEach(function (k) { guidedKeys.add(k); if (objectMeshes[k]) arrowOver(k, true); });
       needsRender = true;
+    } else if (d.type === 'cramera-navigate-targets' && Array.isArray(d.targets)) {
+      setNavigateTargets(d.targets);
     }
   });
+
+  // Plan Builder Navigate goals: a flat teal disc + an arrow pointing along the goal yaw,
+  // on the floor at each goal, so you can see where and how the robot will stand.
+  function setNavigateTargets(targets) {
+    while (navTargetsRoot.children.length) {
+      const c = navTargetsRoot.children.pop();
+      c.traverse(function (o) { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+      navTargetsRoot.remove(c);
+    }
+    const teal = 0x39d5c8;
+    targets.forEach(function (t) {
+      const g = new THREE.Group();
+      const mat = new THREE.MeshBasicMaterial({ color: teal, transparent: true, opacity: 0.85, depthTest: false });
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.14, 0.19, 28), mat);   // flat on the floor (local xy)
+      const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 14), mat);
+      arrow.rotation.z = -Math.PI / 2;   // cone points +y by default -> aim it along +x (yaw 0)
+      arrow.position.set(0.26, 0, 0);
+      g.add(ring); g.add(arrow);
+      g.position.set(t.x || 0, t.y || 0, (t.z || 0) + 0.02);
+      g.rotation.z = t.yaw || 0;          // map-frame yaw (worldRoot local z is up)
+      g.renderOrder = 4;
+      navTargetsRoot.add(g);
+    });
+    needsRender = true;
+  }
 
   function liveUrl() {
     const m = /[?&]live=([\w.:-]+)/.exec(window.location.search);

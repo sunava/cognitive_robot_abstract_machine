@@ -253,6 +253,26 @@
     if (f && f.contentWindow) f.contentWindow.postMessage(
       { type: 'cramera-highlight-objects', keys: objects.map(function (o) { return o.mesh; }) }, '*');
   }
+  // show every Navigate step's target as a ground arrow (position + yaw) in the 3D view
+  function sendNavigateTargets() {
+    const f = $('pb-3d'); if (!f || !f.contentWindow) return;
+    const targets = steps.filter(function (s) { return s.type === 'navigate'; }).map(function (s, i) {
+      return { id: s.id, label: 'nav ' + (i + 1), x: s.params.x, y: s.params.y, z: s.params.z, yaw: s.params.yaw };
+    });
+    f.contentWindow.postMessage({ type: 'cramera-navigate-targets', targets: targets }, '*');
+  }
+  // capture the live robot's current base pose as this Navigate step's goal
+  function captureNavigate(sid) {
+    const s = steps.find(function (x) { return x.id === sid; }); if (!s) return;
+    fetch(bridgeUrl() + '/state').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      const b = d && d.base;
+      if (!b || b.length < 7) { status('no live robot pose — start the scene first', 'err'); return; }
+      s.params.x = Math.round(b[0] * 100) / 100; s.params.y = Math.round(b[1] * 100) / 100;
+      s.params.z = Math.round(b[2] * 100) / 100; s.params.yaw = r3(quatToYaw(b.slice(3)));
+      renderSteps();
+      toast('captured robot pose → navigate goal (' + s.params.x + ', ' + s.params.y + ')', 'ok');
+    }).catch(function () { status('capture failed — start the live scene first', 'err'); });
+  }
   // physics-ish "drop": ask the 3D view to let every object fall straight down onto the
   // nearest surface below it (raycast). The viewer reports each settled pose back, which
   // we write into the object cards so the generated demo spawns them resting on the surface.
@@ -446,6 +466,7 @@
     });
     wireStepEvents();
     renderScene();
+    sendNavigateTargets();
   }
   function stepChips(s) {
     const cs = s.constraints || [];
@@ -460,7 +481,8 @@
   function stepParams(s) {
     if (s.type === 'park_arms') return row(sel(s, 'arm', ARMS));
     if (s.type === 'move_torso') return row(sel(s, 'torso', TORSO));
-    if (s.type === 'navigate') return row('<span class="pb-group-lbl">go to →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw'));
+    if (s.type === 'navigate') return row('<span class="pb-group-lbl">go to →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw') +
+      '<button class="pb-capbtn" data-capnav="' + s.id + '" title="drive/place the robot in the 3D scene, then capture its base pose as this navigate goal">◎ capture robot pose</button>');
     if (s.type === 'transport') {
       const mode = s.params.targetMode || 'semantic';
       const dropRow = (mode === 'semantic')
@@ -522,7 +544,7 @@
         // switching target mode / surface type swaps which fields are shown -> re-render
         if (k === 'surfaceType') { s.params.surfaceName = ''; renderSteps(); }
         else if (k === 'targetMode') { renderSteps(); }
-        else { renderScene(); }
+        else { renderScene(); if (s.type === 'navigate') sendNavigateTargets(); }
       });
     });
     el.querySelectorAll('[data-del]').forEach(function (b) { b.addEventListener('click', function () { steps = steps.filter(function (s) { return s.id !== b.dataset.del; }); renderSteps(); }); });
@@ -530,6 +552,7 @@
     el.querySelectorAll('[data-down]').forEach(function (b) { b.addEventListener('click', function () { moveStep(b.dataset.down, 1); }); });
     el.querySelectorAll('[data-capstep]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); captureStepTarget(b.dataset.capstep); }); });
     el.querySelectorAll('[data-capstart]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); captureStepStart(b.dataset.capstart); }); });
+    el.querySelectorAll('[data-capnav]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); captureNavigate(b.dataset.capnav); }); });
     // remove an attached constraint chip
     el.querySelectorAll('[data-scon-del]').forEach(function (x) {
       x.addEventListener('click', function (e) { e.stopPropagation(); detachConstraint(x.dataset.sconDel, parseInt(x.dataset.sconIdx, 10)); });
@@ -1214,7 +1237,7 @@
     });
   });
   // whenever the embedded scene (re)loads, (re)send the objects to flag with arrows
-  $('pb-3d').addEventListener('load', function () { setTimeout(highlightObjectsInScene, 400); });
+  $('pb-3d').addEventListener('load', function () { setTimeout(function () { highlightObjectsInScene(); sendNavigateTargets(); }, 400); });
   $('pb-rx').addEventListener('input', function () { robotXY.x = parseFloat(this.value) || 0; });
   $('pb-ry').addEventListener('input', function () { robotXY.y = parseFloat(this.value) || 0; });
   addObject('milk.stl');   // staged above the robot (never inside furniture); drop/drag to place
