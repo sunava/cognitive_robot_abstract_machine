@@ -17,27 +17,34 @@
   </nav>
   <div class="pb-title">Plan Builder <span class="pb-hint">compose a plan &amp; place objects → generate a demo file</span></div>
   <div class="pb-actions">
-    <input id="pb-name" class="pb-name" placeholder="demo name" value="my_demo" />
-    <select id="pb-env" class="pb-sel" title="Environment">
-      <option value="apartment.urdf">Apartment</option>
-      <option value="apartment_without_walls.urdf">Apartment (no walls)</option>
-      <option value="kitchen.urdf">Kitchen</option>
-      <option value="kitchen-small.urdf">Kitchen (small)</option>
-      <option value="IAI_kitchen.urdf">IAI Kitchen</option>
-      <option value="warehouse6.urdf">Warehouse</option>
-      <option value="warehouse_demo_hall.urdf">Warehouse (demo hall)</option>
-    </select>
-    <select id="pb-robot" class="pb-sel" title="Robot">
-      <option value="PR2">PR2</option>
-      <option value="Garmi">Garmi</option>
-    </select>
-    <select id="pb-style" class="pb-sel" title="Output style">
-      <option value="class">RobotDemonstration class</option>
-      <option value="script">Flat script</option>
-    </select>
+    <div class="pb-setup">
+      <button id="pb-setup-btn" class="pb-btn sm" title="demo name, environment, robot, output style, download / save">⚙ Setup ▾</button>
+      <div id="pb-setup-menu" class="pb-menu" hidden>
+        <label>Demo name<input id="pb-name" class="pb-name" placeholder="demo name" value="my_demo" /></label>
+        <label>Environment
+          <select id="pb-env" class="pb-sel">
+            <option value="apartment.urdf">Apartment</option>
+            <option value="apartment_without_walls.urdf">Apartment (no walls)</option>
+            <option value="kitchen.urdf">Kitchen</option>
+            <option value="kitchen-small.urdf">Kitchen (small)</option>
+            <option value="IAI_kitchen.urdf">IAI Kitchen</option>
+            <option value="warehouse6.urdf">Warehouse</option>
+            <option value="warehouse_demo_hall.urdf">Warehouse (demo hall)</option>
+          </select>
+        </label>
+        <label>Robot<select id="pb-robot" class="pb-sel"></select></label>
+        <label>Output style
+          <select id="pb-style" class="pb-sel">
+            <option value="class">RobotDemonstration class</option>
+            <option value="script">Flat script</option>
+          </select>
+        </label>
+        <div class="pb-menu-sep"></div>
+        <button id="pb-download" class="pb-btn sm">⭳ Download</button>
+        <button id="pb-save" class="pb-btn sm">💾 Save to demos</button>
+      </div>
+    </div>
     <button id="pb-generate" class="pb-btn primary">⚙ Generate demo.py</button>
-    <button id="pb-download" class="pb-btn">⭳ Download</button>
-    <button id="pb-save" class="pb-btn">💾 Save to demos</button>
   </div>
 </header>
 

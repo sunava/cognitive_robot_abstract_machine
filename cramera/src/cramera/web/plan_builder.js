@@ -1188,17 +1188,19 @@
   $('pb-run').addEventListener('click', runPlan);
   $('pb-live-start').addEventListener('click', startLive);
   $('pb-live-stop').addEventListener('click', stopLive);
-  // floating scene-controls dropdown (keeps the 3D view big)
-  (function () {
-    const btn = $('pb-menu-btn'), menu = $('pb-menu');
-    function close() { if (menu) menu.hidden = true; }
-    if (btn && menu) {
-      btn.addEventListener('click', function (e) { e.stopPropagation(); menu.hidden = !menu.hidden; });
-      menu.addEventListener('click', function (e) { if (e.target.closest('button, a') && e.target.id !== 'pb-show-code') close(); });
-      document.addEventListener('click', function (e) { if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) close(); });
-    }
-    const sc = $('pb-show-code'); if (sc) sc.addEventListener('click', function () { showCode(); close(); });
-  })();
+  // a floating dropdown: btn toggles menu; clicking a button/link inside closes it (except
+  // `keepOpenId`), as does clicking outside. Selects/inputs inside never close it.
+  function wireDropdown(btnId, menuId, keepOpenId) {
+    const btn = $(btnId), menu = $(menuId); if (!btn || !menu) return function () {};
+    function close() { menu.hidden = true; }
+    btn.addEventListener('click', function (e) { e.stopPropagation(); menu.hidden = !menu.hidden; });
+    menu.addEventListener('click', function (e) { if (e.target.closest('button, a') && e.target.id !== keepOpenId) close(); });
+    document.addEventListener('click', function (e) { if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) close(); });
+    return close;
+  }
+  const closeSceneMenu = wireDropdown('pb-menu-btn', 'pb-menu', 'pb-show-code');
+  wireDropdown('pb-setup-btn', 'pb-setup-menu');
+  (function () { const sc = $('pb-show-code'); if (sc) sc.addEventListener('click', function () { showCode(); closeSceneMenu(); }); })();
   wireColumnResizers();
   $('pb-reset-all').addEventListener('click', resetAllObjects);
   $('pb-drop').addEventListener('click', dropObjects);
