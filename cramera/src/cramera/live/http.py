@@ -25,6 +25,8 @@ HTTP endpoints of the live bridge (default port 8765).
     GET /recording  {state: idle|recording|finalized, frameCount, durationSeconds,
                       sceneName}  see :mod:`cramera.live.recording`
     POST /move   queue an object move (applied on the simulation thread)
+    POST /joint  {joint, position, final?} queue a joint position set by hand in the
+                  viewer (applied on the simulation thread, held within the joint's limits)
     POST /recording/stop     finalize the current recording into a scene bundle under
                               :func:`cramera.paths.local_scenes_directory`
     POST /recording/discard  drop the current recording and its bundle, if any
@@ -60,6 +62,8 @@ from cramera.live.bridge import (
     AttachConstraintRequest,
     Bridge,
     MalformedConstraintRequest,
+    JointMoveRequest,
+    MalformedJointMoveRequest,
     MalformedMoveRequest,
     MoveRequest,
 )
@@ -305,6 +309,8 @@ class BridgeRequestHandler(BaseHTTPRequestHandler):
             return self._save_recording()
         if self.path.startswith("/constraint"):
             return self.queue_requested_constraint()
+        if self.path.startswith("/joint"):
+            return self.queue_requested_joint_move()
         if self.path == "/teleop/stop":
             return self._stop_teleop()
         if self.path.startswith("/teleop"):
@@ -474,6 +480,24 @@ class BridgeRequestHandler(BaseHTTPRequestHandler):
         except MalformedMoveRequest as error:
             return self._send_json({"ok": False, "error": str(error)}, code=400)
         self.bridge.queue_move(move)
+        return self._send_json({"ok": True})
+
+    def queue_requested_joint_move(self) -> None:
+        """
+        Queue a joint position the viewer set by hand.
+
+        Validated on the HTTP thread; the simulation thread writes it into the world.
+        """
+        payload = self._posted_payload()
+        if payload is None:
+            return self._send_json(
+                {"ok": False, "error": "body must be a JSON object"}, code=400
+            )
+        try:
+            request = JointMoveRequest.from_payload(payload)
+        except MalformedJointMoveRequest as error:
+            return self._send_json({"ok": False, "error": str(error)}, code=400)
+        self.bridge.queue_joint_move(request)
         return self._send_json({"ok": True})
 
     def queue_requested_teleop(self) -> None:

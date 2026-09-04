@@ -23,13 +23,19 @@ from semantic_digital_twin.spatial_types import (
     Point3,
     Quaternion,
     RotationMatrix,
+    Vector3,
 )
+from semantic_digital_twin.spatial_types.derivatives import DerivativeMap
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import (
     Connection6DoF,
     FixedConnection,
+    RevoluteConnection,
 )
-from semantic_digital_twin.world_description.degree_of_freedom import DegreeOfFreedom
+from semantic_digital_twin.world_description.degree_of_freedom import (
+    DegreeOfFreedom,
+    DegreeOfFreedomLimits,
+)
 from semantic_digital_twin.world_description.geometry import (
     Box,
     Color,
@@ -46,6 +52,8 @@ from cramera.knowledge.enums import PlanNodeGroup
 from cramera.live.bridge import (
     Bridge,
     ChartEdgeEntry,
+    JointMoveRequest,
+    MalformedJointMoveRequest,
     MalformedMoveRequest,
     MoveRequest,
     ROBOT_BASE_KEY,
@@ -400,6 +408,122 @@ class TestQueuedMoves:
         bridge.publish_bodies({})
         bridge.queue_move(MoveRequest(object_key="ghost.stl", position=[0.0, 0.0, 0.0]))
         bridge.apply_moves()
+
+
+class TestJointMoveRequestValidation:
+    def test_a_slider_position_is_read_with_its_final_flag(self):
+        move = JointMoveRequest.from_payload(
+            {"joint": "kitchen/fridge_door_joint", "position": 1.2, "final": True}
+        )
+        assert move == JointMoveRequest(
+            connection_name="kitchen/fridge_door_joint", position=1.2, is_final=True
+        )
+
+    def test_an_intermediate_update_is_not_final(self):
+        move = JointMoveRequest.from_payload({"joint": "drawer", "position": 0})
+        assert move.is_final is False
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"position": 1.0},
+            {"joint": "", "position": 1.0},
+            {"joint": "drawer"},
+            {"joint": "drawer", "position": "open"},
+            {"joint": "drawer", "position": True},
+            {"joint": "drawer", "position": float("nan")},
+        ],
+    )
+    def test_a_missing_or_unusable_field_is_rejected(self, payload):
+        with pytest.raises(MalformedJointMoveRequest):
+            JointMoveRequest.from_payload(payload)
+
+
+def make_hinged_door() -> Tuple[World, RevoluteConnection]:
+    """
+    A world with a fridge door on a hinge that swings between closed and a quarter turn.
+    """
+    world = World()
+    fridge = Body(name=PrefixedName("fridge"))
+    door = Body(name=PrefixedName("fridge_door"))
+    hinge = DegreeOfFreedom(
+        name=PrefixedName("fridge_door_joint", prefix="kitchen"),
+        limits=DegreeOfFreedomLimits(
+            lower=DerivativeMap(position=0.0), upper=DerivativeMap(position=1.57)
+        ),
+    )
+    with world.modify_world():
+        world.add_kinematic_structure_entity(fridge)
+        world.add_kinematic_structure_entity(door)
+        world.add_degree_of_freedom(hinge)
+        connection = RevoluteConnection(
+            parent=fridge,
+            child=door,
+            axis=Vector3.from_iterable([0, 0, 1]),
+            raw_dof=hinge,
+        )
+        world.add_connection(connection)
+    return world, connection
+
+
+def bridge_attached_to(world: World) -> Bridge:
+    """
+    A bridge bound to ``world`` the way :meth:`Bridge.bind` binds the demo's world.
+    """
+    bridge = Bridge()
+    bridge.world = world
+    bridge._connections = bridge._actuated_connections(list(world.connections))
+    return bridge
+
+
+class TestQueuedJointMoves:
+    def test_applying_without_a_world_is_harmless(self):
+        bridge = Bridge()
+        bridge.queue_joint_move(JointMoveRequest(connection_name="door", position=1.0))
+        bridge.apply_moves()
+        assert bridge.pending_joint_moves() == []
+
+    def test_a_move_for_an_unknown_connection_is_ignored(self):
+        world, _ = make_hinged_door()
+        bridge = bridge_attached_to(world)
+        bridge.queue_joint_move(JointMoveRequest(connection_name="ghost", position=1.0))
+        bridge.apply_moves()
+
+    def test_the_queue_holds_the_moves_until_the_simulation_thread_applies_them(self):
+        world, _ = make_hinged_door()
+        bridge = bridge_attached_to(world)
+        move = JointMoveRequest(connection_name="door", position=1.0)
+        bridge.queue_joint_move(move)
+        assert bridge.pending_joint_moves() == [move]
+        bridge.apply_moves()
+        assert bridge.pending_joint_moves() == []
+
+    def test_a_slider_position_opens_the_door(self):
+        world, hinge = make_hinged_door()
+        bridge = bridge_attached_to(world)
+        bridge.queue_joint_move(
+            JointMoveRequest(connection_name=str(hinge.name), position=1.2)
+        )
+        bridge.apply_moves()
+        assert hinge.position == 1.2
+
+    def test_a_position_past_the_stop_is_held_at_the_stop(self):
+        world, hinge = make_hinged_door()
+        bridge = bridge_attached_to(world)
+        bridge.queue_joint_move(
+            JointMoveRequest(connection_name=str(hinge.name), position=3.0)
+        )
+        bridge.apply_moves()
+        assert hinge.position == hinge.dof.limits.upper.position
+
+    def test_the_joint_is_marked_as_written_by_the_viewer(self):
+        world, hinge = make_hinged_door()
+        bridge = bridge_attached_to(world)
+        bridge.queue_joint_move(
+            JointMoveRequest(connection_name=str(hinge.name), position=0.5)
+        )
+        bridge.apply_moves()
+        assert str(hinge.name) in bridge._transforms._viewer_written
 
 
 def make_free_floating_object() -> Tuple[World, Connection6DoF, Body]:

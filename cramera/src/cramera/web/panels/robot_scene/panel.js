@@ -50,6 +50,7 @@ Panels.define('robot-scene', function (root, bus) {
     '    <label class="lp-row" title="Keep the robot in view: the camera glides after it while a recording plays or a live demo runs. Off, the camera stays where you pointed it"><input type="checkbox" id="lyr-follow" checked><span>Follow robot</span></label>' +
     '    <label class="lp-row" title="Attach to a running demo whenever one is reachable — including the next run after this one ends — instead of only once per page"><input type="checkbox" id="lyr-auto-live" checked><span>Auto-attach live</span></label>' +
     '    <div class="lp-legend" id="lp-legend"></div>' +
+    '    <div class="lp-joints" id="lp-joints"></div>' +
     '  </div>' +
     '  <div id="live-indicator" class="live-indicator">● LIVE</div>' +
     '  <div id="step-caption" class="step-caption hidden"></div>' +
@@ -593,6 +594,7 @@ Panels.define('robot-scene', function (root, bus) {
         if (m.robot) robotModel = entry;
         worldRoot.add(obj);
         refreshFrameAxes();          // every link of the model is a frame
+        refreshJointControls();
         needsRender = true;
       });
     });
@@ -739,6 +741,7 @@ Panels.define('robot-scene', function (root, bus) {
       const j = JointRouting.jointFor(models, k);
       if (j) j.setJointValue(f0[k] + ((f1[k] !== undefined ? f1[k] : f0[k]) - f0[k]) * t);
     }
+    syncJointControls();
     if (robotModel && traj.base && traj.base[i0]) {
       setPose(robotModel.obj, traj.base[i0], traj.base[i1] || traj.base[i0], t);
       const bo = baseOffsetAt(f);
@@ -1346,6 +1349,75 @@ Panels.define('robot-scene', function (root, bus) {
   }
   function round3(v) { return Math.round(v * 1000) / 1000; }
 
+  // %% joints moved by hand (doors, drawers, turntables)
+  const jointControls = [];           // {entry, input, readout} per movable environment joint
+  let draggedJoint = null;            // the joint a slider is moving (live must not fight it)
+  const liveJointKey = new Map();     // URDF joint -> the name the bridge publishes it under
+  let lastJointPost = 0;
+
+  function postLiveJointMove(joint, fallbackKey, value, final) {
+    const now = performance.now();
+    if (!final && now - lastJointPost < 100) return;
+    lastJointPost = now;
+    fetch(liveUrl() + '/joint', {
+      method: 'POST',
+      body: JSON.stringify({ joint: liveJointKey.get(joint) || fallbackKey, position: round3(value), final: !!final }),
+    }).catch(function () {});
+  }
+  function jointLabel(entry) {
+    return entry.name.replace(/^.*\//, '').replace(/_joint$/, '').replace(/_/g, ' ').replace(/[&<>]/g, '');
+  }
+  function formatJointValue(joint, value) {
+    if (joint.jointType === 'prismatic') return value.toFixed(2) + ' m';
+    return Math.round(value * 180 / Math.PI) + '°';
+  }
+  function refreshJointControls() {
+    const host = $('lp-joints');
+    if (!host) return;
+    host.innerHTML = '';
+    jointControls.length = 0;
+    const entries = JointRouting.movableJoints(models);
+    if (!entries.length) return;
+    host.innerHTML = '<div class="lp-joints-title">Doors &amp; drawers</div>';
+    entries.forEach(function (entry) {
+      const range = JointRouting.range(entry.joint);
+      const row = document.createElement('label');
+      row.className = 'lp-joint';
+      row.title = entry.key;
+      row.innerHTML =
+        '<span class="lp-joint-name">' + jointLabel(entry) + '</span>' +
+        '<input type="range" min="' + range.lower + '" max="' + range.upper + '" step="' + (range.upper - range.lower) / 200 + '">' +
+        '<span class="lp-joint-value"></span>';
+      const input = row.querySelector('input');
+      const readout = row.querySelector('.lp-joint-value');
+      input.addEventListener('pointerdown', function () { draggedJoint = entry.joint; });
+      input.addEventListener('input', function () {
+        const value = parseFloat(input.value);
+        entry.joint.setJointValue(value);
+        readout.textContent = formatJointValue(entry.joint, value);
+        needsRender = true;
+        if (liveOn) postLiveJointMove(entry.joint, entry.key, value, false);
+      });
+      input.addEventListener('change', function () {
+        if (liveOn) postLiveJointMove(entry.joint, entry.key, parseFloat(input.value), true);
+        draggedJoint = null;
+      });
+      input.addEventListener('pointerup', function () { draggedJoint = null; });
+      host.appendChild(row);
+      jointControls.push({ entry: entry, input: input, readout: readout });
+    });
+    syncJointControls();
+  }
+  // the sliders follow the joints as playback or the live world moves them
+  function syncJointControls() {
+    jointControls.forEach(function (control) {
+      if (control.entry.joint === draggedJoint) return;
+      const value = control.entry.joint.angle;
+      control.input.value = String(value);
+      control.readout.textContent = formatJointValue(control.entry.joint, value);
+    });
+  }
+
   // Plan Builder (parent page) -> reset an object to given map coords: move the mesh
   // there and post it as a final move, so a bad drag/snap can be undone even while the
   // idle sim isn't ticking (the tick would otherwise never apply the queued move).
@@ -1637,8 +1709,12 @@ Panels.define('robot-scene', function (root, bus) {
     if (!st || !st.frames) return;
     for (const k in st.frames) {
       const j = JointRouting.jointFor(models, k);
-      if (j) j.setJointValue(st.frames[k]);
+      if (!j) continue;
+      liveJointKey.set(j, k);
+      // the joint a slider is moving is the viewer's until release; the world catches up
+      if (j !== draggedJoint) j.setJointValue(st.frames[k]);
     }
+    syncJointControls();
     if (robotModel && st.base) setPose(robotModel.obj, st.base, st.base, 0);
     // every bundled model root the bridge streams: a second robot drives, a moved
     // environment model follows (the primary robot's entry re-applies st.base)

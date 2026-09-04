@@ -14,6 +14,9 @@ var _sceneOnly = SceneContext.sceneOnly(window.self !== window.top);
 if (_sceneOnly) {
   document.documentElement.classList.add(SceneContext.SCENE_ONLY_CLASS);
 }
+if (SceneContext.poppedOut()) {
+  document.documentElement.classList.add(SceneContext.POPPED_OUT_CLASS);
+}
 window.CRAMERA_CONFIG = {
   layout: _sceneOnly
     ? { left: ['robot-scene'] }
