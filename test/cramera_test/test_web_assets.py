@@ -346,6 +346,9 @@ class TestJsUnits:
     def test_frame_axes(self):
         self.run_node("test_frame_axes.js")
 
+    def test_camera_follow(self):
+        self.run_node("test_camera_follow.js")
+
     def test_timeline_events(self):
         self.run_node("test_timeline_events.js")
 
@@ -501,6 +504,7 @@ class TestEveryLoadedModuleHasAConsumer:
         "core/preset_groups.js": "PresetGroups",
         "core/folding.js": "Folding",
         "core/replay.js": "Replay",
+        "core/camera-follow.js": "CameraFollow",
     }
     """
     The global each of these modules defines, which some other script has to call.
