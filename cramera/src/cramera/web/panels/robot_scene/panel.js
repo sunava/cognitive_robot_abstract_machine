@@ -1354,6 +1354,15 @@ Panels.define('robot-scene', function (root, bus) {
   let draggedJoint = null;            // the joint a slider is moving (live must not fight it)
   const liveJointKey = new Map();     // URDF joint -> the name the bridge publishes it under
   let lastJointPost = 0;
+  const JOINTS_SECTION = 'joints';
+  let jointsFolded = Folding.folded(window.localStorage, JOINTS_SECTION);
+
+  function showJointsFold(host, foldEl) {
+    const face = Folding.button(jointsFolded, 'the doors and drawers');
+    foldEl.textContent = face.glyph;
+    foldEl.title = face.title;
+    host.classList.toggle('folded', jointsFolded);
+  }
 
   function postLiveJointMove(joint, fallbackKey, value, final) {
     const now = performance.now();
@@ -1378,7 +1387,15 @@ Panels.define('robot-scene', function (root, bus) {
     jointControls.length = 0;
     const entries = JointRouting.movableJoints(models);
     if (!entries.length) return;
-    host.innerHTML = '<div class="lp-joints-title">Doors &amp; drawers</div>';
+    host.innerHTML = '<div class="lp-joints-title">Doors &amp; drawers<button id="joints-fold" class="layer-gear lp-fold"></button></div>';
+    const foldEl = host.querySelector('#joints-fold');
+    showJointsFold(host, foldEl);
+    foldEl.addEventListener('click', function (event) {
+      event.preventDefault();
+      jointsFolded = !jointsFolded;
+      Folding.remember(window.localStorage, JOINTS_SECTION, jointsFolded);
+      showJointsFold(host, foldEl);
+    });
     entries.forEach(function (entry) {
       const range = JointRouting.range(entry.joint);
       const row = document.createElement('label');
