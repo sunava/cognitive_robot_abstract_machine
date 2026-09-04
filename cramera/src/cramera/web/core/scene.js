@@ -18,6 +18,9 @@
   const LAYOUT_SCENE = 'scene';
   //: class on the root element while the 3D scene is shown alone; app.css styles it
   const SCENE_ONLY_CLASS = 'scene-only';
+  //: class on the root element of the window the scene was popped out into
+  const POPPED_OUT_CLASS = 'popped-out';
+  const LAYOUT_SCENE_PATTERN = new RegExp('[?&]layout=' + LAYOUT_SCENE + '(&|$)');
   //: the viewer page a pop-out window opens
   const VIEWER_PAGE = 'index.html';
 
@@ -32,11 +35,15 @@
     return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'scene=' + encodeURIComponent(active);
   }
 
+  //: whether this window is the one the scene was popped out into
+  function poppedOut() {
+    return LAYOUT_SCENE_PATTERN.test(window.location.search);
+  }
+
   //: whether the page shows the 3D scene alone; ``framed`` says the page sits in an iframe
   function sceneOnly(framed) {
-    const search = window.location.search;
-    if (new RegExp('[?&]layout=' + LAYOUT_SCENE + '(&|$)').test(search)) return true;
-    return framed && /[?&](replay=|scene(\b|=))/.test(search);
+    if (poppedOut()) return true;
+    return framed && /[?&](replay=|scene(\b|=))/.test(window.location.search);
   }
 
   //: the url that opens the active scene alone in a window of its own
@@ -47,9 +54,11 @@
   window.SceneContext = {
     LAYOUT_SCENE: LAYOUT_SCENE,
     SCENE_ONLY_CLASS: SCENE_ONLY_CLASS,
+    POPPED_OUT_CLASS: POPPED_OUT_CLASS,
     name: name,
     withScene: withScene,
     sceneOnly: sceneOnly,
+    poppedOut: poppedOut,
     popOutUrl: popOutUrl,
   };
 })();

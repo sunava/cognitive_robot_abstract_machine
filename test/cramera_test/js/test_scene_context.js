@@ -89,6 +89,32 @@ test('the scene-only layout is named by the constant the pop-out url uses', func
   assert.strictEqual(window.SceneContext.sceneOnly(false), true);
 });
 
+// %% the popped-out window itself
+// An embedded scene (Plan Builder, Sandbox) still offers the pop-out; only the window
+// that already is the pop-out has nothing to pop out.
+test('a framed embed with ?scene is not the popped-out window', function () {
+  loadWithSearch('?scene');
+  assert.strictEqual(window.SceneContext.poppedOut(), false);
+});
+
+test('?layout=scene is the popped-out window', function () {
+  loadWithSearch('?scene=g1-warehouse&layout=scene');
+  assert.strictEqual(window.SceneContext.poppedOut(), true);
+});
+
+test('the popped-out window is also scene-only', function () {
+  loadWithSearch('?layout=scene');
+  assert.strictEqual(window.SceneContext.sceneOnly(false), true);
+  assert.strictEqual(window.SceneContext.poppedOut(), true);
+});
+
+test('the class the stylesheet hides the pop-out button under is the one SceneContext names', function () {
+  loadWithSearch('');
+  const stylesheet = fs.readFileSync(path.join(WEB, 'app.css'), 'utf8');
+  assert.ok(stylesheet.indexOf(':root.' + window.SceneContext.POPPED_OUT_CLASS + ' .pop-out') >= 0);
+  assert.strictEqual(stylesheet.indexOf(':root.' + window.SceneContext.SCENE_ONLY_CLASS + ' .pop-out'), -1);
+});
+
 // %% the pop-out window's url
 test('the pop-out url opens the active scene alone', function () {
   loadWithSearch('?scene=g1-warehouse');

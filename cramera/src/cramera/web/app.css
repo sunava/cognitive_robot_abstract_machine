@@ -816,7 +816,8 @@ body.graph-full-open{overflow:hidden}
    and the popped-out scene window (index.html?layout=scene) */
 :root.scene-only .topbar{display:none}
 :root.scene-only .split{position:absolute;inset:0}
-:root.scene-only .pop-out{display:none}
+/* the window the scene was popped out into has nothing left to pop out; embeds keep it */
+:root.popped-out .pop-out{display:none}
 
 /* shared busy indicator: a spinner + elapsed time, used while a live scene comes up */
 @keyframes cr-spin { to { transform: rotate(360deg); } }
