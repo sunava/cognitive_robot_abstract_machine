@@ -13,8 +13,9 @@ from __future__ import annotations
 import atexit
 from dataclasses import dataclass, field
 
-from typing_extensions import Optional, TYPE_CHECKING
+from typing_extensions import Any, Optional, TYPE_CHECKING
 
+from coraplex.datastructures.dataclasses import Context
 from coraplex.plans.plan_callbacks import PlanCallback
 from coraplex.plans.plan_node import MotionNode, PlanNode
 from semantic_digital_twin.callbacks.callback import (
@@ -24,6 +25,7 @@ from semantic_digital_twin.callbacks.callback import (
 from semantic_digital_twin.world import World
 
 from cramera.live.bridge import BRIDGE, Bridge
+from cramera.live.plan_runner import PlanRunner
 from cramera.live.http import DEFAULT_PORT, serve
 from cramera.live.recording import Recording
 from cramera.live.recording_bundle import finalize_recording
@@ -189,6 +191,25 @@ class LiveVisualization:
         if self.bridge.live_server is None:
             self.bridge.live_server = serve(self.bridge, self.port)
         return self
+
+    def serve_plans(
+        self, context: Context, visualization: Optional[Any] = None
+    ) -> PlanRunner:
+        """
+        Let the viewer ask this scene to perform plans.
+
+        A scene that serves plans stays up between them, so a plan costs a motion rather
+        than a whole world being built again.
+
+        :param context: The scene's context, which every requested plan is resolved
+            against.
+        :param visualization: The backend each performed plan is published to, so the
+            viewer shows it running; None for a scene nobody is watching.
+        :return: The runner now serving this scene's plans.
+        """
+        runner = PlanRunner(context=context, visualization=visualization)
+        self.bridge.register_plan_runner(runner)
+        return runner
 
     def plan_callback(self, plan: Plan) -> BridgePlanCallback:
         """

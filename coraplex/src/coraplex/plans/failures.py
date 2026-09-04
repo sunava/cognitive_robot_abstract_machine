@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from typing_extensions import TYPE_CHECKING
+from typing_extensions import TYPE_CHECKING, Optional, Type
 
 from krrood.exceptions import DataclassException
 from coraplex.datastructures.enums import Arms
@@ -33,8 +33,29 @@ class PlanFailure(DataclassException):
 @dataclass
 class EmptyUnderspecified(PlanFailure):
     """
-    Raised when a plan is empty.
+    Raised when an action a plan left open could not be pinned down to anything that
+    works: either nothing matched it, or every candidate that did was tried and failed.
     """
+
+    action: Optional[Type] = None
+    """
+    The action that was being grounded.
+    """
+
+    last_failure: Optional[PlanFailure] = None
+    """
+    Why the last candidate failed, or None when there was no candidate to try.
+    """
+
+    def error_message(self) -> str:
+        named = self.action.__name__ if self.action is not None else "an open action"
+        if self.last_failure is None:
+            return "%s: nothing in this world matched it." % named
+        return "%s: every candidate failed, the last with %s: %s" % (
+            named,
+            type(self.last_failure).__name__,
+            self.last_failure.error_message(),
+        )
 
 
 @dataclass

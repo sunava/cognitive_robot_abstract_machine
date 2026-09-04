@@ -9,6 +9,7 @@ module-level ``BRIDGE`` singleton — the concrete proof that
 from __future__ import annotations
 
 import json
+import threading
 import urllib.error
 import urllib.request
 from dataclasses import asdict
@@ -22,7 +23,7 @@ from semantic_digital_twin.world_description.world_entity import Body
 
 from cramera import paths
 from cramera.live.bridge import Bridge, WorldStateSnapshot
-from cramera.live.http import serve
+from cramera.live.http import port_in_use, port_released, serve
 from cramera.live.recording import Recording
 
 from .test_live_bridge import shaped_body, world_with
@@ -764,3 +765,115 @@ class TestVocabularyEndpoints:
 
         assert payload["ok"] is False
         assert payload["entries"] == []
+
+
+# %% is the viewer's port already taken
+class TestPortInUse:
+    """
+    Whether a second scene can serve the viewer, asked before one tries and dies on
+    ``Address already in use``.
+    """
+
+    def test_a_served_port_is_in_use(self, bridge):
+        server = serve(bridge, 0)
+        try:
+            assert port_in_use(server.server_address[1]) is True
+        finally:
+            server.shutdown()
+
+    def test_a_port_still_being_let_go_is_waited_out(self, bridge):
+        """
+        A scene that was just stopped keeps its socket for a moment while the process
+        winds down; asking straight away would blame the port on somebody else.
+        """
+        server = serve(bridge, 0)
+        port = server.server_address[1]
+        threading.Timer(0.3, lambda: (server.shutdown(), server.server_close())).start()
+
+        assert port_released(port, timeout=5.0) is True
+
+    def test_a_port_somebody_keeps_is_reported_as_taken(self, bridge):
+        server = serve(bridge, 0)
+        try:
+            assert port_released(server.server_address[1], timeout=0.6) is False
+        finally:
+            server.shutdown()
+
+    def test_a_port_nobody_serves_is_free(self, bridge):
+        server = serve(bridge, 0)
+        port = server.server_address[1]
+        server.shutdown()
+        server.server_close()
+        assert port_in_use(port) is False
+
+
+# %% asking the running scene to perform a plan
+class TestRunningAPlan:
+    """
+    ``/run`` performs a plan in the scene that is already up, instead of the builder
+    starting a whole new one for it.
+    """
+
+    PARK = {"steps": [{"type": "park_arms", "params": {"arm": "BOTH"}}]}
+    """
+    The smallest plan a scene can be asked for.
+    """
+
+    def serving_bridge(self, bridge):
+        """
+        The bridge with a scene that serves plans registered on it.
+        """
+        from coraplex.datastructures.dataclasses import Context
+
+        from cramera.live.plan_runner import PlanRunner
+
+        from .test_live_bridge import world_with
+
+        runner = PlanRunner(
+            context=Context(world=world_with(), robot=None), visualization=None
+        )
+        bridge.register_plan_runner(runner)
+        return runner
+
+    def test_a_scene_that_serves_no_plans_says_so(self, bridge, server):
+        status, answer = post(server + "/run", self.PARK)
+        assert status == 409
+        assert answer["ok"] is False
+
+    def test_a_malformed_plan_is_refused(self, bridge, server):
+        self.serving_bridge(bridge)
+        status, answer = post(server + "/run", {"steps": []})
+        assert status == 400
+        assert answer["ok"] is False
+
+    def test_a_scene_reports_that_it_has_run_nothing_yet(self, bridge, server):
+        from cramera.live.plan_runner import RunState
+
+        self.serving_bridge(bridge)
+        assert get_json(server + "/run")["state"] == RunState.IDLE.value
+
+    def test_asking_for_a_plan_starts_it(self, bridge, server):
+        runner = self.serving_bridge(bridge)
+        status, answer = post(server + "/run", self.PARK)
+        assert status == 202
+        assert answer["ok"] is True
+        runner.wait(timeout=10)
+
+    def test_what_became_of_the_plan_is_what_is_reported(self, bridge, server):
+        from cramera.live.plan_runner import RunState
+        from cramera.live.requested_plan import RequestedPlan
+
+        runner = self.serving_bridge(bridge)
+        runner.submit(RequestedPlan(steps=()))
+        runner.wait(timeout=10)
+        assert get_json(server + "/run")["state"] == RunState.FINISHED.value
+
+    def test_a_plan_that_could_not_be_performed_reports_why(self, bridge, server):
+        from cramera.live.plan_runner import RunState
+
+        runner = self.serving_bridge(bridge)
+        post(server + "/run", self.PARK)  # no robot in this world to park
+        runner.wait(timeout=10)
+        outcome = get_json(server + "/run")
+        assert outcome["state"] == RunState.FAILED.value
+        assert outcome["error"]

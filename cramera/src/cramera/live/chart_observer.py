@@ -56,6 +56,18 @@ class ChartObserver:
     Where its nodes stood when :meth:`change` last reported them.
     """
 
+    def forget(self) -> None:
+        """
+        Drop the chart last seen, so the next plan's is reported as new.
+
+        Without this a chart is only re-serialized when the executor compiles a
+        different one, and a viewer that already holds the finished plan's chart is
+        never told the new plan started with the same shape.
+        """
+        self._chart = None
+        self._structure = None
+        self._sent_node_states = None
+
     def snapshot(self, chart: Optional[MotionStatechart]) -> Optional[ChartSnapshot]:
         """
         What the chart looks like now, or None when nothing is executing.
