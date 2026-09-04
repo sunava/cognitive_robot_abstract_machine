@@ -6,16 +6,13 @@
  * Slots are the data-slot elements in index.html ('left', 'right'); a slot
  * with several panel ids stacks them vertically.
  * ==========================================================================*/
-// ?replay= (recorded clip popup) and ?scene (Plan Builder's embedded 3D view) both want
-// just the 3D scene; ?scene also drops the topbar chrome (see app.css .scene-only).
-// Safety net: only strip the chrome / reduce the layout when we're actually embedded
-// in an iframe (Plan Builder / replay popup). If ?scene ends up in a *top-level* tab,
-// keep the full page (topbar + EQL + graph) so the user isn't stranded on a bare scene
-// with no way to navigate back.
-var _framed = window.self !== window.top;
-var _sceneOnly = _framed && /[?&](replay=|scene(\b|=))/.test(window.location.search);
+// The 3D scene stands alone when another page embeds it (Plan Builder's ?scene view,
+// the replay popup) or when it was popped out into its own window (?layout=scene);
+// SceneContext reads both off the URL. A ?scene in a *top-level* tab keeps the full
+// page, so the user isn't stranded on a bare scene with no way to navigate back.
+var _sceneOnly = SceneContext.sceneOnly(window.self !== window.top);
 if (_sceneOnly) {
-  document.documentElement.classList.add('scene-only');
+  document.documentElement.classList.add(SceneContext.SCENE_ONLY_CLASS);
 }
 window.CRAMERA_CONFIG = {
   layout: _sceneOnly

@@ -48,3 +48,54 @@ test('withScene() appends &scene= to a url that already has a query string', fun
     '/api/kb/view?name=plan&scene=g1-warehouse'
   );
 });
+
+// %% showing the 3D scene alone
+// The scene stands alone in two situations: another page embeds it in an iframe (the
+// Plan Builder's ?scene view, the replay popup), or the page was opened in a window of
+// its own with ?layout=scene — the pop-out a user drags onto a second screen.
+test('a top-level page with ?scene= keeps the full layout', function () {
+  loadWithSearch('?scene=g1-warehouse');
+  assert.strictEqual(window.SceneContext.sceneOnly(false), false);
+});
+
+test('a framed page with ?scene= shows the scene alone', function () {
+  loadWithSearch('?scene=g1-warehouse');
+  assert.strictEqual(window.SceneContext.sceneOnly(true), true);
+});
+
+test('a framed replay popup shows the scene alone', function () {
+  loadWithSearch('?replay=12');
+  assert.strictEqual(window.SceneContext.sceneOnly(true), true);
+});
+
+test('a framed page without a scene or replay keeps the full layout', function () {
+  loadWithSearch('');
+  assert.strictEqual(window.SceneContext.sceneOnly(true), false);
+});
+
+test('?layout=scene shows the scene alone even at top level', function () {
+  loadWithSearch('?scene=g1-warehouse&layout=scene');
+  assert.strictEqual(window.SceneContext.sceneOnly(false), true);
+});
+
+test('the class the stylesheet styles for the scene alone is the one SceneContext names', function () {
+  loadWithSearch('');
+  const stylesheet = fs.readFileSync(path.join(WEB, 'app.css'), 'utf8');
+  assert.ok(stylesheet.indexOf(':root.' + window.SceneContext.SCENE_ONLY_CLASS + ' ') >= 0);
+});
+
+test('the scene-only layout is named by the constant the pop-out url uses', function () {
+  loadWithSearch('?layout=' + window.SceneContext.LAYOUT_SCENE);
+  assert.strictEqual(window.SceneContext.sceneOnly(false), true);
+});
+
+// %% the pop-out window's url
+test('the pop-out url opens the active scene alone', function () {
+  loadWithSearch('?scene=g1-warehouse');
+  assert.strictEqual(window.SceneContext.popOutUrl(), 'index.html?scene=g1-warehouse&layout=scene');
+});
+
+test('the pop-out url without an active scene lets the viewer pick its default', function () {
+  loadWithSearch('');
+  assert.strictEqual(window.SceneContext.popOutUrl(), 'index.html?layout=scene');
+});

@@ -53,6 +53,7 @@ Panels.define('robot-scene', function (root, bus) {
     '  <div id="live-indicator" class="live-indicator">● LIVE</div>' +
     '  <div id="step-caption" class="step-caption hidden"></div>' +
     '  <div class="stage-hint">drag orbit · scroll zoom · right-drag pan · drag objects &amp; the blue place target</div>' +
+    '  <button id="scene-pop-out" class="pop-out" title="Open the scene alone in a window of its own — drag it onto another screen and press F11 for full screen">⧉ Pop out</button>' +
     '</div>' +
     '<div class="workflow">' +
     '  <div class="workflow-head"><span class="wf-btns">' +
@@ -2584,6 +2585,9 @@ Panels.define('robot-scene', function (root, bus) {
 
   bindLayer('lyr-labels', 'setLabelsAlways');
   bindLayer('lyr-floor', 'setFloorVisible');
+  $('scene-pop-out').addEventListener('click', function () {
+    window.open(SceneContext.popOutUrl(), 'cramera-scene');
+  });
   const autoLiveEl = $('lyr-auto-live');
   autoLiveEl.checked = autoLiveOn();
   autoLiveEl.addEventListener('change', function () {

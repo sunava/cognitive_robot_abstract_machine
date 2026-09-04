@@ -56,6 +56,12 @@ body{
   padding:14px 18px;border-bottom:1px solid var(--line);
 }
 .panel-head h2{margin:0;font-size:15px;font-weight:700}
+.pop-out{
+  position:absolute;right:12px;bottom:12px;z-index:5;
+  background:rgba(12,14,19,.72);border:1px solid var(--line);color:var(--muted);
+  border-radius:6px;padding:4px 9px;font-size:12px;cursor:pointer;white-space:nowrap;
+}
+.pop-out:hover,.pop-out:focus-visible{color:var(--accent);border-color:var(--accent);outline:none}
 
 /* %% 3d stage */
 .stage{position:relative;flex:1;min-height:0;overflow:hidden;background:
@@ -806,9 +812,11 @@ body.graph-full-open{overflow:hidden}
 .cpal-info .ci-foot{font-size:10.5px;color:var(--faint,#5a6270);margin-top:8px;line-height:1.5}
 .cpal-info .ci-foot code{background:rgba(255,255,255,.05);padding:0 3px;border-radius:3px;color:var(--muted,#8b93a3)}
 
-/* scene-only mode (Plan Builder's embedded 3D view via index.html?scene) */
+/* scene-only mode: the Plan Builder's embedded 3D view (index.html?scene in an iframe)
+   and the popped-out scene window (index.html?layout=scene) */
 :root.scene-only .topbar{display:none}
 :root.scene-only .split{position:absolute;inset:0}
+:root.scene-only .pop-out{display:none}
 
 /* shared busy indicator: a spinner + elapsed time, used while a live scene comes up */
 @keyframes cr-spin { to { transform: rotate(360deg); } }
