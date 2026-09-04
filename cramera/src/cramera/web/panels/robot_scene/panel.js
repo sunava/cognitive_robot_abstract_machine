@@ -1801,12 +1801,12 @@ Panels.define('robot-scene', function (root, bus) {
   // %% SSAO
   let composer = null, ssaoPass = null;
   (function setupSSAO() {
-    if (!(THREE.EffectComposer && THREE.RenderPass && THREE.SSAOPass && THREE.ShaderPass && THREE.CopyShader)) return;
+    if (!(THREE.EffectComposer && THREE.RenderPass && window.BackgroundIgnoringSSAOPass && THREE.ShaderPass && THREE.CopyShader)) return;
     try {
       const w = container.clientWidth || 800, h = container.clientHeight || 600;
       composer = new THREE.EffectComposer(renderer);
       composer.addPass(new THREE.RenderPass(scene3, camera));
-      ssaoPass = new THREE.SSAOPass(scene3, camera, w, h);
+      ssaoPass = new BackgroundIgnoringSSAOPass(scene3, camera, w, h);
       ssaoPass.kernelRadius = 0.12;
       ssaoPass.minDistance = 0.001;
       ssaoPass.maxDistance = 0.04;

@@ -337,6 +337,9 @@ class TestJsUnits:
     def test_marker_specs(self):
         self.run_node("test_marker_specs.js")
 
+    def test_ambient_occlusion(self):
+        self.run_node("test_ambient_occlusion.js")
+
     def test_marker_settings(self):
         self.run_node("test_marker_settings.js")
 
