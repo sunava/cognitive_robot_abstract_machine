@@ -1,180 +1,84 @@
-# cramera — CRAM Visualization
+# cramera
 
-Browser-based visualization for the CRAM architecture — one tool for two modes:
+**Watch a CRAM robot plan run — recorded or live — in the browser, and ask the scene what happened.**
 
-- **Recorded**: run any coraplex demo once through the onboarder and get a
-  lightweight, self-contained 3D scene (URDFs + meshes + the real recorded
-  giskardpy trajectory) that plays in any browser, no ROS required.
-- **Live** (RViz replacement): attach the viewer to a *running* demo — it
-  renders the executing world in real time, and dragging objects in the viewer
-  writes their pose back into the demo's world.
+[![Live demo](docs/demo.gif)](https://sunava.github.io/cramera/)
+
+**[Open the live demo](https://sunava.github.io/cramera/)** · [Changelog](CHANGELOG.md) · [Source in the CRAM monorepo](https://github.com/sunava/cognitive_robot_abstract_machine/tree/cramera-port/cramera)
+
+cramera is the visualization front end of the [CRAM](https://github.com/cram2/cognitive_robot_abstract_machine)
+cognitive architecture. One tool, three ways to look at a robot:
+
+- **Recorded.** Run a coraplex demo once through the onboarder and get a self-contained
+  scene bundle — URDFs, meshes and the real recorded giskardpy trajectory — that replays in
+  any browser. No ROS, no simulator, no Python needed to watch it (the demo site above is
+  exactly that: static files).
+- **Live.** Attach the viewer to a running demo and it renders the executing world as it
+  moves: plan steps light up as they run, motion statecharts stream in, and dragging an
+  object in the viewer writes its pose back into the demo's world.
+- **Asked.** Type a question in English — *which arm picked up the milk?* — and the EQL
+  console matches it to a query over the recorded episode, answers it, shows where the
+  answer comes from, points an arrow at the object, and can replay the moment.
+
+It also ships a **Plan Builder**: compose a plan by drag and drop, place objects and
+targets in the live 3D scene, attach plain-language constraints, and generate a runnable
+`RobotDemonstration`.
 
 ## Quick start
 
-```bash
-cramera                                  # serves http://localhost:8711
-cramera-onboard path/to/demo.py --name my_scene    # record a demo once
-cramera-live path/to/demo.py             # run a demo with the live bridge
-```
-
-Scene bundles are **generated artifacts** (tens of MB per scene) and are not
-part of this repository — ready-made demo recordings live in
-[cram2/cram-scenes](https://github.com/cram2/cram-scenes), wired as an
-**optional** submodule:
+cramera lives inside the CRAM monorepo; this repository is a read-only mirror of its
+`cramera/` directory, kept in sync by a scheduled workflow.
 
 ```bash
-git submodule update --init cramera/scenes    # ready-made demo scenes (optional)
+git clone https://github.com/sunava/cognitive_robot_abstract_machine.git
+cd cognitive_robot_abstract_machine
+pip install -e cramera
+cramera                                              # serves http://localhost:8711
 ```
 
-The viewer looks for bundles in this order: `CRAMERA_SCENES=/path` (env
-override) → the initialized submodule `cramera/scenes` → `~/.cramera/scenes`
-(where the onboarder writes by default). Live visualization and freshly
-onboarded scenes need none of the ready-made bundles. Select a scene with
-`?scene=<name>` or `CRAMERA_SCENE=<name>`.
+Ready-made recordings live in [cram2/cram-scenes](https://github.com/cram2/cram-scenes);
+initialize the optional submodule to get them locally:
 
-## Live mode
-
-Two ways to attach the live bridge to a running coraplex demo:
-
-1. As the run wrapper (e.g. a PyCharm run configuration):
-
-   ```bash
-   cramera-live path/to/demo.py
-   ```
-
-2. As a one-liner at the top of a demo file:
-
-   ```python
-   from cramera.live.runner import start; start()
-   ```
-
-Either way an HTTP bridge starts on port 8765 (`LIVE_VIZ_PORT` to change);
-while it is reachable the viewer shows a *Live* button that renders the
-running world instead of the recording, and dragging an object writes its
-pose back into the demo's world.
-
-## Panels — how the UI is composed
-
-The frontend (`src/cramera/web/`) is a set of **panels** mounted into layout
-slots. Which panel appears where is decided by **one file**:
-
-```js
-// web/config.js
-window.CRAMERA_CONFIG = {
-  layout: {
-    left:  ['robot-scene'],
-    right: ['eql', 'graph'],
-  },
-};
+```bash
+git submodule update --init cramera/scenes
 ```
 
-Removing a visualization = deleting its id here. Adding your own:
+Record and watch a demo of your own:
 
-1. create `web/panels/<name>/panel.js`:
+```bash
+cramera-onboard path/to/demo.py --name my_scene     # record a demo once, get a bundle
+cramera-live path/to/demo.py                        # run a demo with the live bridge attached
+```
 
-   ```js
-   Panels.define('my-panel', function (root, bus) {
-     root.innerHTML = '<div class="panel-head"><h2>My panel</h2></div>…';
-     bus.on('entity:highlight', function (p) { /* react */ });
-     bus.emit('entity:select', { id: 'x', detail: {…}, relations: [] });
-   });
-   ```
+The viewer looks for bundles in `CRAMERA_SCENES=/path`, then the `cramera/scenes`
+submodule, then `~/.cramera/scenes` (where the onboarder writes). Pick a scene with
+`?scene=<name>`.
 
-2. include the script in `web/index.html`,
-3. add the id to `config.js`.
+## What is in the box
 
-Panels **never call each other directly** — they publish/subscribe on the
-event bus (`web/core/bus.js`), so any subset of panels works. The contract
-between the built-in panels:
+| | |
+| --- | --- |
+| `robot-scene` panel | three.js scene: environment, robot, draggable objects, TF frame triads, ROS debug markers, playback with key-moment marks and thumbnails, live controls, recording |
+| `eql` panel | the question console: English in, EQL query and answer out, spoken if you like |
+| `graph` panel | Knowledge · Plan (step tree with live status and constraints) · Statechart · Kinematics · Transforms |
+| Models page | the probabilistic-model workbench: query, posterior and mode side by side |
+| Plan Builder page | compose a plan, place things in the scene, generate a demo |
+| Sandbox page | teleoperation by hand tracking |
 
-| event                | payload                          | emitted by → consumed by       |
-| -------------------- | -------------------------------- | ------------------------------ |
-| `scene:part-clicked` | `{id}`                           | robot-scene → eql              |
-| `scene:step`         | `{step}` (`'__done__'` at end)   | robot-scene → eql, graph       |
-| `live:changed`       | `{on, url}`                      | robot-scene → graph            |
-| `entity:highlight`   | `{ids, focus?}`                  | eql → robot-scene, graph       |
-| `entity:select`      | `{id, detail, relations}`        | graph → eql                    |
-| `kb:ready`           | `{payload}`                      | eql → anyone                   |
+## How the UI is composed
 
-### Built-in panels
-
-| panel         | shows                                                        |
-| ------------- | ------------------------------------------------------------ |
-| `robot-scene` | three.js scene: environment, robot, draggable objects, TF frame axes, playback with key-event marks + live controls |
-| `eql`         | EQL query console + entity answer panel                      |
-| `graph`       | five tabs: Knowledge / Kinematics / Plan / Statechart / Transforms |
-
-On the Plan and Statechart tabs the node border is its execution status —
-running (amber), succeeded/done (green), failed (red), paused (blue),
-interrupted (orange), not started (dim, dashed) — streamed live from the
-bridge while attached.
-
-Two things to know about those statuses: coraplex performs only the plan
-**root** (`Plan.perform` → `root.perform`), while `ActionNode.notify` merely
-expands its children into one merged motion statechart. So a *recorded* plan
-tree has real status on the root only. Live, the bridge derives per-step
-status from the statechart life cycle via `GiskardExecutable.motion_mappings`
-(`{MotionNode: Task}`) and propagates it up the tree; those nodes are flagged
-`derived`. Statecharts exist only during execution, so the Statechart tab is
-live-only.
-
-The replay scrubber marks the recording's key moments — every plan step, and the
-frame each transported object was picked up and let go. Those are the bundle's
-`segments`: an onboarded scene derives them from the recorded action list, a
-live recording from what each tick captured (see `live/recording_segments.py`,
-which reads the carry windows off the recorded poses and names each stretch
-after the action the plan reported performing at the time). Hovering a mark previews what the scene looks like
-there: the frame is rendered off-screen into a thumbnail, captioned with the
-moment and its run time, and clicking the mark jumps the playhead to it.
-
-The scene panel draws the same frames in 3D: the *TF frames* layer puts an axis
-triad (red X, green Y, blue Z) on every URDF link and every loose object. A
-triad is a child of the frame's own object, so it follows both recorded
-playback and the live world without any pose plumbing. Its gear opens the size
-slider, the frame-name toggle and the frame tree: a row per source (each loaded
-model, plus the loose objects) that drops down into the frames under it, so a
-whole model is ticked at once or single frames are picked out below it. A source
-whose frames are partly on reads as partly ticked. The choices are remembered
-between visits, and the arms ignore depth so a frame inside its own mesh stays
-visible.
-
-The Transforms tab is the world's connection graph — one node per frame, one
-edge per connection — and is live-only for the same reason: which frame hangs
-from which, and when each of those transforms was last written, only exists
-while a demo runs. A frame's ring is the freshness of the connection carrying
-it: moving now (amber), moved just now (green), not written for a while (dim,
-dashed) or fixed and unable to move at all. Each frame also reports who wrote
-it last, so a pose the demo drove is told apart from one dragged in the viewer.
-
-## Layout
+The front end (`src/cramera/web/`) is a set of **panels** mounted into layout slots;
+`web/config.js` decides which panel appears where. Panels never call each other — they
+publish and subscribe on an event bus (`web/core/bus.js`), so any subset works, and a
+new visualization is one `Panels.define(...)` plus a line in the config.
 
 ```
 src/cramera/
-  server.py        static frontend + JSON API (/api/knowledge, /api/eql, /scenes/)
-  paths.py         all filesystem locations (env-overridable)
-  knowledge/       the recorded scene as an EQL knowledge base
-    knowledge_base.py  the entity lists one scene bundle yields
-    eql_session.py     evaluating one EQL query string
-    graph_payload.py   the knowledge graph the UI draws
-    presets.py         the ready-made queries the panel offers
-    views/             the graph-panel tabs and their drill-downs
-  live/            stream a running coraplex demo into the viewer
-    bridge.py      bridge state + serializers (runs on the sim thread)
-    hooks.py       Executor/Plan/GiskardExecutable/mesh hooks
-    http.py        the bridge's HTTP endpoints (port 8765)
-    recording_segments.py  the steps and manipulations a recording went through
-    transforms.py  the connection graph: what moved, when, and who wrote it
-    __main__.py    cramera-live entry point
+  server.py        static front end + JSON API (/api/knowledge, /api/eql, /scenes/)
+  knowledge/       the recorded scene as an EQL knowledge base; presets; graph views
+  live/            stream a running coraplex demo into the viewer (bridge on :8765)
   onboard/         turn a demo run into a scene bundle
-    demo.py        demo -> scene bundle (record + bundle, one command)
-    bundle_urdf.py standalone URDF/xacro asset bundler
-  web/
-    index.html     shell: topbar + slots + script includes
-    config.js      which panels are shown where  ← edit this to swap panels
-    core/          bus, panel registry, split/resize helper, frame-axes display
-                   state, timeline key events
-    panels/        robot_scene/, eql/, graph/
-    vendor/        three.js, vis-network, … (all local, no CDN)
+  web/             index.html, config.js, core/, panels/, vendor/ (all local, no CDN)
 ```
 
 ## Tests
@@ -183,5 +87,16 @@ src/cramera/
 pytest test/cramera_test
 ```
 
-The JS core (bus, registry, graph status rendering) is covered by node-based
-tests invoked from pytest (skipped when node is unavailable).
+The JS core is covered by node-based tests invoked from pytest (skipped when node is
+unavailable).
+
+## About this mirror
+
+The source of truth is the monorepo branch
+[`cramera-port`](https://github.com/sunava/cognitive_robot_abstract_machine/tree/cramera-port);
+`.github/workflows/sync.yml` splits its `cramera/` directory into this repository's
+`main` every six hours, and `pages.yml` publishes the demo site from it. Please open
+issues and pull requests against the monorepo.
+
+cramera is developed by [Vanessa Hassouna](https://github.com/sunava) at the Institute for
+Artificial Intelligence, University of Bremen. GPL-3.0.
