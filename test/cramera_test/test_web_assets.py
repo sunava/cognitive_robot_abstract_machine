@@ -388,6 +388,9 @@ class TestJsUnits:
     def test_shape_specs(self):
         self.run_node("test_shape_specs.js")
 
+    def test_plan_constraints(self):
+        self.run_node("test_plan_constraints.js")
+
 
 # %% replayed statecharts
 class TestPlaybackFrameEvent:
@@ -505,6 +508,7 @@ class TestEveryLoadedModuleHasAConsumer:
         "core/folding.js": "Folding",
         "core/replay.js": "Replay",
         "core/camera-follow.js": "CameraFollow",
+        "core/plan_constraints.js": "PlanConstraints",
     }
     """
     The global each of these modules defines, which some other script has to call.
