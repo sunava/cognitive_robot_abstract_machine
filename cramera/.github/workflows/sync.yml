@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 env:
   MONOREPO: https://github.com/sunava/cognitive_robot_abstract_machine.git
@@ -45,3 +46,8 @@ jobs:
             exit 0
           fi
           git push --force origin "$split:refs/heads/main"
+          # a push made with the workflow token starts no other workflow, so the demo
+          # site is rebuilt by asking for it
+          gh workflow run pages.yml --ref main
+        env:
+          GH_TOKEN: ${{ secrets.MIRROR_TOKEN || github.token }}
