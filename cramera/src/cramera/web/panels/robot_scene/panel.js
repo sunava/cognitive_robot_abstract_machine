@@ -47,6 +47,7 @@ Panels.define('robot-scene', function (root, bus) {
     '    <div id="frame-settings" class="frame-settings hidden"></div>' +
     '    <label class="lp-row"><input type="checkbox" id="lyr-labels"><span>Object labels</span></label>' +
     '    <label class="lp-row"><input type="checkbox" id="lyr-floor" checked><span>Floor shadow</span></label>' +
+    '    <label class="lp-row" title="Keep the robot in view: the camera glides after it while a recording plays or a live demo runs. Off, the camera stays where you pointed it"><input type="checkbox" id="lyr-follow" checked><span>Follow robot</span></label>' +
     '    <label class="lp-row" title="Attach to a running demo whenever one is reachable — including the next run after this one ends — instead of only once per page"><input type="checkbox" id="lyr-auto-live" checked><span>Auto-attach live</span></label>' +
     '    <div class="lp-legend" id="lp-legend"></div>' +
     '  </div>' +
@@ -2585,6 +2586,12 @@ Panels.define('robot-scene', function (root, bus) {
 
   bindLayer('lyr-labels', 'setLabelsAlways');
   bindLayer('lyr-floor', 'setFloorVisible');
+  const followLayerEl = $('lyr-follow');
+  followLayerEl.checked = CameraFollow.on(window.localStorage);
+  RobotView.setFollow(followLayerEl.checked);
+  followLayerEl.addEventListener('change', function () {
+    RobotView.setFollow(CameraFollow.set(window.localStorage, followLayerEl.checked));
+  });
   $('scene-pop-out').addEventListener('click', function () {
     window.open(SceneContext.popOutUrl(), 'cramera-scene');
   });
