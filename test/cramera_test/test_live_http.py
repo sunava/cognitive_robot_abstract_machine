@@ -21,7 +21,7 @@ from semantic_digital_twin.world_description.shape_collection import ShapeCollec
 from semantic_digital_twin.world_description.world_entity import Body
 
 from cramera import paths
-from cramera.live.bridge import Bridge, WorldStateSnapshot
+from cramera.live.bridge import Bridge, JointMoveRequest, WorldStateSnapshot
 from cramera.live.http import serve
 from cramera.live.recording import Recording
 
@@ -155,6 +155,32 @@ class TestReadOnlyEndpoints:
         with pytest.raises(urllib.error.HTTPError) as error:
             get(server + "/nope")
         assert error.value.code == 404
+
+
+class TestJointMoves:
+    """
+    ``POST /joint`` queues a viewer's joint position for the simulation thread.
+    """
+
+    def test_a_joint_move_is_queued_for_the_simulation_thread(self, server, bridge):
+        status, body = post(
+            server + "/joint",
+            {"joint": "kitchen/fridge_door_joint", "position": 1.2, "final": True},
+        )
+
+        assert (status, body) == (200, {"ok": True})
+        assert bridge.pending_joint_moves() == [
+            JointMoveRequest(
+                connection_name="kitchen/fridge_door_joint", position=1.2, is_final=True
+            )
+        ]
+
+    def test_a_malformed_joint_move_is_rejected_on_the_http_thread(self, server, bridge):
+        status, body = post(server + "/joint", {"joint": "", "position": 1.2})
+
+        assert status == 400
+        assert body["ok"] is False
+        assert bridge.pending_joint_moves() == []
 
 
 class TestMesh:

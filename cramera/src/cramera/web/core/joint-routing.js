@@ -25,7 +25,39 @@
     return null;
   }
 
+  //: the URDF joint types a user may set by hand
+  const MOVABLE_TYPES = { revolute: true, prismatic: true, continuous: true };
+
+  //: the key the world names a model's joint by: prefixed after the model, or bare
+  function keyOf(model, name) {
+    return model.prefix ? model.prefix + '/' + name : name;
+  }
+
   global.JointRouting = {
+    /* The joints of the environment models a user may move by hand -- doors, drawers,
+       turntables -- each as {key, name, joint, model}, in declaration order. The robot's
+       own joints are the plan's to drive, so a model flagged `robot` contributes none. */
+    movableJoints: function (models) {
+      const found = [];
+      models.forEach(function (model) {
+        if (model.robot) return;
+        const joints = (model.obj && model.obj.joints) || {};
+        Object.keys(joints).forEach(function (name) {
+          const joint = joints[name];
+          if (!MOVABLE_TYPES[joint.jointType]) return;
+          found.push({ key: keyOf(model, name), name: name, joint: joint, model: model });
+        });
+      });
+      return found;
+    },
+
+    /* The positions `joint` may take, as {lower, upper}: its URDF limits, or a full turn
+       for a continuous joint, which declares none. */
+    range: function (joint) {
+      if (joint.jointType === 'continuous') return { lower: -Math.PI, upper: Math.PI };
+      return { lower: joint.limit.lower, upper: joint.limit.upper };
+    },
+
     /* The joint `key` drives, or null when no loaded model declares it.
 
        `models` are the loaded model entries the shell holds: a `prefix` and the URDF's

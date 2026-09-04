@@ -30,6 +30,62 @@ function model(prefix, jointNames) {
   return { prefix: prefix, obj: { joints: joints } };
 }
 
+// a loaded model with the joint types and limits its URDF declared, as URDFLoader keeps them
+function articulated(prefix, robot, joints) {
+  const byName = {};
+  joints.forEach(function (spec) {
+    byName[spec.name] = {
+      name: spec.name, jointType: spec.type,
+      limit: { lower: spec.lower === undefined ? 0 : spec.lower, upper: spec.upper === undefined ? 0 : spec.upper },
+    };
+  });
+  return { prefix: prefix, robot: robot, obj: { joints: byName } };
+}
+
+// %% the environment joints a user may move by hand
+const KITCHEN = [
+  articulated('pr2', true, [{ name: 'torso_lift_joint', type: 'prismatic', lower: 0, upper: 0.3 }]),
+  articulated('kitchen', false, [
+    { name: 'fridge_door_joint', type: 'revolute', lower: 0, upper: 1.57 },
+    { name: 'drawer_joint', type: 'prismatic', lower: 0, upper: 0.4 },
+    { name: 'lazy_susan_joint', type: 'continuous' },
+    { name: 'counter_joint', type: 'fixed' },
+  ]),
+];
+
+test('movable joints are the non-fixed joints of the models that are not the robot', function () {
+  const names = load().movableJoints(KITCHEN).map(function (entry) { return entry.name; });
+  assert.deepStrictEqual(names, ['fridge_door_joint', 'drawer_joint', 'lazy_susan_joint']);
+});
+
+test('a movable joint carries the key its model prefix gives it in the world', function () {
+  const door = load().movableJoints(KITCHEN)[0];
+  assert.strictEqual(door.key, 'kitchen/fridge_door_joint');
+  assert.strictEqual(door.joint, KITCHEN[1].obj.joints.fridge_door_joint);
+  assert.strictEqual(door.model, KITCHEN[1]);
+});
+
+test('a prefixless environment keys its joints by bare name', function () {
+  const models = [articulated('', false, [{ name: 'door', type: 'revolute', lower: 0, upper: 1 }])];
+  assert.strictEqual(load().movableJoints(models)[0].key, 'door');
+});
+
+test('a limited joint moves between its limits', function () {
+  const routing = load();
+  const door = routing.movableJoints(KITCHEN)[0];
+  assert.deepStrictEqual(routing.range(door.joint), { lower: 0, upper: 1.57 });
+});
+
+test('a continuous joint moves through a full turn', function () {
+  const routing = load();
+  const susan = routing.movableJoints(KITCHEN)[2];
+  assert.deepStrictEqual(routing.range(susan.joint), { lower: -Math.PI, upper: Math.PI });
+});
+
+test('a model without joints contributes nothing', function () {
+  assert.deepStrictEqual(load().movableJoints([model('', [])]), []);
+});
+
 // what onboarding the Franka Montessori demo produces: the robot model prefixed after its
 // bodies, plus the synthesized environment model that carries no prefix and no joints
 const FRANKA = [

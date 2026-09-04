@@ -349,6 +349,58 @@ class MoveRequest:
         return coordinates
 
 
+class MalformedJointMoveRequest(Exception):
+    """
+    Raised when the viewer's joint payload cannot be read as a joint position.
+    """
+
+
+@dataclass(frozen=True)
+class JointMoveRequest:
+    """
+    A joint position the viewer set by hand, to be written into the world.
+    """
+
+    connection_name: str
+    """
+    Name of the connection, as the world state publishes it.
+    """
+
+    position: float
+    """
+    Target position in the connection's own unit: radians for a hinge, metres for a slide.
+    """
+
+    is_final: bool = False
+    """
+    Whether this is the slider's last update, as opposed to an intermediate one.
+    """
+
+    @classmethod
+    def from_payload(cls, payload: Dict[str, Any]) -> JointMoveRequest:
+        """
+        Build a request from a decoded ``POST /joint`` body.
+
+        :param payload: The decoded JSON body of a ``POST /joint`` request.
+        :raises MalformedJointMoveRequest: If the joint name or the position is unusable.
+        """
+        connection_name = payload.get("joint")
+        if not isinstance(connection_name, str) or not connection_name:
+            raise MalformedJointMoveRequest("'joint' must be a non-empty string")
+        position = payload.get("position")
+        if (
+            isinstance(position, bool)
+            or not isinstance(position, (int, float))
+            or not math.isfinite(position)
+        ):
+            raise MalformedJointMoveRequest("'position' must be a finite number")
+        return cls(
+            connection_name=connection_name,
+            position=float(position),
+            is_final=bool(payload.get("final")),
+        )
+
+
 @dataclass
 class MotionNodeProgress:
     """
@@ -736,6 +788,11 @@ class Bridge:
     _moves: List[MoveRequest] = field(default_factory=list)
     """
     Object moves queued by the viewer, applied on the simulation thread.
+    """
+
+    _joint_moves: List[JointMoveRequest] = field(default_factory=list)
+    """
+    Joint positions set in the viewer, applied on the simulation thread.
     """
 
     _last_moves: Dict[str, List[float]] = field(default_factory=dict)
@@ -1428,6 +1485,22 @@ class Bridge:
             )
             self._last_moves[request.object_key] = list(request.position) + orientation
 
+    def queue_joint_move(self, request: JointMoveRequest) -> None:
+        """
+        Queue a joint position from the viewer (called on an HTTP thread).
+
+        :param request: The joint position to apply on the next simulation tick.
+        """
+        with self._moves_lock:
+            self._joint_moves.append(request)
+
+    def pending_joint_moves(self) -> List[JointMoveRequest]:
+        """
+        The joint positions queued and not yet applied by the simulation thread.
+        """
+        with self._moves_lock:
+            return list(self._joint_moves)
+
     @staticmethod
     def _orientation_after(
         request: MoveRequest,
@@ -1792,7 +1865,8 @@ class Bridge:
         """
         with self._moves_lock:
             moves, self._moves = self._moves, []
-        if not moves or self.world is None:
+            joint_moves, self._joint_moves = self._joint_moves, []
+        if self.world is None:
             return
         for move in moves:
             body = self._bodies.get(move.object_key)
@@ -1800,6 +1874,39 @@ class Bridge:
                 logger.debug("no published body for %s — move skipped", move.object_key)
                 continue
             self._apply_move(move, body)
+        for joint_move in joint_moves:
+            self._apply_joint_move(joint_move)
+
+    def _apply_joint_move(self, move: JointMoveRequest) -> None:
+        """
+        Write one viewer joint position into the world, held within the joint's limits.
+
+        :param move: The queued joint position to apply.
+        """
+        connection = next(
+            (
+                candidate
+                for candidate in self._connections
+                if str(candidate.name) == move.connection_name
+            ),
+            None,
+        )
+        if connection is None:
+            logger.debug(
+                "no actuated connection %s — joint move skipped", move.connection_name
+            )
+            return
+        limits = connection.dof.limits
+        position = move.position
+        if limits.lower.position is not None:
+            position = max(limits.lower.position, position)
+        if limits.upper.position is not None:
+            position = min(limits.upper.position, position)
+        connection.position = position
+        self._transforms.note_viewer_write(str(connection.name))
+        logger.info(
+            "set %s -> %.3f [final=%s]", move.connection_name, position, move.is_final
+        )
 
     def _apply_move(self, move: MoveRequest, body: Body) -> None:
         """
