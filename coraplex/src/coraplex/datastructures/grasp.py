@@ -355,11 +355,11 @@ class GraspDescription:
     @classmethod
     def robot_relative_default(
         cls,
-        end_effector: "EndEffector",
+        end_effector: EndEffector,
         pose: Pose,
         body: Optional[Body] = None,
-        grasp_alignment: Optional["PreferredGraspAlignment"] = None,
-    ) -> "GraspDescription":
+        grasp_alignment: Optional[PreferredGraspAlignment] = None,
+    ) -> GraspDescription:
         """
         The default grasp for an object: the side to approach from follows the robot's
         reach (see :meth:`_approach_side`), and a **top** grasp is chosen automatically
@@ -388,10 +388,10 @@ class GraspDescription:
     @classmethod
     def _approach_side(
         cls,
-        end_effector: "EndEffector",
+        end_effector: EndEffector,
         pose: Pose,
-        grasp_alignment: Optional["PreferredGraspAlignment"] = None,
-    ) -> "GraspDescription":
+        grasp_alignment: Optional[PreferredGraspAlignment] = None,
+    ) -> GraspDescription:
         """
         The side to approach an object from.
 
@@ -424,7 +424,7 @@ class GraspDescription:
         return candidates[0]
 
     @staticmethod
-    def _reaches_the_object_by_driving(end_effector: "EndEffector") -> bool:
+    def _reaches_the_object_by_driving(end_effector: EndEffector) -> bool:
         """
         Whether the robot moves its base to the object rather than reaching from a fixed
         stand.
