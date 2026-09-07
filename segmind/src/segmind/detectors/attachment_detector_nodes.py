@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from giskardpy.motion_statechart.context import MotionStatechartContext
-from typing import Dict, List, Optional
+from typing_extensions import Dict, List
 
 from segmind.datastructures.events import DetectionEvent, PickUpEvent, PlacingEvent
 from segmind.detectors.base import AbstractDetector, SegmindContext
@@ -51,22 +51,18 @@ class AttachmentDetector(AbstractDetector):
             is in the world itself.
         :param tracked_objects: The bodies to look at.
         """
-        events = []
+        events: List[DetectionEvent] = []
         for body in tracked_objects:
             parent = body.parent_connection.parent
             previous = self._parents.get(body)
             self._parents[body] = parent
             if previous is None or parent is previous:
                 continue
-            event = self._event_of_change(body, parent, context.world.root)
-            if event is not None:
-                events.append(event)
+            events.append(self._event_of_change(body, parent, context.world.root))
         return events
 
     @staticmethod
-    def _event_of_change(
-        body: Body, parent: Body, world_root: Body
-    ) -> Optional[DetectionEvent]:
+    def _event_of_change(body: Body, parent: Body, world_root: Body) -> DetectionEvent:
         """
         What it means that a body now hangs from ``parent``.
 
