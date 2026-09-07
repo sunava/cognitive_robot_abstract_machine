@@ -52,8 +52,7 @@ def directive_for_backend(backend: Optional[QueryBackend]) -> Optional[Directive
     return backend.opening_directive if backend is not None else None
 
 
-_HTML_PAGE_TEMPLATE = Template(
-    """\
+_HTML_PAGE_TEMPLATE = Template("""\
 <!DOCTYPE html>
 <html>
 <head>
@@ -72,8 +71,7 @@ _HTML_PAGE_TEMPLATE = Template(
 </head>
 <body>{{ body }}</body>
 </html>
-"""
-)
+""")
 """Standalone dark page for browser display; the rendered markup fills ``body``."""
 
 _HTML_CELL_WRAPPER = Template(
@@ -129,7 +127,8 @@ class VerbalizationPipeline:
             same services across calls so repeated mentions corefer (a Robot … the Robot).
         :param backend: The backend the expression would be evaluated with. When given it decides
             the opening verb (generative → *"Generate"*, selective → *"Find"*); when omitted the
-            verb is derived from the query type as before.
+            verb is derived from the expression itself (a match reads *"Find"* unless an
+            ``Ellipsis`` in its pattern leaves a value to generate).
         :return: Formatted natural-language string (plain, ANSI, or HTML, per the renderer).
 
         It runs the full path — build the fragment tree, then render it — whereas
@@ -289,7 +288,8 @@ def verbalize_expression(
     :param expression: Any EQL expression or query.
     :param backend: The backend the expression would be evaluated with. When given it decides the
         opening verb (generative → *"Generate"*, selective → *"Find"*); when omitted the verb is
-        derived from the query type as before.
+        derived from the expression itself (a match reads *"Find"* unless an ``Ellipsis`` in its
+        pattern leaves a value to generate).
     :return: Plain-text natural-language string.
 
     >>> verbalize_expression(a(entity(variable(Robot, []))))
