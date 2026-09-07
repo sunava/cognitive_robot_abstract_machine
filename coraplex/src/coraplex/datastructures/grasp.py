@@ -346,11 +346,17 @@ class GraspDescription:
 
         return grasp_configs
 
-    #: an object is grasped from above (top) rather than the side when it is this flat:
-    #: its height is at most this fraction of its smaller horizontal side ...
     TOP_GRASP_FLATNESS_RATIO: ClassVar[float] = 0.5
-    #: ... or at most this many metres tall in absolute terms.
+    """
+    How flat an object has to be to be grasped from above rather than from the side: its
+    height is at most this fraction of its smaller horizontal side.
+    """
+
     TOP_GRASP_MAX_HEIGHT: ClassVar[float] = 0.05
+    """
+    How short an object has to be, in metres, to be grasped from above rather than from
+    the side, whatever its footprint.
+    """
 
     @classmethod
     def robot_relative_default(
