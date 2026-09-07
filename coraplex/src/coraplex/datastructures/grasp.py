@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Tuple
 
 import numpy as np
-from typing_extensions import ClassVar, Optional, Union, List, TYPE_CHECKING
+from typing_extensions import Optional, Union, List, TYPE_CHECKING
 
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix
 from semantic_digital_twin.spatial_types.spatial_types import (
@@ -20,6 +20,7 @@ from semantic_digital_twin.world_description.world_entity import (
     Body,
     KinematicStructureEntity,
 )
+from coraplex.config.action_conf import ActionConfig
 from coraplex.datastructures.rotations import Rotations
 from coraplex.datastructures.enums import (
     AxisIdentifier,
@@ -346,18 +347,6 @@ class GraspDescription:
 
         return grasp_configs
 
-    TOP_GRASP_FLATNESS_RATIO: ClassVar[float] = 0.5
-    """
-    How flat an object has to be to be grasped from above rather than from the side: its
-    height is at most this fraction of its smaller horizontal side.
-    """
-
-    TOP_GRASP_MAX_HEIGHT: ClassVar[float] = 0.05
-    """
-    How short an object has to be, in metres, to be grasped from above rather than from
-    the side, whatever its footprint.
-    """
-
     @classmethod
     def robot_relative_default(
         cls,
@@ -369,8 +358,10 @@ class GraspDescription:
         """
         The default grasp for an object: the side to approach from follows the robot's
         reach (see :meth:`_approach_side`), and a **top** grasp is chosen automatically
-        for a clearly flat/short object (see :attr:`TOP_GRASP_FLATNESS_RATIO` /
-        :attr:`TOP_GRASP_MAX_HEIGHT`), for which a side grasp is awkward, keeping the
+        for a clearly flat/short object (see
+        :attr:`~coraplex.config.action_conf.ActionConfig.top_grasp_flatness_ratio` and
+        :attr:`~coraplex.config.action_conf.ActionConfig.top_grasp_max_height`), for
+        which a side grasp is awkward, keeping the
         chosen side's yaw.
 
         :param end_effector: The end effector that will grasp.
@@ -455,8 +446,8 @@ class GraspDescription:
         height = dims[2]
         footprint = min(dims[0], dims[1])
         return (
-            height <= cls.TOP_GRASP_MAX_HEIGHT
-            or height <= cls.TOP_GRASP_FLATNESS_RATIO * footprint
+            height <= ActionConfig.top_grasp_max_height
+            or height <= ActionConfig.top_grasp_flatness_ratio * footprint
         )
 
     @staticmethod
