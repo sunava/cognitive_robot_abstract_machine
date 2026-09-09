@@ -92,6 +92,19 @@ def laboratory_world() -> World:
     return world
 
 
+def carry_overlay_object(bridge: Bridge) -> None:
+    """
+    Move the overlay object into the robot's subtree, as picking it up does.
+
+    :param bridge: The bridge whose world the object is carried in.
+    """
+    world = bridge.world
+    milk = world.get_body_by_name(PrefixedName("milk.stl", prefix="world"))
+    arm = world.get_body_by_name(PrefixedName("arm_link", prefix="robot"))
+    with world.modify_world():
+        world.move_branch(milk, arm, True)
+
+
 def attached_bridge(with_robot: bool = False) -> Bridge:
     """
     A bridge attached to :func:`laboratory_world`.
@@ -167,6 +180,24 @@ class TestBuildLiveScene:
         urdf = (scenes / paths.LIVE_SCENE_NAME / "environment.urdf").read_text()
 
         assert "laboratory/bench" in urdf
+        assert "milk.stl" not in urdf
+
+    def test_a_carried_overlay_object_stays_out_of_the_robot_model(
+        self, monkeypatch, tmp_path
+    ):
+        """
+        The overlay streams a carried object's pose, so baking it into the robot model
+        as well would draw it twice -- and the model is not rebuilt when the object is
+        put down again, which would leave the copy stuck to the hand.
+        """
+        scenes = use_scratch_scenes_directory(monkeypatch, tmp_path)
+        bridge = attached_bridge(with_robot=True)
+        carry_overlay_object(bridge)
+
+        build_live_scene(bridge)
+
+        urdf = (scenes / paths.LIVE_SCENE_NAME / "robotwithsubtree.urdf").read_text()
+        assert "robot/arm_link" in urdf
         assert "milk.stl" not in urdf
 
     def test_the_robot_subtree_becomes_its_own_model(self, monkeypatch, tmp_path):

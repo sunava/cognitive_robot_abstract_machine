@@ -50,6 +50,7 @@ from semantic_digital_twin.spatial_types import (
 )
 from cramera.logging_setup import get_logger
 from cramera.body_geometry import POSE_PRECISION, rounded_pose
+from cramera.streamed_bodies import is_streamed
 from semantic_digital_twin.world_description.connections import (
     ActiveConnection1DOF,
     Connection6DoF,
@@ -78,7 +79,6 @@ from cramera.live.query import LiveQuerySource, NoQuerySourceRegistered
 from cramera.live.markers import MarkerEntry, MarkerStore
 from cramera.live.shape_catalog import ShapeEntry, served_mesh_file, shape_entry
 from cramera.live.transforms import TransformGraph, TransformSnapshot
-from cramera.mesh_format import MeshFormat
 from cramera.palette import ObjectPalette
 from cramera.robot_parts import RobotPartAnnotation
 
@@ -1205,7 +1205,7 @@ class Bridge:
         try:
             for body in self.world.bodies:
                 name = str(body.name)
-                if MeshFormat.of_path(name.split("/")[-1]) is not None:
+                if is_streamed(body):
                     continue
                 connection = body.parent_connection
                 entries.append(
@@ -1994,9 +1994,8 @@ class Bridge:
         for full_name, body in bodies_by_name.items():
             if body is robot_root:
                 continue
-            basename = full_name.split("/")[-1]
-            if MeshFormat.of_path(basename) is not None:
-                bodies[basename] = body
+            if is_streamed(body):
+                bodies[full_name.split("/")[-1]] = body
         return bodies
 
     @staticmethod
