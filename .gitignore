@@ -187,3 +187,8 @@ CLAUDE.local.md
 # Scratch state, never committed: a stale copy read as current is a pass acting on a
 # stack that has since moved.
 .claude/stack/board.json
+
+# the scene the Plan Builder brings up on every "Start live", and its log; the named
+# demos saved next to them are kept
+coraplex/demos/coraplex_generated/_builder_scaffold.py
+coraplex/demos/coraplex_generated/_builder_scaffold.log
