@@ -31,7 +31,10 @@
   const placesAtASemanticTarget = window.PlanSteps.putsAnObjectDownAtASemanticTarget;
   const ARMS = ['LEFT', 'RIGHT', 'BOTH'];
   const TORSO = ['HIGH', 'MID', 'LOW'];
-  // selectable robots -> the class + import to emit; RobotSpecification derives the drive
+  // selectable robots -> the class + import to emit; RobotSpecification derives the drive.
+  // `import` is spelled out for a robot that lives outside semantic_digital_twin; `steps`
+  // and `arms` narrow the palette for a robot that cannot do everything (no base to
+  // navigate with, no torso, a single arm)
   // from the robot's mobile base, so no drive type needs spelling out here.
   const ROBOTS = {
     PR2: { cls: 'PR2', module: 'pr2' },
@@ -43,15 +46,32 @@
     Justin: { cls: 'Justin', module: 'justin' },
     ICub3: { cls: 'ICub3', module: 'icub3' },
     MMPDresden: { cls: 'MMPDresden', module: 'mmp_dresden' },
+    // a floor-standing continuum arm from the siemens_external_robots package: it bends,
+    // but cannot drive, has no torso, and holds objects in a fixed cradle instead of a
+    // gripper, so only Pick and Place apply to it
+    ContinuumRobot: {
+      cls: 'ContinuumRobot',
+      import: 'from siemens_external_robots.robots.continuum_robot import ContinuumRobot',
+      steps: ['pick', 'place'],
+      arms: ['LEFT'],
+    },
   };
   Object.keys(ROBOTS).forEach(function (k) {
-    const r = ROBOTS[k]; r.import = 'from semantic_digital_twin.robots.' + r.module + ' import ' + r.cls;
+    const r = ROBOTS[k];
+    if (!r.import) r.import = 'from semantic_digital_twin.robots.' + r.module + ' import ' + r.cls;
   });
   // only robots whose description actually loads in this workspace are offered. Others
   // crash on spawn — a model/URDF mismatch, not a Plan Builder bug. Add a name here once
   // its description is verified to load.
-  const WORKING_ROBOTS = ['PR2', 'Garmi'];
+  const WORKING_ROBOTS = ['PR2', 'Garmi', 'ContinuumRobot'];
   function robotInfo() { const v = ($('pb-robot') && $('pb-robot').value) || 'PR2'; return ROBOTS[v] || ROBOTS.PR2; }
+  // the step kinds the selected robot can perform, and the arms it can be asked to use
+  function offeredSteps() { return robotInfo().steps || Object.keys(BLOCKS); }
+  function offeredArms() { return robotInfo().arms || ARMS; }
+  function isOffered(type) { return offeredSteps().indexOf(type) >= 0; }
+  // the AWS warehouse is a Gazebo world reached through its ROS package rather than a
+  // URDF next to the other environments, and is parsed by another parser
+  function envIsGazeboWorld(env) { return /\.world$/.test(env); }
   // semantic place targets: supporting surfaces ("on") and case containers ("in").
   // Both expose HasSupportingSurface.sample_points_from_surface, so resolution is identical.
   const SEMANTIC_SURFACES = ['CounterTop', 'Table', 'ShelfLayer', 'Floor', 'Sofa'];
@@ -94,7 +114,7 @@
   // ---------- palette ----------
   function renderBlocks() {
     const el = $('pb-blocks'); el.innerHTML = '';
-    Object.keys(BLOCKS).forEach(function (k) {
+    Object.keys(BLOCKS).filter(isOffered).forEach(function (k) {
       const b = BLOCKS[k];
       const d = document.createElement('div');
       d.className = 'pb-block'; d.draggable = true; d.dataset.block = k;
@@ -103,8 +123,10 @@
       el.appendChild(d);
     });
     const meshSel = $('pb-mesh'); meshSel.innerHTML = MESHES.map(function (m) { return '<option>' + m + '</option>'; }).join('');
+    // filled once: the palette is re-rendered whenever the robot changes, and refilling
+    // the choice here would reset it
     const robotSel = $('pb-robot');
-    if (robotSel) robotSel.innerHTML = WORKING_ROBOTS.map(function (k) { return '<option value="' + k + '">' + k + '</option>'; }).join('');
+    if (robotSel && !robotSel.options.length) robotSel.innerHTML = WORKING_ROBOTS.map(function (k) { return '<option value="' + k + '">' + k + '</option>'; }).join('');
   }
 
   // ---------- objects ----------
@@ -429,8 +451,9 @@
 
   // ---------- plan steps ----------
   function addStep(type) {
-    const b = BLOCKS[type]; if (!b) return;
+    const b = BLOCKS[type]; if (!b || !isOffered(type)) return;
     const params = Object.assign({}, b.params);
+    if (params.arm && offeredArms().indexOf(params.arm) < 0) params.arm = offeredArms()[0];
     if (window.PlanSteps.actingOnAnObject().indexOf(type) >= 0 && !params.object && objects.length) params.object = objects[0].mesh;
     // a step that puts an object down aims where the running scene can actually take it
     if (window.PlanSteps.putsAnObjectDown({ type: type, params: params })) {
@@ -479,7 +502,7 @@
   }
   function row(html) { return '<div class="sparam-row">' + html + '</div>'; }
   function stepParams(s) {
-    if (s.type === 'park_arms') return row(sel(s, 'arm', ARMS));
+    if (s.type === 'park_arms') return row(sel(s, 'arm', offeredArms()));
     if (s.type === 'move_torso') return row(sel(s, 'torso', TORSO));
     if (s.type === 'navigate') return row('<span class="pb-group-lbl">go to →</span>' + num(s, 'x') + num(s, 'y') + num(s, 'z') + num(s, 'yaw') +
       '<button class="pb-capbtn" data-capnav="' + s.id + '" title="drive/place the robot in the 3D scene, then capture its base pose as this navigate goal">◎ capture robot pose</button>');
@@ -489,14 +512,14 @@
         row('<span class="pb-group-lbl start">start (from) →</span>' + startCaptureButton(s)) +
         row('<span class="pb-group-lbl">target →</span>' + modeSel(s)) +
         dropOffRow(s) +
-        row(sel(s, 'arm', ARMS))
+        row(sel(s, 'arm', offeredArms()))
       );
     }
     if (s.type === 'pick') {
       return (
         row(objSel(s)) +
         row('<span class="pb-group-lbl start">start (from) →</span>' + startCaptureButton(s)) +
-        row(sel(s, 'arm', ARMS)) +
+        row(sel(s, 'arm', offeredArms())) +
         row('<span class="pb-hint3">the robot grasps from where it stands — put a Navigate step in front of this one</span>')
       );
     }
@@ -505,7 +528,7 @@
         row(objSel(s)) +
         row('<span class="pb-group-lbl">target →</span>' + modeSel(s)) +
         dropOffRow(s) +
-        row(sel(s, 'arm', ARMS)) +
+        row(sel(s, 'arm', offeredArms())) +
         row('<span class="pb-hint3">places what this arm is holding — put a Pick step in front of this one</span>')
       );
     }
@@ -774,7 +797,7 @@
     L.push('from coraplex.robot_plans.actions.core.robot_body import ParkArmsAction, MoveTorsoAction');
     L.push('from coraplex.view_manager import ViewManager');
     L.push('from semantic_digital_twin.adapters.mesh import DAEParser, OBJParser, STLParser');
-    L.push('from semantic_digital_twin.adapters.urdf import URDFParser');
+    L.push('from semantic_digital_twin.api import RobotSpecification, WorldSpecification');
     L.push('from semantic_digital_twin.datastructures.definitions import TorsoState');
     L.push('from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner');
     if (window.BaseControl.pinsTheSetting(baseControl())) {
@@ -800,19 +823,21 @@
     L.push('');
     L.push('');
     L.push('def build_world(env_file, robot_xy):');
-    L.push('    """Parse the chosen environment + ' + R.cls + ' and spawn the robot at robot_xy."""');
-    L.push('    robot_world = URDFParser.from_file(' + R.cls + '.get_ros_file_path()).parse()');
-    L.push('    world = URDFParser.from_file(os.path.join(_WORLDS, env_file)).parse()');
-    L.push('    with world.modify_world():');
-    L.push('        robot_root = robot_world.get_body_by_name(' + R.cls + '._get_root_body_name())');
-    L.push('        drive = ' + R.cls + '.get_drive_connection_type().create_with_dofs(');
-    L.push('            parent=world.root, child=robot_root, world=world)');
-    L.push('        world.merge_world(robot_world, drive)');
-    L.push('        drive.origin = HomogeneousTransformationMatrix.from_xyz_rpy(robot_xy[0], robot_xy[1], 0)');
+    L.push('    """Parse the chosen environment and spawn ' + R.cls + ' at robot_xy, standing on the floor."""');
+    L.push('    # the specification creates the robot from its description -- a file it parses, or');
+    L.push('    # measurements it builds from -- and merges it in below an odom frame at robot_xy');
+    L.push('    robot = RobotSpecification(');
+    L.push('        semantic_annotation_type=' + R.cls + ',');
+    L.push('        world_T_odom=HomogeneousTransformationMatrix.from_xyz_rpy(robot_xy[0], robot_xy[1], 0.0),');
+    L.push('    )');
+    worldSpecificationLines(env, '    ').forEach(function (ln) { L.push(ln); });
+    L.push('    robot_root = world.get_semantic_annotations_by_type(' + R.cls + ')[0].root');
+    L.push('    # a description whose root sits above its feet is lifted until it touches the floor');
     L.push('    standing = max(0.0, -world.height_of_lowest_collision_point_of_branch(robot_root))');
-    L.push('    with world.modify_world():');
-    L.push('        drive.parent_T_connection_expression = HomogeneousTransformationMatrix.from_xyz_rpy(');
-    L.push('            z=standing, reference_frame=world.root)');
+    L.push('    if standing:');
+    L.push('        odom = robot_root.parent_connection.parent');
+    L.push('        odom.parent_connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(');
+    L.push('            robot_xy[0], robot_xy[1], standing, reference_frame=world.root, child_frame=odom)');
     L.push('    return world');
     L.push('');
     L.push('');
@@ -839,7 +864,7 @@
       });
       L.push('');
     }
-    L.push('robot = ' + R.cls + '.from_world(world)');
+    L.push('robot = world.get_semantic_annotations_by_type(' + R.cls + ')[0]');
     baseControlLines('').forEach(function (ln) { L.push(ln); });
     L.push('context = Context(world=world, robot=robot, _debug=False, ros_node=visualization.ros_node)');
     L.push('with world.modify_world():');
@@ -866,6 +891,22 @@
     L.push('    plan.perform()');
     L.push('');
     return L.join('\n');
+  }
+  // the lines that parse `env` with the parser its kind needs and merge `robot` in as
+  // `world`; `env` is a literal file name, or the name of a variable holding one
+  function worldSpecificationLines(env, indent, envIsVariable) {
+    const literal = envIsVariable ? env : ('"' + env + '"');
+    const gazebo = envIsVariable ? envIsGazeboWorld($('pb-env').value) : envIsGazeboWorld(env);
+    if (gazebo) {
+      return [
+        indent + '# a Gazebo world, reached through its ROS package',
+        indent + 'world = WorldSpecification.from_gazebo(' + (envIsVariable ? literal : 'env_file') + ', robots=[robot]).to_domain_object()',
+      ];
+    }
+    return [
+      indent + 'world = WorldSpecification.from_urdf(',
+      indent + '    os.path.join(_WORLDS, ' + (envIsVariable ? literal : 'env_file') + '), robots=[robot]).to_domain_object()',
+    ];
   }
   function stepCode(s) {
     const p = s.params;
@@ -965,16 +1006,13 @@
     L.push('    """A demonstration composed in the cramera Plan Builder."""');
     L.push('');
     L.push('    def build_simulated_world(self) -> World:');
-    L.push('        return WorldSpecification.from_urdf(');
-    L.push('            os.path.join(_WORLDS, ENV_FILE),');
-    L.push('            robots=[');
-    L.push('                RobotSpecification(');
-    L.push('                    semantic_annotation_type=self.used_robot,');
-    L.push('                    world_T_odom=HomogeneousTransformationMatrix.from_xyz_rpy(');
-    L.push('                        ROBOT_XY[0], ROBOT_XY[1], 0.0),');
-    L.push('                ),');
-    L.push('            ],');
-    L.push('        ).to_domain_object()');
+    L.push('        robot = RobotSpecification(');
+    L.push('            semantic_annotation_type=self.used_robot,');
+    L.push('            world_T_odom=HomogeneousTransformationMatrix.from_xyz_rpy(');
+    L.push('                ROBOT_XY[0], ROBOT_XY[1], 0.0),');
+    L.push('        )');
+    worldSpecificationLines('ENV_FILE', '        ', true).forEach(function (ln) { L.push(ln); });
+    L.push('        return world');
     L.push('');
     L.push('    def is_scene_populated(self, world: World) -> bool:');
     L.push('        for spec in OBJECTS:');
@@ -1431,8 +1469,16 @@
   addObject('milk.stl');   // staged above the robot (never inside furniture); drop/drag to place
   addObject('bowl.stl');
   renderSteps();
-  // a friendly starter plan
+  // a friendly starter plan, as far as the robot can follow it
   addStep('park_arms'); addStep('move_torso');
+  // another robot may not offer every step the plan has; drop what it cannot do
+  function robotChanged() {
+    const keep = steps.filter(function (s) { return isOffered(s.type); });
+    if (keep.length !== steps.length) { steps.length = 0; keep.forEach(function (s) { steps.push(s); }); }
+    steps.forEach(function (s) { if (s.params.arm && offeredArms().indexOf(s.params.arm) < 0) s.params.arm = offeredArms()[0]; });
+    renderBlocks(); renderSteps();
+  }
+  $('pb-robot').addEventListener('change', robotChanged);
   $('pb-generate').addEventListener('click', showCode);
   function reshowIfGenerated() {
     const pre = $('pb-code'); if (pre && pre.textContent && pre.textContent.indexOf('Click') !== 0) showCode();

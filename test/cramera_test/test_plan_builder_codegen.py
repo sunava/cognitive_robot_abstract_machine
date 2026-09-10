@@ -140,3 +140,60 @@ class TestPlanBuilderPalette:
         page = (WEB_ROOT / "plan_builder.html").read_text(encoding="utf-8")
 
         assert 'id="pb-base"' in page
+
+
+# %% a robot that is not parsed from a description
+
+
+class TestRobotsWithoutADescriptionFile:
+    """
+    The generated demo spawns every robot through a ``RobotSpecification``, which asks
+    the robot type for itself rather than parsing its file, so a robot built from
+    measurements can be offered next to the URDF ones.
+    """
+
+    def test_a_robot_type_creates_itself_from_its_description(self):
+        """
+        Generated as ``RobotSpecification(semantic_annotation_type=<Cls>, ...)``, which
+        calls this.
+        """
+        from semantic_digital_twin.robots.robot_parts import AbstractRobot
+
+        assert callable(getattr(AbstractRobot, "from_description", None))
+
+    def test_the_page_spells_out_the_import_of_an_external_robot(self):
+        """
+        A robot outside ``semantic_digital_twin.robots`` carries its own import line.
+        """
+        page_script = (WEB_ROOT / "plan_builder.js").read_text(encoding="utf-8")
+
+        assert (
+            "import: 'from siemens_external_robots.robots.continuum_robot import ContinuumRobot'"
+            in page_script
+        )
+        assert "'ContinuumRobot']" in page_script  # offered in the dropdown
+
+    def test_the_page_narrows_the_palette_to_what_the_robot_can_do(self):
+        """
+        A robot with no base and no torso offers Pick and Place only.
+        """
+        page_script = (WEB_ROOT / "plan_builder.js").read_text(encoding="utf-8")
+
+        assert "steps: ['pick', 'place']" in page_script
+        assert "Object.keys(BLOCKS).filter(isOffered)" in page_script
+
+    def test_the_generated_world_is_built_from_a_specification(self):
+        """
+        Generated as ``WorldSpecification.from_urdf(...)`` or ``from_gazebo(...)`` with
+        ``robots=[robot]``; the robot's own description is never parsed by the demo.
+        """
+        page_script = (WEB_ROOT / "plan_builder.js").read_text(encoding="utf-8")
+
+        assert "URDFParser.from_file(' + R.cls" not in page_script
+        assert "WorldSpecification.from_gazebo(" in page_script
+        assert "WorldSpecification.from_urdf(" in page_script
+
+    def test_the_page_offers_the_warehouse_of_the_g1_demo(self):
+        page = (WEB_ROOT / "plan_builder.html").read_text(encoding="utf-8")
+
+        assert "no_roof_small_warehouse.world" in page

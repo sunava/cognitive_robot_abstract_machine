@@ -702,6 +702,22 @@ class AbstractRobot(Agent, HasRobotParts, ABC):
         super().setup_robot_part_semantic_annotations()
 
     @classmethod
+    def from_description(cls) -> Self:
+        """
+        Create the robot in a world of its own, from its description.
+
+        Parses the file :meth:`get_ros_file_path` names and annotates what it parsed.
+        This is the step that turns a robot type into a robot that can be merged into an
+        environment, so a robot that has no description file -- one built from
+        measurements, say -- overrides it to build itself into a fresh world instead.
+
+        :return: The annotated robot. Its world holds nothing but the robot.
+        """
+        from semantic_digital_twin.adapters.urdf import URDFParser
+
+        return cls.from_world(URDFParser.from_file(cls.get_ros_file_path()).parse())
+
+    @classmethod
     def from_world(cls, world: World) -> Self:
         """
         Creates a robot from a world.

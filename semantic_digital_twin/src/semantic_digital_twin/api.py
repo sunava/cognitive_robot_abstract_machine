@@ -1090,8 +1090,9 @@ class RobotSpecification:
 
     def spawn(self, world: World) -> AbstractRobot:
         """
-        Parse the robot from its own description and merge it into ``world`` as
-        ``world.root -> odom -> connection -> robot``.
+        Create the robot from its own description (see
+        :meth:`~semantic_digital_twin.robots.robot_parts.AbstractRobot.from_description`)
+        and merge it into ``world`` as ``world.root -> odom -> connection -> robot``.
 
         The connection attaching the robot to its ``odom`` is the drive declared by the
         robot's mobile base, or a fixed connection when the robot has no mobile base. An
@@ -1108,10 +1109,9 @@ class RobotSpecification:
         connection_type = self.semantic_annotation_type.get_drive_connection_type()
         is_active = issubclass(connection_type, ActiveConnection)
 
-        robot_world = URDFParser.from_file(
-            self.semantic_annotation_type.get_ros_file_path()
-        ).parse()
-        robot_id = self.semantic_annotation_type.from_world(robot_world).id
+        robot = self.semantic_annotation_type.from_description()
+        robot_world = robot._world
+        robot_id = robot.id
 
         with world.modify_world():
             odom_body = self._create_odom_body()
