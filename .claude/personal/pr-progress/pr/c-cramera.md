@@ -27,6 +27,16 @@ run_cramera.sh).
 the integration layer import resolves in-tree). Full uv-sync env built in the
 session container; test runs: see below.
 
+**Review done.** Fan-out review of all 279 files complete; ~700 findings in
+.claude/claude_reviews/pr-c-cramera-20260910-090155.md. Plan approved (full
+plan in /root/.claude/plans/vivid-noodling-naur.md of the session container;
+mirrored by the report). Tranche 1 committed (d8933e02): 3 failing tests fixed
+(--par CSS var, warehouse worlds/meshes removed, plan-view live expectation),
+wiring (requirements.txt negation, poetry entry, shell-script robustness,
+python floor 3.11, setup-node). Five fix agents running for tranche B
+(behavior bugs) split by area: coraplex / sdt+segmind / cramera-live /
+cramera-server+knowledge / web-JS.
+
 **Next.**
 - finish pytest runs (cramera / coraplex / segmind / sdt touched tests)
 - /local-code-review with focus: docstrings + param docs everywhere, no
