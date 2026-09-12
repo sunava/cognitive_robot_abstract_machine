@@ -171,7 +171,8 @@ class TestRobotsWithoutADescriptionFile:
             "import: 'from siemens_external_robots.robots.continuum_robot import ContinuumRobot'"
             in page_script
         )
-        assert "'ContinuumRobot']" in page_script  # offered in the dropdown
+        offered = page_script.split("const WORKING_ROBOTS = ")[1].split("]")[0]
+        assert "'ContinuumRobot'" in offered  # offered in the dropdown
 
     def test_the_page_narrows_the_palette_to_what_the_robot_can_do(self):
         """
@@ -197,3 +198,76 @@ class TestRobotsWithoutADescriptionFile:
         page = (WEB_ROOT / "plan_builder.html").read_text(encoding="utf-8")
 
         assert "no_roof_small_warehouse.world" in page
+
+
+# %% the humanoids of the siemens_external_robots package
+
+
+class TestTheExternalHumanoids:
+    """
+    The Walker S2 and the uMe are parsed from their own ROS packages and drive as a
+    whole, so they are listed like the continuum robot, with an import line of their
+    own, and are lifted onto the floor after spawning, since their roots sit in the
+    pelvis and the trunk.
+    """
+
+    ROBOTS: ClassVar[List[str]] = ["WalkerS2", "UMe"]
+    MODULES: ClassVar[List[str]] = ["walker_s2", "ume"]
+
+    def test_the_page_spells_out_the_import_of_each_humanoid(self):
+        page_script = (WEB_ROOT / "plan_builder.js").read_text(encoding="utf-8")
+
+        for robot, module in zip(self.ROBOTS, self.MODULES):
+            assert (
+                "import: 'from siemens_external_robots.robots.%s import %s'"
+                % (module, robot)
+                in page_script
+            ), robot
+
+    def test_each_humanoid_is_offered_in_the_dropdown(self):
+        page_script = (WEB_ROOT / "plan_builder.js").read_text(encoding="utf-8")
+
+        for robot in self.ROBOTS:
+            assert (
+                "'%s'" % robot
+                in page_script.split("const WORKING_ROBOTS = ")[1].split("]")[0]
+            ), robot
+
+    def test_a_humanoid_offers_everything_but_a_torso_move(self):
+        """
+        Neither robot's torso has a raised or lowered state: the Walker S2's waist
+        bends, the uMe's trunk is rigid.
+        """
+        page_script = (WEB_ROOT / "plan_builder.js").read_text(encoding="utf-8")
+
+        assert page_script.count(
+            "steps: ['park_arms', 'navigate', 'transport', 'pick', 'place']"
+        ) == len(self.ROBOTS)
+
+    def test_both_output_styles_stand_the_robot_on_the_floor(self):
+        """
+        Generated as ``standing = max(0.0, -world.height_of_lowest_collision_point_of_branch(...))``
+        and a lifted odom, in the flat script and in the demonstration class alike.
+        """
+        from semantic_digital_twin.world import World
+
+        page_script = (WEB_ROOT / "plan_builder.js").read_text(encoding="utf-8")
+
+        assert "standingLines(R.cls, 'robot_xy'" in page_script
+        assert "standingLines('self.used_robot', 'ROBOT_XY'" in page_script
+        assert callable(getattr(World, "height_of_lowest_collision_point_of_branch"))
+
+    def test_a_robot_that_cannot_stand_still_chooses_its_own_base_control(self):
+        """
+        The uMe's four-joint arms need the base to drive while reaching, so selecting it
+        switches the base-control choice to the robot's own setting rather than leaving
+        the page's default, which pins the base still and fails every pick.
+        """
+        page_script = (WEB_ROOT / "plan_builder.js").read_text(encoding="utf-8")
+        base_control = (WEB_ROOT / "core" / "base_control.js").read_text(
+            encoding="utf-8"
+        )
+
+        assert "baseControl: 'robot_default'" in page_script
+        assert "name: 'robot_default'" in base_control
+        assert "$('pb-base').value = robotInfo().baseControl" in page_script

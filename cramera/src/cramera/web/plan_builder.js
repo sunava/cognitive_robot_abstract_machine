@@ -55,6 +55,24 @@
       steps: ['pick', 'place'],
       arms: ['LEFT'],
     },
+    // the two humanoids of the siemens_external_robots package: each walks as a drive of
+    // its whole base and carries two arms, and neither has a torso that is raised or
+    // lowered -- the Walker S2's waist bends, the uMe's trunk is rigid -- so Move torso
+    // is not offered for them
+    WalkerS2: {
+      cls: 'WalkerS2',
+      import: 'from siemens_external_robots.robots.walker_s2 import WalkerS2',
+      steps: ['park_arms', 'navigate', 'transport', 'pick', 'place'],
+    },
+    // its four-joint arms cannot meet a grasp pose on their own, so its base drives while
+    // it reaches; pinning the base still would fail every pick, so selecting it chooses
+    // the robot's own base setting (`baseControl` names a core/base_control.js choice)
+    UMe: {
+      cls: 'UMe',
+      import: 'from siemens_external_robots.robots.ume import UMe',
+      steps: ['park_arms', 'navigate', 'transport', 'pick', 'place'],
+      baseControl: 'robot_default',
+    },
   };
   Object.keys(ROBOTS).forEach(function (k) {
     const r = ROBOTS[k];
@@ -63,7 +81,7 @@
   // only robots whose description actually loads in this workspace are offered. Others
   // crash on spawn — a model/URDF mismatch, not a Plan Builder bug. Add a name here once
   // its description is verified to load.
-  const WORKING_ROBOTS = ['PR2', 'Garmi', 'ContinuumRobot'];
+  const WORKING_ROBOTS = ['PR2', 'Garmi', 'ContinuumRobot', 'WalkerS2', 'UMe'];
   function robotInfo() { const v = ($('pb-robot') && $('pb-robot').value) || 'PR2'; return ROBOTS[v] || ROBOTS.PR2; }
   // the step kinds the selected robot can perform, and the arms it can be asked to use
   function offeredSteps() { return robotInfo().steps || Object.keys(BLOCKS); }
@@ -831,13 +849,7 @@
     L.push('        world_T_odom=HomogeneousTransformationMatrix.from_xyz_rpy(robot_xy[0], robot_xy[1], 0.0),');
     L.push('    )');
     worldSpecificationLines(env, '    ').forEach(function (ln) { L.push(ln); });
-    L.push('    robot_root = world.get_semantic_annotations_by_type(' + R.cls + ')[0].root');
-    L.push('    # a description whose root sits above its feet is lifted until it touches the floor');
-    L.push('    standing = max(0.0, -world.height_of_lowest_collision_point_of_branch(robot_root))');
-    L.push('    if standing:');
-    L.push('        odom = robot_root.parent_connection.parent');
-    L.push('        odom.parent_connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(');
-    L.push('            robot_xy[0], robot_xy[1], standing, reference_frame=world.root, child_frame=odom)');
+    standingLines(R.cls, 'robot_xy', '    ').forEach(function (ln) { L.push(ln); });
     L.push('    return world');
     L.push('');
     L.push('');
@@ -891,6 +903,21 @@
     L.push('    plan.perform()');
     L.push('');
     return L.join('\n');
+  }
+  // the lines that stand the spawned robot on the floor: a description whose root sits
+  // above its feet (a humanoid's pelvis, say) is lifted until its lowest collision point
+  // touches the floor. `robotCls` and `xy` are Python expressions naming the robot type
+  // and the (x, y) the robot was spawned at
+  function standingLines(robotCls, xy, indent) {
+    return [
+      indent + 'robot_root = world.get_semantic_annotations_by_type(' + robotCls + ')[0].root',
+      indent + '# a description whose root sits above its feet is lifted until it touches the floor',
+      indent + 'standing = max(0.0, -world.height_of_lowest_collision_point_of_branch(robot_root))',
+      indent + 'if standing:',
+      indent + '    odom = robot_root.parent_connection.parent',
+      indent + '    odom.parent_connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(',
+      indent + '        ' + xy + '[0], ' + xy + '[1], standing, reference_frame=world.root, child_frame=odom)',
+    ];
   }
   // the lines that parse `env` with the parser its kind needs and merge `robot` in as
   // `world`; `env` is a literal file name, or the name of a variable holding one
@@ -1012,6 +1039,7 @@
     L.push('                ROBOT_XY[0], ROBOT_XY[1], 0.0),');
     L.push('        )');
     worldSpecificationLines('ENV_FILE', '        ', true).forEach(function (ln) { L.push(ln); });
+    standingLines('self.used_robot', 'ROBOT_XY', '        ').forEach(function (ln) { L.push(ln); });
     L.push('        return world');
     L.push('');
     L.push('    def is_scene_populated(self, world: World) -> bool:');
@@ -1471,8 +1499,10 @@
   renderSteps();
   // a friendly starter plan, as far as the robot can follow it
   addStep('park_arms'); addStep('move_torso');
-  // another robot may not offer every step the plan has; drop what it cannot do
+  // another robot may not offer every step the plan has; drop what it cannot do, and
+  // take over the base-control choice a robot declares for itself
   function robotChanged() {
+    if (robotInfo().baseControl && $('pb-base')) $('pb-base').value = robotInfo().baseControl;
     const keep = steps.filter(function (s) { return isOffered(s.type); });
     if (keep.length !== steps.length) { steps.length = 0; keep.forEach(function (s) { steps.push(s); }); }
     steps.forEach(function (s) { if (s.params.arm && offeredArms().indexOf(s.params.arm) < 0) s.params.arm = offeredArms()[0]; });

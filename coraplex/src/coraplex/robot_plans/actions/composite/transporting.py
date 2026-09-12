@@ -86,6 +86,17 @@ class TransportAction(ActionDescription):
             return []
         return [LookAtAction(pose)]
 
+    def _make_raise_torso_actions(self) -> List[MoveTorsoAction]:
+        """
+        :return: The action raising the torso before the robot drives off with the
+            object, empty for a robot whose torso declares no raised state -- a
+            humanoid's waist, say, or a torso with no joints at all.
+        """
+        torso = self.robot.get_torso_if_specified()
+        if torso is None or not torso.has_joint_state_of_type(TorsoState.HIGH):
+            return []
+        return [MoveTorsoAction(TorsoState.HIGH)]
+
     def _make_open_container_actions(self, container: Body) -> List:
         """
         :param container: The container body in which the object is located.
@@ -156,7 +167,7 @@ class TransportAction(ActionDescription):
                     grasp_description=self.grasp_description,
                 ),
                 ParkArmsAction(Arms.BOTH),
-                MoveTorsoAction(TorsoState.HIGH),
+                *self._make_raise_torso_actions(),
                 self._make_navigate_action_for_placing(self.grasp_description),
                 *self._make_look_at_actions(self.target_location),
                 a(PlaceAction)(
