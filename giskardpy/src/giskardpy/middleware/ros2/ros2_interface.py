@@ -14,14 +14,16 @@ from rclpy.action.client import ClientGoalHandle
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy
 from std_msgs.msg import String
-from giskardpy.middleware.ros2.utils.asynio_utils import wait_until_not_none
+from giskardpy.middleware.ros2.utils.asynio_utils import (
+    run_on_own_event_loop,
+    wait_until_not_none,
+)
 
 from giskardpy.middleware.ros2.exceptions import (
     ExecutionAbortedException,
     ExecutionCanceledException,
 )
 from giskardpy.middleware.ros2 import rospy
-from giskardpy.middleware.ros2.event_loop_manager import get_event_loop
 from krrood.adapters.exceptions import JSONSerializationError
 from krrood.adapters.json_serializer import from_json
 
@@ -184,12 +186,23 @@ class MyActionClient:
         return future
 
     def send_goal(self, goal):
-        async def muh():
+        """
+        Send a goal and block until the server is done with it.
+
+        Waits on an event loop of its own, so a process that drives several servers can
+        have a thread per server sending goals at the same time.
+
+        :param goal: goal message to send
+        :return: result of the finished goal
+        :raises Exception: whatever made the server abort or cancel the goal
+        """
+
+        async def send_and_wait_for_result():
             rospy.wait_for_future_to_complete(self.send_goal_async(goal))
             result = await self.get_result()
             return result
 
-        return get_event_loop().run_until_complete(muh())
+        return run_on_own_event_loop(send_and_wait_for_result())
 
     async def get_result(self):
         goal_id = self._current_goal_id

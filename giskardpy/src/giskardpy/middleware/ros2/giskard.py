@@ -221,13 +221,28 @@ class Giskard:
         The world outlives the ros node whenever Giskard is torn down while the world is
         kept, and a callback that publishes on a destroyed node fails. Nothing may
         therefore stay registered on the world.
+
+        A setup that failed half way through leaves the interfaces it did not reach
+        unset, so only what exists is closed; a teardown that raises about a missing
+        attribute would hide the error that made the setup fail.
         """
-        self.world_synchronizer.close()
-        if self.model_reload_synchronizer is not None:
-            self.model_reload_synchronizer.close()
-        self.world_fetcher.close()
-        self.tf_publisher.stop()
-        self.viz_marker_publisher.stop()
+
+        def close_if_it_exists(interface_name: str, close_method_name: str) -> None:
+            """
+            Call the given method of the named interface, unless setup never created it.
+
+            :param interface_name: attribute holding the interface
+            :param close_method_name: method that shuts the interface down
+            """
+            interface = getattr(self, interface_name, None)
+            if interface is not None:
+                getattr(interface, close_method_name)()
+
+        close_if_it_exists("world_synchronizer", "close")
+        close_if_it_exists("model_reload_synchronizer", "close")
+        close_if_it_exists("world_fetcher", "close")
+        close_if_it_exists("tf_publisher", "stop")
+        close_if_it_exists("viz_marker_publisher", "stop")
 
     def sanity_check(self):
         self._controlled_joints_sanity_check()

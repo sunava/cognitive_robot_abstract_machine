@@ -28,6 +28,7 @@ from coraplex.exceptions import (
     ConditionNotSatisfied,
     UnknownExecutionType,
 )
+from coraplex.plans.motion_gate import motion_and_model_change_gate
 from semantic_digital_twin.world_description.connections import (
     Connection6DoF,
     FixedConnection,
@@ -434,8 +435,16 @@ class GiskardExecutable(Executable):
         """
         Executes the motion state chart on the real robot via giskard while monitoring
         for interrupts.
+
+        The goal is sent while holding
+        :data:`~coraplex.plans.motion_gate.motion_and_model_change_gate` as a motion,
+        i.e. next to the goals of all other robots performing a plan in this process but
+        never at the same time as a change of the shared world model: giskard aborts a
+        running goal when the world it mirrors is modified (see
+        :class:`~coraplex.plans.motion_gate.MotionAndModelChangeGate`).
         """
-        self.context.giskard_wrapper.execute(self.motion_state_chart)
+        with motion_and_model_change_gate.motion():
+            self.context.giskard_wrapper.execute(self.motion_state_chart)
 
 
 @dataclass
@@ -503,28 +512,41 @@ class ModelChangeExecutable(Executable):
     def execute(self) -> None:
         """
         Re-parent the body to ``new_parent`` while preserving its global pose.
+
+        The modification and the settling time after it are held as the exclusive
+        writer of
+        :data:`~coraplex.plans.motion_gate.motion_and_model_change_gate`: the world
+        synchronizer broadcasts this modification to every giskard process, and a
+        giskard that is executing a goal at that moment aborts it with a
+        ``WorldModelModifiedDuringMotionError``. So while several robots may move at
+        once, none of them may be moving while this runs (see
+        :class:`~coraplex.plans.motion_gate.MotionAndModelChangeGate`).
         """
         self.node.status = TaskStatus.RUNNING
         self.node.plan.notify_node_started(self.node)
         obj_transform = self.context.world.compute_forward_kinematics(
             self.new_parent, self.body
         )
-        with self.context.world.modify_world():
-            self.context.world.remove_connection(self.body.parent_connection)
-            # TODO: this shouldn't be fixed but 6DOF
-            connection = FixedConnection(
-                parent=self.new_parent,
-                child=self.body,
-                parent_T_connection_expression=obj_transform,
-            )
+        with motion_and_model_change_gate.model_change():
+            with self.context.world.modify_world():
+                self.context.world.remove_connection(self.body.parent_connection)
+                # TODO: this shouldn't be fixed but 6DOF
+                connection = FixedConnection(
+                    parent=self.new_parent,
+                    child=self.body,
+                    parent_T_connection_expression=obj_transform,
+                )
 
-            # connection = Connection6DoF.create_with_dofs(
-            #     parent=self.new_parent, child=self.body, world=self.context.world, parent_T_connection_expression=obj_transform
-            # )
-            self.context.world.add_connection(connection)
-            # connection.origin = obj_transform
-        if GiskardExecutable.execution_type == ExecutionType.REAL:
-            time.sleep(self.giskard_idle_settle_delta.total_seconds())
+                # connection = Connection6DoF.create_with_dofs(
+                #     parent=self.new_parent, child=self.body, world=self.context.world, parent_T_connection_expression=obj_transform
+                # )
+                self.context.world.add_connection(connection)
+                # connection.origin = obj_transform
+            if GiskardExecutable.execution_type == ExecutionType.REAL:
+                # Hold the gate across the settling time as well: giskard applies the
+                # buffered update only while its behavior tree is idle, so a goal
+                # arriving before that is over would still be aborted by it.
+                time.sleep(self.giskard_idle_settle_delta.total_seconds())
         self.node.status = TaskStatus.SUCCEEDED
         self.node.plan.notify_node_ended(self.node)
 

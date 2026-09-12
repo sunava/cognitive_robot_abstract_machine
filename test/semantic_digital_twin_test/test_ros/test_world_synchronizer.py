@@ -238,6 +238,29 @@ def test_state_synchronization(rclpy_node):
     synchronizer_2.close()
 
 
+def test_queue_depth_is_applied_to_both_ends(rclpy_node):
+    """
+    A process receiving from several publishers under a busy world lock needs a deeper
+    history than the default, on the subscription and on the publisher alike.
+    """
+    synchronizer = WorldSynchronizer(
+        node=rclpy_node, _world=create_dummy_world(), queue_depth=250
+    )
+    try:
+        assert synchronizer.subscriber.qos_profile.depth == 250
+        assert synchronizer.publisher.qos_profile.depth == 250
+    finally:
+        synchronizer.close()
+
+
+def test_the_default_queue_depth_is_the_middlewares(rclpy_node):
+    synchronizer = WorldSynchronizer(node=rclpy_node, _world=create_dummy_world())
+    try:
+        assert synchronizer.subscriber.qos_profile.depth == 10
+    finally:
+        synchronizer.close()
+
+
 def test_state_synchronization_world_model_change_after_init(rclpy_node):
     w1 = World()
     w2 = World()

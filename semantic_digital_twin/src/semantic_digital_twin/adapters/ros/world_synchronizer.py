@@ -98,6 +98,18 @@ class Synchronizer(WorldEntityWithClassBasedID, PublicationProgress):
     The topic name of the publisher and subscriber.
     """
 
+    queue_depth: int = field(default=10, kw_only=True)
+    """
+    How many messages the publisher and the subscription keep in their history.
+
+    A subscription applies every message under the world's lock, so while another thread
+    holds the world for a long modification, incoming messages queue up; once more of
+    them arrive than fit in the history, the oldest are lost for good and a peer waiting
+    for one of them waits in vain. A process that receives from several publishers at
+    once, or that modifies its world for long stretches, needs a deeper history than the
+    default.
+    """
+
     publisher: Optional[Publisher] = field(init=False, default=None)
     """
     The publisher used to publish the world state.
@@ -140,10 +152,10 @@ class Synchronizer(WorldEntityWithClassBasedID, PublicationProgress):
             std_msgs.msg.String,
             topic=self.topic_name,
             callback=self.subscription_callback,
-            qos_profile=10,
+            qos_profile=self.queue_depth,
         )
         self.publisher = self.node.create_publisher(
-            std_msgs.msg.String, topic=self.topic_name, qos_profile=10
+            std_msgs.msg.String, topic=self.topic_name, qos_profile=self.queue_depth
         )
 
     @cached_property
