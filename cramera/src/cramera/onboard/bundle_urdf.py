@@ -512,7 +512,7 @@ def bundle_model(
     source: str,
     bundler: Callable[..., BundleReport],
     world_body_names: List[str],
-    base_body: Optional[str],
+    robot_bases: Dict[str, str],
     output_directory: str,
     probe_link_count: int,
     hints: Optional[Dict[str, str]] = None,
@@ -522,7 +522,7 @@ def bundle_model(
 
     Shared by onboarding (bundling a finished recording to disk) and live model
     serving (bundling a running demo's *current* world to disk) — the two differ only
-    in where ``world_body_names``/``base_body``/``hints`` come from.
+    in where ``world_body_names``/``robot_bases``/``hints`` come from.
 
     :param source: Path or URI of the model's source file.
     :param bundler: Bundles the source into ``output_directory``
@@ -530,8 +530,9 @@ def bundle_model(
         bundle_world.BundledWorld`'s Gazebo/MJCF equivalents).
     :param world_body_names: Every body name in the composed world, used to find the
         model's prefix.
-    :param base_body: The robot's base link name, used to tell a robot model apart
-        from an environment model, or None when no robot is bound.
+    :param robot_bases: Each robot's world-instance prefix mapped to its base link name,
+        used to tell a robot model apart from an environment model; empty when no robot
+        is bound.
     :param output_directory: Directory the model's URDF and meshes are written into.
     :param probe_link_count: How many of the model's first links to check for a
         prefix (see :func:`~cramera.robot_parts.model_identity`).
@@ -543,7 +544,7 @@ def bundle_model(
     prefix, is_robot = model_identity(
         links=report.links,
         world_body_names=world_body_names,
-        base_body=base_body,
+        robot_bases=robot_bases,
         probe_link_count=probe_link_count,
     )
     logger.info(

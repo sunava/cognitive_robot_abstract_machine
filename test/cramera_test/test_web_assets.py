@@ -373,6 +373,9 @@ class TestJsUnits:
     def test_joint_routing(self):
         self.run_node("test_joint_routing.js")
 
+    def test_robot_models(self):
+        self.run_node("test_robot_models.js")
+
     def test_live_mode(self):
         self.run_node("test_live_mode.js")
 

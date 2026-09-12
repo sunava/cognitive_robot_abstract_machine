@@ -181,8 +181,9 @@ def trim_recording_bundle(frame_range: FrameRange) -> None:
             % (frame_range.last, len(trajectory["frames"]))
         )
     kept = slice(frame_range.first, frame_range.last + 1)
-    for track in ("frames", "base", "objects"):
-        trajectory[track] = trajectory[track][kept]
+    for track in ("frames", "base", "modelBases", "objects"):
+        if track in trajectory:
+            trajectory[track] = trajectory[track][kept]
     scene = json.loads(scene_path.read_text(encoding="utf-8"))
     scene["segments"] = clip_segment_payloads(scene["segments"], frame_range)
     for entry in scene["objects"]:

@@ -141,6 +141,7 @@ class TestReadOnlyEndpoints:
         assert get_json(server + "/info") == {
             "running": False,
             "robot": None,
+            "robots": [],
             "objects": [],
             "movable": True,
             "plan": False,

@@ -138,7 +138,12 @@ class TestTrimRecordingBundle:
         recording.start()
         for pose in poses:
             recording.append(
-                WorldStateSnapshot(frames={}, base=None, objects={"milk.stl": pose})
+                WorldStateSnapshot(
+                    frames={},
+                    base=None,
+                    objects={"milk.stl": pose},
+                    model_bases={"pr2_1": pose},
+                )
             )
         finalize_recording(bridge, recording)
 
@@ -160,6 +165,9 @@ class TestTrimRecordingBundle:
         assert trajectory["objects"] == [{"milk.stl": pose} for pose in poses[1:4]]
         assert len(trajectory["frames"]) == 3
         assert len(trajectory["base"]) == 3
+        # every robot's base track is cut along with the rest, or a trimmed replay
+        # would drive the robots from another stretch of the run
+        assert trajectory["modelBases"] == [{"pr2_1": pose} for pose in poses[1:4]]
 
     def test_objects_spawn_where_the_kept_stretch_starts(self, tmp_path, monkeypatch):
         poses = self.carried_poses(6)

@@ -80,7 +80,11 @@ from cramera.live.markers import MarkerEntry, MarkerStore
 from cramera.live.shape_catalog import ShapeEntry, served_mesh_file, shape_entry
 from cramera.live.transforms import TransformGraph, TransformSnapshot
 from cramera.palette import ObjectPalette
-from cramera.robot_parts import RobotPartAnnotation
+from cramera.robot_parts import (
+    RobotPartAnnotation,
+    robot_model_names,
+    robot_prefix,
+)
 
 if TYPE_CHECKING:
     from coraplex.plans.plan import Plan
@@ -613,7 +617,15 @@ class BridgeStatus:
 
     robot_parts: List[RobotPartAnnotation] = field(default_factory=list)
     """
-    The arms and end effectors of the live robot, as sem_dt annotates them.
+    The arms and end effectors of every live robot, as sem_dt annotates them; each
+    annotation names the robot it belongs to by its world-instance prefix, so the parts
+    of one robot are told from another's.
+    """
+
+    robots: List[str] = field(default_factory=list)
+    """
+    The class name of every robot in the live world, in bundling order; :attr:`robot` is
+    the first of them, kept for a viewer that knows only one.
     """
 
     def to_payload(self) -> Dict[str, Any]:
@@ -664,9 +676,12 @@ class Bridge:
     The executing world, captured by the tick hook on its first call.
     """
 
-    robot: Optional[AbstractRobot] = None
+    robots: List[AbstractRobot] = field(default_factory=list)
     """
-    The robot annotation of :attr:`world`, re-discovered on every bind.
+    Every robot annotation of :attr:`world`, re-discovered on every bind.
+
+    Each one is bundled as its own model and gets its base pose streamed under its own
+    world-instance prefix, so a scene holding several robots drives all of them.
     """
 
     sequence_number: int = 0
@@ -889,6 +904,26 @@ class Bridge:
     The current live run's capture buffer, started alongside :meth:`attach` (see
     :mod:`cramera.live.visualization`); None before anything has ever attached.
     """
+
+    # %% the first robot, for everything that only ever drives one
+    @property
+    def robot(self) -> Optional[AbstractRobot]:
+        """
+        The first of :attr:`robots`, or None while none is bound.
+
+        Teleoperation, the ``__base__`` overlay key and the viewer's single-robot
+        ``robot`` payload all speak of one robot; this is the one they mean.
+        """
+        return self.robots[0] if self.robots else None
+
+    @robot.setter
+    def robot(self, robot: Optional[AbstractRobot]) -> None:
+        """
+        Bind a single robot, replacing whatever :attr:`robots` held.
+
+        :param robot: The robot to bind, or None to bind none.
+        """
+        self.robots = [robot] if robot is not None else []
 
     # %% what the visualization drives
     def attach(self, world: World) -> None:
@@ -1200,7 +1235,7 @@ class Bridge:
         if self.world is None:
             self._bundle_signature = ""
             return
-        robot_name = type(self.robot).__name__.lower() if self.robot else None
+        robot_names = self._robot_model_signature()
         entries: List[str] = []
         try:
             for body in self.world.bodies:
@@ -1222,7 +1257,21 @@ class Bridge:
             logger.debug("signature refresh skipped: %s", error)
             return
         digest = hashlib.sha1("|".join(sorted(entries)).encode()).hexdigest()[:16]
-        self._bundle_signature = "world-%s-robot-%s" % (digest, robot_name)
+        self._bundle_signature = "world-%s-robot-%s" % (digest, robot_names)
+
+    def _robot_model_signature(self) -> str:
+        """
+        The robot part of the bundle signature: every robot's model name and prefix.
+
+        A robot joining or leaving the world changes the bundle's model list, which the
+        viewer has to reload; re-parenting a streamed object changes neither.
+        """
+        if not self.robots:
+            return "None"
+        return "+".join(
+            "%s@%s" % (name, robot_prefix(robot))
+            for robot, name in zip(self.robots, robot_model_names(self.robots))
+        )
 
     def status(self) -> Dict[str, Any]:
         """
@@ -1233,6 +1282,7 @@ class Bridge:
             return BridgeStatus(
                 running=self.world is not None,
                 robot=type(self.robot).__name__ if self.robot else None,
+                robots=[type(robot).__name__ for robot in self.robots],
                 objects=[key for key in self._bodies if key != ROBOT_BASE_KEY],
                 movable=True,
                 plan=bool(self.plan_state.nodes),
@@ -1241,11 +1291,11 @@ class Bridge:
                 sequence_number=self.sequence_number,
                 model_version=self._model_revision,
                 bundle_signature=bundle_signature,
-                robot_parts=(
-                    RobotPartAnnotation.of_robot(self.robot)
-                    if self.robot is not None
-                    else []
-                ),
+                robot_parts=[
+                    annotation
+                    for robot in self.robots
+                    for annotation in RobotPartAnnotation.of_robot(robot)
+                ],
             ).to_payload()
 
     # %% viewer -> plans the running scene performs
@@ -1957,8 +2007,7 @@ class Bridge:
         if world is None:
             return
         self._last_bind_time = time.time()
-        robots = world.get_semantic_annotations_by_type(AbstractRobot)
-        self.robot = robots[0] if robots else None
+        self.robots = list(world.get_semantic_annotations_by_type(AbstractRobot))
         self._kinematic_connections = list(world.connections)
         self._connections = self._actuated_connections(self._kinematic_connections)
         bodies: Dict[str, Body] = {}
@@ -1987,12 +2036,16 @@ class Bridge:
         and disappear mid-run, so their poses stream through the overlay. Every other
         body is part of the bundled scene the viewer loads once.
 
+        Every robot's root is left out, not just the first one's: a root reaches the
+        viewer as its model's base pose, and publishing it as a loose object on top of
+        that would draw the robot's base twice.
+
         :param bodies_by_name: Every world body by its full name.
         """
-        robot_root = self.robot.root if self.robot is not None else None
+        robot_roots = {id(robot.root) for robot in self.robots}
         bodies: Dict[str, Body] = {}
         for full_name, body in bodies_by_name.items():
-            if body is robot_root:
+            if id(body) in robot_roots:
                 continue
             if is_streamed(body):
                 bodies[full_name.split("/")[-1]] = body
@@ -2124,6 +2177,7 @@ class Bridge:
                 base_pose = rounded_pose(body)
             else:
                 object_poses[name] = rounded_pose(body)
+        model_bases = self._model_base_poses()
         self._refresh_marker_state()
         transforms = self._transforms.observe(
             self._kinematic_connections, self.world, time.monotonic()
@@ -2136,8 +2190,30 @@ class Bridge:
                 frames=frames,
                 base=base_pose,
                 objects=object_poses,
+                model_bases=model_bases,
                 markers_version=self.marker_state["version"],
             )
+
+    def _model_base_poses(self) -> Dict[str, List[float]]:
+        """
+        Every bound robot's root pose, keyed by the world-instance prefix its bundled
+        model carries.
+
+        Includes the first robot, whose pose is published as the snapshot's ``base`` as
+        well: the viewer drives every model from this map, and leaving one of them out
+        of it would single that robot out for no reason.
+        """
+        poses: Dict[str, List[float]] = {}
+        for robot in self.robots:
+            try:
+                poses[robot_prefix(robot)] = rounded_pose(robot.root)
+            except Exception as error:
+                # boundary guard, as in bind(): a robot being removed from the world
+                # must not cost the whole snapshot.
+                logger.debug(
+                    "base pose skipped for %s: %s", type(robot).__name__, error
+                )
+        return poses
 
     def get_state(self) -> Dict[str, Any]:
         """

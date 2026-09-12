@@ -668,6 +668,7 @@ class TestViewerAccessors:
                 "side": None,
                 "links": ["l_upper_arm_link"],
                 "attachedTo": None,
+                "robot": "robot",
             }
         ]
 
@@ -751,6 +752,169 @@ class TestWorldDrivenDiscovery:
         assert objects["milk.stl"] == [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
 
 
+# %% a world holding several robots
+
+
+def robot_on_a_drive(world: World, prefix: str, x: float) -> Body:
+    """
+    A robot root that can be driven around, plus the arm link hanging off it.
+
+    :param world: The world the robot is spawned into.
+    :param prefix: The world-instance prefix the robot's bodies are named under.
+    :param x: Where along x the robot starts out.
+    :return: The robot's root body.
+    """
+    root = shaped_body(prefix, "base_link")
+    arm = shaped_body(prefix, "arm_link")
+    with world.modify_world():
+        world.add_connection(
+            Connection6DoF.create_with_dofs(parent=world.root, child=root, world=world)
+        )
+        world.add_connection(FixedConnection(parent=root, child=arm))
+    drive_to(world, root, x)
+    return root
+
+
+def drive_to(world: World, body: Body, x: float) -> None:
+    """
+    Drive a free-floating body along x, the way a robot's base moves under a plan.
+
+    :param world: The world the body lives in.
+    :param body: The body to move.
+    :param x: The x coordinate to move it to.
+    """
+    connection = body.parent_connection
+    pose = HomogeneousTransformationMatrix.from_xyz_rpy(x, 0.0, 0.0)
+    pose.reference_frame = connection.parent
+    pose.child_frame = body
+    connection.origin = pose
+
+
+def two_robot_bridge() -> Bridge:
+    """
+    A bridge attached to a world holding two robots of the same class, each on its own
+    drive and under its own prefix -- a second PR2 spawned beside the first.
+    """
+    world = world_with()
+    robots = [
+        OneArmedRobot(
+            arm=ArmPart(bodies=[NamedBody("pr2_1/arm_link")]),
+            root=robot_on_a_drive(world, "pr2_1", 1.0),
+        ),
+        OneArmedRobot(
+            arm=ArmPart(bodies=[NamedBody("pr2_2/arm_link")]),
+            root=robot_on_a_drive(world, "pr2_2", -1.0),
+        ),
+    ]
+    # the mimics are no sem_dt annotations, so stand in for the world's own discovery
+    world.get_semantic_annotations_by_type = lambda annotation_type: list(robots)
+    bridge = Bridge()
+    bridge.attach(world)
+    return bridge
+
+
+class TestSeveralRobots:
+    """
+    Every robot's base pose is streamed under its own model prefix.
+
+    Publishing only the first one is what used to leave a second robot standing still
+    while its joints animated.
+    """
+
+    def test_every_robots_base_pose_is_streamed(self):
+        bridge = two_robot_bridge()
+
+        bridge.snapshot()
+
+        model_bases = bridge.get_state()["modelBases"]
+        assert sorted(model_bases) == ["pr2_1", "pr2_2"]
+        assert model_bases["pr2_1"] == [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        assert model_bases["pr2_2"] == [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+
+    def test_the_first_robot_is_streamed_as_the_base_as_well(self):
+        """
+        A viewer that only ever knew one robot keeps reading ``base``.
+        """
+        bridge = two_robot_bridge()
+
+        bridge.snapshot()
+
+        state = bridge.get_state()
+        assert state["base"] == state["modelBases"]["pr2_1"]
+
+    def test_a_second_robots_base_follows_its_drive(self):
+        bridge = two_robot_bridge()
+        bridge.snapshot()
+
+        drive_to(bridge.world, bridge.robots[1].root, 4.0)
+        bridge.snapshot()
+
+        model_bases = bridge.get_state()["modelBases"]
+        assert model_bases["pr2_2"] == [4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        assert model_bases["pr2_1"] == [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+
+    def test_one_robot_still_publishes_its_base_under_its_prefix(self):
+        bridge = Bridge()
+        world = world_with()
+        robot = OneArmedRobot(
+            arm=ArmPart(bodies=[NamedBody("pr2_1/arm_link")]),
+            root=robot_on_a_drive(world, "pr2_1", 2.0),
+        )
+        world.get_semantic_annotations_by_type = lambda annotation_type: [robot]
+        bridge.attach(world)
+
+        bridge.snapshot()
+
+        state = bridge.get_state()
+        assert state["modelBases"] == {"pr2_1": [2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]}
+        assert state["base"] == state["modelBases"]["pr2_1"]
+
+    def test_no_robots_root_is_published_as_a_loose_object(self):
+        """
+        A root reaches the viewer as its model's base pose; a demo whose robot root
+        happens to be named after a mesh file must not have it drawn twice.
+        """
+        world = world_with()
+        first = robot_on_a_drive(world, "pr2_1", 1.0)
+        second = shaped_body("rover", "chassis.stl")
+        with world.modify_world():
+            world.add_connection(
+                Connection6DoF.create_with_dofs(
+                    parent=world.root, child=second, world=world
+                )
+            )
+        robots = [
+            OneArmedRobot(arm=ArmPart(), root=first),
+            OneArmedRobot(arm=ArmPart(), root=second),
+        ]
+        world.get_semantic_annotations_by_type = lambda annotation_type: list(robots)
+        bridge = Bridge()
+
+        bridge.attach(world)
+
+        assert bridge.object_keys() == []
+        bridge.snapshot()
+        assert sorted(bridge.get_state()["modelBases"]) == ["pr2_1", "rover"]
+
+    def test_the_status_lists_every_robot(self):
+        status = two_robot_bridge().status()
+
+        assert status["robots"] == ["OneArmedRobot", "OneArmedRobot"]
+        assert status["robot"] == "OneArmedRobot"
+
+    def test_the_status_names_the_robot_each_part_belongs_to(self):
+        """
+        The parts of every robot are published as one flat list, so each annotation has
+        to say whose arm it is; the link names stay unprefixed as they always were.
+        """
+        status = two_robot_bridge().status()
+
+        assert [
+            (annotation["robot"], annotation["links"])
+            for annotation in status["partAnnotations"]
+        ] == [("pr2_1", ["arm_link"]), ("pr2_2", ["arm_link"])]
+
+
 class TestBundleSignature:
     def test_attaching_a_world_changes_the_signature(self):
         """
@@ -806,6 +970,26 @@ class TestBundleSignature:
         bridge.observe_model_change()
 
         assert bridge.bundle_signature() == before
+
+    def test_a_second_robot_changes_the_signature(self):
+        """
+        The bundle grows a model per robot, so a robot joining the world is a scene the
+        viewer has to reload.
+        """
+        world = world_with(shaped_body("montessori", "board"))
+        first = OneArmedRobot(arm=ArmPart(), root=robot_on_a_drive(world, "pr2_1", 1.0))
+        robots = [first]
+        world.get_semantic_annotations_by_type = lambda annotation_type: list(robots)
+        bridge = Bridge()
+        bridge.attach(world)
+        before = bridge.bundle_signature()
+
+        robots.append(
+            OneArmedRobot(arm=ArmPart(), root=robot_on_a_drive(world, "pr2_2", -1.0))
+        )
+        bridge.observe_model_change()
+
+        assert bridge.bundle_signature() != before
 
     def test_the_model_version_counts_attachments_and_model_changes(self):
         bridge = Bridge()

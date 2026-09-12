@@ -3,10 +3,11 @@ HTTP endpoints of the live bridge (default port 8765).
 
 ::
 
-    GET /info    {running, robot, objects, plan, chart, sequenceNumber,
+    GET /info    {running, robot, robots, objects, plan, chart, sequenceNumber,
                   partAnnotations}
     GET /state   {sequenceNumber, frames: {prefixed_joint: position},
-                  base: pose, objects: {mesh_key: pose}}
+                  base: pose, modelBases: {model_prefix: pose},
+                  objects: {mesh_key: pose}}
     GET /objects geometry catalog (mesh served via /mesh?key=)
     GET /markers {version, markers: [{topic, ns, id, kind, pose, scale, color,
                   opacity, points, text}]}  the CRAM debug-marker overlay

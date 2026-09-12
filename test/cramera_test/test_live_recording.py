@@ -23,8 +23,15 @@ from cramera.live.recording import (
 )
 
 
-def snapshot(frames=None, base=None, objects=None) -> WorldStateSnapshot:
-    return WorldStateSnapshot(frames=frames or {}, base=base, objects=objects or {})
+def snapshot(
+    frames=None, base=None, objects=None, model_bases=None
+) -> WorldStateSnapshot:
+    return WorldStateSnapshot(
+        frames=frames or {},
+        base=base,
+        objects=objects or {},
+        model_bases=model_bases or {},
+    )
 
 
 def statechart(life_cycle: str = "RUNNING") -> ChartSnapshot:
@@ -124,6 +131,50 @@ class TestAppend:
         recording.append(snapshot(frames={"joint": 1.0}), "TransportAction")
 
         assert recording.stop()[0].step == "TransportAction"
+
+    def test_every_robots_base_pose_is_buffered_with_the_tick(self):
+        """
+        A replay drives every robot of the run from these, not only the first one.
+        """
+        recording = Recording()
+        recording.start()
+
+        recording.append(
+            snapshot(
+                base=[1, 0, 0, 0, 0, 0, 1],
+                model_bases={
+                    "pr2_1": [1, 0, 0, 0, 0, 0, 1],
+                    "pr2_2": [-1, 0, 0, 0, 0, 0, 1],
+                },
+            )
+        )
+
+        assert recording.stop()[0].model_bases == {
+            "pr2_1": [1, 0, 0, 0, 0, 0, 1],
+            "pr2_2": [-1, 0, 0, 0, 0, 0, 1],
+        }
+
+    def test_a_buffered_base_pose_is_a_copy(self):
+        """
+        The bridge publishes a new snapshot every tick, but a pose list handed to it is
+        the world's -- a buffered frame must not change under the replay.
+        """
+        recording = Recording()
+        recording.start()
+        pose = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        recording.append(snapshot(model_bases={"pr2_1": pose}))
+
+        pose[0] = 9.0
+
+        assert recording.stop()[0].model_bases["pr2_1"][0] == 1.0
+
+    def test_a_run_without_a_robot_buffers_no_base_poses(self):
+        recording = Recording()
+        recording.start()
+
+        recording.append(snapshot(frames={"joint": 1.0}))
+
+        assert recording.stop()[0].model_bases == {}
 
     def test_a_tick_with_no_action_running_is_buffered_without_one(self):
         recording = Recording()

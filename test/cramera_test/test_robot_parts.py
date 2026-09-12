@@ -11,6 +11,10 @@ from cramera.robot_parts import (
     RobotPartAnnotation,
     RobotPartRole,
     model_identity,
+    robot_base_link,
+    robot_bases,
+    robot_model_names,
+    robot_prefix,
 )
 
 # %% mimics standing in for the sem_dt annotations of a world
@@ -130,6 +134,7 @@ class TestDescribeRobotParts:
                 role=RobotPartRole.ARM,
                 side=None,
                 links=["l_upper_arm_link"],
+                robot="robot",
             ),
             RobotPartAnnotation(
                 name="EndEffectorPart",
@@ -137,8 +142,32 @@ class TestDescribeRobotParts:
                 side=None,
                 links=["l_gripper_link"],
                 attached_to="ArmPart",
+                robot="robot",
             ),
         ]
+
+    def test_every_annotation_names_the_robot_it_was_read_off(self):
+        """
+        A world holding several robots publishes one flat list of part annotations; the
+        prefix each one carries is what says whose arm it is.
+        """
+        robot = OneArmedRobot(
+            arm=ArmPart(bodies=[NamedBody("uMe/arm_link")]),
+            root=NamedBody("uMe/base_link"),
+        )
+
+        [annotation] = RobotPartAnnotation.of_robot(robot)
+
+        assert annotation.robot == "uMe"
+
+    def test_a_robot_whose_bodies_carry_no_prefix_names_none(self):
+        robot = OneArmedRobot(
+            arm=ArmPart(bodies=[NamedBody("arm_link")]), root=NamedBody("base_link")
+        )
+
+        [annotation] = RobotPartAnnotation.of_robot(robot)
+
+        assert annotation.robot is None
 
     def test_the_side_comes_from_the_robots_own_left_right_annotation(self):
         """
@@ -182,6 +211,7 @@ class TestRobotPartAnnotationPayload:
             "side": "left",
             "links": [],
             "attachedTo": None,
+            "robot": None,
         }
 
     def test_a_sideless_payload_round_trips(self):
@@ -191,6 +221,61 @@ class TestRobotPartAnnotationPayload:
         assert RobotPartAnnotation.from_payload(annotation.to_payload()) == annotation
 
 
+# %% naming a world's robots
+
+
+class TestRobotIdentity:
+    """
+    Two robots of the same class carry the same link names and the same class name; only
+    the prefix their bodies are spawned under tells them apart.
+    """
+
+    def test_the_prefix_is_the_one_the_root_body_is_named_under(self):
+        robot = OneArmedRobot(arm=ArmPart(), root=NamedBody("walker_s2/base_link"))
+
+        assert robot_prefix(robot) == "walker_s2"
+        assert robot_base_link(robot) == "base_link"
+
+    def test_an_unprefixed_robot_has_no_prefix(self):
+        robot = OneArmedRobot(arm=ArmPart(), root=NamedBody("base_link"))
+
+        assert robot_prefix(robot) == ""
+        assert robot_base_link(robot) == "base_link"
+
+    def test_every_robot_is_named_after_its_class(self):
+        robots = [
+            OneArmedRobot(arm=ArmPart(), root=NamedBody("a/base_link")),
+            TwoArmedRobot(left=ArmPart(), right=ArmPart()),
+        ]
+
+        assert robot_model_names(robots) == ["onearmedrobot", "twoarmedrobot"]
+
+    def test_robots_of_one_class_are_numbered_apart(self):
+        """
+        Two robots of a class would write over each other's URDF, and the viewer would
+        have no way to tell their models apart.
+        """
+        robots = [
+            OneArmedRobot(arm=ArmPart(), root=NamedBody("pr2_1/base_link")),
+            OneArmedRobot(arm=ArmPart(), root=NamedBody("pr2_2/base_link")),
+            OneArmedRobot(arm=ArmPart(), root=NamedBody("pr2_3/base_link")),
+        ]
+
+        assert robot_model_names(robots) == [
+            "onearmedrobot",
+            "onearmedrobot_2",
+            "onearmedrobot_3",
+        ]
+
+    def test_the_bases_of_a_world_are_keyed_by_prefix(self):
+        robots = [
+            OneArmedRobot(arm=ArmPart(), root=NamedBody("pr2_1/base_link")),
+            OneArmedRobot(arm=ArmPart(), root=NamedBody("uMe/pelvis")),
+        ]
+
+        assert robot_bases(robots) == {"pr2_1": "base_link", "uMe": "pelvis"}
+
+
 # %% identifying a model within a world
 class TestModelIdentity:
     """
@@ -198,22 +283,47 @@ class TestModelIdentity:
     its link names alone, shared by onboarding and live model serving.
     """
 
-    def test_a_model_whose_links_include_the_robot_base_is_the_robot(self):
+    def test_a_model_named_under_a_robots_prefix_is_that_robot(self):
         prefix, is_robot = model_identity(
             links=["base_link", "arm_link"],
             world_body_names=["pr2_1/base_link", "pr2_1/arm_link"],
-            base_body="base_link",
+            robot_bases={"pr2_1": "base_link"},
             probe_link_count=12,
         )
 
         assert is_robot is True
         assert prefix == "pr2_1"
 
-    def test_a_model_without_the_robot_base_is_an_environment_model(self):
+    def test_each_robot_of_a_world_gets_its_own_model_recognized(self):
+        """
+        Two robots of the same class carry the same link names, so only their prefixes
+        tell their models apart -- and both of them are a robot.
+        """
+        robot_bases = {"pr2_1": "base_link", "pr2_2": "base_link"}
+        world_body_names = ["pr2_1/base_link", "pr2_2/base_link", "lab_1/table"]
+
+        identities = [
+            model_identity(
+                links=["base_link"],
+                world_body_names=world_body_names,
+                robot_bases=robot_bases,
+                probe_link_count=12,
+            ),
+            model_identity(
+                links=["table"],
+                world_body_names=world_body_names,
+                robot_bases=robot_bases,
+                probe_link_count=12,
+            ),
+        ]
+
+        assert identities == [("pr2_1", True), ("lab_1", False)]
+
+    def test_a_model_named_under_no_robots_prefix_is_an_environment_model(self):
         prefix, is_robot = model_identity(
             links=["table", "lid"],
             world_body_names=["lab_1/table", "lab_1/lid"],
-            base_body="base_link",
+            robot_bases={"pr2_1": "base_link"},
             probe_link_count=12,
         )
 
@@ -224,17 +334,33 @@ class TestModelIdentity:
         prefix, is_robot = model_identity(
             links=["table"],
             world_body_names=["table"],
-            base_body="base_link",
+            robot_bases={"": "base_link"},
             probe_link_count=12,
         )
 
         assert prefix == ""
+        assert is_robot is False
+
+    def test_an_unprefixed_world_falls_back_to_the_robots_base_link(self):
+        """
+        Without prefixes there is nothing to match a robot's model on, so the model
+        holding a robot's base link is that robot's.
+        """
+        prefix, is_robot = model_identity(
+            links=["base_link", "arm_link"],
+            world_body_names=["base_link", "arm_link"],
+            robot_bases={"": "base_link"},
+            probe_link_count=12,
+        )
+
+        assert prefix == ""
+        assert is_robot is True
 
     def test_only_the_first_probe_link_count_links_are_checked_for_a_prefix(self):
         prefix, _ = model_identity(
             links=["a", "b", "c"],
             world_body_names=["lab_1/c"],
-            base_body="base_link",
+            robot_bases={"pr2_1": "base_link"},
             probe_link_count=2,
         )
 
@@ -244,7 +370,7 @@ class TestModelIdentity:
         _, is_robot = model_identity(
             links=["base_link"],
             world_body_names=["base_link"],
-            base_body=None,
+            robot_bases={},
             probe_link_count=12,
         )
 

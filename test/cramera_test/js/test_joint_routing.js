@@ -88,3 +88,39 @@ test('an unknown key resolves to nothing rather than throwing', function () {
   assert.strictEqual(routing.jointFor(FRANKA, 'no_such_joint'), null);
   assert.strictEqual(routing.jointFor([], 'joint1'), null);
 });
+
+// %% which model the key landed in
+// With several robots in one scene, moving a joint says which robot is acting: the
+// camera follows that one, and a joint entity highlights its links rather than the
+// same-named link of the robot standing next to it.
+test('a route names the model the joint was found in', function () {
+  const routing = load();
+  const walker = model('walker_s2_description', ['left_knee_pitch']);
+  const ume = model('uMe', ['left_knee_pitch']);
+  const models = [model('', []), walker, ume];
+
+  assert.strictEqual(routing.routeFor(models, 'uMe/left_knee_pitch').model, ume);
+  assert.strictEqual(routing.routeFor(models, 'walker_s2_description/left_knee_pitch').model,
+    walker);
+});
+
+test('a bare key routes to the first model that declares it', function () {
+  const routing = load();
+  const walker = model('walker_s2_description', ['left_knee_pitch']);
+  const ume = model('uMe', ['left_knee_pitch']);
+
+  assert.strictEqual(routing.routeFor([walker, ume], 'left_knee_pitch').model, walker);
+});
+
+test('an unroutable key is no route at all', function () {
+  const routing = load();
+  assert.strictEqual(routing.routeFor(FRANKA, 'no_such_joint'), null);
+});
+
+test('the joint of a route is the joint the key drives', function () {
+  const routing = load();
+  const models = [model('pr2', ['torso_lift_joint'])];
+
+  assert.strictEqual(routing.routeFor(models, 'pr2/torso_lift_joint').joint,
+    routing.jointFor(models, 'pr2/torso_lift_joint'));
+});

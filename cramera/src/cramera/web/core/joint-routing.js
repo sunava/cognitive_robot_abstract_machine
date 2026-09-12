@@ -8,6 +8,10 @@
  * bare ("joint1") or start with a slash ("/finger_joint1"); a Gazebo world prefixes both.
  * So a key is tried as a prefixed name first -- that is what keeps two models declaring
  * the same joint name apart -- and then as a plain joint name across every model.
+ *
+ * Which model a key lands in is an answer of its own: with several robots in the scene,
+ * the one whose joints are moving is the one the camera should follow and the one whose
+ * links a joint entity highlights, so `routeFor` reports the model beside the joint.
  * ==========================================================================*/
 (function (global) {
   'use strict';
@@ -17,33 +21,42 @@
     return (joints && joints[name]) || null;
   }
 
-  function anyJointNamed(models, name) {
+  function anyRouteNamed(models, name) {
     for (let index = 0; index < models.length; index += 1) {
       const joint = jointNamed(models[index], name);
-      if (joint) return joint;
+      if (joint) return { model: models[index], joint: joint };
     }
     return null;
   }
 
-  global.JointRouting = {
-    /* The joint `key` drives, or null when no loaded model declares it.
+  /* The model and joint `key` drives, as {model, joint}, or null when no loaded model
+     declares it.
 
-       `models` are the loaded model entries the shell holds: a `prefix` and the URDF's
-       joints under `obj.joints`. */
-    jointFor: function (models, key) {
-      // a leading slash is part of the name, not an empty prefix
-      const cut = key.indexOf('/');
-      if (cut > 0) {
-        const prefix = key.slice(0, cut);
-        const name = key.slice(cut + 1);
-        for (let index = 0; index < models.length; index += 1) {
-          if (models[index].prefix !== prefix) continue;
-          const joint = jointNamed(models[index], name);
-          if (joint) return joint;
-        }
-        return anyJointNamed(models, key) || anyJointNamed(models, name);
+     `models` are the loaded model entries the shell holds: a `prefix` and the URDF's
+     joints under `obj.joints`. */
+  function routeFor(models, key) {
+    // a leading slash is part of the name, not an empty prefix
+    const cut = key.indexOf('/');
+    if (cut > 0) {
+      const prefix = key.slice(0, cut);
+      const name = key.slice(cut + 1);
+      for (let index = 0; index < models.length; index += 1) {
+        if (models[index].prefix !== prefix) continue;
+        const joint = jointNamed(models[index], name);
+        if (joint) return { model: models[index], joint: joint };
       }
-      return anyJointNamed(models, key);
+      return anyRouteNamed(models, key) || anyRouteNamed(models, name);
+    }
+    return anyRouteNamed(models, key);
+  }
+
+  global.JointRouting = {
+    routeFor: routeFor,
+
+    /* The joint `key` drives, or null when no loaded model declares it. */
+    jointFor: function (models, key) {
+      const route = routeFor(models, key);
+      return route ? route.joint : null;
     },
   };
 })(window);

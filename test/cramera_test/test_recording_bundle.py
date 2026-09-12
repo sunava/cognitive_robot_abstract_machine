@@ -27,7 +27,12 @@ from cramera.knowledge.recorded_statecharts import (
 )
 from cramera.live.recording_segments import derive_segments
 
-from .test_live_bundle import attached_bridge, laboratory_world, shaped
+from .test_live_bundle import (
+    attached_bridge,
+    laboratory_world,
+    multi_robot_bridge,
+    shaped,
+)
 from .test_live_recording import statechart
 
 MILK_SPAWN = [0.1, 0.2, 0.3, 0, 0, 0, 1]
@@ -54,6 +59,27 @@ class TestGeometry:
         assert names == ["environment", "robotwithsubtree"]
         assert (tmp_path / "rec" / "environment.urdf").is_file()
         assert (tmp_path / "rec" / "robotwithsubtree.urdf").is_file()
+
+    def test_every_robot_of_the_run_is_bundled_as_its_own_model(self, tmp_path):
+        """
+        A recording reuses the live bundle's machinery, so a run with several robots is
+        replayable exactly as it was live.
+        """
+        bridge = multi_robot_bridge()
+
+        scene = write_recording_bundle(
+            bridge, [frame_with_milk()], 20.0, tmp_path / "rec", "__recording__"
+        )
+
+        assert [model["name"] for model in scene["models"]] == [
+            "environment",
+            "robotwithsubtree",
+            "robotwithsubtree_2",
+        ]
+        assert [model["prefix"] for model in scene["models"]] == ["", "robot", "uMe"]
+        assert [robot["prefix"] for robot in scene["robots"]] == ["robot", "uMe"]
+        assert scene["robot"] == scene["robots"][0]
+        assert (tmp_path / "rec" / "robotwithsubtree_2.urdf").is_file()
 
     def test_the_scene_carries_the_given_name(self, tmp_path):
         bridge = attached_bridge()
@@ -216,6 +242,52 @@ class TestTrajectory:
         assert len(trajectory["objects"]) == 2
         assert trajectory["frames"][1] == {"j": 1.0}
         assert trajectory["base"][1] == [0] * 7
+
+    def test_every_robots_base_pose_is_written_beside_the_frames(self, tmp_path):
+        """
+        A replay drives each robot model from its own track; without them every robot
+        but the first would stand still through the replay.
+        """
+        bridge = attached_bridge()
+        frames = [
+            RecordedFrame(
+                frames={},
+                base=[1, 0, 0, 0, 0, 0, 1],
+                objects={"milk.stl": MILK_SPAWN},
+                model_bases={
+                    "pr2_1": [1, 0, 0, 0, 0, 0, 1],
+                    "pr2_2": [-1, 0, 0, 0, 0, 0, 1],
+                },
+            ),
+            RecordedFrame(
+                frames={},
+                base=[2, 0, 0, 0, 0, 0, 1],
+                objects={"milk.stl": MILK_SPAWN},
+                model_bases={
+                    "pr2_1": [2, 0, 0, 0, 0, 0, 1],
+                    "pr2_2": [-2, 0, 0, 0, 0, 0, 1],
+                },
+            ),
+        ]
+
+        write_recording_bundle(bridge, frames, 20.0, tmp_path / "rec", "__recording__")
+
+        trajectory = json.loads((tmp_path / "rec" / "trajectory.json").read_text())
+        assert len(trajectory["modelBases"]) == len(trajectory["frames"]) == 2
+        assert trajectory["modelBases"][1] == {
+            "pr2_1": [2, 0, 0, 0, 0, 0, 1],
+            "pr2_2": [-2, 0, 0, 0, 0, 0, 1],
+        }
+
+    def test_a_run_without_a_robot_writes_empty_base_poses(self, tmp_path):
+        bridge = attached_bridge()
+
+        write_recording_bundle(
+            bridge, [frame_with_milk()], 20.0, tmp_path / "rec", "__recording__"
+        )
+
+        trajectory = json.loads((tmp_path / "rec" / "trajectory.json").read_text())
+        assert trajectory["modelBases"] == [{}]
 
     def test_frames_per_second_is_carried_through(self, tmp_path):
         bridge = attached_bridge()

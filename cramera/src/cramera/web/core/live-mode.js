@@ -98,17 +98,20 @@
     },
 
     /* Whether a freshly built live bundle describes the same world as the one this
-       page loaded: same models (names, prefixes, robot flags) and the same robot
-       identity. A page can sit on the live scene across demo runs, so attaching must
-       compare rather than assume. With nothing to compare (page not loaded yet, or
-       the rebundle failed) the answer is "same" — reloading on no evidence would
-       loop. */
+       page loaded: same models (names, prefixes, robot flags) and the same robots. A
+       page can sit on the live scene across demo runs, so attaching must compare rather
+       than assume. With nothing to compare (page not loaded yet, or the rebundle
+       failed) the answer is "same" — reloading on no evidence would loop.
+
+       A world can run several robots, so the whole list counts: a demo that gained or
+       lost one is a different world even when its first robot is unchanged. */
     sameBundle: function (loadedScene, freshScene) {
       if (!loadedScene || !freshScene) return true;
       const identity = function (scene) {
         return JSON.stringify({
           models: scene.models || [],
           robot: scene.robot || null,
+          robots: scene.robots || null,
         });
       };
       return identity(loadedScene) === identity(freshScene);

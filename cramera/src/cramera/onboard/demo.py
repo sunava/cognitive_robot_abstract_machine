@@ -87,7 +87,12 @@ from cramera.onboard.detection_recorder import DetectionRecorder
 from cramera.generated_json import write_json_atomically
 from cramera.live.bridge import ROBOT_BASE_KEY
 from cramera.monkey_patch import MethodPatch
-from cramera.robot_parts import RobotPartAnnotation
+from cramera.robot_parts import (
+    RobotPartAnnotation,
+    robot_base_link,
+    robot_bases,
+    robot_prefix,
+)
 from cramera.mesh_format import MeshFormat
 from cramera.onboard.bundle_urdf import (
     BundledAssets,
@@ -1191,7 +1196,7 @@ class SceneBuilder:
         source: str,
         bundler: Callable[..., BundleReport],
         world_body_names: List[str],
-        base_body: str,
+        robot_bases: Dict[str, str],
     ) -> BundledModel:
         """
         Bundle one model source and turn its report into a ``models`` scene entry.
@@ -1200,15 +1205,15 @@ class SceneBuilder:
         :param bundler: Bundles the source into :attr:`output_directory`.
         :param world_body_names: Every body name in the composed world, used to find the
             model's prefix.
-        :param base_body: The robot's base link name, used to tell a robot model apart
-            from an environment model.
+        :param robot_bases: Each robot's world-instance prefix mapped to its base link
+            name, used to tell a robot model apart from an environment model.
         :return: The model's ``models`` scene entry, and the bundler's report.
         """
         return bundle_model(
             source,
             bundler,
             world_body_names,
-            base_body,
+            robot_bases,
             self.output_directory,
             self.PREFIX_PROBE_LINKS,
             hints=self.recorder.resolutions,
@@ -1436,9 +1441,8 @@ class SceneBuilder:
 
         # %% robot description
         robot = self.recorder.robot
-        root_name = str(robot.root.name)
-        prefix = root_name.split("/", 1)[0] if "/" in root_name else ""
-        base_body = root_name.split("/", 1)[1] if "/" in root_name else root_name
+        prefix = robot_prefix(robot)
+        base_body = robot_base_link(robot)
         part_annotations = RobotPartAnnotation.of_robot(robot)
         parts = {annotation.name: annotation.links for annotation in part_annotations}
 
@@ -1551,6 +1555,9 @@ class SceneBuilder:
 
         # %% bundle every model source the demo loaded
         world_body_names = [str(body.name) for body in self.recorder.world.bodies]
+        world_robot_bases = robot_bases(
+            self.recorder.world.get_semantic_annotations_by_type(AbstractRobot)
+        )
         models = []
         missing: List[str] = []
         bundled_sources = (
@@ -1565,7 +1572,7 @@ class SceneBuilder:
             ]
         )
         bundled_models = [
-            self._bundle_model(source, bundler, world_body_names, base_body)
+            self._bundle_model(source, bundler, world_body_names, world_robot_bases)
             for source, bundler in bundled_sources
         ]
         environment = self._bundle_unclaimed_bodies(bundled_models, objects)

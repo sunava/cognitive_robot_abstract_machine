@@ -223,8 +223,10 @@ Panels.define('robot-scene', function (root, bus) {
   let SCENE = null;              // scene.json payload
   let sceneBase = null;          // static/scenes/<name>/
   let traj = null;
-  const models = [];              // {name, prefix, robot, obj}
-  let robotModel = null;          // the bundle's own robot entry
+  const models = [];              // {name, prefix, robot, order, obj, payload, linkToPart}
+  let robotModels = [];           // the bundle's robot entries, in bundle order
+  let primaryRobot = null;        // the first robot — what a lone `base` describes
+  let actingRobot = null;         // the robot that moved last — the one the camera follows
   const objectMeshes = {};       // mesh key ('milk.stl') -> THREE.Group
   const guidedKeys = new Set();  // keys the Plan Builder asked to flag with a bobbing arrow (until grabbed)
   const objectLabels = {};       // mesh key -> label sprite
@@ -443,7 +445,7 @@ Panels.define('robot-scene', function (root, bus) {
     spr.scale.set(cv.width * s, cv.height * s, 1);
     return spr;
   }
-  let linkToPart = {};           // link name -> part name (from robot.parts)
+  let robotPayloads = [];        // one payload per robot of the bundle (scene.robots)
   const readyCbs = [];
   let finalized = false;
 
@@ -575,20 +577,59 @@ Panels.define('robot-scene', function (root, bus) {
     envSel.addEventListener('change', function () { navigateTo(envSel.value); });
   }
 
+  // %% the scene's robots
+  // A bundle lists its environment and then one model per robot. The models load
+  // asynchronously, so the robots are kept in bundle order rather than load order: the
+  // first of them is the primary robot, the one a lone `base` (live) or `trajectory.base`
+  // (playback) describes and the one everything robot-shaped falls back to. Each robot
+  // gets its own part table, since two robots may declare the same link names.
+  function trackRobotModels() {
+    robotModels = RobotModels.robots(models);
+    primaryRobot = robotModels[0] || null;
+    if (!actingRobot) actingRobot = primaryRobot;
+    robotModels.forEach(function (robot) {
+      robot.payload = RobotModels.payloadFor(robotPayloads, robot, robotModels.length);
+      robot.linkToPart = RobotModels.linkToPart(robot.payload);
+    });
+  }
+  // the camera follows whichever robot is doing something — the one whose base pose or
+  // joints moved most recently
+  function noteActing(entry) {
+    if (entry && entry.robot) actingRobot = entry;
+  }
+  // the robot model `object` sits under, or null for anything else in the scene
+  function robotModelOf(object) {
+    let node = object;
+    while (node) {
+      for (let index = 0; index < robotModels.length; index += 1) {
+        if (robotModels[index].obj === node) return robotModels[index];
+      }
+      node = node.parent;
+    }
+    return null;
+  }
+  // put one model at a streamed or recorded base pose, reporting whether that moved it
+  function poseModel(entry, from, to, t) {
+    const changed = RobotModels.moved(entry.obj, from);
+    setPose(entry.obj, from, to, t);
+    return changed;
+  }
+
   function loadScene(sc) {
     SCENE = sc;
     playbackSpeedMultiplier = 1;
     if (statusEl) statusEl.textContent = 'Loading ' + sc.name + '…';
-    // robot part lookup (link -> part name)
-    linkToPart = {};
-    const parts = (sc.robot && sc.robot.parts) || {};
-    for (const part in parts) parts[part].forEach(function (l) { linkToPart[l] = part; });
+    // robot part lookup (link -> part name), one payload per robot of the bundle
+    robotPayloads = RobotModels.payloads(sc);
 
-    sc.models.forEach(function (m) {
+    sc.models.forEach(function (m, order) {
       makeUrdfLoader().load(sceneBase + m.urdf, function (obj) {
-        const entry = { name: m.name, prefix: m.prefix || '', robot: !!m.robot, obj: obj };
+        const entry = {
+          name: m.name, prefix: m.prefix || '', robot: !!m.robot, order: order,
+          obj: obj, payload: null, linkToPart: {},
+        };
         models.push(entry);
-        if (m.robot) robotModel = entry;
+        if (entry.robot) trackRobotModels();
         worldRoot.add(obj);
         refreshFrameAxes();          // every link of the model is a frame
         needsRender = true;
@@ -699,6 +740,8 @@ Panels.define('robot-scene', function (root, bus) {
   function upgradeMaterials() { models.forEach(tameModel); }
 
   function dropGroundToScene() {
+    // the floor is sized by what stands on it, so every robot of the scene — not just
+    // the first — is left out of the measurement
     const envs = models.filter(function (m) { return !m.robot; });
     if (!envs.length) return;
     const box = new THREE.Box3();
@@ -734,13 +777,26 @@ Panels.define('robot-scene', function (root, bus) {
     const F = traj.frames, i0 = Math.floor(f), i1 = Math.min(i0 + 1, F.length - 1), t = f - i0;
     const f0 = F[i0], f1 = F[i1];
     for (const k in f0) {
-      const j = JointRouting.jointFor(models, k);
-      if (j) j.setJointValue(f0[k] + ((f1[k] !== undefined ? f1[k] : f0[k]) - f0[k]) * t);
+      const route = JointRouting.routeFor(models, k);
+      if (!route) continue;
+      const moved = route.joint.setJointValue(
+        f0[k] + ((f1[k] !== undefined ? f1[k] : f0[k]) - f0[k]) * t);
+      if (moved && route.model.robot) noteActing(route.model);
     }
-    if (robotModel && traj.base && traj.base[i0]) {
-      setPose(robotModel.obj, traj.base[i0], traj.base[i1] || traj.base[i0], t);
-      const bo = baseOffsetAt(f);
-      robotModel.obj.position.x += bo.x; robotModel.obj.position.y += bo.y;
+    // one recorded base pose per robot; a recording made before that describes the
+    // primary robot alone, as `base`
+    const bases = RobotModels.basesAt(traj, i0);
+    const nextBases = RobotModels.basesAt(traj, i1) || bases;
+    let primaryPosed = false;
+    robotModels.forEach(function (robot) {
+      const from = RobotModels.baseOf(bases, robot);
+      if (!from) return;
+      if (poseModel(robot, from, RobotModels.baseOf(nextBases, robot) || from, t)) noteActing(robot);
+      if (robot === primaryRobot) { primaryPosed = true; applyBaseOffset(robot, f); }
+    });
+    if (primaryRobot && !primaryPosed && traj.base && traj.base[i0]) {
+      setPose(primaryRobot.obj, traj.base[i0], traj.base[i1] || traj.base[i0], t);
+      applyBaseOffset(primaryRobot, f);
     }
     if (traj.objects) {
       const o0 = traj.objects[i0], o1 = traj.objects[i1];
@@ -937,13 +993,26 @@ Panels.define('robot-scene', function (root, bus) {
     }
     return ZERO;
   }
+  // A dragged object moves the recorded reach with it; the transports are the primary
+  // robot's, so only that robot's recorded base follows the arrangement made on screen.
+  function applyBaseOffset(entry, f) {
+    const offset = baseOffsetAt(f);
+    entry.obj.position.x += offset.x;
+    entry.obj.position.y += offset.y;
+  }
 
   // %% camera
   let follow = true;
   const _target = new THREE.Vector3(), _base = new THREE.Vector3();
+  // With several robots in the scene the view belongs to the one that is doing
+  // something; with none of them moving that is the primary robot.
+  function followedRobot() {
+    return actingRobot || primaryRobot;
+  }
   function frameCamera() {
-    if (!robotModel) return;
-    const box = new THREE.Box3().setFromObject(robotModel.obj);
+    const robot = followedRobot();
+    if (!robot) return;
+    const box = new THREE.Box3().setFromObject(robot.obj);
     const c = box.getCenter(new THREE.Vector3());
     controls.target.copy(c);
     camera.position.set(c.x + 3.2, c.y + 1.6, c.z + 3.4);
@@ -951,8 +1020,9 @@ Panels.define('robot-scene', function (root, bus) {
     needsRender = true;
   }
   function robotCenter(out) {
-    if (!robotModel) return false;
-    robotModel.obj.getWorldPosition(_base);
+    const robot = followedRobot();
+    if (!robot) return false;
+    robot.obj.getWorldPosition(_base);
     out.copy(_base); out.y += 0.6;
     return true;
   }
@@ -1192,13 +1262,17 @@ Panels.define('robot-scene', function (root, bus) {
       if (o.userData.simMarker) return 'place_area';
       return objectIdByKey[o.userData.simObj] || null;
     }
-    if (robotModel) {
-      hits = dragRay.intersectObject(robotModel.obj, true);
+    // every robot of the scene is pickable; the hits come back nearest first, so a
+    // click lands on the robot actually in front of the cursor
+    if (robotModels.length) {
+      hits = dragRay.intersectObjects(robotModels.map(function (robot) { return robot.obj; }), true);
       for (let i = 0; i < hits.length; i++) {
         let o = hits[i].object;
+        const robot = robotModelOf(o);
         while (o && o !== scene3) {
           if (o.isURDFLink && o.name) {
-            return linkToPart[String(o.name)] || (SCENE.robot && SCENE.robot.name) || null;
+            if (!robot) return null;
+            return robot.linkToPart[String(o.name)] || (robot.payload && robot.payload.name) || null;
           }
           o = o.parent;
         }
@@ -1263,28 +1337,35 @@ Panels.define('robot-scene', function (root, bus) {
       arrowOver(key, on);
     }
     // direct link references: knowledge-base joint entities (l_shoulder_pan_joint → its
-    // child link) and URDF-tree nodes ('urdf:<link>') resolve to link names
-    const linkSet = {};
+    // child link) and URDF-tree nodes ('urdf:<link>') resolve to link names. A joint
+    // belongs to one model — resolved by prefix, like every other joint key — so only
+    // that robot lights up when two robots declare the same joint name.
+    const linkSet = {};                  // 'urdf:<link>': whichever robot has that link
+    const jointLinks = new Map();        // robot entry -> its own links named by a joint id
     (ids || []).forEach(function (id) {
       id = String(id);
       if (id.indexOf('urdf:') === 0) linkSet[id.slice(5)] = 1;
-      const j = robotModel && robotModel.obj.joints && robotModel.obj.joints[id];
-      if (j) {
-        for (let i = 0; i < j.children.length; i++) {
-          if (j.children[i].isURDFLink) { linkSet[j.children[i].name] = 1; break; }
-        }
+      const route = JointRouting.routeFor(models, id);
+      if (!route || !route.model.robot) return;
+      const j = route.joint;
+      for (let i = 0; i < j.children.length; i++) {
+        if (!j.children[i].isURDFLink) continue;
+        if (!jointLinks.has(route.model)) jointLinks.set(route.model, {});
+        jointLinks.get(route.model)[j.children[i].name] = 1;
+        break;
       }
     });
-    // robot: glow meshes by part (scene.robot.parts, e.g. PR2LeftArm), by link,
-    // or the whole robot when its own id is selected
-    if (robotModel) {
-      const robotName = SCENE && SCENE.robot && SCENE.robot.name;
+    // robots: glow meshes by part (the robot's own parts, e.g. PR2LeftArm), by link,
+    // or a whole robot when its own id is selected
+    robotModels.forEach(function (robot) {
+      const robotName = robot.payload && robot.payload.name;
       const wholeRobot = !!(robotName && set[robotName]);
-      robotModel.obj.traverse(function (c) {
+      const ownLinks = jointLinks.get(robot) || {};
+      robot.obj.traverse(function (c) {
         if (!c.isMesh) return;
         const link = linkNameOf(c);
-        const part = linkToPart[link];
-        const on = wholeRobot || !!(part && set[part]) || !!linkSet[link];
+        const part = robot.linkToPart[link];
+        const on = wholeRobot || !!(part && set[part]) || !!linkSet[link] || !!ownLinks[link];
         const mats = Array.isArray(c.material) ? c.material : [c.material];
         mats.forEach(function (m) {
           if (m && m.emissive) {
@@ -1293,7 +1374,7 @@ Panels.define('robot-scene', function (root, bus) {
           }
         });
       });
-    }
+    });
     // the place area: brighten the blue corner marker
     if (PLACE0) {
       const on = !!set['place_area'];
@@ -1634,17 +1715,23 @@ Panels.define('robot-scene', function (root, bus) {
   function applyLive(st) {
     if (!st || !st.frames) return;
     for (const k in st.frames) {
-      const j = JointRouting.jointFor(models, k);
-      if (j) j.setJointValue(st.frames[k]);
+      const route = JointRouting.routeFor(models, k);
+      if (!route) continue;
+      if (route.joint.setJointValue(st.frames[k]) && route.model.robot) noteActing(route.model);
     }
-    if (robotModel && st.base) setPose(robotModel.obj, st.base, st.base, 0);
-    // every bundled model root the bridge streams: a second robot drives, a moved
-    // environment model follows (the primary robot's entry re-applies st.base)
+    // every bundled model root the bridge streams, keyed by its world prefix: every
+    // robot of the scene drives, and a moved environment model follows
     const modelBases = st.modelBases || {};
-    for (const prefix in modelBases) {
-      models.forEach(function (m) {
-        if (m.prefix === prefix) setPose(m.obj, modelBases[prefix], modelBases[prefix], 0);
-      });
+    let primaryPosed = false;
+    models.forEach(function (m) {
+      const pose = RobotModels.baseOf(modelBases, m);
+      if (!pose) return;
+      if (poseModel(m, pose, pose, 0) && m.robot) noteActing(m);
+      if (m === primaryRobot) primaryPosed = true;
+    });
+    // an older bridge streams the first robot's pose alone, as `base`
+    if (primaryRobot && !primaryPosed && st.base) {
+      if (poseModel(primaryRobot, st.base, st.base, 0)) noteActing(primaryRobot);
     }
     if (typeof st.markersVersion === 'number' && st.markersVersion !== lastMarkersVersion) {
       lastMarkersVersion = st.markersVersion;

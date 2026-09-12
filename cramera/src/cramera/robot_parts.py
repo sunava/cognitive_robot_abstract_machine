@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from typing_extensions import Any, Dict, List, Optional, Tuple
+from typing_extensions import Any, Dict, List, Optional, Sequence, Tuple
 
 from semantic_digital_twin.robots.robot_parts import AbstractRobot, AbstractRobotPart
 
@@ -83,6 +83,13 @@ class RobotPartAnnotation:
     For an end effector, the name of the arm carrying it; None for an arm.
     """
 
+    robot: Optional[str] = None
+    """
+    World-instance prefix of the robot the part belongs to (see :func:`robot_prefix`),
+    or None for a robot whose bodies carry no prefix. What tells the parts of one robot
+    from another's in a world holding several, where the link names alone do not.
+    """
+
     def to_payload(self) -> Dict[str, Any]:
         """
         The annotation in the JSON shape written to ``scene.json`` and served live.
@@ -93,6 +100,7 @@ class RobotPartAnnotation:
             "side": self.side.value if self.side is not None else None,
             "links": list(self.links),
             "attachedTo": self.attached_to,
+            "robot": self.robot,
         }
 
     @classmethod
@@ -109,6 +117,7 @@ class RobotPartAnnotation:
             side=ArmSide(side) if side else None,
             links=list(payload.get("links") or []),
             attached_to=payload.get("attachedTo"),
+            robot=payload.get("robot"),
         )
 
     @staticmethod
@@ -149,9 +158,14 @@ class RobotPartAnnotation:
         """
         Every arm of a robot and the end effector it carries, in publication order.
 
+        Each annotation names the robot it was read off by its world-instance prefix, so
+        a world holding several robots publishes one flat list that still says which
+        parts belong together.
+
         :param robot: The robot annotation of the world being recorded or served.
         """
         sides = cls._arm_sides(robot)
+        prefix = robot_prefix(robot) or None
         annotations = []
         for arm in robot.get_arms():
             arm_name = type(arm).__name__
@@ -166,6 +180,7 @@ class RobotPartAnnotation:
                     role=RobotPartRole.ARM,
                     side=side,
                     links=sorted(set(cls.link_names(arm)) - set(end_effector_links)),
+                    robot=prefix,
                 )
             )
             if end_effector is not None:
@@ -176,6 +191,7 @@ class RobotPartAnnotation:
                         side=side,
                         links=sorted(set(end_effector_links)),
                         attached_to=arm_name,
+                        robot=prefix,
                     )
                 )
         return annotations
@@ -191,24 +207,27 @@ How many of a model's links are probed to find its prefix in a composed world.
 def model_identity(
     links: List[str],
     world_body_names: List[str],
-    base_body: Optional[str],
+    robot_bases: Dict[str, str],
     probe_link_count: int,
 ) -> Tuple[str, bool]:
     """
-    A model's world-instance prefix and whether it is the robot, from its link names.
+    A model's world-instance prefix and whether it is a robot, from its link names.
 
     The prefix is found by checking which world body name ends with one of the model's
-    first few links; a model is the robot if its links include the robot's own base
-    link. Shared by onboarding, which bundles a model to disk, and live model serving,
-    which never does.
+    first few links; a model is a robot if that prefix is one a robot of the world is
+    named under — per robot, so a world holding several of them recognizes each one's
+    model rather than only the model carrying "the" robot's base link. A world whose
+    bodies carry no prefix at all has no prefix to match, and falls back to checking the
+    model's links for a robot's base link. Shared by onboarding, which bundles a model
+    to disk, and live model serving, which never does.
 
     :param links: Names of the model's own links, in document order.
     :param world_body_names: Every body name in the composed world.
-    :param base_body: The robot's base link name, unprefixed, or None when no robot is
-        bound.
+    :param robot_bases: Each robot's world-instance prefix mapped to its unprefixed base
+        link name (see :func:`robot_bases`); empty when no robot is bound.
     :param probe_link_count: How many of the model's first links to check for a prefix.
     :return: The model's world-instance prefix (empty if unprefixed), and whether it is
-        the robot.
+        a robot.
     """
     prefix = ""
     for link in links[:probe_link_count]:
@@ -223,7 +242,70 @@ def model_identity(
         if prefixed:
             prefix = prefixed.split("/", 1)[0]
             break
-    return prefix, base_body is not None and base_body in links
+    if prefix:
+        return prefix, prefix in robot_bases
+    return prefix, any(base in links for base in robot_bases.values())
 
 
 # %% reading them off a world's robot
+
+
+def robot_prefix(robot: AbstractRobot) -> str:
+    """
+    The world-instance prefix every body of one robot is named under.
+
+    What tells two robots of the same class apart: a world spawns each of them under its
+    own prefix, and that prefix is what keys the robot's bundled model, its streamed base
+    pose and its part annotations.
+
+    :param robot: The robot annotation whose root body names the prefix.
+    :return: The prefix, or an empty string for a robot whose bodies carry none.
+    """
+    root = getattr(robot, "root", None)
+    if root is None:
+        return ""
+    name = getattr(root, "name", None)
+    prefix = getattr(name, "prefix", None)
+    if prefix:
+        return str(prefix)
+    text = str(name)
+    return text.split("/", 1)[0] if "/" in text else ""
+
+
+def robot_base_link(robot: AbstractRobot) -> str:
+    """
+    The name of a robot's root body, stripped of its world-instance prefix.
+
+    :param robot: The robot annotation whose root body is named.
+    """
+    text = str(getattr(getattr(robot, "root", None), "name", ""))
+    return text.split("/", 1)[1] if "/" in text else text
+
+
+def robot_bases(robots: Sequence[AbstractRobot]) -> Dict[str, str]:
+    """
+    Every robot's world-instance prefix mapped to its unprefixed base link name, as
+    :func:`model_identity` reads it.
+
+    :param robots: The world's robot annotations.
+    """
+    return {robot_prefix(robot): robot_base_link(robot) for robot in robots}
+
+
+def robot_model_names(robots: Sequence[AbstractRobot]) -> List[str]:
+    """
+    One model name per robot, in the given order, unique within the list.
+
+    A robot's model is named after its class; two robots of the same class would
+    otherwise write over each other's URDF, so the second and every further one of a
+    class gets a numeric suffix.
+
+    :param robots: The world's robot annotations, in publication order.
+    """
+    names: List[str] = []
+    seen: Dict[str, int] = {}
+    for robot in robots:
+        base = type(robot).__name__.lower()
+        seen[base] = seen.get(base, 0) + 1
+        names.append(base if seen[base] == 1 else "%s_%d" % (base, seen[base]))
+    return names

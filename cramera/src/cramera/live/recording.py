@@ -76,6 +76,13 @@ class RecordedFrame:
     Loose-object pose by mesh key, in the same 7-element form as :attr:`base`.
     """
 
+    model_bases: Dict[str, List[float]] = field(default_factory=dict)
+    """
+    Every bundled robot model's root pose by world-instance prefix, in the same
+    7-element form as :attr:`base`, so a replay drives every robot of the run and not
+    only the first one.
+    """
+
     step: Optional[str] = None
     """
     Label of the action the plan was performing on this tick, or None between actions.
@@ -163,6 +170,9 @@ class Recording:
                     base=snapshot.base,
                     objects={
                         key: list(value) for key, value in snapshot.objects.items()
+                    },
+                    model_bases={
+                        key: list(value) for key, value in snapshot.model_bases.items()
                     },
                     step=step,
                     statechart=self._held_statechart(statechart),

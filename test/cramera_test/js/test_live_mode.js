@@ -161,6 +161,22 @@ test('a rebundle whose models or robot differ demands a reload', function () {
   assert.strictEqual(live.sameBundle(loaded, fresh), false);
 });
 
+test('a demo that gained a robot demands a reload', function () {
+  /*
+   * A world can run several robots, and the page drives each of them from its own model
+   * entry: a run that added one is a different world, even though its first robot — all
+   * `robot` names — is unchanged.
+   */
+  const live = load();
+  const walker = { name: 'walker_s2', prefix: 'walker_s2_description', robot: true };
+  const ume = { name: 'ume', prefix: 'uMe', robot: true };
+  const loaded = { models: [walker], robot: walker, robots: [walker] };
+  const fresh = { models: [walker, ume], robot: walker, robots: [walker, ume] };
+
+  assert.strictEqual(live.sameBundle(loaded, fresh), false);
+  assert.strictEqual(live.sameBundle(fresh, fresh), true);
+});
+
 test('an unloaded page or a failed rebundle compares as equal', function () {
   /*
    * With nothing to compare there is no evidence of staleness, and reloading on none

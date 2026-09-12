@@ -81,7 +81,7 @@ def write_recording_bundle(
             shutil.rmtree(output_directory)
         output_directory.mkdir(parents=True)
         geometry = bundle_world_models(
-            bridge.world, bridge.robot, output_directory, MESH_SUBDIRECTORY
+            bridge.world, bridge.robots, output_directory, MESH_SUBDIRECTORY
         )
         objects = _loose_object_entries(bridge, frames[0], output_directory)
         scene = {
@@ -90,6 +90,7 @@ def write_recording_bundle(
             "trajectory": "trajectory.json",
             "models": geometry.models,
             "robot": geometry.robot,
+            "robots": geometry.robots,
             "objects": objects,
             "segments": [segment.to_payload() for segment in derive_segments(frames)],
             "missingAssets": geometry.missing_assets,
@@ -111,6 +112,7 @@ def write_recording_bundle(
                 "framesPerSecond": frames_per_second,
                 "frames": [frame.frames for frame in frames],
                 "base": [frame.base for frame in frames],
+                "modelBases": [frame.model_bases for frame in frames],
                 "objects": [frame.objects for frame in frames],
             },
         )
