@@ -267,7 +267,7 @@ Panels.define('eql', function (root, bus) {
   });
   if (SceneContext.offline()) {
     voiceButton.disabled = true;
-    voiceButton.title = 'Offline: Fragen eingeben oder eine gespeicherte Frage wählen.';
+    voiceButton.title = 'Offline: type a question or choose a saved question.';
   } else if (!voice.supported) {
     voiceButton.disabled = true;
     voiceButton.title = 'speech recognition is not available in this browser';

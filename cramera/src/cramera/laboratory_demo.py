@@ -529,7 +529,7 @@ class LaboratoryDemo:
         scene.update(
             {
                 "environmentName": "Precision Laboratory",
-                "task": "PR2 · Glas A1 → A3",
+                "task": "PR2 · Glass transfer A1 → A3",
             }
         )
         write_json_atomically(

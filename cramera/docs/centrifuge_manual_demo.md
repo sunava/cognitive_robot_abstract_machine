@@ -1,23 +1,23 @@
 # Ein Handbuch ändert das Verhalten
 
 Das Labor zeigt Dokumentwissen, beobachteten Zustand und die daraus abgeleitete
-Startfreigabe gemeinsam im Bereich **Handbuch & Roboterwissen**. Die Dokumente
+Startfreigabe gemeinsam im Bereich **Manual & robot knowledge**. Die Dokumente
 beschreiben ein simuliertes CRAMERA-Demogerät und ein Demonstrationsverfahren.
 Sie sind keine Herstelleranleitung für eine reale Zentrifuge.
 
 ## Kundendemo
 
-1. Bei stillstehendem Rotor **V1 einlesen** wählen. V1 verlangt mindestens zwei
+1. Bei stillstehendem Rotor **Read manual V1** wählen. V1 verlangt mindestens zwei
    gesicherte Proben.
-2. Bei geöffnetem Deckel **Testpaar laden** wählen und die Beladung abwarten.
+2. Bei geöffnetem Deckel **Load test pair** wählen und die Beladung abwarten.
    Anschließend den Deckel schließen. Zwei gleich schwere, gegenüberliegende
    Proben erfüllen die Startbedingungen.
-3. **V2 einlesen** wählen. Die Proben bleiben an ihren Positionen und behalten
+3. **Read manual V2** wählen. Die Proben bleiben an ihren Positionen und behalten
    ihre Füllmengen. V2 verlangt vier gesicherte Proben. Der gleiche Startauftrag
    ist jetzt gesperrt; die Wissensanzeige zeigt die Änderung von zwei auf vier,
    die Dokumentstelle und die noch fehlenden Proben.
 4. Den Deckel öffnen, das zweite Testpaar laden und den Deckel schließen. Der
-   Start wird wieder freigegeben. **Zentrifugieren** startet den simulierten Rotor.
+   Start wird wieder freigegeben. **Start centrifuge** startet den simulierten Rotor.
 
 Für den Vergleich müssen Drehzahl und Laufzeit nicht verändert werden. Ein
 bereits laufender Rotor muss vor dem Einlesen eines Dokuments zum Stillstand
@@ -41,8 +41,8 @@ weiterlaufende Restzeit an.
 
 ## Was tatsächlich aus dem Dokument kommt
 
-Die Demo liest die Regel **Mindestzahl gesicherter Proben** aus der strukturierten
-Markdown-Tabelle im Abschnitt **Betriebsregeln**. Die Dokumentansicht lässt sich
+Die Demo liest die Regel **Minimum secured samples** aus der strukturierten
+Markdown-Tabelle im Abschnitt **Operating rules**. Die Dokumentansicht lässt sich
 bearbeiten und erneut einlesen. Entscheidend ist der Tabelleninhalt, nicht der
 Versionsname oder die Auswahl einer Schaltfläche. Die Anzeige enthält die
 Dokumentversion, den Inhalts-Hash und die Quellstelle. Ungültige Dokumente werden

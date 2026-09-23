@@ -61,7 +61,7 @@ test('the fourth reserve glass has a readable default label', () => {
   const laboratory = new ManualLaboratory();
   laboratory.config.tubes.push({key: 'tube_reserve', slot: 'B3'});
   const controller = new LaboratoryWorkbench.Controller(laboratory.config, laboratory.adapter);
-  assert.equal(controller.label('tube_reserve'), 'Reserveglas');
+  assert.equal(controller.label('tube_reserve'), 'Reserve tube');
 });
 
 test('lifting one tube frees its slot without moving its neighbours', () => {
@@ -231,11 +231,11 @@ test('asset readiness enables mounted controls and clears the loading message', 
   const surface = new ManualControls();
   laboratory.ready = false;
   const mounted = LaboratoryWorkbench.mount(surface.host, laboratory.config, laboratory.adapter);
-  assert.equal(surface.button('Glas aufnehmen').disabled, true);
+  assert.equal(surface.button('Pick up tube').disabled, true);
   const loading = surface.status().textContent;
   laboratory.ready = true;
   mounted.refresh();
-  assert.equal(surface.button('Glas aufnehmen').disabled, false);
+  assert.equal(surface.button('Pick up tube').disabled, false);
   assert.notEqual(surface.status().textContent, loading);
 });
 
@@ -244,10 +244,10 @@ test('mounted actions update free slots and destroy removes controls and listene
   const surface = new ManualControls();
   const mounted = LaboratoryWorkbench.mount(surface.host, laboratory.config, laboratory.adapter);
   const controls = surface.host.flatten();
-  surface.button('Glas aufnehmen').listeners.get('click')();
+  surface.button('Pick up tube').listeners.get('click')();
   assert.equal(mounted.controller.heldTube, laboratory.config.tubes[0].key);
-  assert.equal(surface.button('In Platz einsetzen').disabled, false);
-  surface.button('In Platz einsetzen').listeners.get('click')();
+  assert.equal(surface.button('Insert into slot').disabled, false);
+  surface.button('Insert into slot').listeners.get('click')();
   assert.equal(mounted.controller.heldTube, null);
   assert.equal(mounted.controller.occupant(laboratory.config.rackSlots[2].id), laboratory.config.tubes[0].key);
   mounted.destroy();

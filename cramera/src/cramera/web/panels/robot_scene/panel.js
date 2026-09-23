@@ -45,7 +45,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     '    <label class="lp-row"><input type="checkbox" id="lyr-objects" checked><span>Bench objects</span></label>' +
     '    <label class="lp-row" title="debug markers the CRAM system publishes (collisions, costmaps, spatial types)"><input type="checkbox" id="lyr-markers" checked><span>ROS markers</span><button id="marker-gear" class="marker-gear" title="marker topics and namespaces">⚙</button></label>' +
     '    <div id="marker-settings" class="marker-settings hidden"></div>' +
-    '    <label id="lyr-contacts-row" class="lp-row" style="display:none" title="Kontaktpunkte und orange Zielmarkierungen ein- oder ausblenden"><input type="checkbox" id="lyr-contacts" checked><span>Kontaktpunkte &amp; Ziele</span></label>' +
+    '    <label id="lyr-contacts-row" class="lp-row" style="display:none" title="Show or hide contact points and orange target markers"><input type="checkbox" id="lyr-contacts" checked><span>Contact points &amp; targets</span></label>' +
     '    <label class="lp-row" title="an axis triad on every frame of the world — URDF links and loose objects (red X, green Y, blue Z)"><input type="checkbox" id="lyr-frames"><span>TF frames</span><button id="frame-gear" class="layer-gear" title="frame axis size and names">⚙</button></label>' +
     '    <div id="frame-settings" class="frame-settings hidden"></div>' +
     '    <label class="lp-row"><input type="checkbox" id="lyr-labels"><span>Object labels</span></label>' +
@@ -131,7 +131,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       '  </div>' +
       '  <button id="scene-retry" class="play-btn" type="button">Retry scene</button> ' +
       '  <a id="scene-open-browser" class="play-btn" target="_blank" rel="noopener noreferrer">Open scene separately</a>' +
-      (laboratoryControls ? ' <a id="laboratory-pr2-controls" class="play-btn">PR2-Steuerung öffnen</a>' : '') +
+      (laboratoryControls ? ' <a id="laboratory-pr2-controls" class="play-btn">Open PR2 controls</a>' : '') +
       '</div>';
     $('scene-open-browser').href = window.location.href;
     if (laboratoryControls) $('laboratory-pr2-controls').href = 'laboratory-pr2.html';
@@ -564,7 +564,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     })
     .catch(function (e) {
       if (statusEl) statusEl.textContent = 'Scene failed to load: ' + e;
-      bus.emit('scene:error', {message: 'Szene konnte nicht geladen werden: ' + e.message});
+      bus.emit('scene:error', {message: 'Could not load the scene: ' + e.message});
     });
 
   // header dropdowns: a robot and an environment jointly resolve to the one
@@ -686,7 +686,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (offlineMode && (!d || !Array.isArray(d.frames) || !d.frames.length)) {
-          throw new Error('Die Aufnahme enthält keine abspielbaren Frames.');
+          throw new Error('The recording contains no playable frames.');
         }
         traj = d;
         setupTransports();
@@ -2280,8 +2280,8 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
         );
       }
       root.classList.add('laboratory-physics-scene');
-      root.querySelector('.panel-head h2').textContent = SCENE.physics.robot ? 'PR2 im Labor · Kontaktphysik' : 'Labor · Kontaktphysik';
-      root.querySelector('.stage-hint').textContent = SCENE.physics.robot ? 'PR2-Auftrag starten oder pausieren · Bewegung und Kontakte werden simuliert' : 'Glas ziehen: bewegen · Loslassen: fallen lassen · Laborsteuerung: anheben und absenken';
+      root.querySelector('.panel-head h2').textContent = SCENE.physics.robot ? 'PR2 laboratory · Contact physics' : 'Laboratory · Contact physics';
+      root.querySelector('.stage-hint').textContent = SCENE.physics.robot ? 'Start or pause the PR2 task · Movement and contacts are simulated' : 'Drag glassware to move it · Release to drop it · Use laboratory controls to lift and lower it';
       if (liveBtn) liveBtn.hidden = true;
       if (playBtn) playBtn.disabled = true;
       if (scrubber) scrubber.disabled = true;
@@ -2300,7 +2300,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     );
     root.classList.add('laboratory-scene');
     root.querySelector('.panel-head h2').textContent = 'Precision Laboratory';
-    root.querySelector('.stage-hint').textContent = 'Ziehen: Ansicht drehen · Scrollen: Zoom · Laborbank: Gläser und Stopfen bedienen';
+    root.querySelector('.stage-hint').textContent = 'Drag to orbit · Scroll to zoom · Use workbench controls to handle glassware and stoppers';
     if (laboratoryWorkbench) laboratoryWorkbench.refresh();
   });
 

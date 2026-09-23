@@ -252,7 +252,7 @@ class LaboratoryAssets:
                         "name": ShareOptions.SCENE_NAME,
                         "robot": "pr2",
                         "environment": "Precision Laboratory",
-                        "task": "PR2 · Kontaktphysik und Flüssigkeiten",
+                        "task": "PR2 · Contact physics and liquids",
                     }
                 ],
             }

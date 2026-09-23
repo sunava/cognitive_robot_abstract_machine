@@ -128,7 +128,7 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
         self.recording_directory = paths.resolve_scene_directory(self.RECORDING_SCENE)
         if self.recording_directory is None:
             raise FileNotFoundError(
-                "Zuerst den nativen PR2-Laborauftrag ausführen, um die Bewegungsreferenz zu erzeugen."
+                "Run the native PR2 laboratory task first to generate the motion reference."
             )
         return create_robot_physics(
             bundle_directory=directory, recording_directory=self.recording_directory
@@ -160,7 +160,7 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
         for key in (RobotField.ROBOT, RobotField.ROBOTS):
             if key in source:
                 scene[key] = source[key]
-        scene[PhysicsField.TASK] = "PR2 · Kontaktphysik"
+        scene[PhysicsField.TASK] = "PR2 · Contact physics"
         scene[PhysicsField.PHYSICS][RobotField.ROBOT] = True
         scene[PhysicsField.VALIDATION][RobotField.SOURCE] = self.REFERENCE_SOURCE
         scene_path.write_text(json.dumps(scene, indent=2))
@@ -182,7 +182,7 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
             == PhysicsState.RUNNING
         ):
             raise InvalidPhysicsRequest(
-                "Den PR2-Ablauf vor dem manuellen Bewegen pausieren."
+                "Pause the PR2 program before moving objects manually."
             )
 
     def run_program(self) -> dict[str, Any]:
@@ -206,7 +206,7 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
             self.physics.snapshot()[RobotField.ROBOT][PhysicsField.STATE]
             == PhysicsState.RUNNING
         ):
-            raise InvalidPhysicsRequest("Den PR2-Ablauf vor dem Befüllen pausieren.")
+            raise InvalidPhysicsRequest("Pause the PR2 program before filling vessels.")
 
     def _validate_centrifuge(self, command: CentrifugeCommand) -> None:
         """Keep rotor stopping available while the robot owns manipulation."""
@@ -217,7 +217,7 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
             == PhysicsState.RUNNING
         ):
             raise InvalidPhysicsRequest(
-                "Den PR2-Ablauf vor dem Bedienen der Zentrifuge pausieren."
+                "Pause the PR2 program before operating the centrifuge."
             )
 
     def _validate_manual(self) -> None:
@@ -227,7 +227,7 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
             == PhysicsState.RUNNING
         ):
             raise InvalidPhysicsRequest(
-                "Den PR2-Ablauf vor dem Lesen eines anderen Handbuchs pausieren."
+                "Pause the PR2 program before reading another manual."
             )
 
     def _validate_scale(self) -> None:
@@ -236,7 +236,9 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
             self.physics.snapshot()[RobotField.ROBOT][PhysicsField.STATE]
             == PhysicsState.RUNNING
         ):
-            raise InvalidPhysicsRequest("Den PR2-Ablauf vor dem Tarieren pausieren.")
+            raise InvalidPhysicsRequest(
+                "Pause the PR2 program before taring the scale."
+            )
 
     def pause_program(self) -> dict[str, Any]:
         """Pause the reference while physics continues to calculate contacts."""

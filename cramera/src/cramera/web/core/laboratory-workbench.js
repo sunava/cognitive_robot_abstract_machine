@@ -14,16 +14,16 @@
     HANDS_FULL: 'hands_full', NOT_HELD: 'not_held', STOPPER_IN_USE: 'stopper_in_use',
   });
   const Messages = Object.freeze({
-    [Codes.DONE]: 'Bereit.',
-    [Codes.NOT_READY]: 'Die Laborobjekte werden noch geladen.',
-    [Codes.INVALID]: 'Dieses Objekt oder dieser Platz ist nicht verfügbar.',
-    [Codes.OCCUPIED]: 'Der Platz ist belegt. Bitte einen freien Platz wählen.',
-    [Codes.HANDS_FULL]: 'Zuerst das angehobene Glas einsetzen.',
-    [Codes.NOT_HELD]: 'Zuerst ein Glas aufnehmen.',
-    [Codes.STOPPER_IN_USE]: 'Zuerst den Stopfen vom anderen Glas abnehmen.',
+    [Codes.DONE]: 'Ready.',
+    [Codes.NOT_READY]: 'Laboratory objects are still loading.',
+    [Codes.INVALID]: 'This object or slot is unavailable.',
+    [Codes.OCCUPIED]: 'This slot is occupied. Choose an empty slot.',
+    [Codes.HANDS_FULL]: 'Place the lifted tube first.',
+    [Codes.NOT_HELD]: 'Pick up a tube first.',
+    [Codes.STOPPER_IN_USE]: 'Remove the stopper from the other tube first.',
   });
   const TubeLabels = Object.freeze({
-    tube_clear: 'Klares Glas', tube_amber: 'Bernsteinprobe', tube_teal: 'Türkise Probe', tube_reserve: 'Reserveglas',
+    tube_clear: 'Clear tube', tube_amber: 'Amber sample', tube_teal: 'Teal sample', tube_reserve: 'Reserve tube',
   });
 
   /** A command outcome with a stable machine-readable reason and visible feedback. */
@@ -107,7 +107,7 @@
         if (occupant === key) this.occupancy.delete(slot);
       }
       this.heldTube = key;
-      return new Outcome(Codes.DONE, this.label(key) + ' angehoben. Einen freien Platz wählen.');
+      return new Outcome(Codes.DONE, this.label(key) + ' lifted. Choose an empty slot.');
     }
 
     /** Insert the held tube into a free rack slot. */
@@ -120,7 +120,7 @@
       if (!this.moveTube(key, this.slots.get(slot).pose.slice())) return new Outcome(Codes.NOT_READY);
       this.occupancy.set(slot, key);
       this.heldTube = null;
-      return new Outcome(Codes.DONE, this.label(key) + ' in ' + slot + ' eingesetzt.');
+      return new Outcome(Codes.DONE, this.label(key) + ' placed in ' + slot + '.');
     }
 
     /** Attach the free stopper to a selected tube. */
@@ -131,14 +131,14 @@
       const pose = this.adapter.getPose(key);
       if (!pose || !this.applyPoses([[this.config.stopper.key, this.stopperPose(pose)]])) return new Outcome(Codes.NOT_READY);
       this.cappedTube = key;
-      return new Outcome(Codes.DONE, this.label(key) + ': Stopfen aufgesetzt.');
+      return new Outcome(Codes.DONE, this.label(key) + ': stopper attached.');
     }
 
     /** Return the stopper to its worktop position and clear its attachment. */
     removeStopper() {
       if (!this.applyPoses([[this.config.stopper.key, this.config.stopper.home.slice()]])) return new Outcome(Codes.NOT_READY);
       this.cappedTube = null;
-      return new Outcome(Codes.DONE, 'Stopfen auf der Arbeitsplatte abgelegt.');
+      return new Outcome(Codes.DONE, 'Stopper placed on the worktop.');
     }
 
     /** Move the drawer between its configured closed and open joint positions. */
@@ -147,7 +147,7 @@
       this.adapter.pause();
       if (this.adapter.setJoint(this.config.drawer.joint, open ? this.config.drawer.open : 0) === false) return new Outcome(Codes.NOT_READY);
       this.drawerOpen = Boolean(open);
-      return new Outcome(Codes.DONE, open ? 'Schublade geöffnet.' : 'Schublade geschlossen.');
+      return new Outcome(Codes.DONE, open ? 'Drawer opened.' : 'Drawer closed.');
     }
 
     /** Show one of the scene's saved cameras in world coordinates. */
@@ -156,7 +156,7 @@
       const camera = this.config.cameras[name];
       if (!camera) return new Outcome(Codes.INVALID);
       this.adapter.focus(camera.position.slice(), camera.target.slice());
-      return new Outcome(Codes.DONE, name === 'closeup' ? 'Nahansicht der Laborbank.' : 'Übersicht des Labors.');
+      return new Outcome(Codes.DONE, name === 'closeup' ? 'Close-up of the laboratory workbench.' : 'Laboratory overview.');
     }
 
     /** Restore the initial tube positions, stopper position and closed drawer. */
@@ -174,7 +174,7 @@
       this.heldTube = null;
       this.cappedTube = null;
       this.drawerOpen = false;
-      return new Outcome(Codes.DONE, 'Laborbank zurückgesetzt.');
+      return new Outcome(Codes.DONE, 'Workbench reset.');
     }
   }
 
@@ -188,7 +188,7 @@
     const panel = document.createElement('details');
     panel.className = 'laboratory-workbench';
     panel.open = true;
-    panel.setAttribute('aria-label', mountRobot ? 'Laborbank – Roboter und manuelle Manipulation' : 'Laborbank – manuelle Manipulation');
+    panel.setAttribute('aria-label', mountRobot ? 'Workbench – robot and manual manipulation' : 'Workbench – manual manipulation');
 
     function element(tag, parent, className, text) {
       const item = document.createElement(tag);
@@ -216,23 +216,23 @@
     }
 
     const heading = element('summary', panel, 'laboratory-heading');
-    element('span', heading, 'laboratory-title', 'Laborbank');
-    element('span', heading, 'laboratory-mode', mountRobot ? 'CRAM + Manuell' : 'Manuell');
+    element('span', heading, 'laboratory-title', 'Workbench');
+    element('span', heading, 'laboratory-mode', mountRobot ? 'CRAM + Manual' : 'Manual');
     const body = element('div', panel, 'laboratory-body');
     const robot = mountRobot ? mountRobot(body) : null;
-    if (robot) element('strong', body, 'laboratory-manual-heading', 'Manuelle Laborbank');
-    element('p', body, 'laboratory-intro', 'Gläser anheben, umstecken und verschließen.');
-    const drawer = button(body, 'Schublade öffnen', () => controller.setDrawer(!controller.drawerOpen), 'laboratory-drawer');
+    if (robot) element('strong', body, 'laboratory-manual-heading', 'Manual workbench');
+    element('p', body, 'laboratory-intro', 'Pick up, relocate and cap tubes.');
+    const drawer = button(body, 'Open drawer', () => controller.setDrawer(!controller.drawerOpen), 'laboratory-drawer');
     const tubeLabel = element('label', body, 'laboratory-field');
-    element('span', tubeLabel, null, 'Reagenzglas');
+    element('span', tubeLabel, null, 'Test tube');
     const tubeSelect = element('select', tubeLabel);
     for (const tube of config.tubes) {
       const option = element('option', tubeSelect, null, controller.label(tube.key));
       option.value = tube.key;
     }
-    const lift = button(body, 'Glas aufnehmen', () => controller.lift(tubeSelect.value), 'laboratory-primary');
+    const lift = button(body, 'Pick up tube', () => controller.lift(tubeSelect.value), 'laboratory-primary');
     const slotLabel = element('label', body, 'laboratory-field');
-    element('span', slotLabel, null, 'Zielplatz im Ständer');
+    element('span', slotLabel, null, 'Target rack slot');
     const slotSelect = element('select', slotLabel);
     const slotOptions = new Map();
     for (const slot of config.rackSlots) {
@@ -240,17 +240,17 @@
       option.value = slot.id;
       slotOptions.set(slot.id, option);
     }
-    const insert = button(body, 'In Platz einsetzen', () => controller.insert(slotSelect.value), 'laboratory-primary');
-    const stopper = button(body, 'Stopfen aufsetzen', () => controller.cappedTube === tubeSelect.value ? controller.removeStopper() : controller.attachStopper(tubeSelect.value));
+    const insert = button(body, 'Insert into slot', () => controller.insert(slotSelect.value), 'laboratory-primary');
+    const stopper = button(body, 'Attach stopper', () => controller.cappedTube === tubeSelect.value ? controller.removeStopper() : controller.attachStopper(tubeSelect.value));
     const inventory = element('p', body, 'laboratory-inventory');
-    const status = element('p', body, 'laboratory-status', 'Ein Glas wählen und aufnehmen.');
+    const status = element('p', body, 'laboratory-status', 'Select a tube and pick it up.');
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
     const cameraRow = element('div', body, 'laboratory-camera-row');
-    const closeup = button(cameraRow, 'Nahansicht', () => controller.focus('closeup'));
-    const overview = button(cameraRow, 'Übersicht', () => controller.focus('overview'));
-    const reset = button(body, 'Zurücksetzen', () => controller.reset(), 'laboratory-reset');
-    element('p', body, 'laboratory-note', 'Direkte Objektpositionen · keine Flüssigkeitssimulation');
+    const closeup = button(cameraRow, 'Close-up', () => controller.focus('closeup'));
+    const overview = button(cameraRow, 'Overview', () => controller.focus('overview'));
+    const reset = button(body, 'Reset', () => controller.reset(), 'laboratory-reset');
+    element('p', body, 'laboratory-note', 'Direct object positioning · no liquid simulation');
     let wasReady = adapter.isReady();
 
     /** Update occupancy, attachment and readiness after a command or scene load. */
@@ -258,7 +258,7 @@
       const ready = adapter.isReady();
       for (const [id, option] of slotOptions) {
         const occupant = controller.occupant(id);
-        option.textContent = id + ' · ' + (occupant ? controller.label(occupant) : 'frei');
+        option.textContent = id + ' · ' + (occupant ? controller.label(occupant) : 'empty');
         option.disabled = Boolean(occupant);
       }
       if (!slotSelect.value || controller.occupant(slotSelect.value)) {
@@ -270,17 +270,17 @@
       slotSelect.disabled = !ready;
       lift.disabled = !ready || Boolean(controller.heldTube);
       insert.disabled = !ready || !controller.heldTube || !slotSelect.value || Boolean(controller.occupant(slotSelect.value));
-      stopper.textContent = controller.cappedTube === tubeSelect.value ? 'Stopfen abnehmen' : 'Stopfen aufsetzen';
+      stopper.textContent = controller.cappedTube === tubeSelect.value ? 'Remove stopper' : 'Attach stopper';
       stopper.disabled = !ready || Boolean(controller.cappedTube && controller.cappedTube !== tubeSelect.value);
-      drawer.textContent = controller.drawerOpen ? 'Schublade schließen' : 'Schublade öffnen';
+      drawer.textContent = controller.drawerOpen ? 'Close drawer' : 'Open drawer';
       for (const control of [drawer, closeup, overview, reset]) control.disabled = !ready;
       const free = config.rackSlots.length - controller.occupancy.size;
-      inventory.textContent = free + ' / ' + config.rackSlots.length + ' Plätze frei' +
-        (controller.heldTube ? ' · ' + controller.label(controller.heldTube) + ' angehoben' : '') +
-        (controller.cappedTube ? ' · Stopfen: ' + controller.label(controller.cappedTube) : '');
+      inventory.textContent = free + ' / ' + config.rackSlots.length + ' slots empty' +
+        (controller.heldTube ? ' · ' + controller.label(controller.heldTube) + ' lifted' : '') +
+        (controller.cappedTube ? ' · Stopper: ' + controller.label(controller.cappedTube) : '');
       if (!ready) status.textContent = Messages[Codes.NOT_READY];
       if (ready && !wasReady) {
-        status.textContent = 'Ein Glas wählen und aufnehmen.';
+        status.textContent = 'Select a tube and pick it up.';
         status.dataset.error = 'false';
       }
       wasReady = ready;

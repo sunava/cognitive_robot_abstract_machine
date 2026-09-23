@@ -30,9 +30,9 @@
   });
   const RobotStates = Object.freeze({IDLE: 'idle', RUNNING: 'running', PAUSED: 'paused', SUCCEEDED: 'succeeded', FAILED: 'failed'});
   const RobotSources = Object.freeze({TRANSFER: 'recorded_cram_joint_targets', MIXING: 'laboratory_liquid_mixing'});
-  const RobotLabels = Object.freeze({idle: 'Bereit', running: 'PR2 bewegt das Glas', paused: 'PR2 pausiert', succeeded: 'Glas umgesetzt', failed: 'Bewegung angehalten'});
-  const MixingLabels = Object.freeze({...RobotLabels, running: 'PR2 mischt die Flüssigkeiten', succeeded: 'Mischung in A2 abgelegt'});
-  const RobotPhases = Object.freeze({approach: 'Glas anfahren', grasp: 'Kontaktgriff prüfen', lift: 'Glas anheben', transport: 'Glas transportieren', pour: 'Flüssigkeit eingießen', return: 'Spenderglas zurückstellen', swirl: 'Mischung sanft schwenken', place: 'Glas im Ständer abstellen', release: 'Glas absetzen', settle: 'Stabilen Stand prüfen', complete: 'Abgeschlossen'});
+  const RobotLabels = Object.freeze({idle: 'Ready', running: 'PR2 is moving the glass', paused: 'PR2 paused', succeeded: 'Glass transferred', failed: 'Movement stopped'});
+  const MixingLabels = Object.freeze({...RobotLabels, running: 'PR2 is mixing the liquids', succeeded: 'Mixture placed in A2'});
+  const RobotPhases = Object.freeze({approach: 'Approaching the glass', grasp: 'Checking the contact grasp', lift: 'Lifting the glass', transport: 'Transporting the glass', pour: 'Pouring the liquid', return: 'Returning the source glass', swirl: 'Gently swirling the mixture', place: 'Placing the glass in the rack', release: 'Setting down the glass', settle: 'Checking stable placement', complete: 'Complete'});
   const POLL_INTERVAL = 33;
   const RETRY_INTERVAL = 1500;
   const MANUAL_HISTORY_ENTRIES = 6;
@@ -67,7 +67,7 @@
     async read(url, options) {
       const response = await this.request(url, options);
       const answer = await response.json();
-      if (!response.ok || answer.ok === false) throw new Error(answer.error || 'Die Simulation ist nicht erreichbar.');
+      if (!response.ok || answer.ok === false) throw new Error(answer.error || 'The simulation is unreachable.');
       return answer;
     }
     post(url, body) {
@@ -224,33 +224,33 @@
       const samples = this.centrifugePairSamples();
       const unmatched = occupied.filter(slot => !instrument.slots.some(item => item.id === slot.opposite && item.key));
       const counterpart = unmatched.length === 1 && unmatched[0].secured;
-      const label = counterpart ? 'Gegenprobe einsetzen'
-        : (occupied.length === 2 && samples.length === 2 ? 'Zweites Testpaar laden (2 × 5 ml)' : 'Testpaar laden (2 × 5 ml)');
-      if (this.centrifugePair) return {label: 'Testpaar wird geladen …', note: 'Probe ' + (this.centrifugePair.index + 1) + ' von ' + this.centrifugePair.samples.length + ' wird vorbereitet und eingesetzt. Bitte den Transport abwarten.'};
-      if (!this.ready()) return {label, note: 'Zuerst „Labor starten / fortsetzen“ wählen.'};
-      if (this.robotBusy()) return {label, note: 'Zuerst den PR2 pausieren oder seinen Auftrag abwarten.'};
-      if (!instrument || !instrument.available) return {label, note: 'Die Zentrifuge ist momentan nicht verfügbar.'};
-      if (this.centrifugeTransfer) return {label, note: 'Eine Probe wird gerade bewegt. Bitte den Transport abwarten.'};
-      if (occupied.some(slot => !slot.secured)) return {label: 'Beladung prüfen', note: 'Mindestens eine Probe ist nicht gesichert. Sitz der Probe prüfen und den Einsetzvorgang abschließen.'};
+      const label = counterpart ? 'Load counterbalance sample'
+        : (occupied.length === 2 && samples.length === 2 ? 'Load second test pair (2 × 5 ml)' : 'Load test pair (2 × 5 ml)');
+      if (this.centrifugePair) return {label: 'Loading test pair …', note: 'Sample ' + (this.centrifugePair.index + 1) + ' of ' + this.centrifugePair.samples.length + ' is being prepared and loaded. Please wait for the transfer.'};
+      if (!this.ready()) return {label, note: 'First select “Start / resume laboratory”.'};
+      if (this.robotBusy()) return {label, note: 'First pause PR2 or wait for its task to finish.'};
+      if (!instrument || !instrument.available) return {label, note: 'The centrifuge is currently unavailable.'};
+      if (this.centrifugeTransfer) return {label, note: 'A sample is being moved. Please wait for the transfer.'};
+      if (occupied.some(slot => !slot.secured)) return {label: 'Check loading', note: 'At least one sample is not secured. Check its placement and complete loading.'};
       if (occupied.length >= 2 && !samples.length) {
-        if (!instrument.balanced) return {label: 'Beladung prüfen', note: 'Die eingesetzten Proben sind nicht ausgewogen. Gegenüberliegende Plätze gleich schwer beladen.'};
+        if (!instrument.balanced) return {label: 'Check loading', note: 'The loaded samples are not balanced. Load opposite slots with equal masses.'};
         const full = occupied.length === instrument.slots.length;
-        const prepared = {label: full ? 'Zentrifuge vollständig beladen' : 'Testpaar bereit', note: occupied.length + ' Proben sind bereits eingesetzt und ausgewogen. '};
-        if (!full) prepared.note += 'Für ein zweites Paar werden zwei freie Gläser mit passender Kapazität benötigt. ';
-        if (instrument.locked || instrument.running || Math.abs(instrument.rpm) > CentrifugeSettings.STOPPED_RPM) prepared.note += 'Rotor stoppen oder den laufenden Durchgang abwarten.';
-        else if (instrument.lidOpen) prepared.note += 'Jetzt „Deckel schließen“ und anschließend „Zentrifugieren“ wählen.';
-        else if (instrument.lidClosed) prepared.note += 'Jetzt „Zentrifugieren“ wählen.';
-        else prepared.note += 'Warten, bis der Deckel seine Endposition erreicht.';
+        const prepared = {label: full ? 'Centrifuge fully loaded' : 'Test pair ready', note: occupied.length + ' samples are already loaded and balanced. '};
+        if (!full) prepared.note += 'A second pair requires two available glasses with sufficient capacity. ';
+        if (instrument.locked || instrument.running || Math.abs(instrument.rpm) > CentrifugeSettings.STOPPED_RPM) prepared.note += 'Stop the rotor or wait for the current cycle to finish.';
+        else if (instrument.lidOpen) prepared.note += 'Now select “Close lid”, then “Start centrifuge”.';
+        else if (instrument.lidClosed) prepared.note += 'Now select “Start centrifuge”.';
+        else prepared.note += 'Wait for the lid to reach its final position.';
         return prepared;
       }
-      if (instrument.locked || instrument.running || Math.abs(instrument.rpm) > CentrifugeSettings.STOPPED_RPM) return {label, note: 'Vor dem Beladen den Rotor stoppen und warten, bis der Deckel entriegelt ist.'};
-      if (!instrument.lidOpen) return {label, note: 'Zum Beladen zuerst „Deckel öffnen“ wählen und warten, bis er vollständig offen ist.'};
-      if (this.scaleTransfer) return {label, note: 'Zuerst den Transport zur Waage abwarten oder anhalten.'};
-      if (this.centrifugeBusy() || this.liquidBusy()) return {label, note: 'Der vorherige Auftrag wird noch ausgeführt. Bitte kurz warten.'};
-      if (!samples.length) return {label, note: 'Zum Beladen werden freie Gläser mit passender Kapazität und freie gegenüberliegende Rotorplätze benötigt.'};
+      if (instrument.locked || instrument.running || Math.abs(instrument.rpm) > CentrifugeSettings.STOPPED_RPM) return {label, note: 'Before loading, stop the rotor and wait for the lid to unlock.'};
+      if (!instrument.lidOpen) return {label, note: 'To load samples, first select “Open lid” and wait until it is fully open.'};
+      if (this.scaleTransfer) return {label, note: 'First wait for the scale transfer to finish or stop it.'};
+      if (this.centrifugeBusy() || this.liquidBusy()) return {label, note: 'The previous command is still running. Please wait.'};
+      if (!samples.length) return {label, note: 'Loading requires available glasses with sufficient capacity and free opposite rotor slots.'};
       return {label, note: counterpart
-        ? 'Die Gegenprobe erhält dieselbe Füllmenge wie die eingesetzte Probe (' + samples[0].volumeMl.toFixed(1) + ' ml). Die vorhandene Probe bleibt unverändert.'
-        : 'Setzt zwei Gläser mit je 5 ml nacheinander in gegenüberliegende Plätze. Danach Deckel schließen und zentrifugieren; keine PR2-Demo nötig.'};
+        ? 'The counterbalance sample receives the same volume as the loaded sample (' + samples[0].volumeMl.toFixed(1) + ' ml). The existing sample stays unchanged.'
+        : 'Loads two glasses containing 5 ml each into opposite slots in sequence. Then close the lid and start the centrifuge; no PR2 demo is needed.'};
     }
     /** Fill and seat balanced samples sequentially using measured contact feedback. */
     loadCentrifugePair() {
@@ -289,7 +289,7 @@
     failCentrifugePair(pair) {
       if (this.centrifugePair !== pair && (this.centrifugePair || !this.error)) return;
       this.centrifugePair = null;
-      this.centrifugeTransferError = this.error || 'Probe kann nicht eingesetzt werden. Freien Rotorplatz und offenen Deckel prüfen.';
+      this.centrifugeTransferError = this.error || 'Unable to load the sample. Check that the rotor slot is free and the lid is open.';
       this.error = this.centrifugeTransferError;
       this.changed();
     }
@@ -360,7 +360,7 @@
       if (Date.now() - transfer.startedAt > SCALE_MOVE_TIMEOUT) {
         this.centrifugeTransfer = null;
         this.centrifugePair = null;
-        this.centrifugeTransferError = transfer.released ? 'Probe im Rotor noch nicht sicher abgesetzt. Sitz prüfen, bevor sie gesichert wird.' : 'Weg zur Zentrifuge blockiert. Das Glas bleibt gehalten; manuell weiterbewegen oder loslassen.';
+        this.centrifugeTransferError = transfer.released ? 'The sample is not yet seated securely in the rotor. Check its placement before securing it.' : 'The path to the centrifuge is blocked. The glass remains held; move it manually or release it.';
         this.error = this.centrifugeTransferError;
         return;
       }
@@ -502,7 +502,7 @@
       if (!observed) { this.scaleTransfer = null; return; }
       if (Date.now() - transfer.startedAt > SCALE_MOVE_TIMEOUT) {
         this.scaleTransfer = null;
-        this.scaleTransferError = 'Weg zur Waage blockiert. Das Glas bleibt gehalten; manuell weiterbewegen oder loslassen.';
+        this.scaleTransferError = 'The path to the scale is blocked. The glass remains held; move it manually or release it.';
         this.error = this.scaleTransferError;
         return;
       }
@@ -791,10 +791,10 @@
       return item;
     }
     const panel = element('section', host, 'laboratory-physics');
-    panel.setAttribute('aria-label', 'Labor mit Kontaktphysik');
-    element('h3', panel, '', config.robot ? 'PR2 & Kontakt' : 'Glas & Kontakt');
-    element('p', panel, 'laboratory-physics-intro', config.robot ? 'Der PR2 greift und bewegt das Glas mit Kontaktphysik.' : 'Gläser ziehen, anheben und loslassen. Hindernisse halten das Glas zurück.');
-    const label = element('label', panel, 'laboratory-physics-field', 'Objekt');
+    panel.setAttribute('aria-label', 'Laboratory with contact physics');
+    element('h3', panel, '', config.robot ? 'PR2 & contact' : 'Glass & contact');
+    element('p', panel, 'laboratory-physics-intro', config.robot ? 'PR2 grasps and moves the glass using contact physics.' : 'Drag, lift and release glasses. Obstacles resist their movement.');
+    const label = element('label', panel, 'laboratory-physics-field', 'Object');
     const select = element('select', label, 'laboratory-physics-object');
     for (const object of config.objects) {
       const option = element('option', select, '', object.label || object.key);
@@ -802,27 +802,27 @@
     }
     const controller = new Controller(config, service, adapter, render);
     const scale = element('section', panel, 'laboratory-physics-scale');
-    element('h4', scale, '', 'Waage');
+    element('h4', scale, '', 'Scale');
     const scaleReading = element('p', scale, 'laboratory-physics-scale-reading');
     const scaleStatus = element('p', scale, 'laboratory-physics-scale-status');
-    element('p', scale, 'laboratory-physics-note', 'Flüssigkeiten werden mit Wasserdichte gewogen: 1 ml = 1 g.');
-    const tare = button(scale, 'Tara / Nullstellen', () => controller.tareScale(), 'laboratory-physics-scale-tare');
-    const moveToScale = button(scale, 'Objekt auf die Waage', () => controller.moveToScale(), 'laboratory-physics-scale-move');
-    const cancelScale = button(scale, 'Transport anhalten', () => controller.hold(controller.selected), 'laboratory-physics-scale-cancel');
-    const viewScale = adapter.focus && config.scale ? button(scale, 'Waage ansehen', () => {
+    element('p', scale, 'laboratory-physics-note', 'Liquids are weighed using water density: 1 ml = 1 g.');
+    const tare = button(scale, 'Tare / zero', () => controller.tareScale(), 'laboratory-physics-scale-tare');
+    const moveToScale = button(scale, 'Move object to scale', () => controller.moveToScale(), 'laboratory-physics-scale-move');
+    const cancelScale = button(scale, 'Stop transfer', () => controller.hold(controller.selected), 'laboratory-physics-scale-cancel');
+    const viewScale = adapter.focus && config.scale ? button(scale, 'View scale', () => {
       const position = config.scale.panPosition;
       adapter.focus([position[0] + .28, position[1] - .45, position[2] + .3], position);
     }, 'laboratory-physics-scale-view') : null;
     const centrifuge = element('section', panel, 'laboratory-physics-centrifuge');
-    element('h4', centrifuge, '', 'Zentrifuge');
+    element('h4', centrifuge, '', 'Centrifuge');
     const centrifugeStatus = element('p', centrifuge, 'laboratory-physics-centrifuge-status');
     centrifugeStatus.setAttribute('role', 'status');
     const manual = element('section', centrifuge, 'laboratory-physics-manual');
-    element('h5', manual, '', 'Handbuch & Roboterwissen');
+    element('h5', manual, '', 'Manual & robot knowledge');
     const manualVersion = element('p', manual, 'laboratory-physics-manual-version');
     const manualButtons = element('div', manual, 'laboratory-physics-manual-buttons');
-    const manualV1 = button(manualButtons, 'Handbuch V1 einlesen', () => controller.importManual({edition: 'v1'}), 'laboratory-physics-manual-v1');
-    const manualV2 = button(manualButtons, 'Handbuch V2 einlesen', () => controller.importManual({edition: 'v2'}), 'laboratory-physics-manual-v2');
+    const manualV1 = button(manualButtons, 'Read manual V1', () => controller.importManual({edition: 'v1'}), 'laboratory-physics-manual-v1');
+    const manualV2 = button(manualButtons, 'Read manual V2', () => controller.importManual({edition: 'v2'}), 'laboratory-physics-manual-v2');
     const manualChanges = element('p', manual, 'laboratory-physics-manual-changes');
     const manualSource = element('p', manual, 'laboratory-physics-manual-source');
     const manualObserved = element('p', manual, 'laboratory-physics-manual-observed');
@@ -831,23 +831,23 @@
     const manualError = element('p', manual, 'laboratory-physics-manual-error');
     manualError.setAttribute('role', 'alert');
     const requirementsDetails = element('details', manual, 'laboratory-physics-manual-requirements-details');
-    element('summary', requirementsDetails, '', 'Bedingungen und Belege');
+    element('summary', requirementsDetails, '', 'Requirements and evidence');
     const manualRequirements = element('p', requirementsDetails, 'laboratory-physics-manual-requirements');
     const historyDetails = element('details', manual, 'laboratory-physics-manual-history-details');
-    element('summary', historyDetails, '', 'Zuletzt eingelesene Handbücher');
+    element('summary', historyDetails, '', 'Recently read manuals');
     const manualHistory = element('p', historyDetails, 'laboratory-physics-manual-history');
     const documentDetails = element('details', manual, 'laboratory-physics-manual-document-details');
-    element('summary', documentDetails, '', 'Handbuch lesen / bearbeiten');
+    element('summary', documentDetails, '', 'Read / edit manual');
     const manualDigest = element('p', documentDetails, 'laboratory-physics-manual-digest');
     const manualDocument = element('textarea', documentDetails, 'laboratory-physics-manual-document');
     manualDocument.rows = 13;
-    manualDocument.setAttribute('aria-label', 'Handbuch als Markdown mit Tabelle Betriebsregeln');
+    manualDocument.setAttribute('aria-label', 'Markdown manual with Operating rules table');
     manualDocument.spellcheck = false;
     let manualDraftDirty = false;
     let manualDocumentDigest = null;
     listen(manualDocument, 'input', () => { manualDraftDirty = true; render(); });
     const manualDraftStatus = element('p', documentDetails, 'laboratory-physics-manual-draft-status');
-    const manualApply = button(documentDetails, 'Bearbeitetes Handbuch übernehmen', async () => {
+    const manualApply = button(documentDetails, 'Apply edited manual', async () => {
       const submitted = manualDocument.value;
       if (await controller.importManual({document: submitted}) && manualDocument.value === submitted) {
         manualDraftDirty = false;
@@ -855,16 +855,16 @@
         render();
       }
     }, 'laboratory-physics-manual-apply');
-    const manualRestore = button(documentDetails, 'Aktives Dokument anzeigen', () => {
+    const manualRestore = button(documentDetails, 'Show active document', () => {
       manualDraftDirty = false;
       manualDocumentDigest = null;
       render();
     }, 'laboratory-physics-manual-restore');
-    element('p', manual, 'laboratory-physics-note', 'Diese Demo liest die Tabelle Betriebsregeln aus.');
+    element('p', manual, 'laboratory-physics-note', 'This demo reads the Operating rules table.');
     function sourceLabel(source) {
-      if (!source) return 'Quelle unbekannt';
-      if (source.section) return source.section + ' · Zeile ' + source.line + (source.quote ? ': ' + source.quote : '');
-      return source.label || source.kind || 'Quelle unbekannt';
+      if (!source) return 'Unknown source';
+      if (source.section) return source.section + ' · line ' + source.line + (source.quote ? ': ' + source.quote : '');
+      return source.label || source.kind || 'Unknown source';
     }
     function renderManual(instrument) {
       const knowledge = instrument && instrument.knowledge;
@@ -873,41 +873,41 @@
       const active = knowledge.manual, evaluation = knowledge.evaluation;
       const importing = controller.manualBusy();
       const available = controller.canImportManual();
-      manualVersion.textContent = active.title + ' · ' + active.version + ' · Wissensstand ' + knowledge.revision;
+      manualVersion.textContent = active.title + ' · ' + active.version + ' · Knowledge revision ' + knowledge.revision;
       manualV1.disabled = manualV2.disabled = !available;
       manualRestore.disabled = importing;
       const changes = knowledge.changes || [];
       manualChanges.textContent = changes.map(change => change.label + ': ' + String(change.before) + ' → ' + String(change.after)).join('\n');
       manualChanges.hidden = !changes.length;
-      manualSource.textContent = 'Handbuchquelle: ' + sourceLabel(active.source);
+      manualSource.textContent = 'Manual source: ' + sourceLabel(active.source);
       const measured = instrument.slots.filter(item => item.secured && item.key).length;
       const observation = evaluation.observationSource;
-      manualObserved.textContent = 'Beobachtet: ' + measured + ' gesicherte Proben. Regel: mindestens ' + active.minimumSamples + '.\n'
-        + (observation ? sourceLabel(observation) : 'Direkter Simulationszustand (keine visuelle Erkennung).');
-      manualReady.textContent = importing ? 'Handbuch wird eingelesen …' : evaluation.allowed ? 'Abgeleitet: Startbedingungen erfüllt.' : 'Abgeleitet: Start noch nicht erlaubt.';
+      manualObserved.textContent = 'Observed: ' + measured + ' secured samples. Rule: at least ' + active.minimumSamples + '.\n'
+        + (observation ? sourceLabel(observation) : 'Direct simulation state (no visual recognition).');
+      manualReady.textContent = importing ? 'Reading manual …' : evaluation.allowed ? 'Derived: start requirements met.' : 'Derived: start is not yet allowed.';
       manualReady.dataset.allowed = String(Boolean(evaluation.allowed));
-      manualPlan.textContent = 'Empfohlene Schritte:\n' + (evaluation.plan || []).join('\n');
+      manualPlan.textContent = 'Recommended steps:\n' + (evaluation.plan || []).join('\n');
       manualPlan.hidden = !(evaluation.plan || []).length;
       manualRequirements.textContent = (evaluation.requirements || []).map(requirement =>
         (requirement.satisfied === true ? '✓ ' : requirement.satisfied === false ? '✗ ' : '? ') + requirement.label
-        + ' · beobachtet: ' + String(requirement.actual) + ' · erforderlich: ' + String(requirement.required)
+        + ' · observed: ' + String(requirement.actual) + ' · required: ' + String(requirement.required)
         + '\n' + sourceLabel(requirement.source)).join('\n\n');
       manualHistory.textContent = (knowledge.history || []).slice(-MANUAL_HISTORY_ENTRIES).map(entry =>
-        'Wissensstand ' + entry.revision + ' · ' + entry.version + ' · SHA-256: ' + entry.digest.slice(0, MANUAL_DIGEST_LENGTH)
+        'Knowledge revision ' + entry.revision + ' · ' + entry.version + ' · SHA-256: ' + entry.digest.slice(0, MANUAL_DIGEST_LENGTH)
         + (entry.changes.length ? '\n' + entry.changes.map(change => change.label + ': ' + String(change.before) + ' → ' + String(change.after)
-          + '\n' + sourceLabel(change.source)).join('\n') : '\nKeine geänderten Betriebsregeln.')).join('\n\n') || 'Noch keine früheren Dokumente.';
+          + '\n' + sourceLabel(change.source)).join('\n') : '\nNo operating rules changed.')).join('\n\n') || 'No previous documents yet.';
       manualError.textContent = controller.manualError || '';
       manualError.hidden = !controller.manualError;
-      manualDigest.textContent = 'Aktives Dokument · SHA-256: ' + active.digest.slice(0, MANUAL_DIGEST_LENGTH);
+      manualDigest.textContent = 'Active document · SHA-256: ' + active.digest.slice(0, MANUAL_DIGEST_LENGTH);
       manualDigest.title = active.digest;
       if (!manualDraftDirty && manualDocumentDigest !== active.digest) {
         manualDocument.value = active.document;
         manualDocumentDigest = active.digest;
       }
       manualApply.disabled = !available || !String(manualDocument.value || '').trim();
-      manualDraftStatus.textContent = manualDraftDirty ? 'Ungespeicherter Entwurf – aktiv bleibt ' + active.version + '.' : 'Angezeigt wird das aktive Handbuch.';
+      manualDraftStatus.textContent = manualDraftDirty ? 'Unsaved draft – active version remains ' + active.version + '.' : 'Showing the active manual.';
     }
-    const slotLabel = element('label', centrifuge, 'laboratory-physics-field', 'Rotorplatz');
+    const slotLabel = element('label', centrifuge, 'laboratory-physics-field', 'Rotor slot');
     const slotSelect = element('select', slotLabel, 'laboratory-physics-centrifuge-slot');
     const slotOptions = new Map();
     for (const id of ['C1', 'C2', 'C3', 'C4']) {
@@ -916,94 +916,94 @@
       slotOptions.set(id, option);
     }
     listen(slotSelect, 'change', () => controller.selectCentrifugeSlot(slotSelect.value));
-    const lidOpen = button(centrifuge, 'Deckel öffnen', () => controller.commandCentrifuge(CentrifugeActions.OPEN), 'laboratory-physics-centrifuge-open');
-    const lidClose = button(centrifuge, 'Deckel schließen', () => controller.commandCentrifuge(CentrifugeActions.CLOSE), 'laboratory-physics-centrifuge-close');
-    const loadPair = button(centrifuge, 'Testpaar laden (2 × 5 ml)', () => controller.loadCentrifugePair(), 'laboratory-physics-centrifuge-pair');
+    const lidOpen = button(centrifuge, 'Open lid', () => controller.commandCentrifuge(CentrifugeActions.OPEN), 'laboratory-physics-centrifuge-open');
+    const lidClose = button(centrifuge, 'Close lid', () => controller.commandCentrifuge(CentrifugeActions.CLOSE), 'laboratory-physics-centrifuge-close');
+    const loadPair = button(centrifuge, 'Load test pair (2 × 5 ml)', () => controller.loadCentrifugePair(), 'laboratory-physics-centrifuge-pair');
     const pairNote = element('p', centrifuge, 'laboratory-physics-centrifuge-pair-note');
-    const loadSample = button(centrifuge, 'Probe einsetzen', () => controller.loadCentrifuge(), 'laboratory-physics-centrifuge-load');
-    const unloadSample = button(centrifuge, 'Probe herausheben', () => controller.unloadCentrifuge(), 'laboratory-physics-centrifuge-unload');
-    const centrifugeCancel = button(centrifuge, 'Transport anhalten', () => controller.hold(controller.selected), 'laboratory-physics-centrifuge-cancel');
-    element('p', centrifuge, 'laboratory-physics-note', 'Gegenüberliegende Plätze gleich schwer beladen (C1/C3, C2/C4). Die Probe wird nach gemessenem Bodenkontakt im Rotor gesichert. Vor PR2-Aufträgen gesicherte Proben herausheben.');
-    const rpmLabel = element('label', centrifuge, 'laboratory-physics-field', 'Drehzahl (U/min)');
+    const loadSample = button(centrifuge, 'Load sample', () => controller.loadCentrifuge(), 'laboratory-physics-centrifuge-load');
+    const unloadSample = button(centrifuge, 'Lift sample out', () => controller.unloadCentrifuge(), 'laboratory-physics-centrifuge-unload');
+    const centrifugeCancel = button(centrifuge, 'Stop transfer', () => controller.hold(controller.selected), 'laboratory-physics-centrifuge-cancel');
+    element('p', centrifuge, 'laboratory-physics-note', 'Load opposite slots with equal masses (C1/C3, C2/C4). Samples are secured after bottom contact is measured in the rotor. Remove secured samples before starting PR2 tasks.');
+    const rpmLabel = element('label', centrifuge, 'laboratory-physics-field', 'Speed (RPM)');
     const rpm = element('input', rpmLabel, 'laboratory-physics-centrifuge-rpm');
     rpm.type = 'number'; rpm.min = 1; rpm.step = 1; rpm.value = String(CentrifugeSettings.RPM);
-    const durationLabel = element('label', centrifuge, 'laboratory-physics-field', 'Dauer (Simulationssekunden)');
+    const durationLabel = element('label', centrifuge, 'laboratory-physics-field', 'Duration (simulation seconds)');
     const duration = element('input', durationLabel, 'laboratory-physics-centrifuge-duration');
     duration.type = 'number'; duration.min = 1; duration.max = CentrifugeSettings.MAXIMUM_DURATION; duration.step = 1; duration.value = String(CentrifugeSettings.DURATION);
     listen(rpm, 'input', render); listen(duration, 'input', render);
-    const centrifugeStart = button(centrifuge, 'Zentrifugieren', () => controller.commandCentrifuge(CentrifugeActions.START, {rpm: Number(rpm.value), duration: Number(duration.value)}), 'laboratory-physics-centrifuge-start');
-    const centrifugeStop = button(centrifuge, 'Rotor stoppen', () => controller.commandCentrifuge(CentrifugeActions.STOP), 'laboratory-physics-centrifuge-stop');
-    const viewCentrifuge = adapter.focus ? button(centrifuge, 'Zentrifuge ansehen', () => {
+    const centrifugeStart = button(centrifuge, 'Start centrifuge', () => controller.commandCentrifuge(CentrifugeActions.START, {rpm: Number(rpm.value), duration: Number(duration.value)}), 'laboratory-physics-centrifuge-start');
+    const centrifugeStop = button(centrifuge, 'Stop rotor', () => controller.commandCentrifuge(CentrifugeActions.STOP), 'laboratory-physics-centrifuge-stop');
+    const viewCentrifuge = adapter.focus ? button(centrifuge, 'View centrifuge', () => {
       const slots = controller.centrifuge && controller.centrifuge.slots;
       if (!slots || !slots.length) return;
       const center = [0, 1, 2].map(axis => slots.reduce((sum, slot) => sum + slot.position[axis], 0) / slots.length);
       adapter.focus([center[0] + .32, center[1] - .52, center[2] + .4], center);
     }, 'laboratory-physics-centrifuge-view') : null;
     const liquid = element('section', panel, 'laboratory-physics-liquid');
-    element('h4', liquid, '', 'Flüssigkeit');
+    element('h4', liquid, '', 'Liquid');
     const liquidStatus = element('p', liquid, 'laboratory-physics-liquid-status');
-    const volumeLabel = element('label', liquid, 'laboratory-physics-volume-label', 'Füllmenge (ml)');
+    const volumeLabel = element('label', liquid, 'laboratory-physics-volume-label', 'Volume (ml)');
     const volume = element('input', volumeLabel, 'laboratory-physics-volume');
     volume.type = 'number';
     volume.min = 0;
     volume.step = VOLUME_STEP;
     let volumeKey = null;
     listen(volume, 'input', render);
-    const fill = button(liquid, 'Füllung setzen', () => controller.fillLiquid(Number(volume.value)), 'laboratory-physics-fill');
-    const liftClear = button(liquid, 'Aus dem Ständer heben', () => controller.nudge([0, 0, LIFT_CLEARANCE]), 'laboratory-physics-lift-clear');
-    liftClear.title = 'Ziel um ' + Math.round(LIFT_CLEARANCE * 100) + ' cm anheben';
+    const fill = button(liquid, 'Set volume', () => controller.fillLiquid(Number(volume.value)), 'laboratory-physics-fill');
+    const liftClear = button(liquid, 'Lift out of rack', () => controller.nudge([0, 0, LIFT_CLEARANCE]), 'laboratory-physics-lift-clear');
+    liftClear.title = 'Raise target by ' + Math.round(LIFT_CLEARANCE * 100) + ' cm';
     const tilts = element('div', liquid, 'laboratory-physics-tilts');
     const tiltLeft = button(tilts, '−' + TILT_STEP + '°', () => controller.tilt(-TILT_STEP), 'laboratory-physics-tilt-left');
-    tiltLeft.setAttribute('aria-label', 'Nach links kippen · ' + TILT_STEP + ' Grad');
-    const upright = button(tilts, 'Aufrecht', () => controller.upright(), 'laboratory-physics-upright');
+    tiltLeft.setAttribute('aria-label', 'Tilt left · ' + TILT_STEP + ' degrees');
+    const upright = button(tilts, 'Upright', () => controller.upright(), 'laboratory-physics-upright');
     const tiltRight = button(tilts, '+' + TILT_STEP + '°', () => controller.tilt(TILT_STEP), 'laboratory-physics-tilt-right');
-    tiltRight.setAttribute('aria-label', 'Nach rechts kippen · ' + TILT_STEP + ' Grad');
+    tiltRight.setAttribute('aria-label', 'Tilt right · ' + TILT_STEP + ' degrees');
     const tiltStatus = element('p', liquid, 'laboratory-physics-tilt-status');
-    const viewGlass = adapter.focus ? button(liquid, 'Glas ansehen', () => controller.viewGlass(), 'laboratory-physics-view-glass') : null;
-    element('p', liquid, 'laboratory-physics-note', 'Erst anheben, dann kippen. Vereinfachtes Flüssigkeitsmodell.');
-    const start = button(panel, 'Labor starten / fortsetzen', () => controller.start(), 'laboratory-physics-start');
+    const viewGlass = adapter.focus ? button(liquid, 'View glass', () => controller.viewGlass(), 'laboratory-physics-view-glass') : null;
+    element('p', liquid, 'laboratory-physics-note', 'Lift before tilting. Simplified liquid model.');
+    const start = button(panel, 'Start / resume laboratory', () => controller.start(), 'laboratory-physics-start');
     let robotRun, robotMix, robotPause, robotStatus, robotProgress, robotMeasurements, robotMotionNote;
     if (config.robot) {
-      robotMix = button(panel, 'Misch-Demo starten', () => controller.runMixing(), 'laboratory-physics-robot-mix');
-      element('p', panel, 'laboratory-physics-robot-recipe', 'Je 5 ml Bernstein und Türkis ins klare Glas gießen, sanft schwenken und in A2 ablegen. Ein neuer Start setzt diese Füllmengen und die Ausgangspositionen.');
-      robotRun = button(panel, 'PR2: A1 → A3 starten', () => controller.run(), 'laboratory-physics-robot-run');
-      element('p', panel, 'laboratory-physics-robot-reset-note', 'Neuer Durchlauf stellt PR2 und Gläser zurück; die Füllmengen bleiben erhalten. Pausierte Abläufe lassen sich fortsetzen.');
-      robotPause = button(panel, 'PR2 pausieren', () => controller.pause(), 'laboratory-physics-robot-pause');
+      robotMix = button(panel, 'Start mixing demo', () => controller.runMixing(), 'laboratory-physics-robot-mix');
+      element('p', panel, 'laboratory-physics-robot-recipe', 'Pour 5 ml each of amber and teal liquid into the clear glass, gently swirl, then place it in A2. Starting a new run restores these volumes and the initial positions.');
+      robotRun = button(panel, 'Start PR2: A1 → A3', () => controller.run(), 'laboratory-physics-robot-run');
+      element('p', panel, 'laboratory-physics-robot-reset-note', 'A new run resets PR2 and the glasses; liquid volumes are preserved. Paused runs can be resumed.');
+      robotPause = button(panel, 'Pause PR2', () => controller.pause(), 'laboratory-physics-robot-pause');
       robotStatus = element('p', panel, 'laboratory-physics-robot-status');
       robotStatus.setAttribute('role', 'status');
       robotProgress = element('progress', panel, 'laboratory-physics-robot-progress');
       robotProgress.max = 1;
-      robotProgress.setAttribute('aria-label', 'Fortschritt der PR2-Bewegung');
+      robotProgress.setAttribute('aria-label', 'PR2 movement progress');
       robotMeasurements = element('p', panel, 'laboratory-physics-robot-measurements');
       robotMotionNote = element('p', panel, 'laboratory-physics-robot-motion-note');
     }
     select.value = controller.selected;
     listen(select, 'change', () => { controller.scaleTransfer = null; controller.centrifugeTransfer = null; controller.centrifugePair = null; controller.selected = select.value; render(); });
-    const hold = button(panel, 'Glas halten', () => controller.hold(select.value), 'laboratory-physics-hold');
+    const hold = button(panel, 'Hold glass', () => controller.hold(select.value), 'laboratory-physics-hold');
     const moves = element('div', panel, 'laboratory-physics-moves');
     const motion = [
-      ['←', [-MOVE_STEP, 0, 0], 'Nach links'], ['↑', [0, MOVE_STEP, 0], 'Nach hinten'],
-      ['↓', [0, -MOVE_STEP, 0], 'Nach vorne'], ['→', [MOVE_STEP, 0, 0], 'Nach rechts'],
-      ['Anheben', [0, 0, MOVE_STEP], 'Anheben'], ['Absenken', [0, 0, -MOVE_STEP], 'Absenken'],
+      ['←', [-MOVE_STEP, 0, 0], 'Move left'], ['↑', [0, MOVE_STEP, 0], 'Move back'],
+      ['↓', [0, -MOVE_STEP, 0], 'Move forward'], ['→', [MOVE_STEP, 0, 0], 'Move right'],
+      ['Lift', [0, 0, MOVE_STEP], 'Lift'], ['Lower', [0, 0, -MOVE_STEP], 'Lower'],
     ].map(([text, delta, title]) => {
       const control = button(moves, text, () => controller.nudge(delta));
       control.setAttribute('aria-label', title + ' · 1 cm');
       control.title = title + ' · 1 cm';
       return control;
     });
-    const release = button(panel, 'Glas loslassen', () => controller.release(), 'laboratory-physics-release');
+    const release = button(panel, 'Release glass', () => controller.release(), 'laboratory-physics-release');
     const status = element('p', panel, 'laboratory-physics-status');
     status.setAttribute('role', 'status');
     const force = element('p', panel, 'laboratory-physics-force');
     const distance = element('p', panel, 'laboratory-physics-distance');
-    element('p', panel, 'laboratory-physics-note', 'Orange: gewünschte Position · Rot: Kontaktpunkte');
+    element('p', panel, 'laboratory-physics-note', 'Orange: desired position · Red: contact points');
     const camera = element('div', panel, 'laboratory-physics-cameras');
     if (config.cameras && adapter.focus) {
-      for (const [name, text] of [['closeup', 'Nahansicht'], ['overview', 'Übersicht']]) {
+      for (const [name, text] of [['closeup', 'Close-up'], ['overview', 'Overview']]) {
         if (config.cameras[name]) button(camera, text, () => adapter.focus(config.cameras[name].position, config.cameras[name].target));
       }
     }
-    const reset = button(panel, 'Labor zurücksetzen', () => controller.reset(), 'laboratory-physics-reset');
+    const reset = button(panel, 'Reset laboratory', () => controller.reset(), 'laboratory-physics-reset');
     function render() {
       if (disposed) return;
       const ready = controller.ready();
@@ -1018,12 +1018,12 @@
       const accessible = controller.centrifugeAccessible() && !instrumentBusy;
       centrifuge.hidden = !config.centrifuge && !instrument;
       if (viewCentrifuge) viewCentrifuge.disabled = !instrument || !instrument.available;
-      centrifugeStatus.textContent = !instrument || !instrument.available ? 'Zentrifuge nicht verfügbar'
-        : Math.round(instrument.rpm) + ' U/min · ' + Number(instrument.remainingSeconds || 0).toFixed(1) + ' s verbleibend · '
-          + Number(instrument.rcf || 0).toFixed(1) + ' × g · ' + (instrument.balanced ? 'Ausgewogen' : 'Beladung ausgleichen')
-          + ' · ' + (instrument.locked ? 'Verriegelt' : (instrument.lidOpen ? 'Deckel offen' : (instrument.lidClosed ? 'Deckel geschlossen' : 'Deckel bewegt sich')));
-      if (pair) centrifugeStatus.textContent += ' · Probe ' + (pair.index + 1) + ' von ' + pair.samples.length + ' wird vorbereitet und eingesetzt …';
-      else if (controller.centrifugeTransfer) centrifugeStatus.textContent += ' · Probe wird ' + (controller.centrifugeTransfer.type === CentrifugeTransfer.LOAD ? 'eingesetzt …' : 'herausgehoben …');
+      centrifugeStatus.textContent = !instrument || !instrument.available ? 'Centrifuge unavailable'
+        : Math.round(instrument.rpm) + ' RPM · ' + Number(instrument.remainingSeconds || 0).toFixed(1) + ' s remaining · '
+          + Number(instrument.rcf || 0).toFixed(1) + ' × g · ' + (instrument.balanced ? 'Balanced' : 'Balance the load')
+          + ' · ' + (instrument.locked ? 'Locked' : (instrument.lidOpen ? 'Lid open' : (instrument.lidClosed ? 'Lid closed' : 'Lid moving')));
+      if (pair) centrifugeStatus.textContent += ' · Sample ' + (pair.index + 1) + ' of ' + pair.samples.length + ' is being prepared and loaded …';
+      else if (controller.centrifugeTransfer) centrifugeStatus.textContent += ' · Sample is being ' + (controller.centrifugeTransfer.type === CentrifugeTransfer.LOAD ? 'loaded …' : 'lifted out …');
       const pairSamples = controller.centrifugePairSamples();
       const pairGuidance = controller.centrifugePairGuidance();
       loadPair.textContent = pairGuidance.label;
@@ -1033,7 +1033,7 @@
       slotSelect.disabled = !manualReady || instrumentBusy;
       if (instrument) for (const item of instrument.slots) {
         const option = slotOptions.get(item.id);
-        if (option) option.textContent = item.id + ' ↔ ' + item.opposite + (item.key ? ' · ' + item.key + ' · ' + item.grams.toFixed(1) + ' g' : ' · leer');
+        if (option) option.textContent = item.id + ' ↔ ' + item.opposite + (item.key ? ' · ' + item.key + ' · ' + item.grams.toFixed(1) + ' g' : ' · empty');
       }
       lidOpen.disabled = !manualReady || !instrument || instrumentBusy || instrument.locked || instrument.lidOpen || Math.abs(instrument.rpm) > CentrifugeSettings.STOPPED_RPM;
       lidClose.disabled = !manualReady || !instrument || instrumentBusy || instrument.locked || instrument.lidClosed || Math.abs(instrument.rpm) > CentrifugeSettings.STOPPED_RPM;
@@ -1049,12 +1049,12 @@
       scale.hidden = !config.scale && !reading;
       scaleReading.textContent = reading && reading.available && Number.isFinite(reading.grams)
         ? (Math.abs(reading.grams) < .0005 ? 0 : reading.grams).toFixed(3) + ' g' : '— g';
-      scaleStatus.textContent = !reading || !reading.available ? 'Waage nicht verfügbar'
-        : (reading.stable ? 'Stabil' : 'Einpendeln …') + ' · Tara: ' + reading.tareGrams.toFixed(3) + ' g';
+      scaleStatus.textContent = !reading || !reading.available ? 'Scale unavailable'
+        : (reading.stable ? 'Stable' : 'Settling …') + ' · Tare: ' + reading.tareGrams.toFixed(3) + ' g';
       tare.disabled = !manualReady || Boolean(pair) || !reading || !reading.available || !reading.stable || controller.scaleBusy();
       moveToScale.disabled = !manualReady || Boolean(pair) || !config.scale || !controller.objects[controller.selected] || Boolean(controller.scaleTransfer) || Boolean(controller.centrifugeTransfer) || secured;
       cancelScale.hidden = !controller.scaleTransfer;
-      if (controller.scaleTransfer) scaleStatus.textContent = 'Objekt wird angehoben, zur Waage bewegt und abgesetzt …';
+      if (controller.scaleTransfer) scaleStatus.textContent = 'Lifting the object, moving it to the scale and setting it down …';
       start.hidden = ready;
       start.disabled = controller.starting;
       select.value = controller.selected;
@@ -1074,19 +1074,19 @@
         }
         const requestedVolume = Number(volume.value);
         fill.disabled = !manualReady || Boolean(pair) || secured || !String(volume.value).trim() || !Number.isFinite(requestedVolume) || requestedVolume < 0 || requestedVolume > tube.capacityMl;
-        liquidStatus.textContent = tube.volumeMl.toFixed(1) + ' / ' + tube.capacityMl.toFixed(1) + ' ml · Ausgelaufen: ' + (Number(controller.liquid.spilledMl) || 0).toFixed(1) + ' ml';
-        tiltStatus.textContent = 'Neigung: ' + Math.round(controller.observedTilt()) + '°';
+        liquidStatus.textContent = tube.volumeMl.toFixed(1) + ' / ' + tube.capacityMl.toFixed(1) + ' ml · Spilled: ' + (Number(controller.liquid.spilledMl) || 0).toFixed(1) + ' ml';
+        tiltStatus.textContent = 'Tilt: ' + Math.round(controller.observedTilt()) + '°';
       }
-      status.textContent = controller.error || (controller.starting ? 'Labor wird gestartet …' : (ready ? (controller.robotBusy() ? 'Manuelles Bewegen ist während des PR2-Auftrags pausiert.' : (controller.target ? 'Glas gehalten · Pfeile bewegen das Ziel.' : 'Glas wählen oder direkt in der Szene ziehen.')) : 'Die Simulation ist nicht aktiv. Labor starten, um fortzufahren.'));
+      status.textContent = controller.error || (controller.starting ? 'Starting laboratory …' : (ready ? (controller.robotBusy() ? 'Manual movement is paused while PR2 is running a task.' : (controller.target ? 'Glass held · Use the arrows to move the target.' : 'Select a glass or drag it directly in the scene.')) : 'The simulation is inactive. Start the laboratory to continue.'));
       status.dataset.error = String(Boolean(controller.error));
       if (config.robot) {
         const mixing = controller.robot.source === RobotSources.MIXING;
         const paused = controller.robot.state === RobotStates.PAUSED;
-        robotMotionNote.textContent = mixing ? 'Bewegung: lokaler Kontaktregler. Kontakte: MuJoCo.' : 'Gelenkziele: gespeicherter CRAM-Plan. Bewegung und Kontakte: MuJoCo.';
+        robotMotionNote.textContent = mixing ? 'Motion: local contact controller. Contacts: MuJoCo.' : 'Joint targets: recorded CRAM plan. Motion and contacts: MuJoCo.';
         robotRun.disabled = !ready || Boolean(controller.robotBusy()) || Boolean(controller.centrifugeTransfer) || Boolean(pair) || controller.centrifugeOwnsObjects();
-        robotRun.textContent = paused && !mixing ? 'PR2 fortsetzen' : 'PR2: A1 → A3 starten';
+        robotRun.textContent = paused && !mixing ? 'Resume PR2' : 'Start PR2: A1 → A3';
         robotMix.disabled = robotRun.disabled;
-        robotMix.textContent = paused && mixing ? 'Misch-Demo fortsetzen' : 'Misch-Demo starten';
+        robotMix.textContent = paused && mixing ? 'Resume mixing demo' : 'Start mixing demo';
         robotPause.disabled = !ready || !controller.robotBusy() || controller.robotRequest === 'pause';
         const phase = controller.robot.message || RobotPhases[controller.robot.phase];
         const label = (mixing ? MixingLabels : RobotLabels)[controller.robot.state] || controller.robot.state;
@@ -1094,19 +1094,19 @@
         robotStatus.dataset.error = String(Boolean(controller.robot.error));
         robotProgress.value = Math.max(0, Math.min(1, Number(controller.robot.progress) || 0));
         const measurements = [];
-        if (Number.isFinite(controller.robot.gripperForce)) measurements.push('Greifkontakt: ' + controller.robot.gripperForce.toFixed(2) + ' N');
-        if (Number.isFinite(controller.robot.maximumLift)) measurements.push('Max. Hub: ' + (controller.robot.maximumLift * 100).toFixed(1) + ' cm');
+        if (Number.isFinite(controller.robot.gripperForce)) measurements.push('Grasp contact: ' + controller.robot.gripperForce.toFixed(2) + ' N');
+        if (Number.isFinite(controller.robot.maximumLift)) measurements.push('Max. lift: ' + (controller.robot.maximumLift * 100).toFixed(1) + ' cm');
         robotMeasurements.textContent = measurements.join(' · ');
         robotMeasurements.hidden = !measurements.length;
       }
       const feedback = controller.feedback();
-      force.textContent = 'Kontakt: ' + feedback.contactCount + ' · ' + feedback.force.toFixed(2) + ' N';
+      force.textContent = 'Contacts: ' + feedback.contactCount + ' · ' + feedback.force.toFixed(2) + ' N';
       if (config.robot && controller.robot.holding) {
-        distance.textContent = 'Vom PR2 gehalten · Kontaktphysik aktiv';
+        distance.textContent = 'Held by PR2 · Contact physics active';
       } else if (config.robot && controller.robot.state === RobotStates.RUNNING) {
-        distance.textContent = 'PR2-Auftrag aktiv · Kontaktphysik aktiv';
+        distance.textContent = 'PR2 task running · Contact physics active';
       } else {
-        distance.textContent = controller.target ? 'Abstand zum Ziel: ' + (feedback.distance * 1000).toFixed(1) + ' mm' : 'Losgelassen · Schwerkraft aktiv';
+        distance.textContent = controller.target ? 'Distance to target: ' + (feedback.distance * 1000).toFixed(1) + ' mm' : 'Released · Gravity active';
       }
     }
     render();
@@ -1131,7 +1131,7 @@
     panel.className = 'laboratory-physics-entry';
     const button = document.createElement('button');
     button.type = 'button';
-    button.textContent = service.robot ? 'PR2 mit Kontaktphysik' : 'Labor mit Kontaktphysik öffnen';
+    button.textContent = service.robot ? 'PR2 with contact physics' : 'Open laboratory with contact physics';
     const status = document.createElement('p');
     status.setAttribute('role', 'status');
     panel.appendChild(button);
@@ -1142,10 +1142,10 @@
       if (pending) return;
       pending = true;
       button.disabled = true;
-      status.textContent = 'Labor wird vorbereitet …';
+      status.textContent = 'Preparing laboratory …';
       try {
         const answer = await service.start();
-        if (!answer.viewerUrl) throw new Error('Die Laboransicht ist noch nicht bereit.');
+        if (!answer.viewerUrl) throw new Error('The laboratory view is not ready yet.');
         navigate(answer.viewerUrl);
       } catch (error) {
         status.textContent = error.message;

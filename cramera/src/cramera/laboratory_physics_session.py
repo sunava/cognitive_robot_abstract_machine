@@ -450,7 +450,7 @@ class LaboratoryPhysicsSession:
             item[PhysicsField.KEY] for item in scene[PhysicsField.OBJECTS]
         }
         scene[PhysicsField.NAME] = self.SCENE_NAME
-        scene[PhysicsField.TASK] = "Laborbank · Kontaktphysik"
+        scene[PhysicsField.TASK] = "Laboratory bench · Contact physics"
         laboratory = scene.pop(PhysicsField.LABORATORY, {})
         scene[PhysicsField.PHYSICS] = {
             PhysicsField.OBJECTS: [

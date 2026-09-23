@@ -214,3 +214,19 @@ test('standalone controls launch through the shared client and release their pol
   assert.equal(clock.callbacks.size, 0);
   assert.deepEqual(surface.host.children, []);
 });
+
+// %% customer-facing English controls
+test('robot controls and readiness messages use English', async () => {
+  const service = new TransferService();
+  service.answer = {ok: true, state: LaboratoryRobot.States.IDLE};
+  const surface = new RobotControls();
+  const clock = new PollingClock();
+  const mounted = LaboratoryRobot.mount(surface.host, service, clock);
+  await mounted.initialized;
+  assert.equal(surface.find('laboratory-robot-heading').textContent, 'Robot · CRAM');
+  assert.equal(surface.find('laboratory-robot-status').textContent, 'PR2 picks up the clear tube from A1 and places it in A3.');
+  assert.equal(surface.find('laboratory-robot-live').textContent, 'Open live view ↗');
+  assert.equal(surface.find('laboratory-robot-replay').textContent, 'Open recording ↗');
+  assert.equal(surface.find('laboratory-robot-log-heading').textContent, 'Execution log');
+  mounted.destroy();
+});

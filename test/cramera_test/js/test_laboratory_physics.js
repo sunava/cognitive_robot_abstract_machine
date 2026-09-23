@@ -11,7 +11,7 @@ const Physics = require('../../../cramera/src/cramera/web/core/laboratory-physic
 class ContactSimulation {
   constructor() {
     this.config = {
-      objects: [{key: 'tube', label: 'Glas'}],
+      objects: [{key: 'tube', label: 'Glass'}],
       bounds: {min: [-.8, -.65, .8], max: [.8, .45, 1.6]},
     };
     this.answer = {ok: true, state: 'running', objects: {tube: [.16, -.065, .906, 0, 0, 0, 1]}, target: null, contacts: []};
@@ -317,20 +317,20 @@ test('mixing control displays the recipe, stage feedback and completion in A2', 
   const mounted = Physics.mount(surface.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
   await mounted.initialized;
   const mixing = surface.find('laboratory-physics-robot-mix');
-  assert.equal(mixing.textContent, 'Misch-Demo starten');
+  assert.equal(mixing.textContent, 'Start mixing demo');
   assert.match(surface.find('laboratory-physics-robot-recipe').textContent, /5 ml/);
   assert.match(surface.find('laboratory-physics-robot-recipe').textContent, /A2/);
   await mixing.listeners.get('click')();
   assert.deepEqual(scene.commands, [{type: 'runMixing'}]);
-  scene.answer.robot = {source: Physics.RobotSources.MIXING, state: 'running', phase: 'pour', progress: .4, message: 'Türkise Flüssigkeit eingießen'};
+  scene.answer.robot = {source: Physics.RobotSources.MIXING, state: 'running', phase: 'pour', progress: .4, message: 'Pouring the teal liquid'};
   await mounted.refresh();
   assert.equal(mixing.disabled, true);
   assert.equal(surface.find('laboratory-physics-robot-run').disabled, true);
   assert.equal(surface.find('laboratory-physics-fill').disabled, true);
-  assert.equal(surface.find('laboratory-physics-robot-status').textContent, 'PR2 mischt die Flüssigkeiten · ' + scene.answer.robot.message);
+  assert.equal(surface.find('laboratory-physics-robot-status').textContent, 'PR2 is mixing the liquids · ' + scene.answer.robot.message);
   scene.answer.robot = {source: Physics.RobotSources.MIXING, state: 'succeeded', phase: 'complete', progress: 1};
   await mounted.refresh();
-  assert.equal(surface.find('laboratory-physics-robot-status').textContent, 'Mischung in A2 abgelegt');
+  assert.equal(surface.find('laboratory-physics-robot-status').textContent, 'Mixture placed in A2');
   assert.equal(mixing.disabled, false);
   mounted.destroy();
 });
@@ -342,8 +342,8 @@ test('paused mixing offers its own resume while the original transfer remains a 
   const surface = new PhysicsControls();
   const mounted = Physics.mount(surface.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
   await mounted.initialized;
-  assert.equal(surface.find('laboratory-physics-robot-mix').textContent, 'Misch-Demo fortsetzen');
-  assert.equal(surface.find('laboratory-physics-robot-run').textContent, 'PR2: A1 → A3 starten');
+  assert.equal(surface.find('laboratory-physics-robot-mix').textContent, 'Resume mixing demo');
+  assert.equal(surface.find('laboratory-physics-robot-run').textContent, 'Start PR2: A1 → A3');
   mounted.destroy();
 });
 
@@ -354,8 +354,8 @@ test('mixing phase fallback describes swirling and reports server failure withou
   const surface = new PhysicsControls();
   const mounted = Physics.mount(surface.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
   await mounted.initialized;
-  assert.equal(surface.find('laboratory-physics-robot-status').textContent, 'PR2 mischt die Flüssigkeiten · Mischung sanft schwenken');
-  scene.answer.robot = {source: Physics.RobotSources.MIXING, state: 'failed', phase: 'place', progress: 1, error: 'Stand in A2 nicht bestätigt'};
+  assert.equal(surface.find('laboratory-physics-robot-status').textContent, 'PR2 is mixing the liquids · Gently swirling the mixture');
+  scene.answer.robot = {source: Physics.RobotSources.MIXING, state: 'failed', phase: 'place', progress: 1, error: 'Stable placement in A2 was not confirmed'};
   await mounted.refresh();
   assert.equal(surface.find('laboratory-physics-robot-status').textContent, scene.answer.robot.error);
   mounted.destroy();
@@ -369,11 +369,11 @@ test('robot motion notes distinguish a recorded transfer from the local mixing c
   const mounted = Physics.mount(surface.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
   await mounted.initialized;
   const note = surface.find('laboratory-physics-robot-motion-note');
-  assert.match(note.textContent, /gespeicherter CRAM-Plan/);
+  assert.match(note.textContent, /recorded CRAM plan/);
   scene.answer.robot = {source: Physics.RobotSources.MIXING, state: 'running'};
   await mounted.refresh();
-  assert.match(note.textContent, /lokaler Kontaktregler/);
-  assert.doesNotMatch(note.textContent, /gespeicherter CRAM-Plan/);
+  assert.match(note.textContent, /local contact controller/);
+  assert.doesNotMatch(note.textContent, /recorded CRAM plan/);
   mounted.destroy();
 });
 
@@ -384,7 +384,7 @@ test('placement phase labels describe donor returns without claiming the mixture
   const surface = new PhysicsControls();
   const mounted = Physics.mount(surface.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
   await mounted.initialized;
-  assert.equal(surface.find('laboratory-physics-robot-status').textContent, 'PR2 mischt die Flüssigkeiten · Glas im Ständer abstellen');
+  assert.equal(surface.find('laboratory-physics-robot-status').textContent, 'PR2 is mixing the liquids · Placing the glass in the rack');
   mounted.destroy();
 });
 
@@ -522,8 +522,8 @@ test('liquid controls show measured volume and tilt, respect capacity and lock d
   await mounted.initialized;
   assert.equal(surface.find('laboratory-physics-liquid').hidden, false);
   assert.equal(Number(surface.find('laboratory-physics-volume').max), scene.answer.liquid.tubes.tube.capacityMl);
-  assert.equal(surface.find('laboratory-physics-liquid-status').textContent, '12.0 / 22.0 ml · Ausgelaufen: 0.8 ml');
-  assert.equal(surface.find('laboratory-physics-tilt-status').textContent, 'Neigung: 30°');
+  assert.equal(surface.find('laboratory-physics-liquid-status').textContent, '12.0 / 22.0 ml · Spilled: 0.8 ml');
+  assert.equal(surface.find('laboratory-physics-tilt-status').textContent, 'Tilt: 30°');
   surface.find('laboratory-physics-volume').value = '15';
   await surface.find('laboratory-physics-fill').listeners.get('click')();
   assert.deepEqual(scene.commands.at(-1), {type: 'liquid', key: 'tube', volumeMl: 15});
@@ -613,7 +613,7 @@ test('mounted controls show contacts, issue physical commands and stop polling w
   scene.answer.contacts = [{position: [0, 0, .9], force: 1.25, bodyA: 'tube', bodyB: 'bench'}];
   scene.answer.target = structuredClone(mounted.controller.target);
   await mounted.refresh();
-  assert.equal(surface.find('laboratory-physics-force').textContent, 'Kontakt: 1 · 1.25 N');
+  assert.equal(surface.find('laboratory-physics-force').textContent, 'Contacts: 1 · 1.25 N');
   await surface.find('laboratory-physics-release').listeners.get('click')();
   assert.equal(scene.commands.at(-1).type, 'release');
   assert.deepEqual(Array.from(clock.callbacks.values()).map(entry => entry.interval), [Physics.POLL_INTERVAL]);
@@ -654,7 +654,7 @@ test('robot physics entry starts its own service before opening the resulting sc
   const answer = {ok: true, viewerUrl: '/index.html?scene=precision_lab_pr2_physics&offline=1'};
   const mounted = Physics.mountStart(surface.host, {robot: true, start: async () => answer}, url => navigation.push(url));
   const button = surface.host.flatten().find(item => item.tagName === 'button');
-  assert.equal(button.textContent, 'PR2 mit Kontaktphysik');
+  assert.equal(button.textContent, 'PR2 with contact physics');
   await button.listeners.get('click')();
   assert.deepEqual(navigation, [answer.viewerUrl]);
   mounted.destroy();
@@ -667,7 +667,7 @@ test('robot feedback shows its physical phase without deriving success from comp
   const surface = new PhysicsControls();
   const mounted = Physics.mount(surface.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
   await mounted.initialized;
-  assert.equal(surface.find('laboratory-physics-robot-status').textContent, 'PR2 bewegt das Glas · Stabilen Stand prüfen');
+  assert.equal(surface.find('laboratory-physics-robot-status').textContent, 'PR2 is moving the glass · Checking stable placement');
   assert.equal(surface.find('laboratory-physics-robot-run').disabled, true);
   scene.answer.robot = {state: 'failed', phase: 'settle', progress: 1, error: 'Glass did not settle'};
   await mounted.refresh();
@@ -682,7 +682,7 @@ test('robot grip feedback displays measured contact force and maximum lift', asy
   const surface = new PhysicsControls();
   const mounted = Physics.mount(surface.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
   await mounted.initialized;
-  assert.equal(surface.find('laboratory-physics-robot-measurements').textContent, 'Greifkontakt: 0.65 N · Max. Hub: 14.0 cm');
+  assert.equal(surface.find('laboratory-physics-robot-measurements').textContent, 'Grasp contact: 0.65 N · Max. lift: 14.0 cm');
   mounted.destroy();
 });
 
@@ -695,14 +695,14 @@ test('robot holding feedback distinguishes physical grip from a released manual 
   for (const state of ['running', 'paused']) {
     scene.answer.robot = {state, phase: 'transport', progress: .6, holding: true};
     await mounted.refresh();
-    assert.equal(surface.find('laboratory-physics-distance').textContent, 'Vom PR2 gehalten · Kontaktphysik aktiv');
+    assert.equal(surface.find('laboratory-physics-distance').textContent, 'Held by PR2 · Contact physics active');
   }
   scene.answer.robot = {state: 'running', phase: 'approach', progress: .2, holding: false};
   await mounted.refresh();
-  assert.equal(surface.find('laboratory-physics-distance').textContent, 'PR2-Auftrag aktiv · Kontaktphysik aktiv');
+  assert.equal(surface.find('laboratory-physics-distance').textContent, 'PR2 task running · Contact physics active');
   scene.answer.robot = {state: 'idle', progress: 0, holding: false};
   await mounted.refresh();
-  assert.equal(surface.find('laboratory-physics-distance').textContent, 'Losgelassen · Schwerkraft aktiv');
+  assert.equal(surface.find('laboratory-physics-distance').textContent, 'Released · Gravity active');
   mounted.destroy();
 });
 
@@ -713,11 +713,11 @@ test('robot start explains the initial reset while a paused program offers resum
   const surface = new PhysicsControls();
   const mounted = Physics.mount(surface.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
   await mounted.initialized;
-  assert.equal(surface.find('laboratory-physics-robot-run').textContent, 'PR2: A1 → A3 starten');
-  assert.match(surface.find('laboratory-physics-robot-reset-note').textContent, /Füllmengen bleiben erhalten/);
+  assert.equal(surface.find('laboratory-physics-robot-run').textContent, 'Start PR2: A1 → A3');
+  assert.match(surface.find('laboratory-physics-robot-reset-note').textContent, /liquid volumes are preserved/);
   scene.answer.robot = {state: 'paused', phase: 'transport', progress: .6};
   await mounted.refresh();
-  assert.equal(surface.find('laboratory-physics-robot-run').textContent, 'PR2 fortsetzen');
+  assert.equal(surface.find('laboratory-physics-robot-run').textContent, 'Resume PR2');
   mounted.destroy();
 });
 
@@ -1366,19 +1366,19 @@ test('a remaining opposite pair is offered and a fully loaded centrifuge explain
   const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
   await mounted.initialized;
   const button = controls.find('laboratory-physics-centrifuge-pair');
-  assert.equal(button.textContent, 'Zweites Testpaar laden (2 × 5 ml)');
+  assert.equal(button.textContent, 'Load second test pair (2 × 5 ml)');
   assert.equal(button.disabled, false);
   scene.secureSample('thirdtube', 'C2', 3);
   scene.answer.centrifuge.balanced = false;
   await mounted.refresh();
-  assert.equal(button.textContent, 'Gegenprobe einsetzen');
+  assert.equal(button.textContent, 'Load counterbalance sample');
   assert.equal(button.disabled, false);
   scene.secureSample('fourthtube', 'C4', 3);
   scene.answer.centrifuge.balanced = true;
   await mounted.refresh();
-  assert.equal(button.textContent, 'Zentrifuge vollständig beladen');
+  assert.equal(button.textContent, 'Centrifuge fully loaded');
   assert.equal(button.disabled, true);
-  assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, /4 Proben.*Deckel schließen/);
+  assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, /4 samples.*Close lid/);
   mounted.destroy();
 });
 
@@ -1392,7 +1392,7 @@ test('a second pair stays unavailable when only one free glass remains', async (
   const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
   await mounted.initialized;
   assert.equal(controls.find('laboratory-physics-centrifuge-pair').disabled, true);
-  assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, /freie Gläser.*Deckel schließen/);
+  assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, /available glasses.*Close lid/);
   assert.equal(await mounted.controller.loadCentrifugePair(), false);
   assert.deepEqual(scene.commands, []);
   mounted.destroy();
@@ -1478,10 +1478,10 @@ test('pair preparation exposes progress and blocks conflicting controls until ca
   const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
   await mounted.initialized;
   const button = controls.find('laboratory-physics-centrifuge-pair');
-  assert.equal(button.textContent, 'Testpaar laden (2 × 5 ml)');
+  assert.equal(button.textContent, 'Load test pair (2 × 5 ml)');
   assert.equal(button.disabled, false);
   await button.listeners.get('click')();
-  assert.match(controls.find('laboratory-physics-centrifuge-status').textContent, /1 von 2/);
+  assert.match(controls.find('laboratory-physics-centrifuge-status').textContent, /1 of 2/);
   for (const name of ['object', 'fill', 'hold', 'scale-move', 'centrifuge-load', 'centrifuge-close', 'robot-run']) {
     assert.equal(controls.find('laboratory-physics-' + name).disabled, true, name);
   }
@@ -1502,7 +1502,7 @@ test('the counterpart button remains usable after a single sample is secured', a
   const controls = new PhysicsControls();
   const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
   await mounted.initialized;
-  assert.equal(controls.find('laboratory-physics-centrifuge-pair').textContent, 'Gegenprobe einsetzen');
+  assert.equal(controls.find('laboratory-physics-centrifuge-pair').textContent, 'Load counterbalance sample');
   assert.equal(controls.find('laboratory-physics-centrifuge-pair').disabled, false);
   mounted.destroy();
 });
@@ -1517,15 +1517,15 @@ test('an already loaded balanced pair explains the next action without offering 
   await mounted.initialized;
   const button = controls.find('laboratory-physics-centrifuge-pair');
   const note = controls.find('laboratory-physics-centrifuge-pair-note');
-  assert.equal(button.textContent, 'Testpaar bereit');
+  assert.equal(button.textContent, 'Test pair ready');
   assert.equal(button.disabled, true);
-  assert.match(note.textContent, /bereits eingesetzt.*Deckel schließen/);
+  assert.match(note.textContent, /already loaded.*Close lid/);
   assert.equal(controls.find('laboratory-physics-centrifuge-close').disabled, false);
   scene.answer.centrifuge.lidOpen = false;
   scene.answer.centrifuge.lidClosed = true;
   await mounted.refresh();
-  assert.match(note.textContent, /bereits eingesetzt.*Zentrifugieren/);
-  assert.doesNotMatch(note.textContent, /Deckel schließen/);
+  assert.match(note.textContent, /already loaded.*Start centrifuge/);
+  assert.doesNotMatch(note.textContent, /Close lid/);
   assert.equal(controls.find('laboratory-physics-centrifuge-start').disabled, false);
   assert.deepEqual(scene.commands, []);
   mounted.destroy();
@@ -1539,9 +1539,9 @@ for (const secured of [false, true]) {
     const controls = new PhysicsControls();
     const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
     await mounted.initialized;
-    assert.equal(controls.find('laboratory-physics-centrifuge-pair').textContent, 'Beladung prüfen');
+    assert.equal(controls.find('laboratory-physics-centrifuge-pair').textContent, 'Check loading');
     assert.equal(controls.find('laboratory-physics-centrifuge-pair').disabled, true);
-    assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, secured ? /nicht ausgewogen/ : /nicht gesichert/);
+    assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, secured ? /not balanced/ : /not secured/);
     assert.equal(controls.find('laboratory-physics-centrifuge-start').disabled, true);
     assert.deepEqual(scene.commands, []);
     mounted.destroy();
@@ -1556,7 +1556,7 @@ test('a closed empty centrifuge explains how to enable loading', async () => {
   const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
   await mounted.initialized;
   assert.equal(controls.find('laboratory-physics-centrifuge-pair').disabled, true);
-  assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, /Deckel öffnen/);
+  assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, /Open lid/);
   mounted.destroy();
 });
 
@@ -1570,7 +1570,7 @@ for (const running of [false, true]) {
     const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
     await mounted.initialized;
     assert.equal(controls.find('laboratory-physics-centrifuge-pair').disabled, true);
-    assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, running ? /PR2.*pausieren/ : /Labor starten/);
+    assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, running ? /pause PR2/ : /Start \/ resume laboratory/);
     mounted.destroy();
   });
 }
@@ -1581,8 +1581,8 @@ test('pair loading labels itself as running while the first sample is prepared',
   const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
   await mounted.initialized;
   await controls.find('laboratory-physics-centrifuge-pair').listeners.get('click')();
-  assert.equal(controls.find('laboratory-physics-centrifuge-pair').textContent, 'Testpaar wird geladen …');
-  assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, /Probe 1 von 2/);
+  assert.equal(controls.find('laboratory-physics-centrifuge-pair').textContent, 'Loading test pair …');
+  assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, /Sample 1 of 2/);
   mounted.destroy();
 });
 
@@ -1661,13 +1661,13 @@ class ManualKnowledgeSimulation extends BalancedSampleSimulation {
   updateKnowledge(version, document) {
     const before = this.answer.centrifuge.knowledge;
     const minimumSamples = version === 'v1' ? 2 : 4;
-    const source = {section: 'Betriebsregeln', line: 6, quote: '| minimum_samples | ' + minimumSamples + ' |'};
+    const source = {section: 'Operating rules', line: 6, quote: '| minimum_samples | ' + minimumSamples + ' |'};
     this.answer.centrifuge.knowledge = {
-      manual: {title: 'Laborzentrifuge', version, document: document || '# Laborzentrifuge ' + version + '\n' + source.quote, digest: version, minimumSamples, source},
+      manual: {title: 'Laboratory centrifuge', version, document: document || '# Laboratory centrifuge ' + version + '\n' + source.quote, digest: version, minimumSamples, source},
       revision: before ? before.revision + 1 : 1,
-      changes: before ? [{field: 'minimumSamples', label: 'Mindestanzahl Proben', before: before.manual.minimumSamples, after: minimumSamples, source}] : [],
+      changes: before ? [{field: 'minimumSamples', label: 'Minimum sample count', before: before.manual.minimumSamples, after: minimumSamples, source}] : [],
       history: [],
-      evaluation: {allowed: minimumSamples === 2, requirements: [{id: 'minimum_samples', label: 'Mindestanzahl Proben', satisfied: minimumSamples === 2, actual: 2, required: minimumSamples, source}], plan: minimumSamples === 2 ? [] : ['Zweites ausgewogenes Probenpaar einsetzen.']},
+      evaluation: {allowed: minimumSamples === 2, requirements: [{id: 'minimum_samples', label: 'Minimum sample count', satisfied: minimumSamples === 2, actual: 2, required: minimumSamples, source}], plan: minimumSamples === 2 ? [] : ['Load a second balanced sample pair.']},
     };
   }
 }
@@ -1717,7 +1717,7 @@ test('an old poll cannot replace freshly imported operating knowledge', async ()
 test('manual failures remain visible through successful polling and preserve the active document', async () => {
   const scene = new ManualKnowledgeSimulation();
   await scene.controller.refresh();
-  const failure = new Error('Betriebsregeln fehlen im Dokument');
+  const failure = new Error('Operating rules are missing from the document');
   scene.service.importManual = async () => { throw failure; };
   assert.equal(await scene.controller.importManual({document: 'invalid'}), false);
   await scene.controller.refresh();
@@ -1740,10 +1740,10 @@ test('the knowledge panel explains a rule change and preserves an edited draft a
   await controls.find('laboratory-physics-manual-v2').listeners.get('click')();
   assert.equal(editor.value, draft);
   assert.match(controls.find('laboratory-physics-manual-changes').textContent, /2 → 4/);
-  assert.match(controls.find('laboratory-physics-manual-source').textContent, /Betriebsregeln.*6/);
+  assert.match(controls.find('laboratory-physics-manual-source').textContent, /Operating rules.*6/);
   assert.equal(controls.find('laboratory-physics-centrifuge-start').disabled, true);
   assert.match(controls.find('laboratory-physics-manual-observed').textContent, /2/);
-  assert.match(controls.find('laboratory-physics-manual-plan').textContent, /Zweites ausgewogenes/);
+  assert.match(controls.find('laboratory-physics-manual-plan').textContent, /second balanced/);
   await controls.find('laboratory-physics-manual-apply').listeners.get('click')();
   assert.deepEqual(scene.commands.at(-1), {type: 'manual', document: draft});
   mounted.destroy();
@@ -1780,7 +1780,7 @@ test('a pending manual import locks its controls and reports rejection beside th
   const importing = controls.find('laboratory-physics-manual-apply').listeners.get('click')();
   for (const suffix of ['v1', 'v2', 'apply']) assert.equal(controls.find('laboratory-physics-manual-' + suffix).disabled, true);
   assert.equal(controls.find('laboratory-physics-centrifuge-start').disabled, true);
-  const failure = new Error('Betriebsregeln fehlen');
+  const failure = new Error('Operating rules are missing');
   reject(failure);
   await importing;
   await mounted.refresh();
@@ -1805,7 +1805,7 @@ test('manual history retains the versions, changed rule values and their documen
   const source = scene.answer.centrifuge.knowledge.manual.source;
   scene.answer.centrifuge.knowledge.history = [
     {revision: 1, version: 'v1', changes: [], digest: 'first'},
-    {revision: 2, version: 'v2', changes: [{field: 'minimumSamples', label: 'Mindestanzahl Proben', before: 2, after: 4, source}], digest: 'second'},
+    {revision: 2, version: 'v2', changes: [{field: 'minimumSamples', label: 'Minimum sample count', before: 2, after: 4, source}], digest: 'second'},
   ];
   const controls = new PhysicsControls();
   const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
@@ -1814,7 +1814,7 @@ test('manual history retains the versions, changed rule values and their documen
   assert.match(history, /v1/);
   assert.match(history, /v2/);
   assert.match(history, /2 → 4/);
-  assert.match(history, /Betriebsregeln/);
+  assert.match(history, /Operating rules/);
   mounted.destroy();
 });
 
@@ -1825,7 +1825,7 @@ test('a later successful reset cannot turn a rejected document into an accepted 
   scene.service.importManual = () => new Promise((resolve, failure) => { reject = failure; });
   const importing = scene.controller.importManual({document: 'Invalid draft'});
   const resetting = scene.controller.reset();
-  reject(new Error('Betriebsregeln fehlen'));
+  reject(new Error('Operating rules are missing'));
   assert.equal(await importing, false);
   await resetting;
   assert.equal(scene.controller.centrifuge.knowledge.manual.version, 'v1');
@@ -1844,7 +1844,7 @@ test('expanded source details identify exact active and historical document cont
   assert.match(identity.textContent, new RegExp(digest.slice(0, 12)));
   assert.equal(identity.title, digest);
   assert.match(controls.find('laboratory-physics-manual-history').textContent, new RegExp(previousDigest.slice(0, 12)));
-  assert.match(controls.find('laboratory-physics-manual-plan').textContent, /Empfohlene Schritte/);
+  assert.match(controls.find('laboratory-physics-manual-plan').textContent, /Recommended steps/);
   mounted.destroy();
 });
 

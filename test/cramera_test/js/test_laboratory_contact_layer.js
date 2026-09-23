@@ -46,7 +46,7 @@ class ContactLayerScene {
 
 test('the Layers checkbox hides contacts and the orange target without hiding laboratory objects', () => {
   const scene = new ContactLayerScene();
-  assert.match(scene.source, /id="lyr-contacts"[^>]*checked><span>Kontaktpunkte &amp; Ziele<\/span>/);
+  assert.match(scene.source, /id="lyr-contacts"[^>]*checked><span>Contact points &amp; targets<\/span>/);
   assert.equal(scene.row.style.display, '');
   const contacts = [{force: 2, position: [.1, .2, .9]}];
   const desired = {position: [.2, .3, 1]};

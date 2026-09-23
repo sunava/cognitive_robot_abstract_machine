@@ -17,20 +17,35 @@ from typing_extensions import Any, ClassVar
 class ManualSyntax(StrEnum):
     """Recognized elements of the deliberately bounded Markdown document format."""
 
-    VERSION_PREFIX = "Dokumentversion:"
+    VERSION_PREFIX = "Document version:"
     """Line prefix identifying the revision of the supplied document."""
-    RULE_SECTION = "Betriebsregeln"
+    RULE_SECTION = "Operating rules"
     """Level-two section containing the executable policy table."""
-    MINIMUM_LABEL = "Mindestzahl gesicherter Proben"
+    MINIMUM_LABEL = "Minimum secured samples"
     """Supported row naming the minimum number of secured vessels."""
-    HEADER_RULE = "Regel"
+    HEADER_RULE = "Rule"
     """First column heading of the policy table."""
-    HEADER_VALUE = "Wert"
+    HEADER_VALUE = "Value"
     """Second column heading of the policy table."""
     RESOURCE_DIRECTORY = "resources/centrifuge_manuals"
     """Packaged location of the demonstration handbooks."""
     PACKAGE = "cramera"
     """Python package owning the handbook resources."""
+
+
+class LegacyManualSyntax(StrEnum):
+    """Accepted vocabulary of saved German operating documents."""
+
+    VERSION_PREFIX = "Dokumentversion:"
+    """Original document revision prefix."""
+    RULE_SECTION = "Betriebsregeln"
+    """Original section containing the policy table."""
+    MINIMUM_LABEL = "Mindestzahl gesicherter Proben"
+    """Original supported loading rule label."""
+    HEADER_RULE = "Regel"
+    """Original policy column heading."""
+    HEADER_VALUE = "Wert"
+    """Original numeric value column heading."""
 
 
 class ManualEdition(StrEnum):
@@ -135,7 +150,7 @@ class ObservationSource(StrEnum):
 
     KIND = "MuJoCo"
     """Authoritative simulator supplying the observations."""
-    LABEL = "Direkter Simulationszustand (keine visuelle Erkennung)"
+    LABEL = "Direct simulation state (no visual recognition)"
     """Explanation distinguishing state access from visual recognition."""
 
 
@@ -202,7 +217,7 @@ class CentrifugeManual:
     def builtin(cls, edition: str) -> CentrifugeManual:
         """Read one of the two packaged demonstration handbooks."""
         if not isinstance(edition, str) or edition not in tuple(ManualEdition):
-            raise InvalidCentrifugeManual("Unbekannte Handbuchausgabe.")
+            raise InvalidCentrifugeManual("Unknown manual edition.")
         document = (
             files(ManualSyntax.PACKAGE)
             .joinpath(ManualSyntax.RESOURCE_DIRECTORY, f"{edition}.md")
@@ -220,31 +235,35 @@ class CentrifugeManual:
             or len(document.encode("utf-8")) > cls.MAXIMUM_DOCUMENT_BYTES
         ):
             raise InvalidCentrifugeManual(
-                "Das Handbuch muss Text mit höchstens 8192 UTF-8-Bytes enthalten."
+                "The manual must contain text of at most 8192 UTF-8 bytes."
             )
         lines = document.splitlines()
         titles = [line[2:].strip() for line in lines if line.startswith("# ")]
         versions = [
-            line.removeprefix(ManualSyntax.VERSION_PREFIX).strip()
+            line.split(":", 1)[1].strip()
             for line in lines
-            if line.startswith(ManualSyntax.VERSION_PREFIX)
+            if line.startswith(
+                (ManualSyntax.VERSION_PREFIX, LegacyManualSyntax.VERSION_PREFIX)
+            )
         ]
         if len(titles) != 1 or not titles[0]:
-            raise InvalidCentrifugeManual(
-                "Genau eine Handbuchüberschrift ist erforderlich."
-            )
+            raise InvalidCentrifugeManual("Exactly one manual title is required.")
         if len(versions) != 1 or re.fullmatch(cls.VERSION_PATTERN, versions[0]) is None:
             raise InvalidCentrifugeManual(
-                "Genau eine gültige Dokumentversion ist erforderlich."
+                "Exactly one valid document version is required."
             )
         section_indices = [
             index
             for index, line in enumerate(lines)
-            if line.strip() == f"## {ManualSyntax.RULE_SECTION}"
+            if line.strip()
+            in (
+                f"## {ManualSyntax.RULE_SECTION}",
+                f"## {LegacyManualSyntax.RULE_SECTION}",
+            )
         ]
         if len(section_indices) != 1:
             raise InvalidCentrifugeManual(
-                "Genau ein Abschnitt Betriebsregeln ist erforderlich."
+                "Exactly one Operating rules section is required."
             )
         rows = []
         header_seen = False
@@ -256,10 +275,13 @@ class CentrifugeManual:
             if not line.strip():
                 continue
             columns = [column.strip() for column in line.strip().strip("|").split("|")]
-            if columns == [ManualSyntax.HEADER_RULE, ManualSyntax.HEADER_VALUE]:
+            if columns in (
+                [ManualSyntax.HEADER_RULE, ManualSyntax.HEADER_VALUE],
+                [LegacyManualSyntax.HEADER_RULE, LegacyManualSyntax.HEADER_VALUE],
+            ):
                 if header_seen or separator_seen or rows:
                     raise InvalidCentrifugeManual(
-                        "Die Regeltabelle benötigt genau eine Kopfzeile."
+                        "The rule table requires exactly one header row."
                     )
                 header_seen = True
                 continue
@@ -268,7 +290,7 @@ class CentrifugeManual:
             ):
                 if not header_seen or separator_seen or rows:
                     raise InvalidCentrifugeManual(
-                        "Die Trennzeile muss unmittelbar auf die Tabellenkopfzeile folgen."
+                        "The separator must immediately follow the table header."
                     )
                 separator_seen = True
                 continue
@@ -276,16 +298,17 @@ class CentrifugeManual:
                 not header_seen
                 or not separator_seen
                 or len(columns) != 2
-                or columns[0] != ManualSyntax.MINIMUM_LABEL
+                or columns[0]
+                not in (ManualSyntax.MINIMUM_LABEL, LegacyManualSyntax.MINIMUM_LABEL)
                 or columns[1] not in tuple(str(value) for value in cls.ALLOWED_MINIMUMS)
             ):
                 raise InvalidCentrifugeManual(
-                    "Betriebsregeln unterstützt nur die Mindestzahl gesicherter Proben mit Wert 2 oder 4."
+                    "Operating rules supports only Minimum secured samples with a value of 2 or 4."
                 )
             rows.append((index, columns[1]))
         if len(rows) != 1:
             raise InvalidCentrifugeManual(
-                "Genau eine Regel Mindestzahl gesicherter Proben ist erforderlich."
+                "Exactly one Minimum secured samples rule is required."
             )
         index, value = rows[0]
         return cls(
@@ -294,7 +317,9 @@ class CentrifugeManual:
             document,
             hashlib.sha256(document.encode("utf-8")).hexdigest(),
             int(value),
-            ManualSource(ManualSyntax.RULE_SECTION, index + 1, lines[index]),
+            ManualSource(
+                lines[section_indices[0]].strip()[3:], index + 1, lines[index]
+            ),
         )
 
     def snapshot(self) -> dict[str, Any]:
@@ -460,7 +485,7 @@ class ManualKnowledge:
         requirements = [
             StartRequirement(
                 RequirementId.AVAILABLE,
-                "Zentrifuge vorhanden",
+                "Centrifuge available",
                 observed.available,
                 True,
                 {**observed.source(), ManualField.FIELD: ManualField.AVAILABLE},
@@ -474,21 +499,21 @@ class ManualKnowledge:
             ),
             StartRequirement(
                 RequirementId.BALANCED,
-                "Gegenüberliegende Proben ausgewogen",
+                "Opposing samples balanced",
                 observed.balanced,
                 True,
                 {**observed.source(), ManualField.FIELD: ManualField.BALANCED},
             ),
             StartRequirement(
                 RequirementId.LID_CLOSED,
-                "Deckel vollständig geschlossen",
+                "Lid fully closed",
                 observed.lid_closed,
                 True,
                 {**observed.source(), ManualField.FIELD: ManualField.LID_CLOSED},
             ),
             StartRequirement(
                 RequirementId.STOPPED,
-                "Rotor steht still",
+                "Rotor stopped",
                 observed.stopped,
                 True,
                 {**observed.source(), ManualField.FIELD: ManualField.RUNNING},
@@ -507,12 +532,12 @@ class ManualKnowledge:
     def plan(self, observed: InstrumentObservation, allowed: bool) -> list[str]:
         """Explain the next operator steps for satisfying the assessed conditions."""
         if allowed:
-            return ["Zentrifugenlauf starten."]
+            return ["Start the centrifuge cycle."]
         if observed.available is not True:
-            return ["Zentrifugenzustand aus der Simulation abfragen."]
+            return ["Read the centrifuge state from the simulation."]
         steps = []
         if observed.stopped is False:
-            steps.append("Rotor stoppen und den Stillstand abwarten.")
+            steps.append("Stop the rotor and wait for it to come to rest.")
         missing = (
             None
             if observed.secured_samples is None
@@ -520,21 +545,19 @@ class ManualKnowledge:
         )
         needs_loading = missing is not None and missing > 0
         if missing is None:
-            steps.append("Gesicherte Proben aus der Simulation abfragen.")
+            steps.append("Read the secured samples from the simulation.")
         elif needs_loading:
-            steps.append(
-                f"{missing} weitere Proben gegenüberliegend einsetzen und sichern."
-            )
+            steps.append(f"Load and secure {missing} more samples in opposite holders.")
             if observed.lid_closed is True:
                 steps.append(
-                    "Dafür zuerst den Deckel öffnen; nach dem Sichern wieder schließen."
+                    "Open the lid first; close it again after securing the samples."
                 )
         if observed.balanced is not True:
-            steps.append("Masse gegenüberliegender Proben prüfen und ausgleichen.")
+            steps.append("Check and balance the mass of opposing samples.")
         if observed.lid_closed is not True:
-            steps.append("Deckel vollständig schließen.")
+            steps.append("Close the lid completely.")
         if observed.stopped is None:
-            steps.append("Rotorstillstand aus der Simulation abfragen.")
+            steps.append("Confirm from the simulation that the rotor has stopped.")
         return steps
 
     def snapshot(self, instrument_snapshot: dict | None = None) -> dict[str, Any]:

@@ -1,38 +1,38 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CRAMERA · Offline-Tour</title>
+  <title>CRAMERA · Offline Tour</title>
   <link rel="stylesheet" href="tour.css" />
   <script src="tour.js" defer></script>
 </head>
 <body>
   <header class="tour-header">
-    <div><span class="eyebrow">CRAMERA · LOKALE AUFNAHMEN</span><h1 id="tour-title">Offline-Tour</h1></div>
-    <p id="tour-description">Die Tour wird geladen …</p>
+    <div><span class="eyebrow">CRAMERA · LOCAL RECORDINGS</span><h1 id="tour-title">Offline Tour</h1></div>
+    <p id="tour-description">Loading the tour …</p>
   </header>
   <main>
-    <nav aria-label="Kapitel"><h2>Kapitel</h2><ol id="tour-chapters"></ol></nav>
-    <section class="presentation" aria-label="Vorführung">
-      <iframe id="tour-viewer" title="CRAMERA: Szene, Wissen und Plan"></iframe>
+    <nav aria-label="Chapters"><h2>Chapters</h2><ol id="tour-chapters"></ol></nav>
+    <section class="presentation" aria-label="Presentation">
+      <iframe id="tour-viewer" title="CRAMERA: scene, knowledge and plan"></iframe>
       <div class="narration">
         <span class="eyebrow" id="tour-counter"></span>
-        <h2 id="chapter-title">Vorbereitung</h2>
-        <p id="chapter-narration">Die gespeicherten Szenen bleiben vollständig auf diesem Rechner.</p>
-        <p id="tour-status" role="status" aria-live="polite">Manifest wird geladen …</p>
-        <p id="tour-complete" hidden>Tour abgeschlossen. Alle Kapitel wurden gezeigt.</p>
+        <h2 id="chapter-title">Preparing</h2>
+        <p id="chapter-narration">The recorded scenes stay entirely on this computer.</p>
+        <p id="tour-status" role="status" aria-live="polite">Loading manifest …</p>
+        <p id="tour-complete" hidden>Tour complete. All chapters have been shown.</p>
       </div>
     </section>
   </main>
   <footer>
     <div class="controls">
-      <button id="tour-previous" type="button" disabled>← Zurück</button>
+      <button id="tour-previous" type="button" disabled>← Back</button>
       <button id="tour-start" type="button" class="primary" disabled>Start</button>
-      <button id="tour-next" type="button" disabled>Weiter →</button>
+      <button id="tour-next" type="button" disabled>Next →</button>
     </div>
-    <progress id="tour-progress" max="1" value="0" aria-label="Fortschritt der Tour"></progress>
-    <span class="offline-note">Offline · ohne laufenden Roboter</span>
+    <progress id="tour-progress" max="1" value="0" aria-label="Tour progress"></progress>
+    <span class="offline-note">Offline · no running robot required</span>
   </footer>
 </body>
 </html>

@@ -1,13 +1,13 @@
-# CRAMERA-Laborzentrifuge – Betriebshandbuch (Simulation)
+# CRAMERA laboratory centrifuge – Operating manual (simulation)
 
-Dokumentversion: kunden-demo.3
+Document version: customer-demo.3
 
-## Betriebsregeln
+## Operating rules
 
-| Regel | Wert |
+| Rule | Value |
 | --- | --- |
-| Mindestzahl gesicherter Proben | 4 |
+| Minimum secured samples | 4 |
 
-## Hinweise
+## Notes
 
-Dieses Handbuch beschreibt ausschließlich die simulierte CRAMERA-Zentrifuge.
+This manual describes only the simulated CRAMERA centrifuge.

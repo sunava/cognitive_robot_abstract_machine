@@ -84,18 +84,18 @@ test('physical status distinguishes an open lid, unmet rules, motion, braking an
   const scene = new InstrumentDisplayScene();
   scene.addInstrument();
   for (const [changes, status] of [
-    [{lidOpen: true, lidClosed: false}, 'OFFEN'],
-    [{lidOpen: false, lidClosed: true, knowledge: {evaluation: {allowed: false}}}, 'PRUEFEN'],
-    [{knowledge: {evaluation: {allowed: true}}}, 'BEREIT'],
-    [{running: true, targetRpm: 120, rpm: 80, remainingSeconds: 20}, 'LAEUFT'],
-    [{targetRpm: 0, remainingSeconds: 0}, 'BREMST'],
-    [{running: false, rpm: 0}, 'BEREIT'],
+    [{lidOpen: true, lidClosed: false}, 'OPEN'],
+    [{lidOpen: false, lidClosed: true, knowledge: {evaluation: {allowed: false}}}, 'CHECK'],
+    [{knowledge: {evaluation: {allowed: true}}}, 'READY'],
+    [{running: true, targetRpm: 120, rpm: 80, remainingSeconds: 20}, 'RUNNING'],
+    [{targetRpm: 0, remainingSeconds: 0}, 'BRAKING'],
+    [{running: false, rpm: 0}, 'READY'],
   ]) {
     scene.update(changes);
     assert.equal(scene.writes.at(-3), status);
   }
   scene.display.update(null);
-  assert.deepEqual(scene.writes.slice(-3), ['KEINE DATEN', '--:--', '-- RPM']);
+  assert.deepEqual(scene.writes.slice(-3), ['NO DATA', '--:--', '-- RPM']);
   scene.display.destroy();
 });
 

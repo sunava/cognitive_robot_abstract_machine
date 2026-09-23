@@ -1,10 +1,10 @@
 {
-  "title": "CRAM · Vom Weltmodell zur Handlung",
-  "description": "Aufgezeichnete Einzelroboter-Beispiele: semantische Szene, räumliche Fragen, Transport und Navigation. Die Siemens-Laborszene ist noch nicht enthalten. Alle Kapitel laufen lokal ohne Roboterverbindung.",
+  "title": "CRAM · From world model to action",
+  "description": "Recorded single-robot examples: semantic scenes, spatial questions, transport and navigation. The Siemens laboratory scene is not included yet. All chapters run locally without a robot connection.",
   "chapters": [
     {
-      "title": "Die Welt hat Bedeutung",
-      "narration": "CRAM kennt nicht nur Geometrie: Der semantische digitale Zwilling beschreibt Gegenstände, Griffe und nutzbare Flächen. Dieses aufgezeichnete Referenzszenario zeigt einen Tisch, Milch und zwei Griffe.",
+      "title": "A world with meaning",
+      "narration": "CRAM knows more than geometry: the semantic digital twin describes objects, handles and usable surfaces. This recorded reference scenario shows a table, milk and two handles.",
       "scene": "semantic_query_rehearsal",
       "view": "knowledge",
       "query": "show all semantic annotations",
@@ -13,8 +13,8 @@
       "durationSeconds": 12
     },
     {
-      "title": "Wissen wird sichtbar",
-      "narration": "Die Frage nach allen Griffen wird aus der gespeicherten Welt beantwortet. Die Antwort markiert die beiden Griffe direkt in der 3D-Szene.",
+      "title": "Making knowledge visible",
+      "narration": "The recorded world answers the question about all handles. The answer highlights both handles directly in the 3D scene.",
       "scene": "semantic_query_rehearsal",
       "view": "knowledge",
       "query": "show all handles",
@@ -23,8 +23,8 @@
       "durationSeconds": 12
     },
     {
-      "title": "Einen freien Platz finden",
-      "narration": "Die freien Bereiche berücksichtigen die Größe des Objekts und vorhandene Hindernisse. Gezeigt werden zulässige Positionen für die Mitte der Milchpackung. Diese Antwort gehört zum gespeicherten Weltzustand.",
+      "title": "Finding an empty space",
+      "narration": "Free areas account for the object dimensions and existing obstacles. The display shows valid positions for the centre of the milk carton. This answer belongs to the recorded world state.",
       "scene": "semantic_query_rehearsal",
       "view": "knowledge",
       "query": "where can I place milk on table?",
@@ -33,8 +33,8 @@
       "durationSeconds": 12
     },
     {
-      "title": "Eine semantische Aufgabe ausführen",
-      "narration": "Tracy transportiert den Würfel auf den benannten Tisch. CRAM löst den Ablageort während der Ausführung auf und führt Greifen, Heben und Platzieren aus. Dies ist eine erfolgreiche Aufnahme mit aktiver Kollisionsvermeidung.",
+      "title": "Executing a semantic task",
+      "narration": "Tracy transports the cube to the named table. CRAM resolves the destination during execution and performs grasping, lifting and placement. This is a successful recording with active collision avoidance.",
       "scene": "cramera_collision_avoidance_transport",
       "view": "plan",
       "query": null,
@@ -43,8 +43,8 @@
       "durationSeconds": 12
     },
     {
-      "title": "Den Plan erklären",
-      "narration": "Der Planbaum zerlegt Transport in konkrete Schritte. Einzelne passende Schritte können perspektivisch durch eine gelernte Policy ersetzt werden. In dieser Demonstration wird keine Policy ausgeführt. Der Baum zeigt die tatsächlich aufgezeichneten Aktionen.",
+      "title": "Explaining the plan",
+      "narration": "The plan tree breaks transport down into concrete steps. Suitable steps could eventually be replaced by a learned policy. This demonstration does not execute a policy. The tree shows the actions that were actually recorded.",
       "scene": "cramera_collision_avoidance_transport",
       "view": "plan",
       "query": null,
@@ -53,8 +53,8 @@
       "durationSeconds": 12
     },
     {
-      "title": "Fahren statt springen",
-      "narration": "Ein separates PR2-Beispiel zeigt GCS-Navigation um ein Hindernis. Die Basis fährt kontinuierlich, dreht sich in Fahrtrichtung und hält Kollisionsvermeidung aktiv. Die unterschiedlichen Roboter gehören zu getrennten aufgezeichneten Welten.",
+      "title": "Driving continuously",
+      "narration": "A separate PR2 example shows GCS navigation around an obstacle. The base moves continuously, turns toward its direction of travel and keeps collision avoidance active. The different robots belong to separate recorded worlds.",
       "scene": "cramera_navigation_facing",
       "view": "plan",
       "query": null,

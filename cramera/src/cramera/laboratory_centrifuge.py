@@ -450,7 +450,7 @@ class LaboratoryCentrifuge:
         required = self.knowledge.active.minimum_samples
         if secured < required:
             raise InvalidCentrifugeOperation(
-                f"Handbuch {self.knowledge.active.version}: mindestens {required} gesicherte Proben erforderlich; aktuell {secured}."
+                f"Manual {self.knowledge.active.version}: at least {required} secured samples required; currently {secured}."
             )
 
     def _require_loading(self) -> None:

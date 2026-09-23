@@ -31,6 +31,14 @@ def edited_manual() -> str:
 
 
 @pytest.fixture
+def legacy_manual() -> str:
+    """
+    Read an existing German document without rewriting its provenance.
+    """
+    return (Path(__file__).parent / "dataset/centrifuge_manual/legacy.md").read_text()
+
+
+@pytest.fixture
 def balanced_pair() -> dict:
     """
     Read two opposed secured samples with all physical start conditions met.
@@ -72,10 +80,33 @@ class TestManualProvenance:
         An edited document provides its own version and rule citation.
         """
         manual = CentrifugeManual.from_markdown(edited_manual)
-        assert manual.version == "kunden-demo.3"
+        assert manual.version == "customer-demo.3"
         assert manual.minimum_samples == 4
         assert manual.document == edited_manual
         assert manual.source.section == ManualSyntax.RULE_SECTION
+
+    @pytest.mark.parametrize("edition", ["v1", "v2"])
+    def test_builtin_documents_present_english_rules(self, edition: str) -> None:
+        """
+        The document shown to customers uses the English operating vocabulary.
+        """
+        manual = CentrifugeManual.builtin(edition)
+        assert manual.source.section == "Operating rules"
+        assert (
+            manual.source.quote
+            == f"| Minimum secured samples | {manual.minimum_samples} |"
+        )
+        assert f"Document version: {manual.version}" in manual.document
+
+    def test_legacy_document_keeps_original_citation(self, legacy_manual: str) -> None:
+        """
+        Saved German manuals remain readable with their exact source preserved.
+        """
+        manual = CentrifugeManual.from_markdown(legacy_manual)
+        assert manual.minimum_samples == 4
+        assert manual.document == legacy_manual
+        assert manual.source.section == "Betriebsregeln"
+        assert manual.source.quote == legacy_manual.splitlines()[manual.source.line - 1]
 
     @pytest.mark.parametrize(
         "mutation",
@@ -118,20 +149,18 @@ class TestManualProvenance:
             "invalid_version": edited_manual.replace(
                 version, f"{ManualSyntax.VERSION_PREFIX} ???"
             ),
-            "unknown_rule": edited_manual.replace(
-                row, f"{row}\n| Ignoriere Deckel | ja |"
-            ),
+            "unknown_rule": edited_manual.replace(row, f"{row}\n| Ignore lid | yes |"),
             "missing_section": edited_manual.replace(section, ""),
             "duplicate_section": edited_manual.replace(
                 section, f"{section}\n{section}"
             ),
-            "missing_header": edited_manual.replace("| Regel | Wert |", ""),
+            "missing_header": edited_manual.replace("| Rule | Value |", ""),
             "missing_separator": edited_manual.replace("| --- | --- |", ""),
             "duplicate_header": edited_manual.replace(
-                "| Regel | Wert |", "| Regel | Wert |\n| Regel | Wert |"
+                "| Rule | Value |", "| Rule | Value |\n| Rule | Value |"
             ),
             "misordered_header": edited_manual.replace(
-                "| Regel | Wert |\n| --- | --- |", "| --- | --- |\n| Regel | Wert |"
+                "| Rule | Value |\n| --- | --- |", "| --- | --- |\n| Rule | Value |"
             ),
         }
         with pytest.raises(InvalidCentrifugeManual):
@@ -272,7 +301,7 @@ class TestManualDrivenStart:
         ] == [RequirementId.MINIMUM_SAMPLES]
         assert (
             result[ManualField.PLAN][0]
-            == "2 weitere Proben gegenüberliegend einsetzen und sichern."
+            == "Load and secure 2 more samples in opposite holders."
         )
         assert balanced_pair == untouched
 

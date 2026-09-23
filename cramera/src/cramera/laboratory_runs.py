@@ -198,9 +198,9 @@ class LaboratoryRun:
                 RunField.OK: False,
                 RunField.STATE: RunState.FAILED,
                 RunField.ERROR: (
-                    "Der PR2-Lauf wurde nicht erfolgreich abgeschlossen."
+                    "The PR2 run did not complete successfully."
                     if code != 0
-                    else "Der PR2-Lauf hat keine erfolgreiche Aufzeichnung bestätigt."
+                    else "The PR2 run did not confirm a successful recording."
                 ),
             }
         )

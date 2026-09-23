@@ -16,12 +16,12 @@
     VIEWER_URL: '/index.html?scene=__live__&layout=scene&live=127.0.0.1:8765',
   });
   const Messages = Object.freeze({
-    [States.IDLE]: 'PR2 nimmt das klare Glas aus A1 und setzt es in A3.',
-    [States.PENDING]: 'PR2-Lauf wird gestartet …',
-    [States.RUNNING]: 'CRAM führt den PR2-Lauf aus. Die Aufzeichnung entsteht nach Abschluss.',
-    [States.SUCCEEDED]: 'CRAM-Lauf und Zielposition bestätigt. Die Aufzeichnung ist bereit.',
-    [States.FAILED]: 'Der PR2-Lauf konnte nicht abgeschlossen werden.',
-    [States.UNKNOWN]: 'Serverstatus nicht erreichbar. Der Ausführungszustand wird erneut geprüft.',
+    [States.IDLE]: 'PR2 picks up the clear tube from A1 and places it in A3.',
+    [States.PENDING]: 'Starting the PR2 run …',
+    [States.RUNNING]: 'CRAM is executing the PR2 run. A recording will be available when it finishes.',
+    [States.SUCCEEDED]: 'CRAM run and target position confirmed. The recording is ready.',
+    [States.FAILED]: 'The PR2 run could not be completed.',
+    [States.UNKNOWN]: 'Server status is unavailable. Checking execution status again.',
   });
 
   // %% fixed HTTP service
@@ -37,7 +37,7 @@
     async read(url, options) {
       const response = await this.request(url, options);
       const payload = await response.json();
-      if (!response.ok && !payload.state) throw new Error(payload.error || 'Serverstatus nicht erreichbar.');
+      if (!response.ok && !payload.state) throw new Error(payload.error || 'Server status is unavailable.');
       return payload;
     }
   }
@@ -49,7 +49,7 @@
       this.service = service;
       this.navigate = navigate;
       this.changed = changed || (() => {});
-      this.message = 'Die PR2-Laborwelt wird vorbereitet …';
+      this.message = 'Preparing the PR2 laboratory world …';
       this.polling = false;
       this.finished = false;
     }
@@ -67,30 +67,30 @@
         const run = await this.service.status();
         if (this.followRecording(run)) return;
         if (run.state !== States.RUNNING) {
-          this.show(run.error || 'Es läuft gerade kein PR2-Laborauftrag. Starte ihn in der Laborbank.');
+          this.show(run.error || 'No PR2 laboratory task is running. Start one from the workbench.');
           return;
         }
         const info = await this.service.info();
         if (!info.running || String(info.robot).toLowerCase() !== Live.ROBOT ||
             !Array.isArray(info.objects) || !info.objects.includes(Live.TUBE)) {
-          this.show('Die PR2-Laborwelt ist noch nicht bereit. Warte auf den laufenden Laborauftrag …');
+          this.show('The PR2 laboratory world is not ready yet. Waiting for the current laboratory task …');
           return;
         }
         const bundle = await this.service.prepareLive();
         if (bundle.scene !== Live.SCENE) {
-          this.show('Die Live-Ansicht wird vorbereitet …');
+          this.show('Preparing the live view …');
           return;
         }
         const current = await this.service.status();
         if (this.followRecording(current)) return;
         if (current.state !== States.RUNNING) {
-          this.show(current.error || 'Der PR2-Lauf ist nicht mehr aktiv.');
+          this.show(current.error || 'The PR2 run is no longer active.');
           return;
         }
         this.finished = true;
         this.navigate(Live.VIEWER_URL);
       } catch (error) {
-        this.show('Die Live-Verbindung ist noch nicht erreichbar. Der Status wird erneut geprüft …');
+        this.show('The live connection is not available yet. Checking status again …');
       } finally { this.polling = false; }
     }
   }
@@ -112,7 +112,7 @@
     busy() { return [States.PENDING, States.RUNNING, States.UNKNOWN].includes(this.state); }
     receive(answer) {
       const states = [States.IDLE, States.RUNNING, States.SUCCEEDED, States.FAILED];
-      if (!answer || !states.includes(answer.state)) throw new Error('Ungültiger Serverstatus.');
+      if (!answer || !states.includes(answer.state)) throw new Error('Invalid server status.');
       this.state = answer.ok === false ? States.FAILED : answer.state;
       this.error = answer.error || null;
       this.log = answer.log || '';
@@ -165,22 +165,22 @@
       return item;
     }
     const panel = element('section', host, 'laboratory-robot');
-    element('strong', panel, 'laboratory-robot-heading', 'Roboter · CRAM');
-    element('p', panel, 'laboratory-robot-note', 'Eigener Simulationslauf ab Ausgangszustand · manuelle Änderungen werden nicht übernommen.');
+    element('strong', panel, 'laboratory-robot-heading', 'Robot · CRAM');
+    element('p', panel, 'laboratory-robot-note', 'Separate simulation from the initial state · manual changes are not carried over.');
     const button = element('button', panel, 'laboratory-robot-start', 'PR2: A1 → A3');
     button.type = 'button';
     const status = element('p', panel, 'laboratory-robot-status');
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
-    const live = element('a', panel, 'laboratory-robot-live', 'Live-Ansicht öffnen ↗');
-    const replay = element('a', panel, 'laboratory-robot-replay', 'Aufzeichnung öffnen ↗');
+    const live = element('a', panel, 'laboratory-robot-live', 'Open live view ↗');
+    const replay = element('a', panel, 'laboratory-robot-replay', 'Open recording ↗');
     for (const link of [live, replay]) {
       link.target = '_blank';
       link.rel = 'noopener';
       link.hidden = true;
     }
     const details = element('details', panel, 'laboratory-robot-details');
-    element('summary', details, 'laboratory-robot-log-heading', 'Ausführungsprotokoll');
+    element('summary', details, 'laboratory-robot-log-heading', 'Execution log');
     const log = element('pre', details, 'laboratory-robot-log');
     const controller = new Controller(service, render);
     function render() {

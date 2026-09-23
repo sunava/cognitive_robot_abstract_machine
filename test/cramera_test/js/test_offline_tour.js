@@ -103,9 +103,9 @@ test('a viewer failure stops progression and remains visible', () => {
 test('manifest rejects unsafe scene paths and unsupported chapter settings', () => {
   const api = load();
   const chapter = {title: 'A', narration: 'B', scene: '../remote', view: 'plan', query: null, playback: true, speed: 1, durationSeconds: 2};
-  assert.throws(() => new api.Storyboard({title: 'Tour', chapters: [chapter]}), /Szene/);
-  assert.throws(() => new api.Storyboard({title: 'Tour', chapters: []}), /Kapitel/);
-  assert.throws(() => new api.Storyboard({title: 'Tour', chapters: [{...chapter, scene: 'local', speed: -1}]}), /Geschwindigkeit/);
+  assert.throws(() => new api.Storyboard({title: 'Tour', chapters: [chapter]}), /scene/);
+  assert.throws(() => new api.Storyboard({title: 'Tour', chapters: []}), /chapter/);
+  assert.throws(() => new api.Storyboard({title: 'Tour', chapters: [{...chapter, scene: 'local', speed: -1}]}), /speed/);
 });
 
 // %% native iframe bridge
@@ -152,7 +152,7 @@ test('empty recordings fail instead of announcing readiness', () => {
   let failure = '';
   adapter.load(new api.Chapter({title: 'A', narration: 'B', scene: 'saved', view: 'plan', query: null, playback: false, speed: 1, durationSeconds: 0}), {ready() { assert.fail('empty recording reported ready'); }, ended() {}, failed(error) { failure = error; }});
   fixture.frame.load(); fixture.ready();
-  assert.match(failure, /Frames/);
+  assert.match(failure, /frames/);
 });
 
 test('tour iframe retains knowledge panels and offline mode remains explicit', () => {

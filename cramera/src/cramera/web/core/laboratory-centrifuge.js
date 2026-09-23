@@ -14,7 +14,7 @@
   const CANVAS_SIZE = Object.freeze([768, 192]);
   const SCREEN_INSET = .94;
   const SCREEN_OFFSET = .0007;
-  const Status = Object.freeze({UNAVAILABLE: 'KEINE DATEN', OPEN: 'OFFEN', LID: 'DECKEL', CHECK: 'PRUEFEN', READY: 'BEREIT', RUNNING: 'LAEUFT', BRAKING: 'BREMST'});
+  const Status = Object.freeze({UNAVAILABLE: 'NO DATA', OPEN: 'OPEN', LID: 'LID', CHECK: 'CHECK', READY: 'READY', RUNNING: 'RUNNING', BRAKING: 'BRAKING'});
 
   /** Derive display text from one authoritative observation without advancing a clock. */
   function reading(snapshot) {

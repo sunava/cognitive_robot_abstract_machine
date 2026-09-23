@@ -11,13 +11,13 @@
   class Chapter {
     /** @param {object} entry One locally saved chapter description. */
     constructor(entry) {
-      if (!entry || typeof entry.title !== 'string' || typeof entry.narration !== 'string') throw new Error('Kapitel benötigt Titel und Sprechertext.');
-      if (!SCENE_NAME.test(entry.scene || '')) throw new Error('Ungültiger Name der Szene.');
-      if (!Object.prototype.hasOwnProperty.call(VIEWS, entry.view)) throw new Error('Unbekannte Kapitelansicht.');
-      if (typeof entry.playback !== 'boolean') throw new Error('Wiedergabe muss ausdrücklich gewählt sein.');
-      if (!SPEEDS.includes(entry.speed)) throw new Error('Ungültige Geschwindigkeit der Aufnahme.');
-      if (!Number.isFinite(entry.durationSeconds) || entry.durationSeconds < 0) throw new Error('Ungültige Mindestdauer des Kapitels.');
-      if (entry.query !== null && typeof entry.query !== 'string') throw new Error('Kapitelanfrage muss Text oder null sein.');
+      if (!entry || typeof entry.title !== 'string' || typeof entry.narration !== 'string') throw new Error('A chapter requires a title and narration.');
+      if (!SCENE_NAME.test(entry.scene || '')) throw new Error('Invalid scene name.');
+      if (!Object.prototype.hasOwnProperty.call(VIEWS, entry.view)) throw new Error('Unknown chapter view.');
+      if (typeof entry.playback !== 'boolean') throw new Error('Playback must be explicitly specified.');
+      if (!SPEEDS.includes(entry.speed)) throw new Error('Invalid recording speed.');
+      if (!Number.isFinite(entry.durationSeconds) || entry.durationSeconds < 0) throw new Error('Invalid minimum chapter duration.');
+      if (entry.query !== null && typeof entry.query !== 'string') throw new Error('A chapter query must be text or null.');
       this.title = entry.title;
       this.narration = entry.narration;
       this.scene = entry.scene;
@@ -32,7 +32,7 @@
   class Storyboard {
     /** @param {object} manifest Local storyboard JSON. */
     constructor(manifest) {
-      if (!manifest || typeof manifest.title !== 'string' || !Array.isArray(manifest.chapters) || !manifest.chapters.length) throw new Error('Die Tour benötigt einen Titel und mindestens ein Kapitel.');
+      if (!manifest || typeof manifest.title !== 'string' || !Array.isArray(manifest.chapters) || !manifest.chapters.length) throw new Error('The tour requires a title and at least one chapter.');
       this.title = manifest.title;
       this.description = manifest.description || '';
       this.chapters = manifest.chapters.map(entry => new Chapter(entry));
@@ -158,11 +158,11 @@
         this.cancel(timeout);
         events.failed(message);
       };
-      const timeout = this.schedule(() => fail('Die Szene ist nach 45 Sekunden nicht bereit. Aufnahme und lokale Assets prüfen.'), LOAD_TIMEOUT);
+      const timeout = this.schedule(() => fail('The scene is not ready after 45 seconds. Check the recording and local assets.'), LOAD_TIMEOUT);
       this.cleanups.push(() => this.cancel(timeout));
       const loaded = () => {
         const child = this.frame.contentWindow;
-        if (!child || !child.RobotView || !child.Bus) { fail('Der Viewer konnte nicht starten. Grafikunterstützung und lokale Dateien prüfen.'); return; }
+        if (!child || !child.RobotView || !child.Bus) { fail('The viewer could not start. Check graphics support and local files.'); return; }
         this.robot = child.RobotView;
         const ended = payload => { if (!failed && payload.step === '__done__') events.ended(); };
         const sceneError = payload => fail(payload.message);
@@ -189,7 +189,7 @@
         this.cleanups.push(() => child.Bus.off('scene:step', ended), () => child.Bus.off('scene:error', sceneError), () => child.Bus.off('knowledge:ready', knowledgeLoaded), () => child.Bus.off('knowledge:error', sceneError));
         this.robot.onReady(() => {
           if (failed) return;
-          if (this.robot.frameCount() <= 0) { fail('Die Aufnahme enthält keine abspielbaren Frames.'); return; }
+          if (this.robot.frameCount() <= 0) { fail('The recording contains no playable frames.'); return; }
           robotReady = true;
           announce();
         });
@@ -233,9 +233,9 @@
     /** Fetch the selected local storyboard and prepare its first chapter. */
     async load() {
       const name = new URLSearchParams(global.location.search).get('tour') || 'offline_tour';
-      if (!SCENE_NAME.test(name)) throw new Error('Ungültiger Tourname.');
+      if (!SCENE_NAME.test(name)) throw new Error('Invalid tour name.');
       const response = await global.fetch('/scenes/' + encodeURIComponent(name) + '/storyboard.json');
-      if (!response.ok) throw new Error('Die lokale Tour wurde nicht gefunden: ' + name);
+      if (!response.ok) throw new Error('Local tour not found: ' + name);
       const storyboard = new Storyboard(await response.json());
       this.document.getElementById('tour-title').textContent = storyboard.title;
       this.document.getElementById('tour-description').textContent = storyboard.description;
@@ -268,24 +268,24 @@
       if (controller.ready && !status.dataset.readyAt) status.dataset.readyAt = String(Date.now());
       this.document.getElementById('chapter-title').textContent = chapter.title;
       this.document.getElementById('chapter-narration').textContent = chapter.narration;
-      this.document.getElementById('tour-counter').textContent = 'KAPITEL ' + (controller.index + 1) + ' / ' + this.buttons.length;
+      this.document.getElementById('tour-counter').textContent = 'CHAPTER ' + (controller.index + 1) + ' / ' + this.buttons.length;
       this.buttons.forEach((button, index) => button.setAttribute('aria-current', index === controller.index ? 'step' : 'false'));
       this.document.getElementById('tour-complete').hidden = !controller.completed;
       const start = this.document.getElementById('tour-start');
       start.disabled = !controller.ready && !controller.error && !controller.running;
-      start.textContent = controller.completed ? 'Neu starten' : controller.error ? 'Erneut versuchen' : controller.running ? 'Pause' : controller.elapsed ? 'Fortsetzen' : 'Start';
+      start.textContent = controller.completed ? 'Restart' : controller.error ? 'Try again' : controller.running ? 'Pause' : controller.elapsed ? 'Resume' : 'Start';
       this.document.getElementById('tour-previous').disabled = controller.index === 0;
       this.document.getElementById('tour-next').disabled = controller.completed;
-      this.document.getElementById('tour-next').textContent = controller.index + 1 === this.buttons.length ? 'Abschließen' : 'Weiter →';
+      this.document.getElementById('tour-next').textContent = controller.index + 1 === this.buttons.length ? 'Finish' : 'Next →';
       const progress = this.document.getElementById('tour-progress');
       progress.max = this.buttons.length;
       progress.value = controller.completed ? this.buttons.length : controller.index;
-      let text = controller.error || (controller.ready ? 'Bereit · Start beginnt die geführte Tour.' : 'Szene und Aufnahme werden geladen …');
-      if (controller.completed) text = 'Abgeschlossen · Die Tour kann erneut gestartet werden.';
+      let text = controller.error || (controller.ready ? 'Ready · Press Start to begin the guided tour.' : 'Loading scene and recording …');
+      if (controller.completed) text = 'Completed · You can restart the tour.';
       else if (controller.running && controller.ready) {
         const remaining = Math.max(0, Math.ceil(chapter.durationSeconds - controller.elapsed / 1000));
-        text = remaining ? 'Vorführung läuft · mindestens noch ' + remaining + ' s in diesem Kapitel' : chapter.playback && !controller.ended ? 'Aufnahme läuft · weiter nach dem letzten Frame' : 'Nächstes Kapitel …';
-      } else if (controller.ready && controller.elapsed) text = 'Pausiert · Sprecherzeit und Aufnahme sind angehalten.';
+        text = remaining ? 'Presentation running · at least ' + remaining + ' s remaining in this chapter' : chapter.playback && !controller.ended ? 'Recording playing · continuing after the final frame' : 'Next chapter …';
+      } else if (controller.ready && controller.elapsed) text = 'Paused · Narration timing and recording are paused.';
       status.classList.toggle('error', !!controller.error);
       if (status.textContent !== text) status.textContent = text;
       this.document.body.dataset.state = controller.error ? 'error' : controller.completed ? 'complete' : controller.ready ? (controller.running ? 'playing' : 'ready') : 'loading';
