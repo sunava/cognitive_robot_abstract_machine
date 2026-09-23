@@ -51,6 +51,7 @@ from urllib.parse import parse_qs, urlparse
 
 from cramera import paths
 from cramera.laboratory_centrifuge_command import CentrifugeCommand, ManualRequest
+from cramera.laboratory_pipetting_command import PipettingCommand
 from cramera.laboratory_physics_session import (
     InvalidPhysicsRequest,
     LaboratoryPhysicsSession,
@@ -442,6 +443,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     body[PhysicsField.POSITION],
                     orientation=body.get(PhysicsField.ORIENTATION),
                 )
+            elif route == routes.PIPETTING:
+                outcome = session.pipetting_command(PipettingCommand.from_payload(body))
             elif route == routes.CENTRIFUGE:
                 outcome = session.centrifuge_command(
                     CentrifugeCommand.from_payload(body)
@@ -473,6 +476,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         {
                             RobotPhysicsRoute.RUN: session.run_program,
                             RobotPhysicsRoute.MIX: session.run_mixing,
+                            RobotPhysicsRoute.PIPETTE: session.run_pipetting,
                             RobotPhysicsRoute.PAUSE: session.pause_program,
                         }
                     )

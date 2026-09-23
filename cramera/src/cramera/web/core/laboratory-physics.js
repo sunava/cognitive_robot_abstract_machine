@@ -16,6 +16,7 @@
     TARE: '/api/laboratory/physics/scale/tare',
     CENTRIFUGE: '/api/laboratory/physics/centrifuge',
     MANUAL: '/api/laboratory/physics/manual',
+    PIPETTING: '/api/laboratory/physics/pipetting',
   });
   const RobotRoutes = Object.freeze({
     START: '/api/laboratory/physics/robot/start', STATE: '/api/laboratory/physics/robot/state',
@@ -27,11 +28,14 @@
     TARE: '/api/laboratory/physics/robot/scale/tare',
     CENTRIFUGE: '/api/laboratory/physics/robot/centrifuge',
     MANUAL: '/api/laboratory/physics/robot/manual',
+    PIPETTING: '/api/laboratory/physics/robot/pipetting',
+    PIPETTE: '/api/laboratory/physics/robot/pipette',
   });
   const RobotStates = Object.freeze({IDLE: 'idle', RUNNING: 'running', PAUSED: 'paused', SUCCEEDED: 'succeeded', FAILED: 'failed'});
-  const RobotSources = Object.freeze({TRANSFER: 'recorded_cram_joint_targets', MIXING: 'laboratory_liquid_mixing'});
+  const RobotSources = Object.freeze({TRANSFER: 'recorded_cram_joint_targets', MIXING: 'laboratory_liquid_mixing', PIPETTING: 'laboratory_pipetting'});
   const RobotLabels = Object.freeze({idle: 'Ready', running: 'PR2 is moving the glass', paused: 'PR2 paused', succeeded: 'Glass transferred', failed: 'Movement stopped'});
   const MixingLabels = Object.freeze({...RobotLabels, running: 'PR2 is mixing the liquids', succeeded: 'Mixture placed in A2'});
+  const PipettingLabels = Object.freeze({...RobotLabels, running: 'PR2 is dosing the sample', succeeded: 'Dosed sample returned to A1'});
   const RobotPhases = Object.freeze({approach: 'Approaching the glass', grasp: 'Checking the contact grasp', lift: 'Lifting the glass', transport: 'Transporting the glass', pour: 'Pouring the liquid', return: 'Returning the source glass', swirl: 'Gently swirling the mixture', place: 'Placing the glass in the rack', release: 'Setting down the glass', settle: 'Checking stable placement', complete: 'Complete'});
   const POLL_INTERVAL = 33;
   const RETRY_INTERVAL = 1500;
@@ -42,7 +46,7 @@
   const LIFT_CLEARANCE = .22;
   const VOLUME_STEP = .5;
   const GlassCamera = Object.freeze({POSITION: [.32, -.42, .28], TARGET: [0, 0, .075]});
-  const ProgramCommands = Object.freeze(['run', 'runMixing']);
+  const ProgramCommands = Object.freeze(['run', 'runMixing', 'runPipetting']);
   const LiquidCommands = Object.freeze(['fillLiquid', 'reset', ...ProgramCommands]);
   const ScaleCommands = Object.freeze(['tareScale', 'reset', ...ProgramCommands]);
   const SCALE_MOVE_TIMEOUT = 20000;
@@ -81,6 +85,8 @@
     stop() { return this.post(this.routes.STOP); }
     run() { return this.post(this.routes.RUN); }
     runMixing() { return this.post(this.routes.MIX); }
+    runPipetting() { return this.post(this.routes.PIPETTE); }
+    pipetting(command) { return this.post(this.routes.PIPETTING, command); }
     pause() { return this.post(this.routes.PAUSE); }
     fillLiquid(key, volumeMl) { return this.post(this.routes.LIQUID, {key, volumeMl}); }
     tareScale() { return this.post(this.routes.TARE); }
@@ -102,6 +108,10 @@
       this.scale = null;
       this.scaleRevision = 0;
       this.centrifuge = null;
+      this.pipetting = null;
+      this.pipettingRevision = 0;
+      this.pipettingTransfer = null;
+      this.pipettingError = null;
       this.centrifugeSlot = 'C1';
       this.centrifugeTransfer = null;
       this.centrifugePair = null;
@@ -133,6 +143,67 @@
     robotBusy() { return this.config.robot && (this.robotRequest || this.robot.state === RobotStates.RUNNING); }
     manualReady() { return this.ready() && !this.robotBusy() && !this.manualBusy(); }
     manualBusy() { return this.activeCommand === 'manual' || this.queue.some(command => command.type === 'manual'); }
+    pipettingBusy() { return this.activeCommand === 'pipetting' || this.queue.some(command => command.type === 'pipetting'); }
+    dispensing() { return Boolean(this.pipetting && this.pipetting.state === 'dispensing'); }
+    pipettingReady() {
+      return this.manualReady() && this.pipetting && this.pipetting.available && !this.dispensing() && !this.pipettingBusy()
+        && !this.pipettingTransfer && !this.scaleTransfer && !this.centrifugeTransfer && !this.centrifugePair && !this.draining;
+    }
+    canDispense(source, volumeMl) {
+      if (!this.pipettingReady() || this.secured(this.selected) || !Number.isFinite(volumeMl)) return false;
+      const station = this.pipetting;
+      const reservoir = station.reservoirs.find(item => item.id === source);
+      const tube = this.selectedLiquid();
+      const pose = this.objects[this.selected];
+      return Boolean(reservoir && tube && pose && volumeMl >= station.minimumMl && volumeMl <= station.maximumMl
+        && volumeMl <= reservoir.volumeMl && volumeMl <= tube.capacityMl - tube.volumeMl
+        && Math.hypot(...station.targetPosition.map((value, axis) => value - pose[axis])) <= .008
+        && this.observedTilt() <= 3);
+    }
+    dispense(source, volumeMl) {
+      if (!this.canDispense(source, volumeMl)) return Promise.resolve(false);
+      return this.commandPipetting({action: 'dispense', key: this.selected, source, volumeMl});
+    }
+    commandPipetting(payload) {
+      if (!this.ready() || this.pipettingBusy()) return Promise.resolve(false);
+      if (payload.action !== 'stop' && !this.pipettingReady()) return Promise.resolve(false);
+      this.pipettingRevision += 1;
+      this.pipettingError = null;
+      return this.enqueue({type: 'pipetting', payload});
+    }
+    /** Approach the nozzle horizontally after clearing the rack in front. */
+    moveToPipette() {
+      const pose = this.objects[this.selected];
+      if (!this.pipettingReady() || !pose || !this.selectedLiquid() || this.secured(this.selected)) return Promise.resolve(false);
+      const destination = this.pipetting.targetPosition;
+      if (Math.hypot(...destination.map((value, axis) => value - pose[axis])) <= SCALE_MOVE_TOLERANCE && this.observedTilt() <= 3) return Promise.resolve(true);
+      const elevation = Math.max(pose[2], destination[2]) + LIFT_CLEARANCE;
+      const front = Math.min(pose[1], destination[1]) - .20;
+      this.pipettingTransfer = {key: this.selected, index: 0, startedAt: Date.now(), waypoints: [
+        [pose[0], pose[1], elevation], [pose[0], front, elevation],
+        [destination[0], front, elevation], [destination[0], front, destination[2]], destination.slice(),
+      ]};
+      this.pipettingError = null;
+      return this.targetCommand(this.selected, this.pipettingTransfer.waypoints[0], [0, 0, 0, 1]);
+    }
+    async advancePipettingTransfer() {
+      const transfer = this.pipettingTransfer;
+      if (!transfer) return;
+      if (!this.manualReady() || this.error) { this.pipettingTransfer = null; return; }
+      const observed = this.objects[transfer.key];
+      if (!observed) { this.pipettingTransfer = null; return; }
+      if (Date.now() - transfer.startedAt > SCALE_MOVE_TIMEOUT) {
+        this.pipettingTransfer = null;
+        this.pipettingError = 'The path to the pipetting station is blocked. Move the held glass manually or release it.';
+        return;
+      }
+      const target = transfer.waypoints[transfer.index];
+      if (Math.hypot(...target.map((value, axis) => value - observed[axis])) > SCALE_MOVE_TOLERANCE || this.observedTilt() > 3) return;
+      transfer.index += 1;
+      transfer.startedAt = Date.now();
+      if (transfer.index === transfer.waypoints.length) { this.pipettingTransfer = null; return; }
+      await this.targetCommand(transfer.key, transfer.waypoints[transfer.index], [0, 0, 0, 1]);
+    }
     liquidBusy() { return LiquidCommands.includes(this.activeCommand) || this.queue.some(command => LiquidCommands.includes(command.type)); }
     scaleBusy() { return ScaleCommands.includes(this.activeCommand) || this.queue.some(command => ScaleCommands.includes(command.type)); }
     centrifugeBusy() { return this.manualBusy() || this.activeCommand === 'centrifuge' || this.queue.some(command => command.type === 'centrifuge'); }
@@ -452,6 +523,7 @@
       return position.map((value, axis) => Math.min(this.config.bounds.max[axis], Math.max(this.config.bounds.min[axis], value)));
     }
     setTarget(key, position, orientation) {
+      this.pipettingTransfer = null;
       this.centrifugeTransfer = null;
       this.centrifugePair = null;
       this.centrifugeTransferError = null;
@@ -472,6 +544,7 @@
       return this.enqueue({type: 'target', target: {...this.target, position: bounded.slice()}});
     }
     moveToScale() {
+      if (this.pipettingTransfer || this.dispensing() || this.pipettingBusy()) return Promise.resolve(false);
       const pose = this.objects[this.selected];
       const scale = this.config.scale;
       if (!this.manualReady() || !pose || !scale || !scale.panPosition || this.scaleTransfer || this.centrifugeTransfer || this.centrifugePair || this.secured(this.selected)) return Promise.resolve(false);
@@ -491,6 +564,14 @@
         {position: [pan[0], pan[1], elevation], orientation: upright},
         {position: [pan[0], pan[1], pan[2] - SCALE_SEATING_DEPTH], orientation: seated},
       ]};
+      const station = this.config.pipetting;
+      if (station && Math.hypot(pose[0] - station.targetPosition[0], pose[1] - station.targetPosition[1]) < .04
+        && pose[2] < station.nozzlePosition[2]) {
+        const front = station.targetPosition[1] - .20;
+        this.scaleTransfer.waypoints[0].position[1] = front;
+        this.scaleTransfer.waypoints[1].position[1] = front;
+        this.scaleTransfer.waypoints.unshift({position: [pose[0], front, pose[2]], orientation: upright});
+      }
       const target = this.scaleTransfer.waypoints[0];
       return this.targetCommand(this.selected, target.position, target.orientation);
     }
@@ -575,6 +656,7 @@
       return this.fillLiquidCommand(this.selected, volumeMl);
     }
     fillLiquidCommand(key, volumeMl) {
+      if (this.dispensing() || this.pipettingBusy() || this.pipettingTransfer) return Promise.resolve(false);
       const tube = this.liquid && this.liquid.tubes && this.liquid.tubes[key];
       if (!this.manualReady() || this.secured(key) || !tube || !Number.isFinite(volumeMl) || volumeMl < 0 || volumeMl > tube.capacityMl) return Promise.resolve(false);
       this.revision += 1;
@@ -601,7 +683,9 @@
     reset() { return this.clear('reset'); }
     run() { return this.startProgram('run'); }
     runMixing() { return this.startProgram('runMixing'); }
+    runPipetting() { return this.startProgram('runPipetting'); }
     startProgram(type) {
+      if (this.dispensing() || this.pipettingBusy() || this.pipettingTransfer) return Promise.resolve(false);
       if (!this.config.robot || !this.ready() || this.robotBusy() || this.centrifugeTransfer || this.centrifugePair || this.centrifugeOwnsObjects()) return Promise.resolve(false);
       this.robotRequest = type;
       return this.clear(type);
@@ -612,6 +696,10 @@
       return this.clear('pause');
     }
     clear(type) {
+      this.pipettingTransfer = null;
+      this.pipettingError = null;
+      this.pipettingRevision += 1;
+      if (type === 'reset' && this.adapter.setPipettingState) this.adapter.setPipettingState(null);
       this.centrifugeTransfer = null;
       this.centrifugePair = null;
       this.centrifugeTransferError = null;
@@ -643,10 +731,15 @@
         try {
           let answer;
           if (command.type === 'target') answer = await this.service.target(command.target);
+          else if (command.type === 'pipetting') answer = await this.service.pipetting(command.payload);
           else if (command.type === 'centrifuge') answer = await this.service.centrifuge(command.payload);
           else if (command.type === 'manual') answer = await this.service.importManual(command.payload);
           else if (command.type === 'fillLiquid') answer = await this.service.fillLiquid(command.key, command.volumeMl);
           else answer = await this.service[command.type]();
+          if (answer.pipetting && !this.disposed) {
+            this.pipetting = answer.pipetting;
+            if (this.adapter.setPipettingState) this.adapter.setPipettingState(this.pipetting);
+          }
           if (['centrifuge', 'manual', 'reset', ...ProgramCommands].includes(command.type) && !this.disposed && answer.centrifuge) {
             this.centrifuge = answer.centrifuge;
             if (this.adapter.setCentrifugeState) this.adapter.setCentrifugeState(this.centrifuge);
@@ -670,24 +763,27 @@
           if (this.config.robot && [...ProgramCommands, 'pause', 'reset'].includes(command.type)) {
             const startingProgram = ProgramCommands.includes(command.type);
             const state = startingProgram ? RobotStates.RUNNING : (command.type === 'pause' ? RobotStates.PAUSED : RobotStates.IDLE);
-            const source = startingProgram ? (command.type === 'runMixing' ? RobotSources.MIXING : RobotSources.TRANSFER) : this.robot.source;
+            const source = startingProgram ? (command.type === 'runPipetting' ? RobotSources.PIPETTING : command.type === 'runMixing' ? RobotSources.MIXING : RobotSources.TRANSFER) : this.robot.source;
             this.robot = answer.robot || {...this.robot, state, source};
           }
           this.error = null;
         } catch (error) {
           this.error = error.message;
+          if (command.type === 'pipetting') this.pipettingError = error.message;
           if (command.type === 'manual') this.manualError = error.message;
           else {
             if (this.centrifugePair || this.centrifugeTransfer) this.centrifugeTransferError = this.error;
             this.target = null;
             this.dragged = null;
             this.scaleTransfer = null;
+            this.pipettingTransfer = null;
             this.centrifugeTransfer = null;
             this.centrifugePair = null;
             this.queue = this.queue.filter(pending => pending.type !== 'target');
           }
         }
         if (LiquidCommands.includes(command.type)) this.liquidRevision += 1;
+        if (['pipetting', 'reset', ...ProgramCommands].includes(command.type)) this.pipettingRevision += 1;
         if (ScaleCommands.includes(command.type)) this.scaleRevision += 1;
         if (['centrifuge', 'manual', 'reset'].includes(command.type) || ProgramCommands.includes(command.type)) this.centrifugeRevision += 1;
         this.activeCommand = null;
@@ -708,6 +804,8 @@
       const scalePending = this.scaleBusy();
       const centrifugeRevision = this.centrifugeRevision;
       const centrifugePending = this.centrifugeBusy();
+      const pipettingRevision = this.pipettingRevision;
+      const pipettingPending = this.pipettingBusy();
       this.polling = true;
       try {
         const answer = await this.service.state();
@@ -727,6 +825,10 @@
           if (this.liquid && this.adapter.setLiquidState) this.adapter.setLiquidState(this.liquid);
         }
         if (this.adapter.showContacts) this.adapter.showContacts(this.contacts, this.target);
+        if (!pipettingPending && !this.pipettingBusy() && pipettingRevision === this.pipettingRevision) {
+          this.pipetting = answer.pipetting || null;
+          if (this.adapter.setPipettingState) this.adapter.setPipettingState(this.ready() ? this.pipetting : null, this.liquid, this.objects);
+        }
         if (!scalePending && !this.scaleBusy() && scaleRevision === this.scaleRevision) {
           this.scale = answer.scale || null;
           if (this.adapter.setScaleState) this.adapter.setScaleState(this.scale);
@@ -736,13 +838,17 @@
           if (this.centrifuge && this.centrifuge.joints && this.adapter.setJointFrames) this.adapter.setJointFrames(this.centrifuge.joints);
           if (this.adapter.setCentrifugeState) this.adapter.setCentrifugeState(this.ready() ? this.centrifuge : null);
         }
-        this.error = answer.error || this.scaleTransferError || this.centrifugeTransferError || null;
+        this.error = answer.error || this.scaleTransferError || this.centrifugeTransferError || this.pipettingError || null;
+        await this.advancePipettingTransfer();
         await this.advanceScaleTransfer();
         await this.advanceCentrifugeTransfer();
         this.nextPoll = 0;
       } catch (error) {
         if (runRevision !== this.runRevision) return;
         this.state = 'failed';
+        this.pipetting = null;
+        this.pipettingTransfer = null;
+        if (this.adapter.setPipettingState) this.adapter.setPipettingState(null);
         this.scale = null;
         this.centrifuge = null;
         this.centrifugeTransfer = null;
@@ -763,7 +869,7 @@
       const distance = pose ? Math.hypot(...this.target.position.map((value, axis) => value - pose[axis])) : 0;
       return {contactCount: relevant.length, force, distance};
     }
-    destroy() { this.disposed = true; this.queue = []; this.scaleTransfer = null; this.centrifugeTransfer = null; this.centrifugePair = null; }
+    destroy() { this.disposed = true; this.queue = []; this.scaleTransfer = null; this.centrifugeTransfer = null; this.centrifugePair = null; this.pipettingTransfer = null; }
   }
 
   // %% compact manipulation controls
@@ -801,6 +907,31 @@
       option.value = object.key;
     }
     const controller = new Controller(config, service, adapter, render);
+    const pipetting = element('section', panel, 'laboratory-physics-pipetting');
+    element('h4', pipetting, '', 'Pipetting station');
+    const pipettingStatus = element('p', pipetting, 'laboratory-physics-pipetting-status');
+    pipettingStatus.setAttribute('role', 'status');
+    const reservoirStatus = element('p', pipetting, 'laboratory-physics-pipetting-reservoirs');
+    const reagentLabel = element('label', pipetting, 'laboratory-physics-field', 'Reagent');
+    const reagent = element('select', reagentLabel, 'laboratory-physics-pipetting-source');
+    for (const [id, title] of [['amber', 'Amber reagent'], ['teal', 'Teal reagent']]) {
+      const option = element('option', reagent, '', title); option.value = id;
+    }
+    reagent.value = 'amber';
+    const doseLabel = element('label', pipetting, 'laboratory-physics-field', 'Dose (ml)');
+    const dose = element('input', doseLabel, 'laboratory-physics-pipetting-volume');
+    dose.type = 'number'; dose.min = '.1'; dose.max = '5'; dose.step = '.1'; dose.value = '1';
+    listen(dose, 'input', render); listen(reagent, 'change', render);
+    const positionPipette = button(pipetting, 'Position selected glass', () => controller.moveToPipette(), 'laboratory-physics-pipetting-position');
+    const dispense = button(pipetting, 'Dispense dose', () => controller.dispense(reagent.value, Number(dose.value)), 'laboratory-physics-pipetting-dispense');
+    const stopPipetting = button(pipetting, 'Stop dosing', () => controller.commandPipetting({action: 'stop'}), 'laboratory-physics-pipetting-stop');
+    const cancelPipetting = button(pipetting, 'Stop transfer', () => controller.hold(controller.selected), 'laboratory-physics-pipetting-cancel');
+    const refillPipetting = button(pipetting, 'Refill selected reagent', () => controller.commandPipetting({action: 'refill', source: reagent.value}), 'laboratory-physics-pipetting-refill');
+    const viewPipetting = adapter.focus ? button(pipetting, 'View pipetting station', () => {
+      const position = controller.pipetting.targetPosition;
+      adapter.focus([position[0] + .30, position[1] - .48, position[2] + .34], [position[0], position[1] + .04, position[2] + .15]);
+    }, 'laboratory-physics-pipetting-view') : null;
+    element('p', pipetting, 'laboratory-physics-note', 'Position an open, upright glass under the nozzle, then dispense. Two separate reagent lines supply measured doses from finite reservoirs.');
     const scale = element('section', panel, 'laboratory-physics-scale');
     element('h4', scale, '', 'Scale');
     const scaleReading = element('p', scale, 'laboratory-physics-scale-reading');
@@ -962,8 +1093,10 @@
     const viewGlass = adapter.focus ? button(liquid, 'View glass', () => controller.viewGlass(), 'laboratory-physics-view-glass') : null;
     element('p', liquid, 'laboratory-physics-note', 'Lift before tilting. Simplified liquid model.');
     const start = button(panel, 'Start / resume laboratory', () => controller.start(), 'laboratory-physics-start');
-    let robotRun, robotMix, robotPause, robotStatus, robotProgress, robotMeasurements, robotMotionNote;
+    let robotRun, robotMix, robotPipette, robotPause, robotStatus, robotProgress, robotMeasurements, robotMotionNote;
     if (config.robot) {
+      robotPipette = button(pipetting, 'Start pipetting demo', () => controller.runPipetting(), 'laboratory-physics-robot-pipette');
+      element('p', pipetting, 'laboratory-physics-note', 'PR2 holds the clear glass under the nozzle, adds 1 ml of each reagent and returns the sample to A1.');
       robotMix = button(panel, 'Start mixing demo', () => controller.runMixing(), 'laboratory-physics-robot-mix');
       element('p', panel, 'laboratory-physics-robot-recipe', 'Pour 5 ml each of amber and teal liquid into the clear glass, gently swirl, then place it in A2. Starting a new run restores these volumes and the initial positions.');
       robotRun = button(panel, 'Start PR2: A1 → A3', () => controller.run(), 'laboratory-physics-robot-run');
@@ -978,7 +1111,7 @@
       robotMotionNote = element('p', panel, 'laboratory-physics-robot-motion-note');
     }
     select.value = controller.selected;
-    listen(select, 'change', () => { controller.scaleTransfer = null; controller.centrifugeTransfer = null; controller.centrifugePair = null; controller.selected = select.value; render(); });
+    listen(select, 'change', () => { controller.pipettingTransfer = null; controller.scaleTransfer = null; controller.centrifugeTransfer = null; controller.centrifugePair = null; controller.selected = select.value; render(); });
     const hold = button(panel, 'Hold glass', () => controller.hold(select.value), 'laboratory-physics-hold');
     const moves = element('div', panel, 'laboratory-physics-moves');
     const motion = [
@@ -1010,6 +1143,20 @@
       const manualReady = controller.manualReady();
       const reading = controller.scale;
       const instrument = controller.centrifuge;
+      const station = controller.pipetting;
+      pipetting.hidden = !config.pipetting && !station;
+      pipettingStatus.textContent = controller.pipettingError || (controller.pipettingTransfer ? 'Positioning the glass …'
+        : !station || !station.available ? 'Pipetting station unavailable'
+          : station.error || (({idle: 'Ready', dispensing: 'Dispensing', complete: 'Dose complete', blocked: 'Stopped'}[station.state] || station.state)
+            + ' · ' + Number(station.deliveredMl || 0).toFixed(2) + ' / ' + Number(station.requestedMl || 0).toFixed(2) + ' ml'));
+      reservoirStatus.textContent = station ? station.reservoirs.map(item => item.label + ': ' + item.volumeMl.toFixed(1) + ' ml').join(' · ') : '';
+      dose.disabled = reagent.disabled = !controller.pipettingReady();
+      dispense.disabled = !String(dose.value).trim() || !controller.canDispense(reagent.value, Number(dose.value));
+      positionPipette.disabled = !controller.pipettingReady() || !controller.selectedLiquid() || controller.secured(controller.selected);
+      stopPipetting.disabled = !ready || !controller.dispensing() || controller.pipettingBusy();
+      cancelPipetting.hidden = !controller.pipettingTransfer;
+      refillPipetting.disabled = !controller.pipettingReady();
+      if (viewPipetting) viewPipetting.disabled = !station || !station.available;
       renderManual(instrument);
       const slot = controller.selectedCentrifugeSlot();
       const secured = controller.secured(controller.selected);
@@ -1081,15 +1228,18 @@
       status.dataset.error = String(Boolean(controller.error));
       if (config.robot) {
         const mixing = controller.robot.source === RobotSources.MIXING;
+        const dosing = controller.robot.source === RobotSources.PIPETTING;
         const paused = controller.robot.state === RobotStates.PAUSED;
-        robotMotionNote.textContent = mixing ? 'Motion: local contact controller. Contacts: MuJoCo.' : 'Joint targets: recorded CRAM plan. Motion and contacts: MuJoCo.';
-        robotRun.disabled = !ready || Boolean(controller.robotBusy()) || Boolean(controller.centrifugeTransfer) || Boolean(pair) || controller.centrifugeOwnsObjects();
-        robotRun.textContent = paused && !mixing ? 'Resume PR2' : 'Start PR2: A1 → A3';
+        robotMotionNote.textContent = mixing || dosing ? 'Motion: local contact controller. Contacts: MuJoCo.' : 'Joint targets: recorded CRAM plan. Motion and contacts: MuJoCo.';
+        robotRun.disabled = !ready || Boolean(controller.robotBusy()) || Boolean(controller.centrifugeTransfer) || Boolean(pair) || controller.centrifugeOwnsObjects() || controller.dispensing() || controller.pipettingBusy() || Boolean(controller.pipettingTransfer);
+        robotRun.textContent = paused && !mixing && !dosing ? 'Resume PR2' : 'Start PR2: A1 → A3';
+        robotPipette.disabled = robotRun.disabled || !station || !station.available;
+        robotPipette.textContent = paused && dosing ? 'Resume pipetting demo' : 'Start pipetting demo';
         robotMix.disabled = robotRun.disabled;
         robotMix.textContent = paused && mixing ? 'Resume mixing demo' : 'Start mixing demo';
         robotPause.disabled = !ready || !controller.robotBusy() || controller.robotRequest === 'pause';
         const phase = controller.robot.message || RobotPhases[controller.robot.phase];
-        const label = (mixing ? MixingLabels : RobotLabels)[controller.robot.state] || controller.robot.state;
+        const label = (dosing ? PipettingLabels : mixing ? MixingLabels : RobotLabels)[controller.robot.state] || controller.robot.state;
         robotStatus.textContent = controller.robot.error || (label + (phase && controller.robot.state === RobotStates.RUNNING ? ' · ' + phase : ''));
         robotStatus.dataset.error = String(Boolean(controller.robot.error));
         robotProgress.value = Math.max(0, Math.min(1, Number(controller.robot.progress) || 0));

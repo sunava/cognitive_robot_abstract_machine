@@ -41,6 +41,12 @@
 .laboratory-physics-scale > button { width: 100%; margin-top: 5px; }
 .laboratory-physics-scale-reading { font: 600 25px/1.25 monospace; font-variant-numeric: tabular-nums; }
 .laboratory-physics-scale-status { font-size: 12px; font-variant-numeric: tabular-nums; color: #536b64; }
+.laboratory-physics-pipetting { margin-top: 12px; padding-top: 10px; border-top: 1px solid #cbdad7; }
+.laboratory-physics-pipetting[hidden] { display: none; }
+.laboratory-physics-pipetting h4 { margin: 0 0 5px; font-size: 15px; }
+.laboratory-physics-pipetting > button { width: 100%; margin-top: 5px; }
+.laboratory-physics-pipetting-status { font-variant-numeric: tabular-nums; font-weight: 600; }
+.laboratory-physics-pipetting-reservoirs { font-size: 12px; color: #536b64; }
 .laboratory-physics-liquid[hidden] { display: none; }
 .laboratory-physics-liquid h4 { margin: 0 0 5px; font-size: 15px; }
 .laboratory-physics-liquid > button { width: 100%; margin-top: 5px; }

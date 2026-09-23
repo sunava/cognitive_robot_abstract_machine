@@ -24,6 +24,12 @@ from cramera.laboratory_centrifuge import CentrifugeCollisionModel, LaboratoryCe
 from cramera.laboratory_centrifuge_command import CentrifugeAction, CentrifugeField
 from cramera.laboratory_liquid import LaboratoryLiquid
 from cramera.laboratory_mass import LaboratoryLiquidMass
+from cramera.laboratory_pipetting import (
+    InvalidPipettingCommand,
+    LaboratoryPipetting,
+    PipettingField,
+    PipettingState,
+)
 from cramera.laboratory_scale import LaboratoryScale, ScaleGeometry
 from cramera.laboratory_world import LaboratoryAsset, LaboratoryWorld
 
@@ -350,6 +356,9 @@ class LaboratoryPhysics:
     centrifuge: LaboratoryCentrifuge = field(init=False)
     """Articulated rotor, measured holder clamps and operating interlocks."""
 
+    pipetting: LaboratoryPipetting = field(init=False)
+    """Finite reagent delivery with measured vessel alignment interlocks."""
+
     def __post_init__(self) -> None:
         """Compile authored collisions and initialize gravity-driven objects."""
         self.bundle_directory = (
@@ -369,6 +378,7 @@ class LaboratoryPhysics:
             for item in self.scene["objects"]
         }
         self.liquid = LaboratoryLiquid(self.scene)
+        self.pipetting = LaboratoryPipetting(self.scene, self.liquid)
         self.liquid_mass = LaboratoryLiquidMass(
             self.model,
             {key: self.objects[key].body_id for key in self.liquid.tubes},
@@ -405,6 +415,7 @@ class LaboratoryPhysics:
         self.liquid.reset(self._object_poses())
         self.liquid_mass.synchronize(self.liquid)
         self.centrifuge.reset()
+        self.pipetting.reset()
         mujoco.mj_forward(self.model, self.data)
         self.scale.reset()
 
@@ -452,10 +463,40 @@ class LaboratoryPhysics:
     def fill_liquid(self, key: str, volume_ml: float) -> None:
         """Set a tube's liquid quantity without changing its physical pose."""
         self.centrifuge.validate_manipulation(key)
+        if (
+            self.pipetting.state == PipettingState.DISPENSING
+            and self.pipetting.key == key
+        ):
+            raise InvalidPipettingCommand(
+                "Stop the active dose before changing the receiver liquid."
+            )
         self.liquid.fill(key, volume_ml)
         self.liquid_mass.synchronize(self.liquid)
         mujoco.mj_forward(self.model, self.data)
         self.scale.observe(force=True)
+
+    def pipetting_command(
+        self,
+        action: str,
+        key: str | None = None,
+        source: str | None = None,
+        volume_ml: float | None = None,
+    ) -> None:
+        """Operate the stationary pump against the current measured receiver pose."""
+        self.pipetting.command(
+            action,
+            self._object_poses(),
+            self._secured_tubes(),
+            key=key,
+            source=source,
+            volume_ml=volume_ml,
+        )
+
+    def _secured_tubes(self) -> frozenset[str]:
+        """Return glasses currently owned by a centrifuge holder fixture."""
+        return frozenset(
+            slot.key for slot in self.centrifuge.slots.values() if slot.key is not None
+        )
 
     def tare_scale(self) -> None:
         """Zero the balance at its current settled load."""
@@ -550,7 +591,11 @@ class LaboratoryPhysics:
             self._observe_contacts()
             self.liquid_elapsed += self.timestep
             if self.liquid_elapsed + 1e-12 >= self.parameters.liquid_timestep:
-                self.liquid.step(self.liquid_elapsed, self._object_poses())
+                poses = self._object_poses()
+                self.liquid.step(self.liquid_elapsed, poses)
+                self.pipetting.advance(
+                    self.liquid_elapsed, poses, self._secured_tubes()
+                )
                 if self.liquid_mass.synchronize(self.liquid):
                     mujoco.mj_forward(self.model, self.data)
                 self.liquid_elapsed = 0.0
@@ -602,6 +647,7 @@ class LaboratoryPhysics:
         return {
             PhysicsField.OBJECTS: self._object_poses(),
             PhysicsField.LIQUID: self.liquid.snapshot(),
+            PipettingField.PIPETTING: self.pipetting.snapshot(),
             PhysicsField.SCALE: self.scale.snapshot(),
             CentrifugeField.CENTRIFUGE: self.centrifuge.snapshot(),
             PhysicsField.TARGET: (

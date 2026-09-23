@@ -17,6 +17,7 @@ from typing_extensions import Any, ClassVar, Protocol
 
 from cramera import paths
 from cramera.laboratory_centrifuge_command import CentrifugeCommand, CentrifugeField
+from cramera.laboratory_pipetting_command import PipettingCommand, PipettingField
 
 
 # %% contact session contract
@@ -31,6 +32,8 @@ class PhysicsRoute(StrEnum):
     """Move the force target for one authored object."""
     LIQUID = "/api/laboratory/physics/liquid"
     """Set the liquid quantity in an authored tube."""
+    PIPETTING = "/api/laboratory/physics/pipetting"
+    """Operate the finite-reservoir dispensing station."""
     CENTRIFUGE = "/api/laboratory/physics/centrifuge"
     """Operate the articulated laboratory centrifuge."""
     MANUAL = "/api/laboratory/physics/manual"
@@ -145,6 +148,15 @@ class ContactSimulation(Protocol):
 
     def fill_liquid(self, key: str, volume_ml: float) -> None:
         """Set a bounded liquid quantity for an authored tube."""
+
+    def pipetting_command(
+        self,
+        action: str,
+        key: str | None = None,
+        source: str | None = None,
+        volume_ml: float | None = None,
+    ) -> None:
+        """Control finite reagent delivery into an aligned vessel."""
 
     def read_centrifuge_manual(self, document: str) -> None:
         """Replace centrifuge operating knowledge without moving objects."""
@@ -318,6 +330,24 @@ class LaboratoryPhysicsSession:
         ):
             raise InvalidPhysicsRequest("Expected a nonnegative finite liquid volume")
 
+    def pipetting_command(self, command: PipettingCommand) -> dict[str, Any]:
+        """Serialize pump operations against stepping and robot ownership."""
+        with self.lock:
+            self._require_running()
+            self._validate_pipetting(command)
+            self.physics.pipetting_command(
+                command.action,
+                key=command.key,
+                source=command.source,
+                volume_ml=command.volume_ml,
+            )
+            return self._status()
+
+    def _validate_pipetting(self, command: PipettingCommand) -> None:
+        """Reject dose receivers outside the authored object catalog."""
+        if command.key is not None and command.key not in self.object_keys:
+            raise InvalidPhysicsRequest("Unknown laboratory object")
+
     def tare_scale(self) -> dict[str, Any]:
         """Zero the scale while serializing against physical stepping."""
         with self.lock:
@@ -468,6 +498,10 @@ class LaboratoryPhysicsSession:
             },
             PhysicsField.CAMERAS: laboratory.get(PhysicsField.CAMERAS, {}),
         }
+        if PipettingField.PIPETTING in laboratory:
+            scene[PhysicsField.PHYSICS][PipettingField.PIPETTING] = laboratory[
+                PipettingField.PIPETTING
+            ]
         if CentrifugeField.CENTRIFUGE in laboratory:
             scene[PhysicsField.PHYSICS][CentrifugeField.CENTRIFUGE] = laboratory[
                 CentrifugeField.CENTRIFUGE

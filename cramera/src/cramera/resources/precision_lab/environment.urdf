@@ -1082,4 +1082,64 @@
     <limit lower="0" upper="1.85" effort="8" velocity="1" />
     <dynamics damping="0.03" friction="0.002" />
   </joint>
+  <link name="laboratory_pipetting_station">
+    <visual>
+      <geometry>
+        <mesh filename="assets/pipetting_station.glb" />
+      </geometry>
+    </visual>
+    <collision name="pipetting_platform">
+      <origin xyz="0 -0.015 0.008" rpy="0 0 0" />
+      <geometry>
+        <box size="0.22 0.29 0.016" />
+      </geometry>
+    </collision>
+    <collision name="pipetting_column">
+      <origin xyz="0 0.085 0.133" rpy="0 0 0" />
+      <geometry>
+        <box size="0.22 0.09 0.234" />
+      </geometry>
+    </collision>
+    <collision name="pipetting_head">
+      <origin xyz="0 -0.032 0.219" rpy="0 0 0" />
+      <geometry>
+        <box size="0.054 0.194 0.024" />
+      </geometry>
+    </collision>
+    <collision name="pipetting_holder_side_0">
+      <origin xyz="-0.01375 -0.1165 0.032" rpy="0 0 0" />
+      <geometry>
+        <box size="0.0045 0.045 0.032" />
+      </geometry>
+    </collision>
+    <collision name="pipetting_holder_side_1">
+      <origin xyz="0.01375 -0.1165 0.032" rpy="0 0 0" />
+      <geometry>
+        <box size="0.0045 0.045 0.032" />
+      </geometry>
+    </collision>
+    <collision name="pipetting_holder_back">
+      <origin xyz="0 -0.09625 0.032" rpy="0 0 0" />
+      <geometry>
+        <box size="0.032 0.0045 0.032" />
+      </geometry>
+    </collision>
+    <collision name="pipetting_amber_nozzle">
+      <origin xyz="-0.0018 -0.11 0.1935" rpy="0 0 0" />
+      <geometry>
+        <box size="0.0016 0.0016 0.027" />
+      </geometry>
+    </collision>
+    <collision name="pipetting_teal_nozzle">
+      <origin xyz="0.0018 -0.11 0.1935" rpy="0 0 0" />
+      <geometry>
+        <box size="0.0016 0.0016 0.027" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="laboratory_pipetting_station_joint" type="fixed">
+    <parent link="laboratory_root" />
+    <child link="laboratory_pipetting_station" />
+    <origin xyz="-0.1 0 0.9" rpy="0 0 0" />
+  </joint>
 </robot>

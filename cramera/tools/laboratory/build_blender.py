@@ -22,6 +22,7 @@ from mathutils import Vector
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from geometry import LatheMesh, ProfilePoint, TubeDimensions
 from centrifuge import CentrifugeDimensions, CentrifugePart
+from pipetting import PipettingChannel, PipettingDimensions, PipettingPart
 
 
 # %% Asset contract
@@ -39,6 +40,8 @@ class AssetName(StrEnum):
     CENTRIFUGE_BASE = CentrifugePart.BASE_ASSET.value
     CENTRIFUGE_ROTOR = CentrifugePart.ROTOR_ASSET.value
     CENTRIFUGE_LID = CentrifugePart.LID_ASSET.value
+    PIPETTING = PipettingPart.ASSET.value
+    """Stationary dual-feed dispensing instrument."""
 
 
 class RenderView(StrEnum):
@@ -83,6 +86,8 @@ class BuildOptions:
     """Reference view to render after asset generation."""
     centrifuge_only: bool = False
     """Export only the centrifuge while preserving existing laboratory assets."""
+    pipetting_only: bool = False
+    """Export only the dispensing station and preserve existing laboratory assets."""
 
 
 @dataclass
@@ -886,6 +891,367 @@ class LaboratoryBuilder:
         lid_constraint.use_limit_y = lid_constraint.use_limit_z = True
         lid_constraint.use_transform_limit = True
 
+    def pipetting_tubing(
+        self,
+        name: str,
+        points: tuple[tuple[float, float, float], ...],
+        material: MaterialName,
+    ) -> None:
+        """Create a rounded reagent feed line along its supporting hardware."""
+        curve = bpy.data.curves.new(name, "CURVE")
+        curve.dimensions = "3D"
+        curve.resolution_u = 16
+        curve.bevel_depth = 0.0017
+        curve.bevel_resolution = 4
+        spline = curve.splines.new("BEZIER")
+        spline.bezier_points.add(len(points) - 1)
+        for vertex, position in zip(spline.bezier_points, points):
+            vertex.co = position
+            vertex.handle_left_type = vertex.handle_right_type = "AUTO"
+        scene_object = bpy.data.objects.new(name, curve)
+        bpy.context.collection.objects.link(scene_object)
+        bpy.ops.object.select_all(action="DESELECT")
+        scene_object.select_set(True)
+        bpy.context.view_layer.objects.active = scene_object
+        bpy.ops.object.convert(target="MESH")
+        self.register(bpy.context.object, name, material)
+
+    def build_pipetting(self) -> None:
+        """Model the bench dispenser with two reservoirs and an open receiving bay."""
+        dimensions = PipettingDimensions()
+        self.current = AssetName.PIPETTING
+        self.box(
+            "Pipetting enamel platform",
+            dimensions.platform_center,
+            dimensions.platform_size,
+            MaterialName.WHITE,
+            0.005,
+        )
+        self.box(
+            "Pipetting rear housing",
+            dimensions.column_center,
+            dimensions.column_size,
+            MaterialName.WHITE,
+            0.009,
+        )
+        self.box(
+            "Pipetting lower plinth",
+            (0, 0.085, 0.026),
+            (0.217, 0.089, 0.018),
+            MaterialName.TEAL,
+            0.004,
+        )
+        for horizontal in (-0.106, 0.106):
+            self.box(
+                "Pipetting side trim",
+                (horizontal, 0.085, 0.137),
+                (0.006, 0.068, 0.204),
+                MaterialName.TEAL,
+                0.003,
+            )
+        self.box(
+            "Pipetting head",
+            dimensions.head_center,
+            dimensions.head_size,
+            MaterialName.TEAL,
+            0.005,
+        )
+        self.box(
+            "Pipetting head cover",
+            (0, -0.032, 0.233),
+            (0.051, 0.187, 0.006),
+            MaterialName.WHITE,
+            0.002,
+        )
+        self.box(
+            "Pipetting head nose",
+            (0, -0.115, 0.209),
+            (0.030, 0.028, 0.006),
+            MaterialName.STEEL,
+            0.002,
+        )
+        self.box(
+            "Pipetting receiving inset",
+            (0, -0.097, 0.0155),
+            (0.115, 0.101, 0.001),
+            MaterialName.STEEL,
+            0.004,
+        )
+        for horizontal in (-0.042, 0.042):
+            for depth in (-0.13, -0.08):
+                self.cylinder(
+                    "Pipetting platform screw",
+                    (horizontal, depth, 0.01615),
+                    0.0018,
+                    0.0003,
+                    MaterialName.DARK,
+                )
+        for guide in dimensions.holder_guides():
+            self.box(
+                guide.name, guide.center, guide.size, MaterialName.PALE_TEAL, 0.001
+            )
+        self.text(
+            "Pipetting loading label",
+            "SAMPLE",
+            (-0.019, -0.151, 0.0162),
+            0.005,
+            MaterialName.TEAL,
+            (0, 0, 0),
+        )
+        self.text(
+            "Pipetting brand",
+            "PRECISION",
+            (-0.095, 0.0391, 0.218),
+            0.010,
+            MaterialName.TEAL,
+        )
+        self.text(
+            "Pipetting instrument label",
+            "DUAL DISPENSER",
+            (-0.095, 0.0391, 0.202),
+            0.0065,
+            MaterialName.TEAL,
+        )
+        self.box(
+            "Pipetting screen bezel",
+            (
+                dimensions.display[0],
+                dimensions.display[1] + 0.001,
+                dimensions.display[2],
+            ),
+            (
+                dimensions.display_size[0] + 0.006,
+                0.0015,
+                dimensions.display_size[1] + 0.006,
+            ),
+            MaterialName.TEAL,
+            0.002,
+        )
+        self.box(
+            PipettingPart.DISPLAY,
+            dimensions.display,
+            (dimensions.display_size[0], 0.0008, dimensions.display_size[1]),
+            MaterialName.DARK,
+            0.0005,
+        )
+        self.text(
+            "Pipetting channel label",
+            "A  /  B",
+            (0.038, 0.0391, 0.166),
+            0.009,
+            MaterialName.TEAL,
+        )
+        for index, channel in enumerate(PipettingChannel):
+            sign = -1 if channel is PipettingChannel.AMBER else 1
+            horizontal = sign * dimensions.reservoir_horizontal_offset
+            material = (
+                MaterialName.AMBER
+                if channel is PipettingChannel.AMBER
+                else MaterialName.LIQUID_TEAL
+            )
+            self.cylinder(
+                f"Pipetting {channel} reservoir seat",
+                (horizontal, 0.085, 0.252),
+                0.030,
+                0.004,
+                MaterialName.TEAL,
+            )
+            self.lathe(
+                f"Pipetting {channel} bottle",
+                (
+                    ProfilePoint(0, 0.254),
+                    ProfilePoint(0.021, 0.254),
+                    ProfilePoint(0.025, 0.258),
+                    ProfilePoint(0.025, 0.343),
+                    ProfilePoint(0.022, 0.352),
+                    ProfilePoint(0.013, 0.365),
+                    ProfilePoint(0.013, 0.379),
+                    ProfilePoint(0.010, 0.379),
+                    ProfilePoint(0.010, 0.365),
+                    ProfilePoint(0.019, 0.350),
+                    ProfilePoint(0.023, 0.342),
+                    ProfilePoint(0.023, 0.259),
+                    ProfilePoint(0, 0.259),
+                ),
+                MaterialName.GLASS,
+                (horizontal, 0.085, 0),
+            )
+            self.cylinder(
+                f"Pipetting {channel} liquid",
+                (
+                    horizontal,
+                    0.085,
+                    dimensions.reservoir_liquid_bottom
+                    + dimensions.reservoir_liquid_height / 2,
+                ),
+                0.0228,
+                dimensions.reservoir_liquid_height,
+                material,
+            )
+            self.cylinder(
+                f"Pipetting {channel} cap",
+                (horizontal, 0.085, 0.379),
+                0.016,
+                0.013,
+                MaterialName.DARK,
+            )
+            self.cylinder(
+                f"Pipetting {channel} cap band",
+                (horizontal, 0.085, 0.373),
+                0.0162,
+                0.002,
+                MaterialName.PALE_TEAL,
+            )
+            for rib in range(24):
+                angle = 2 * pi * rib / 24
+                self.cylinder(
+                    f"Pipetting {channel} cap knurl",
+                    (
+                        horizontal + 0.0157 * cos(angle),
+                        0.085 + 0.0157 * sin(angle),
+                        0.379,
+                    ),
+                    0.0006,
+                    0.010,
+                    MaterialName.DARK,
+                )
+            self.cylinder(
+                f"Pipetting {channel} feed coupling",
+                (horizontal, 0.085, 0.390),
+                0.0037,
+                0.010,
+                MaterialName.STEEL,
+            )
+            self.box(
+                f"Pipetting {channel} bottle label",
+                (horizontal, 0.0598, 0.291),
+                (0.036, 0.001, 0.024),
+                MaterialName.WHITE,
+                0.001,
+            )
+            self.text(
+                f"Pipetting {channel} label text",
+                f"REAGENT {chr(65 + index)}",
+                (horizontal - 0.015, 0.0592, 0.294),
+                0.0038,
+                MaterialName.TEAL,
+            )
+            self.text(
+                f"Pipetting {channel} identification",
+                str(channel).upper(),
+                (horizontal - 0.012, 0.0592, 0.284),
+                0.0045,
+                MaterialName.TEAL,
+            )
+            for graduation in range(5):
+                self.box(
+                    f"Pipetting {channel} graduation",
+                    (horizontal + 0.016, 0.0647, 0.317 + graduation * 0.005),
+                    (0.005 if graduation % 2 else 0.008, 0.0005, 0.0006),
+                    MaterialName.LABEL,
+                    0,
+                )
+            self.pipetting_tubing(
+                f"Pipetting {channel} feed tube",
+                (
+                    (horizontal, 0.085, 0.395),
+                    (horizontal, 0.040, 0.408),
+                    (sign * 0.019, 0.018, 0.354),
+                    (sign * 0.011, -0.021, 0.247),
+                    (sign * 0.009, -0.101, 0.242),
+                ),
+                MaterialName.PALE_TEAL if index else MaterialName.LABEL,
+            )
+            nozzle = dimensions.channel_nozzle(channel)
+            self.cylinder(
+                f"Pipetting {channel} nozzle fitting",
+                (nozzle[0], nozzle[1], 0.206),
+                0.00165,
+                0.007,
+                MaterialName.DARK,
+            )
+            self.cylinder(
+                f"Pipetting {channel} nozzle",
+                (nozzle[0], nozzle[1], nozzle[2] + dimensions.nozzle_length / 2),
+                dimensions.nozzle_radius,
+                dimensions.nozzle_length,
+                MaterialName.STEEL,
+            )
+            self.box(
+                f"Pipetting {channel} indicator bezel",
+                (0.037 + index * 0.026, 0.0387, 0.145),
+                (0.016, 0.002, 0.008),
+                MaterialName.TEAL,
+                0.002,
+            )
+            self.box(
+                f"Pipetting {channel} indicator",
+                (0.037 + index * 0.026, 0.0375, 0.145),
+                (0.010, 0.0005, 0.003),
+                MaterialName.PALE_TEAL if index else MaterialName.LABEL,
+                0.0007,
+            )
+        for horizontal in (-0.077, 0.077):
+            for vent in range(6):
+                self.box(
+                    "Pipetting ventilation slot",
+                    (horizontal, 0.0396, 0.078 + vent * 0.006),
+                    (0.033, 0.001, 0.002),
+                    MaterialName.DARK,
+                    0.0007,
+                )
+        self.text(
+            "Pipetting nozzle label",
+            "A  B",
+            (-0.010, -0.1292, 0.217),
+            0.005,
+            MaterialName.WHITE,
+        )
+        self.export_asset(AssetName.PIPETTING, dimensions.origin)
+
+    def build_pipetting_assets(self) -> None:
+        """Add an editable dispenser and detail render without rebuilding the lab."""
+        source = self.options.output / "laboratory.blend"
+        existing_source = source.exists()
+        if existing_source:
+            bpy.ops.wm.open_mainfile(filepath=str(source))
+        else:
+            bpy.ops.object.select_all(action="SELECT")
+            bpy.ops.object.delete(use_global=False)
+        for scene_object in list(bpy.data.objects):
+            if scene_object.name.startswith(("Pipetting", "pipetting_")):
+                bpy.data.objects.remove(scene_object, do_unlink=True)
+        (self.options.output / "assets").mkdir(parents=True, exist_ok=True)
+        self.library.build()
+        self.build_pipetting()
+        if not existing_source:
+            self.setup_render()
+        scene = bpy.context.scene
+        bpy.context.preferences.filepaths.save_version = 0
+        bpy.ops.wm.save_as_mainfile(filepath=str(source))
+        position = PipettingDimensions().origin
+        scene.camera = self.camera(
+            "Pipetting detail",
+            (position[0] + 0.52, -0.77, position[2] + 0.51),
+            (position[0], -0.015, position[2] + 0.20),
+            58,
+            11,
+        )
+        scene.cycles.samples = self.options.samples
+        scene.cycles.use_denoising = False
+        scene.render.resolution_x = self.options.width
+        scene.render.resolution_y = round(self.options.width * 0.90)
+        scene.render.resolution_percentage = 100
+        scene.render.filepath = str(self.options.output / "render_pipetting.png")
+        bpy.ops.wm.save_as_mainfile(
+            filepath=str(self.options.output / "pipetting.blend")
+        )
+        (self.options.output / "assets" / "pipetting_measurements.json").write_text(
+            json.dumps(self.measurements, indent=2) + "\n"
+        )
+        if self.options.render:
+            bpy.ops.render.render(write_still=True)
+
     def build_centrifuge_assets(self) -> None:
         """Add instrument assets and an editable source without replacing the lab."""
         source = self.options.output / "laboratory.blend"
@@ -1110,6 +1476,9 @@ class LaboratoryBuilder:
         if self.options.centrifuge_only:
             self.build_centrifuge_assets()
             return
+        if self.options.pipetting_only:
+            self.build_pipetting_assets()
+            return
         bpy.ops.object.select_all(action="SELECT")
         bpy.ops.object.delete(use_global=False)
         bpy.context.scene.unit_settings.system = "METRIC"
@@ -1134,6 +1503,7 @@ class LaboratoryBuilder:
         self.build_stopper()
         self.export_asset(AssetName.STOPPER, (0.50, -0.12, 0.900))
         self.build_centrifuge()
+        self.build_pipetting()
         cameras = self.setup_render()
         bpy.context.scene.camera = cameras[0]
         bpy.context.scene.render.filepath = str(
@@ -1170,6 +1540,7 @@ def main() -> None:
     parser.add_argument("--width", type=int, default=BuildOptions.width)
     parser.add_argument("--skip-render", action="store_true")
     parser.add_argument("--centrifuge-only", action="store_true")
+    parser.add_argument("--pipetting-only", action="store_true")
     parser.add_argument(
         "--view", type=RenderView, choices=list(RenderView), default=RenderView.ALL
     )
@@ -1184,6 +1555,7 @@ def main() -> None:
             not arguments.skip_render,
             arguments.view,
             arguments.centrifuge_only,
+            arguments.pipetting_only,
         )
     ).build()
 

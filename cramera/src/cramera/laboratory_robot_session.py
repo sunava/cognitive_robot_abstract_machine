@@ -13,6 +13,7 @@ from pathlib import Path
 from typing_extensions import Any, ClassVar, Protocol
 
 from cramera import paths
+from cramera.laboratory_pipetting_command import PipettingAction, PipettingCommand
 from cramera.laboratory_centrifuge_command import (
     CentrifugeAction,
     CentrifugeCommand,
@@ -40,6 +41,10 @@ class RobotPhysicsRoute(StrEnum):
     """Manipulate a loose object while the robot program is inactive."""
     LIQUID = "/api/laboratory/physics/robot/liquid"
     """Set a tube's liquid quantity while the robot program is inactive."""
+    PIPETTING = "/api/laboratory/physics/robot/pipetting"
+    """Operate the dispensing station beside the articulated robot."""
+    PIPETTE = "/api/laboratory/physics/robot/pipette"
+    """Run the robot demonstration with two measured reagent doses."""
     CENTRIFUGE = "/api/laboratory/physics/robot/centrifuge"
     """Operate the centrifuge beside the articulated robot."""
     MANUAL = "/api/laboratory/physics/robot/manual"
@@ -83,6 +88,9 @@ class ProgramSimulation(ContactSimulation, Protocol):
 
     def run_mixing(self) -> None:
         """Start or resume the fixed two-liquid mixing recipe."""
+
+    def run_pipetting(self) -> None:
+        """Start or resume the stationary dispensing recipe."""
 
     def pause_program(self) -> None:
         """Hold the current robot program stage."""
@@ -198,6 +206,25 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
             self._require_running()
             self.physics.run_mixing()
             return self._status()
+
+    def run_pipetting(self) -> dict[str, Any]:
+        """Transfer manipulation control to the stationary dispensing recipe."""
+        with self.lock:
+            self._require_running()
+            self.physics.run_pipetting()
+            return self._status()
+
+    def _validate_pipetting(self, command: PipettingCommand) -> None:
+        """Keep emergency pump stopping available during robot execution."""
+        super()._validate_pipetting(command)
+        if (
+            command.action != PipettingAction.STOP
+            and self.physics.snapshot()[RobotField.ROBOT][PhysicsField.STATE]
+            == PhysicsState.RUNNING
+        ):
+            raise InvalidPhysicsRequest(
+                "Pause the PR2 program before operating the pipetting station."
+            )
 
     def _validate_liquid(self, key: str, volume_ml: float) -> None:
         """Require the robot program to pause before changing liquid quantities."""

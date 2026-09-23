@@ -2179,6 +2179,8 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       : LaboratoryScale.create(THREE, worldRoot, SCENE.physics.scale, root.ownerDocument);
     const centrifuge = typeof LaboratoryCentrifuge === 'undefined' || !SCENE.physics.centrifuge ? null
       : LaboratoryCentrifuge.create(THREE, worldRoot, root.ownerDocument);
+    const pipetting = typeof LaboratoryPipetting === 'undefined' || !SCENE.physics.pipetting ? null
+      : LaboratoryPipetting.create(THREE, worldRoot, SCENE.physics.pipetting, root.ownerDocument);
     const contactGeometry = new THREE.SphereGeometry(0.003, 10, 8);
     const contactMaterial = new THREE.MeshBasicMaterial({color: 0xe34b35, depthTest: false});
     const targetGeometry = new THREE.SphereGeometry(0.008, 16, 12);
@@ -2215,6 +2217,10 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
         if (centrifuge) centrifuge.update(snapshot);
         needsRender = true;
       },
+      setPipettingState: function (snapshot, contents, poses) {
+        if (pipetting) pipetting.update(snapshot, contents, poses);
+        needsRender = true;
+      },
       setContactsVisible: function (visible) {
         feedback.visible = Boolean(visible);
         needsRender = true;
@@ -2240,6 +2246,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
         if (liquid) liquid.destroy();
         if (scale) scale.destroy();
         if (centrifuge) centrifuge.destroy();
+        if (pipetting) pipetting.destroy();
         worldRoot.remove(feedback);
         contactGeometry.dispose(); contactMaterial.dispose();
         targetGeometry.dispose(); targetMaterial.dispose();

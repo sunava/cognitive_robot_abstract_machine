@@ -16,9 +16,11 @@ from typing_extensions import Any, ClassVar, TYPE_CHECKING
 from cramera.laboratory_centrifuge_command import CentrifugeAction
 from cramera.laboratory_liquid import LiquidField
 from cramera.laboratory_physics import InvalidPhysicsTarget
+from cramera.laboratory_pipetting import PipettingAction, PipettingState
 
 if TYPE_CHECKING:
     from cramera.laboratory_mixing_program import LaboratoryMixingProgram
+    from cramera.laboratory_pipetting_program import LaboratoryPipettingProgram
     from cramera.laboratory_physics_robot import LaboratoryRobotPhysics
 
 
@@ -570,7 +572,9 @@ class LaboratoryProgramPhysics:
     """The articulated MuJoCo contact simulation."""
     recording_directory: Path
     """The native CRAMERA recording supplying joint intentions."""
-    program: LaboratoryPhysicsProgram | LaboratoryMixingProgram = field(init=False)
+    program: (
+        LaboratoryPhysicsProgram | LaboratoryMixingProgram | LaboratoryPipettingProgram
+    ) = field(init=False)
     """The controller and physical acceptance evidence."""
 
     def __post_init__(self) -> None:
@@ -611,6 +615,7 @@ class LaboratoryProgramPhysics:
     def run_program(self) -> None:
         """Resume or restore initial body poses while retaining current tube contents."""
         self._require_free_centrifuge()
+        self._require_idle_station()
         if not isinstance(self.program, LaboratoryPhysicsProgram):
             self._require_switchable()
             self.program = LaboratoryPhysicsProgram(
@@ -636,7 +641,11 @@ class LaboratoryProgramPhysics:
     def run_mixing(self) -> None:
         """Start the fixed mixing recipe or resume its current physical state."""
         self._require_free_centrifuge()
-        if not isinstance(self.program, LaboratoryPhysicsProgram):
+        self._require_idle_station()
+        program_type = importlib.import_module(
+            "cramera.laboratory_mixing_program"
+        ).LaboratoryMixingProgram
+        if type(self.program) is program_type:
             if self.program.state == ProgramState.PAUSED:
                 self.program.start()
                 return
@@ -644,10 +653,52 @@ class LaboratoryProgramPhysics:
                 return
         self._require_switchable()
         self.physics.reset()
-        self.program = importlib.import_module(
-            "cramera.laboratory_mixing_program"
-        ).LaboratoryMixingProgram(self.physics)
+        self.program = program_type(self.physics)
         self.program.start()
+
+    def _require_idle_station(self) -> None:
+        """Prevent a second operation from moving a receiver during dispensing."""
+        if self.physics.pipetting.state == PipettingState.DISPENSING:
+            raise InvalidPhysicsTarget(
+                "Stop the pipetting station before starting another PR2 program"
+            )
+
+    def run_pipetting(self) -> None:
+        """Pick the current A1 receiver without restoring objects or replacing liquids."""
+        self._require_free_centrifuge()
+        program_type = importlib.import_module(
+            "cramera.laboratory_pipetting_program"
+        ).LaboratoryPipettingProgram
+        if isinstance(self.program, program_type):
+            if self.program.state == ProgramState.RUNNING:
+                return
+            if self.program.state == ProgramState.PAUSED:
+                self._require_idle_station()
+                self.program.start()
+                return
+        self._require_idle_station()
+        self._require_switchable()
+        candidate = program_type(self.physics)
+        candidate.start()
+        self.program = candidate
+
+    def pipetting_command(
+        self,
+        action: str,
+        key: str | None = None,
+        source: str | None = None,
+        volume_ml: float | None = None,
+    ) -> None:
+        """Preserve robot ownership while permitting an operator to stop the pump."""
+        if self.program.state == ProgramState.RUNNING:
+            if action != PipettingAction.STOP:
+                raise InvalidPhysicsTarget(
+                    "Pause the PR2 program before operating the pipetting station"
+                )
+            self.program.pause()
+        self.physics.pipetting_command(
+            action, key=key, source=source, volume_ml=volume_ml
+        )
 
     def pause_program(self) -> None:
         """Pause the reference while physical gravity and contacts remain active."""

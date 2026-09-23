@@ -14,6 +14,7 @@ from typing_extensions import Any
 
 from geometry import LatheMesh, TubeDimensions
 from centrifuge import CentrifugeDescription, CentrifugeDimensions, CentrifugePart
+from pipetting import PipettingDescription, PipettingDimensions
 
 # %% artifact names and dimensions
 
@@ -43,6 +44,8 @@ class Field(StrEnum):
     OPEN = "open"
     SCALE = "scale"
     CENTRIFUGE = "centrifuge"
+    PIPETTING = "pipetting"
+    """Fixed dispensing instrument and its receiving target."""
     PAN_POSITION = "panPosition"
     PAN_RADIUS = "panRadius"
     DISPLAY_POSITION = "displayPosition"
@@ -442,6 +445,8 @@ class LaboratoryBundle:
         self.scene[Field.LABORATORY][
             Field.CENTRIFUGE
         ] = CentrifugeDimensions().metadata()
+        PipettingDescription(description).build()
+        self.scene[Field.LABORATORY][Field.PIPETTING] = PipettingDimensions().metadata()
         model = self.scene["models"][0]
         model["links"] = len(description.root.findall("link"))
         model["movableJoints"].extend(

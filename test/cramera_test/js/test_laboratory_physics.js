@@ -251,6 +251,115 @@ class LiquidSimulation extends ContactSimulation {
   }
 }
 
+// %% finite-reservoir pipetting
+class PipettingSimulation extends LiquidSimulation {
+  constructor() {
+    super();
+    this.config.pipetting = {targetPosition: [-.1, -.11, .916], nozzlePosition: [-.1, -.11, 1.08]};
+    this.answer.pipetting = {available: true, state: 'idle', ...this.config.pipetting,
+      minimumMl: .1, maximumMl: 5, requestedMl: 0, deliveredMl: 0, remainingMl: 0,
+      reservoirs: [{id: 'amber', label: 'Amber reagent', volumeMl: 50}, {id: 'teal', label: 'Teal reagent', volumeMl: 50}]};
+    this.answer.objects.tube = [...this.config.pipetting.targetPosition, 0, 0, 0, 1];
+    this.service.pipetting = async payload => {
+      this.commands.push({type: 'pipetting', ...payload});
+      return {ok: true, pipetting: {...this.answer.pipetting, state: payload.action === 'dispense' ? 'dispensing' : 'idle'}};
+    };
+  }
+}
+
+test('pipetting routes send doses and the robot recipe without synthetic object poses', async () => {
+  const requests = [];
+  const client = new Physics.Client(async (url, options) => {
+    requests.push({url, body: JSON.parse(options.body)});
+    return {ok: true, json: async () => ({ok: true})};
+  }, {robot: true});
+  const command = {action: 'dispense', key: 'tube', source: 'amber', volumeMl: 1};
+  await client.pipetting(command);
+  await client.runPipetting();
+  assert.deepEqual(requests, [{url: Physics.RobotRoutes.PIPETTING, body: command}, {url: Physics.RobotRoutes.PIPETTE, body: {}}]);
+});
+
+test('dispensing requires an aligned glass, available reagent and remaining tube capacity', async () => {
+  const scene = new PipettingSimulation();
+  await scene.controller.refresh();
+  assert.equal(scene.controller.canDispense('amber', 1), true);
+  assert.equal(scene.controller.canDispense('amber', 6), false);
+  assert.equal(scene.controller.canDispense('unknown', 1), false);
+  scene.controller.objects.tube[0] += .02;
+  assert.equal(scene.controller.canDispense('amber', 1), false);
+  scene.controller.objects.tube[0] -= .02;
+  scene.controller.liquid.tubes.tube.volumeMl = scene.controller.liquid.tubes.tube.capacityMl;
+  assert.equal(scene.controller.canDispense('amber', 1), false);
+});
+
+test('stale observations cannot overwrite an accepted dose or start a second concurrent dose', async () => {
+  const scene = new PipettingSimulation();
+  await scene.controller.refresh();
+  let finish;
+  scene.service.state = () => new Promise(resolve => { finish = resolve; });
+  const polling = scene.controller.refresh();
+  await scene.controller.dispense('amber', 1);
+  finish(scene.answer);
+  await polling;
+  assert.equal(scene.controller.pipetting.state, 'dispensing');
+  assert.equal(await scene.controller.dispense('teal', 1), false);
+  assert.equal(await scene.controller.fillLiquid(0), false);
+  assert.equal(scene.commands.length, 1);
+});
+
+test('manual positioning follows observed waypoints and never changes the displayed glass pose', async () => {
+  const scene = new PipettingSimulation();
+  scene.answer.objects.tube = [.16, -.065, .906, 0, 0, 0, 1];
+  await scene.controller.refresh();
+  const before = structuredClone(scene.controller.objects);
+  await scene.controller.moveToPipette();
+  assert.deepEqual(scene.controller.objects, before);
+  assert.equal(scene.commands.length, 1);
+  const targets = [];
+  while (scene.controller.pipettingTransfer) {
+    const target = scene.commands.at(-1);
+    targets.push(target.position);
+    scene.answer.objects.tube = [...target.position, ...target.orientation];
+    await scene.controller.refresh();
+  }
+  assert.deepEqual(targets.at(-1), scene.config.pipetting.targetPosition);
+  assert.ok(targets.some(position => position[1] < scene.config.pipetting.targetPosition[1] - .15));
+  assert.ok(scene.commands.every(command => command.type === 'target'));
+});
+
+test('positioning an already aligned glass never lifts it into the fixed nozzle', async () => {
+  const scene = new PipettingSimulation();
+  await scene.controller.refresh();
+  assert.equal(await scene.controller.moveToPipette(), true);
+  assert.deepEqual(scene.commands, []);
+});
+
+test('moving a dosed glass to the scale withdraws it from the nozzle before lifting', async () => {
+  const scene = new PipettingSimulation();
+  scene.config.scale = {panPosition: [.5,.1,.94]};
+  await scene.controller.refresh();
+  await scene.controller.moveToScale();
+  const first = scene.commands.at(-1).position;
+  assert.equal(first[2], scene.answer.objects.tube[2]);
+  assert.ok(first[1] < scene.answer.objects.tube[1] - .15);
+});
+
+test('pipetting panel shows measured progress and an English robot demo control', async () => {
+  const scene = new PipettingSimulation();
+  scene.config.robot = true;
+  const surface = new PhysicsControls();
+  const mounted = Physics.mount(surface.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
+  await mounted.initialized;
+  assert.equal(surface.find('laboratory-physics-pipetting-dispense').disabled, false);
+  assert.equal(surface.find('laboratory-physics-robot-pipette').textContent, 'Start pipetting demo');
+  scene.answer.pipetting = {...scene.answer.pipetting, state: 'dispensing', requestedMl: 1, deliveredMl: .4, remainingMl: .6};
+  await mounted.refresh();
+  assert.match(surface.find('laboratory-physics-pipetting-status').textContent, /0\.40 \/ 1\.00 ml/);
+  assert.equal(surface.find('laboratory-physics-pipetting-dispense').disabled, true);
+  assert.equal(surface.find('laboratory-physics-pipetting-stop').disabled, false);
+  mounted.destroy();
+});
+
 // %% two-liquid robot demonstration
 test('mixing requests start a server-owned recipe without browser object poses', async () => {
   const requests = [];

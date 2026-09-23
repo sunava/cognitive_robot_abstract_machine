@@ -26,7 +26,7 @@
       "urdf": "environment.urdf",
       "prefix": "",
       "robot": false,
-      "links": 8,
+      "links": 9,
       "movableJoints": [
         "laboratory_drawer_joint",
         "laboratory_centrifuge_rotor_joint",
@@ -368,6 +368,60 @@
             -0.14200000000000002,
             0.9600000000000001
           ]
+        }
+      ]
+    },
+    "pipetting": {
+      "body": "laboratory_pipetting_station",
+      "joint": "laboratory_pipetting_station_joint",
+      "asset": "assets/pipetting_station.glb",
+      "origin": [
+        -0.1,
+        0.0,
+        0.9
+      ],
+      "targetPosition": [
+        -0.1,
+        -0.11,
+        0.916
+      ],
+      "nozzlePosition": [
+        -0.1,
+        -0.11,
+        1.08
+      ],
+      "displayPosition": [
+        -0.154,
+        0.0387,
+        1.056
+      ],
+      "displaySize": [
+        0.078,
+        0.028
+      ],
+      "displayMesh": "Pipetting display",
+      "channels": [
+        {
+          "id": "amber",
+          "nozzlePosition": [
+            -0.1018,
+            -0.11,
+            1.08
+          ],
+          "liquidMesh": "Pipetting amber liquid",
+          "liquidBottom": 0.259,
+          "liquidHeight": 0.069
+        },
+        {
+          "id": "teal",
+          "nozzlePosition": [
+            -0.09820000000000001,
+            -0.11,
+            1.08
+          ],
+          "liquidMesh": "Pipetting teal liquid",
+          "liquidBottom": 0.259,
+          "liquidHeight": 0.069
         }
       ]
     }
