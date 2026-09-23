@@ -244,6 +244,71 @@ Die Zustandsantworten enthalten `scale` mit `grams`, `grossGrams`, `tareGrams`,
 Die geschützte Serveransicht verwendet denselben Robot-Befehl unter ihrem
 `/laboratory`-Präfix und benötigt weiterhin die Anmeldung.
 
+## Bedienbare Zentrifuge
+
+Die Kontaktansichten enthalten eine in Blender modellierte Tischzentrifuge links
+neben dem Probenständer. Gehäuse, Rotor und Scharnierdeckel sind getrennte Modelle.
+MuJoCo berechnet die tatsächlichen Gelenkbewegungen; die Browseransicht übernimmt
+die gemessenen Winkel. Die vier offenen Hülsen nehmen die vorhandenen 150 mm
+langen Reagenzgläser auf.
+
+1. Einen laufenden PR2-Ablauf pausieren und den Zentrifugendeckel öffnen.
+2. Ein Glas sowie einen Platz C1–C4 auswählen und **Probe einsetzen** drücken.
+   Die Kontaktsteuerung hebt das Glas an und senkt es in den Halter. Erst nach
+   gemessenem Sitzkontakt wird die Halterung gesichert.
+3. Den gegenüberliegenden Platz mit einer gleich schweren Probe beladen:
+   C1 gehört zu C3, C2 zu C4. Die Masse umfasst Glas und aktuellen Flüssigkeitsinhalt.
+4. Den Deckel schließen, Drehzahl und Laufzeit wählen und den Rotor starten.
+5. Nach Ende der Laufzeit oder **Rotor stoppen** bremst der Antrieb ab. Erst im Stillstand
+   lässt sich der Deckel öffnen und eine Probe wieder entnehmen.
+
+Für einen ersten Durchlauf lassen sich zwei Gläser vor dem Einsetzen jeweils
+mit 5 ml befüllen; beide wiegen dann 17 g.
+
+Starten ist bei offenem Deckel, einer losen Probe im Rotorraum, fehlender
+Gegenprobe oder mehr als 0,25 g Massendifferenz innerhalb eines belegten
+Gegenpaares gesperrt. Die Halterungen
+sind ausdrücklich gesicherte Probenaufnahmen; ihre Bindung an den Rotor wird
+erst beim Einsetzen aktiviert und vor der Entnahme gelöst. Dies verändert nicht
+den reibungsbasierten Griff des PR2.
+
+Die Anzeige nennt gemessene Drehzahl, relative Zentrifugalbeschleunigung (RCF),
+Restzeit und Belegung. Die Laufzeit beginnt beim Erreichen der Solldrehzahl.
+Für diesen interaktiven Prototyp ist die Drehzahl auf 300 U/min begrenzt.
+Die Flüssigkeitsmenge und ihre zusätzliche Körpermasse bleiben Teil des
+bestehenden Modells; Partikelabscheidung, Stofftrennung und chemische Wirkungen
+werden nicht berechnet. Das Einsetzen über die Oberfläche verwendet die manuelle
+Kontaktsteuerung. Ein autonomer PR2-Plan zum Beladen der Zentrifuge ist damit
+noch nicht verbunden.
+
+Die Befehle liegen unter `POST /api/laboratory/physics/centrifuge` beziehungsweise
+`POST /api/laboratory/physics/robot/centrifuge`. Das JSON-Feld `action` wählt
+`open`, `close`, `secure`, `release`, `start` oder `stop`. `secure` benötigt `slot`
+und `key`, `release` benötigt `slot`, `start` akzeptiert `rpm` und `duration`
+(Sekunden). Die Zustandsantwort enthält `centrifuge` mit den gemessenen
+Gelenken, Weltpositionen der Plätze und Betriebszuständen. Während eines
+laufenden Roboterprogramms bleibt ausschließlich der Stoppbefehl verfügbar.
+Ein Roboterprogramm lässt sich erst starten oder fortsetzen, wenn der Rotor
+steht und alle Probenhalter freigegeben sind. Dadurch kann ein neuer Demolauf
+keinen laufenden Zentrifugierzyklus zurücksetzen.
+
+Die editierbare Blender-Datei liegt unter
+`~/.cramera/scenes/precision_lab/centrifuge.blend`. Ein gezielter Neuaufbau ergänzt
+die Zentrifuge, ohne die bisherigen GLB-Modelle des Labors neu zu exportieren:
+
+```bash
+blender --background --python cramera/tools/laboratory/build_blender.py -- --output /home/hassouna/.cramera/scenes/precision_lab --centrifuge-only --samples 48 --width 1100
+.venv/bin/python cramera/tools/laboratory/bundle.py
+```
+
+Die Abnahme prüft echte Kontaktlast beim Einsetzen, einen vollständigen
+zeitgesteuerten Browserablauf neben dem PR2, Entnahme und erneutes Sichern bei
+verändertem Rotorwinkel sowie den Betrieb an der Obergrenze von 300 U/min:
+
+```bash
+.venv/bin/pytest test/cramera_test/test_laboratory_centrifuge*.py test/cramera_test/test_laboratory_physics_ui.py -q -o faulthandler_timeout=0
+```
+
 ## Umgesetzter erster Prototyp
 
 Die Szene `precision_lab` enthält eine gestaltete Laborbank mit Regal und

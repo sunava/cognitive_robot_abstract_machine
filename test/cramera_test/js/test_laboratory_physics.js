@@ -1089,3 +1089,167 @@ test('grabbing a glass above its base does not move the physics target before th
     assert.ok(Math.abs(targets[0][axis] - object.position.toArray()[axis]) < 1e-12);
   }
 });
+
+// %% articulated centrifuge controls
+class CentrifugeSimulation extends LiquidSimulation {
+  constructor() {
+    super();
+    this.answer.time = 0;
+    this.answer.centrifuge = {
+      available: true, rpm: 0, targetRpm: 0, rcf: 0, lidOpen: true, lidClosed: false,
+      locked: false, running: false, balanced: false, maximumRpm: 300, remainingSeconds: 0,
+      joints: {laboratory_centrifuge_lid_joint: 1.5},
+      slots: ['C1', 'C2', 'C3', 'C4'].map((id, index) => ({id, opposite: ['C3', 'C4', 'C1', 'C2'][index], position: [-.4, .1, 1], key: null, grams: 0, secured: false})),
+    };
+    this.service.centrifuge = async command => { this.commands.push({type: 'centrifuge', ...command}); return {ok: true}; };
+  }
+  async settle() {
+    const target = this.controller.target;
+    this.answer.objects.tube = [...target.position, ...target.orientation];
+    this.answer.time += .1;
+    await this.controller.refresh();
+    this.answer.time += .1;
+    await this.controller.refresh();
+  }
+}
+
+test('centrifuge service preserves both API route families and cycle payload', async () => {
+  for (const robot of [false, true]) {
+    const requests = [];
+    const client = new Physics.Client(async (url, options) => {
+      requests.push({url, body: JSON.parse(options.body)});
+      return {ok: true, json: async () => ({ok: true})};
+    }, {robot});
+    const command = {action: 'start', rpm: 120, duration: 20};
+    await client.centrifuge(command);
+    assert.deepEqual(requests, [{url: (robot ? Physics.RobotRoutes : Physics.Routes).CENTRIFUGE, body: command}]);
+  }
+});
+
+test('centrifuge loading waits for observed seating and contact before securing', async () => {
+  const scene = new CentrifugeSimulation();
+  await scene.controller.refresh();
+  assert.equal(scene.controller.selectCentrifugeSlot('C1'), true);
+  assert.equal(await scene.controller.loadCentrifuge(), true);
+  assert.equal(scene.commands.length, 1);
+  await scene.controller.refresh();
+  assert.equal(scene.commands.length, 1);
+  for (let index = 0; index < 4; index++) await scene.settle();
+  assert.equal(scene.commands.filter(command => command.type === 'target').length, 4);
+  assert.equal(scene.commands.some(command => command.action === 'secure'), false);
+  scene.answer.contacts = [{bodyA: 'tube', bodyB: 'laboratory_centrifuge_rotor', force: .2}];
+  await scene.settle();
+  assert.deepEqual(scene.commands.at(-1), {type: 'centrifuge', action: 'secure', slot: 'C1', key: 'tube'});
+  assert.equal(scene.controller.centrifugeTransfer, null);
+});
+
+test('secured tubes cannot be dragged or refilled and unloading releases before lifting', async () => {
+  const scene = new CentrifugeSimulation();
+  scene.answer.centrifuge.slots[0].key = 'tube';
+  scene.answer.centrifuge.slots[0].secured = true;
+  scene.answer.objects.tube = [-.4, .1, 1, 0, 0, 0, 1];
+  await scene.controller.refresh();
+  assert.equal(scene.controller.beginDrag('tube'), false);
+  assert.equal(await scene.controller.fillLiquid(5), false);
+  assert.equal(await scene.controller.unloadCentrifuge(), true);
+  assert.deepEqual(scene.commands[0], {type: 'centrifuge', action: 'release', slot: 'C1'});
+  assert.equal(scene.commands[1].type, 'target');
+  assert.deepEqual(scene.commands[1].position, scene.answer.objects.tube.slice(0, 3));
+});
+
+test('centrifuge controls reject unbalanced starts and show measured cycle feedback', async () => {
+  const scene = new CentrifugeSimulation();
+  const controls = new PhysicsControls(), clock = new PhysicsPolling();
+  const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, clock);
+  await mounted.initialized;
+  assert.equal(controls.find('laboratory-physics-centrifuge-start').disabled, true);
+  assert.equal(await mounted.controller.commandCentrifuge('start', {rpm: 120, duration: 20}), false);
+  scene.answer.centrifuge.balanced = true;
+  scene.answer.centrifuge.lidOpen = false;
+  scene.answer.centrifuge.lidClosed = true;
+  await mounted.refresh();
+  assert.equal(controls.find('laboratory-physics-centrifuge-start').disabled, false);
+  await controls.find('laboratory-physics-centrifuge-start').listeners.get('click')();
+  assert.deepEqual(scene.commands.at(-1), {type: 'centrifuge', action: 'start', rpm: 120, duration: 20});
+  scene.answer.centrifuge.rpm = 119;
+  scene.answer.centrifuge.remainingSeconds = 12;
+  scene.answer.centrifuge.running = true;
+  scene.answer.centrifuge.locked = true;
+  await mounted.refresh();
+  assert.match(controls.find('laboratory-physics-centrifuge-status').textContent, /119.*12/);
+  assert.equal(controls.find('laboratory-physics-centrifuge-open').disabled, true);
+  mounted.destroy();
+});
+
+test('centrifuge joints follow measured snapshots and camera uses observed rotor positions', async () => {
+  const scene = new CentrifugeSimulation();
+  const frames = [], focus = [];
+  scene.adapter.setJointFrames = observed => frames.push(observed);
+  scene.adapter.focus = (position, target) => focus.push({position, target});
+  const controls = new PhysicsControls(), clock = new PhysicsPolling();
+  const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, clock);
+  await mounted.initialized;
+  assert.deepEqual(frames.at(-1), scene.answer.centrifuge.joints);
+  controls.find('laboratory-physics-centrifuge-view').listeners.get('click')();
+  assert.deepEqual(focus.at(-1).target, scene.answer.centrifuge.slots[0].position);
+  assert.equal(scene.commands.length, 0);
+  mounted.destroy();
+});
+
+test('an old poll cannot overwrite a confirmed centrifuge lock', async () => {
+  const scene = new CentrifugeSimulation();
+  scene.answer.centrifuge.balanced = true;
+  scene.answer.centrifuge.lidClosed = true;
+  await scene.controller.refresh();
+  const before = structuredClone(scene.answer);
+  let finish;
+  scene.service.state = () => new Promise(resolve => { finish = resolve; });
+  const polling = scene.controller.refresh();
+  const locked = {...scene.answer.centrifuge, running: true, locked: true};
+  scene.service.centrifuge = async () => ({ok: true, centrifuge: locked});
+  await scene.controller.commandCentrifuge('start', {rpm: 120, duration: 20});
+  finish(before);
+  await polling;
+  assert.equal(scene.controller.centrifuge.locked, true);
+});
+
+test('manual movement cancels centrifuge transport without securing a sample', async () => {
+  const scene = new CentrifugeSimulation();
+  await scene.controller.refresh();
+  await scene.controller.loadCentrifuge();
+  await scene.controller.nudge([.01, 0, 0]);
+  assert.equal(scene.controller.centrifugeTransfer, null);
+  assert.equal(scene.commands.some(command => command.action === 'secure'), false);
+});
+
+test('centrifuge load cannot secure while measured motion is still fast at the seat', async () => {
+  const scene = new CentrifugeSimulation();
+  await scene.controller.refresh();
+  await scene.controller.loadCentrifuge();
+  for (let index = 0; index < 4; index++) await scene.settle();
+  scene.answer.contacts = [{bodyA: 'tube', bodyB: 'laboratory_centrifuge_rotor', force: .2}];
+  scene.answer.objects.tube[0] += .001;
+  scene.answer.time += .1;
+  await scene.controller.refresh();
+  assert.equal(scene.commands.some(command => command.action === 'secure'), false);
+  scene.answer.time += .1;
+  await scene.controller.refresh();
+  assert.equal(scene.commands.at(-1).action, 'secure');
+});
+
+test('secured centrifuge samples block robot starts before any reset request', async () => {
+  const scene = new CentrifugeSimulation();
+  scene.config.robot = true;
+  scene.answer.centrifuge.slots[0] = {...scene.answer.centrifuge.slots[0], key: 'tube', secured: true};
+  scene.service.run = async () => { scene.commands.push({type: 'run'}); return {ok: true}; };
+  scene.service.runMixing = async () => { scene.commands.push({type: 'runMixing'}); return {ok: true}; };
+  const controls = new PhysicsControls(), clock = new PhysicsPolling();
+  const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, clock);
+  await mounted.initialized;
+  assert.equal(controls.find('laboratory-physics-robot-run').disabled, true);
+  assert.equal(controls.find('laboratory-physics-robot-mix').disabled, true);
+  assert.equal(await mounted.controller.run(), false);
+  assert.equal(await mounted.controller.runMixing(), false);
+  assert.deepEqual(scene.commands, []);
+  mounted.destroy();
+});

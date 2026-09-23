@@ -14,6 +14,7 @@
     RESET: '/api/laboratory/physics/reset', STOP: '/api/laboratory/physics/stop',
     LIQUID: '/api/laboratory/physics/liquid',
     TARE: '/api/laboratory/physics/scale/tare',
+    CENTRIFUGE: '/api/laboratory/physics/centrifuge',
   });
   const RobotRoutes = Object.freeze({
     START: '/api/laboratory/physics/robot/start', STATE: '/api/laboratory/physics/robot/state',
@@ -23,6 +24,7 @@
     MIX: '/api/laboratory/physics/robot/mix',
     LIQUID: '/api/laboratory/physics/robot/liquid',
     TARE: '/api/laboratory/physics/robot/scale/tare',
+    CENTRIFUGE: '/api/laboratory/physics/robot/centrifuge',
   });
   const RobotStates = Object.freeze({IDLE: 'idle', RUNNING: 'running', PAUSED: 'paused', SUCCEEDED: 'succeeded', FAILED: 'failed'});
   const RobotSources = Object.freeze({TRANSFER: 'recorded_cram_joint_targets', MIXING: 'laboratory_liquid_mixing'});
@@ -47,6 +49,9 @@
   const SCALE_SETTLING_ANGULAR_SPEED = .03;
   const SCALE_SEATING_ANGLE = Math.PI / 45;
   const STOPPER_CAP_RADIUS = .0105;
+  const CentrifugeActions = Object.freeze({OPEN: 'open', CLOSE: 'close', SECURE: 'secure', RELEASE: 'release', START: 'start', STOP: 'stop'});
+  const CentrifugeTransfer = Object.freeze({LOAD: 'load', UNLOAD: 'unload'});
+  const CentrifugeSettings = Object.freeze({RPM: 120, DURATION: 20, MAXIMUM_DURATION: 300, STOPPED_RPM: .5, DISTANCE: .0025, ANGLE: .035, ROTOR_BODY: 'laboratory_centrifuge_rotor'});
 
   /** Exchange desired targets and observed simulation states with the local service. */
   class Client {
@@ -75,6 +80,7 @@
     pause() { return this.post(this.routes.PAUSE); }
     fillLiquid(key, volumeMl) { return this.post(this.routes.LIQUID, {key, volumeMl}); }
     tareScale() { return this.post(this.routes.TARE); }
+    centrifuge(command) { return this.post(this.routes.CENTRIFUGE, command); }
   }
 
   // %% target commands and observed contacts
@@ -90,6 +96,11 @@
       this.liquid = null;
       this.scale = null;
       this.scaleRevision = 0;
+      this.centrifuge = null;
+      this.centrifugeSlot = 'C1';
+      this.centrifugeTransfer = null;
+      this.centrifugeTransferError = null;
+      this.centrifugeRevision = 0;
       this.scaleTransfer = null;
       this.scaleTransferError = null;
       this.simulationTime = null;
@@ -116,6 +127,116 @@
     manualReady() { return this.ready() && !this.robotBusy(); }
     liquidBusy() { return LiquidCommands.includes(this.activeCommand) || this.queue.some(command => LiquidCommands.includes(command.type)); }
     scaleBusy() { return ScaleCommands.includes(this.activeCommand) || this.queue.some(command => ScaleCommands.includes(command.type)); }
+    centrifugeBusy() { return this.activeCommand === 'centrifuge' || this.queue.some(command => command.type === 'centrifuge'); }
+    centrifugeOwnsObjects() { return Boolean(this.centrifuge && (this.centrifuge.locked || this.centrifuge.slots.some(slot => slot.secured))); }
+    secured(key) { return Boolean(this.centrifuge && this.centrifuge.slots.some(slot => slot.secured && slot.key === key)); }
+    selectedCentrifugeSlot() { return this.centrifuge && this.centrifuge.slots.find(slot => slot.id === this.centrifugeSlot); }
+    selectCentrifugeSlot(slot) {
+      if (this.centrifugeTransfer || !this.centrifuge || !this.centrifuge.slots.some(item => item.id === slot)) return false;
+      this.centrifugeSlot = slot;
+      this.changed();
+      return true;
+    }
+    centrifugeAccessible() {
+      return this.manualReady() && this.centrifuge && this.centrifuge.available && this.centrifuge.lidOpen
+        && !this.centrifuge.locked && Math.abs(this.centrifuge.rpm) <= CentrifugeSettings.STOPPED_RPM && !this.centrifugeBusy();
+    }
+    commandCentrifuge(action, options) {
+      const instrument = this.centrifuge;
+      if (!this.ready() || !instrument || !instrument.available || this.centrifugeBusy()) return Promise.resolve(false);
+      if (action !== CentrifugeActions.STOP && (!this.manualReady() || this.centrifugeTransfer)) return Promise.resolve(false);
+      if ([CentrifugeActions.OPEN, CentrifugeActions.CLOSE].includes(action) && (instrument.locked || Math.abs(instrument.rpm) > CentrifugeSettings.STOPPED_RPM)) return Promise.resolve(false);
+      if (action === CentrifugeActions.START && (!instrument.lidClosed || !instrument.balanced || instrument.running || instrument.locked)) return Promise.resolve(false);
+      if (![CentrifugeActions.OPEN, CentrifugeActions.CLOSE, CentrifugeActions.START, CentrifugeActions.STOP].includes(action)) return Promise.resolve(false);
+      const payload = {action, ...(options || {})};
+      if (action === CentrifugeActions.START && (
+        (payload.rpm !== undefined && (!Number.isFinite(payload.rpm) || payload.rpm <= 0 || payload.rpm > instrument.maximumRpm)) ||
+        (payload.duration !== undefined && (!Number.isFinite(payload.duration) || payload.duration < 1 || payload.duration > CentrifugeSettings.MAXIMUM_DURATION)))) return Promise.resolve(false);
+      return this.sendCentrifuge(payload);
+    }
+    sendCentrifuge(payload) {
+      this.centrifugeRevision += 1;
+      return this.enqueue({type: 'centrifuge', payload});
+    }
+    loadCentrifuge() {
+      const slot = this.selectedCentrifugeSlot(), pose = this.objects[this.selected];
+      if (!this.centrifugeAccessible() || !slot || slot.key || !pose || !this.selectedLiquid() || this.secured(this.selected) || this.centrifugeTransfer) return Promise.resolve(false);
+      const elevation = Math.max(pose[2], slot.position[2]) + LIFT_CLEARANCE;
+      if (elevation > this.config.bounds.max[2]) return Promise.resolve(false);
+      this.scaleTransfer = null;
+      this.centrifugeTransferError = null;
+      this.error = null;
+      const upright = [0, 0, 0, 1];
+      this.centrifugeTransfer = {type: CentrifugeTransfer.LOAD, key: this.selected, slot: slot.id, index: 0,
+        startedAt: Date.now(), previousPose: pose.slice(), previousTime: this.simulationTime, waypoints: [
+          {position: [pose[0], pose[1], elevation], orientation: pose.slice(3)},
+          {position: [pose[0], pose[1], elevation], orientation: upright},
+          {position: [slot.position[0], slot.position[1], elevation], orientation: upright},
+          {position: slot.position.slice(), orientation: upright},
+        ]};
+      const first = this.centrifugeTransfer.waypoints[0];
+      return this.targetCommand(this.selected, first.position, first.orientation);
+    }
+    async unloadCentrifuge() {
+      const slot = this.selectedCentrifugeSlot();
+      if (!this.centrifugeAccessible() || !slot || !slot.secured || !slot.key || this.centrifugeTransfer) return false;
+      const key = slot.key, pose = this.objects[key];
+      if (!pose || pose[2] + LIFT_CLEARANCE > this.config.bounds.max[2]) return false;
+      const transfer = {type: CentrifugeTransfer.UNLOAD, key, slot: slot.id, index: 0, startedAt: Date.now(),
+        previousPose: pose.slice(), previousTime: this.simulationTime, waypoints: [
+          {position: pose.slice(0, 3), orientation: pose.slice(3)},
+          {position: [pose[0], pose[1], pose[2] + LIFT_CLEARANCE], orientation: [0, 0, 0, 1]},
+        ]};
+      this.scaleTransfer = null;
+      this.centrifugeTransferError = null;
+      this.centrifugeTransfer = transfer;
+      if (!await this.sendCentrifuge({action: CentrifugeActions.RELEASE, slot: slot.id}) || this.centrifugeTransfer !== transfer || !this.manualReady()) return false;
+      // The accepted fixture release authorizes a force target at the last measured pose.
+      this.centrifuge = {...this.centrifuge, slots: this.centrifuge.slots.map(item => item.id === slot.id ? {...item, key: null, secured: false} : item)};
+      return this.targetCommand(key, pose.slice(0, 3), pose.slice(3));
+    }
+    async advanceCentrifugeTransfer() {
+      const transfer = this.centrifugeTransfer;
+      if (!transfer || this.centrifugeBusy() || this.draining) return;
+      if (!this.manualReady() || this.error || !this.centrifuge || !this.centrifuge.lidOpen) { this.centrifugeTransfer = null; return; }
+      const pose = this.objects[transfer.key];
+      if (!pose) { this.centrifugeTransfer = null; return; }
+      if (Date.now() - transfer.startedAt > SCALE_MOVE_TIMEOUT) {
+        this.centrifugeTransfer = null;
+        this.centrifugeTransferError = transfer.released ? 'Probe im Rotor noch nicht sicher abgesetzt. Sitz prüfen, bevor sie gesichert wird.' : 'Weg zur Zentrifuge blockiert. Das Glas bleibt gehalten; manuell weiterbewegen oder loslassen.';
+        this.error = this.centrifugeTransferError;
+        return;
+      }
+      const target = transfer.waypoints[transfer.index];
+      const elapsed = this.simulationTime === null || transfer.previousTime === null ? null : this.simulationTime - transfer.previousTime;
+      const distance = Math.hypot(...target.position.map((value, axis) => value - pose[axis]));
+      const travel = Math.hypot(...pose.slice(0, 3).map((value, axis) => value - transfer.previousPose[axis]));
+      const alignment = (first, second) => Math.min(1, Math.abs(first.reduce((sum, value, axis) => sum + value * second[axis], 0)) / (Math.hypot(...first) * Math.hypot(...second)));
+      const angularTravel = 2 * Math.acos(alignment(pose.slice(3), transfer.previousPose.slice(3)));
+      transfer.previousPose = pose.slice();
+      transfer.previousTime = this.simulationTime;
+      if (elapsed === null || !(elapsed > 0) || travel / elapsed > SCALE_SETTLING_SPEED || angularTravel / elapsed > SCALE_SETTLING_ANGULAR_SPEED) return;
+      if (distance > CentrifugeSettings.DISTANCE || alignment(pose.slice(3), target.orientation) < Math.cos(CentrifugeSettings.ANGLE / 2)) return;
+      const last = transfer.index === transfer.waypoints.length - 1;
+      if (last && transfer.type === CentrifugeTransfer.LOAD) {
+        if (!transfer.released) {
+          transfer.released = true;
+          await this.enqueue({type: 'release'});
+          return;
+        }
+        const supported = this.contacts.some(contact => contact.force > 0 &&
+          ((contact.bodyA === transfer.key && contact.bodyB === CentrifugeSettings.ROTOR_BODY) || (contact.bodyB === transfer.key && contact.bodyA === CentrifugeSettings.ROTOR_BODY)));
+        if (!supported) return;
+        this.centrifugeTransfer = null;
+        if (await this.sendCentrifuge({action: CentrifugeActions.SECURE, slot: transfer.slot, key: transfer.key})) this.target = null;
+        return;
+      }
+      if (last) { this.centrifugeTransfer = null; return; }
+      transfer.index += 1;
+      transfer.startedAt = Date.now();
+      const next = transfer.waypoints[transfer.index];
+      await this.targetCommand(transfer.key, next.position, next.orientation);
+    }
     tareScale() {
       if (!this.manualReady() || !this.scale || !this.scale.available || !this.scale.stable || this.scaleBusy()) return Promise.resolve(false);
       this.scaleRevision += 1;
@@ -131,6 +252,10 @@
       this.dragged = null;
       this.liquid = null;
       this.scale = null;
+      this.centrifuge = null;
+      this.centrifugeTransfer = null;
+      this.centrifugeTransferError = null;
+      this.centrifugeRevision += 1;
       this.scaleTransfer = null;
       this.scaleTransferError = null;
       this.queue = [];
@@ -161,13 +286,15 @@
       return position.map((value, axis) => Math.min(this.config.bounds.max[axis], Math.max(this.config.bounds.min[axis], value)));
     }
     setTarget(key, position, orientation) {
+      this.centrifugeTransfer = null;
+      this.centrifugeTransferError = null;
       this.scaleTransfer = null;
       this.scaleTransferError = null;
       return this.targetCommand(key, position, orientation);
     }
     targetCommand(key, position, orientation) {
       const bounded = this.bounded(position);
-      if (!this.manualReady() || !this.known(key) || !bounded) return Promise.resolve(false);
+      if (!this.manualReady() || !this.known(key) || this.secured(key) || !bounded) return Promise.resolve(false);
       const rotation = orientation || (this.target && this.target.key === key && this.target.orientation);
       if (rotation && (!Array.isArray(rotation) || rotation.length !== 4 || !rotation.every(Number.isFinite) || Math.hypot(...rotation) === 0)) return Promise.resolve(false);
       this.selected = key;
@@ -180,7 +307,7 @@
     moveToScale() {
       const pose = this.objects[this.selected];
       const scale = this.config.scale;
-      if (!this.manualReady() || !pose || !scale || !scale.panPosition || this.scaleTransfer) return Promise.resolve(false);
+      if (!this.manualReady() || !pose || !scale || !scale.panPosition || this.scaleTransfer || this.centrifugeTransfer || this.secured(this.selected)) return Promise.resolve(false);
       const pan = scale.panPosition.slice();
       if (scale.holder && !this.selectedLiquid() && scale.holder.innerRadius < STOPPER_CAP_RADIUS) {
         pan[0] += (scale.panRadius + scale.holder.outerRadius) / 2;
@@ -245,7 +372,7 @@
       return pose ? this.setTarget(key, pose.slice(0, 3)) : Promise.resolve(false);
     }
     beginDrag(key) {
-      if (!this.manualReady() || !this.known(key) || !this.objects[key]) return false;
+      if (!this.manualReady() || !this.known(key) || this.secured(key) || !this.objects[key]) return false;
       this.dragged = key;
       this.hold(key);
       return true;
@@ -278,7 +405,7 @@
     }
     fillLiquid(volumeMl) {
       const tube = this.selectedLiquid();
-      if (!this.manualReady() || !tube || !Number.isFinite(volumeMl) || volumeMl < 0 || volumeMl > tube.capacityMl) return Promise.resolve(false);
+      if (!this.manualReady() || this.secured(this.selected) || !tube || !Number.isFinite(volumeMl) || volumeMl < 0 || volumeMl > tube.capacityMl) return Promise.resolve(false);
       this.revision += 1;
       this.liquidRevision += 1;
       return this.enqueue({type: 'fillLiquid', key: this.selected, volumeMl, revision: this.revision});
@@ -304,7 +431,7 @@
     run() { return this.startProgram('run'); }
     runMixing() { return this.startProgram('runMixing'); }
     startProgram(type) {
-      if (!this.config.robot || !this.ready() || this.robotBusy()) return Promise.resolve(false);
+      if (!this.config.robot || !this.ready() || this.robotBusy() || this.centrifugeTransfer || this.centrifugeOwnsObjects()) return Promise.resolve(false);
       this.robotRequest = type;
       return this.clear(type);
     }
@@ -314,6 +441,9 @@
       return this.clear('pause');
     }
     clear(type) {
+      this.centrifugeTransfer = null;
+      this.centrifugeTransferError = null;
+      if (type === 'reset' || ProgramCommands.includes(type)) this.centrifugeRevision += 1;
       this.scaleTransfer = null;
       this.scaleTransferError = null;
       this.dragged = null;
@@ -340,8 +470,10 @@
         try {
           let answer;
           if (command.type === 'target') answer = await this.service.target(command.target);
+          else if (command.type === 'centrifuge') answer = await this.service.centrifuge(command.payload);
           else if (command.type === 'fillLiquid') answer = await this.service.fillLiquid(command.key, command.volumeMl);
           else answer = await this.service[command.type]();
+          if (command.type === 'centrifuge' && !this.disposed && answer.centrifuge) this.centrifuge = answer.centrifuge;
           if (command.type === 'tareScale' && !this.disposed && answer.scale) {
             this.scale = answer.scale;
             if (this.adapter.setScaleState) this.adapter.setScaleState(this.scale);
@@ -366,10 +498,12 @@
           this.target = null;
           this.dragged = null;
           this.scaleTransfer = null;
+          this.centrifugeTransfer = null;
           this.queue = this.queue.filter(pending => pending.type !== 'target');
         }
         if (LiquidCommands.includes(command.type)) this.liquidRevision += 1;
         if (ScaleCommands.includes(command.type)) this.scaleRevision += 1;
+        if (command.type === 'centrifuge' || command.type === 'reset' || ProgramCommands.includes(command.type)) this.centrifugeRevision += 1;
         this.activeCommand = null;
         if (this.robotRequest === command.type) this.robotRequest = null;
         this.changed();
@@ -386,6 +520,8 @@
       const liquidPending = this.liquidBusy();
       const scaleRevision = this.scaleRevision;
       const scalePending = this.scaleBusy();
+      const centrifugeRevision = this.centrifugeRevision;
+      const centrifugePending = this.centrifugeBusy();
       this.polling = true;
       try {
         const answer = await this.service.state();
@@ -395,7 +531,7 @@
         this.objects = answer.objects || {};
         this.contacts = answer.contacts || [];
         if (!commandPending && !this.draining && revision === this.revision) {
-          this.target = answer.target || null;
+          if (!this.centrifugeTransfer) this.target = answer.target || null;
           this.robot = answer.robot || this.robot;
         }
         if (answer.frames && this.adapter.setJointFrames) this.adapter.setJointFrames(answer.frames);
@@ -409,13 +545,20 @@
           this.scale = answer.scale || null;
           if (this.adapter.setScaleState) this.adapter.setScaleState(this.scale);
         }
-        this.error = answer.error || this.scaleTransferError || null;
+        if (!centrifugePending && !this.centrifugeBusy() && centrifugeRevision === this.centrifugeRevision) {
+          this.centrifuge = answer.centrifuge || null;
+          if (this.centrifuge && this.centrifuge.joints && this.adapter.setJointFrames) this.adapter.setJointFrames(this.centrifuge.joints);
+        }
+        this.error = answer.error || this.scaleTransferError || this.centrifugeTransferError || null;
         await this.advanceScaleTransfer();
+        await this.advanceCentrifugeTransfer();
         this.nextPoll = 0;
       } catch (error) {
         if (runRevision !== this.runRevision) return;
         this.state = 'failed';
         this.scale = null;
+        this.centrifuge = null;
+        this.centrifugeTransfer = null;
         if (this.adapter.setScaleState) this.adapter.setScaleState(null);
         this.error = error.message;
         this.nextPoll = Date.now() + RETRY_INTERVAL;
@@ -431,7 +574,7 @@
       const distance = pose ? Math.hypot(...this.target.position.map((value, axis) => value - pose[axis])) : 0;
       return {contactCount: relevant.length, force, distance};
     }
-    destroy() { this.disposed = true; this.queue = []; this.scaleTransfer = null; }
+    destroy() { this.disposed = true; this.queue = []; this.scaleTransfer = null; this.centrifugeTransfer = null; }
   }
 
   // %% compact manipulation controls
@@ -481,6 +624,40 @@
       const position = config.scale.panPosition;
       adapter.focus([position[0] + .28, position[1] - .45, position[2] + .3], position);
     }, 'laboratory-physics-scale-view') : null;
+    const centrifuge = element('section', panel, 'laboratory-physics-centrifuge');
+    element('h4', centrifuge, '', 'Zentrifuge');
+    const centrifugeStatus = element('p', centrifuge, 'laboratory-physics-centrifuge-status');
+    centrifugeStatus.setAttribute('role', 'status');
+    const slotLabel = element('label', centrifuge, 'laboratory-physics-field', 'Rotorplatz');
+    const slotSelect = element('select', slotLabel, 'laboratory-physics-centrifuge-slot');
+    const slotOptions = new Map();
+    for (const id of ['C1', 'C2', 'C3', 'C4']) {
+      const option = element('option', slotSelect, '', id);
+      option.value = id;
+      slotOptions.set(id, option);
+    }
+    listen(slotSelect, 'change', () => controller.selectCentrifugeSlot(slotSelect.value));
+    const lidOpen = button(centrifuge, 'Deckel öffnen', () => controller.commandCentrifuge(CentrifugeActions.OPEN), 'laboratory-physics-centrifuge-open');
+    const lidClose = button(centrifuge, 'Deckel schließen', () => controller.commandCentrifuge(CentrifugeActions.CLOSE), 'laboratory-physics-centrifuge-close');
+    const loadSample = button(centrifuge, 'Probe einsetzen', () => controller.loadCentrifuge(), 'laboratory-physics-centrifuge-load');
+    const unloadSample = button(centrifuge, 'Probe herausheben', () => controller.unloadCentrifuge(), 'laboratory-physics-centrifuge-unload');
+    const centrifugeCancel = button(centrifuge, 'Transport anhalten', () => controller.hold(controller.selected), 'laboratory-physics-centrifuge-cancel');
+    element('p', centrifuge, 'laboratory-physics-note', 'Gegenüberliegende Plätze gleich schwer beladen (C1/C3, C2/C4). Die Probe wird nach gemessenem Bodenkontakt im Rotor gesichert. Vor PR2-Aufträgen gesicherte Proben herausheben.');
+    const rpmLabel = element('label', centrifuge, 'laboratory-physics-field', 'Drehzahl (U/min)');
+    const rpm = element('input', rpmLabel, 'laboratory-physics-centrifuge-rpm');
+    rpm.type = 'number'; rpm.min = 1; rpm.step = 1; rpm.value = String(CentrifugeSettings.RPM);
+    const durationLabel = element('label', centrifuge, 'laboratory-physics-field', 'Dauer (Simulationssekunden)');
+    const duration = element('input', durationLabel, 'laboratory-physics-centrifuge-duration');
+    duration.type = 'number'; duration.min = 1; duration.max = CentrifugeSettings.MAXIMUM_DURATION; duration.step = 1; duration.value = String(CentrifugeSettings.DURATION);
+    listen(rpm, 'input', render); listen(duration, 'input', render);
+    const centrifugeStart = button(centrifuge, 'Zentrifugieren', () => controller.commandCentrifuge(CentrifugeActions.START, {rpm: Number(rpm.value), duration: Number(duration.value)}), 'laboratory-physics-centrifuge-start');
+    const centrifugeStop = button(centrifuge, 'Rotor stoppen', () => controller.commandCentrifuge(CentrifugeActions.STOP), 'laboratory-physics-centrifuge-stop');
+    const viewCentrifuge = adapter.focus ? button(centrifuge, 'Zentrifuge ansehen', () => {
+      const slots = controller.centrifuge && controller.centrifuge.slots;
+      if (!slots || !slots.length) return;
+      const center = [0, 1, 2].map(axis => slots.reduce((sum, slot) => sum + slot.position[axis], 0) / slots.length);
+      adapter.focus([center[0] + .32, center[1] - .52, center[2] + .4], center);
+    }, 'laboratory-physics-centrifuge-view') : null;
     const liquid = element('section', panel, 'laboratory-physics-liquid');
     element('h4', liquid, '', 'Flüssigkeit');
     const liquidStatus = element('p', liquid, 'laboratory-physics-liquid-status');
@@ -520,7 +697,7 @@
       robotMotionNote = element('p', panel, 'laboratory-physics-robot-motion-note');
     }
     select.value = controller.selected;
-    listen(select, 'change', () => { controller.scaleTransfer = null; controller.selected = select.value; render(); });
+    listen(select, 'change', () => { controller.scaleTransfer = null; controller.centrifugeTransfer = null; controller.selected = select.value; render(); });
     const hold = button(panel, 'Glas halten', () => controller.hold(select.value), 'laboratory-physics-hold');
     const moves = element('div', panel, 'laboratory-physics-moves');
     const motion = [
@@ -551,26 +728,55 @@
       const ready = controller.ready();
       const manualReady = controller.manualReady();
       const reading = controller.scale;
+      const instrument = controller.centrifuge;
+      const slot = controller.selectedCentrifugeSlot();
+      const secured = controller.secured(controller.selected);
+      const instrumentBusy = controller.centrifugeBusy() || Boolean(controller.centrifugeTransfer);
+      const accessible = controller.centrifugeAccessible() && !instrumentBusy;
+      centrifuge.hidden = !config.centrifuge && !instrument;
+      if (viewCentrifuge) viewCentrifuge.disabled = !instrument || !instrument.available;
+      centrifugeStatus.textContent = !instrument || !instrument.available ? 'Zentrifuge nicht verfügbar'
+        : Math.round(instrument.rpm) + ' U/min · ' + Number(instrument.remainingSeconds || 0).toFixed(1) + ' s verbleibend · '
+          + Number(instrument.rcf || 0).toFixed(1) + ' × g · ' + (instrument.balanced ? 'Ausgewogen' : 'Beladung ausgleichen')
+          + ' · ' + (instrument.locked ? 'Verriegelt' : (instrument.lidOpen ? 'Deckel offen' : (instrument.lidClosed ? 'Deckel geschlossen' : 'Deckel bewegt sich')));
+      if (controller.centrifugeTransfer) centrifugeStatus.textContent += ' · Probe wird ' + (controller.centrifugeTransfer.type === CentrifugeTransfer.LOAD ? 'eingesetzt …' : 'herausgehoben …');
+      slotSelect.value = controller.centrifugeSlot;
+      slotSelect.disabled = !manualReady || instrumentBusy;
+      if (instrument) for (const item of instrument.slots) {
+        const option = slotOptions.get(item.id);
+        if (option) option.textContent = item.id + ' ↔ ' + item.opposite + (item.key ? ' · ' + item.key + ' · ' + item.grams.toFixed(1) + ' g' : ' · leer');
+      }
+      lidOpen.disabled = !manualReady || !instrument || instrumentBusy || instrument.locked || instrument.lidOpen || Math.abs(instrument.rpm) > CentrifugeSettings.STOPPED_RPM;
+      lidClose.disabled = !manualReady || !instrument || instrumentBusy || instrument.locked || instrument.lidClosed || Math.abs(instrument.rpm) > CentrifugeSettings.STOPPED_RPM;
+      loadSample.disabled = !accessible || !slot || Boolean(slot.key) || secured || !controller.selectedLiquid();
+      unloadSample.disabled = !accessible || !slot || !slot.secured;
+      centrifugeCancel.hidden = !controller.centrifugeTransfer;
+      rpm.max = instrument ? instrument.maximumRpm : CentrifugeSettings.RPM;
+      rpm.disabled = duration.disabled = !manualReady || !instrument || instrument.locked || instrumentBusy;
+      const validCycle = String(rpm.value).trim() && String(duration.value).trim() && Number.isFinite(Number(rpm.value)) && Number(rpm.value) > 0
+        && instrument && Number(rpm.value) <= instrument.maximumRpm && Number.isFinite(Number(duration.value)) && Number(duration.value) >= 1 && Number(duration.value) <= CentrifugeSettings.MAXIMUM_DURATION;
+      centrifugeStart.disabled = !manualReady || !instrument || instrumentBusy || !instrument.lidClosed || !instrument.balanced || instrument.locked || instrument.running || !validCycle;
+      centrifugeStop.disabled = !ready || !instrument || controller.centrifugeBusy() || (!instrument.running && Math.abs(instrument.rpm) <= CentrifugeSettings.STOPPED_RPM);
       scale.hidden = !config.scale && !reading;
       scaleReading.textContent = reading && reading.available && Number.isFinite(reading.grams)
         ? (Math.abs(reading.grams) < .0005 ? 0 : reading.grams).toFixed(3) + ' g' : '— g';
       scaleStatus.textContent = !reading || !reading.available ? 'Waage nicht verfügbar'
         : (reading.stable ? 'Stabil' : 'Einpendeln …') + ' · Tara: ' + reading.tareGrams.toFixed(3) + ' g';
       tare.disabled = !manualReady || !reading || !reading.available || !reading.stable || controller.scaleBusy();
-      moveToScale.disabled = !manualReady || !config.scale || !controller.objects[controller.selected] || Boolean(controller.scaleTransfer);
+      moveToScale.disabled = !manualReady || !config.scale || !controller.objects[controller.selected] || Boolean(controller.scaleTransfer) || Boolean(controller.centrifugeTransfer) || secured;
       cancelScale.hidden = !controller.scaleTransfer;
       if (controller.scaleTransfer) scaleStatus.textContent = 'Objekt wird angehoben, zur Waage bewegt und abgesetzt …';
       start.hidden = ready;
       start.disabled = controller.starting;
       select.value = controller.selected;
       select.disabled = !manualReady;
-      for (const control of [hold, ...motion]) control.disabled = !manualReady;
+      for (const control of [hold, ...motion]) control.disabled = !manualReady || secured;
       reset.disabled = !ready;
       release.disabled = !manualReady || !controller.target;
       const tube = controller.selectedLiquid();
       liquid.hidden = !tube;
       if (viewGlass) viewGlass.disabled = !controller.objects[controller.selected];
-      for (const control of [volume, fill, liftClear, tiltLeft, upright, tiltRight]) control.disabled = !manualReady || !tube;
+      for (const control of [volume, fill, liftClear, tiltLeft, upright, tiltRight]) control.disabled = !manualReady || !tube || secured;
       if (tube) {
         volume.max = tube.capacityMl;
         if (volumeKey !== controller.selected) {
@@ -578,7 +784,7 @@
           volumeKey = controller.selected;
         }
         const requestedVolume = Number(volume.value);
-        fill.disabled = !manualReady || !String(volume.value).trim() || !Number.isFinite(requestedVolume) || requestedVolume < 0 || requestedVolume > tube.capacityMl;
+        fill.disabled = !manualReady || secured || !String(volume.value).trim() || !Number.isFinite(requestedVolume) || requestedVolume < 0 || requestedVolume > tube.capacityMl;
         liquidStatus.textContent = tube.volumeMl.toFixed(1) + ' / ' + tube.capacityMl.toFixed(1) + ' ml · Ausgelaufen: ' + (Number(controller.liquid.spilledMl) || 0).toFixed(1) + ' ml';
         tiltStatus.textContent = 'Neigung: ' + Math.round(controller.observedTilt()) + '°';
       }
@@ -588,7 +794,7 @@
         const mixing = controller.robot.source === RobotSources.MIXING;
         const paused = controller.robot.state === RobotStates.PAUSED;
         robotMotionNote.textContent = mixing ? 'Bewegung: lokaler Kontaktregler. Kontakte: MuJoCo.' : 'Gelenkziele: gespeicherter CRAM-Plan. Bewegung und Kontakte: MuJoCo.';
-        robotRun.disabled = !ready || Boolean(controller.robotBusy());
+        robotRun.disabled = !ready || Boolean(controller.robotBusy()) || Boolean(controller.centrifugeTransfer) || controller.centrifugeOwnsObjects();
         robotRun.textContent = paused && !mixing ? 'PR2 fortsetzen' : 'PR2: A1 → A3 starten';
         robotMix.disabled = robotRun.disabled;
         robotMix.textContent = paused && mixing ? 'Misch-Demo fortsetzen' : 'Misch-Demo starten';
@@ -662,5 +868,5 @@
     return {destroy() { button.removeEventListener('click', start); panel.remove(); }};
   }
 
-  return {Client, Controller, Routes, RobotRoutes, RobotStates, RobotSources, POLL_INTERVAL, MOVE_STEP, TILT_STEP, LIFT_CLEARANCE, SCALE_MOVE_TIMEOUT, mount, mountStart};
+  return {Client, Controller, Routes, RobotRoutes, RobotStates, RobotSources, POLL_INTERVAL, MOVE_STEP, TILT_STEP, LIFT_CLEARANCE, SCALE_MOVE_TIMEOUT, CentrifugeActions, CentrifugeSettings, mount, mountStart};
 });

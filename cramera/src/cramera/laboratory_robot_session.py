@@ -13,6 +13,11 @@ from pathlib import Path
 from typing_extensions import Any, ClassVar, Protocol
 
 from cramera import paths
+from cramera.laboratory_centrifuge_command import (
+    CentrifugeAction,
+    CentrifugeCommand,
+    CentrifugeField,
+)
 from cramera.laboratory_physics_session import (
     ContactSimulation,
     InvalidPhysicsRequest,
@@ -35,6 +40,8 @@ class RobotPhysicsRoute(StrEnum):
     """Manipulate a loose object while the robot program is inactive."""
     LIQUID = "/api/laboratory/physics/robot/liquid"
     """Set a tube's liquid quantity while the robot program is inactive."""
+    CENTRIFUGE = "/api/laboratory/physics/robot/centrifuge"
+    """Operate the centrifuge beside the articulated robot."""
     SCALE_TARE = "/api/laboratory/physics/robot/scale/tare"
     """Zero the laboratory scale while the robot program is paused or idle."""
     RELEASE = "/api/laboratory/physics/robot/release"
@@ -157,7 +164,12 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
         scene_path.write_text(json.dumps(scene, indent=2))
         trajectory_path = self.output_directory / PhysicsFile.TRAJECTORY
         trajectory = json.loads(trajectory_path.read_text())
-        trajectory[PhysicsField.FRAMES] = [self.physics.snapshot()[PhysicsField.FRAMES]]
+        snapshot = self.physics.snapshot()
+        frame = dict(snapshot[PhysicsField.FRAMES])
+        instrument = snapshot.get(CentrifugeField.CENTRIFUGE)
+        if isinstance(instrument, dict):
+            frame.update(instrument.get(CentrifugeField.JOINTS, {}))
+        trajectory[PhysicsField.FRAMES] = [frame]
         trajectory_path.write_text(json.dumps(trajectory, indent=2))
 
     def _validate_target(self, key: str, position: list[float]) -> None:
@@ -193,6 +205,18 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
             == PhysicsState.RUNNING
         ):
             raise InvalidPhysicsRequest("Den PR2-Ablauf vor dem Befüllen pausieren.")
+
+    def _validate_centrifuge(self, command: CentrifugeCommand) -> None:
+        """Keep rotor stopping available while the robot owns manipulation."""
+        super()._validate_centrifuge(command)
+        if (
+            command.action != CentrifugeAction.STOP
+            and self.physics.snapshot()[RobotField.ROBOT][PhysicsField.STATE]
+            == PhysicsState.RUNNING
+        ):
+            raise InvalidPhysicsRequest(
+                "Den PR2-Ablauf vor dem Bedienen der Zentrifuge pausieren."
+            )
 
     def _validate_scale(self) -> None:
         """Require the robot program to pause before zeroing the scale."""

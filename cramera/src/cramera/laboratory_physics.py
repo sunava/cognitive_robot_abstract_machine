@@ -20,6 +20,8 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 from typing_extensions import Any
 
+from cramera.laboratory_centrifuge import CentrifugeCollisionModel, LaboratoryCentrifuge
+from cramera.laboratory_centrifuge_command import CentrifugeAction, CentrifugeField
 from cramera.laboratory_liquid import LaboratoryLiquid
 from cramera.laboratory_mass import LaboratoryLiquidMass
 from cramera.laboratory_scale import LaboratoryScale, ScaleGeometry
@@ -180,6 +182,10 @@ class LaboratoryCollisionModel:
                 self._add_environment(self.directory / item["urdf"])
         for item in self.scene["objects"]:
             self._add_object(item)
+        CentrifugeCollisionModel(
+            self.root,
+            tuple(item["key"] for item in self.scene["laboratory"]["tubes"]),
+        ).complete()
         return mujoco.MjModel.from_xml_string(
             ElementTree.tostring(self.root, encoding="unicode")
         )
@@ -196,7 +202,7 @@ class LaboratoryCollisionModel:
         return result
 
     def _add_environment(self, description: Path) -> None:
-        """Keep the environment fixed at its authored joint-zero configuration."""
+        """Import the fixed environment and its explicitly supported instrument joints."""
         robot = ElementTree.parse(description).getroot()
         links = {link.attrib["name"]: link for link in robot.findall("link")}
         children = {
@@ -204,9 +210,9 @@ class LaboratoryCollisionModel:
             for joint in robot.findall("joint")
         }
         for name in links.keys() - children.keys():
-            self._add_fixed_link(name, links, children, self.world, description)
+            self._add_environment_link(name, links, children, self.world, description)
 
-    def _add_fixed_link(
+    def _add_environment_link(
         self,
         name: str,
         links: dict[str, ElementTree.Element],
@@ -214,14 +220,15 @@ class LaboratoryCollisionModel:
         parent: ElementTree.Element,
         description: Path,
     ) -> None:
-        """Preserve individual fixed-body names for readable contact feedback."""
+        """Preserve named contact bodies and the instrument's physical hinges."""
         joint = children.get(name)
         pose = self._pose(joint.find("origin") if joint is not None else None)
         body = ElementTree.SubElement(parent, "body", name=name, **pose)
         self._add_collisions(body, links[name], description)
+        CentrifugeCollisionModel.add_joint(body, links[name], joint)
         for child, child_joint in children.items():
             if child_joint.find("parent").attrib["link"] == name:
-                self._add_fixed_link(child, links, children, body, description)
+                self._add_environment_link(child, links, children, body, description)
 
     def _add_object(self, item: dict[str, Any]) -> None:
         """Give an authored loose object its own six-degree-of-freedom joint."""
@@ -340,6 +347,8 @@ class LaboratoryPhysics:
     """Contained liquid coupled into rigid-body mass and inertia."""
     scale: LaboratoryScale = field(init=False)
     """Contact-force balance measurement and deliberate tare."""
+    centrifuge: LaboratoryCentrifuge = field(init=False)
+    """Articulated rotor, measured holder clamps and operating interlocks."""
 
     def __post_init__(self) -> None:
         """Compile authored collisions and initialize gravity-driven objects."""
@@ -365,6 +374,12 @@ class LaboratoryPhysics:
             {key: self.objects[key].body_id for key in self.liquid.tubes},
         )
         self.scale = LaboratoryScale(self.model, self.data)
+        self.centrifuge = LaboratoryCentrifuge(
+            self.model,
+            self.data,
+            self.scene["laboratory"].get(CentrifugeField.CENTRIFUGE, {}),
+            tuple(self.liquid.tubes),
+        )
         self.reset()
 
     def _build_model(self) -> mujoco.MjModel:
@@ -389,6 +404,7 @@ class LaboratoryPhysics:
         self.liquid_elapsed = 0.0
         self.liquid.reset(self._object_poses())
         self.liquid_mass.synchronize(self.liquid)
+        self.centrifuge.reset()
         mujoco.mj_forward(self.model, self.data)
         self.scale.reset()
 
@@ -398,6 +414,7 @@ class LaboratoryPhysics:
         """Select a loose object and set its bounded force and torque target."""
         if key not in self.objects:
             raise InvalidPhysicsTarget(f"Unknown movable laboratory object: {key}")
+        self.centrifuge.validate_manipulation(key)
         if not isinstance(position, (list, tuple)) or len(position) != 3:
             raise InvalidPhysicsTarget("Position must contain three finite numbers")
         if any(
@@ -434,6 +451,7 @@ class LaboratoryPhysics:
 
     def fill_liquid(self, key: str, volume_ml: float) -> None:
         """Set a tube's liquid quantity without changing its physical pose."""
+        self.centrifuge.validate_manipulation(key)
         self.liquid.fill(key, volume_ml)
         self.liquid_mass.synchronize(self.liquid)
         mujoco.mj_forward(self.model, self.data)
@@ -442,6 +460,23 @@ class LaboratoryPhysics:
     def tare_scale(self) -> None:
         """Zero the balance at its current settled load."""
         self.scale.tare()
+
+    def centrifuge_command(
+        self,
+        action: str,
+        slot: str | None = None,
+        key: str | None = None,
+        rpm: float | None = None,
+        duration: float | None = None,
+    ) -> None:
+        """Operate the physical centrifuge after checking its measured interlocks."""
+        self.centrifuge.command(action, slot, key, rpm, duration)
+        if (
+            action == CentrifugeAction.SECURE
+            and self.target is not None
+            and self.target.key == key
+        ):
+            self.release()
 
     def release(self) -> None:
         """Remove the cursor grasp and let gravity and contact determine motion."""
@@ -506,6 +541,7 @@ class LaboratoryPhysics:
             raise ValueError("Physics step count must be a positive integer")
         for _ in range(count):
             self._apply_grasp()
+            self.centrifuge.advance(self.timestep)
             mujoco.mj_step(self.model, self.data)
             self._observe_contacts()
             self.liquid_elapsed += self.timestep
@@ -563,6 +599,7 @@ class LaboratoryPhysics:
             PhysicsField.OBJECTS: self._object_poses(),
             PhysicsField.LIQUID: self.liquid.snapshot(),
             PhysicsField.SCALE: self.scale.snapshot(),
+            CentrifugeField.CENTRIFUGE: self.centrifuge.snapshot(),
             PhysicsField.TARGET: (
                 None
                 if self.target is None

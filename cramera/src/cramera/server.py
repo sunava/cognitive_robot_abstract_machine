@@ -50,6 +50,7 @@ from typing_extensions import Any, Callable, ClassVar, Dict, List, Optional
 from urllib.parse import parse_qs, urlparse
 
 from cramera import paths
+from cramera.laboratory_centrifuge_command import CentrifugeCommand
 from cramera.laboratory_physics_session import (
     InvalidPhysicsRequest,
     LaboratoryPhysicsSession,
@@ -440,6 +441,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     body[PhysicsField.KEY],
                     body[PhysicsField.POSITION],
                     orientation=body.get(PhysicsField.ORIENTATION),
+                )
+            elif route == routes.CENTRIFUGE:
+                outcome = session.centrifuge_command(
+                    CentrifugeCommand.from_payload(body)
                 )
             elif route == routes.LIQUID:
                 if set(body) != {PhysicsField.KEY, PhysicsField.VOLUME_ML}:

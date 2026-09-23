@@ -13,6 +13,7 @@ from pathlib import Path
 from typing_extensions import Any
 
 from geometry import LatheMesh, TubeDimensions
+from centrifuge import CentrifugeDescription, CentrifugeDimensions, CentrifugePart
 
 # %% artifact names and dimensions
 
@@ -41,6 +42,7 @@ class Field(StrEnum):
     JOINT = "joint"
     OPEN = "open"
     SCALE = "scale"
+    CENTRIFUGE = "centrifuge"
     PAN_POSITION = "panPosition"
     PAN_RADIUS = "panRadius"
     DISPLAY_POSITION = "displayPosition"
@@ -436,6 +438,15 @@ class LaboratoryBundle:
                     (right - left, back - front, dimensions.top_thickness),
                 )
         self.balance(description)
+        CentrifugeDescription(description).build()
+        self.scene[Field.LABORATORY][
+            Field.CENTRIFUGE
+        ] = CentrifugeDimensions().metadata()
+        model = self.scene["models"][0]
+        model["links"] = len(description.root.findall("link"))
+        model["movableJoints"].extend(
+            (CentrifugePart.ROTOR_JOINT, CentrifugePart.LID_JOINT)
+        )
         description.write(self.output / Artifact.ENVIRONMENT)
 
     def balance(self, description: UrdfDescription) -> None:
@@ -613,7 +624,13 @@ class LaboratoryBundle:
             Artifact.TRAJECTORY,
             {
                 "framesPerSecond": 1,
-                "frames": [{drawer_joint: 0.0}],
+                "frames": [
+                    {
+                        drawer_joint: 0.0,
+                        CentrifugePart.ROTOR_JOINT: 0.0,
+                        CentrifugePart.LID_JOINT: CentrifugeDimensions().open_angle,
+                    }
+                ],
                 "objects": [initial_objects],
             },
         )

@@ -5,6 +5,12 @@ objects, collision meshes, materials, initial poses, and rack-slot metadata.
 All asset references are relative to this directory. Coordinates use metres,
 Z up, and pose quaternions in XYZW order.
 
+The centrifuge has separate housing, rotor, and hinged-lid GLB assets. Its URDF
+contains open collision sleeves for four existing tubes, a continuous rotor
+joint, and a bounded lid joint. `scene.json` records the opposing holder pairs
+and rotor-local sample positions. The included initial viewer frame opens the
+lid; a newly loaded planning world exposes both joints for ordinary CRAM control.
+
 The runtime bundle ships with the `cramera` Python package and requires no
 Blender installation, local scene cache, browser, server, or PR2 recording.
 `trajectory.json` contains one initial-state frame for scene-viewer compatibility;

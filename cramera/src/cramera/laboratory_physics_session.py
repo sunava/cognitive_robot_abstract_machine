@@ -16,6 +16,7 @@ from pathlib import Path
 from typing_extensions import Any, ClassVar, Protocol
 
 from cramera import paths
+from cramera.laboratory_centrifuge_command import CentrifugeCommand, CentrifugeField
 
 
 # %% contact session contract
@@ -30,6 +31,8 @@ class PhysicsRoute(StrEnum):
     """Move the force target for one authored object."""
     LIQUID = "/api/laboratory/physics/liquid"
     """Set the liquid quantity in an authored tube."""
+    CENTRIFUGE = "/api/laboratory/physics/centrifuge"
+    """Operate the articulated laboratory centrifuge."""
     SCALE_TARE = "/api/laboratory/physics/scale/tare"
     """Use the current scale load as the zero reference."""
     RELEASE = "/api/laboratory/physics/release"
@@ -140,6 +143,16 @@ class ContactSimulation(Protocol):
 
     def fill_liquid(self, key: str, volume_ml: float) -> None:
         """Set a bounded liquid quantity for an authored tube."""
+
+    def centrifuge_command(
+        self,
+        action: str,
+        slot: str | None = None,
+        key: str | None = None,
+        rpm: float | None = None,
+        duration: float | None = None,
+    ) -> None:
+        """Operate the physical lid, holder fixture, or timed rotor drive."""
 
     def tare_scale(self) -> None:
         """Use the current stable scale load as the zero reference."""
@@ -308,6 +321,25 @@ class LaboratoryPhysicsSession:
             self.physics.tare_scale()
             return self._status()
 
+    def centrifuge_command(self, command: CentrifugeCommand) -> dict[str, Any]:
+        """Serialize an instrument operation against physical integration."""
+        with self.lock:
+            self._require_running()
+            self._validate_centrifuge(command)
+            self.physics.centrifuge_command(
+                command.action,
+                slot=command.slot,
+                key=command.key,
+                rpm=command.rpm,
+                duration=command.duration,
+            )
+            return self._status()
+
+    def _validate_centrifuge(self, command: CentrifugeCommand) -> None:
+        """Reject fixture engagement for objects outside this authored scene."""
+        if command.key is not None and command.key not in self.object_keys:
+            raise InvalidPhysicsRequest("Unknown laboratory object")
+
     def _validate_scale(self) -> None:
         """Allow zeroing while manual manipulation owns the simulation."""
 
@@ -420,6 +452,10 @@ class LaboratoryPhysicsSession:
             },
             PhysicsField.CAMERAS: laboratory.get(PhysicsField.CAMERAS, {}),
         }
+        if CentrifugeField.CENTRIFUGE in laboratory:
+            scene[PhysicsField.PHYSICS][CentrifugeField.CENTRIFUGE] = laboratory[
+                CentrifugeField.CENTRIFUGE
+            ]
         if PhysicsField.SCALE in laboratory:
             scene[PhysicsField.PHYSICS][PhysicsField.SCALE] = laboratory[
                 PhysicsField.SCALE
@@ -441,6 +477,11 @@ class LaboratoryPhysicsSession:
             PhysicsField.FRAMES: original_trajectory.get(PhysicsField.FRAMES, [{}])[:1],
             PhysicsField.OBJECTS: [self.physics.snapshot()[PhysicsField.OBJECTS]],
         }
+        instrument = self.physics.snapshot().get(CentrifugeField.CENTRIFUGE)
+        if isinstance(instrument, dict):
+            trajectory[PhysicsField.FRAMES][0].update(
+                instrument.get(CentrifugeField.JOINTS, {})
+            )
         (self.output_directory / PhysicsFile.TRAJECTORY).write_text(
             json.dumps(trajectory, indent=2)
         )

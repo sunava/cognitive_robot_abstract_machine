@@ -13,6 +13,7 @@ import mujoco
 import numpy as np
 from typing_extensions import Any, ClassVar, TYPE_CHECKING
 
+from cramera.laboratory_centrifuge_command import CentrifugeAction
 from cramera.laboratory_liquid import LiquidField
 from cramera.laboratory_physics import InvalidPhysicsTarget
 
@@ -597,8 +598,19 @@ class LaboratoryProgramPhysics:
         self.physics.reset()
         self.program.reset()
 
+    def _require_free_centrifuge(self) -> None:
+        """Require a stopped rotor and released holders before robot execution."""
+        centrifuge = self.physics.centrifuge
+        if not centrifuge.stopped or any(
+            slot.key is not None for slot in centrifuge.slots.values()
+        ):
+            raise InvalidPhysicsTarget(
+                "Stop the centrifuge and release all secured glasses before starting or resuming the PR2 program"
+            )
+
     def run_program(self) -> None:
         """Resume or restore initial body poses while retaining current tube contents."""
+        self._require_free_centrifuge()
         if not isinstance(self.program, LaboratoryPhysicsProgram):
             self._require_switchable()
             self.program = LaboratoryPhysicsProgram(
@@ -623,6 +635,7 @@ class LaboratoryProgramPhysics:
 
     def run_mixing(self) -> None:
         """Start the fixed mixing recipe or resume its current physical state."""
+        self._require_free_centrifuge()
         if not isinstance(self.program, LaboratoryPhysicsProgram):
             if self.program.state == ProgramState.PAUSED:
                 self.program.start()
@@ -655,6 +668,26 @@ class LaboratoryProgramPhysics:
         if self.program.state == ProgramState.RUNNING:
             raise InvalidPhysicsTarget("Pause the PR2 program before filling tubes")
         self.physics.fill_liquid(key, volume_ml)
+
+    def centrifuge_command(
+        self,
+        action: str,
+        slot: str | None = None,
+        key: str | None = None,
+        rpm: float | None = None,
+        duration: float | None = None,
+    ) -> None:
+        """Operate the centrifuge while preserving the active robot's ownership."""
+        if (
+            self.program.state == ProgramState.RUNNING
+            and action != CentrifugeAction.STOP
+        ):
+            raise InvalidPhysicsTarget(
+                "Pause the PR2 program before operating the centrifuge"
+            )
+        self.physics.centrifuge_command(
+            action, slot=slot, key=key, rpm=rpm, duration=duration
+        )
 
     def tare_scale(self) -> None:
         """Zero the physical scale while the robot controller is inactive."""

@@ -75,3 +75,11 @@
 @media (max-width: 650px) {
   .laboratory-physics { width: 225px; top: 8px; right: 8px; padding: 12px; max-height: 65%; }
 }
+
+/* Measured centrifuge status and bounded cycle settings. */
+.laboratory-physics-centrifuge { margin-top: 12px; padding-top: 10px; border-top: 1px solid #cbdad7; }
+.laboratory-physics-centrifuge[hidden] { display: none; }
+.laboratory-physics-centrifuge h4 { margin: 0 0 5px; font-size: 15px; }
+.laboratory-physics-centrifuge > button { width: 100%; margin-top: 5px; }
+.laboratory-physics-centrifuge-status { font-size: 12px; font-variant-numeric: tabular-nums; color: #536b64; }
+.laboratory-physics-centrifuge input { width: 100%; box-sizing: border-box; }

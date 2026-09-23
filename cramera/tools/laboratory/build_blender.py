@@ -21,6 +21,7 @@ from mathutils import Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from geometry import LatheMesh, ProfilePoint, TubeDimensions
+from centrifuge import CentrifugeDimensions, CentrifugePart
 
 
 # %% Asset contract
@@ -33,6 +34,9 @@ class AssetName(StrEnum):
     TUBE_AMBER = "tube_amber"
     TUBE_TEAL = "tube_teal"
     STOPPER = "stopper"
+    CENTRIFUGE_BASE = CentrifugePart.BASE_ASSET.value
+    CENTRIFUGE_ROTOR = CentrifugePart.ROTOR_ASSET.value
+    CENTRIFUGE_LID = CentrifugePart.LID_ASSET.value
 
 
 class RenderView(StrEnum):
@@ -75,6 +79,8 @@ class BuildOptions:
     """Whether to render the two authored cameras."""
     view: RenderView = RenderView.ALL
     """Reference view to render after asset generation."""
+    centrifuge_only: bool = False
+    """Export only the centrifuge while preserving existing laboratory assets."""
 
 
 @dataclass
@@ -613,6 +619,314 @@ class LaboratoryBuilder:
         )
         self.lathe("Silicone stopper", profile, MaterialName.TEAL)
 
+    def build_centrifuge(self) -> None:
+        """Model a four-place bench centrifuge with an open bowl and hinged lid."""
+        dimensions = CentrifugeDimensions()
+        self.current = AssetName.CENTRIFUGE_BASE
+        for horizontal in (-0.115, 0.115):
+            for depth in (-0.11, 0.11):
+                self.cylinder(
+                    "Centrifuge isolation foot",
+                    (horizontal, depth, 0.005),
+                    0.018,
+                    0.01,
+                    MaterialName.DARK,
+                )
+        self.box(
+            "Centrifuge enamel chassis",
+            (0, 0, 0.027),
+            (dimensions.width, dimensions.depth, 0.042),
+            MaterialName.WHITE,
+            0.019,
+        )
+        self.lathe(
+            "Centrifuge chamber shell",
+            (
+                ProfilePoint(0.139, 0.042),
+                ProfilePoint(0.156, 0.042),
+                ProfilePoint(0.158, 0.055),
+                ProfilePoint(0.152, 0.194),
+                ProfilePoint(0.150, 0.210),
+                ProfilePoint(0.145, 0.216),
+                ProfilePoint(dimensions.chamber_radius, 0.216),
+                ProfilePoint(dimensions.chamber_radius, 0.046),
+                ProfilePoint(0.139, 0.042),
+            ),
+            MaterialName.WHITE,
+        )
+        self.lathe(
+            "Centrifuge stainless bowl",
+            (
+                ProfilePoint(0, 0.033),
+                ProfilePoint(0.1365, 0.033),
+                ProfilePoint(0.137, 0.04),
+                ProfilePoint(0.137, 0.211),
+                ProfilePoint(0.1355, 0.211),
+                ProfilePoint(0.1355, 0.041),
+                ProfilePoint(0.13, 0.036),
+                ProfilePoint(0, 0.036),
+            ),
+            MaterialName.STEEL,
+        )
+        self.lathe(
+            "Centrifuge rim seal",
+            (
+                ProfilePoint(0.137, 0.214),
+                ProfilePoint(0.147, 0.214),
+                ProfilePoint(0.147, 0.220),
+                ProfilePoint(0.137, 0.220),
+                ProfilePoint(0.137, 0.214),
+            ),
+            MaterialName.DARK,
+        )
+        self.box(
+            "Centrifuge control bezel",
+            (0, -0.151, 0.079),
+            (0.216, 0.019, 0.067),
+            MaterialName.TEAL,
+            0.008,
+        )
+        self.box(
+            "Centrifuge display",
+            (-0.025, -0.161, 0.081),
+            (0.123, 0.003, 0.034),
+            MaterialName.DARK,
+            0.003,
+        )
+        self.text(
+            "Centrifuge status lettering",
+            "READY",
+            (-0.075, -0.163, 0.085),
+            0.010,
+            MaterialName.PALE_TEAL,
+        )
+        self.text(
+            "Centrifuge capacity lettering",
+            "4 x 15 ml",
+            (-0.075, -0.163, 0.072),
+            0.008,
+            MaterialName.WHITE,
+        )
+        self.box(
+            "Centrifuge run key",
+            (0.078, -0.163, 0.083),
+            (0.023, 0.006, 0.024),
+            MaterialName.PALE_TEAL,
+            0.005,
+        )
+        self.text(
+            "Centrifuge engraved identity",
+            "CENTRIFUGE",
+            (-0.065, -0.163, 0.129),
+            0.010,
+            MaterialName.TEAL,
+        )
+        for side in (-1, 1):
+            for index in range(6):
+                depth = -0.035 + index * 0.014
+                horizontal = side * ((0.157**2 - depth**2) ** 0.5 + 0.0005)
+                self.box(
+                    "Centrifuge ventilation slot",
+                    (horizontal, depth, 0.068),
+                    (0.004, 0.004, 0.026),
+                    MaterialName.DARK,
+                    0.001,
+                )
+        self.box(
+            "Centrifuge hinge pedestal",
+            (0, 0.147, 0.205),
+            (0.094, 0.026, 0.037),
+            MaterialName.TEAL,
+            0.004,
+        )
+        self.export_asset(AssetName.CENTRIFUGE_BASE, dimensions.origin)
+
+        self.current = AssetName.CENTRIFUGE_ROTOR
+        self.lathe(
+            "Centrifuge balanced rotor plate",
+            (
+                ProfilePoint(0, 0),
+                ProfilePoint(0.108, 0),
+                ProfilePoint(0.111, 0.002),
+                ProfilePoint(0.111, 0.004),
+                ProfilePoint(0.108, 0.006),
+                ProfilePoint(0, 0.006),
+            ),
+            MaterialName.TEAL,
+        )
+        self.lathe(
+            "Centrifuge central hub",
+            (
+                ProfilePoint(0, 0.005),
+                ProfilePoint(0.022, 0.005),
+                ProfilePoint(0.024, 0.01),
+                ProfilePoint(0.022, 0.025),
+                ProfilePoint(0.016, 0.032),
+                ProfilePoint(0, 0.032),
+            ),
+            MaterialName.STEEL,
+        )
+        self.cylinder(
+            "Centrifuge hub fastener", (0, 0, 0.034), 0.010, 0.007, MaterialName.DARK
+        )
+        self.box(
+            "Centrifuge fastener slot",
+            (0, 0, 0.0376),
+            (0.011, 0.0014, 0.0004),
+            MaterialName.STEEL,
+            0,
+        )
+        for index in range(dimensions.slot_count):
+            horizontal, depth, bottom = dimensions.slot_position(index)
+            height = bottom + dimensions.slot_height
+            self.lathe(
+                f"Centrifuge C{index + 1} hollow sleeve",
+                (
+                    ProfilePoint(0, bottom - 0.006),
+                    ProfilePoint(dimensions.slot_outer_radius, bottom - 0.006),
+                    ProfilePoint(dimensions.slot_outer_radius, height - 0.003),
+                    ProfilePoint(dimensions.slot_outer_radius + 0.0015, height - 0.002),
+                    ProfilePoint(dimensions.slot_outer_radius + 0.0015, height + 0.001),
+                    ProfilePoint(dimensions.slot_inner_radius, height + 0.001),
+                    ProfilePoint(dimensions.slot_inner_radius, bottom),
+                    ProfilePoint(0, bottom),
+                ),
+                MaterialName.DARK,
+                (horizontal, depth, 0),
+            )
+            self.text(
+                f"Centrifuge C{index + 1} marker",
+                str(index + 1),
+                (horizontal * 1.33 - 0.004, depth * 1.33 - 0.004, 0.0062),
+                0.010,
+                MaterialName.WHITE,
+                (0, 0, 0),
+            )
+        self.export_asset(
+            AssetName.CENTRIFUGE_ROTOR,
+            tuple(
+                dimensions.origin[index] + dimensions.rotor_origin[index]
+                for index in range(3)
+            ),
+        )
+        rotor = bpy.data.objects[AssetName.CENTRIFUGE_ROTOR.value]
+        rotor_constraint = rotor.constraints.new("LIMIT_ROTATION")
+        rotor_constraint.name = "Vertical drive axis"
+        rotor_constraint.owner_space = "LOCAL"
+        rotor_constraint.use_limit_x = rotor_constraint.use_limit_y = True
+        rotor_constraint.use_transform_limit = True
+
+        self.current = AssetName.CENTRIFUGE_LID
+        center = (0, -dimensions.lid_origin[1], 0)
+        self.lathe(
+            "Centrifuge lid enamel annulus",
+            (
+                ProfilePoint(0.105, 0.001),
+                ProfilePoint(0.147, 0.001),
+                ProfilePoint(0.152, 0.006),
+                ProfilePoint(0.151, 0.018),
+                ProfilePoint(0.145, 0.024),
+                ProfilePoint(0.11, 0.027),
+                ProfilePoint(0.105, 0.023),
+                ProfilePoint(0.105, 0.001),
+            ),
+            MaterialName.WHITE,
+            center,
+        )
+        self.lathe(
+            "Centrifuge viewing window gasket",
+            (
+                ProfilePoint(0.1015, 0.012),
+                ProfilePoint(0.1065, 0.012),
+                ProfilePoint(0.1065, 0.024),
+                ProfilePoint(0.1015, 0.024),
+                ProfilePoint(0.1015, 0.012),
+            ),
+            MaterialName.DARK,
+            center,
+        )
+        self.cylinder(
+            "Centrifuge protective viewing window",
+            (0, center[1], 0.019),
+            0.102,
+            0.006,
+            MaterialName.GLASS,
+        )
+        self.box(
+            "Centrifuge lid hinge",
+            (0, 0, 0),
+            (0.081, 0.024, 0.027),
+            MaterialName.STEEL,
+            0.004,
+        )
+        self.box(
+            "Centrifuge lid grip",
+            (0, -0.291, 0.024),
+            (0.069, 0.019, 0.025),
+            MaterialName.TEAL,
+            0.006,
+        )
+        self.export_asset(
+            AssetName.CENTRIFUGE_LID,
+            tuple(
+                dimensions.origin[index] + dimensions.lid_origin[index]
+                for index in range(3)
+            ),
+        )
+        lid = bpy.data.objects[AssetName.CENTRIFUGE_LID.value]
+        lid.rotation_euler.x = -dimensions.open_angle
+        lid_constraint = lid.constraints.new("LIMIT_ROTATION")
+        lid_constraint.name = "Rear cover hinge"
+        lid_constraint.owner_space = "LOCAL"
+        lid_constraint.use_limit_x = True
+        lid_constraint.min_x = -dimensions.open_angle
+        lid_constraint.max_x = 0
+        lid_constraint.use_limit_y = lid_constraint.use_limit_z = True
+        lid_constraint.use_transform_limit = True
+
+    def build_centrifuge_assets(self) -> None:
+        """Add instrument assets and an editable source without replacing the lab."""
+        source = self.options.output / "laboratory.blend"
+        if source.exists():
+            bpy.ops.wm.open_mainfile(filepath=str(source))
+        else:
+            bpy.ops.object.select_all(action="SELECT")
+            bpy.ops.object.delete(use_global=False)
+        for scene_object in list(bpy.data.objects):
+            if scene_object.name.startswith(("Centrifuge", "centrifuge_")):
+                bpy.data.objects.remove(scene_object, do_unlink=True)
+        (self.options.output / "assets").mkdir(parents=True, exist_ok=True)
+        self.library.build()
+        self.build_centrifuge()
+        if not source.exists():
+            self.setup_render()
+        dimensions = CentrifugeDimensions()
+        position = dimensions.origin
+        camera = self.camera(
+            "Centrifuge detail",
+            (position[0] + 0.58, position[1] - 0.82, position[2] + 0.68),
+            (position[0], position[1], position[2] + 0.21),
+            40,
+            11,
+        )
+        scene = bpy.context.scene
+        scene.camera = camera
+        scene.cycles.samples = self.options.samples
+        scene.cycles.use_denoising = False
+        scene.render.resolution_x = self.options.width
+        scene.render.resolution_y = round(self.options.width * 0.75)
+        scene.render.resolution_percentage = 100
+        scene.render.filepath = str(self.options.output / "render_centrifuge.png")
+        bpy.context.preferences.filepaths.save_version = 0
+        bpy.ops.wm.save_as_mainfile(
+            filepath=str(self.options.output / "centrifuge.blend")
+        )
+        (self.options.output / "assets" / "centrifuge_measurements.json").write_text(
+            json.dumps(self.measurements, indent=2) + "\n"
+        )
+        if self.options.render:
+            bpy.ops.render.render(write_still=True)
+
     def export_asset(
         self, asset: AssetName, placement: tuple[float, float, float]
     ) -> None:
@@ -772,6 +1086,9 @@ class LaboratoryBuilder:
 
     def build(self) -> None:
         """Generate every body, save the source and render both reference views."""
+        if self.options.centrifuge_only:
+            self.build_centrifuge_assets()
+            return
         bpy.ops.object.select_all(action="SELECT")
         bpy.ops.object.delete(use_global=False)
         bpy.context.scene.unit_settings.system = "METRIC"
@@ -792,6 +1109,7 @@ class LaboratoryBuilder:
             self.export_asset(asset, position)
         self.build_stopper()
         self.export_asset(AssetName.STOPPER, (0.50, -0.12, 0.900))
+        self.build_centrifuge()
         cameras = self.setup_render()
         bpy.context.scene.camera = cameras[0]
         bpy.context.scene.render.filepath = str(
@@ -827,6 +1145,7 @@ def main() -> None:
     parser.add_argument("--samples", type=int, default=BuildOptions.samples)
     parser.add_argument("--width", type=int, default=BuildOptions.width)
     parser.add_argument("--skip-render", action="store_true")
+    parser.add_argument("--centrifuge-only", action="store_true")
     parser.add_argument(
         "--view", type=RenderView, choices=list(RenderView), default=RenderView.ALL
     )
@@ -840,6 +1159,7 @@ def main() -> None:
             arguments.width,
             not arguments.skip_render,
             arguments.view,
+            arguments.centrifuge_only,
         )
     ).build()
 

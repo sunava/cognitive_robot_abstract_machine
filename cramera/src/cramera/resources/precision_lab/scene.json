@@ -26,9 +26,11 @@
       "urdf": "environment.urdf",
       "prefix": "",
       "robot": false,
-      "links": 4,
+      "links": 8,
       "movableJoints": [
-        "laboratory_drawer_joint"
+        "laboratory_drawer_joint",
+        "laboratory_centrifuge_rotor_joint",
+        "laboratory_centrifuge_lid_joint"
       ],
       "preserveMaterials": true
     }
@@ -239,6 +241,113 @@
           0.985
         ]
       }
+    },
+    "scale": {
+      "panPosition": [
+        0.65,
+        0.21,
+        0.974
+      ],
+      "panRadius": 0.085,
+      "displayPosition": [
+        0.65,
+        0.076,
+        0.94
+      ],
+      "displaySize": [
+        0.12,
+        0.021
+      ],
+      "holder": {
+        "innerRadius": 0.0115,
+        "outerRadius": 0.016,
+        "height": 0.04,
+        "segments": 24
+      }
+    },
+    "centrifuge": {
+      "body": "laboratory_centrifuge_base",
+      "rotorBody": "laboratory_centrifuge_rotor",
+      "lidBody": "laboratory_centrifuge_lid",
+      "rotorJoint": "laboratory_centrifuge_rotor_joint",
+      "lidJoint": "laboratory_centrifuge_lid_joint",
+      "origin": [
+        -0.53,
+        -0.07,
+        0.9
+      ],
+      "rotorOrigin": [
+        0.0,
+        0.0,
+        0.052
+      ],
+      "lidOrigin": [
+        0.0,
+        0.155,
+        0.223
+      ],
+      "openAngle": 1.85,
+      "maximumRpm": 300.0,
+      "chamberRadius": 0.137,
+      "chamberHeight": 0.161,
+      "slots": [
+        {
+          "id": "C1",
+          "opposite": "C3",
+          "position": [
+            0.072,
+            0.0,
+            0.008
+          ],
+          "worldPosition": [
+            -0.458,
+            -0.07,
+            0.9600000000000001
+          ]
+        },
+        {
+          "id": "C2",
+          "opposite": "C4",
+          "position": [
+            4.408728476930471e-18,
+            0.072,
+            0.008
+          ],
+          "worldPosition": [
+            -0.53,
+            0.001999999999999988,
+            0.9600000000000001
+          ]
+        },
+        {
+          "id": "C3",
+          "opposite": "C1",
+          "position": [
+            -0.072,
+            8.817456953860942e-18,
+            0.008
+          ],
+          "worldPosition": [
+            -0.602,
+            -0.06999999999999999,
+            0.9600000000000001
+          ]
+        },
+        {
+          "id": "C4",
+          "opposite": "C2",
+          "position": [
+            -1.3226185430791413e-17,
+            -0.072,
+            0.008
+          ],
+          "worldPosition": [
+            -0.53,
+            -0.14200000000000002,
+            0.9600000000000001
+          ]
+        }
+      ]
     }
   },
   "segments": [],

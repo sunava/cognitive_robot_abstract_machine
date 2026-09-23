@@ -2,7 +2,9 @@
   "framesPerSecond": 1,
   "frames": [
     {
-      "laboratory_drawer_joint": 0.0
+      "laboratory_drawer_joint": 0.0,
+      "laboratory_centrifuge_rotor_joint": 0.0,
+      "laboratory_centrifuge_lid_joint": 1.85
     }
   ],
   "objects": [
