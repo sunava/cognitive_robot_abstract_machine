@@ -17,6 +17,7 @@ import pytest
 from typing_extensions import Any
 
 from cramera.laboratory_physics import LaboratoryPhysics
+from cramera.laboratory_physics_program import LaboratoryProgramPhysics
 from cramera.laboratory_physics_session import LaboratoryPhysicsSession
 from cramera.laboratory_scale import ScaleField
 from cramera.laboratory_world import LaboratoryBody
@@ -24,6 +25,7 @@ from cramera.laboratory_world import LaboratoryBody
 from .test_laboratory_bundle import laboratory_directory
 from .test_laboratory_physics import physics
 from .test_laboratory_physics_robot import robot_physics
+from .test_laboratory_mixing_adapter import program_world
 
 
 # %% browser protocol
@@ -107,13 +109,18 @@ def transfer_to_scale(
     physics: LaboratoryPhysics,
     volume_ml: float = 5.0,
     key: LaboratoryBody = LaboratoryBody.CLEAR_TUBE,
+    simulation: LaboratoryProgramPhysics | None = None,
+    poll_steps: int = 33,
+    initial_steps: int = 1500,
+    settling_steps: int = 2500,
 ) -> None:
     """
     Transport a vessel or stopper from its authored pose using browser commands.
     """
+    engine = physics if simulation is None else simulation
     if key in physics.liquid.tubes:
-        physics.fill_liquid(key, volume_ml)
-    physics.step(1500)
+        engine.fill_liquid(key, volume_ml)
+    engine.step(initial_steps)
     mass = physics.model.body_mass[physics.objects[key].body_id] * 1000.0
     configuration = {
         TransferField.OBJECTS: [{TransferField.KEY: key}],
@@ -128,7 +135,7 @@ def transfer_to_scale(
     commands = []
     with BrowserTransport() as browser:
         for _ in range(1000):
-            state = physics.snapshot()
+            state = engine.snapshot()
             state[TransferField.STATE] = TransferField.RUNNING
             answer = browser.observe(
                 {
@@ -142,18 +149,18 @@ def transfer_to_scale(
                 commands.append(command)
                 previous = physics.data.qpos.copy()
                 if command[TransferField.TYPE] == TransferField.TARGET:
-                    physics.set_target(
+                    engine.set_target(
                         command[TransferField.KEY],
                         command[TransferField.POSITION],
                         command[TransferField.ORIENTATION],
                     )
                 else:
                     assert command[TransferField.TYPE] == TransferField.RELEASE
-                    physics.release()
+                    engine.release()
                 np.testing.assert_array_equal(physics.data.qpos, previous)
             if commands and commands[-1][TransferField.TYPE] == TransferField.RELEASE:
                 break
-            physics.step(33)
+            engine.step(poll_steps)
     assert [command[TransferField.TYPE] for command in commands] == [
         TransferField.TARGET,
         TransferField.TARGET,
@@ -161,7 +168,7 @@ def transfer_to_scale(
         TransferField.TARGET,
         TransferField.RELEASE,
     ]
-    physics.step(2500)
+    engine.step(settling_steps)
     scale = physics.snapshot()[TransferField.SCALE]
     assert physics.target is None
     assert scale[ScaleField.STABLE]
@@ -218,3 +225,37 @@ def test_browser_weighs_the_flat_bottomed_stopper(physics: LaboratoryPhysics) ->
     The vial support also permits the smaller free stopper to reach the pan.
     """
     transfer_to_scale(physics, volume_ml=0.0, key=LaboratoryBody.STOPPER)
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is not installed")
+@pytest.mark.parametrize("poll_steps", [33, 100])
+def test_live_program_keeps_released_glass_supported_across_poll_rates(
+    program_world: LaboratoryProgramPhysics, poll_steps: int
+) -> None:
+    """
+    Per-tick program stepping retains a released load for ten seconds.
+    """
+    transfer_to_scale(
+        program_world.physics,
+        volume_ml=0.0,
+        simulation=program_world,
+        poll_steps=poll_steps,
+        initial_steps=500,
+        settling_steps=10000,
+    )
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is not installed")
+def test_live_program_retains_the_filled_glass_on_the_scale(
+    program_world: LaboratoryProgramPhysics,
+) -> None:
+    """
+    The released vessel retains its liquid and supported mass between polls.
+    """
+    transfer_to_scale(
+        program_world.physics,
+        simulation=program_world,
+        poll_steps=100,
+        initial_steps=500,
+        settling_steps=10000,
+    )

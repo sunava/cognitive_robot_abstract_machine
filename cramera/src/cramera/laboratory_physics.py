@@ -22,7 +22,7 @@ from typing_extensions import Any
 
 from cramera.laboratory_liquid import LaboratoryLiquid
 from cramera.laboratory_mass import LaboratoryLiquidMass
-from cramera.laboratory_scale import LaboratoryScale
+from cramera.laboratory_scale import LaboratoryScale, ScaleGeometry
 from cramera.laboratory_world import LaboratoryAsset, LaboratoryWorld
 
 
@@ -86,6 +86,10 @@ class LaboratoryPhysicsParameters:
     """Maximum mouse-grasp torque in Newton meters."""
     contact_time_constant: float = 0.004
     """Contact constraint response time in seconds."""
+    scale_contact_time_constant: float = 0.008
+    """Compliant pan and holder response avoiding unstable friction corrections."""
+    scale_contact_priority: int = 1
+    """Priority retaining the scale response when a vessel touches its surface."""
     liquid_timestep: float = 0.02
     """Interval between liquid updates from measured rigid-body poses, in seconds."""
 
@@ -256,6 +260,13 @@ class LaboratoryCollisionModel:
             [geometry] = list(collision.find("geometry"))
             name = f"{link.attrib['name']}_{collision.attrib['name']}"
             properties = self._pose(collision.find("origin"))
+            if name == ScaleGeometry.PAN or name.startswith(
+                ScaleGeometry.HOLDER_PREFIX
+            ):
+                properties.update(
+                    priority=str(self.parameters.scale_contact_priority),
+                    solref=f"{self.parameters.scale_contact_time_constant} 1",
+                )
             if geometry.tag == "box":
                 properties.update(
                     type="box",

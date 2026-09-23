@@ -105,8 +105,10 @@ class MixingParameters:
     """Horizontal front-approach rotation around world vertical, in degrees."""
     teal_insertion_time: float = 8.0
     """Gentle descent duration through the rear rack aperture, in seconds."""
-    closed_finger: float = 0.045
+    closed_finger: float = 0.02
     """Contact-limited closing demand in radians."""
+    finger_torque: float = 0.18
+    """Bounded finger torque for holding liquid-loaded glassware, in Newton meters."""
     contact_threshold: float = 0.005
     """Minimum opposing normal force indicating a held tube in Newtons."""
     grasp_confirmation: float = 0.15
@@ -225,6 +227,8 @@ class LaboratoryMixingProgram:
     """Total active execution time in seconds."""
     control_elapsed: float = field(init=False, default=0.0)
     """Accumulated time since the last joint-target feedback update."""
+    pour_descent_elapsed: float = field(init=False, default=0.0)
+    """Time spent lowering a donor while its measured axis is aligned."""
     start_position: np.ndarray = field(init=False)
     """Measured virtual tube-root position at stage entry."""
     start_rotation: Rotation = field(init=False)
@@ -582,6 +586,7 @@ class LaboratoryMixingProgram:
     def _enter_stage(self) -> None:
         """Capture physical interpolation origins and per-pour volume baselines."""
         self.stage_time = 0.0
+        self.pour_descent_elapsed = 0.0
         self.seating_duration = 0.0
         self.seating_pose = None
         if self.stage.phase == MixingPhase.APPROACH:
@@ -617,6 +622,11 @@ class LaboratoryMixingProgram:
         """Prepare the recipe once or resume with all measured contents preserved."""
         if self.state not in (ProgramState.IDLE, ProgramState.PAUSED):
             return
+        actuator = self.physics.model.actuator(JointReference.GRIPPER_JOINT).id
+        self.physics.model.actuator_forcerange[actuator] = (
+            -self.parameters.finger_torque,
+            self.parameters.finger_torque,
+        )
         if self.state == ProgramState.IDLE:
             self.physics.fill_liquid(LaboratoryBody.CLEAR_TUBE, 0.0)
             self.physics.fill_liquid(
@@ -670,6 +680,7 @@ class LaboratoryMixingProgram:
             Rotation.from_rotvec(fraction * rotation_delta) * self.start_rotation
         )
         if self.stage.phase == MixingPhase.POUR:
+            fraction = self._pour_progress(fraction, duration)
             target_position, target_rotation = self._pour_approach(fraction)
         if self.stage.phase == MixingPhase.SWIRL:
             target = self._swirl_pose(self.stage_time)
@@ -763,16 +774,37 @@ class LaboratoryMixingProgram:
         }
         self._set_joint_targets(targets, duration)
 
+    def _lowering_pour(self) -> bool:
+        """Identify a pouring approach combining a lower position with further tilt."""
+        angular = (
+            Rotation.from_quat(self.stage.rotation) * self.start_rotation.inv()
+        ).as_rotvec()
+        return bool(
+            self._stage_position()[2]
+            < self.start_position[2] - self.parameters.position_tolerance
+            and np.linalg.norm(angular) >= self.parameters.axis_tolerance
+        )
+
+    def _pour_progress(self, fraction: float, duration: float) -> float:
+        """Advance descent only while the measured tube axis follows its intention."""
+        if fraction <= 0.5 or not self._lowering_pour():
+            return fraction
+        desired_axis = Rotation.from_quat(self.stage.rotation).apply([0.0, 0.0, 1.0])
+        observed_axis = self._pose()[1].apply([0.0, 0.0, 1.0])
+        alignment = float(np.dot(desired_axis, observed_axis))
+        if alignment >= math.cos(self.parameters.axis_tolerance):
+            self.pour_descent_elapsed += duration
+        return min(
+            fraction,
+            0.5 + self.pour_descent_elapsed / self.stage.duration,
+        )
+
     def _pour_approach(self, fraction: float) -> tuple[np.ndarray, Rotation]:
         """Complete a lowering pour's tilt before descending beside the receiver."""
         final_position = self._stage_position()
         final_rotation = Rotation.from_quat(self.stage.rotation)
         angular = (final_rotation * self.start_rotation.inv()).as_rotvec()
-        if (
-            final_position[2]
-            >= self.start_position[2] - self.parameters.position_tolerance
-            or np.linalg.norm(angular) < self.parameters.axis_tolerance
-        ):
+        if not self._lowering_pour():
             return (
                 self.start_position + fraction * (final_position - self.start_position),
                 Rotation.from_rotvec(fraction * angular) * self.start_rotation,

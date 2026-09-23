@@ -420,6 +420,11 @@ class LaboratoryRobotPhysics(LaboratoryPhysics):
             if actuator >= 0:
                 self.joint_targets[name] = value
                 self.data.ctrl[actuator] = value
+                if "finger" in name:
+                    self.model.actuator_forcerange[actuator] = (
+                        -self.robot_parameters.finger_torque,
+                        self.robot_parameters.finger_torque,
+                    )
         mujoco.mj_forward(self.model, self.data)
 
     def set_joint_targets(self, positions: dict[str, float]) -> None:
