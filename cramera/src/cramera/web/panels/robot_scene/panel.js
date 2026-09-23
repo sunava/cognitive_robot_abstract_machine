@@ -2175,6 +2175,8 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       : LaboratoryLiquid.create(THREE, worldRoot, function (key) { return objectMeshes[key]; });
     const scale = typeof LaboratoryScale === 'undefined' || !SCENE.physics.scale ? null
       : LaboratoryScale.create(THREE, worldRoot, SCENE.physics.scale, root.ownerDocument);
+    const centrifuge = typeof LaboratoryCentrifuge === 'undefined' || !SCENE.physics.centrifuge ? null
+      : LaboratoryCentrifuge.create(THREE, worldRoot, root.ownerDocument);
     const contactGeometry = new THREE.SphereGeometry(0.003, 10, 8);
     const contactMaterial = new THREE.MeshBasicMaterial({color: 0xe34b35, depthTest: false});
     const targetGeometry = new THREE.SphereGeometry(0.008, 16, 12);
@@ -2207,6 +2209,10 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
         if (scale) scale.update(snapshot);
         needsRender = true;
       },
+      setCentrifugeState: function (snapshot) {
+        if (centrifuge) centrifuge.update(snapshot);
+        needsRender = true;
+      },
       showContacts: function (contacts, desired) {
         const visible = contacts.filter(function (contact) { return contact.force > 0; }).slice(0, 64);
         while (dots.length < visible.length) {
@@ -2227,6 +2233,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       destroy: function () {
         if (liquid) liquid.destroy();
         if (scale) scale.destroy();
+        if (centrifuge) centrifuge.destroy();
         worldRoot.remove(feedback);
         contactGeometry.dispose(); contactMaterial.dispose();
         targetGeometry.dispose(); targetMaterial.dispose();

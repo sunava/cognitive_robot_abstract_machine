@@ -1847,3 +1847,52 @@ test('expanded source details identify exact active and historical document cont
   assert.match(controls.find('laboratory-physics-manual-plan').textContent, /Empfohlene Schritte/);
   mounted.destroy();
 });
+
+// %% measured in-scene instrument display
+test('the physical screen gets confirmed cycle state immediately and ignores older polls', async () => {
+  const scene = new CentrifugeSimulation();
+  Object.assign(scene.answer.centrifuge, {balanced: true, lidOpen: false, lidClosed: true});
+  const displays = [];
+  scene.adapter.setCentrifugeState = value => displays.push(structuredClone(value));
+  await scene.controller.refresh();
+  assert.deepEqual(displays.at(-1), scene.answer.centrifuge);
+  const old = structuredClone(scene.answer);
+  let complete;
+  scene.service.state = () => new Promise(resolve => { complete = resolve; });
+  const poll = scene.controller.refresh();
+  const running = {...scene.answer.centrifuge, running: true, locked: true, targetRpm: 120, remainingSeconds: 20};
+  scene.service.centrifuge = async () => ({ok: true, centrifuge: running});
+  await scene.controller.commandCentrifuge('start', {rpm: 120, duration: 20});
+  assert.deepEqual(displays.at(-1), running);
+  const displayedCount = displays.length;
+  complete(old);
+  await poll;
+  assert.equal(displays.length, displayedCount);
+});
+
+test('reset and failed observations clear the physical screen instead of preserving a stale countdown', async () => {
+  const scene = new CentrifugeSimulation();
+  const displays = [];
+  scene.adapter.setCentrifugeState = value => displays.push(structuredClone(value));
+  await scene.controller.refresh();
+  let finish;
+  scene.service.reset = () => new Promise(resolve => { finish = resolve; });
+  const resetting = scene.controller.reset();
+  assert.equal(displays.at(-1), null);
+  finish(structuredClone(scene.answer));
+  await resetting;
+  assert.deepEqual(displays.at(-1), scene.answer.centrifuge);
+  scene.service.state = async () => { throw new Error('Disconnected'); };
+  await scene.controller.refresh();
+  assert.equal(displays.at(-1), null);
+});
+
+test('an inactive simulation does not show a retained instrument snapshot as a live countdown', async () => {
+  const scene = new CentrifugeSimulation();
+  const displays = [];
+  scene.adapter.setCentrifugeState = value => displays.push(structuredClone(value));
+  await scene.controller.refresh();
+  scene.answer.state = 'idle';
+  await scene.controller.refresh();
+  assert.equal(displays.at(-1), null);
+});

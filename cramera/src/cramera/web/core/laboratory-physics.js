@@ -419,6 +419,7 @@
       this.centrifuge = null;
       this.centrifugeTransfer = null;
       this.centrifugePair = null;
+      if (this.adapter.setCentrifugeState) this.adapter.setCentrifugeState(null);
       this.centrifugeTransferError = null;
       this.centrifugeRevision += 1;
       this.scaleTransfer = null;
@@ -615,6 +616,7 @@
       this.centrifugePair = null;
       this.centrifugeTransferError = null;
       if (type === 'reset' || ProgramCommands.includes(type)) this.centrifugeRevision += 1;
+      if ((type === 'reset' || ProgramCommands.includes(type)) && this.adapter.setCentrifugeState) this.adapter.setCentrifugeState(null);
       this.scaleTransfer = null;
       this.scaleTransferError = null;
       this.dragged = null;
@@ -645,7 +647,10 @@
           else if (command.type === 'manual') answer = await this.service.importManual(command.payload);
           else if (command.type === 'fillLiquid') answer = await this.service.fillLiquid(command.key, command.volumeMl);
           else answer = await this.service[command.type]();
-          if (['centrifuge', 'manual'].includes(command.type) && !this.disposed && answer.centrifuge) this.centrifuge = answer.centrifuge;
+          if (['centrifuge', 'manual', 'reset', ...ProgramCommands].includes(command.type) && !this.disposed && answer.centrifuge) {
+            this.centrifuge = answer.centrifuge;
+            if (this.adapter.setCentrifugeState) this.adapter.setCentrifugeState(this.centrifuge);
+          }
           if (command.type === 'manual') {
             this.manualError = null;
             command.accepted = true;
@@ -729,6 +734,7 @@
         if (!centrifugePending && !this.centrifugeBusy() && centrifugeRevision === this.centrifugeRevision) {
           this.centrifuge = answer.centrifuge || null;
           if (this.centrifuge && this.centrifuge.joints && this.adapter.setJointFrames) this.adapter.setJointFrames(this.centrifuge.joints);
+          if (this.adapter.setCentrifugeState) this.adapter.setCentrifugeState(this.ready() ? this.centrifuge : null);
         }
         this.error = answer.error || this.scaleTransferError || this.centrifugeTransferError || null;
         await this.advanceScaleTransfer();
@@ -742,6 +748,7 @@
         this.centrifugeTransfer = null;
         this.centrifugePair = null;
         if (this.adapter.setScaleState) this.adapter.setScaleState(null);
+        if (this.adapter.setCentrifugeState) this.adapter.setCentrifugeState(null);
         this.error = error.message;
         this.nextPoll = Date.now() + RETRY_INTERVAL;
       } finally {

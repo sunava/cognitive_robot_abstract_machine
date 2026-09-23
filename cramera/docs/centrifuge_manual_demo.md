@@ -24,6 +24,21 @@ bereits laufender Rotor muss vor dem Einlesen eines Dokuments zum Stillstand
 kommen. Das Einlesen setzt die Simulation nicht zurück. Umgekehrt bleibt das
 eingelesene Handbuch bei einem physischen Reset erhalten.
 
+## Anzeige am Gerät
+
+Das Display auf dem Zentrifugengehäuse zeigt den beobachteten Betriebszustand,
+die gemessene Drehzahl und die verbleibende Zeit als Minuten und Sekunden.
+Es erhält dieselben Zustandsmeldungen wie die Bedienleiste. Das gilt unabhängig
+davon, ob der Start über die Oberfläche oder einen Roboterauftrag angefordert
+wird.
+
+Der Countdown verwendet die Simulationszeit. Während des Hochfahrens bleibt
+die eingestellte Laufzeit erhalten; sie zählt erst herunter, sobald die gemessene
+Drehzahl innerhalb von fünf Prozent der Solldrehzahl liegt. Nach Ablauf der Zeit
+zeigt das Gerät das Abbremsen bis zum tatsächlichen Stillstand. Die Anzeige
+führt keinen eigenen Browser-Timer und zeigt bei unterbrochener Verbindung keine
+weiterlaufende Restzeit an.
+
 ## Was tatsächlich aus dem Dokument kommt
 
 Die Demo liest die Regel **Mindestzahl gesicherter Proben** aus der strukturierten
