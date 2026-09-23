@@ -45,6 +45,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     '    <label class="lp-row"><input type="checkbox" id="lyr-objects" checked><span>Bench objects</span></label>' +
     '    <label class="lp-row" title="debug markers the CRAM system publishes (collisions, costmaps, spatial types)"><input type="checkbox" id="lyr-markers" checked><span>ROS markers</span><button id="marker-gear" class="marker-gear" title="marker topics and namespaces">⚙</button></label>' +
     '    <div id="marker-settings" class="marker-settings hidden"></div>' +
+    '    <label id="lyr-contacts-row" class="lp-row" style="display:none" title="Kontaktpunkte und orange Zielmarkierungen ein- oder ausblenden"><input type="checkbox" id="lyr-contacts" checked><span>Kontaktpunkte &amp; Ziele</span></label>' +
     '    <label class="lp-row" title="an axis triad on every frame of the world — URDF links and loose objects (red X, green Y, blue Z)"><input type="checkbox" id="lyr-frames"><span>TF frames</span><button id="frame-gear" class="layer-gear" title="frame axis size and names">⚙</button></label>' +
     '    <div id="frame-settings" class="frame-settings hidden"></div>' +
     '    <label class="lp-row"><input type="checkbox" id="lyr-labels"><span>Object labels</span></label>' +
@@ -270,6 +271,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
   let traj = null;
   let laboratoryWorkbench = null;
   let laboratoryPhysics = null;
+  let laboratoryContactLayer = null;
   let laboratoryRobotPhysicsEntry = null;
   const models = [];              // {name, prefix, robot, obj}
   let robotModel = null;          // the bundle's own robot entry
@@ -2213,6 +2215,10 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
         if (centrifuge) centrifuge.update(snapshot);
         needsRender = true;
       },
+      setContactsVisible: function (visible) {
+        feedback.visible = Boolean(visible);
+        needsRender = true;
+      },
       showContacts: function (contacts, desired) {
         const visible = contacts.filter(function (contact) { return contact.force > 0; }).slice(0, 64);
         while (dots.length < visible.length) {
@@ -2240,6 +2246,21 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       },
     };
   }
+  // %% visibility of laboratory contact and target markers
+  function bindLaboratoryContactLayer(adapter) {
+    const checkbox = $('lyr-contacts');
+    const row = $('lyr-contacts-row');
+    function update() { adapter.setContactsVisible(checkbox.checked); }
+    row.style.display = '';
+    checkbox.addEventListener('change', update);
+    update();
+    return {
+      destroy: function () {
+        checkbox.removeEventListener('change', update);
+        row.style.display = 'none';
+      },
+    };
+  }
   RobotView.onReady(function () {
     if (SCENE.physics) {
       if (laboratoryPhysics) return;
@@ -2250,6 +2271,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
         new LaboratoryPhysics.Client(window.fetch.bind(window), SCENE.physics), adapter,
       );
       laboratoryPhysics.adapter = adapter;
+      laboratoryContactLayer = bindLaboratoryContactLayer(adapter);
       if (!SCENE.physics.robot) {
         laboratoryRobotPhysicsEntry = LaboratoryPhysics.mountStart(
           root.querySelector('.laboratory-physics'),
@@ -2967,6 +2989,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     destroy: function () {
       if (laboratoryWorkbench) laboratoryWorkbench.destroy();
       if (laboratoryRobotPhysicsEntry) laboratoryRobotPhysicsEntry.destroy();
+      if (laboratoryContactLayer) laboratoryContactLayer.destroy();
       if (laboratoryPhysics) { laboratoryPhysics.destroy(); laboratoryPhysics.adapter.destroy(); }
       running = false;                       // stops the requestAnimationFrame loop
       clearInterval(probeTimer);
