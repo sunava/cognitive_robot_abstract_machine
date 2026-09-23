@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import math
 from typing import Optional, List
 
 from giskardpy.motion_statechart.data_types import DefaultWeights
@@ -18,8 +19,10 @@ from giskardpy.motion_statechart.tasks.joint_tasks import (
     JointVelocityLimit,
 )
 from giskardpy.motion_statechart.monitors.monitors import LocalMinimumReached
+from krrood.exceptions import DataclassException
 from semantic_digital_twin.datastructures.alignment import AlignmentPair
 from semantic_digital_twin.datastructures.definitions import GripperState
+from semantic_digital_twin.datastructures.joint_state import JointState
 from semantic_digital_twin.robots.justin import Justin
 from semantic_digital_twin.robots.robot_part_mixins import HasMobileBase
 from semantic_digital_twin.robots.robot_parts import EndEffector
@@ -114,6 +117,23 @@ class ReachMotion(BaseMotion, HasTcpGoalThresholds):
         return Sequence(nodes=nodes)
 
 
+# %% bounded gripper targets
+@dataclass
+class InvalidGripperGoal(DataclassException):
+    """An explicit gripper target cannot be executed by the selected end effector."""
+
+    reason: str
+    """Invalid target property reported before controller compilation."""
+
+    def error_message(self) -> str:
+        """Describe the invalid requested gripper target."""
+        return self.reason
+
+    def suggest_correction(self) -> str:
+        """State the target contract expected by the motion."""
+        return "Use finite in-range positions of the selected gripper and a positive threshold."
+
+
 @dataclass
 class MoveGripperMotion(BaseMotion, GripperStallToleranceParameters):
     """
@@ -133,16 +153,81 @@ class MoveGripperMotion(BaseMotion, GripperStallToleranceParameters):
     If the gripper is allowed to collide with something
     """
 
+    goal_state: JointState | None = field(default=None, kw_only=True)
+    """Optional finger positions replacing the named open or closed state."""
+
+    joint_position_threshold: float = field(
+        default=JointPositionList.threshold, kw_only=True
+    )
+    """Allowed finger position error, in radians or metres according to each joint."""
+
     def perform(self):
         return
 
+    def resolved_goal_state(self) -> JointState:
+        """Validate and bind finger targets to the selected execution world.
+
+        :raises InvalidGripperGoal: If targets are malformed, outside the selected
+            gripper, nonfinite or beyond joint limits.
+        """
+        if (
+            not math.isfinite(self.joint_position_threshold)
+            or self.joint_position_threshold <= 0
+        ):
+            raise InvalidGripperGoal(
+                "The gripper joint position threshold must be finite and positive."
+            )
+        end_effector = ViewManager.get_end_effector_view(self.gripper, self.robot)
+        if self.goal_state is None:
+            return end_effector.get_joint_state_by_type(self.motion)
+        goal = self.goal_state
+        if not goal.connections or len(goal.connections) != len(goal.target_values):
+            raise InvalidGripperGoal(
+                "Every requested gripper joint must have a target position."
+            )
+        requested_ids = [connection.child.id for connection in goal.connections]
+        if len(requested_ids) != len(set(requested_ids)):
+            raise InvalidGripperGoal(
+                "A gripper joint cannot have multiple target positions."
+            )
+        available_connections = {
+            connection.child.id: connection
+            for connection in end_effector.active_connections
+        }
+        if any(identity not in available_connections for identity in requested_ids):
+            raise InvalidGripperGoal(
+                "The requested joints do not belong to the selected gripper."
+            )
+        connections = [available_connections[identity] for identity in requested_ids]
+        for connection, position in zip(connections, goal.target_values):
+            lower = connection.dof.limits.lower.position
+            upper = connection.dof.limits.upper.position
+            if not math.isfinite(position):
+                raise InvalidGripperGoal(
+                    f"The target of {connection.name} must be finite."
+                )
+            if (lower is not None and position < lower) or (
+                upper is not None and position > upper
+            ):
+                raise InvalidGripperGoal(
+                    f"The target of {connection.name} lies outside its joint limits."
+                )
+        return JointState(
+            connections=connections,
+            target_values=goal.target_values.copy(),
+            state_type=goal.state_type,
+            name=goal.name,
+        )
+
     @property
     def _motion_chart(self):
-        arm = ViewManager().get_end_effector_view(self.gripper, self.robot)
-
         name = "OpenGripper" if self.motion == GripperState.OPEN else "CloseGripper"
-        goal_state = arm.get_joint_state_by_type(self.motion)
-        joint_task = JointPositionList(goal_state=goal_state, name=name)
+        goal_state = self.resolved_goal_state()
+        joint_task = JointPositionList(
+            goal_state=goal_state,
+            name=name,
+            threshold=self.joint_position_threshold,
+        )
 
         done_node = joint_task
         if self.tolerate_stall:

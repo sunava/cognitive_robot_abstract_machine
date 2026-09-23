@@ -1,0 +1,32 @@
+[Unit]
+Description=CRAMERA laboratory simulation
+After=network.target
+
+[Service]
+Type=simple
+User=cramera-lab
+Group=cramera-lab
+WorkingDirectory=/srv/cramera-laboratory
+Environment=HOME=/var/lib/cramera-laboratory
+Environment=CRAMERA_DATA=/var/lib/cramera-laboratory
+Environment=CRAMERA_SCENES=/var/lib/cramera-laboratory/scenes
+Environment=CRAMERA_SCENE=precision_lab_pr2_physics
+Environment=PYTHONPATH=/srv/cramera-laboratory/cramera/src:/srv/cramera-laboratory/coraplex/src:/opt/ros/jazzy/lib/python3.12/site-packages
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=OPENBLAS_NUM_THREADS=1
+ExecStart=/root/cognitive_robot_abstract_machine/.venv/bin/python -m cramera.server 8716 --no-browser
+Restart=on-failure
+RestartSec=3
+StateDirectory=cramera-laboratory
+StateDirectoryMode=0750
+ProtectSystem=strict
+ProtectHome=tmpfs
+BindReadOnlyPaths=/root/cognitive_robot_abstract_machine
+ReadWritePaths=/var/lib/cramera-laboratory
+PrivateTmp=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

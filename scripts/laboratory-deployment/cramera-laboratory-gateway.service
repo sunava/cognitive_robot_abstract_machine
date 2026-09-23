@@ -1,0 +1,32 @@
+[Unit]
+Description=Password-protected CRAMERA laboratory website
+After=network.target cramera-laboratory-backend.service
+Wants=cramera-laboratory-backend.service
+
+[Service]
+Type=simple
+User=cramera-lab
+Group=cramera-lab
+WorkingDirectory=/srv/cramera-laboratory
+Environment=HOME=/var/lib/cramera-laboratory
+Environment=CRAMERA_DATA=/var/lib/cramera-laboratory
+Environment=CRAMERA_SCENES=/var/lib/cramera-laboratory/scenes
+Environment=PYTHONPATH=/srv/cramera-laboratory/cramera/src:/srv/cramera-laboratory/coraplex/src
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=XDG_CACHE_HOME=/var/cache/cramera-laboratory-gateway
+Environment=MPLCONFIGDIR=/var/cache/cramera-laboratory-gateway/matplotlib
+ExecStart=/root/cognitive_robot_abstract_machine/.venv/bin/python -m cramera.laboratory_share --port 8717 --backend-port 8716 --password-file /etc/cramera-laboratory/password --public-origin-file /etc/cramera-laboratory/origin --path-prefix /laboratory
+Restart=on-failure
+RestartSec=3
+CacheDirectory=cramera-laboratory-gateway
+CacheDirectoryMode=0750
+ProtectSystem=strict
+ProtectHome=tmpfs
+BindReadOnlyPaths=/root/cognitive_robot_abstract_machine
+PrivateTmp=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

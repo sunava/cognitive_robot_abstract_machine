@@ -22,6 +22,10 @@ from coraplex.datastructures.enums import (
     MovementType,
 )
 from coraplex.datastructures.grasp import GraspDescription
+from coraplex.datastructures.manipulation_contacts import (
+    HasManipulationContactPolicy,
+    ManipulationContactPolicy,
+)
 from coraplex.plans.factories import sequential
 from coraplex.querying.predicates import GripperIsFree
 from coraplex.robot_plans.actions.base import ActionDescription
@@ -160,7 +164,10 @@ class ReachAction(ActionDescription, ReachTuningParameters, HasGraspDetectionThr
 
 @dataclass
 class PickUpAction(
-    ActionDescription, PickUpTuningParameters, HasGraspDetectionThreshold
+    ActionDescription,
+    PickUpTuningParameters,
+    HasGraspDetectionThreshold,
+    HasManipulationContactPolicy,
 ):
     """
     Let the robot pick up an object.
@@ -192,6 +199,31 @@ class PickUpAction(
     one.
     """
 
+    def create_grasp_motion(self) -> MoveGripperMotion:
+        """
+        Build the closing motion with the configured speed and stall policy.
+        """
+        return MoveGripperMotion(
+            motion=GripperState.CLOSE,
+            gripper=self.arm,
+            finger_velocity=self.grasp_closing_velocity,
+            stall_minimum_time=self.grasp_stall_minimum_time,
+            tolerate_stall=self.tolerate_grasp_stall,
+        )
+
+    @property
+    def manipulation_contact_policy(self) -> ManipulationContactPolicy:
+        """
+        Permit grasp contact with the selected object at its support.
+        """
+        return ManipulationContactPolicy(
+            self.object_designator,
+            ViewManager.get_end_effector_view(
+                self.arm, self.robot
+            ).bodies_with_collision,
+            self.object_designator.global_pose,
+        )
+
     def _grasp_attempt_plan(self) -> PlanNode:
         """
         :return: One reach-and-close attempt at grasping :attr:`object_designator`,
@@ -210,13 +242,7 @@ class PickUpAction(
                     final_approach_linear_velocity=self.final_approach_linear_velocity,
                     open_gripper_at_pre_pose=True,
                 ),
-                MoveGripperMotion(
-                    motion=GripperState.CLOSE,
-                    gripper=self.arm,
-                    finger_velocity=self.grasp_closing_velocity,
-                    stall_minimum_time=self.grasp_stall_minimum_time,
-                    tolerate_stall=self.tolerate_grasp_stall,
-                ),
+                self.create_grasp_motion(),
                 AttachNode(
                     body=self.object_designator,
                     new_parent=ViewManager.get_end_effector_view(
@@ -237,7 +263,6 @@ class PickUpAction(
                 MoveToolCenterPointMotion(
                     lift_to_pose,
                     self.arm,
-                    allow_gripper_collision=True,
                     movement_type=MovementType.TRANSLATION,
                     max_linear_velocity=self.lift_linear_velocity,
                 ),

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -eu
+
+case "$*" in
+    *8716*) exit 0 ;;
+    *8717*) test -e "$CRAMERA_LAUNCHER_TEST_GATEWAY_READY" ;;
+    *) exit 2 ;;
+esac
