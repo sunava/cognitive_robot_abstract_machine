@@ -33,6 +33,8 @@ class AssetName(StrEnum):
     TUBE_CLEAR = "tube_clear"
     TUBE_AMBER = "tube_amber"
     TUBE_TEAL = "tube_teal"
+    TUBE_RESERVE = "tube_reserve"
+    """Independent spare body sharing the clear glass visual geometry."""
     STOPPER = "stopper"
     CENTRIFUGE_BASE = CentrifugePart.BASE_ASSET.value
     CENTRIFUGE_ROTOR = CentrifugePart.ROTOR_ASSET.value
@@ -979,6 +981,25 @@ class LaboratoryBuilder:
             constraint.min_z = constraint.max_z = placement[2]
             constraint.use_transform_limit = True
 
+    def instance_asset(
+        self,
+        source: AssetName,
+        asset: AssetName,
+        placement: tuple[float, float, float],
+    ) -> None:
+        """Place an independent rigid body sharing an existing asset's mesh data."""
+        body = bpy.data.objects.new(asset.value, None)
+        bpy.context.collection.objects.link(body)
+        body.empty_display_size = 0.035
+        body.location = placement
+        self.objects[asset] = []
+        for original in self.objects[source]:
+            instance = original.copy()
+            bpy.context.collection.objects.link(instance)
+            instance.parent = body
+            self.objects[asset].append(instance)
+        self.measurements[asset.value] = self.measurements[source.value].copy()
+
     def area_light(
         self,
         name: str,
@@ -1107,6 +1128,9 @@ class LaboratoryBuilder:
         ):
             self.build_tube(asset, material)
             self.export_asset(asset, position)
+        self.instance_asset(
+            AssetName.TUBE_CLEAR, AssetName.TUBE_RESERVE, (0.28, -0.015, 0.906)
+        )
         self.build_stopper()
         self.export_asset(AssetName.STOPPER, (0.50, -0.12, 0.900))
         self.build_centrifuge()

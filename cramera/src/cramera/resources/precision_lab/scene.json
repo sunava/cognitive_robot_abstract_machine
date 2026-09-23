@@ -91,6 +91,24 @@
       "preserveMaterials": true
     },
     {
+      "id": "tube_reserve",
+      "key": "tube_reserve",
+      "mesh": "assets/tube_clear.glb",
+      "urdf": "tube_reserve.urdf",
+      "spawn": [
+        0.28,
+        -0.015,
+        0.906,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": "#d4e9e9",
+      "height": 0.15,
+      "preserveMaterials": true
+    },
+    {
       "id": "stopper",
       "key": "stopper",
       "mesh": "assets/stopper.glb",
@@ -196,6 +214,10 @@
       {
         "key": "tube_teal",
         "slot": "B1"
+      },
+      {
+        "key": "tube_reserve",
+        "slot": "B3"
       }
     ],
     "stopper": {

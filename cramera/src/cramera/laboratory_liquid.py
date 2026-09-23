@@ -55,6 +55,8 @@ class TubeKey(StrEnum):
     CLEAR = "tube_clear"
     AMBER = "tube_amber"
     TEAL = "tube_teal"
+    RESERVE = "tube_reserve"
+    """Initially empty reserve glass sharing the clear tube's interior."""
 
 
 @dataclass
@@ -354,11 +356,13 @@ class LaboratoryLiquid:
             TubeKey.CLEAR: self.interior.bottom,
             TubeKey.AMBER: 0.074,
             TubeKey.TEAL: 0.095,
+            TubeKey.RESERVE: self.interior.bottom,
         }
         colors = {
             TubeKey.CLEAR: [0.22, 0.65, 0.86],
             TubeKey.AMBER: [0.82, 0.32, 0.055],
             TubeKey.TEAL: [0.12, 0.56, 0.52],
+            TubeKey.RESERVE: [0.22, 0.65, 0.86],
         }
         poses = {}
         for item in self.scene.get(LiquidField.OBJECTS, []):

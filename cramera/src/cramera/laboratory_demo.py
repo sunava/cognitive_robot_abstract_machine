@@ -31,7 +31,7 @@ from coraplex.utils import translate_pose_along_local_axis
 from cramera import paths
 from cramera.generated_json import write_json_atomically
 from cramera.laboratory_grasp import LaboratoryPickUpAction
-from cramera.laboratory_world import LaboratoryAsset, LaboratoryWorld
+from cramera.laboratory_world import LaboratoryAsset, LaboratoryBody, LaboratoryWorld
 from cramera.live.bridge import Bridge
 from cramera.live.live_bundle import build_live_scene
 from cramera.live.recording_bundle import write_recording_bundle
@@ -217,7 +217,12 @@ class LaboratoryObservation(PlanCallback):
         self.initial_pose = self.body.global_pose.to_np().copy()
         self.other_poses = {
             body: body.global_pose.to_np().copy()
-            for name in ("tube_amber", "tube_teal", "stopper")
+            for name in (
+                LaboratoryBody.AMBER_TUBE,
+                LaboratoryBody.TEAL_TUBE,
+                LaboratoryBody.RESERVE_TUBE,
+                LaboratoryBody.STOPPER,
+            )
             for body in self.context.world.get_bodies_by_name(name)
             if body is not self.body
         }

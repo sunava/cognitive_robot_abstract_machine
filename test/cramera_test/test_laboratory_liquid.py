@@ -43,7 +43,7 @@ def liquid_poses(liquid_scene: dict) -> dict[str, list[float]]:
 @pytest.fixture
 def liquid(liquid_scene: dict) -> LaboratoryLiquid:
     """
-    Create deterministic authored volumes in all three tube interiors.
+    Create deterministic authored volumes in every tube interior.
     """
     return LaboratoryLiquid(liquid_scene)
 

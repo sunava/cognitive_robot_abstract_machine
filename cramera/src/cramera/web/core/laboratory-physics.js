@@ -165,21 +165,28 @@
         && this.liquid && this.liquid.tubes && this.liquid.tubes[key] && !this.secured(key));
       return keys.includes(this.selected) ? [this.selected, ...keys.filter(key => key !== this.selected)] : keys;
     }
-    /** Plan a fresh test pair or the matching counterweight for one secured sample. */
+    /** Fill free opposing holders or complete one unmatched secured sample. */
     centrifugePairSamples() {
       if (!this.centrifuge) return [];
-      const occupied = this.centrifuge.slots.filter(slot => slot.key);
+      const slots = this.centrifuge.slots;
+      const occupied = slots.filter(slot => slot.key);
+      if (occupied.some(slot => !slot.secured)) return [];
+      const unmatched = occupied.filter(slot => !slots.some(item => item.id === slot.opposite && item.key));
       const keys = this.freeCentrifugeTubes();
-      if (occupied.length === 1 && occupied[0].secured) {
-        const source = this.liquid && this.liquid.tubes[occupied[0].key];
-        const opposite = this.centrifuge.slots.find(slot => slot.id === occupied[0].opposite && !slot.key);
+      if (unmatched.length === 1) {
+        const paired = occupied.filter(slot => slot !== unmatched[0]);
+        if (paired.some(slot => !Number.isFinite(slot.grams)
+          || slot.grams !== slots.find(item => item.id === slot.opposite).grams)) return [];
+        const source = this.liquid && this.liquid.tubes[unmatched[0].key];
+        const opposite = slots.find(slot => slot.id === unmatched[0].opposite && !slot.key);
         if (!source || !opposite || !Number.isFinite(source.volumeMl)) return [];
         const key = keys.find(key => this.liquid.tubes[key].capacityMl >= source.volumeMl);
         return key ? [{key, slot: opposite.id, volumeMl: source.volumeMl}] : [];
       }
-      if (occupied.length) return [];
-      const slot = this.selectedCentrifugeSlot();
-      const opposite = slot && this.centrifuge.slots.find(item => item.id === slot.opposite && !item.key);
+      if (unmatched.length || (occupied.length && !this.centrifuge.balanced)) return [];
+      const free = slots.filter(slot => !slot.key && slots.some(item => item.id === slot.opposite && !item.key));
+      const slot = free.find(item => item.id === this.centrifugeSlot) || free[0];
+      const opposite = slot && free.find(item => item.id === slot.opposite);
       const eligible = keys.filter(key => this.liquid.tubes[key].capacityMl >= CentrifugeSettings.SAMPLE_VOLUME);
       if (!slot || !opposite || eligible.length < 2) return [];
       return [slot, opposite].map((item, index) => ({key: eligible[index], slot: item.id, volumeMl: CentrifugeSettings.SAMPLE_VOLUME}));
@@ -189,17 +196,21 @@
       const instrument = this.centrifuge;
       const occupied = instrument ? instrument.slots.filter(slot => slot.key) : [];
       const samples = this.centrifugePairSamples();
-      const counterpart = occupied.length === 1 && occupied[0].secured;
-      const label = counterpart ? 'Gegenprobe einsetzen' : 'Testpaar laden (2 × 5 ml)';
+      const unmatched = occupied.filter(slot => !instrument.slots.some(item => item.id === slot.opposite && item.key));
+      const counterpart = unmatched.length === 1 && unmatched[0].secured;
+      const label = counterpart ? 'Gegenprobe einsetzen'
+        : (occupied.length === 2 && samples.length === 2 ? 'Zweites Testpaar laden (2 × 5 ml)' : 'Testpaar laden (2 × 5 ml)');
       if (this.centrifugePair) return {label: 'Testpaar wird geladen …', note: 'Probe ' + (this.centrifugePair.index + 1) + ' von ' + this.centrifugePair.samples.length + ' wird vorbereitet und eingesetzt. Bitte den Transport abwarten.'};
       if (!this.ready()) return {label, note: 'Zuerst „Labor starten / fortsetzen“ wählen.'};
       if (this.robotBusy()) return {label, note: 'Zuerst den PR2 pausieren oder seinen Auftrag abwarten.'};
       if (!instrument || !instrument.available) return {label, note: 'Die Zentrifuge ist momentan nicht verfügbar.'};
       if (this.centrifugeTransfer) return {label, note: 'Eine Probe wird gerade bewegt. Bitte den Transport abwarten.'};
       if (occupied.some(slot => !slot.secured)) return {label: 'Beladung prüfen', note: 'Mindestens eine Probe ist nicht gesichert. Sitz der Probe prüfen und den Einsetzvorgang abschließen.'};
-      if (occupied.length >= 2) {
+      if (occupied.length >= 2 && !samples.length) {
         if (!instrument.balanced) return {label: 'Beladung prüfen', note: 'Die eingesetzten Proben sind nicht ausgewogen. Gegenüberliegende Plätze gleich schwer beladen.'};
-        const prepared = {label: 'Testpaar bereit', note: occupied.length + ' Proben sind bereits eingesetzt und ausgewogen. '};
+        const full = occupied.length === instrument.slots.length;
+        const prepared = {label: full ? 'Zentrifuge vollständig beladen' : 'Testpaar bereit', note: occupied.length + ' Proben sind bereits eingesetzt und ausgewogen. '};
+        if (!full) prepared.note += 'Für ein zweites Paar werden zwei freie Gläser mit passender Kapazität benötigt. ';
         if (instrument.locked || instrument.running || Math.abs(instrument.rpm) > CentrifugeSettings.STOPPED_RPM) prepared.note += 'Rotor stoppen oder den laufenden Durchgang abwarten.';
         else if (instrument.lidOpen) prepared.note += 'Jetzt „Deckel schließen“ und anschließend „Zentrifugieren“ wählen.';
         else if (instrument.lidClosed) prepared.note += 'Jetzt „Zentrifugieren“ wählen.';

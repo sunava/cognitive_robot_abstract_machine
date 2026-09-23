@@ -2,6 +2,8 @@
 
 This portable bundle contains the authored laboratory's environment, movable
 objects, collision meshes, materials, initial poses, and rack-slot metadata.
+Four independently movable glasses occupy A1, A2, B1, and B3. The empty reserve
+glass in B3 shares the clear glass visual mesh and has its own URDF body.
 All asset references are relative to this directory. Coordinates use metres,
 Z up, and pose quaternions in XYZW order.
 

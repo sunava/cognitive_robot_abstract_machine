@@ -52,6 +52,8 @@ class LaboratoryBody(StrEnum):
     """Tube containing the amber sample."""
     TEAL_TUBE = "tube_teal"
     """Tube containing the teal sample."""
+    RESERVE_TUBE = "tube_reserve"
+    """Initially empty spare tube occupying rack slot B3."""
     STOPPER = "stopper"
     """Freely movable tube stopper."""
     DRAWER = "laboratory_drawer"

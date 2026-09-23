@@ -57,6 +57,13 @@ class ManualLaboratory {
 }
 
 // %% occupancy and independent poses
+test('the fourth reserve glass has a readable default label', () => {
+  const laboratory = new ManualLaboratory();
+  laboratory.config.tubes.push({key: 'tube_reserve', slot: 'B3'});
+  const controller = new LaboratoryWorkbench.Controller(laboratory.config, laboratory.adapter);
+  assert.equal(controller.label('tube_reserve'), 'Reserveglas');
+});
+
 test('lifting one tube frees its slot without moving its neighbours', () => {
   const laboratory = new ManualLaboratory();
   const tube = laboratory.config.tubes[0];

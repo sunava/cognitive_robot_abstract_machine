@@ -48,6 +48,7 @@ class UnselectedObject(StrEnum):
 
     AMBER = "tube_amber"
     TEAL = "tube_teal"
+    RESERVE = "tube_reserve"
     STOPPER = "stopper"
 
 
@@ -214,6 +215,24 @@ def test_moving_an_unselected_tube_rejects_the_transfer(
     displaced = neighbour.global_transform.to_np().copy()
     displaced[0, 3] += observation.position_tolerance
     neighbour.parent_connection.origin = HomogeneousTransformationMatrix(
+        displaced, reference_frame=observation.context.world.root
+    )
+    result = transfer_evidence.validate()
+    assert result.other_objects_unchanged is False
+    assert result.success is False
+
+
+def test_moving_the_reserve_tube_rejects_the_transfer(
+    transfer_evidence: TransferEvidence,
+) -> None:
+    """
+    Moving the fourth glass cannot pass the unchanged-neighbours acceptance check.
+    """
+    observation = transfer_evidence.observation
+    reserve = observation.context.world.get_body_by_name(UnselectedObject.RESERVE)
+    displaced = reserve.global_transform.to_np().copy()
+    displaced[0, 3] += observation.position_tolerance
+    reserve.parent_connection.origin = HomogeneousTransformationMatrix(
         displaced, reference_frame=observation.context.world.root
     )
     result = transfer_evidence.validate()

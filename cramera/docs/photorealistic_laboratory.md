@@ -258,9 +258,14 @@ gegenüberliegende Halter eingesetzt. Wenn bereits eine einzelne Probe gesichert
 ist, bietet derselbe Knopf **Gegenprobe einsetzen** an. Dabei übernimmt das
 zweite Glas die Füllmenge der vorhandenen Probe; deren Inhalt bleibt erhalten.
 Anschließend den Deckel schließen und **Zentrifugieren** drücken.
-Sind bereits zwei ausgewogene Proben eingesetzt, zeigt die Bedienung
-**Testpaar bereit** und den nächsten Schritt an. Ein erneutes Laden ist dann
-deaktiviert; die vorhandenen Proben können direkt zentrifugiert werden.
+Sind bereits zwei ausgewogene Proben eingesetzt, bietet **Zweites Testpaar laden
+(2 × 5 ml)** die noch freien gegenüberliegenden Plätze an. Das erste Paar bleibt
+dabei gesichert und behält seine Füllmengen. Das zunächst leere Reserveglas in
+Rackplatz B3 ergänzt die drei bisherigen Gläser auf insgesamt vier Proben.
+Bei drei eingesetzten Gläsern ergänzt **Gegenprobe einsetzen** die fehlende vierte
+Probe mit der passenden Füllmenge. Sind alle vier Plätze belegt, zeigt die
+Bedienung **Zentrifuge vollständig beladen**. Es kann auch weiterhin mit nur
+einem ausgewogenen Paar zentrifugiert werden.
 
 Einzelne Proben lassen sich weiterhin gezielt einsetzen:
 

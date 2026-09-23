@@ -1290,6 +1290,127 @@ class BalancedSampleSimulation extends CentrifugeSimulation {
   }
 }
 
+class SecondPairSimulation extends BalancedSampleSimulation {
+  constructor() {
+    super();
+    for (const [index, key] of ['thirdtube', 'fourthtube'].entries()) {
+      this.config.objects.push({key, label: key});
+      this.answer.objects[key] = [.3 + index * .06, -.065, .906, 0, 0, 0, 1];
+      this.answer.liquid.tubes[key] = {volumeMl: 0, capacityMl: 22};
+    }
+    const centrifuge = this.service.centrifuge;
+    this.service.centrifuge = async command => {
+      await centrifuge(command);
+      const slots = this.answer.centrifuge.slots;
+      this.answer.centrifuge.balanced = slots.filter(slot => slot.key).every(slot => {
+        const opposite = slots.find(item => item.id === slot.opposite);
+        return slot.secured && opposite.secured && slot.grams === opposite.grams;
+      });
+      return structuredClone(this.answer);
+    };
+  }
+  secureSample(key, slotId, volumeMl) {
+    this.answer.liquid.tubes[key].volumeMl = volumeMl;
+    Object.assign(this.answer.centrifuge.slots.find(slot => slot.id === slotId), {
+      key, secured: true, grams: 12 + volumeMl,
+    });
+  }
+}
+
+test('loading another pair chooses remaining opposite slots and preserves both existing samples', async () => {
+  const scene = new SecondPairSimulation();
+  scene.secureSample('tube', 'C1', 7);
+  scene.secureSample('countertube', 'C3', 7);
+  scene.answer.centrifuge.balanced = true;
+  const preserved = structuredClone(scene.answer.centrifuge.slots.filter(slot => slot.key));
+  await scene.controller.refresh();
+  assert.equal(await scene.controller.loadCentrifugePair(), true);
+  await scene.settleSample();
+  await scene.settleSample();
+  assert.deepEqual(scene.commands.filter(command => command.type === 'liquid'), [
+    {type: 'liquid', key: 'thirdtube', volumeMl: Physics.CentrifugeSettings.SAMPLE_VOLUME},
+    {type: 'liquid', key: 'fourthtube', volumeMl: Physics.CentrifugeSettings.SAMPLE_VOLUME},
+  ]);
+  assert.deepEqual(scene.commands.filter(command => command.action === Physics.CentrifugeActions.SECURE), [
+    {type: 'centrifuge', action: Physics.CentrifugeActions.SECURE, slot: 'C2', key: 'thirdtube'},
+    {type: 'centrifuge', action: Physics.CentrifugeActions.SECURE, slot: 'C4', key: 'fourthtube'},
+  ]);
+  assert.deepEqual(scene.answer.centrifuge.slots.filter(slot => ['tube', 'countertube'].includes(slot.key)), preserved);
+  assert.equal(scene.answer.liquid.tubes.tube.volumeMl, 7);
+  assert.equal(scene.answer.liquid.tubes.countertube.volumeMl, 7);
+  assert.equal(scene.controller.centrifugePair, null);
+  assert.equal(scene.controller.centrifuge.balanced, true);
+});
+
+test('the fourth sample matches a lone third sample while preserving the completed pair', async () => {
+  const scene = new SecondPairSimulation();
+  scene.secureSample('tube', 'C1', 7);
+  scene.secureSample('countertube', 'C3', 7);
+  scene.secureSample('thirdtube', 'C2', 3);
+  await scene.controller.refresh();
+  assert.equal(await scene.controller.loadCentrifugePair(), true);
+  await scene.settleSample();
+  assert.deepEqual(scene.commands.filter(command => command.type === 'liquid'), [{type: 'liquid', key: 'fourthtube', volumeMl: 3}]);
+  assert.deepEqual(scene.commands.filter(command => command.action === Physics.CentrifugeActions.SECURE), [
+    {type: 'centrifuge', action: Physics.CentrifugeActions.SECURE, slot: 'C4', key: 'fourthtube'},
+  ]);
+  assert.equal(scene.controller.centrifuge.balanced, true);
+});
+
+test('a remaining opposite pair is offered and a fully loaded centrifuge explains completion', async () => {
+  const scene = new SecondPairSimulation();
+  scene.secureSample('tube', 'C1', 7);
+  scene.secureSample('countertube', 'C3', 7);
+  scene.answer.centrifuge.balanced = true;
+  const controls = new PhysicsControls();
+  const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
+  await mounted.initialized;
+  const button = controls.find('laboratory-physics-centrifuge-pair');
+  assert.equal(button.textContent, 'Zweites Testpaar laden (2 × 5 ml)');
+  assert.equal(button.disabled, false);
+  scene.secureSample('thirdtube', 'C2', 3);
+  scene.answer.centrifuge.balanced = false;
+  await mounted.refresh();
+  assert.equal(button.textContent, 'Gegenprobe einsetzen');
+  assert.equal(button.disabled, false);
+  scene.secureSample('fourthtube', 'C4', 3);
+  scene.answer.centrifuge.balanced = true;
+  await mounted.refresh();
+  assert.equal(button.textContent, 'Zentrifuge vollständig beladen');
+  assert.equal(button.disabled, true);
+  assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, /4 Proben.*Deckel schließen/);
+  mounted.destroy();
+});
+
+test('a second pair stays unavailable when only one free glass remains', async () => {
+  const scene = new SecondPairSimulation();
+  scene.secureSample('tube', 'C1', 7);
+  scene.secureSample('countertube', 'C3', 7);
+  scene.answer.centrifuge.balanced = true;
+  delete scene.answer.objects.fourthtube;
+  const controls = new PhysicsControls();
+  const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
+  await mounted.initialized;
+  assert.equal(controls.find('laboratory-physics-centrifuge-pair').disabled, true);
+  assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, /freie Gläser.*Deckel schließen/);
+  assert.equal(await mounted.controller.loadCentrifugePair(), false);
+  assert.deepEqual(scene.commands, []);
+  mounted.destroy();
+});
+
+for (const secured of [false, true]) {
+  test('another pair is refused with ' + (secured ? 'unequal matched' : 'unsecured') + ' existing samples', async () => {
+    const scene = new SecondPairSimulation();
+    scene.secureSample('tube', 'C1', 7);
+    scene.secureSample('countertube', 'C3', 9);
+    scene.secureSample('thirdtube', 'C2', 3);
+    scene.answer.centrifuge.slots[0].secured = secured;
+    await scene.controller.refresh();
+    assert.equal(await scene.controller.loadCentrifugePair(), false);
+    assert.deepEqual(scene.commands, []);
+  });
+}
+
 test('a balanced pair fills and physically loads opposite slots in sequence without a robot or reset', async () => {
   const scene = new BalancedSampleSimulation();
   await scene.controller.refresh();

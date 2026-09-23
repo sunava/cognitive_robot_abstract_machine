@@ -23,7 +23,7 @@
     [Codes.STOPPER_IN_USE]: 'Zuerst den Stopfen vom anderen Glas abnehmen.',
   });
   const TubeLabels = Object.freeze({
-    tube_clear: 'Klares Glas', tube_amber: 'Bernsteinprobe', tube_teal: 'Türkise Probe',
+    tube_clear: 'Klares Glas', tube_amber: 'Bernsteinprobe', tube_teal: 'Türkise Probe', tube_reserve: 'Reserveglas',
   });
 
   /** A command outcome with a stable machine-readable reason and visible feedback. */
