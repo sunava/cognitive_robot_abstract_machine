@@ -461,6 +461,10 @@ class LaboratoryPhysics:
         """Zero the balance at its current settled load."""
         self.scale.tare()
 
+    def read_centrifuge_manual(self, document: str) -> None:
+        """Read operating rules without altering any object or actuator state."""
+        self.centrifuge.read_centrifuge_manual(document)
+
     def centrifuge_command(
         self,
         action: str,

@@ -13,6 +13,7 @@ from scipy.spatial.transform import Rotation
 from typing_extensions import Any
 
 from cramera.laboratory_centrifuge_command import CentrifugeAction, CentrifugeField
+from cramera.laboratory_manual import ManualKnowledge
 
 
 # %% authored mechanics
@@ -231,6 +232,8 @@ class LaboratoryCentrifuge:
     """Existing glass bodies eligible for a rotor holder."""
     parameters: CentrifugeParameters = field(default_factory=CentrifugeParameters)
     """Measured safety margins and motor command limits."""
+    knowledge: ManualKnowledge = field(default_factory=ManualKnowledge)
+    """Validated operating document retained independently of physical resets."""
     rotor_body: int = field(init=False)
     """Compiled rotor body index, or minus one when absent."""
     rotor_joint: int = field(init=False, default=-1)
@@ -431,6 +434,25 @@ class LaboratoryCentrifuge:
                 "Release this glass from the centrifuge holder first"
             )
 
+    def read_centrifuge_manual(self, document: str) -> None:
+        """Replace operating knowledge only while the physical rotor is stopped."""
+        if not self.available:
+            raise InvalidCentrifugeOperation("This laboratory has no centrifuge")
+        if not self.stopped:
+            raise InvalidCentrifugeOperation(
+                "Stop the rotor before reading another operating manual"
+            )
+        self.knowledge.read(document, simulation_time=float(self.data.time))
+
+    def _require_manual_load(self) -> None:
+        """Enforce the document's minimum load before enabling rotor actuation."""
+        secured = sum(slot.key is not None for slot in self.slots.values())
+        required = self.knowledge.active.minimum_samples
+        if secured < required:
+            raise InvalidCentrifugeOperation(
+                f"Handbuch {self.knowledge.active.version}: mindestens {required} gesicherte Proben erforderlich; aktuell {secured}."
+            )
+
     def _require_loading(self) -> None:
         """Require a stopped rotor and fully open lid for fixture changes."""
         if not self.stopped or not self.lid_open:
@@ -527,6 +549,7 @@ class LaboratoryCentrifuge:
                 self.open_angle if action == CentrifugeAction.OPEN else 0.0
             )
         elif action == CentrifugeAction.START:
+            self._require_manual_load()
             requested = self.parameters.default_rpm if rpm is None else rpm
             seconds = self.parameters.default_duration if duration is None else duration
             if (
@@ -604,7 +627,7 @@ class LaboratoryCentrifuge:
         relative_force = (
             (self.rpm * math.tau / 60) ** 2 * radius / gravity if gravity else 0.0
         )
-        return {
+        state = {
             CentrifugeField.AVAILABLE: self.available,
             CentrifugeField.RPM: round(self.rpm, 2),
             CentrifugeField.TARGET_RPM: self.target_rpm,
@@ -641,3 +664,5 @@ class LaboratoryCentrifuge:
                 for slot in self.slots.values()
             ],
         }
+        state[CentrifugeField.KNOWLEDGE] = self.knowledge.snapshot(state)
+        return state

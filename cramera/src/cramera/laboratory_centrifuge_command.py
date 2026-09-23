@@ -8,6 +8,8 @@ from enum import StrEnum
 
 from typing_extensions import ClassVar
 
+from cramera.laboratory_manual import CentrifugeManual
+
 
 # %% command and observation fields
 class CentrifugeAction(StrEnum):
@@ -45,6 +47,8 @@ class CentrifugeField(StrEnum):
 
     CENTRIFUGE = "centrifuge"
     """Instrument state within a simulation snapshot."""
+    KNOWLEDGE = "knowledge"
+    """Read operating manual, rule changes and measured start eligibility."""
     AVAILABLE = "available"
     """Whether the authored scene contains this instrument."""
     RPM = "rpm"
@@ -103,6 +107,40 @@ class InvalidCentrifugeCommand(ValueError):
     def __str__(self) -> str:
         """Return the request validation failure."""
         return self.reason
+
+
+class ManualRequestField(StrEnum):
+    """Accepted sources of a centrifuge operating document."""
+
+    DOCUMENT = "document"
+    """Complete Markdown document supplied for validation and reading."""
+    EDITION = "edition"
+    """Identifier of one bundled demonstration document."""
+
+
+@dataclass(frozen=True)
+class ManualRequest:
+    """A complete validated document ready for serialized knowledge loading."""
+
+    document: str
+    """The operating document whose rules will replace current knowledge."""
+
+    @classmethod
+    def from_payload(cls, payload: dict) -> ManualRequest:
+        """Require exactly one document source and validate it before mutation."""
+        if not isinstance(payload, dict):
+            raise InvalidCentrifugeCommand("Expected a manual document or edition")
+        if set(payload) == {ManualRequestField.EDITION}:
+            manual = CentrifugeManual.builtin(payload[ManualRequestField.EDITION])
+        elif set(payload) == {ManualRequestField.DOCUMENT}:
+            manual = CentrifugeManual.from_markdown(
+                payload[ManualRequestField.DOCUMENT]
+            )
+        else:
+            raise InvalidCentrifugeCommand(
+                "Expected exactly one manual document or edition"
+            )
+        return cls(manual.document)
 
 
 # %% validated command

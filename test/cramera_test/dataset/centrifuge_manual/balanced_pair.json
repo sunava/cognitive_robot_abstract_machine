@@ -1,0 +1,12 @@
+{
+  "available": true,
+  "balanced": true,
+  "lidClosed": true,
+  "running": false,
+  "slots": [
+    {"id": "C1", "key": "tube_clear", "secured": true},
+    {"id": "C2", "key": null, "secured": false},
+    {"id": "C3", "key": "tube_amber", "secured": true},
+    {"id": "C4", "key": null, "secured": false}
+  ]
+}

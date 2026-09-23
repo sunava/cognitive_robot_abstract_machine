@@ -65,6 +65,8 @@ class ShareOptions:
     """Only scene that the public gateway may expose."""
     MAX_BODY_BYTES: ClassVar[int] = 8192
     """Largest accepted form or simulation command."""
+    MAX_MANUAL_BODY_BYTES: ClassVar[int] = 64 * 1024
+    """Largest JSON-escaped document request accepted after authentication."""
     MAX_RESPONSE_BYTES: ClassVar[int] = 4 * 1024 * 1024
     """Largest simulation JSON response accepted from the local backend."""
     COOKIE_NAME: ClassVar[str] = "__Host-cramera_lab"
@@ -411,7 +413,9 @@ class ShareHandler(BaseHTTPRequestHandler):
             return False
         return True
 
-    def _body(self, content_type: str) -> bytes | None:
+    def _body(
+        self, content_type: str, maximum_bytes: int = ShareOptions.MAX_BODY_BYTES
+    ) -> bytes | None:
         """Read one bounded, explicitly typed request without transfer encodings."""
         lengths = self.headers.get_all("Content-Length", [])
         if (
@@ -423,7 +427,7 @@ class ShareHandler(BaseHTTPRequestHandler):
             self._reply(HTTPStatus.BAD_REQUEST, b"Invalid request body.")
             return None
         length = int(lengths[0])
-        if length > ShareOptions.MAX_BODY_BYTES:
+        if length > maximum_bytes:
             self._reply(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, b"Request is too large.")
             return None
         body = self.rfile.read(length)
@@ -566,7 +570,12 @@ class ShareHandler(BaseHTTPRequestHandler):
         if route == ShareRoute.LOGIN:
             self._login()
             return
-        body = self._body("application/json")
+        maximum_bytes = (
+            ShareOptions.MAX_MANUAL_BODY_BYTES
+            if route == RobotPhysicsRoute.MANUAL
+            else ShareOptions.MAX_BODY_BYTES
+        )
+        body = self._body("application/json", maximum_bytes)
         if body is not None:
             self._proxy(route, body)
 

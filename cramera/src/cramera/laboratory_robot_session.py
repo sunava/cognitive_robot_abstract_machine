@@ -42,6 +42,8 @@ class RobotPhysicsRoute(StrEnum):
     """Set a tube's liquid quantity while the robot program is inactive."""
     CENTRIFUGE = "/api/laboratory/physics/robot/centrifuge"
     """Operate the centrifuge beside the articulated robot."""
+    MANUAL = "/api/laboratory/physics/robot/manual"
+    """Read operating rules while the robot program is paused or inactive."""
     SCALE_TARE = "/api/laboratory/physics/robot/scale/tare"
     """Zero the laboratory scale while the robot program is paused or idle."""
     RELEASE = "/api/laboratory/physics/robot/release"
@@ -216,6 +218,16 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
         ):
             raise InvalidPhysicsRequest(
                 "Den PR2-Ablauf vor dem Bedienen der Zentrifuge pausieren."
+            )
+
+    def _validate_manual(self) -> None:
+        """Preserve the active robot program's accepted operating knowledge."""
+        if (
+            self.physics.snapshot()[RobotField.ROBOT][PhysicsField.STATE]
+            == PhysicsState.RUNNING
+        ):
+            raise InvalidPhysicsRequest(
+                "Den PR2-Ablauf vor dem Lesen eines anderen Handbuchs pausieren."
             )
 
     def _validate_scale(self) -> None:

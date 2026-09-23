@@ -33,6 +33,8 @@ class PhysicsRoute(StrEnum):
     """Set the liquid quantity in an authored tube."""
     CENTRIFUGE = "/api/laboratory/physics/centrifuge"
     """Operate the articulated laboratory centrifuge."""
+    MANUAL = "/api/laboratory/physics/manual"
+    """Read a validated centrifuge operating document."""
     SCALE_TARE = "/api/laboratory/physics/scale/tare"
     """Use the current scale load as the zero reference."""
     RELEASE = "/api/laboratory/physics/release"
@@ -143,6 +145,9 @@ class ContactSimulation(Protocol):
 
     def fill_liquid(self, key: str, volume_ml: float) -> None:
         """Set a bounded liquid quantity for an authored tube."""
+
+    def read_centrifuge_manual(self, document: str) -> None:
+        """Replace centrifuge operating knowledge without moving objects."""
 
     def centrifuge_command(
         self,
@@ -320,6 +325,17 @@ class LaboratoryPhysicsSession:
             self._validate_scale()
             self.physics.tare_scale()
             return self._status()
+
+    def read_centrifuge_manual(self, document: str) -> dict[str, Any]:
+        """Serialize document reading against physical stepping and robot control."""
+        with self.lock:
+            self._require_running()
+            self._validate_manual()
+            self.physics.read_centrifuge_manual(document)
+            return self._status()
+
+    def _validate_manual(self) -> None:
+        """Allow knowledge changes while no robot program owns this session."""
 
     def centrifuge_command(self, command: CentrifugeCommand) -> dict[str, Any]:
         """Serialize an instrument operation against physical integration."""

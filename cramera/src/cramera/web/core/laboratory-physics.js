@@ -15,6 +15,7 @@
     LIQUID: '/api/laboratory/physics/liquid',
     TARE: '/api/laboratory/physics/scale/tare',
     CENTRIFUGE: '/api/laboratory/physics/centrifuge',
+    MANUAL: '/api/laboratory/physics/manual',
   });
   const RobotRoutes = Object.freeze({
     START: '/api/laboratory/physics/robot/start', STATE: '/api/laboratory/physics/robot/state',
@@ -25,6 +26,7 @@
     LIQUID: '/api/laboratory/physics/robot/liquid',
     TARE: '/api/laboratory/physics/robot/scale/tare',
     CENTRIFUGE: '/api/laboratory/physics/robot/centrifuge',
+    MANUAL: '/api/laboratory/physics/robot/manual',
   });
   const RobotStates = Object.freeze({IDLE: 'idle', RUNNING: 'running', PAUSED: 'paused', SUCCEEDED: 'succeeded', FAILED: 'failed'});
   const RobotSources = Object.freeze({TRANSFER: 'recorded_cram_joint_targets', MIXING: 'laboratory_liquid_mixing'});
@@ -33,6 +35,8 @@
   const RobotPhases = Object.freeze({approach: 'Glas anfahren', grasp: 'Kontaktgriff prüfen', lift: 'Glas anheben', transport: 'Glas transportieren', pour: 'Flüssigkeit eingießen', return: 'Spenderglas zurückstellen', swirl: 'Mischung sanft schwenken', place: 'Glas im Ständer abstellen', release: 'Glas absetzen', settle: 'Stabilen Stand prüfen', complete: 'Abgeschlossen'});
   const POLL_INTERVAL = 33;
   const RETRY_INTERVAL = 1500;
+  const MANUAL_HISTORY_ENTRIES = 6;
+  const MANUAL_DIGEST_LENGTH = 12;
   const MOVE_STEP = .01;
   const TILT_STEP = 15;
   const LIFT_CLEARANCE = .22;
@@ -81,6 +85,7 @@
     fillLiquid(key, volumeMl) { return this.post(this.routes.LIQUID, {key, volumeMl}); }
     tareScale() { return this.post(this.routes.TARE); }
     centrifuge(command) { return this.post(this.routes.CENTRIFUGE, command); }
+    importManual(document) { return this.post(this.routes.MANUAL, document); }
   }
 
   // %% target commands and observed contacts
@@ -102,6 +107,7 @@
       this.centrifugePair = null;
       this.centrifugeTransferError = null;
       this.centrifugeRevision = 0;
+      this.manualError = null;
       this.scaleTransfer = null;
       this.scaleTransferError = null;
       this.simulationTime = null;
@@ -125,10 +131,30 @@
     }
     ready() { return !this.disposed && !this.starting && this.state === 'running'; }
     robotBusy() { return this.config.robot && (this.robotRequest || this.robot.state === RobotStates.RUNNING); }
-    manualReady() { return this.ready() && !this.robotBusy(); }
+    manualReady() { return this.ready() && !this.robotBusy() && !this.manualBusy(); }
+    manualBusy() { return this.activeCommand === 'manual' || this.queue.some(command => command.type === 'manual'); }
     liquidBusy() { return LiquidCommands.includes(this.activeCommand) || this.queue.some(command => LiquidCommands.includes(command.type)); }
     scaleBusy() { return ScaleCommands.includes(this.activeCommand) || this.queue.some(command => ScaleCommands.includes(command.type)); }
-    centrifugeBusy() { return this.activeCommand === 'centrifuge' || this.queue.some(command => command.type === 'centrifuge'); }
+    centrifugeBusy() { return this.manualBusy() || this.activeCommand === 'centrifuge' || this.queue.some(command => command.type === 'centrifuge'); }
+    canImportManual() {
+      const instrument = this.centrifuge;
+      return this.manualReady() && instrument && instrument.available && !instrument.locked && !instrument.running
+        && Math.abs(instrument.rpm) <= CentrifugeSettings.STOPPED_RPM && !this.centrifugeBusy()
+        && !this.centrifugeTransfer && !this.centrifugePair && !this.scaleTransfer && !this.draining;
+    }
+    importManual(payload) {
+      if (!this.canImportManual()) return Promise.resolve(false);
+      this.manualError = null;
+      this.centrifugeRevision += 1;
+      const command = {type: 'manual', payload, accepted: false};
+      const importing = this.enqueue(command);
+      this.changed();
+      return importing.then(() => command.accepted);
+    }
+    manualAllowsStart() {
+      const knowledge = this.centrifuge && this.centrifuge.knowledge;
+      return !knowledge || Boolean(knowledge.evaluation && knowledge.evaluation.allowed);
+    }
     centrifugeOwnsObjects() { return Boolean(this.centrifuge && (this.centrifuge.locked || this.centrifuge.slots.some(slot => slot.secured))); }
     secured(key) { return Boolean(this.centrifuge && this.centrifuge.slots.some(slot => slot.secured && slot.key === key)); }
     selectedCentrifugeSlot() { return this.centrifuge && this.centrifuge.slots.find(slot => slot.id === this.centrifugeSlot); }
@@ -147,7 +173,7 @@
       if (!this.ready() || !instrument || !instrument.available || this.centrifugeBusy()) return Promise.resolve(false);
       if (action !== CentrifugeActions.STOP && (!this.manualReady() || this.centrifugeTransfer || this.centrifugePair)) return Promise.resolve(false);
       if ([CentrifugeActions.OPEN, CentrifugeActions.CLOSE].includes(action) && (instrument.locked || Math.abs(instrument.rpm) > CentrifugeSettings.STOPPED_RPM)) return Promise.resolve(false);
-      if (action === CentrifugeActions.START && (!instrument.lidClosed || !instrument.balanced || instrument.running || instrument.locked)) return Promise.resolve(false);
+      if (action === CentrifugeActions.START && (!instrument.lidClosed || !instrument.balanced || instrument.running || instrument.locked || !this.manualAllowsStart())) return Promise.resolve(false);
       if (![CentrifugeActions.OPEN, CentrifugeActions.CLOSE, CentrifugeActions.START, CentrifugeActions.STOP].includes(action)) return Promise.resolve(false);
       const payload = {action, ...(options || {})};
       if (action === CentrifugeActions.START && (
@@ -616,9 +642,14 @@
           let answer;
           if (command.type === 'target') answer = await this.service.target(command.target);
           else if (command.type === 'centrifuge') answer = await this.service.centrifuge(command.payload);
+          else if (command.type === 'manual') answer = await this.service.importManual(command.payload);
           else if (command.type === 'fillLiquid') answer = await this.service.fillLiquid(command.key, command.volumeMl);
           else answer = await this.service[command.type]();
-          if (command.type === 'centrifuge' && !this.disposed && answer.centrifuge) this.centrifuge = answer.centrifuge;
+          if (['centrifuge', 'manual'].includes(command.type) && !this.disposed && answer.centrifuge) this.centrifuge = answer.centrifuge;
+          if (command.type === 'manual') {
+            this.manualError = null;
+            command.accepted = true;
+          }
           if (command.type === 'tareScale' && !this.disposed && answer.scale) {
             this.scale = answer.scale;
             if (this.adapter.setScaleState) this.adapter.setScaleState(this.scale);
@@ -640,17 +671,20 @@
           this.error = null;
         } catch (error) {
           this.error = error.message;
-          if (this.centrifugePair || this.centrifugeTransfer) this.centrifugeTransferError = this.error;
-          this.target = null;
-          this.dragged = null;
-          this.scaleTransfer = null;
-          this.centrifugeTransfer = null;
-          this.centrifugePair = null;
-          this.queue = this.queue.filter(pending => pending.type !== 'target');
+          if (command.type === 'manual') this.manualError = error.message;
+          else {
+            if (this.centrifugePair || this.centrifugeTransfer) this.centrifugeTransferError = this.error;
+            this.target = null;
+            this.dragged = null;
+            this.scaleTransfer = null;
+            this.centrifugeTransfer = null;
+            this.centrifugePair = null;
+            this.queue = this.queue.filter(pending => pending.type !== 'target');
+          }
         }
         if (LiquidCommands.includes(command.type)) this.liquidRevision += 1;
         if (ScaleCommands.includes(command.type)) this.scaleRevision += 1;
-        if (command.type === 'centrifuge' || command.type === 'reset' || ProgramCommands.includes(command.type)) this.centrifugeRevision += 1;
+        if (['centrifuge', 'manual', 'reset'].includes(command.type) || ProgramCommands.includes(command.type)) this.centrifugeRevision += 1;
         this.activeCommand = null;
         if (this.robotRequest === command.type) this.robotRequest = null;
         this.changed();
@@ -776,6 +810,96 @@
     element('h4', centrifuge, '', 'Zentrifuge');
     const centrifugeStatus = element('p', centrifuge, 'laboratory-physics-centrifuge-status');
     centrifugeStatus.setAttribute('role', 'status');
+    const manual = element('section', centrifuge, 'laboratory-physics-manual');
+    element('h5', manual, '', 'Handbuch & Roboterwissen');
+    const manualVersion = element('p', manual, 'laboratory-physics-manual-version');
+    const manualButtons = element('div', manual, 'laboratory-physics-manual-buttons');
+    const manualV1 = button(manualButtons, 'Handbuch V1 einlesen', () => controller.importManual({edition: 'v1'}), 'laboratory-physics-manual-v1');
+    const manualV2 = button(manualButtons, 'Handbuch V2 einlesen', () => controller.importManual({edition: 'v2'}), 'laboratory-physics-manual-v2');
+    const manualChanges = element('p', manual, 'laboratory-physics-manual-changes');
+    const manualSource = element('p', manual, 'laboratory-physics-manual-source');
+    const manualObserved = element('p', manual, 'laboratory-physics-manual-observed');
+    const manualReady = element('p', manual, 'laboratory-physics-manual-ready');
+    const manualPlan = element('p', manual, 'laboratory-physics-manual-plan');
+    const manualError = element('p', manual, 'laboratory-physics-manual-error');
+    manualError.setAttribute('role', 'alert');
+    const requirementsDetails = element('details', manual, 'laboratory-physics-manual-requirements-details');
+    element('summary', requirementsDetails, '', 'Bedingungen und Belege');
+    const manualRequirements = element('p', requirementsDetails, 'laboratory-physics-manual-requirements');
+    const historyDetails = element('details', manual, 'laboratory-physics-manual-history-details');
+    element('summary', historyDetails, '', 'Zuletzt eingelesene Handbücher');
+    const manualHistory = element('p', historyDetails, 'laboratory-physics-manual-history');
+    const documentDetails = element('details', manual, 'laboratory-physics-manual-document-details');
+    element('summary', documentDetails, '', 'Handbuch lesen / bearbeiten');
+    const manualDigest = element('p', documentDetails, 'laboratory-physics-manual-digest');
+    const manualDocument = element('textarea', documentDetails, 'laboratory-physics-manual-document');
+    manualDocument.rows = 13;
+    manualDocument.setAttribute('aria-label', 'Handbuch als Markdown mit Tabelle Betriebsregeln');
+    manualDocument.spellcheck = false;
+    let manualDraftDirty = false;
+    let manualDocumentDigest = null;
+    listen(manualDocument, 'input', () => { manualDraftDirty = true; render(); });
+    const manualDraftStatus = element('p', documentDetails, 'laboratory-physics-manual-draft-status');
+    const manualApply = button(documentDetails, 'Bearbeitetes Handbuch übernehmen', async () => {
+      const submitted = manualDocument.value;
+      if (await controller.importManual({document: submitted}) && manualDocument.value === submitted) {
+        manualDraftDirty = false;
+        manualDocumentDigest = null;
+        render();
+      }
+    }, 'laboratory-physics-manual-apply');
+    const manualRestore = button(documentDetails, 'Aktives Dokument anzeigen', () => {
+      manualDraftDirty = false;
+      manualDocumentDigest = null;
+      render();
+    }, 'laboratory-physics-manual-restore');
+    element('p', manual, 'laboratory-physics-note', 'Diese Demo liest die Tabelle Betriebsregeln aus.');
+    function sourceLabel(source) {
+      if (!source) return 'Quelle unbekannt';
+      if (source.section) return source.section + ' · Zeile ' + source.line + (source.quote ? ': ' + source.quote : '');
+      return source.label || source.kind || 'Quelle unbekannt';
+    }
+    function renderManual(instrument) {
+      const knowledge = instrument && instrument.knowledge;
+      manual.hidden = !knowledge;
+      if (!knowledge) return;
+      const active = knowledge.manual, evaluation = knowledge.evaluation;
+      const importing = controller.manualBusy();
+      const available = controller.canImportManual();
+      manualVersion.textContent = active.title + ' · ' + active.version + ' · Wissensstand ' + knowledge.revision;
+      manualV1.disabled = manualV2.disabled = !available;
+      manualRestore.disabled = importing;
+      const changes = knowledge.changes || [];
+      manualChanges.textContent = changes.map(change => change.label + ': ' + String(change.before) + ' → ' + String(change.after)).join('\n');
+      manualChanges.hidden = !changes.length;
+      manualSource.textContent = 'Handbuchquelle: ' + sourceLabel(active.source);
+      const measured = instrument.slots.filter(item => item.secured && item.key).length;
+      const observation = evaluation.observationSource;
+      manualObserved.textContent = 'Beobachtet: ' + measured + ' gesicherte Proben. Regel: mindestens ' + active.minimumSamples + '.\n'
+        + (observation ? sourceLabel(observation) : 'Direkter Simulationszustand (keine visuelle Erkennung).');
+      manualReady.textContent = importing ? 'Handbuch wird eingelesen …' : evaluation.allowed ? 'Abgeleitet: Startbedingungen erfüllt.' : 'Abgeleitet: Start noch nicht erlaubt.';
+      manualReady.dataset.allowed = String(Boolean(evaluation.allowed));
+      manualPlan.textContent = 'Empfohlene Schritte:\n' + (evaluation.plan || []).join('\n');
+      manualPlan.hidden = !(evaluation.plan || []).length;
+      manualRequirements.textContent = (evaluation.requirements || []).map(requirement =>
+        (requirement.satisfied === true ? '✓ ' : requirement.satisfied === false ? '✗ ' : '? ') + requirement.label
+        + ' · beobachtet: ' + String(requirement.actual) + ' · erforderlich: ' + String(requirement.required)
+        + '\n' + sourceLabel(requirement.source)).join('\n\n');
+      manualHistory.textContent = (knowledge.history || []).slice(-MANUAL_HISTORY_ENTRIES).map(entry =>
+        'Wissensstand ' + entry.revision + ' · ' + entry.version + ' · SHA-256: ' + entry.digest.slice(0, MANUAL_DIGEST_LENGTH)
+        + (entry.changes.length ? '\n' + entry.changes.map(change => change.label + ': ' + String(change.before) + ' → ' + String(change.after)
+          + '\n' + sourceLabel(change.source)).join('\n') : '\nKeine geänderten Betriebsregeln.')).join('\n\n') || 'Noch keine früheren Dokumente.';
+      manualError.textContent = controller.manualError || '';
+      manualError.hidden = !controller.manualError;
+      manualDigest.textContent = 'Aktives Dokument · SHA-256: ' + active.digest.slice(0, MANUAL_DIGEST_LENGTH);
+      manualDigest.title = active.digest;
+      if (!manualDraftDirty && manualDocumentDigest !== active.digest) {
+        manualDocument.value = active.document;
+        manualDocumentDigest = active.digest;
+      }
+      manualApply.disabled = !available || !String(manualDocument.value || '').trim();
+      manualDraftStatus.textContent = manualDraftDirty ? 'Ungespeicherter Entwurf – aktiv bleibt ' + active.version + '.' : 'Angezeigt wird das aktive Handbuch.';
+    }
     const slotLabel = element('label', centrifuge, 'laboratory-physics-field', 'Rotorplatz');
     const slotSelect = element('select', slotLabel, 'laboratory-physics-centrifuge-slot');
     const slotOptions = new Map();
@@ -879,6 +1003,7 @@
       const manualReady = controller.manualReady();
       const reading = controller.scale;
       const instrument = controller.centrifuge;
+      renderManual(instrument);
       const slot = controller.selectedCentrifugeSlot();
       const secured = controller.secured(controller.selected);
       const pair = controller.centrifugePair;
@@ -912,7 +1037,7 @@
       rpm.disabled = duration.disabled = !manualReady || !instrument || instrument.locked || instrumentBusy;
       const validCycle = String(rpm.value).trim() && String(duration.value).trim() && Number.isFinite(Number(rpm.value)) && Number(rpm.value) > 0
         && instrument && Number(rpm.value) <= instrument.maximumRpm && Number.isFinite(Number(duration.value)) && Number(duration.value) >= 1 && Number(duration.value) <= CentrifugeSettings.MAXIMUM_DURATION;
-      centrifugeStart.disabled = !manualReady || !instrument || instrumentBusy || !instrument.lidClosed || !instrument.balanced || instrument.locked || instrument.running || !validCycle;
+      centrifugeStart.disabled = !manualReady || !instrument || instrumentBusy || !instrument.lidClosed || !instrument.balanced || instrument.locked || instrument.running || !validCycle || !controller.manualAllowsStart();
       centrifugeStop.disabled = !ready || !instrument || controller.centrifugeBusy() || (!instrument.running && Math.abs(instrument.rpm) <= CentrifugeSettings.STOPPED_RPM);
       scale.hidden = !config.scale && !reading;
       scaleReading.textContent = reading && reading.available && Number.isFinite(reading.grams)

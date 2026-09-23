@@ -1642,3 +1642,208 @@ for (const stage of ['target', 'secure']) {
     assert.equal(scene.controller.error, null);
   });
 }
+
+// %% manual-grounded operating knowledge
+class ManualKnowledgeSimulation extends BalancedSampleSimulation {
+  constructor() {
+    super();
+    const instrument = this.answer.centrifuge;
+    Object.assign(instrument, {balanced: true, lidOpen: false, lidClosed: true});
+    Object.assign(instrument.slots[0], {key: 'tube', secured: true, grams: 17});
+    Object.assign(instrument.slots[2], {key: 'countertube', secured: true, grams: 17});
+    this.updateKnowledge('v1');
+    this.service.importManual = async payload => {
+      this.commands.push({type: 'manual', ...payload});
+      this.updateKnowledge(payload.edition || 'edited', payload.document);
+      return structuredClone(this.answer);
+    };
+  }
+  updateKnowledge(version, document) {
+    const before = this.answer.centrifuge.knowledge;
+    const minimumSamples = version === 'v1' ? 2 : 4;
+    const source = {section: 'Betriebsregeln', line: 6, quote: '| minimum_samples | ' + minimumSamples + ' |'};
+    this.answer.centrifuge.knowledge = {
+      manual: {title: 'Laborzentrifuge', version, document: document || '# Laborzentrifuge ' + version + '\n' + source.quote, digest: version, minimumSamples, source},
+      revision: before ? before.revision + 1 : 1,
+      changes: before ? [{field: 'minimumSamples', label: 'Mindestanzahl Proben', before: before.manual.minimumSamples, after: minimumSamples, source}] : [],
+      history: [],
+      evaluation: {allowed: minimumSamples === 2, requirements: [{id: 'minimum_samples', label: 'Mindestanzahl Proben', satisfied: minimumSamples === 2, actual: 2, required: minimumSamples, source}], plan: minimumSamples === 2 ? [] : ['Zweites ausgewogenes Probenpaar einsetzen.']},
+    };
+  }
+}
+
+test('manual documents use the correct isolated physics endpoint', async () => {
+  for (const robot of [false, true]) {
+    const requests = [];
+    const client = new Physics.Client(async (url, options) => {
+      requests.push({url, body: JSON.parse(options.body)});
+      return {ok: true, json: async () => ({ok: true})};
+    }, {robot});
+    await client.importManual({edition: 'v2'});
+    await client.importManual({document: 'Edited operating rules'});
+    assert.deepEqual(requests, [
+      {url: robot ? Physics.RobotRoutes.MANUAL : Physics.Routes.MANUAL, body: {edition: 'v2'}},
+      {url: robot ? Physics.RobotRoutes.MANUAL : Physics.Routes.MANUAL, body: {document: 'Edited operating rules'}},
+    ]);
+  }
+});
+
+test('imported rules block a balanced pair without moving or refilling any sample', async () => {
+  const scene = new ManualKnowledgeSimulation();
+  await scene.controller.refresh();
+  const observed = structuredClone(scene.controller.objects);
+  const liquid = structuredClone(scene.controller.liquid);
+  assert.equal(await scene.controller.importManual({edition: 'v2'}), true);
+  assert.equal(scene.controller.centrifuge.knowledge.manual.version, 'v2');
+  assert.equal(await scene.controller.commandCentrifuge('start', {rpm: 120, duration: 20}), false);
+  assert.deepEqual(scene.commands, [{type: 'manual', edition: 'v2'}]);
+  assert.deepEqual(scene.controller.objects, observed);
+  assert.deepEqual(scene.controller.liquid, liquid);
+});
+
+test('an old poll cannot replace freshly imported operating knowledge', async () => {
+  const scene = new ManualKnowledgeSimulation();
+  await scene.controller.refresh();
+  const old = structuredClone(scene.answer);
+  let finish;
+  scene.service.state = () => new Promise(resolve => { finish = resolve; });
+  const poll = scene.controller.refresh();
+  await scene.controller.importManual({edition: 'v2'});
+  finish(old);
+  await poll;
+  assert.equal(scene.controller.centrifuge.knowledge.manual.version, 'v2');
+});
+
+test('manual failures remain visible through successful polling and preserve the active document', async () => {
+  const scene = new ManualKnowledgeSimulation();
+  await scene.controller.refresh();
+  const failure = new Error('Betriebsregeln fehlen im Dokument');
+  scene.service.importManual = async () => { throw failure; };
+  assert.equal(await scene.controller.importManual({document: 'invalid'}), false);
+  await scene.controller.refresh();
+  assert.equal(scene.controller.manualError, failure.message);
+  assert.equal(scene.controller.centrifuge.knowledge.manual.version, 'v1');
+});
+
+test('the knowledge panel explains a rule change and preserves an edited draft across polling', async () => {
+  const scene = new ManualKnowledgeSimulation();
+  const controls = new PhysicsControls();
+  const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
+  await mounted.initialized;
+  const editor = controls.find('laboratory-physics-manual-document');
+  assert.equal(editor.value, scene.answer.centrifuge.knowledge.manual.document);
+  const draft = editor.value + '\nDraft';
+  editor.value = draft;
+  editor.listeners.get('input')();
+  await mounted.refresh();
+  assert.equal(editor.value, draft);
+  await controls.find('laboratory-physics-manual-v2').listeners.get('click')();
+  assert.equal(editor.value, draft);
+  assert.match(controls.find('laboratory-physics-manual-changes').textContent, /2 → 4/);
+  assert.match(controls.find('laboratory-physics-manual-source').textContent, /Betriebsregeln.*6/);
+  assert.equal(controls.find('laboratory-physics-centrifuge-start').disabled, true);
+  assert.match(controls.find('laboratory-physics-manual-observed').textContent, /2/);
+  assert.match(controls.find('laboratory-physics-manual-plan').textContent, /Zweites ausgewogenes/);
+  await controls.find('laboratory-physics-manual-apply').listeners.get('click')();
+  assert.deepEqual(scene.commands.at(-1), {type: 'manual', document: draft});
+  mounted.destroy();
+});
+
+test('manual imports cannot overlap physical loading, rotation or another import', async () => {
+  const scene = new ManualKnowledgeSimulation();
+  await scene.controller.refresh();
+  scene.controller.centrifugeTransfer = {key: 'tube'};
+  assert.equal(await scene.controller.importManual({edition: 'v2'}), false);
+  scene.controller.centrifugeTransfer = null;
+  scene.controller.centrifuge.locked = true;
+  assert.equal(await scene.controller.importManual({edition: 'v2'}), false);
+  scene.controller.centrifuge.locked = false;
+  let finish;
+  scene.service.importManual = () => new Promise(resolve => { finish = resolve; });
+  const importing = scene.controller.importManual({edition: 'v2'});
+  assert.equal(await scene.controller.importManual({edition: 'v1'}), false);
+  assert.equal(await scene.controller.commandCentrifuge('start', {rpm: 120, duration: 20}), false);
+  finish(structuredClone(scene.answer));
+  await importing;
+});
+
+test('a pending manual import locks its controls and reports rejection beside the retained draft', async () => {
+  const scene = new ManualKnowledgeSimulation();
+  const controls = new PhysicsControls();
+  const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
+  await mounted.initialized;
+  const editor = controls.find('laboratory-physics-manual-document');
+  editor.value = 'Invalid draft';
+  editor.listeners.get('input')();
+  let reject;
+  scene.service.importManual = () => new Promise((resolve, failure) => { reject = failure; });
+  const importing = controls.find('laboratory-physics-manual-apply').listeners.get('click')();
+  for (const suffix of ['v1', 'v2', 'apply']) assert.equal(controls.find('laboratory-physics-manual-' + suffix).disabled, true);
+  assert.equal(controls.find('laboratory-physics-centrifuge-start').disabled, true);
+  const failure = new Error('Betriebsregeln fehlen');
+  reject(failure);
+  await importing;
+  await mounted.refresh();
+  assert.equal(controls.find('laboratory-physics-manual-error').textContent, failure.message);
+  assert.equal(editor.value, 'Invalid draft');
+  assert.match(controls.find('laboratory-physics-manual-version').textContent, /v1/);
+  mounted.destroy();
+});
+
+test('unconfirmed manual conditions block a start and reading V1 restores readiness without resetting', async () => {
+  const scene = new ManualKnowledgeSimulation();
+  scene.answer.centrifuge.knowledge.evaluation.allowed = null;
+  await scene.controller.refresh();
+  assert.equal(await scene.controller.commandCentrifuge('start'), false);
+  await scene.controller.importManual({edition: 'v1'});
+  assert.equal(await scene.controller.commandCentrifuge('start'), true);
+  assert.deepEqual(scene.commands, [{type: 'manual', edition: 'v1'}, {type: 'centrifuge', action: 'start'}]);
+});
+
+test('manual history retains the versions, changed rule values and their document sources', async () => {
+  const scene = new ManualKnowledgeSimulation();
+  const source = scene.answer.centrifuge.knowledge.manual.source;
+  scene.answer.centrifuge.knowledge.history = [
+    {revision: 1, version: 'v1', changes: [], digest: 'first'},
+    {revision: 2, version: 'v2', changes: [{field: 'minimumSamples', label: 'Mindestanzahl Proben', before: 2, after: 4, source}], digest: 'second'},
+  ];
+  const controls = new PhysicsControls();
+  const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
+  await mounted.initialized;
+  const history = controls.find('laboratory-physics-manual-history').textContent;
+  assert.match(history, /v1/);
+  assert.match(history, /v2/);
+  assert.match(history, /2 → 4/);
+  assert.match(history, /Betriebsregeln/);
+  mounted.destroy();
+});
+
+test('a later successful reset cannot turn a rejected document into an accepted import', async () => {
+  const scene = new ManualKnowledgeSimulation();
+  await scene.controller.refresh();
+  let reject;
+  scene.service.importManual = () => new Promise((resolve, failure) => { reject = failure; });
+  const importing = scene.controller.importManual({document: 'Invalid draft'});
+  const resetting = scene.controller.reset();
+  reject(new Error('Betriebsregeln fehlen'));
+  assert.equal(await importing, false);
+  await resetting;
+  assert.equal(scene.controller.centrifuge.knowledge.manual.version, 'v1');
+});
+
+test('expanded source details identify exact active and historical document contents', async () => {
+  const scene = new ManualKnowledgeSimulation();
+  const digest = 'a1'.repeat(32), previousDigest = 'b2'.repeat(32);
+  scene.answer.centrifuge.knowledge.manual.digest = digest;
+  scene.answer.centrifuge.knowledge.history = [{revision: 1, version: 'v1', digest: previousDigest, changes: []}];
+  const controls = new PhysicsControls();
+  const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
+  await mounted.initialized;
+  const identity = controls.find('laboratory-physics-manual-digest');
+  assert.equal(identity.parent.tagName, 'details');
+  assert.match(identity.textContent, new RegExp(digest.slice(0, 12)));
+  assert.equal(identity.title, digest);
+  assert.match(controls.find('laboratory-physics-manual-history').textContent, new RegExp(previousDigest.slice(0, 12)));
+  assert.match(controls.find('laboratory-physics-manual-plan').textContent, /Empfohlene Schritte/);
+  mounted.destroy();
+});

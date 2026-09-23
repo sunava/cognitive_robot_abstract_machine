@@ -669,6 +669,14 @@ class LaboratoryProgramPhysics:
             raise InvalidPhysicsTarget("Pause the PR2 program before filling tubes")
         self.physics.fill_liquid(key, volume_ml)
 
+    def read_centrifuge_manual(self, document: str) -> None:
+        """Read instrument rules while the robot program is paused or inactive."""
+        if self.program.state == ProgramState.RUNNING:
+            raise InvalidPhysicsTarget(
+                "Pause the PR2 program before reading another operating manual"
+            )
+        self.physics.read_centrifuge_manual(document)
+
     def centrifuge_command(
         self,
         action: str,

@@ -85,3 +85,19 @@
 .laboratory-physics-centrifuge input { width: 100%; box-sizing: border-box; }
 .laboratory-physics .laboratory-physics-centrifuge-pair { background: #236859; border-color: #236859; color: #fff; font-weight: 650; }
 .laboratory-physics-centrifuge-pair-note { color: #536b64; font-size: 12px; }
+
+/* %% manual sources, observed facts and derived readiness */
+.laboratory-physics-manual { margin: 12px 0; padding: 10px; border: 1px solid #bacfc7; border-radius: 9px; background: #edf5f1; }
+.laboratory-physics-manual[hidden] { display: none; }
+.laboratory-physics-manual h5 { margin: 0 0 7px; font-size: 14px; }
+.laboratory-physics-manual p { font-size: 12px; white-space: pre-line; overflow-wrap: anywhere; }
+.laboratory-physics-manual-buttons { display: grid; gap: 5px; }
+.laboratory-physics-manual-version, .laboratory-physics-manual-ready, .laboratory-physics-manual-changes { font-weight: 650; }
+.laboratory-physics-manual-ready[data-allowed="true"] { color: #236859; }
+.laboratory-physics-manual-ready[data-allowed="false"] { color: #87520c; }
+.laboratory-physics-manual-source, .laboratory-physics-manual-draft-status { color: #536b64; }
+.laboratory-physics-manual-error { color: #a32f20; }
+.laboratory-physics-manual details { margin-top: 8px; }
+.laboratory-physics-manual summary { cursor: pointer; font-size: 12px; }
+.laboratory-physics-manual details > button { width: 100%; margin-top: 5px; font-size: 12px; }
+.laboratory-physics-manual-document { display: block; width: 100%; box-sizing: border-box; margin-top: 8px; padding: 7px; resize: vertical; border: 1px solid #b8d0c8; border-radius: 5px; font: 11px/1.5 monospace; background: #fff; color: #18302d; }
