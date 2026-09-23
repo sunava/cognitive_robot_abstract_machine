@@ -184,6 +184,37 @@
       if (!slot || !opposite || eligible.length < 2) return [];
       return [slot, opposite].map((item, index) => ({key: eligible[index], slot: item.id, volumeMl: CentrifugeSettings.SAMPLE_VOLUME}));
     }
+    /** Explain the current loading state and the next usable instrument action. */
+    centrifugePairGuidance() {
+      const instrument = this.centrifuge;
+      const occupied = instrument ? instrument.slots.filter(slot => slot.key) : [];
+      const samples = this.centrifugePairSamples();
+      const counterpart = occupied.length === 1 && occupied[0].secured;
+      const label = counterpart ? 'Gegenprobe einsetzen' : 'Testpaar laden (2 × 5 ml)';
+      if (this.centrifugePair) return {label: 'Testpaar wird geladen …', note: 'Probe ' + (this.centrifugePair.index + 1) + ' von ' + this.centrifugePair.samples.length + ' wird vorbereitet und eingesetzt. Bitte den Transport abwarten.'};
+      if (!this.ready()) return {label, note: 'Zuerst „Labor starten / fortsetzen“ wählen.'};
+      if (this.robotBusy()) return {label, note: 'Zuerst den PR2 pausieren oder seinen Auftrag abwarten.'};
+      if (!instrument || !instrument.available) return {label, note: 'Die Zentrifuge ist momentan nicht verfügbar.'};
+      if (this.centrifugeTransfer) return {label, note: 'Eine Probe wird gerade bewegt. Bitte den Transport abwarten.'};
+      if (occupied.some(slot => !slot.secured)) return {label: 'Beladung prüfen', note: 'Mindestens eine Probe ist nicht gesichert. Sitz der Probe prüfen und den Einsetzvorgang abschließen.'};
+      if (occupied.length >= 2) {
+        if (!instrument.balanced) return {label: 'Beladung prüfen', note: 'Die eingesetzten Proben sind nicht ausgewogen. Gegenüberliegende Plätze gleich schwer beladen.'};
+        const prepared = {label: 'Testpaar bereit', note: occupied.length + ' Proben sind bereits eingesetzt und ausgewogen. '};
+        if (instrument.locked || instrument.running || Math.abs(instrument.rpm) > CentrifugeSettings.STOPPED_RPM) prepared.note += 'Rotor stoppen oder den laufenden Durchgang abwarten.';
+        else if (instrument.lidOpen) prepared.note += 'Jetzt „Deckel schließen“ und anschließend „Zentrifugieren“ wählen.';
+        else if (instrument.lidClosed) prepared.note += 'Jetzt „Zentrifugieren“ wählen.';
+        else prepared.note += 'Warten, bis der Deckel seine Endposition erreicht.';
+        return prepared;
+      }
+      if (instrument.locked || instrument.running || Math.abs(instrument.rpm) > CentrifugeSettings.STOPPED_RPM) return {label, note: 'Vor dem Beladen den Rotor stoppen und warten, bis der Deckel entriegelt ist.'};
+      if (!instrument.lidOpen) return {label, note: 'Zum Beladen zuerst „Deckel öffnen“ wählen und warten, bis er vollständig offen ist.'};
+      if (this.scaleTransfer) return {label, note: 'Zuerst den Transport zur Waage abwarten oder anhalten.'};
+      if (this.centrifugeBusy() || this.liquidBusy()) return {label, note: 'Der vorherige Auftrag wird noch ausgeführt. Bitte kurz warten.'};
+      if (!samples.length) return {label, note: 'Zum Beladen werden freie Gläser mit passender Kapazität und freie gegenüberliegende Rotorplätze benötigt.'};
+      return {label, note: counterpart
+        ? 'Die Gegenprobe erhält dieselbe Füllmenge wie die eingesetzte Probe (' + samples[0].volumeMl.toFixed(1) + ' ml). Die vorhandene Probe bleibt unverändert.'
+        : 'Setzt zwei Gläser mit je 5 ml nacheinander in gegenüberliegende Plätze. Danach Deckel schließen und zentrifugieren; keine PR2-Demo nötig.'};
+    }
     /** Fill and seat balanced samples sequentially using measured contact feedback. */
     loadCentrifugePair() {
       if (!this.centrifugeAccessible() || this.centrifugeTransfer || this.centrifugePair || this.scaleTransfer || this.liquidBusy()) return Promise.resolve(false);
@@ -851,11 +882,10 @@
       if (pair) centrifugeStatus.textContent += ' · Probe ' + (pair.index + 1) + ' von ' + pair.samples.length + ' wird vorbereitet und eingesetzt …';
       else if (controller.centrifugeTransfer) centrifugeStatus.textContent += ' · Probe wird ' + (controller.centrifugeTransfer.type === CentrifugeTransfer.LOAD ? 'eingesetzt …' : 'herausgehoben …');
       const pairSamples = controller.centrifugePairSamples();
-      const counterpart = instrument && instrument.slots.filter(item => item.key && item.secured).length === 1;
-      loadPair.textContent = counterpart ? 'Gegenprobe einsetzen' : 'Testpaar laden (2 × 5 ml)';
+      const pairGuidance = controller.centrifugePairGuidance();
+      loadPair.textContent = pairGuidance.label;
       loadPair.disabled = !accessible || !pairSamples.length || Boolean(controller.scaleTransfer) || controller.liquidBusy();
-      pairNote.textContent = counterpart ? 'Die Gegenprobe erhält dieselbe Füllmenge wie die eingesetzte Probe' + (pairSamples.length ? ' (' + pairSamples[0].volumeMl.toFixed(1) + ' ml)' : '') + '. Die vorhandene Probe bleibt unverändert.'
-        : 'Setzt zwei Gläser mit je 5 ml nacheinander in gegenüberliegende Plätze. Danach Deckel schließen und zentrifugieren; keine PR2-Demo nötig.';
+      pairNote.textContent = pairGuidance.note;
       slotSelect.value = controller.centrifugeSlot;
       slotSelect.disabled = !manualReady || instrumentBusy;
       if (instrument) for (const item of instrument.slots) {

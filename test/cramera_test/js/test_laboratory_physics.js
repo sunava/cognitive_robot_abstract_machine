@@ -1386,6 +1386,85 @@ test('the counterpart button remains usable after a single sample is secured', a
   mounted.destroy();
 });
 
+test('an already loaded balanced pair explains the next action without offering another load', async () => {
+  const scene = new BalancedSampleSimulation();
+  Object.assign(scene.answer.centrifuge.slots[0], {key: 'tube', secured: true, grams: 17});
+  Object.assign(scene.answer.centrifuge.slots[2], {key: 'countertube', secured: true, grams: 17});
+  scene.answer.centrifuge.balanced = true;
+  const controls = new PhysicsControls();
+  const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
+  await mounted.initialized;
+  const button = controls.find('laboratory-physics-centrifuge-pair');
+  const note = controls.find('laboratory-physics-centrifuge-pair-note');
+  assert.equal(button.textContent, 'Testpaar bereit');
+  assert.equal(button.disabled, true);
+  assert.match(note.textContent, /bereits eingesetzt.*Deckel schließen/);
+  assert.equal(controls.find('laboratory-physics-centrifuge-close').disabled, false);
+  scene.answer.centrifuge.lidOpen = false;
+  scene.answer.centrifuge.lidClosed = true;
+  await mounted.refresh();
+  assert.match(note.textContent, /bereits eingesetzt.*Zentrifugieren/);
+  assert.doesNotMatch(note.textContent, /Deckel schließen/);
+  assert.equal(controls.find('laboratory-physics-centrifuge-start').disabled, false);
+  assert.deepEqual(scene.commands, []);
+  mounted.destroy();
+});
+
+for (const secured of [false, true]) {
+  test('occupied ' + (secured ? 'unbalanced' : 'unsecured') + ' samples explain why the pair needs attention', async () => {
+    const scene = new BalancedSampleSimulation();
+    Object.assign(scene.answer.centrifuge.slots[0], {key: 'tube', secured: true, grams: 17});
+    Object.assign(scene.answer.centrifuge.slots[2], {key: 'countertube', secured, grams: 19});
+    const controls = new PhysicsControls();
+    const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
+    await mounted.initialized;
+    assert.equal(controls.find('laboratory-physics-centrifuge-pair').textContent, 'Beladung prüfen');
+    assert.equal(controls.find('laboratory-physics-centrifuge-pair').disabled, true);
+    assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, secured ? /nicht ausgewogen/ : /nicht gesichert/);
+    assert.equal(controls.find('laboratory-physics-centrifuge-start').disabled, true);
+    assert.deepEqual(scene.commands, []);
+    mounted.destroy();
+  });
+}
+
+test('a closed empty centrifuge explains how to enable loading', async () => {
+  const scene = new BalancedSampleSimulation();
+  scene.answer.centrifuge.lidOpen = false;
+  scene.answer.centrifuge.lidClosed = true;
+  const controls = new PhysicsControls();
+  const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
+  await mounted.initialized;
+  assert.equal(controls.find('laboratory-physics-centrifuge-pair').disabled, true);
+  assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, /Deckel öffnen/);
+  mounted.destroy();
+});
+
+for (const running of [false, true]) {
+  test('pair loading explains an ' + (running ? 'active robot' : 'inactive simulation'), async () => {
+    const scene = new BalancedSampleSimulation();
+    scene.config.robot = true;
+    scene.answer.state = running ? 'running' : 'stopped';
+    scene.answer.robot = {state: running ? Physics.RobotStates.RUNNING : Physics.RobotStates.IDLE};
+    const controls = new PhysicsControls();
+    const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
+    await mounted.initialized;
+    assert.equal(controls.find('laboratory-physics-centrifuge-pair').disabled, true);
+    assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, running ? /PR2.*pausieren/ : /Labor starten/);
+    mounted.destroy();
+  });
+}
+
+test('pair loading labels itself as running while the first sample is prepared', async () => {
+  const scene = new BalancedSampleSimulation();
+  const controls = new PhysicsControls();
+  const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
+  await mounted.initialized;
+  await controls.find('laboratory-physics-centrifuge-pair').listeners.get('click')();
+  assert.equal(controls.find('laboratory-physics-centrifuge-pair').textContent, 'Testpaar wird geladen …');
+  assert.match(controls.find('laboratory-physics-centrifuge-pair-note').textContent, /Probe 1 von 2/);
+  mounted.destroy();
+});
+
 test('cancelling an in-flight pair fill does not start any subsequent movement', async () => {
   const scene = new BalancedSampleSimulation();
   await scene.controller.refresh();
