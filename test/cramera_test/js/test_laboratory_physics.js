@@ -1134,8 +1134,9 @@ test('centrifuge loading waits for observed seating and contact before securing'
   assert.equal(scene.commands.length, 1);
   await scene.controller.refresh();
   assert.equal(scene.commands.length, 1);
-  for (let index = 0; index < 4; index++) await scene.settle();
-  assert.equal(scene.commands.filter(command => command.type === 'target').length, 4);
+  const waypointCount = scene.controller.centrifugeTransfer.waypoints.length;
+  for (let index = 0; index < waypointCount; index++) await scene.settle();
+  assert.equal(scene.commands.filter(command => command.type === 'target').length, waypointCount);
   assert.equal(scene.commands.some(command => command.action === 'secure'), false);
   scene.answer.contacts = [{bodyA: 'tube', bodyB: 'laboratory_centrifuge_rotor', force: .2}];
   await scene.settle();
@@ -1226,7 +1227,8 @@ test('centrifuge load cannot secure while measured motion is still fast at the s
   const scene = new CentrifugeSimulation();
   await scene.controller.refresh();
   await scene.controller.loadCentrifuge();
-  for (let index = 0; index < 4; index++) await scene.settle();
+  const waypointCount = scene.controller.centrifugeTransfer.waypoints.length;
+  for (let index = 0; index < waypointCount; index++) await scene.settle();
   scene.answer.contacts = [{bodyA: 'tube', bodyB: 'laboratory_centrifuge_rotor', force: .2}];
   scene.answer.objects.tube[0] += .001;
   scene.answer.time += .1;
@@ -1253,3 +1255,190 @@ test('secured centrifuge samples block robot starts before any reset request', a
   assert.deepEqual(scene.commands, []);
   mounted.destroy();
 });
+
+// %% balanced sample preparation
+class BalancedSampleSimulation extends CentrifugeSimulation {
+  constructor() {
+    super();
+    this.config.objects.push({key: 'countertube', label: 'Gegenglas'});
+    this.answer.objects.countertube = [.24, -.065, .906, 0, 0, 0, 1];
+    this.answer.liquid.tubes.countertube = {volumeMl: 0, capacityMl: 22};
+    this.service.fillLiquid = async (key, volumeMl) => {
+      this.commands.push({type: 'liquid', key, volumeMl});
+      this.answer.liquid.tubes[key].volumeMl = volumeMl;
+      return structuredClone(this.answer);
+    };
+    this.service.centrifuge = async command => {
+      this.commands.push({type: 'centrifuge', ...command});
+      if (command.action === Physics.CentrifugeActions.SECURE) {
+        const slot = this.answer.centrifuge.slots.find(item => item.id === command.slot);
+        Object.assign(slot, {key: command.key, secured: true, grams: 12 + this.answer.liquid.tubes[command.key].volumeMl});
+      }
+      return structuredClone(this.answer);
+    };
+  }
+  async settleSample() {
+    const transfer = this.controller.centrifugeTransfer;
+    assert.ok(transfer);
+    while (this.controller.centrifugeTransfer === transfer) {
+      const target = this.controller.target;
+      this.answer.objects[target.key] = [...target.position, ...target.orientation];
+      this.answer.contacts = [{bodyA: target.key, bodyB: Physics.CentrifugeSettings.ROTOR_BODY, force: .2}];
+      this.answer.time += .1;
+      await this.controller.refresh();
+    }
+  }
+}
+
+test('a balanced pair fills and physically loads opposite slots in sequence without a robot or reset', async () => {
+  const scene = new BalancedSampleSimulation();
+  await scene.controller.refresh();
+  scene.controller.selectCentrifugeSlot('C2');
+  assert.equal(await scene.controller.loadCentrifugePair(), true);
+  assert.deepEqual(scene.commands[0], {type: 'liquid', key: 'tube', volumeMl: Physics.CentrifugeSettings.SAMPLE_VOLUME});
+  assert.equal(scene.commands.filter(command => command.type === 'liquid').length, 1);
+  await scene.settleSample();
+  assert.equal(scene.commands.filter(command => command.action === Physics.CentrifugeActions.SECURE).length, 1);
+  assert.equal(scene.controller.centrifugePair.index, 1);
+  assert.equal(scene.controller.centrifugeTransfer.key, 'countertube');
+  await scene.settleSample();
+  assert.equal(scene.controller.centrifugePair, null);
+  assert.equal(scene.controller.centrifugeTransfer, null);
+  assert.deepEqual(scene.commands.filter(command => command.action === Physics.CentrifugeActions.SECURE), [
+    {type: 'centrifuge', action: Physics.CentrifugeActions.SECURE, slot: 'C2', key: 'tube'},
+    {type: 'centrifuge', action: Physics.CentrifugeActions.SECURE, slot: 'C4', key: 'countertube'},
+  ]);
+  assert.deepEqual(scene.commands.filter(command => command.type === 'liquid').map(command => command.volumeMl), [Physics.CentrifugeSettings.SAMPLE_VOLUME, Physics.CentrifugeSettings.SAMPLE_VOLUME]);
+  assert.equal(scene.commands.some(command => ['run', 'runMixing', 'reset'].includes(command.type)), false);
+});
+
+test('a counterpart preserves the secured sample and matches its measured liquid volume', async () => {
+  const scene = new BalancedSampleSimulation();
+  scene.answer.liquid.tubes.tube.volumeMl = 7;
+  Object.assign(scene.answer.centrifuge.slots[0], {key: 'tube', secured: true, grams: 19});
+  await scene.controller.refresh();
+  assert.equal(await scene.controller.loadCentrifugePair(), true);
+  await scene.settleSample();
+  assert.deepEqual(scene.commands.filter(command => command.type === 'liquid'), [{type: 'liquid', key: 'countertube', volumeMl: 7}]);
+  assert.deepEqual(scene.commands.filter(command => command.action === Physics.CentrifugeActions.SECURE), [{type: 'centrifuge', action: Physics.CentrifugeActions.SECURE, slot: 'C3', key: 'countertube'}]);
+  assert.equal(scene.answer.centrifuge.slots[0].key, 'tube');
+  assert.equal(scene.answer.liquid.tubes.tube.volumeMl, 7);
+  assert.equal(scene.controller.centrifugePair, null);
+});
+
+test('an empty secured sample receives an empty counterpart without adding liquid to either glass', async () => {
+  const scene = new BalancedSampleSimulation();
+  scene.answer.liquid.tubes.tube.volumeMl = 0;
+  Object.assign(scene.answer.centrifuge.slots[0], {key: 'tube', secured: true, grams: 12});
+  await scene.controller.refresh();
+  assert.equal(await scene.controller.loadCentrifugePair(), true);
+  await scene.settleSample();
+  assert.deepEqual(scene.commands.filter(command => command.type === 'liquid'), [{type: 'liquid', key: 'countertube', volumeMl: 0}]);
+  assert.equal(scene.answer.liquid.tubes.tube.volumeMl, 0);
+  assert.equal(scene.answer.liquid.tubes.countertube.volumeMl, 0);
+  assert.equal(scene.controller.centrifugePair, null);
+});
+
+test('single-sample loading selects the opposite empty slot and next free glass', async () => {
+  const scene = new BalancedSampleSimulation();
+  await scene.controller.refresh();
+  await scene.controller.loadCentrifuge();
+  await scene.settleSample();
+  assert.equal(scene.controller.centrifugeSlot, 'C3');
+  assert.equal(scene.controller.selected, 'countertube');
+  assert.equal(scene.commands.some(command => command.type === 'liquid'), false);
+  assert.equal(await scene.controller.loadCentrifuge(), true);
+});
+
+test('pair preparation exposes progress and blocks conflicting controls until cancelled', async () => {
+  const scene = new BalancedSampleSimulation();
+  scene.config.robot = true;
+  const controls = new PhysicsControls();
+  const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
+  await mounted.initialized;
+  const button = controls.find('laboratory-physics-centrifuge-pair');
+  assert.equal(button.textContent, 'Testpaar laden (2 × 5 ml)');
+  assert.equal(button.disabled, false);
+  await button.listeners.get('click')();
+  assert.match(controls.find('laboratory-physics-centrifuge-status').textContent, /1 von 2/);
+  for (const name of ['object', 'fill', 'hold', 'scale-move', 'centrifuge-load', 'centrifuge-close', 'robot-run']) {
+    assert.equal(controls.find('laboratory-physics-' + name).disabled, true, name);
+  }
+  assert.equal(await mounted.controller.fillLiquid(2), false);
+  assert.equal(mounted.controller.beginDrag('countertube'), false);
+  assert.equal(await mounted.controller.run(), false);
+  await controls.find('laboratory-physics-centrifuge-cancel').listeners.get('click')();
+  assert.equal(mounted.controller.centrifugePair, null);
+  assert.equal(mounted.controller.centrifugeTransfer, null);
+  await mounted.refresh();
+  assert.equal(scene.commands.filter(command => command.type === 'liquid').length, 1);
+  mounted.destroy();
+});
+
+test('the counterpart button remains usable after a single sample is secured', async () => {
+  const scene = new BalancedSampleSimulation();
+  Object.assign(scene.answer.centrifuge.slots[0], {key: 'tube', secured: true, grams: 24});
+  const controls = new PhysicsControls();
+  const mounted = Physics.mount(controls.host, scene.config, scene.service, scene.adapter, new PhysicsPolling());
+  await mounted.initialized;
+  assert.equal(controls.find('laboratory-physics-centrifuge-pair').textContent, 'Gegenprobe einsetzen');
+  assert.equal(controls.find('laboratory-physics-centrifuge-pair').disabled, false);
+  mounted.destroy();
+});
+
+test('cancelling an in-flight pair fill does not start any subsequent movement', async () => {
+  const scene = new BalancedSampleSimulation();
+  await scene.controller.refresh();
+  let finish;
+  scene.service.fillLiquid = (key, volumeMl) => {
+    scene.commands.push({type: 'liquid', key, volumeMl});
+    return new Promise(resolve => { finish = resolve; });
+  };
+  const preparing = scene.controller.loadCentrifugePair();
+  const releasing = scene.controller.release();
+  finish({ok: true});
+  await Promise.all([preparing, releasing]);
+  assert.equal(scene.controller.centrifugePair, null);
+  assert.equal(scene.controller.centrifugeTransfer, null);
+  assert.deepEqual(scene.commands.map(command => command.type), ['liquid', 'release']);
+});
+
+test('a rejected pair target clears all remaining samples and exposes the failure', async () => {
+  const scene = new BalancedSampleSimulation();
+  await scene.controller.refresh();
+  scene.service.target = async () => { throw new Error('Blocked sample'); };
+  assert.equal(await scene.controller.loadCentrifugePair(), false);
+  assert.equal(scene.controller.centrifugePair, null);
+  assert.equal(scene.controller.centrifugeTransfer, null);
+  assert.equal(scene.controller.error, 'Blocked sample');
+  assert.equal(scene.commands.filter(command => command.type === 'liquid').length, 1);
+});
+
+test('a failed pair stays explained on subsequent polls until manual recovery', async () => {
+  const scene = new BalancedSampleSimulation();
+  await scene.controller.refresh();
+  scene.service.fillLiquid = async () => { throw new Error('Sample filling rejected'); };
+  await scene.controller.loadCentrifugePair();
+  await scene.controller.refresh();
+  assert.equal(scene.controller.error, 'Sample filling rejected');
+  await scene.controller.hold(scene.controller.selected);
+  assert.equal(scene.controller.error, null);
+});
+
+for (const stage of ['target', 'secure']) {
+  test('a pair ' + stage + ' failure remains visible until manual recovery', async () => {
+    const scene = new BalancedSampleSimulation();
+    await scene.controller.refresh();
+    await scene.controller.loadCentrifugePair();
+    const failure = new Error('Sample ' + stage + ' rejected');
+    scene.service[stage === 'secure' ? 'centrifuge' : 'target'] = async () => { throw failure; };
+    await scene.settleSample();
+    await scene.controller.refresh();
+    assert.equal(scene.controller.error, failure.message);
+    assert.equal(scene.controller.centrifugePair, null);
+    assert.equal(scene.commands.filter(command => command.type === 'liquid').length, 1);
+    scene.service.target = async () => ({ok: true});
+    await scene.controller.hold(scene.controller.selected);
+    assert.equal(scene.controller.error, null);
+  });
+}

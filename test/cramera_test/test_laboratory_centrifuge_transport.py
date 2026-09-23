@@ -33,6 +33,12 @@ class InstrumentTransportField(StrEnum):
     """Load or unload operation requested from the browser."""
     LOAD = "load"
     """Move a selected sample into a holder."""
+    PAIR = "pair"
+    """Prepare and load an equal-mass pair without a robot program."""
+    LIQUID = "liquid"
+    """Fill a selected loose sample before loading."""
+    VOLUME = "volumeMl"
+    """Liquid fill amount in millilitres."""
     UNLOAD = "unload"
     """Release a holder and raise its sample."""
     MOVING = "moving"
@@ -64,7 +70,9 @@ def transport_sample(
 ) -> None:
     """Execute browser-generated force targets without assigning object poses."""
     configuration = {
-        TransferField.OBJECTS: [{TransferField.KEY: key}],
+        TransferField.OBJECTS: [
+            {TransferField.KEY: object_key} for object_key in engine.physics.objects
+        ],
         TransferField.BOUNDS: {
             TransferField.MINIMUM: list(LaboratoryPhysicsSession.TARGET_MINIMUM),
             TransferField.MAXIMUM: list(LaboratoryPhysicsSession.TARGET_MAXIMUM),
@@ -100,6 +108,11 @@ def transport_sample(
                     )
                 elif kind == TransferField.RELEASE:
                     engine.release()
+                elif kind == InstrumentTransportField.LIQUID:
+                    engine.fill_liquid(
+                        command[TransferField.KEY],
+                        command[InstrumentTransportField.VOLUME],
+                    )
                 else:
                     assert kind == InstrumentTransportField.CENTRIFUGE
                     engine.centrifuge_command(**command)

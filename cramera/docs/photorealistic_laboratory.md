@@ -252,6 +252,15 @@ MuJoCo berechnet die tatsächlichen Gelenkbewegungen; die Browseransicht überni
 die gemessenen Winkel. Die vier offenen Hülsen nehmen die vorhandenen 150 mm
 langen Reagenzgläser auf.
 
+Zum direkten Testen ohne Roboterablauf dient **Testpaar laden (2 × 5 ml)**:
+Zwei freie Gläser werden jeweils auf 5 ml befüllt und nacheinander in
+gegenüberliegende Halter eingesetzt. Wenn bereits eine einzelne Probe gesichert
+ist, bietet derselbe Knopf **Gegenprobe einsetzen** an. Dabei übernimmt das
+zweite Glas die Füllmenge der vorhandenen Probe; deren Inhalt bleibt erhalten.
+Anschließend den Deckel schließen und **Zentrifugieren** drücken.
+
+Einzelne Proben lassen sich weiterhin gezielt einsetzen:
+
 1. Einen laufenden PR2-Ablauf pausieren und den Zentrifugendeckel öffnen.
 2. Ein Glas sowie einen Platz C1–C4 auswählen und **Probe einsetzen** drücken.
    Die Kontaktsteuerung hebt das Glas an und senkt es in den Halter. Erst nach
@@ -262,8 +271,9 @@ langen Reagenzgläser auf.
 5. Nach Ende der Laufzeit oder **Rotor stoppen** bremst der Antrieb ab. Erst im Stillstand
    lässt sich der Deckel öffnen und eine Probe wieder entnehmen.
 
-Für einen ersten Durchlauf lassen sich zwei Gläser vor dem Einsetzen jeweils
-mit 5 ml befüllen; beide wiegen dann 17 g.
+Zwei Gläser mit jeweils 5 ml wiegen in diesem Modell je 17 g. Während des
+automatischen Beladens zeigt die Bedienung den Fortschritt; **Transport anhalten**
+verhindert auch das anschließende Laden einer noch ausstehenden Gegenprobe.
 
 Starten ist bei offenem Deckel, einer losen Probe im Rotorraum, fehlender
 Gegenprobe oder mehr als 0,25 g Massendifferenz innerhalb eines belegten

@@ -83,3 +83,5 @@
 .laboratory-physics-centrifuge > button { width: 100%; margin-top: 5px; }
 .laboratory-physics-centrifuge-status { font-size: 12px; font-variant-numeric: tabular-nums; color: #536b64; }
 .laboratory-physics-centrifuge input { width: 100%; box-sizing: border-box; }
+.laboratory-physics .laboratory-physics-centrifuge-pair { background: #236859; border-color: #236859; color: #fff; font-weight: 650; }
+.laboratory-physics-centrifuge-pair-note { color: #536b64; font-size: 12px; }

@@ -14,19 +14,22 @@ class CentrifugeTransport {
         target: async target => { this.commands.push({type: 'target', ...target}); return {ok: true}; },
         release: async () => { this.commands.push({type: 'release'}); return {ok: true}; },
         centrifuge: async command => { this.commands.push({type: 'centrifuge', ...command}); return {ok: true}; },
+        fillLiquid: async (key, volumeMl) => { this.commands.push({type: 'liquid', key, volumeMl}); return {ok: true}; },
       };
       this.controller = new Physics.Controller(message.config, service, {setObjectPose() {}});
       await this.controller.refresh();
       this.controller.selected = message.selected;
       this.controller.selectCentrifugeSlot(message.slot);
-      if (message.operation === 'load') await this.controller.loadCentrifuge();
+      if (message.operation === 'pair') await this.controller.loadCentrifugePair();
+      else if (message.operation === 'load') await this.controller.loadCentrifuge();
       else await this.controller.unloadCentrifuge();
     } else await this.controller.refresh();
     return {
       commands: this.commands.splice(0),
-      moving: Boolean(this.controller.centrifugeTransfer),
+      moving: Boolean(this.controller.centrifugeTransfer || this.controller.centrifugePair),
       error: this.controller.error,
       transfer: this.controller.centrifugeTransfer,
+      pair: this.controller.centrifugePair,
     };
   }
 }

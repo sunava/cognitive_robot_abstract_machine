@@ -51,7 +51,7 @@
   const STOPPER_CAP_RADIUS = .0105;
   const CentrifugeActions = Object.freeze({OPEN: 'open', CLOSE: 'close', SECURE: 'secure', RELEASE: 'release', START: 'start', STOP: 'stop'});
   const CentrifugeTransfer = Object.freeze({LOAD: 'load', UNLOAD: 'unload'});
-  const CentrifugeSettings = Object.freeze({RPM: 120, DURATION: 20, MAXIMUM_DURATION: 300, STOPPED_RPM: .5, DISTANCE: .0025, ANGLE: .035, ROTOR_BODY: 'laboratory_centrifuge_rotor'});
+  const CentrifugeSettings = Object.freeze({RPM: 120, DURATION: 20, MAXIMUM_DURATION: 300, STOPPED_RPM: .5, DISTANCE: .0025, ANGLE: .035, ROTOR_BODY: 'laboratory_centrifuge_rotor', SAMPLE_VOLUME: 5, TRANSPORT_STEP: .025});
 
   /** Exchange desired targets and observed simulation states with the local service. */
   class Client {
@@ -99,6 +99,7 @@
       this.centrifuge = null;
       this.centrifugeSlot = 'C1';
       this.centrifugeTransfer = null;
+      this.centrifugePair = null;
       this.centrifugeTransferError = null;
       this.centrifugeRevision = 0;
       this.scaleTransfer = null;
@@ -132,7 +133,7 @@
     secured(key) { return Boolean(this.centrifuge && this.centrifuge.slots.some(slot => slot.secured && slot.key === key)); }
     selectedCentrifugeSlot() { return this.centrifuge && this.centrifuge.slots.find(slot => slot.id === this.centrifugeSlot); }
     selectCentrifugeSlot(slot) {
-      if (this.centrifugeTransfer || !this.centrifuge || !this.centrifuge.slots.some(item => item.id === slot)) return false;
+      if (this.centrifugeTransfer || this.centrifugePair || !this.centrifuge || !this.centrifuge.slots.some(item => item.id === slot)) return false;
       this.centrifugeSlot = slot;
       this.changed();
       return true;
@@ -144,7 +145,7 @@
     commandCentrifuge(action, options) {
       const instrument = this.centrifuge;
       if (!this.ready() || !instrument || !instrument.available || this.centrifugeBusy()) return Promise.resolve(false);
-      if (action !== CentrifugeActions.STOP && (!this.manualReady() || this.centrifugeTransfer)) return Promise.resolve(false);
+      if (action !== CentrifugeActions.STOP && (!this.manualReady() || this.centrifugeTransfer || this.centrifugePair)) return Promise.resolve(false);
       if ([CentrifugeActions.OPEN, CentrifugeActions.CLOSE].includes(action) && (instrument.locked || Math.abs(instrument.rpm) > CentrifugeSettings.STOPPED_RPM)) return Promise.resolve(false);
       if (action === CentrifugeActions.START && (!instrument.lidClosed || !instrument.balanced || instrument.running || instrument.locked)) return Promise.resolve(false);
       if (![CentrifugeActions.OPEN, CentrifugeActions.CLOSE, CentrifugeActions.START, CentrifugeActions.STOP].includes(action)) return Promise.resolve(false);
@@ -158,28 +159,115 @@
       this.centrifugeRevision += 1;
       return this.enqueue({type: 'centrifuge', payload});
     }
+    /** Find unoccupied glass tubes in selection order, excluding secured samples. */
+    freeCentrifugeTubes() {
+      const keys = this.config.objects.map(object => object.key).filter(key => this.objects[key]
+        && this.liquid && this.liquid.tubes && this.liquid.tubes[key] && !this.secured(key));
+      return keys.includes(this.selected) ? [this.selected, ...keys.filter(key => key !== this.selected)] : keys;
+    }
+    /** Plan a fresh test pair or the matching counterweight for one secured sample. */
+    centrifugePairSamples() {
+      if (!this.centrifuge) return [];
+      const occupied = this.centrifuge.slots.filter(slot => slot.key);
+      const keys = this.freeCentrifugeTubes();
+      if (occupied.length === 1 && occupied[0].secured) {
+        const source = this.liquid && this.liquid.tubes[occupied[0].key];
+        const opposite = this.centrifuge.slots.find(slot => slot.id === occupied[0].opposite && !slot.key);
+        if (!source || !opposite || !Number.isFinite(source.volumeMl)) return [];
+        const key = keys.find(key => this.liquid.tubes[key].capacityMl >= source.volumeMl);
+        return key ? [{key, slot: opposite.id, volumeMl: source.volumeMl}] : [];
+      }
+      if (occupied.length) return [];
+      const slot = this.selectedCentrifugeSlot();
+      const opposite = slot && this.centrifuge.slots.find(item => item.id === slot.opposite && !item.key);
+      const eligible = keys.filter(key => this.liquid.tubes[key].capacityMl >= CentrifugeSettings.SAMPLE_VOLUME);
+      if (!slot || !opposite || eligible.length < 2) return [];
+      return [slot, opposite].map((item, index) => ({key: eligible[index], slot: item.id, volumeMl: CentrifugeSettings.SAMPLE_VOLUME}));
+    }
+    /** Fill and seat balanced samples sequentially using measured contact feedback. */
+    loadCentrifugePair() {
+      if (!this.centrifugeAccessible() || this.centrifugeTransfer || this.centrifugePair || this.scaleTransfer || this.liquidBusy()) return Promise.resolve(false);
+      const samples = this.centrifugePairSamples();
+      if (!samples.length) return Promise.resolve(false);
+      const pair = {samples, index: 0};
+      this.centrifugePair = pair;
+      this.centrifugeTransferError = null;
+      this.error = null;
+      return this.prepareCentrifugeSample(pair);
+    }
+    /** Continue only the uncancelled sample preparation after each server acknowledgement. */
+    async prepareCentrifugeSample(pair) {
+      if (this.centrifugePair !== pair) return false;
+      if (pair.index === pair.samples.length) {
+        this.centrifugePair = null;
+        this.changed();
+        return true;
+      }
+      const sample = pair.samples[pair.index];
+      this.selected = sample.key;
+      this.centrifugeSlot = sample.slot;
+      this.changed();
+      if (!await this.fillLiquidCommand(sample.key, sample.volumeMl)) {
+        this.failCentrifugePair(pair);
+        return false;
+      }
+      if (this.centrifugePair !== pair) return false;
+      const loaded = await this.beginCentrifugeLoad(sample.key, sample.slot);
+      if (!loaded) this.failCentrifugePair(pair);
+      this.changed();
+      return loaded;
+    }
+    /** Retain preparation failures until the user resumes manual interaction. */
+    failCentrifugePair(pair) {
+      if (this.centrifugePair !== pair && (this.centrifugePair || !this.error)) return;
+      this.centrifugePair = null;
+      this.centrifugeTransferError = this.error || 'Probe kann nicht eingesetzt werden. Freien Rotorplatz und offenen Deckel prüfen.';
+      this.error = this.centrifugeTransferError;
+      this.changed();
+    }
+    /** Offer the opposite empty holder and another glass after an individual load. */
+    selectCentrifugeCounterpart(slotId) {
+      const completed = this.centrifuge && this.centrifuge.slots.find(slot => slot.id === slotId && slot.secured);
+      const opposite = completed && this.centrifuge.slots.find(slot => slot.id === completed.opposite && !slot.key);
+      const keys = this.freeCentrifugeTubes();
+      if (!opposite || !keys.length) return;
+      this.centrifugeSlot = opposite.id;
+      this.selected = keys[0];
+      this.changed();
+    }
     loadCentrifuge() {
-      const slot = this.selectedCentrifugeSlot(), pose = this.objects[this.selected];
-      if (!this.centrifugeAccessible() || !slot || slot.key || !pose || !this.selectedLiquid() || this.secured(this.selected) || this.centrifugeTransfer) return Promise.resolve(false);
+      if (this.centrifugePair) return Promise.resolve(false);
+      return this.beginCentrifugeLoad(this.selected, this.centrifugeSlot);
+    }
+    beginCentrifugeLoad(key, slotId) {
+      const slot = this.centrifuge && this.centrifuge.slots.find(item => item.id === slotId), pose = this.objects[key];
+      if (!this.centrifugeAccessible() || !slot || slot.key || !pose || !this.liquid || !this.liquid.tubes[key] || this.secured(key) || this.centrifugeTransfer) return Promise.resolve(false);
       const elevation = Math.max(pose[2], slot.position[2]) + LIFT_CLEARANCE;
       if (elevation > this.config.bounds.max[2]) return Promise.resolve(false);
       this.scaleTransfer = null;
       this.centrifugeTransferError = null;
       this.error = null;
       const upright = [0, 0, 0, 1];
-      this.centrifugeTransfer = {type: CentrifugeTransfer.LOAD, key: this.selected, slot: slot.id, index: 0,
+      // Short horizontal targets leave force available to support the sample's weight.
+      const horizontalDistance = Math.hypot(slot.position[0] - pose[0], slot.position[1] - pose[1]);
+      const stepCount = Math.max(1, Math.ceil(horizontalDistance / CentrifugeSettings.TRANSPORT_STEP));
+      const traverse = Array.from({length: stepCount}, (_, index) => ({
+        position: [0, 1].map(axis => pose[axis] + (slot.position[axis] - pose[axis]) * (index + 1) / stepCount).concat(elevation),
+        orientation: upright,
+      }));
+      this.centrifugeTransfer = {type: CentrifugeTransfer.LOAD, key, slot: slot.id, index: 0,
         startedAt: Date.now(), previousPose: pose.slice(), previousTime: this.simulationTime, waypoints: [
           {position: [pose[0], pose[1], elevation], orientation: pose.slice(3)},
           {position: [pose[0], pose[1], elevation], orientation: upright},
-          {position: [slot.position[0], slot.position[1], elevation], orientation: upright},
+          ...traverse,
           {position: slot.position.slice(), orientation: upright},
         ]};
       const first = this.centrifugeTransfer.waypoints[0];
-      return this.targetCommand(this.selected, first.position, first.orientation);
+      return this.targetCommand(key, first.position, first.orientation);
     }
     async unloadCentrifuge() {
       const slot = this.selectedCentrifugeSlot();
-      if (!this.centrifugeAccessible() || !slot || !slot.secured || !slot.key || this.centrifugeTransfer) return false;
+      if (!this.centrifugeAccessible() || !slot || !slot.secured || !slot.key || this.centrifugeTransfer || this.centrifugePair) return false;
       const key = slot.key, pose = this.objects[key];
       if (!pose || pose[2] + LIFT_CLEARANCE > this.config.bounds.max[2]) return false;
       const transfer = {type: CentrifugeTransfer.UNLOAD, key, slot: slot.id, index: 0, startedAt: Date.now(),
@@ -198,11 +286,12 @@
     async advanceCentrifugeTransfer() {
       const transfer = this.centrifugeTransfer;
       if (!transfer || this.centrifugeBusy() || this.draining) return;
-      if (!this.manualReady() || this.error || !this.centrifuge || !this.centrifuge.lidOpen) { this.centrifugeTransfer = null; return; }
+      if (!this.manualReady() || this.error || !this.centrifuge || !this.centrifuge.lidOpen) { this.centrifugeTransfer = null; this.centrifugePair = null; return; }
       const pose = this.objects[transfer.key];
-      if (!pose) { this.centrifugeTransfer = null; return; }
+      if (!pose) { this.centrifugeTransfer = null; this.centrifugePair = null; return; }
       if (Date.now() - transfer.startedAt > SCALE_MOVE_TIMEOUT) {
         this.centrifugeTransfer = null;
+        this.centrifugePair = null;
         this.centrifugeTransferError = transfer.released ? 'Probe im Rotor noch nicht sicher abgesetzt. Sitz prüfen, bevor sie gesichert wird.' : 'Weg zur Zentrifuge blockiert. Das Glas bleibt gehalten; manuell weiterbewegen oder loslassen.';
         this.error = this.centrifugeTransferError;
         return;
@@ -227,8 +316,15 @@
         const supported = this.contacts.some(contact => contact.force > 0 &&
           ((contact.bodyA === transfer.key && contact.bodyB === CentrifugeSettings.ROTOR_BODY) || (contact.bodyB === transfer.key && contact.bodyA === CentrifugeSettings.ROTOR_BODY)));
         if (!supported) return;
+        const pair = this.centrifugePair;
         this.centrifugeTransfer = null;
-        if (await this.sendCentrifuge({action: CentrifugeActions.SECURE, slot: transfer.slot, key: transfer.key})) this.target = null;
+        if (await this.sendCentrifuge({action: CentrifugeActions.SECURE, slot: transfer.slot, key: transfer.key})) {
+          this.target = null;
+          if (pair && this.centrifugePair === pair) {
+            pair.index += 1;
+            await this.prepareCentrifugeSample(pair);
+          } else if (!pair) this.selectCentrifugeCounterpart(transfer.slot);
+        }
         return;
       }
       if (last) { this.centrifugeTransfer = null; return; }
@@ -238,7 +334,7 @@
       await this.targetCommand(transfer.key, next.position, next.orientation);
     }
     tareScale() {
-      if (!this.manualReady() || !this.scale || !this.scale.available || !this.scale.stable || this.scaleBusy()) return Promise.resolve(false);
+      if (!this.manualReady() || this.centrifugePair || !this.scale || !this.scale.available || !this.scale.stable || this.scaleBusy()) return Promise.resolve(false);
       this.scaleRevision += 1;
       return this.enqueue({type: 'tareScale'});
     }
@@ -254,6 +350,7 @@
       this.scale = null;
       this.centrifuge = null;
       this.centrifugeTransfer = null;
+      this.centrifugePair = null;
       this.centrifugeTransferError = null;
       this.centrifugeRevision += 1;
       this.scaleTransfer = null;
@@ -287,6 +384,7 @@
     }
     setTarget(key, position, orientation) {
       this.centrifugeTransfer = null;
+      this.centrifugePair = null;
       this.centrifugeTransferError = null;
       this.scaleTransfer = null;
       this.scaleTransferError = null;
@@ -307,7 +405,7 @@
     moveToScale() {
       const pose = this.objects[this.selected];
       const scale = this.config.scale;
-      if (!this.manualReady() || !pose || !scale || !scale.panPosition || this.scaleTransfer || this.centrifugeTransfer || this.secured(this.selected)) return Promise.resolve(false);
+      if (!this.manualReady() || !pose || !scale || !scale.panPosition || this.scaleTransfer || this.centrifugeTransfer || this.centrifugePair || this.secured(this.selected)) return Promise.resolve(false);
       const pan = scale.panPosition.slice();
       if (scale.holder && !this.selectedLiquid() && scale.holder.innerRadius < STOPPER_CAP_RADIUS) {
         pan[0] += (scale.panRadius + scale.holder.outerRadius) / 2;
@@ -372,7 +470,7 @@
       return pose ? this.setTarget(key, pose.slice(0, 3)) : Promise.resolve(false);
     }
     beginDrag(key) {
-      if (!this.manualReady() || !this.known(key) || this.secured(key) || !this.objects[key]) return false;
+      if (!this.manualReady() || this.centrifugePair || !this.known(key) || this.secured(key) || !this.objects[key]) return false;
       this.dragged = key;
       this.hold(key);
       return true;
@@ -404,11 +502,15 @@
       return pose ? this.setTarget(this.selected, pose.slice(0, 3), [0, 0, 0, 1]) : Promise.resolve(false);
     }
     fillLiquid(volumeMl) {
-      const tube = this.selectedLiquid();
-      if (!this.manualReady() || this.secured(this.selected) || !tube || !Number.isFinite(volumeMl) || volumeMl < 0 || volumeMl > tube.capacityMl) return Promise.resolve(false);
+      if (this.centrifugePair) return Promise.resolve(false);
+      return this.fillLiquidCommand(this.selected, volumeMl);
+    }
+    fillLiquidCommand(key, volumeMl) {
+      const tube = this.liquid && this.liquid.tubes && this.liquid.tubes[key];
+      if (!this.manualReady() || this.secured(key) || !tube || !Number.isFinite(volumeMl) || volumeMl < 0 || volumeMl > tube.capacityMl) return Promise.resolve(false);
       this.revision += 1;
       this.liquidRevision += 1;
-      return this.enqueue({type: 'fillLiquid', key: this.selected, volumeMl, revision: this.revision});
+      return this.enqueue({type: 'fillLiquid', key, volumeMl, revision: this.revision});
     }
     observedTilt() {
       const pose = this.objects[this.selected];
@@ -431,7 +533,7 @@
     run() { return this.startProgram('run'); }
     runMixing() { return this.startProgram('runMixing'); }
     startProgram(type) {
-      if (!this.config.robot || !this.ready() || this.robotBusy() || this.centrifugeTransfer || this.centrifugeOwnsObjects()) return Promise.resolve(false);
+      if (!this.config.robot || !this.ready() || this.robotBusy() || this.centrifugeTransfer || this.centrifugePair || this.centrifugeOwnsObjects()) return Promise.resolve(false);
       this.robotRequest = type;
       return this.clear(type);
     }
@@ -442,6 +544,7 @@
     }
     clear(type) {
       this.centrifugeTransfer = null;
+      this.centrifugePair = null;
       this.centrifugeTransferError = null;
       if (type === 'reset' || ProgramCommands.includes(type)) this.centrifugeRevision += 1;
       this.scaleTransfer = null;
@@ -495,10 +598,12 @@
           this.error = null;
         } catch (error) {
           this.error = error.message;
+          if (this.centrifugePair || this.centrifugeTransfer) this.centrifugeTransferError = this.error;
           this.target = null;
           this.dragged = null;
           this.scaleTransfer = null;
           this.centrifugeTransfer = null;
+          this.centrifugePair = null;
           this.queue = this.queue.filter(pending => pending.type !== 'target');
         }
         if (LiquidCommands.includes(command.type)) this.liquidRevision += 1;
@@ -559,6 +664,7 @@
         this.scale = null;
         this.centrifuge = null;
         this.centrifugeTransfer = null;
+        this.centrifugePair = null;
         if (this.adapter.setScaleState) this.adapter.setScaleState(null);
         this.error = error.message;
         this.nextPoll = Date.now() + RETRY_INTERVAL;
@@ -574,7 +680,7 @@
       const distance = pose ? Math.hypot(...this.target.position.map((value, axis) => value - pose[axis])) : 0;
       return {contactCount: relevant.length, force, distance};
     }
-    destroy() { this.disposed = true; this.queue = []; this.scaleTransfer = null; this.centrifugeTransfer = null; }
+    destroy() { this.disposed = true; this.queue = []; this.scaleTransfer = null; this.centrifugeTransfer = null; this.centrifugePair = null; }
   }
 
   // %% compact manipulation controls
@@ -639,6 +745,8 @@
     listen(slotSelect, 'change', () => controller.selectCentrifugeSlot(slotSelect.value));
     const lidOpen = button(centrifuge, 'Deckel öffnen', () => controller.commandCentrifuge(CentrifugeActions.OPEN), 'laboratory-physics-centrifuge-open');
     const lidClose = button(centrifuge, 'Deckel schließen', () => controller.commandCentrifuge(CentrifugeActions.CLOSE), 'laboratory-physics-centrifuge-close');
+    const loadPair = button(centrifuge, 'Testpaar laden (2 × 5 ml)', () => controller.loadCentrifugePair(), 'laboratory-physics-centrifuge-pair');
+    const pairNote = element('p', centrifuge, 'laboratory-physics-centrifuge-pair-note');
     const loadSample = button(centrifuge, 'Probe einsetzen', () => controller.loadCentrifuge(), 'laboratory-physics-centrifuge-load');
     const unloadSample = button(centrifuge, 'Probe herausheben', () => controller.unloadCentrifuge(), 'laboratory-physics-centrifuge-unload');
     const centrifugeCancel = button(centrifuge, 'Transport anhalten', () => controller.hold(controller.selected), 'laboratory-physics-centrifuge-cancel');
@@ -697,7 +805,7 @@
       robotMotionNote = element('p', panel, 'laboratory-physics-robot-motion-note');
     }
     select.value = controller.selected;
-    listen(select, 'change', () => { controller.scaleTransfer = null; controller.centrifugeTransfer = null; controller.selected = select.value; render(); });
+    listen(select, 'change', () => { controller.scaleTransfer = null; controller.centrifugeTransfer = null; controller.centrifugePair = null; controller.selected = select.value; render(); });
     const hold = button(panel, 'Glas halten', () => controller.hold(select.value), 'laboratory-physics-hold');
     const moves = element('div', panel, 'laboratory-physics-moves');
     const motion = [
@@ -731,7 +839,8 @@
       const instrument = controller.centrifuge;
       const slot = controller.selectedCentrifugeSlot();
       const secured = controller.secured(controller.selected);
-      const instrumentBusy = controller.centrifugeBusy() || Boolean(controller.centrifugeTransfer);
+      const pair = controller.centrifugePair;
+      const instrumentBusy = controller.centrifugeBusy() || Boolean(controller.centrifugeTransfer) || Boolean(pair);
       const accessible = controller.centrifugeAccessible() && !instrumentBusy;
       centrifuge.hidden = !config.centrifuge && !instrument;
       if (viewCentrifuge) viewCentrifuge.disabled = !instrument || !instrument.available;
@@ -739,7 +848,14 @@
         : Math.round(instrument.rpm) + ' U/min · ' + Number(instrument.remainingSeconds || 0).toFixed(1) + ' s verbleibend · '
           + Number(instrument.rcf || 0).toFixed(1) + ' × g · ' + (instrument.balanced ? 'Ausgewogen' : 'Beladung ausgleichen')
           + ' · ' + (instrument.locked ? 'Verriegelt' : (instrument.lidOpen ? 'Deckel offen' : (instrument.lidClosed ? 'Deckel geschlossen' : 'Deckel bewegt sich')));
-      if (controller.centrifugeTransfer) centrifugeStatus.textContent += ' · Probe wird ' + (controller.centrifugeTransfer.type === CentrifugeTransfer.LOAD ? 'eingesetzt …' : 'herausgehoben …');
+      if (pair) centrifugeStatus.textContent += ' · Probe ' + (pair.index + 1) + ' von ' + pair.samples.length + ' wird vorbereitet und eingesetzt …';
+      else if (controller.centrifugeTransfer) centrifugeStatus.textContent += ' · Probe wird ' + (controller.centrifugeTransfer.type === CentrifugeTransfer.LOAD ? 'eingesetzt …' : 'herausgehoben …');
+      const pairSamples = controller.centrifugePairSamples();
+      const counterpart = instrument && instrument.slots.filter(item => item.key && item.secured).length === 1;
+      loadPair.textContent = counterpart ? 'Gegenprobe einsetzen' : 'Testpaar laden (2 × 5 ml)';
+      loadPair.disabled = !accessible || !pairSamples.length || Boolean(controller.scaleTransfer) || controller.liquidBusy();
+      pairNote.textContent = counterpart ? 'Die Gegenprobe erhält dieselbe Füllmenge wie die eingesetzte Probe' + (pairSamples.length ? ' (' + pairSamples[0].volumeMl.toFixed(1) + ' ml)' : '') + '. Die vorhandene Probe bleibt unverändert.'
+        : 'Setzt zwei Gläser mit je 5 ml nacheinander in gegenüberliegende Plätze. Danach Deckel schließen und zentrifugieren; keine PR2-Demo nötig.';
       slotSelect.value = controller.centrifugeSlot;
       slotSelect.disabled = !manualReady || instrumentBusy;
       if (instrument) for (const item of instrument.slots) {
@@ -750,7 +866,7 @@
       lidClose.disabled = !manualReady || !instrument || instrumentBusy || instrument.locked || instrument.lidClosed || Math.abs(instrument.rpm) > CentrifugeSettings.STOPPED_RPM;
       loadSample.disabled = !accessible || !slot || Boolean(slot.key) || secured || !controller.selectedLiquid();
       unloadSample.disabled = !accessible || !slot || !slot.secured;
-      centrifugeCancel.hidden = !controller.centrifugeTransfer;
+      centrifugeCancel.hidden = !controller.centrifugeTransfer && !pair;
       rpm.max = instrument ? instrument.maximumRpm : CentrifugeSettings.RPM;
       rpm.disabled = duration.disabled = !manualReady || !instrument || instrument.locked || instrumentBusy;
       const validCycle = String(rpm.value).trim() && String(duration.value).trim() && Number.isFinite(Number(rpm.value)) && Number(rpm.value) > 0
@@ -762,21 +878,21 @@
         ? (Math.abs(reading.grams) < .0005 ? 0 : reading.grams).toFixed(3) + ' g' : '— g';
       scaleStatus.textContent = !reading || !reading.available ? 'Waage nicht verfügbar'
         : (reading.stable ? 'Stabil' : 'Einpendeln …') + ' · Tara: ' + reading.tareGrams.toFixed(3) + ' g';
-      tare.disabled = !manualReady || !reading || !reading.available || !reading.stable || controller.scaleBusy();
-      moveToScale.disabled = !manualReady || !config.scale || !controller.objects[controller.selected] || Boolean(controller.scaleTransfer) || Boolean(controller.centrifugeTransfer) || secured;
+      tare.disabled = !manualReady || Boolean(pair) || !reading || !reading.available || !reading.stable || controller.scaleBusy();
+      moveToScale.disabled = !manualReady || Boolean(pair) || !config.scale || !controller.objects[controller.selected] || Boolean(controller.scaleTransfer) || Boolean(controller.centrifugeTransfer) || secured;
       cancelScale.hidden = !controller.scaleTransfer;
       if (controller.scaleTransfer) scaleStatus.textContent = 'Objekt wird angehoben, zur Waage bewegt und abgesetzt …';
       start.hidden = ready;
       start.disabled = controller.starting;
       select.value = controller.selected;
-      select.disabled = !manualReady;
-      for (const control of [hold, ...motion]) control.disabled = !manualReady || secured;
+      select.disabled = !manualReady || Boolean(pair);
+      for (const control of [hold, ...motion]) control.disabled = !manualReady || Boolean(pair) || secured;
       reset.disabled = !ready;
       release.disabled = !manualReady || !controller.target;
       const tube = controller.selectedLiquid();
       liquid.hidden = !tube;
       if (viewGlass) viewGlass.disabled = !controller.objects[controller.selected];
-      for (const control of [volume, fill, liftClear, tiltLeft, upright, tiltRight]) control.disabled = !manualReady || !tube || secured;
+      for (const control of [volume, fill, liftClear, tiltLeft, upright, tiltRight]) control.disabled = !manualReady || Boolean(pair) || !tube || secured;
       if (tube) {
         volume.max = tube.capacityMl;
         if (volumeKey !== controller.selected) {
@@ -784,7 +900,7 @@
           volumeKey = controller.selected;
         }
         const requestedVolume = Number(volume.value);
-        fill.disabled = !manualReady || secured || !String(volume.value).trim() || !Number.isFinite(requestedVolume) || requestedVolume < 0 || requestedVolume > tube.capacityMl;
+        fill.disabled = !manualReady || Boolean(pair) || secured || !String(volume.value).trim() || !Number.isFinite(requestedVolume) || requestedVolume < 0 || requestedVolume > tube.capacityMl;
         liquidStatus.textContent = tube.volumeMl.toFixed(1) + ' / ' + tube.capacityMl.toFixed(1) + ' ml · Ausgelaufen: ' + (Number(controller.liquid.spilledMl) || 0).toFixed(1) + ' ml';
         tiltStatus.textContent = 'Neigung: ' + Math.round(controller.observedTilt()) + '°';
       }
@@ -794,7 +910,7 @@
         const mixing = controller.robot.source === RobotSources.MIXING;
         const paused = controller.robot.state === RobotStates.PAUSED;
         robotMotionNote.textContent = mixing ? 'Bewegung: lokaler Kontaktregler. Kontakte: MuJoCo.' : 'Gelenkziele: gespeicherter CRAM-Plan. Bewegung und Kontakte: MuJoCo.';
-        robotRun.disabled = !ready || Boolean(controller.robotBusy()) || Boolean(controller.centrifugeTransfer) || controller.centrifugeOwnsObjects();
+        robotRun.disabled = !ready || Boolean(controller.robotBusy()) || Boolean(controller.centrifugeTransfer) || Boolean(pair) || controller.centrifugeOwnsObjects();
         robotRun.textContent = paused && !mixing ? 'PR2 fortsetzen' : 'PR2: A1 → A3 starten';
         robotMix.disabled = robotRun.disabled;
         robotMix.textContent = paused && mixing ? 'Misch-Demo fortsetzen' : 'Misch-Demo starten';
