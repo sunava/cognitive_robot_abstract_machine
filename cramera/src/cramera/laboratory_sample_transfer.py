@@ -449,7 +449,11 @@ class LaboratorySampleTransfer(LaboratoryMixingProgram):
     def _enter_stage(self) -> None:
         """Capture physical origins for bounded base and arm motion."""
         torso = "pr2/torso_lift_joint"
-        if self.stage.position[2] < 0.8 and torso not in self.arm_names:
+        if (
+            self.stage.joint_targets is None
+            and self.stage.position[2] < 0.8
+            and torso not in self.arm_names
+        ):
             self.arm_names.append(torso)
             self.arm_indices.append(
                 int(self.physics.model.jnt_dofadr[self.physics.model.joint(torso).id])
