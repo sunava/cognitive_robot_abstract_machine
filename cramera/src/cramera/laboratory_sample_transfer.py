@@ -94,6 +94,8 @@ class LaboratorySampleTransfer(LaboratoryMixingProgram):
     """Lateral return corridor retaining wrist margin after rotor extraction."""
     top_rack_base_offset: float = 0.20
     """Additional rightward docking margin for returning an upper grip to the rack."""
+    top_rack_insertion_time: float = 14.0
+    """Seconds for seating from above while keeping the sample aligned with the rack."""
     top_grip_height: float = 0.135
     """Upper pinch height clearing the rotor holder walls, in meters."""
     top_grip_inclination: float = math.radians(30.0)
@@ -370,7 +372,12 @@ class LaboratorySampleTransfer(LaboratoryMixingProgram):
             station_front = target + np.array([0.0, -0.10, 0.0])
             append(MixingPhase.PLACE, station_front + lift, 5.0, True)
             append(MixingPhase.PLACE, station_front, 5.0, True)
-        append(MixingPhase.PLACE, target, 7.0, True)
+        insertion_time = (
+            self.top_rack_insertion_time
+            if self.grasp == SampleGrasp.TOP and self._at_rack(target)
+            else 7.0
+        )
+        append(MixingPhase.PLACE, target, insertion_time, True)
         if self.release_at_destination:
             append(MixingPhase.RELEASE, target, 1.5, False)
             if target[2] < 0.8:
