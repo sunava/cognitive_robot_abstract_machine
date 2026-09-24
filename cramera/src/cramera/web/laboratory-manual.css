@@ -1,0 +1,132 @@
+/* %% illustrated instrument guide */
+.laboratory-manual-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  overflow: hidden;
+  pointer-events: none;
+  color: #18323d;
+  font: 12px/1.4 system-ui, sans-serif;
+}
+.laboratory-manual-overlay [hidden],
+.laboratory-manual-overlay[hidden] { display: none !important; }
+.laboratory-manual-lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; }
+.laboratory-manual-leader {
+  fill: none;
+  stroke: #496a78;
+  stroke-width: 1.3;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 1px 1px rgba(255, 255, 255, .85));
+}
+.laboratory-manual-overlay button {
+  box-sizing: border-box;
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.laboratory-manual-hotspot {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  border: 1.5px solid #496a78;
+  border-radius: 50%;
+  background: rgba(250, 253, 255, .97);
+  box-shadow: 0 2px 7px rgba(14, 33, 45, .15);
+  font-weight: 700 !important;
+  font-size: 11px !important;
+}
+.laboratory-manual-card {
+  position: absolute;
+  display: flex;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid rgba(72, 103, 118, .36);
+  border-radius: 8px;
+  background: rgba(250, 253, 255, .96);
+  box-shadow: 0 3px 14px rgba(14, 33, 45, .1);
+  text-align: left;
+  backdrop-filter: blur(8px);
+}
+.laboratory-manual-number { color: #728893; font: 600 11px/1.5 ui-monospace, monospace; }
+.laboratory-manual-copy { display: grid; gap: 4px; min-width: 0; }
+.laboratory-manual-title { display: block; font-size: 12px; font-weight: 700; line-height: 1.35; }
+.laboratory-manual-description { display: block; margin: 0; color: #4e6671; font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+.laboratory-manual-status { display: block; margin: 0; color: #147066; font-size: 10px; line-height: 1.35; font-weight: 600; }
+.laboratory-manual-overlay button:hover { border-color: #13877e; }
+.laboratory-manual-overlay button[data-selected="true"] { border-color: #0c8a7e; }
+.laboratory-manual-hotspot[data-selected="true"],
+.laboratory-manual-chip[data-selected="true"] { background: #157a72; color: white; }
+.laboratory-manual-overlay button:focus-visible { outline: 3px solid #00b3a1; outline-offset: 3px; }
+
+/* %% compact part index and selected explanation */
+.laboratory-manual-compact {
+  position: absolute;
+  z-index: 1;
+  bottom: 18px;
+  box-sizing: border-box;
+  max-height: calc(100% - 36px);
+  overflow: auto;
+  pointer-events: auto;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid rgba(72, 103, 118, .36);
+  border-radius: 9px;
+  background: rgba(250, 253, 255, .96);
+  box-shadow: 0 3px 14px rgba(14, 33, 45, .1);
+  backdrop-filter: blur(8px);
+}
+.laboratory-manual-navigation { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 3px; }
+.laboratory-manual-chip {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid #78909b;
+  border-radius: 5px;
+  background: #f4f8fa;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+}
+.laboratory-manual-empty {
+  position: absolute;
+  bottom: 24px;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 36px);
+  box-sizing: border-box;
+  padding: 9px 13px;
+  border-radius: 7px;
+  color: #e8f5f4;
+  background: rgba(27, 49, 58, .92);
+  font-size: 11px;
+  text-align: center;
+}
+
+/* %% temporarily folded instrument controls */
+.laboratory-manual-controls {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 10;
+  padding: 8px 12px;
+  border: 1px solid #4c6b75;
+  border-radius: 7px;
+  color: #e8f5f4;
+  background: rgba(27, 49, 58, .96);
+  box-shadow: 0 3px 12px rgba(14, 33, 45, .18);
+  font: 600 11px/1.4 system-ui, sans-serif;
+  cursor: pointer;
+}
+.laboratory-manual-controls:hover { border-color: #6cccc0; background: #244b50; }
+.laboratory-manual-controls:focus-visible { outline: 3px solid #00b3a1; outline-offset: 3px; }
+.laboratory-manual-controls[hidden] { display: none !important; }
+.laboratory-manual-hide-controls .laboratory-physics,
+.laboratory-manual-hide-controls .laboratory-workbench { display: none !important; }

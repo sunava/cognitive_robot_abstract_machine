@@ -46,6 +46,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     '    <label class="lp-row" title="debug markers the CRAM system publishes (collisions, costmaps, spatial types)"><input type="checkbox" id="lyr-markers" checked><span>ROS markers</span><button id="marker-gear" class="marker-gear" title="marker topics and namespaces">⚙</button></label>' +
     '    <div id="marker-settings" class="marker-settings hidden"></div>' +
     '    <label id="lyr-contacts-row" class="lp-row" style="display:none" title="Show or hide contact points and orange target markers"><input type="checkbox" id="lyr-contacts" checked><span>Contact points &amp; targets</span></label>' +
+    '    <label id="lyr-manual-row" class="lp-row" style="display:none" title="Label centrifuge parts with numbered guide lines and explanations"><input type="checkbox" id="lyr-manual"><span>Manual mode</span><button id="manual-focus" type="button" class="layer-gear" title="Focus centrifuge manual" aria-label="Focus centrifuge manual">⌖</button></label>' +
     '    <label class="lp-row" title="an axis triad on every frame of the world — URDF links and loose objects (red X, green Y, blue Z)"><input type="checkbox" id="lyr-frames"><span>TF frames</span><button id="frame-gear" class="layer-gear" title="frame axis size and names">⚙</button></label>' +
     '    <div id="frame-settings" class="frame-settings hidden"></div>' +
     '    <label class="lp-row"><input type="checkbox" id="lyr-labels"><span>Object labels</span></label>' +
@@ -272,6 +273,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
   let laboratoryWorkbench = null;
   let laboratoryPhysics = null;
   let laboratoryContactLayer = null;
+  let laboratoryManualMode = null;
   let laboratoryRobotPhysicsEntry = null;
   const models = [];              // {name, prefix, robot, obj}
   let robotModel = null;          // the bundle's own robot entry
@@ -2020,6 +2022,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       ? SCENE.rendering.exposure : 0.95;
     if (composer && ambientOcclusion) composer.render();
     else renderer.render(scene3, camera);
+    if (laboratoryManualMode) laboratoryManualMode.render();
   }
 
   // %% render loop
@@ -2169,6 +2172,93 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       focus: focusSceneCamera,
     };
   }
+  // %% numbered instrument guide
+  function bindLaboratoryManualMode() {
+    const metadata = (SCENE.physics || SCENE.laboratory || {}).centrifuge;
+    if (!metadata || typeof LaboratoryManual === 'undefined' || typeof LaboratoryManualParts === 'undefined') return null;
+    const host = root.querySelector('.stage');
+    const checkbox = $('lyr-manual');
+    const row = $('lyr-manual-row');
+    const button = $('manual-focus');
+    const controlsButton = root.ownerDocument.createElement('button');
+    controlsButton.type = 'button';
+    controlsButton.className = 'laboratory-manual-controls';
+    controlsButton.hidden = true;
+    host.appendChild(controlsButton);
+    let controlsVisible = true;
+    let previousLayersFolded = null;
+    function showControls(visible) {
+      controlsVisible = visible;
+      host.classList.toggle('laboratory-manual-hide-controls', checkbox.checked && !visible);
+      controlsButton.textContent = visible ? 'Hide controls' : 'Show controls';
+      controlsButton.setAttribute('aria-expanded', String(visible));
+      needsRender = true;
+    }
+    const overlay = LaboratoryManual.create({
+      THREE, root: worldRoot, host, camera,
+      parts: LaboratoryManualParts.centrifuge(metadata),
+      reservedRight: function () {
+        if (checkbox.checked && !controlsVisible) return 0;
+        const panel = root.querySelector('.laboratory-physics') || root.querySelector('.laboratory-workbench');
+        return panel ? Math.max(0, host.getBoundingClientRect().right - panel.getBoundingClientRect().left + 12) : 0;
+      },
+      reservedTopLeft: function () {
+        return Math.max(0, $('layers-panel').getBoundingClientRect().bottom - host.getBoundingClientRect().top + 12);
+      },
+      reservedTopRight: function () { return 60; },
+    });
+    function focus() {
+      const origin = metadata.origin;
+      const target = [origin[0], origin[1], origin[2] + .25];
+      focusSceneCamera([target[0] + .46, target[1] - .80, target[2] + .58], target);
+    }
+    function toggle() {
+      if (checkbox.checked) {
+        if (previousLayersFolded === null) previousLayersFolded = layersFolded;
+        layersFolded = true;
+        showFold();
+      } else if (previousLayersFolded !== null) {
+        layersFolded = previousLayersFolded;
+        previousLayersFolded = null;
+        showFold();
+      }
+      controlsButton.hidden = !checkbox.checked;
+      showControls(!checkbox.checked);
+      overlay.setVisible(checkbox.checked);
+      if (checkbox.checked) focus();
+      needsRender = true;
+    }
+    function inspect(event) {
+      event.preventDefault(); event.stopPropagation();
+      checkbox.checked = true;
+      toggle();
+    }
+    function toggleControls(event) {
+      event.stopPropagation();
+      showControls(!controlsVisible);
+      overlay.render();
+    }
+    row.style.display = '';
+    button.disabled = false;
+    overlay.setVisible(checkbox.checked);
+    checkbox.addEventListener('change', toggle);
+    button.addEventListener('click', inspect);
+    controlsButton.addEventListener('click', toggleControls);
+    return {
+      update: function (snapshot) { overlay.update(snapshot); },
+      render: function () { overlay.render(); },
+      destroy: function () {
+        checkbox.removeEventListener('change', toggle);
+        button.removeEventListener('click', inspect);
+        controlsButton.removeEventListener('click', toggleControls);
+        controlsButton.remove();
+        host.classList.remove('laboratory-manual-hide-controls');
+        checkbox.checked = false;
+        row.style.display = 'none';
+        overlay.destroy();
+      },
+    };
+  }
   // %% physical laboratory feedback
   function laboratoryPhysicsAdapter() {
     const feedback = new THREE.Group();
@@ -2215,6 +2305,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       },
       setCentrifugeState: function (snapshot) {
         if (centrifuge) centrifuge.update(snapshot);
+        if (typeof laboratoryManualMode !== 'undefined' && laboratoryManualMode) laboratoryManualMode.update(snapshot);
         needsRender = true;
       },
       setPipettingState: function (snapshot, contents, poses) {
@@ -2269,6 +2360,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     };
   }
   RobotView.onReady(function () {
+    if (!laboratoryManualMode) laboratoryManualMode = bindLaboratoryManualMode();
     if (SCENE.physics) {
       if (laboratoryPhysics) return;
       stopTrajectory();
@@ -2306,7 +2398,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       }
     );
     root.classList.add('laboratory-scene');
-    root.querySelector('.panel-head h2').textContent = 'Precision Laboratory';
+    root.querySelector('.panel-head h2').textContent = 'AICOR Laboratory';
     root.querySelector('.stage-hint').textContent = 'Drag to orbit · Scroll to zoom · Use workbench controls to handle glassware and stoppers';
     if (laboratoryWorkbench) laboratoryWorkbench.refresh();
   });
@@ -2699,6 +2791,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     layersFoldEl.textContent = face.glyph;
     layersFoldEl.title = face.title;
     layersPanelEl.classList.toggle('folded', layersFolded);
+    needsRender = true;
   }
   showFold();
   layersFoldEl.addEventListener('click', function (event) {
@@ -2997,6 +3090,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       if (laboratoryWorkbench) laboratoryWorkbench.destroy();
       if (laboratoryRobotPhysicsEntry) laboratoryRobotPhysicsEntry.destroy();
       if (laboratoryContactLayer) laboratoryContactLayer.destroy();
+      if (laboratoryManualMode) laboratoryManualMode.destroy();
       if (laboratoryPhysics) { laboratoryPhysics.destroy(); laboratoryPhysics.adapter.destroy(); }
       running = false;                       // stops the requestAnimationFrame loop
       clearInterval(probeTimer);

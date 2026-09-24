@@ -21,6 +21,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from typing_extensions import ClassVar
 
 from cramera import paths
+from cramera.laboratory_branding import LaboratoryBranding
 from cramera.laboratory_robot_session import RobotPhysicsRoute
 from cramera.offline_assets import (
     AssetDependencies,
@@ -251,7 +252,7 @@ class LaboratoryAssets:
                     {
                         "name": ShareOptions.SCENE_NAME,
                         "robot": "pr2",
-                        "environment": "Precision Laboratory",
+                        "environment": LaboratoryBranding.NAME,
                         "task": "PR2 · Contact physics and liquids",
                     }
                 ],

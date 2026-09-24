@@ -52,6 +52,19 @@ class RenderView(StrEnum):
     CLOSEUP = "closeup"
 
 
+class BrandingName(StrEnum):
+    """Existing artwork and retired decorative mesh names."""
+
+    IMAGE = "aicor-logo.png"
+    MATERIAL = "AICOR logo artwork"
+    LOGO = "AICOR logo"
+    PLAQUE = "AICOR plaque"
+    ROOM_TITLE = "Laboratory title"
+    INSTRUMENT_TITLE = "Pipetting brand"
+    TRAY = "Work tray"
+    PIPETTE = "Pipette body"
+
+
 class MaterialName(StrEnum):
     """Shared finishes in the authored laboratory."""
 
@@ -88,6 +101,8 @@ class BuildOptions:
     """Export only the centrifuge while preserving existing laboratory assets."""
     pipetting_only: bool = False
     """Export only the dispensing station and preserve existing laboratory assets."""
+    branding_only: bool = False
+    """Refresh the existing room and dispenser artwork without rebuilding bodies."""
 
 
 @dataclass
@@ -243,6 +258,51 @@ class LaboratoryBuilder:
         scene_object.data.space_character = 1.1
         bpy.ops.object.convert(target="MESH")
         return self.register(bpy.context.object, name, material)
+
+    def logo(self) -> None:
+        """Mount the unchanged white AICOR artwork on a contrasting teal plaque."""
+        if self.current == AssetName.ENVIRONMENT:
+            center, width, border, depth = (-0.40, 1.097, 2.04), 0.90, 0.022, 0.006
+        else:
+            center, width, border, depth = (-0.0545, 0.039, 0.2215), 0.081, 0.002, 0.001
+        image = bpy.data.images.load(
+            str(Path(__file__).parents[2] / "src/cramera/web/img" / BrandingName.IMAGE),
+            check_existing=True,
+        )
+        image.pack()
+        height = width * image.size[1] / image.size[0]
+        self.box(
+            f"{self.current} {BrandingName.PLAQUE}",
+            center,
+            (width + border * 2, depth, height + border * 2),
+            MaterialName.TEAL,
+            border / 3,
+        )
+        bpy.ops.mesh.primitive_plane_add(
+            size=1,
+            location=(center[0], center[1] - depth / 2 - 0.0001, center[2]),
+            rotation=(pi / 2, 0, 0),
+        )
+        scene_object = self.register(
+            bpy.context.object,
+            f"{self.current} {BrandingName.LOGO}",
+            MaterialName.WHITE,
+        )
+        scene_object.scale = (width, height, 1)
+        material = bpy.data.materials.new(BrandingName.MATERIAL)
+        material.use_nodes = True
+        material.blend_method = "BLEND"
+        material.use_screen_refraction = False
+        shader = material.node_tree.nodes.get("Principled BSDF")
+        shader.inputs["Roughness"].default_value = 0.48
+        texture = material.node_tree.nodes.new("ShaderNodeTexImage")
+        texture.image = image
+        material.node_tree.links.new(
+            texture.outputs["Color"], shader.inputs["Base Color"]
+        )
+        material.node_tree.links.new(texture.outputs["Alpha"], shader.inputs["Alpha"])
+        scene_object.data.materials.clear()
+        scene_object.data.materials.append(material)
 
     def handle(self, name: str, centre: tuple[float, float, float]) -> None:
         """Build a U-shaped horizontal cabinet pull."""
@@ -419,13 +479,7 @@ class LaboratoryBuilder:
                 (0.012, 0.16, 0.17),
                 MaterialName.STEEL,
             )
-        self.text(
-            "Laboratory title",
-            "PRECISION",
-            (-0.86, 1.102, 1.96),
-            0.135,
-            MaterialName.TEAL,
-        )
+        self.logo()
         self.text(
             "Laboratory subtitle",
             "L A B O R A T O R Y   /   0 1",
@@ -500,17 +554,6 @@ class LaboratoryBuilder:
             0.015,
             MaterialName.PALE_TEAL,
         )
-        self.box(
-            "Work tray",
-            (-0.22, 0.05, 0.908),
-            (0.25, 0.18, 0.012),
-            MaterialName.WHITE,
-            0.008,
-        )
-        for x in (-0.285, -0.235, -0.185):
-            self.cylinder(
-                "Pipette body", (x, 0.04, 0.928), 0.005, 0.041, MaterialName.WHITE
-            )
         self.text(
             "Worktop station label",
             "01  /  SAMPLE PREPARATION",
@@ -998,13 +1041,7 @@ class LaboratoryBuilder:
             MaterialName.TEAL,
             (0, 0, 0),
         )
-        self.text(
-            "Pipetting brand",
-            "PRECISION",
-            (-0.095, 0.0391, 0.218),
-            0.010,
-            MaterialName.TEAL,
-        )
+        self.logo()
         self.text(
             "Pipetting instrument label",
             "DUAL DISPENSER",
@@ -1295,6 +1332,40 @@ class LaboratoryBuilder:
         if self.options.render:
             bpy.ops.render.render(write_still=True)
 
+    def refresh_branding_assets(self) -> None:
+        """Re-export only branded bodies, preserving all other authored meshes."""
+        source = self.options.output / "laboratory.blend"
+        bpy.ops.wm.open_mainfile(filepath=str(source))
+        self.library.build()
+        retired = (
+            BrandingName.ROOM_TITLE,
+            BrandingName.INSTRUMENT_TITLE,
+            BrandingName.TRAY,
+            BrandingName.PIPETTE,
+        )
+        for asset in (AssetName.ENVIRONMENT, AssetName.PIPETTING):
+            body = bpy.data.objects[asset.value]
+            placement = tuple(body.location)
+            objects = []
+            for scene_object in list(body.children):
+                if scene_object.name.startswith(retired) or any(
+                    name in scene_object.name
+                    for name in (BrandingName.LOGO, BrandingName.PLAQUE)
+                ):
+                    bpy.data.objects.remove(scene_object, do_unlink=True)
+                    continue
+                transform = scene_object.matrix_local.copy()
+                scene_object.parent = None
+                scene_object.matrix_world = transform
+                objects.append(scene_object)
+            bpy.data.objects.remove(body, do_unlink=True)
+            self.current = asset
+            self.objects[asset] = objects
+            self.logo()
+            self.export_asset(asset, placement)
+        bpy.context.preferences.filepaths.save_version = 0
+        bpy.ops.wm.save_as_mainfile(filepath=str(source))
+
     def export_asset(
         self, asset: AssetName, placement: tuple[float, float, float]
     ) -> None:
@@ -1473,6 +1544,9 @@ class LaboratoryBuilder:
 
     def build(self) -> None:
         """Generate every body, save the source and render both reference views."""
+        if self.options.branding_only:
+            self.refresh_branding_assets()
+            return
         if self.options.centrifuge_only:
             self.build_centrifuge_assets()
             return
@@ -1541,6 +1615,7 @@ def main() -> None:
     parser.add_argument("--skip-render", action="store_true")
     parser.add_argument("--centrifuge-only", action="store_true")
     parser.add_argument("--pipetting-only", action="store_true")
+    parser.add_argument("--branding-only", action="store_true")
     parser.add_argument(
         "--view", type=RenderView, choices=list(RenderView), default=RenderView.ALL
     )
@@ -1556,6 +1631,7 @@ def main() -> None:
             arguments.view,
             arguments.centrifuge_only,
             arguments.pipetting_only,
+            arguments.branding_only,
         )
     ).build()
 

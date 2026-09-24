@@ -1,7 +1,7 @@
 {
   "name": "precision_lab",
   "rendering": {"ambientOcclusion": false, "exposure": 0.65},
-  "environmentName": "Precision Laboratory",
+  "environmentName": "AICOR Laboratory",
   "task": "Laboratory workbench · Manual manipulation",
   "framesPerSecond": 1,
   "trajectory": "trajectory.json",

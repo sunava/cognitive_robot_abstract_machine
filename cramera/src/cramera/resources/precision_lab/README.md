@@ -1,4 +1,4 @@
-# Precision laboratory assets
+# AICOR Laboratory assets
 
 This portable bundle contains the authored laboratory's environment, movable
 objects, collision meshes, materials, initial poses, and rack-slot metadata.
@@ -12,6 +12,16 @@ contains open collision sleeves for four existing tubes, a continuous rotor
 joint, and a bounded lid joint. `scene.json` records the opposing holder pairs
 and rotor-local sample positions. The included initial viewer frame opens the
 lid; a newly loaded planning world exposes both joints for ordinary CRAM control.
+
+In the browser, enable **Layers → Manual mode** to inspect the centrifuge with
+numbered labels and leader lines. The lines follow their authored parts as the
+camera moves or the lid opens. Each callout explains the part; live observations
+add the lid lock state, rotor speed, cycle countdown, loading balance, and the
+active manual's sample requirement. Missing observations remain unknown.
+In a live physics scene, open the lid to show the interior rotor and sample-holder
+annotations. The mode folds the Layers and instrument panels to make room for the
+diagram; **Show controls** restores access to the instrument. Narrow views show
+a selectable numbered index with a leader to the selected explanation.
 
 The runtime bundle ships with the `cramera` Python package and requires no
 Blender installation, local scene cache, browser, server, or PR2 recording.

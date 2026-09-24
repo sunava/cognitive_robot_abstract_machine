@@ -30,6 +30,7 @@ from coraplex.robot_plans.motions.placement import MovePlacementMotion, Placemen
 from coraplex.utils import translate_pose_along_local_axis
 from cramera import paths
 from cramera.generated_json import write_json_atomically
+from cramera.laboratory_branding import LaboratoryBranding
 from cramera.laboratory_grasp import LaboratoryPickUpAction
 from cramera.laboratory_world import LaboratoryAsset, LaboratoryBody, LaboratoryWorld
 from cramera.live.bridge import Bridge
@@ -528,7 +529,7 @@ class LaboratoryDemo:
         )
         scene.update(
             {
-                "environmentName": "Precision Laboratory",
+                "environmentName": LaboratoryBranding.NAME,
                 "task": "PR2 · Glass transfer A1 → A3",
             }
         )
