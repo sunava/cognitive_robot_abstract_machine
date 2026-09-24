@@ -18,11 +18,13 @@ from cramera.laboratory_refrigerator_command import RefrigeratorAction
 from cramera.laboratory_liquid import LiquidField
 from cramera.laboratory_physics import InvalidPhysicsTarget
 from cramera.laboratory_pipetting import PipettingAction, PipettingState
+from cramera.laboratory_workflow_command import WorkflowField, WorkflowSource
 
 if TYPE_CHECKING:
     from cramera.laboratory_mixing_program import LaboratoryMixingProgram
     from cramera.laboratory_pipetting_program import LaboratoryPipettingProgram
     from cramera.laboratory_physics_robot import LaboratoryRobotPhysics
+    from cramera.laboratory_workflow import LaboratoryWorkflowProgram
 
 
 # %% recorded joint reference
@@ -573,8 +575,13 @@ class LaboratoryProgramPhysics:
     """The articulated MuJoCo contact simulation."""
     recording_directory: Path
     """The native CRAMERA recording supplying joint intentions."""
+    stationary_base_tolerance: float = 0.002
+    """Allowed home displacement in meters or radians for a stationary recipe."""
     program: (
-        LaboratoryPhysicsProgram | LaboratoryMixingProgram | LaboratoryPipettingProgram
+        LaboratoryPhysicsProgram
+        | LaboratoryMixingProgram
+        | LaboratoryPipettingProgram
+        | LaboratoryWorkflowProgram
     ) = field(init=False)
     """The controller and physical acceptance evidence."""
 
@@ -622,8 +629,44 @@ class LaboratoryProgramPhysics:
                 "Retrieve stored refrigerator samples before starting or resuming the PR2 program"
             )
 
+    def _require_workflow_release(self) -> None:
+        """Retain processing ownership while a workflow is running or paused."""
+        snapshot = self.program.snapshot()
+        if snapshot.get(WorkflowField.WORKFLOW, {}).get(WorkflowField.RESERVED, False):
+            raise InvalidPhysicsTarget(
+                "Resume or reset the sample workflow before changing its samples or instruments"
+            )
+
+    def run_workflow(self, prepare: bool) -> None:
+        """Prepare an explicit fresh demonstration or resume its existing evidence."""
+        if not isinstance(prepare, bool):
+            raise InvalidPhysicsTarget("The prepare flag must be true or false")
+        program_type = importlib.import_module(
+            "cramera.laboratory_workflow"
+        ).LaboratoryWorkflowProgram
+        if not prepare:
+            if not isinstance(self.program, program_type) or self.program.state not in (
+                ProgramState.RUNNING,
+                ProgramState.PAUSED,
+            ):
+                raise InvalidPhysicsTarget(
+                    "Prepare a full sample workflow before resuming"
+                )
+            self.program.start()
+            return
+        self._require_workflow_release()
+        self._require_switchable()
+        self._require_idle_station()
+        self.physics.reset()
+        for key in program_type.SAMPLE_KEYS:
+            self.physics.fill_liquid(key, 0.0)
+        candidate = program_type(self.physics)
+        self.program = candidate
+        candidate.start()
+
     def run_program(self) -> None:
         """Resume or restore initial body poses while retaining current tube contents."""
+        self._require_workflow_release()
         self._require_free_centrifuge()
         self._require_empty_refrigerator()
         self._require_idle_station()
@@ -651,6 +694,7 @@ class LaboratoryProgramPhysics:
 
     def run_mixing(self) -> None:
         """Start the fixed mixing recipe or resume its current physical state."""
+        self._require_workflow_release()
         self._require_free_centrifuge()
         self._require_empty_refrigerator()
         self._require_idle_station()
@@ -677,6 +721,7 @@ class LaboratoryProgramPhysics:
 
     def run_pipetting(self) -> None:
         """Pick the current A1 receiver without restoring objects or replacing liquids."""
+        self._require_workflow_release()
         self._require_free_centrifuge()
         self._require_empty_refrigerator()
         program_type = importlib.import_module(
@@ -691,9 +736,24 @@ class LaboratoryProgramPhysics:
                 return
         self._require_idle_station()
         self._require_switchable()
+        self._require_home_base()
         candidate = program_type(self.physics)
         candidate.start()
         self.program = candidate
+
+    def _require_home_base(self) -> None:
+        """Require the recorded base pose before starting stationary dispensing."""
+        joints = importlib.import_module(
+            "cramera.laboratory_physics_robot"
+        ).RobotBaseJoint
+        measured = self.physics.robot_state()
+        if any(
+            abs(measured.get(joint, 0.0)) > self.stationary_base_tolerance
+            for joint in joints
+        ):
+            raise InvalidPhysicsTarget(
+                "Reset the laboratory before starting the stationary pipetting demo"
+            )
 
     def pipetting_command(
         self,
@@ -703,6 +763,8 @@ class LaboratoryProgramPhysics:
         volume_ml: float | None = None,
     ) -> None:
         """Preserve robot ownership while permitting an operator to stop the pump."""
+        if action != PipettingAction.STOP:
+            self._require_workflow_release()
         if self.program.state == ProgramState.RUNNING:
             if action != PipettingAction.STOP:
                 raise InvalidPhysicsTarget(
@@ -721,6 +783,7 @@ class LaboratoryProgramPhysics:
         self, key: str, position: list[float], orientation: list[float] | None = None
     ) -> None:
         """Apply manual forces only while the robot program is not advancing."""
+        self._require_workflow_release()
         if self.program.state == ProgramState.RUNNING:
             raise InvalidPhysicsTarget(
                 "Pause the PR2 program before moving objects manually"
@@ -729,12 +792,14 @@ class LaboratoryProgramPhysics:
 
     def fill_liquid(self, key: str, volume_ml: float) -> None:
         """Allow fill changes only while the reference robot program is paused or idle."""
+        self._require_workflow_release()
         if self.program.state == ProgramState.RUNNING:
             raise InvalidPhysicsTarget("Pause the PR2 program before filling tubes")
         self.physics.fill_liquid(key, volume_ml)
 
     def read_centrifuge_manual(self, document: str) -> None:
         """Read instrument rules while the robot program is paused or inactive."""
+        self._require_workflow_release()
         if self.program.state == ProgramState.RUNNING:
             raise InvalidPhysicsTarget(
                 "Pause the PR2 program before reading another operating manual"
@@ -750,6 +815,10 @@ class LaboratoryProgramPhysics:
         duration: float | None = None,
     ) -> None:
         """Operate the centrifuge while preserving the active robot's ownership."""
+        if action != CentrifugeAction.STOP:
+            self._require_workflow_release()
+        elif self.program.snapshot().get(ProgramField.SOURCE) == WorkflowSource.PROGRAM:
+            self.program.pause()
         if (
             self.program.state == ProgramState.RUNNING
             and action != CentrifugeAction.STOP
@@ -763,6 +832,7 @@ class LaboratoryProgramPhysics:
 
     def refrigerator_command(self, action: RefrigeratorAction | str) -> None:
         """Preserve robot ownership while forwarding cabinet door requests."""
+        self._require_workflow_release()
         if self.program.state == ProgramState.RUNNING:
             raise InvalidPhysicsTarget(
                 "Pause the PR2 program before operating the refrigerator"
@@ -771,6 +841,7 @@ class LaboratoryProgramPhysics:
 
     def tare_scale(self) -> None:
         """Zero the physical scale while the robot controller is inactive."""
+        self._require_workflow_release()
         if self.program.state == ProgramState.RUNNING:
             raise InvalidPhysicsTarget("Pause the PR2 program before zeroing the scale")
         self.physics.tare_scale()

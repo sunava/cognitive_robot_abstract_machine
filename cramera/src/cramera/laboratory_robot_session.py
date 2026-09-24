@@ -13,6 +13,7 @@ from pathlib import Path
 from typing_extensions import Any, ClassVar, Protocol
 
 from cramera import paths
+from cramera.laboratory_workflow_command import WorkflowCommand, WorkflowField
 from cramera.laboratory_pipetting_command import PipettingAction, PipettingCommand
 from cramera.laboratory_refrigerator_command import (
     RefrigeratorCommand,
@@ -49,6 +50,8 @@ class RobotPhysicsRoute(StrEnum):
     """Operate the dispensing station beside the articulated robot."""
     PIPETTE = "/api/laboratory/physics/robot/pipette"
     """Run the robot demonstration with two measured reagent doses."""
+    WORKFLOW = "/api/laboratory/physics/robot/workflow"
+    """Prepare or resume the complete four-sample laboratory workflow."""
     CENTRIFUGE = "/api/laboratory/physics/robot/centrifuge"
     """Operate the centrifuge beside the articulated robot."""
     REFRIGERATOR = "/api/laboratory/physics/robot/refrigerator"
@@ -84,6 +87,12 @@ class RobotField(StrEnum):
     """Robot description relative to the generated bundle."""
     SOURCE = "source"
     """Origin of the motor setpoints."""
+    MOVABLE_JOINTS = "movableJoints"
+    """Visual joints updated from measured physical coordinates."""
+    POSE = "pose"
+    """Recorded model pose with XYZW orientation."""
+    LINKS = "links"
+    """Number of links in the renderer model."""
 
 
 class ProgramSimulation(ContactSimulation, Protocol):
@@ -101,15 +110,19 @@ class ProgramSimulation(ContactSimulation, Protocol):
     def pause_program(self) -> None:
         """Hold the current robot program stage."""
 
+    def run_workflow(self, prepare: bool) -> None:
+        """Prepare fresh demo samples or resume the current processing workflow."""
+
 
 def create_robot_physics(
     bundle_directory: Path, recording_directory: Path
 ) -> ProgramSimulation:
     """Load the robot engine and controller only when their scene is requested."""
-    model = importlib.import_module(
-        "cramera.laboratory_physics_robot"
-    ).LaboratoryRobotPhysics(
-        bundle_directory=bundle_directory, robot_directory=recording_directory
+    robot_module = importlib.import_module("cramera.laboratory_physics_robot")
+    model = robot_module.LaboratoryRobotPhysics(
+        bundle_directory=bundle_directory,
+        robot_directory=recording_directory,
+        robot_parameters=robot_module.RobotPhysicsParameters(mobile_base=True),
     )
     return importlib.import_module(
         "cramera.laboratory_physics_program"
@@ -170,6 +183,7 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
             robot[RobotField.URDF] = (
                 Path(self.ROBOT_ASSETS) / robot[RobotField.URDF]
             ).as_posix()
+            self._add_mobile_base(robot)
             scene[RobotField.MODELS].append(robot)
         for key in (RobotField.ROBOT, RobotField.ROBOTS):
             if key in source:
@@ -191,8 +205,25 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
         trajectory[PhysicsField.FRAMES] = [frame]
         trajectory_path.write_text(json.dumps(trajectory, indent=2))
 
+    def _add_mobile_base(self, robot: dict[str, Any]) -> None:
+        """Expose physical base coordinates only in the copied visualization model."""
+        base_module = importlib.import_module("cramera.laboratory_robot_base")
+        frames = self.physics.snapshot()[PhysicsField.FRAMES]
+        if not all(joint in frames for joint in base_module.RobotBaseJoint):
+            return
+        base_module.RobotBaseDescription(
+            self.output_directory / robot[RobotField.URDF],
+            tuple(robot[RobotField.POSE][3:7]),
+        ).write()
+        robot.setdefault(RobotField.MOVABLE_JOINTS, []).extend(
+            base_module.RobotBaseJoint
+        )
+        if RobotField.LINKS in robot:
+            robot[RobotField.LINKS] += len(base_module.RobotBaseJoint)
+
     def _validate_target(self, key: str, position: list[float]) -> None:
         """Allow manual targets only when the robot program is not advancing."""
+        self._require_workflow_release()
         super()._validate_target(key, position)
         if (
             self.physics.snapshot()[RobotField.ROBOT][PhysicsField.STATE]
@@ -206,6 +237,7 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
         """Transfer manipulation control from the cursor to the robot program."""
         with self.lock:
             self._require_running()
+            self._require_workflow_release()
             self.physics.run_program()
             return self._status()
 
@@ -213,6 +245,7 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
         """Transfer manipulation control to the fixed mixing recipe."""
         with self.lock:
             self._require_running()
+            self._require_workflow_release()
             self.physics.run_mixing()
             return self._status()
 
@@ -220,11 +253,29 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
         """Transfer manipulation control to the stationary dispensing recipe."""
         with self.lock:
             self._require_running()
+            self._require_workflow_release()
             self.physics.run_pipetting()
             return self._status()
 
+    def run_workflow(self, command: WorkflowCommand) -> dict[str, Any]:
+        """Serialize explicit demo preparation and state-preserving resume."""
+        with self.lock:
+            self._require_running()
+            self.physics.run_workflow(prepare=command.prepare)
+            return self._status()
+
+    def _require_workflow_release(self) -> None:
+        """Preserve workflow ownership during running and paused processing."""
+        robot = self.physics.snapshot()[RobotField.ROBOT]
+        if robot.get(WorkflowField.WORKFLOW, {}).get(WorkflowField.RESERVED, False):
+            raise InvalidPhysicsRequest(
+                "Resume or reset the sample workflow before changing its samples or instruments."
+            )
+
     def _validate_pipetting(self, command: PipettingCommand) -> None:
         """Keep emergency pump stopping available during robot execution."""
+        if command.action != PipettingAction.STOP:
+            self._require_workflow_release()
         super()._validate_pipetting(command)
         if (
             command.action != PipettingAction.STOP
@@ -237,6 +288,7 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
 
     def _validate_liquid(self, key: str, volume_ml: float) -> None:
         """Require the robot program to pause before changing liquid quantities."""
+        self._require_workflow_release()
         super()._validate_liquid(key, volume_ml)
         if (
             self.physics.snapshot()[RobotField.ROBOT][PhysicsField.STATE]
@@ -246,6 +298,8 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
 
     def _validate_centrifuge(self, command: CentrifugeCommand) -> None:
         """Keep rotor stopping available while the robot owns manipulation."""
+        if command.action != CentrifugeAction.STOP:
+            self._require_workflow_release()
         super()._validate_centrifuge(command)
         if (
             command.action != CentrifugeAction.STOP
@@ -258,6 +312,7 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
 
     def _validate_refrigerator(self, command: RefrigeratorCommand) -> None:
         """Require the robot program to yield before moving the refrigerator door."""
+        self._require_workflow_release()
         if (
             self.physics.snapshot()[RobotField.ROBOT][PhysicsField.STATE]
             == PhysicsState.RUNNING
@@ -268,6 +323,7 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
 
     def _validate_manual(self) -> None:
         """Preserve the active robot program's accepted operating knowledge."""
+        self._require_workflow_release()
         if (
             self.physics.snapshot()[RobotField.ROBOT][PhysicsField.STATE]
             == PhysicsState.RUNNING
@@ -278,6 +334,7 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
 
     def _validate_scale(self) -> None:
         """Require the robot program to pause before zeroing the scale."""
+        self._require_workflow_release()
         if (
             self.physics.snapshot()[RobotField.ROBOT][PhysicsField.STATE]
             == PhysicsState.RUNNING

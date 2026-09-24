@@ -37,9 +37,20 @@ class RobotPhysicsAsset(StrEnum):
     """Actual joint positions returned to the renderer."""
 
 
+class RobotBaseJoint(StrEnum):
+    """Planar displacement joints shared by mobile physics and visual articulation."""
+
+    HORIZONTAL = "pr2/mobile_x_joint"
+    """Translation along the laboratory's horizontal world axis."""
+    DEPTH = "pr2/mobile_y_joint"
+    """Translation along the laboratory's depth world axis."""
+    HEADING = "pr2/mobile_yaw_joint"
+    """Rotation about the world vertical axis."""
+
+
 @dataclass(frozen=True)
 class RobotPhysicsParameters:
-    """Bounded position servos for the stationary-base manipulation prototype."""
+    """Bounded arm, gripper, torso and optional planar base servos."""
 
     arm_stiffness: float = 6000.0
     """Arm servo stiffness in Newton meters per radian."""
@@ -63,6 +74,16 @@ class RobotPhysicsParameters:
     """Sliding friction coefficient of the rubber fingertip collision surfaces."""
     noslip_iterations: int = 3
     """Friction correction passes suppressing slow drift of a held glass."""
+    mobile_base: bool = False
+    """Whether bounded planar servos allow the base to travel between instruments."""
+    base_stiffness: float = 100000.0
+    """Planar servo stiffness in Newtons per meter or Newton meters per radian."""
+    base_damping: float = 10000.0
+    """Planar servo damping in force or torque seconds per coordinate."""
+    base_force: float = 2000.0
+    """Maximum planar drive force in Newtons."""
+    base_torque: float = 1000.0
+    """Maximum base heading torque in Newton meters."""
 
 
 @dataclass(frozen=True)
@@ -86,7 +107,7 @@ class RobotJoint:
 class LaboratoryRobotCollisionModel(LaboratoryCollisionModel):
     """Combine authored laboratory collisions with the PR2's physical link tree.
 
-    The base is stationary. Robot self-collision is excluded in this prototype;
+    The base is fixed unless planar actuation is enabled. Robot self-collision is excluded;
     all imported robot collision surfaces interact with laboratory objects.
     """
 
@@ -141,11 +162,45 @@ class LaboratoryRobotCollisionModel(LaboratoryCollisionModel):
             pos=" ".join(map(str, pose[:3])),
             quat=" ".join(map(str, [pose[6], *pose[3:6]])),
         )
+        if self.robot_parameters.mobile_base:
+            self._add_base_joints(base, Rotation.from_quat(pose[3:7]))
         for root in roots:
             self._add_robot_link(root, children, source_links, source_joints, base)
         return mujoco.MjModel.from_xml_string(
             ElementTree.tostring(self.root, encoding="unicode")
         )
+
+    def _add_base_joints(self, body: ElementTree.Element, rotation: Rotation) -> None:
+        """Add force-limited planar travel expressed in world-aligned coordinates."""
+        for index, name in enumerate(RobotBaseJoint):
+            axis = rotation.inv().apply(np.eye(3)[index])
+            heading = name == RobotBaseJoint.HEADING
+            maximum = (
+                self.robot_parameters.base_torque
+                if heading
+                else self.robot_parameters.base_force
+            )
+            ElementTree.SubElement(
+                body,
+                "joint",
+                name=name,
+                type="hinge" if heading else "slide",
+                axis=" ".join(map(str, axis)),
+                limited="true",
+                range="-3.141592653589793 3.141592653589793" if heading else "-2 2",
+                armature="1",
+                damping="10",
+            )
+            ElementTree.SubElement(
+                self.actuators,
+                "position",
+                name=name,
+                joint=name,
+                kp=str(self.robot_parameters.base_stiffness),
+                kv=str(self.robot_parameters.base_damping),
+                forcelimited="true",
+                forcerange=f"{-maximum} {maximum}",
+            )
 
     @staticmethod
     def _articulated(name: str) -> bool:
@@ -350,6 +405,8 @@ class LaboratoryRobotPhysics(LaboratoryPhysics):
     """Compiled physical joint and actuator indices."""
     joint_targets: dict[str, float] = field(init=False, default_factory=dict)
     """Current requested positions of independently actuated joints."""
+    front_grasp_ready: bool = field(init=False, default=False)
+    """Whether a calibrated horizontal front-grasp transition has completed."""
 
     def __post_init__(self) -> None:
         """Resolve local robot descriptions before compiling the shared world."""
@@ -381,7 +438,7 @@ class LaboratoryRobotPhysics(LaboratoryPhysics):
         super().__post_init__()
 
     def _build_model(self) -> mujoco.MjModel:
-        """Compile the full articulated contact model with a stationary robot base."""
+        """Compile articulated contacts with the configured base actuation."""
         return LaboratoryRobotCollisionModel(
             self.bundle_directory,
             self.scene,
@@ -397,6 +454,7 @@ class LaboratoryRobotPhysics(LaboratoryPhysics):
         super().reset()
         self.robot_joints = {}
         self.joint_targets = {}
+        self.front_grasp_ready = False
         for index in range(self.model.njnt):
             name = self.model.joint(index).name
             if not name.startswith("pr2/"):
@@ -460,6 +518,12 @@ class LaboratoryRobotPhysics(LaboratoryPhysics):
             }
         )
         return result
+
+    @property
+    def base_rotation(self) -> tuple[float, float, float, float]:
+        """Return the initial base orientation in renderer quaternion order."""
+        quaternion = self.model.body("robot_mount").quat
+        return tuple(float(value) for value in (*quaternion[1:], quaternion[0]))
 
     def snapshot(self) -> dict[str, Any]:
         """Publish authoritative articulated positions with loose-object contacts."""

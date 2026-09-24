@@ -2,10 +2,11 @@
 (function (root, factory) {
   'use strict';
   const refrigerator = typeof module !== 'undefined' && module.exports ? require('./laboratory-refrigerator.js') : root.LaboratoryRefrigerator;
-  const laboratory = factory(refrigerator);
+  const workflow = typeof module !== 'undefined' && module.exports ? require('./laboratory-workflow.js') : root.LaboratoryWorkflow;
+  const laboratory = factory(refrigerator, workflow);
   if (typeof module !== 'undefined' && module.exports) module.exports = laboratory;
   if (root) root.LaboratoryPhysics = laboratory;
-})(typeof window !== 'undefined' ? window : null, function (Refrigerator) {
+})(typeof window !== 'undefined' ? window : null, function (Refrigerator, Workflow) {
   'use strict';
 
   // %% simulation service
@@ -32,10 +33,11 @@
     MANUAL: '/api/laboratory/physics/robot/manual',
     PIPETTING: '/api/laboratory/physics/robot/pipetting',
     PIPETTE: '/api/laboratory/physics/robot/pipette',
+    WORKFLOW: '/api/laboratory/physics/robot/workflow',
     REFRIGERATOR: '/api/laboratory/physics/robot/refrigerator',
   });
   const RobotStates = Object.freeze({IDLE: 'idle', RUNNING: 'running', PAUSED: 'paused', SUCCEEDED: 'succeeded', FAILED: 'failed'});
-  const RobotSources = Object.freeze({TRANSFER: 'recorded_cram_joint_targets', MIXING: 'laboratory_liquid_mixing', PIPETTING: 'laboratory_pipetting'});
+  const RobotSources = Object.freeze({TRANSFER: 'recorded_cram_joint_targets', MIXING: 'laboratory_liquid_mixing', PIPETTING: 'laboratory_pipetting', WORKFLOW: Workflow.Source});
   const RobotLabels = Object.freeze({idle: 'Ready', running: 'PR2 is moving the glass', paused: 'PR2 paused', succeeded: 'Glass transferred', failed: 'Movement stopped'});
   const MixingLabels = Object.freeze({...RobotLabels, running: 'PR2 is mixing the liquids', succeeded: 'Mixture placed in A2'});
   const PipettingLabels = Object.freeze({...RobotLabels, running: 'PR2 is dosing the sample', succeeded: 'Dosed sample returned to A1'});
@@ -49,7 +51,7 @@
   const LIFT_CLEARANCE = .22;
   const VOLUME_STEP = .5;
   const GlassCamera = Object.freeze({POSITION: [.32, -.42, .28], TARGET: [0, 0, .075]});
-  const ProgramCommands = Object.freeze(['run', 'runMixing', 'runPipetting']);
+  const ProgramCommands = Object.freeze(['run', 'runMixing', 'runPipetting', 'runWorkflow']);
   const LiquidCommands = Object.freeze(['fillLiquid', 'reset', ...ProgramCommands]);
   const ScaleCommands = Object.freeze(['tareScale', 'reset', ...ProgramCommands]);
   const SCALE_MOVE_TIMEOUT = 20000;
@@ -89,6 +91,7 @@
     run() { return this.post(this.routes.RUN); }
     runMixing() { return this.post(this.routes.MIX); }
     runPipetting() { return this.post(this.routes.PIPETTE); }
+    runWorkflow(prepare = true) { return this.post(this.routes.WORKFLOW, {prepare}); }
     pipetting(command) { return this.post(this.routes.PIPETTING, command); }
     refrigerator(command) { return this.post(this.routes.REFRIGERATOR, command); }
     pause() { return this.post(this.routes.PAUSE); }
@@ -133,6 +136,8 @@
       this.target = null;
       this.robot = {state: RobotStates.IDLE, phase: '', progress: 0};
       this.robotRequest = null;
+      this.workflowUncertain = false;
+      this.workflowError = null;
       this.selected = config.objects.length ? config.objects[0].key : null;
       this.dragged = null;
       this.state = 'idle';
@@ -150,7 +155,7 @@
     }
     ready() { return !this.disposed && !this.starting && this.state === 'running'; }
     robotBusy() { return this.config.robot && (this.robotRequest || this.robot.state === RobotStates.RUNNING); }
-    manualReady() { return this.ready() && !this.robotBusy() && !this.manualBusy(); }
+    manualReady() { return this.ready() && !this.robotBusy() && !this.workflowUncertain && !Workflow.active(this.robot) && !this.manualBusy(); }
     manualBusy() { return this.activeCommand === 'manual' || this.queue.some(command => command.type === 'manual'); }
     pipettingBusy() { return this.activeCommand === 'pipetting' || this.queue.some(command => command.type === 'pipetting'); }
     dispensing() { return Boolean(this.pipetting && this.pipetting.state === 'dispensing'); }
@@ -777,7 +782,23 @@
     run() { return this.startProgram('run'); }
     runMixing() { return this.startProgram('runMixing'); }
     runPipetting() { return this.startProgram('runPipetting'); }
+    workflowReady() {
+      const resuming = this.robot.source === RobotSources.WORKFLOW && this.robot.state === RobotStates.PAUSED;
+      return Boolean(this.config.robot && this.ready() && !this.robotBusy() && !this.workflowUncertain && !this.draining
+        && !this.manualBusy() && !this.scaleTransfer && !this.centrifugeTransfer && !this.centrifugePair
+        && !this.pipettingTransfer && !this.refrigeratorTransfer && (resuming || !this.dispensing())
+        && this.pipetting && this.pipetting.available && this.scale && this.scale.available
+        && this.centrifuge && this.centrifuge.available && this.refrigerator && this.refrigerator.available);
+    }
+    runWorkflow() {
+      if (!this.workflowReady()) return Promise.resolve(false);
+      this.workflowError = null;
+      this.robotRequest = 'runWorkflow';
+      this.workflowUncertain = true;
+      return this.clear('runWorkflow');
+    }
     startProgram(type) {
+      if (this.workflowUncertain || Workflow.active(this.robot)) return Promise.resolve(false);
       if (this.dispensing() || this.pipettingBusy() || this.pipettingTransfer || this.refrigeratorTransfer || this.refrigeratorBusy() || this.stored(this.selected)) return Promise.resolve(false);
       if ((this.refrigerator && this.refrigerator.slots.some(slot => slot.key)) || !this.config.robot || !this.ready() || this.robotBusy() || this.centrifugeTransfer || this.centrifugePair || this.centrifugeOwnsObjects()) return Promise.resolve(false);
       this.robotRequest = type;
@@ -827,7 +848,8 @@
         this.activeCommand = command.type;
         try {
           let answer;
-          if (command.type === 'target') answer = await this.service.target(command.target);
+          if (command.type === 'runWorkflow') answer = await this.service.runWorkflow(!(this.robot.source === RobotSources.WORKFLOW && this.robot.state === RobotStates.PAUSED));
+          else if (command.type === 'target') answer = await this.service.target(command.target);
           else if (command.type === 'refrigerator') answer = await this.service.refrigerator(command.payload);
           else if (command.type === 'pipetting') answer = await this.service.pipetting(command.payload);
           else if (command.type === 'centrifuge') answer = await this.service.centrifuge(command.payload);
@@ -865,12 +887,20 @@
           if (this.config.robot && [...ProgramCommands, 'pause', 'reset'].includes(command.type)) {
             const startingProgram = ProgramCommands.includes(command.type);
             const state = startingProgram ? RobotStates.RUNNING : (command.type === 'pause' ? RobotStates.PAUSED : RobotStates.IDLE);
-            const source = startingProgram ? (command.type === 'runPipetting' ? RobotSources.PIPETTING : command.type === 'runMixing' ? RobotSources.MIXING : RobotSources.TRANSFER) : this.robot.source;
-            this.robot = answer.robot || {...this.robot, state, source};
+            const source = startingProgram ? (command.type === 'runWorkflow' ? RobotSources.WORKFLOW : command.type === 'runPipetting' ? RobotSources.PIPETTING : command.type === 'runMixing' ? RobotSources.MIXING : RobotSources.TRANSFER) : this.robot.source;
+            if (answer.robot) {
+              this.robot = answer.robot;
+              this.workflowUncertain = false;
+              if (command.type === 'runWorkflow' || command.type === 'reset') this.workflowError = null;
+            } else if (command.type !== 'runWorkflow') {
+              this.robot = {...this.robot, state, source};
+              if (command.type === 'reset') {this.workflowUncertain = false;this.workflowError = null;}
+            } else throw new Error('Workflow status was not returned. Refresh before starting again.');
           }
           this.error = null;
         } catch (error) {
           this.error = error.message;
+          if (command.type === 'runWorkflow') this.workflowError = error.message;
           if (command.type === 'refrigerator') this.refrigeratorError = error.message;
           if (command.type === 'pipetting') this.pipettingError = error.message;
           if (command.type === 'manual') this.manualError = error.message;
@@ -924,6 +954,10 @@
         if (!commandPending && !this.draining && revision === this.revision) {
           if (!this.centrifugeTransfer) this.target = answer.target || null;
           this.robot = answer.robot || this.robot;
+          if (answer.robot) {
+            this.workflowUncertain = false;
+            if (answer.robot.source === RobotSources.WORKFLOW && answer.robot.state === RobotStates.RUNNING) this.workflowError = null;
+          }
         }
         if (answer.frames && this.adapter.setJointFrames) this.adapter.setJointFrames(answer.frames);
         for (const [key, pose] of Object.entries(this.objects)) this.adapter.setObjectPose(key, pose);
@@ -1023,6 +1057,7 @@
       option.value = object.key;
     }
     const controller = new Controller(config, service, adapter, render);
+    const workflow = config.robot ? new Workflow.View(panel, {start: () => controller.runWorkflow(), pause: () => controller.pause(), reset: () => controller.reset()}) : null;
     const refrigerator = element('section', panel, 'laboratory-physics-refrigerator');
     element('h4', refrigerator, '', 'Sample refrigerator');
     const refrigeratorTemperature = element('p', refrigerator, 'laboratory-physics-refrigerator-temperature');
@@ -1384,22 +1419,25 @@
         liquidStatus.textContent = tube.volumeMl.toFixed(1) + ' / ' + tube.capacityMl.toFixed(1) + ' ml · Spilled: ' + (Number(controller.liquid.spilledMl) || 0).toFixed(1) + ' ml';
         tiltStatus.textContent = 'Tilt: ' + Math.round(controller.observedTilt()) + '°';
       }
-      status.textContent = controller.error || (controller.starting ? 'Starting laboratory …' : (ready ? (controller.robotBusy() ? 'Manual movement is paused while PR2 is running a task.' : (controller.target ? 'Glass held · Use the arrows to move the target.' : 'Select a glass or drag it directly in the scene.')) : 'The simulation is inactive. Start the laboratory to continue.'));
+      status.textContent = controller.error || (controller.starting ? 'Starting laboratory …' : (ready ? (controller.robotBusy() ? 'Manual movement is paused while PR2 is running a task.' : Workflow.active(controller.robot) ? Workflow.PausedNote : (controller.target ? 'Glass held · Use the arrows to move the target.' : 'Select a glass or drag it directly in the scene.')) : 'The simulation is inactive. Start the laboratory to continue.'));
       status.dataset.error = String(Boolean(controller.error));
       if (config.robot) {
         const mixing = controller.robot.source === RobotSources.MIXING;
         const dosing = controller.robot.source === RobotSources.PIPETTING;
+        const fullDemo = controller.robot.source === RobotSources.WORKFLOW;
+        const workflowOwned = Workflow.active(controller.robot);
+        workflow.render(controller.robot, {ready, canStart: controller.workflowReady(), canPause: fullDemo && controller.robot.state === RobotStates.RUNNING, pending: Boolean(controller.draining || controller.robotRequest), error: controller.workflowError || controller.error});
         const paused = controller.robot.state === RobotStates.PAUSED;
-        robotMotionNote.textContent = mixing || dosing ? 'Motion: local contact controller. Contacts: MuJoCo.' : 'Joint targets: recorded CRAM plan. Motion and contacts: MuJoCo.';
-        robotRun.disabled = !ready || Boolean(controller.robotBusy()) || Boolean(controller.centrifugeTransfer) || Boolean(pair) || controller.centrifugeOwnsObjects() || controller.dispensing() || controller.pipettingBusy() || Boolean(controller.pipettingTransfer) || Boolean(controller.refrigeratorTransfer) || controller.refrigeratorBusy() || Boolean(cabinet && cabinet.slots.some(slot => slot.key));
-        robotRun.textContent = paused && !mixing && !dosing ? 'Resume PR2' : 'Start PR2: A1 → A3';
+        robotMotionNote.textContent = mixing || dosing || fullDemo ? 'Motion: local contact controller. Contacts: MuJoCo.' : 'Joint targets: recorded CRAM plan. Motion and contacts: MuJoCo.';
+        robotRun.disabled = workflowOwned || !ready || Boolean(controller.robotBusy()) || Boolean(controller.centrifugeTransfer) || Boolean(pair) || controller.centrifugeOwnsObjects() || controller.dispensing() || controller.pipettingBusy() || Boolean(controller.pipettingTransfer) || Boolean(controller.refrigeratorTransfer) || controller.refrigeratorBusy() || Boolean(cabinet && cabinet.slots.some(slot => slot.key));
+        robotRun.textContent = paused && !mixing && !dosing && !fullDemo ? 'Resume PR2' : 'Start PR2: A1 → A3';
         robotPipette.disabled = robotRun.disabled || !station || !station.available;
         robotPipette.textContent = paused && dosing ? 'Resume pipetting demo' : 'Start pipetting demo';
         robotMix.disabled = robotRun.disabled;
         robotMix.textContent = paused && mixing ? 'Resume mixing demo' : 'Start mixing demo';
         robotPause.disabled = !ready || !controller.robotBusy() || controller.robotRequest === 'pause';
         const phase = controller.robot.message || RobotPhases[controller.robot.phase];
-        const label = (dosing ? PipettingLabels : mixing ? MixingLabels : RobotLabels)[controller.robot.state] || controller.robot.state;
+        const label = (fullDemo ? Workflow.Labels : dosing ? PipettingLabels : mixing ? MixingLabels : RobotLabels)[controller.robot.state] || controller.robot.state;
         robotStatus.textContent = controller.robot.error || (label + (phase && controller.robot.state === RobotStates.RUNNING ? ' · ' + phase : ''));
         robotStatus.dataset.error = String(Boolean(controller.robot.error));
         robotProgress.value = Math.max(0, Math.min(1, Number(controller.robot.progress) || 0));
@@ -1429,6 +1467,7 @@
         controller.destroy();
         scheduler.clearInterval(timer);
         listeners.forEach(remove => remove());
+        if (workflow) workflow.destroy();
         panel.remove();
       },
     };

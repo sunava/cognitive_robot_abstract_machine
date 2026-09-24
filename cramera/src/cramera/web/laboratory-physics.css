@@ -18,6 +18,18 @@
 }
 .laboratory-physics h3 { margin: 0 0 8px; font-size: 19px; }
 .laboratory-physics p { margin: 8px 0; }
+.laboratory-workflow { padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid #cbdad7; }
+.laboratory-workflow h4 { margin: 0 0 5px; font-size: 15px; }
+.laboratory-workflow > button { width: 100%; margin-top: 5px; }
+.laboratory-workflow-start { font-weight: 600 !important; background: #e6f4ef !important; }
+.laboratory-workflow-recipe, .laboratory-workflow-note { color: #536b64; font-size: 12px; }
+.laboratory-workflow-status { font-weight: 600; }
+.laboratory-workflow-status[data-error="true"] { color: #a12f2b; }
+.laboratory-workflow-stage { font-size: 12px; }
+.laboratory-workflow-progress { width: 100%; accent-color: #267d79; }
+.laboratory-workflow-samples { margin: 8px 0; padding: 0; list-style: none; }
+.laboratory-workflow-sample { display: grid; gap: 2px; padding: 7px 0; border-top: 1px solid #dfe9e6; font-size: 12px; font-variant-numeric: tabular-nums; }
+.laboratory-workflow-sample span:last-child { color: #536b64; }
 .laboratory-physics-intro, .laboratory-physics-note, .laboratory-physics-robot-motion-note { color: #536b64; font-size: 12px; }
 .laboratory-physics-field { display: grid; gap: 5px; margin: 12px 0; }
 .laboratory-physics button, .laboratory-physics select, .laboratory-physics input, .laboratory-physics-entry button {

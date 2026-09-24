@@ -1,0 +1,365 @@
+{
+  "joints": {
+    "laboratory_centrifuge_rotor_joint": {
+      "position": [
+        402.33918098347135
+      ],
+      "velocity": [
+        -9.185733283594309e-08
+      ]
+    },
+    "laboratory_centrifuge_lid_joint": {
+      "position": [
+        1.8499999999999965
+      ],
+      "velocity": [
+        6.776998810530643e-14
+      ]
+    },
+    "laboratory_refrigerator_door_joint": {
+      "position": [
+        1.7499999999999842
+      ],
+      "velocity": [
+        5.816987086842349e-14
+      ]
+    },
+    "tube_clear_free": {
+      "position": [
+        -1.3703453446015157,
+        -0.09947380917127582,
+        0.2400184698559208,
+        0.9980096230353162,
+        0.03737465533222663,
+        2.0595016406357503e-05,
+        -0.05079298222737086
+      ],
+      "velocity": [
+        -1.7005178770607514e-12,
+        1.797695255820112e-12,
+        -1.7729634901378993e-12,
+        -2.0930702345381503e-10,
+        -2.1330723251686193e-11,
+        1.8951716452875197e-10
+      ]
+    },
+    "tube_amber_free": {
+      "position": [
+        -1.2302462796766536,
+        -0.09952331359205001,
+        0.24001942468656684,
+        0.999267159157515,
+        0.036838911577678816,
+        0.008983542086126157,
+        0.005228307051897237
+      ],
+      "velocity": [
+        -1.8176290119142072e-09,
+        4.5074973244023665e-09,
+        1.3992260570877425e-09,
+        1.0619450658423617e-07,
+        4.2639059196884826e-08,
+        -6.3539496685217285e-09
+      ]
+    },
+    "tube_teal_free": {
+      "position": [
+        -0.5459490096037032,
+        -0.0011312312584541482,
+        0.9599915967760784,
+        0.9716141334712981,
+        -0.01650740244640199,
+        0.0021269254092717875,
+        0.2359850789596574
+      ],
+      "velocity": [
+        6.326217410759949e-09,
+        1.464612276827105e-09,
+        4.968464606284129e-14,
+        1.0921677810874807e-09,
+        2.8557271384135657e-09,
+        -9.194039447350164e-08
+      ]
+    },
+    "tube_reserve_free": {
+      "position": [
+        -0.5156374324894883,
+        -0.14220352665754588,
+        0.9599915765292674,
+        0.9980860784940281,
+        -0.007830547526361198,
+        0.015832218852662335,
+        0.05926384469513968
+      ],
+      "velocity": [
+        -6.6320970773399006e-09,
+        -1.3192363404702333e-09,
+        -4.4190607485796894e-14,
+        2.9886534891384613e-09,
+        1.2598214518057054e-09,
+        -9.179999589769175e-08
+      ]
+    },
+    "stopper_free": {
+      "position": [
+        0.5000000233483424,
+        -0.11999998277444945,
+        0.8999982054510879,
+        0.9999999993574819,
+        -1.627282205905242e-05,
+        3.194104120967161e-05,
+        -3.650209568402222e-08
+      ],
+      "velocity": [
+        -1.196620012492398e-09,
+        -2.7824978510356686e-10,
+        1.917512894994422e-09,
+        4.310784234586376e-05,
+        -0.00018465608989746973,
+        1.8140020697803398e-07
+      ]
+    },
+    "pr2/mobile_x_joint": {
+      "position": [
+        -1.129998851257636
+      ],
+      "velocity": [
+        -3.062288578912135e-06
+      ]
+    },
+    "pr2/mobile_y_joint": {
+      "position": [
+        -0.39999597568572565
+      ],
+      "velocity": [
+        -1.7683526863050786e-05
+      ]
+    },
+    "pr2/mobile_yaw_joint": {
+      "position": [
+        -2.796373863497015e-06
+      ],
+      "velocity": [
+        7.918270866809425e-08
+      ]
+    },
+    "pr2/torso_lift_joint": {
+      "position": [
+        0.32298130760475574
+      ],
+      "velocity": [
+        0.0007890400262201353
+      ]
+    },
+    "pr2/l_shoulder_pan_joint": {
+      "position": [
+        1.1004869218067028
+      ],
+      "velocity": [
+        -0.013451248120817294
+      ]
+    },
+    "pr2/l_shoulder_lift_joint": {
+      "position": [
+        0.10003221658639336
+      ],
+      "velocity": [
+        -0.00010658383304927335
+      ]
+    },
+    "pr2/l_upper_arm_roll_joint": {
+      "position": [
+        1.019560823838823
+      ],
+      "velocity": [
+        -0.038571144183641035
+      ]
+    },
+    "pr2/l_elbow_flex_joint": {
+      "position": [
+        -1.652639557916634
+      ],
+      "velocity": [
+        0.008380384924972594
+      ]
+    },
+    "pr2/l_forearm_roll_joint": {
+      "position": [
+        8.729139039207043
+      ],
+      "velocity": [
+        -0.021255133662065512
+      ]
+    },
+    "pr2/l_wrist_flex_joint": {
+      "position": [
+        -0.7323001724846431
+      ],
+      "velocity": [
+        -0.024014995747800916
+      ]
+    },
+    "pr2/l_wrist_roll_joint": {
+      "position": [
+        -0.6613090775607273
+      ],
+      "velocity": [
+        0.03366237780170191
+      ]
+    },
+    "pr2/l_gripper_r_finger_joint": {
+      "position": [
+        0.24999203720600705
+      ],
+      "velocity": [
+        -0.0008949479368169302
+      ]
+    },
+    "pr2/l_gripper_r_finger_tip_joint": {
+      "position": [
+        0.2499937142563316
+      ],
+      "velocity": [
+        -8.945229155422332e-05
+      ]
+    },
+    "pr2/l_gripper_l_finger_joint": {
+      "position": [
+        0.249997120866419
+      ],
+      "velocity": [
+        0.0019040955273149716
+      ]
+    },
+    "pr2/l_gripper_l_finger_tip_joint": {
+      "position": [
+        0.24999701666070037
+      ],
+      "velocity": [
+        0.0015732172955727603
+      ]
+    },
+    "pr2/r_shoulder_pan_joint": {
+      "position": [
+        -1.7120001390813944
+      ],
+      "velocity": [
+        2.114812335285792e-05
+      ]
+    },
+    "pr2/r_shoulder_lift_joint": {
+      "position": [
+        -0.2559967988665282
+      ],
+      "velocity": [
+        -7.169278151974505e-05
+      ]
+    },
+    "pr2/r_upper_arm_roll_joint": {
+      "position": [
+        -1.4630009650076372
+      ],
+      "velocity": [
+        2.0008729785608523e-05
+      ]
+    },
+    "pr2/r_elbow_flex_joint": {
+      "position": [
+        -2.119730313016717
+      ],
+      "velocity": [
+        1.1837699878166996e-05
+      ]
+    },
+    "pr2/r_forearm_roll_joint": {
+      "position": [
+        1.7660000049450277
+      ],
+      "velocity": [
+        -6.584601615017765e-07
+      ]
+    },
+    "pr2/r_wrist_flex_joint": {
+      "position": [
+        -0.09999991571601717
+      ],
+      "velocity": [
+        -1.9428865979958423e-06
+      ]
+    },
+    "pr2/r_wrist_roll_joint": {
+      "position": [
+        0.05100000129288024
+      ],
+      "velocity": [
+        -1.9710019175700662e-07
+      ]
+    },
+    "pr2/r_gripper_r_finger_joint": {
+      "position": [
+        1.7983894657427768e-06
+      ],
+      "velocity": [
+        -6.8593821104746455e-06
+      ]
+    },
+    "pr2/r_gripper_r_finger_tip_joint": {
+      "position": [
+        1.7985262468838271e-06
+      ],
+      "velocity": [
+        -5.269929197304132e-06
+      ]
+    },
+    "pr2/r_gripper_l_finger_joint": {
+      "position": [
+        1.793916439211241e-06
+      ],
+      "velocity": [
+        -8.48801213797081e-07
+      ]
+    },
+    "pr2/r_gripper_l_finger_tip_joint": {
+      "position": [
+        1.795556850636915e-06
+      ],
+      "velocity": [
+        -1.997671427859041e-06
+      ]
+    }
+  },
+  "joint_targets": {
+    "pr2/mobile_x_joint": -1.13,
+    "pr2/mobile_y_joint": -0.4,
+    "pr2/mobile_yaw_joint": 0.0,
+    "pr2/torso_lift_joint": 0.32301410976529327,
+    "pr2/l_shoulder_pan_joint": 1.100385091270052,
+    "pr2/l_shoulder_lift_joint": 0.10003960841680602,
+    "pr2/l_upper_arm_roll_joint": 1.0192139595579848,
+    "pr2/l_elbow_flex_joint": -1.6525652211685389,
+    "pr2/l_forearm_roll_joint": 8.728919179831701,
+    "pr2/l_wrist_flex_joint": -0.7325500203050449,
+    "pr2/l_wrist_roll_joint": -0.6609564902193523,
+    "pr2/l_gripper_l_finger_joint": 0.25,
+    "pr2/r_shoulder_pan_joint": -1.712,
+    "pr2/r_shoulder_lift_joint": -0.256,
+    "pr2/r_upper_arm_roll_joint": -1.463,
+    "pr2/r_elbow_flex_joint": -2.11973,
+    "pr2/r_forearm_roll_joint": 1.766,
+    "pr2/r_wrist_flex_joint": -0.1,
+    "pr2/r_wrist_roll_joint": 0.051,
+    "pr2/r_gripper_l_finger_joint": 0.0
+  },
+  "sample_volumes": {
+    "tube_clear": 2.0,
+    "tube_amber": 2.0,
+    "tube_teal": 2.0,
+    "tube_reserve": 2.0
+  },
+  "secured_slots": {
+    "C4": "tube_reserve"
+  },
+  "centrifuge_lid_target": 1.85,
+  "refrigerator_target": 1.75,
+  "refrigerator_reference": 1.75
+}

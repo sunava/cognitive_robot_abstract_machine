@@ -62,6 +62,7 @@ from cramera.laboratory_physics_session import (
 )
 from cramera.laboratory_runs import LaboratoryRoute, LaboratoryRun, RunField
 from cramera.laboratory_robot_session import LaboratoryRobotSession, RobotPhysicsRoute
+from cramera.laboratory_workflow_command import WorkflowCommand
 from cramera.live.frame_range import FrameRange, InvalidFrameRange
 from cramera.live.recording_storage import (
     NoSavedRecording,
@@ -431,7 +432,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             body = self._request_body()
             if not isinstance(body, dict):
                 raise InvalidPhysicsRequest("Expected a JSON object")
-            if route == routes.TARGET:
+            if route == RobotPhysicsRoute.WORKFLOW:
+                outcome = session.run_workflow(WorkflowCommand.from_payload(body))
+            elif route == routes.TARGET:
                 if set(body) not in (
                     {PhysicsField.KEY, PhysicsField.POSITION},
                     {PhysicsField.KEY, PhysicsField.POSITION, PhysicsField.ORIENTATION},
