@@ -19,6 +19,7 @@ from cramera.laboratory_physics import InvalidPhysicsTarget
 from cramera.laboratory_physics_program import JointReference, ProgramState
 from cramera.laboratory_physics_robot import RobotBaseJoint
 from cramera.laboratory_refrigerator_command import RefrigeratorField
+from cramera.laboratory_robot_base import LaboratoryBasePath
 
 
 # %% reusable movement intentions
@@ -61,6 +62,14 @@ class LaboratorySampleTransfer(LaboratoryMixingProgram):
     """Measured sample-axis tilt with axial rotation excluded."""
     base_start: dict[str, float] = field(init=False, default_factory=dict)
     """Measured planar displacements when the current base stage starts."""
+    base_path: LaboratoryBasePath | None = field(init=False, default=None)
+    """Measured whole-robot sweep checked before and during planar travel."""
+    base_check_time: float = field(init=False, default=0.0)
+    """Elapsed stage time of the last dynamic clearance check."""
+    base_check_period: float = 0.05
+    """Simulation seconds between dynamic obstacle checks during travel."""
+    base_lookahead: float = 0.04
+    """Minimum preview distance allowing the base to brake before obstacles."""
     base_speed: float = 0.12
     """Maximum straight base reference speed in meters per second."""
     torso_speed: float = 0.03
@@ -75,7 +84,7 @@ class LaboratorySampleTransfer(LaboratoryMixingProgram):
     """Open corridor allowing vertical lowering ahead of the cabinet door."""
     upper_cabinet_base_offset: float = 0.20
     """Rightward base offset clearing the open door at upper shelf height."""
-    centrifuge_base: tuple[float, float] = (-0.30, 0.10)
+    centrifuge_base: tuple[float, float] = (-0.30, 0.0)
     """Planar dock placing the raised upper grip within the rotor workspace."""
     centrifuge_clear_depth: float = -0.25
     """Base retreat clearing the centrifuge lid's full closing arc."""
@@ -453,6 +462,16 @@ class LaboratorySampleTransfer(LaboratoryMixingProgram):
             )
         state = self.physics.robot_state()
         self.base_start = {name: state.get(name, 0.0) for name in RobotBaseJoint}
+        self.base_path = None
+        self.base_check_time = 0.0
+        if self.stage.base_targets is not None:
+            self.base_path = LaboratoryBasePath(
+                self.physics, self.object_key if self.stage.closed else None
+            )
+            obstruction = self.base_path.obstruction(self.stage.base_targets)
+            if obstruction is not None:
+                self.physics.set_joint_targets(self.base_start)
+                self._fail(str(obstruction))
 
     def _complete_stage(self) -> None:
         """Retain the calibrated front-grasp branch across successive transfers."""
@@ -562,6 +581,27 @@ class LaboratorySampleTransfer(LaboratoryMixingProgram):
             + float(np.clip(target - self.base_start[name], -maximum, maximum))
             for name, target in self.stage.base_targets.items()
         }
+        if self.stage_time - self.base_check_time >= self.base_check_period:
+            self.base_check_time = self.stage_time
+            measured = self.physics.robot_state()
+            preview = {
+                name: measured[name]
+                + float(
+                    np.clip(
+                        target - measured[name],
+                        -self.base_lookahead,
+                        self.base_lookahead,
+                    )
+                )
+                for name, target in self.stage.base_targets.items()
+            }
+            obstruction = self.base_path.obstruction(preview)
+            if obstruction is not None:
+                self.physics.set_joint_targets(
+                    {name: measured[name] for name in RobotBaseJoint}
+                )
+                self._fail(str(obstruction))
+                return
         self.physics.set_joint_targets(targets)
 
     def _set_joint_targets(self, targets: dict[str, float], duration: float) -> None:

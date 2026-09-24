@@ -39,7 +39,12 @@ from cramera.laboratory_refrigerator_command import (
     RefrigeratorField,
 )
 from cramera.laboratory_scale import LaboratoryScale, ScaleGeometry
-from cramera.laboratory_world import LaboratoryAsset, LaboratoryWorld
+from cramera.laboratory_world import (
+    CabinetStructure,
+    LaboratoryAsset,
+    LaboratoryBody,
+    LaboratoryWorld,
+)
 
 
 # %% public state
@@ -194,6 +199,7 @@ class LaboratoryCollisionModel:
         for item in self.scene["models"]:
             if not item["robot"]:
                 self._add_environment(self.directory / item["urdf"])
+        self._add_cabinet()
         for item in self.scene["objects"]:
             self._add_object(item)
         CentrifugeCollisionModel(
@@ -204,6 +210,21 @@ class LaboratoryCollisionModel:
         return mujoco.MjModel.from_xml_string(
             ElementTree.tostring(self.root, encoding="unicode")
         )
+
+    def _add_cabinet(self) -> None:
+        """Match visible closed cabinet panels to the semantic collision world."""
+        cabinet = ElementTree.SubElement(
+            self.world, "body", name=LaboratoryBody.CABINET
+        )
+        for index, panel in enumerate(CabinetStructure().panels()):
+            ElementTree.SubElement(
+                cabinet,
+                "geom",
+                name=f"{LaboratoryBody.CABINET}_{index}",
+                type="box",
+                pos=" ".join(map(str, panel.origin.to_np()[:3, 3])),
+                size=" ".join(map(str, panel.size.to_np() / 2)),
+            )
 
     @staticmethod
     def _pose(origin: ElementTree.Element | None) -> dict[str, str]:
