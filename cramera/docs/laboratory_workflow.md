@@ -4,9 +4,9 @@ The full demo processes the clear, amber, teal, and reserve samples through the 
 dispenser, balance, centrifuge, and sample cooler. Each initially empty vial receives
 **1 ml of reagent A and 1 ml of reagent B**.
 
-**Earlier reference validation:** a fresh complete four-sample MuJoCo run passed, including
-five seconds of settling after both doors closed. All four samples retained their
-full 2 ml and occupied R1–R4; the rotor was stopped and all rotor holders were released.
+**Validated:** a fresh native Coraplex run passed all 61 actions and five seconds
+of settling after both covers closed. All four samples retained 2 ml in R1–R4;
+the rotor was stopped and every rotor holder was released.
 
 ## Access and controls
 
@@ -67,7 +67,9 @@ Filling, weighing, and loading are completed for one sample before the next begi
 
 A1 is used as a physical place to change grasp direction and is emptied before the
 next sample is picked up. The sample is supported and released before the new grasp;
-a change of grasp is not an invisible attachment switch.
+a change of grasp is not an invisible attachment switch. Top-grasp insertion uses
+a slower descent through the rack aperture and still requires measured support
+before release.
 
 ## Reading the observations
 
@@ -97,7 +99,9 @@ continues from them.
   wheel steering, tire slip, odometry, or autonomous navigation. Authored cabinet
   panels participate in contact physics. Before base travel, swept checks include
   the whole robot and any carried vial, and reject routes through the environment.
-  The measured path is checked again while driving.
+  The measured path is checked again while driving. Cabinet-bound transport first
+  retreats into the clear aisle, then travels sideways, keeping the carrying arm
+  clear of the centrifuge chamber.
 - **Gaze:** a native Giskard `Pointing` constraint continuously follows the measured
   left gripper tool with the PR2's optical camera. It updates at 20 Hz in simulation
   time and controls only head pan and tilt; arm and base targets remain with the
@@ -112,6 +116,9 @@ continues from them.
   the moving surface. The centrifuge's stopped-rotor interlock still applies.
   Handle manipulation uses a separate bounded gripper profile; completion,
   cancellation, and failure restore the original sample-grasp actuator settings.
+  After a low door grasp, an explicit recovery stage restores torso height before
+  the next bench-level sample transfer. Cartesian torso movement is enabled only
+  by actual low placement stages, not by that preparatory joint-target stage.
   Starting its processing cycle uses the instrument command; physical button
   pressing is not part of this recipe.
 - **Liquids:** a reduced model tracks finite reservoir volumes, transfer, mixing
@@ -123,8 +130,9 @@ continues from them.
   Storage occupancy and door motion use the physical contact model; the display is
   not a validated prediction of a real sample's internal temperature.
 - **Time:** motion, dosing, and cycle timing use simulation time. Their elapsed wall
-  time depends on the server's simulation speed. The reference complete run took
-  about 31 minutes of simulation time and 48 minutes on the development machine.
+  time depends on the server's simulation speed, including physical grasping,
+  placement, and handle-manipulation waits. The validated complete recipe took
+  about 35 simulation minutes with the current conservative movement speeds.
 
 ## Implementation and verification
 
@@ -164,6 +172,26 @@ already supported specimen. Completion of such a subset does not claim that the
 full sample batch has been processed and stored. `VerifyWorkflowAction` is the
 explicit final postcondition of the complete recipe.
 
+For example, the simulation owner can request just the two physical handle actions
+on its existing `LaboratoryWorkflowProgram`:
+
+```python
+from cramera.laboratory_actions import (
+    CloseInstrumentAction,
+    LaboratoryInstrument,
+    OpenInstrumentAction,
+)
+
+program.start_actions([
+    OpenInstrumentAction(LaboratoryInstrument.CENTRIFUGE),
+    CloseInstrumentAction(LaboratoryInstrument.CENTRIFUGE),
+])
+```
+
+The existing physics loop continues calling `advance()`, stepping MuJoCo, and
+calling `observe()`. The request does not reset the laboratory. The program builds
+a native sequential plan for these actions and waits at each physical boundary.
+
 A transfer into the cooler selects an observed free storage position without
 requiring a previous rotor assignment. Releasing a sample finds its actual secured
 holder. `VerifyRotorBalanceAction()` checks the current physical load against the
@@ -182,7 +210,16 @@ Native context construction requires the standard PR2 ROS description package
 `iai_pr2_description` to be discoverable through `AMENT_PREFIX_PATH`. The dedicated
 Uni deployment keeps that model in `/srv/cramera-laboratory/ros`, separate from its
 other CRAMERA service. Its Python environment must also provide the native
-Coraplex and semantic-digital-twin packages used by the laboratory plan.
+Coraplex and semantic-digital-twin packages used by the laboratory plan. The
+laboratory service's dedicated semantic-digital-twin overlay is
+`/srv/cramera-laboratory/semantic_digital_twin/src`: it supplies the committed URDF
+parser that resolves meshes relative to each URDF and preserves explicit model
+prefixes. Other entries use the existing server package through symlinks. This
+keeps the separate CRAMERA service and its global dependencies unchanged. A remote
+preflight builds the actual laboratory world and PR2 context, constructs the full
+recipe, and executes a native simulated action before the laboratory restart.
+This check runs as the backend service user inside its existing mount namespace;
+`LD_LIBRARY_PATH` also includes `/opt/ros/jazzy/lib` for the native ROS imports.
 
 `robot.workflow.plan` exposes the native plan lifecycle, current operation, and
 completed action count. Physical measurements remain the authority for success.
@@ -192,19 +229,23 @@ camera frame names, and the current optical-axis error in radians. It is `null`
 until the first manipulation starts. The error is measured from MuJoCo frames,
 not from the head controller's predicted positions.
 
-Focused pytest checks passed for command validation, paused ownership, measured
-doses and weights, balance/interlock evidence, mobile and articulated motion, and
-browser controls. The reference physical acceptance test passed from a fresh
-reset through closed-door storage before head tracking was added. It checks actual
-retained volumes and supported occupants, and verifies that controller intentions
-and observations do not directly
-change body or joint positions. Browser-control tests cover the English controls;
-the embedded browser could not provide a WebGL context for visual inspection.
+Focused pytest checks passed for native action construction, independent action
+reuse, execution lifecycle, measured world records, command validation, paused
+ownership, doses, weights, balance/interlocks, and English browser controls.
+Physical regressions cover swept base clearance, loaded centrifuge opening,
+robot-driven door closure, torso recovery after door handling, and supported rack
+insertion without losing fingertip contacts. Head-tracking tests cover moving
+targets, pause/resume, joint limits, head-only commands, and measured optical-axis
+error during actual dosing and weighing.
 
-Head tracking has separate tests for moving targets and support frames, continued
-tracking after initial alignment, pause/resume, head-only commands, joint limits,
-and measured status. A physical integration run also completed the first sample's
-two doses and supported weighing with gaze active, preserved both doses and the
-measured gross mass, and kept the gripper within five degrees of the camera axis
-during dosing and weighing. The complete four-sample run has not been repeated
-with head tracking enabled.
+The full four-sample acceptance test checks retained volumes, measured weights,
+supported cooler occupants, released rotor holders, and both closed covers after
+five seconds of settling. It also checks that controller intentions and
+observations do not directly change body or joint positions. A fresh run of
+implementation `5b4d64b38` passed with the native plan, physical handle actions,
+collision checks and gaze. The native root completed all 61 actions successfully;
+an independent read of the saved endpoint confirmed the physical storage and
+closed-cover state. The dedicated Uni deployment uses the same committed package
+and matching Python, MuJoCo, NumPy and SciPy versions. Its protected assets,
+command boundaries and live native-plan execution were verified separately.
+The embedded test browser could not provide a WebGL context for visual inspection.
