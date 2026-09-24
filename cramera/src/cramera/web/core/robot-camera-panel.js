@@ -3,6 +3,13 @@
   'use strict';
 
   const WINDOW_MARGIN = 8;
+  const MINIMUM_SIZE = Object.freeze({width: 220, height: 140});
+  const RESIZE_CORNERS = Object.freeze([
+    {name: 'top-left', horizontal: -1, vertical: -1},
+    {name: 'top-right', horizontal: 1, vertical: -1},
+    {name: 'bottom-left', horizontal: -1, vertical: 1},
+    {name: 'bottom-right', horizontal: 1, vertical: 1},
+  ]);
 
   class RobotCameraPanel {
     /** Mount an optional robot viewpoint on the scene's existing renderer. */
@@ -21,6 +28,10 @@
       /** Last inset position relative to the scene container. */
       this.drag = null;
       /** Captured pointer and its offset within the window. */
+      this.size = null;
+      /** Chosen inset size, retained while the scene is temporarily smaller. */
+      this.resizing = null;
+      /** Captured resize pointer and the window geometry where it started. */
       this.listeners = [];
       this.header = this.root.querySelector('.robot-camera-head');
       this.header.title = 'Drag to move the robot view';
@@ -60,7 +71,9 @@
       for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) {
         this.listen(this.header, name, event => this.endDrag(event));
       }
+      this.addResizeHandles();
       this.observer = new options.ResizeObserver(() => {
+        this.fitSize();
         this.fitPosition();
         options.invalidate();
       });
@@ -79,21 +92,23 @@
 
     /** Keep the layer checkbox and window visibility in agreement. */
     setVisible(visible) {
-      if (!visible) this.endDrag();
+      if (!visible) { this.endDrag(); this.endResize(); }
       this.layer.checked = visible;
       this.root.hidden = !visible;
-      if (visible) this.fitPosition();
+      if (visible) { this.fitSize(); this.fitPosition(); }
       this.options.invalidate();
     }
 
     /** Switch between the inset and a large view within the scene panel. */
     setExpanded(expanded) {
       this.endDrag();
+      this.endResize();
       this.expanded = expanded;
       this.root.classList.toggle('expanded', expanded);
       if (expanded) {
         for (const edge of ['left', 'top', 'right', 'bottom']) this.root.style[edge] = '';
-      } else this.fitPosition();
+        if (this.size) { this.root.style.width = ''; this.root.style.height = ''; }
+      } else { this.fitSize(); this.fitPosition(); }
       const label = expanded ? 'Restore robot view' : 'Enlarge robot view';
       this.expand.textContent = expanded ? '↙' : '⛶';
       this.expand.title = label;
@@ -105,7 +120,7 @@
     // %% window movement
     /** Capture a primary pointer on the title bar, leaving buttons clickable. */
     startDrag(event) {
-      if (this.root.hidden || this.expanded || this.drag || event.button !== 0 ||
+      if (this.root.hidden || this.expanded || this.drag || this.resizing || event.button !== 0 ||
           event.isPrimary === false || event.target.closest('button')) return;
       const bounds = this.root.getBoundingClientRect();
       this.drag = {pointer: event.pointerId, offsetX: event.clientX - bounds.left,
@@ -148,6 +163,83 @@
       this.root.style.top = this.position.top + 'px';
       this.root.style.right = 'auto';
       this.root.style.bottom = 'auto';
+    }
+
+    // %% window resizing
+    /** Provide corner grips that work for both mouse and touch pointers. */
+    addResizeHandles() {
+      for (const corner of RESIZE_CORNERS) {
+        const handle = this.root.ownerDocument.createElement('button');
+        handle.type = 'button';
+        handle.className = 'robot-camera-resize';
+        handle.setAttribute('data-robot-camera-resize', corner.name);
+        handle.setAttribute('aria-label', 'Resize robot view from ' + corner.name.replace('-', ' '));
+        handle.title = 'Drag to resize the robot view';
+        this.root.appendChild(handle);
+        this.listen(handle, 'pointerdown', event => this.startResize(event, handle, corner));
+        this.listen(handle, 'pointermove', event => this.moveResize(event));
+        for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+          this.listen(handle, name, event => this.endResize(event));
+        }
+      }
+    }
+
+    /** Fix the opposite corner before capturing a resize gesture. */
+    startResize(event, handle, corner) {
+      if (this.root.hidden || this.expanded || this.drag || this.resizing ||
+          event.button !== 0 || event.isPrimary === false) return;
+      const bounds = this.root.getBoundingClientRect();
+      const container = this.options.container.getBoundingClientRect();
+      this.resizing = {pointer: event.pointerId, handle, corner,
+        clientX: event.clientX, clientY: event.clientY,
+        left: bounds.left - container.left, top: bounds.top - container.top,
+        width: bounds.width, height: bounds.height};
+      handle.setPointerCapture(event.pointerId);
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    /** Resize toward the captured pointer without moving the opposite corner. */
+    moveResize(event) {
+      const gesture = this.resizing;
+      if (!gesture || event.pointerId !== gesture.pointer) return;
+      const container = this.options.container.getBoundingClientRect();
+      const leftward = gesture.corner.horizontal < 0;
+      const upward = gesture.corner.vertical < 0;
+      const right = gesture.left + gesture.width;
+      const bottom = gesture.top + gesture.height;
+      const maximumWidth = Math.max(1, (leftward ? right : container.width - gesture.left) - WINDOW_MARGIN);
+      const maximumHeight = Math.max(1, (upward ? bottom : container.height - gesture.top) - WINDOW_MARGIN);
+      const width = gesture.width + gesture.corner.horizontal * (event.clientX - gesture.clientX);
+      const height = gesture.height + gesture.corner.vertical * (event.clientY - gesture.clientY);
+      this.size = {
+        width: Math.max(Math.min(MINIMUM_SIZE.width, maximumWidth), Math.min(width, maximumWidth)),
+        height: Math.max(Math.min(MINIMUM_SIZE.height, maximumHeight), Math.min(height, maximumHeight)),
+      };
+      this.position = {left: leftward ? right - this.size.width : gesture.left,
+        top: upward ? bottom - this.size.height : gesture.top};
+      this.fitSize();
+      this.fitPosition();
+      this.options.invalidate();
+    }
+
+    /** Release resize capture when the gesture or window ends. */
+    endResize(event) {
+      if (!this.resizing || (event && event.pointerId !== this.resizing.pointer)) return;
+      const {handle, pointer} = this.resizing;
+      this.resizing = null;
+      if (handle.hasPointerCapture(pointer)) handle.releasePointerCapture(pointer);
+    }
+
+    /** Fit the chosen size to the current scene without losing its saved dimensions. */
+    fitSize() {
+      if (!this.size || this.root.hidden || this.expanded) return;
+      const container = this.options.container.getBoundingClientRect();
+      const maximumWidth = container.width - WINDOW_MARGIN * 2;
+      const maximumHeight = container.height - WINDOW_MARGIN * 2;
+      if (maximumWidth <= 0 || maximumHeight <= 0) return;
+      this.root.style.width = Math.min(this.size.width, maximumWidth) + 'px';
+      this.root.style.height = Math.min(this.size.height, maximumHeight) + 'px';
     }
 
     // %% camera selection and rendering
@@ -217,6 +309,7 @@
     /** Release observers and input handlers when the scene is unmounted. */
     destroy() {
       this.endDrag();
+      this.endResize();
       this.observer.disconnect();
       this.listeners.forEach(({element, name, handler}) => element.removeEventListener(name, handler));
       this.listeners = [];

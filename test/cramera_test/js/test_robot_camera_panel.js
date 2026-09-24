@@ -37,6 +37,8 @@ class ViewElement {
   getBoundingClientRect() {
     const bounds = {...this.bounds};
     if (this.positionContainer) {
+      if (this.style.width) bounds.width = parseFloat(this.style.width);
+      if (this.style.height) bounds.height = parseFloat(this.style.height);
       if (this.style.left) bounds.left = this.positionContainer.bounds.left + parseFloat(this.style.left);
       if (this.style.top) bounds.top = this.positionContainer.bounds.top + parseFloat(this.style.top);
       bounds.right = bounds.left + bounds.width;
@@ -114,6 +116,23 @@ function drag(view, left, top) {
   view.header.dispatch('pointerdown', {clientX: bounds.left + 40, clientY: bounds.top + 12});
   view.header.dispatch('pointermove', {clientX: bounds.left + 40 + left, clientY: bounds.top + 12 + top});
   view.header.dispatch('pointerup');
+}
+
+function resizeGrip(view, corner) {
+  const grip = view.root.children.find(child => child.attributes.get('data-robot-camera-resize') === corner);
+  assert.ok(grip, 'a resize grip is available at ' + corner);
+  return grip;
+}
+
+function resizePanel(view, corner, horizontal, vertical) {
+  const bounds = view.root.getBoundingClientRect();
+  const grip = resizeGrip(view, corner);
+  const clientX = corner.endsWith('left') ? bounds.left : bounds.right;
+  const clientY = corner.startsWith('top') ? bounds.top : bounds.bottom;
+  grip.dispatch('pointerdown', {clientX, clientY});
+  grip.dispatch('pointermove', {clientX: clientX + horizontal, clientY: clientY + vertical});
+  grip.dispatch('pointerup');
+  return grip;
 }
 
 // %% visibility and expansion
@@ -282,6 +301,195 @@ test('destroy releases an active drag and removes its input handlers', () => {
   assert.equal(view.root.style.left, '450px');
   assert.equal(view.root.style.top, '250px');
   assert.equal(view.header.handlers.size, 0);
+});
+
+// %% resizing within the scene
+test('the bottom-right grip resizes the panel while keeping the opposite corner fixed', () => {
+  const view = mount();
+  show(view);
+  const before = view.root.getBoundingClientRect();
+  resizePanel(view, 'bottom-right', 50, 60);
+  assert.deepEqual(view.root.style, {
+    left: '400px', top: '200px', right: 'auto', bottom: 'auto', width: '370px', height: '308px',
+  });
+  const after = view.root.getBoundingClientRect();
+  assert.equal(after.left, before.left);
+  assert.equal(after.top, before.top);
+});
+
+test('the top-left grip grows the default panel toward the available scene space', () => {
+  const view = mount();
+  show(view);
+  const before = view.root.getBoundingClientRect();
+  resizePanel(view, 'top-left', -150, -100);
+  assert.deepEqual(view.root.style, {
+    left: '250px', top: '100px', right: 'auto', bottom: 'auto', width: '470px', height: '348px',
+  });
+  const after = view.root.getBoundingClientRect();
+  assert.equal(after.right, before.right);
+  assert.equal(after.bottom, before.bottom);
+});
+
+test('the other corner grips preserve the diagonally opposite corner', () => {
+  for (const corner of ['top-right', 'bottom-left']) {
+    const view = mount();
+    show(view);
+    const before = view.root.getBoundingClientRect();
+    const isLeft = corner.endsWith('left');
+    const isTop = corner.startsWith('top');
+    resizePanel(view, corner, isLeft ? -50 : 50, isTop ? -60 : 60);
+    const after = view.root.getBoundingClientRect();
+    assert.equal(after.width, before.width + 50);
+    assert.equal(after.height, before.height + 60);
+    assert.equal(after[isLeft ? 'right' : 'left'], before[isLeft ? 'right' : 'left']);
+    assert.equal(after[isTop ? 'bottom' : 'top'], before[isTop ? 'bottom' : 'top']);
+  }
+});
+
+test('each resize grip stops at the minimum usable size without moving its anchor', () => {
+  for (const corner of ['top-left', 'top-right', 'bottom-left', 'bottom-right']) {
+    const view = mount();
+    show(view);
+    const before = view.root.getBoundingClientRect();
+    const isLeft = corner.endsWith('left');
+    const isTop = corner.startsWith('top');
+    resizePanel(view, corner, isLeft ? 2000 : -2000, isTop ? 2000 : -2000);
+    const after = view.root.getBoundingClientRect();
+    assert.equal(after.width, 220);
+    assert.equal(after.height, 140);
+    assert.equal(after[isLeft ? 'right' : 'left'], before[isLeft ? 'right' : 'left']);
+    assert.equal(after[isTop ? 'bottom' : 'top'], before[isTop ? 'bottom' : 'top']);
+  }
+});
+
+test('resizing stops at every scene edge', () => {
+  const upper = mount();
+  show(upper);
+  resizePanel(upper, 'top-left', -2000, -2000);
+  assert.deepEqual(upper.root.style, {
+    left: '8px', top: '8px', right: 'auto', bottom: 'auto', width: '712px', height: '440px',
+  });
+  const lower = mount();
+  show(lower);
+  resizePanel(lower, 'bottom-right', 2000, 2000);
+  assert.deepEqual(lower.root.style, {
+    left: '400px', top: '200px', right: 'auto', bottom: 'auto', width: '392px', height: '392px',
+  });
+});
+
+test('resizing captures its pointer and ignores movement from other pointers', () => {
+  const view = mount();
+  show(view);
+  const grip = resizeGrip(view, 'top-left');
+  grip.dispatch('pointerdown', {pointerId: 7, clientX: 500, clientY: 250, pointerType: 'touch'});
+  assert.equal(grip.hasPointerCapture(7), true);
+  grip.dispatch('pointermove', {pointerId: 8, clientX: 350, clientY: 150});
+  assert.equal(view.root.getBoundingClientRect().width, 320);
+  assert.equal(view.root.getBoundingClientRect().height, 248);
+  grip.dispatch('pointermove', {pointerId: 7, clientX: 350, clientY: 150});
+  assert.equal(view.root.style.width, '470px');
+  assert.equal(view.root.style.height, '348px');
+});
+
+test('released, cancelled, and lost resize pointers cannot keep changing size', () => {
+  for (const ending of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    const view = mount();
+    show(view);
+    const grip = resizeGrip(view, 'top-left');
+    grip.dispatch('pointerdown', {pointerId: 7, clientX: 500, clientY: 250});
+    grip.dispatch('pointermove', {pointerId: 7, clientX: 350, clientY: 150});
+    grip.dispatch(ending, {pointerId: 7});
+    grip.dispatch('pointermove', {pointerId: 7, clientX: 250, clientY: 100});
+    assert.equal(grip.hasPointerCapture(7), false);
+    assert.equal(view.root.style.width, '470px');
+    assert.equal(view.root.style.height, '348px');
+  }
+});
+
+test('nonprimary pointers and right clicks do not start resizing', () => {
+  for (const event of [{button: 2}, {isPrimary: false}]) {
+    const view = mount();
+    show(view);
+    const grip = resizeGrip(view, 'top-left');
+    grip.dispatch('pointerdown', {clientX: 500, clientY: 250, ...event});
+    grip.dispatch('pointermove', {clientX: 350, clientY: 150});
+    assert.equal(grip.hasPointerCapture(1), false);
+    assert.equal(view.root.getBoundingClientRect().width, 320);
+    assert.equal(view.root.getBoundingClientRect().height, 248);
+  }
+});
+
+test('hidden, expanded, and currently dragged panels cannot start resizing', () => {
+  for (const state of ['hidden', 'expanded', 'dragging']) {
+    const view = mount();
+    if (state !== 'hidden') show(view);
+    if (state === 'expanded') view.elements.get('[data-robot-camera="expand"]').dispatch('click');
+    if (state === 'dragging') view.header.dispatch('pointerdown', {clientX: 540, clientY: 262});
+    const grip = resizeGrip(view, 'top-left');
+    const before = {...view.root.style};
+    grip.dispatch('pointerdown', {clientX: 500, clientY: 250});
+    grip.dispatch('pointermove', {clientX: 350, clientY: 150});
+    assert.equal(grip.hasPointerCapture(1), false);
+    assert.deepEqual(view.root.style, before);
+  }
+});
+
+test('the chosen size survives hiding and expansion', () => {
+  const view = mount();
+  show(view);
+  resizePanel(view, 'top-left', -150, -100);
+  const chosen = {...view.root.style};
+  view.elements.get('[data-robot-camera="close"]').dispatch('click');
+  show(view);
+  assert.deepEqual(view.root.style, chosen);
+  view.elements.get('[data-robot-camera="expand"]').dispatch('click');
+  assert.equal(view.root.style.width, '');
+  assert.equal(view.root.style.height, '');
+  view.root.dispatch('keydown', {key: 'Escape'});
+  assert.deepEqual(view.root.style, chosen);
+});
+
+test('a smaller scene clamps both the chosen size and panel position', () => {
+  const view = mount();
+  show(view);
+  resizePanel(view, 'top-left', -150, -100);
+  view.container.bounds.width = 400;
+  view.container.bounds.height = 300;
+  view.resize(view.container);
+  assert.deepEqual(view.root.style, {
+    left: '8px', top: '8px', right: 'auto', bottom: 'auto', width: '384px', height: '284px',
+  });
+});
+
+test('hiding or expanding releases an active resize', () => {
+  for (const control of ['close', 'expand']) {
+    const view = mount();
+    show(view);
+    const grip = resizeGrip(view, 'top-left');
+    grip.dispatch('pointerdown', {clientX: 500, clientY: 250});
+    grip.dispatch('pointermove', {clientX: 350, clientY: 150});
+    view.elements.get('[data-robot-camera="' + control + '"]').dispatch('click');
+    assert.equal(grip.hasPointerCapture(1), false);
+    const stopped = {...view.root.style};
+    grip.dispatch('pointermove', {clientX: 250, clientY: 100});
+    assert.deepEqual(view.root.style, stopped);
+  }
+});
+
+test('destroy releases an active resize and removes all grip handlers', () => {
+  const view = mount();
+  show(view);
+  const grip = resizeGrip(view, 'top-left');
+  grip.dispatch('pointerdown', {clientX: 500, clientY: 250});
+  grip.dispatch('pointermove', {clientX: 350, clientY: 150});
+  view.panel.destroy();
+  assert.equal(grip.hasPointerCapture(1), false);
+  grip.dispatch('pointermove', {clientX: 250, clientY: 100});
+  assert.equal(view.root.style.width, '470px');
+  assert.equal(view.root.style.height, '348px');
+  for (const corner of ['top-left', 'top-right', 'bottom-left', 'bottom-right']) {
+    assert.equal(resizeGrip(view, corner).handlers.size, 0);
+  }
 });
 
 // %% asynchronously loaded robot instances
