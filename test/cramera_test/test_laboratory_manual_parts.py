@@ -1,5 +1,5 @@
 """
-Centrifuge callouts follow authored parts and observed operating knowledge.
+Device callouts follow authored parts and observed operating knowledge.
 """
 
 from pathlib import Path

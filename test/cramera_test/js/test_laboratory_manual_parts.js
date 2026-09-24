@@ -106,3 +106,53 @@ test('missing or unavailable measurements stay unknown rather than becoming safe
   assert.match(scene.describe('holders'), /balance unknown/);
   assert.equal(scene.describe('start'), 'Start readiness unknown.');
 });
+
+// %% independently selectable laboratory equipment
+test('each instrument provides its own numbered mesh-backed manual without borrowing centrifuge parts', () => {
+  const names = new Set();
+  for (const asset of fs.readdirSync(path.join(resources, 'assets')).filter(name => name.endsWith('.glb'))) {
+    const buffer = fs.readFileSync(path.join(resources, 'assets', asset));
+    const content = JSON.parse(buffer.subarray(20, 20 + buffer.readUInt32LE(12)).toString('utf8'));
+    for (const node of content.nodes) if (node.mesh !== undefined) names.add(node.name);
+  }
+  const scene = JSON.parse(fs.readFileSync(path.join(resources, 'scene.json'))).laboratory;
+  for (const [factory, configuration] of [[Parts.dispenser, scene.pipetting], [Parts.scale, scene.scale], [Parts.rack, {slots: scene.rackSlots}]]) {
+    const parts = factory(configuration);
+    assert.ok(parts.length >= 3);
+    assert.deepEqual(parts.map(part => part.number), parts.map((part, index) => index + 1));
+    assert.equal(new Set(parts.map(part => part.id)).size, parts.length);
+    for (const part of parts) {
+      assert.ok(part.title && part.description);
+      for (const name of part.meshNames) assert.ok(names.has(name), name);
+    }
+  }
+});
+
+test('dispenser annotations report only observed reservoir volumes and dose progress', () => {
+  const parts = Parts.dispenser({});
+  const describe = (id, snapshot) => parts.find(part => part.id === id).describe(snapshot);
+  const snapshot = {available: true, state: 'dispensing', deliveredMl: 0.37, requestedMl: 1, reservoirs: [{id: 'amber', volumeMl: 49.63, capacityMl: 50}, {id: 'teal', volumeMl: 50, capacityMl: 50}]};
+  assert.match(describe('amber', snapshot), /49.63.*50.*ml/);
+  assert.match(describe('display', snapshot), /Dispensing.*0.37.*1.00.*ml/);
+  assert.match(describe('amber', null), /unknown/i);
+  assert.match(describe('display', {...snapshot, available: false}), /unknown/i);
+});
+
+test('scale annotations distinguish net load, settling and deliberate tare', () => {
+  const parts = Parts.scale({});
+  const describe = (id, snapshot) => parts.find(part => part.id === id).describe(snapshot);
+  const snapshot = {available: true, grams: 1.257, stable: false, tareGrams: 8.13, forceNewtons: 0.092};
+  assert.match(describe('display', snapshot), /1.257 g.*settling/i);
+  assert.match(describe('housing', snapshot), /8.130 g/);
+  snapshot.stable = true;
+  assert.match(describe('display', snapshot), /stable/i);
+  assert.match(describe('display', null), /unknown/i);
+  assert.match(describe('display', {...snapshot, available: false}), /unknown/i);
+});
+
+test('rack manual lists the authored socket identifiers without inventing occupancy', () => {
+  const slots = [{id: 'A1'}, {id: 'Customer-slot'}];
+  const part = Parts.rack({slots}).find(part => part.id === 'sockets');
+  assert.match(part.description, /A1.*Customer-slot/);
+  assert.ok(!/occupied|free|empty/i.test(part.description));
+});

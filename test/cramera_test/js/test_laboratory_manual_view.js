@@ -143,8 +143,9 @@ test('compact detail retains one illustrated leader that follows the selected ar
   const left = Number.parseFloat(scene.overlay.compact.style.left);
   const right = left + Number.parseFloat(scene.overlay.compact.style.width);
   const top = scene.host.clientHeight - Number.parseFloat(scene.overlay.compact.style.bottom) - scene.overlay.compact.offsetHeight;
-  assert.equal(points.at(-1)[1], top);
+  assert.ok(points.at(-1)[1] >= top && points.at(-1)[1] <= top + scene.overlay.compact.offsetHeight);
   assert.ok(points.at(-1)[0] >= left && points.at(-1)[0] <= right);
+  assert.ok(Math.hypot(points.at(-1)[0] - points[0][0], points.at(-1)[1] - points[0][1]) <= 180);
   second.chip.click();
   assert.equal(first.line.getAttribute('display'), 'none');
   assert.equal(second.line.getAttribute('display'), '');
@@ -230,4 +231,93 @@ test('teardown removes event listeners and DOM without mutating physical objects
   assert.ok(scene.mesh.position.equals(transform));
   assert.deepEqual(scene.root.children, [scene.hinge]);
   scene.overlay.render();
+});
+
+// %% local explanations and independent instruments
+test('wide viewports keep annotation leaders local to the instrument instead of screen edges', () => {
+  const scene = new ArticulatedManualScene();
+  scene.host.clientWidth = 2500;
+  scene.camera.aspect = 2.5;
+  scene.camera.updateProjectionMatrix();
+  scene.enable();
+  const entry = scene.overlay.entries[0];
+  const points = entry.line.getAttribute('points').split(' ').map(point => point.split(',').map(Number));
+  const length = points.slice(1).reduce((sum, point, index) => sum + Math.hypot(point[0] - points[index][0], point[1] - points[index][1]), 0);
+  assert.ok(length <= 180, 'Local leader length was ' + length);
+  assert.ok(Number.parseFloat(entry.card.style.left) > scene.host.clientWidth / 4);
+  scene.destroy();
+});
+
+test('switching devices releases every old control and observation before resolving new parts', () => {
+  const scene = new ArticulatedManualScene();
+  scene.enable();
+  scene.overlay.update({status: 'Old instrument state'});
+  const previous = scene.overlay.entries[0];
+  const lidPosition = scene.mesh.position.clone();
+  const dispenser = new THREE.Mesh(new THREE.BoxGeometry(.3, .4, .2), scene.mesh.material);
+  dispenser.name = 'Dispenser';
+  scene.root.add(dispenser);
+  const replacement = [{id: 'nozzle', number: 1, title: 'Nozzle', meshNames: ['Dispenser'], describe: snapshot => snapshot ? snapshot.status : 'Unknown'}];
+  scene.overlay.setParts(replacement);
+  assert.equal(scene.overlay.visible, true);
+  assert.equal(scene.overlay.entries.length, replacement.length);
+  assert.equal(scene.overlay.entries[0].part, replacement[0]);
+  assert.equal(scene.overlay.entries[0].status.textContent, 'Unknown');
+  for (const element of [previous.hotspot, previous.card, previous.chip, previous.line]) assert.equal(element.parentNode, null);
+  assert.deepEqual([previous.hotspot, previous.card, previous.chip].map(control => control.listeners.size), [0, 0, 0]);
+  scene.overlay.update({status: 'New instrument state'});
+  assert.equal(scene.overlay.entries[0].status.textContent, 'New instrument state');
+  assert.ok(scene.mesh.position.equals(lidPosition));
+  scene.overlay.setParts([]);
+  assert.equal(scene.overlay.entries.length, 0);
+  assert.equal(scene.overlay.empty.hidden, false);
+  scene.destroy();
+});
+
+
+test('dense part clusters fall back to one local explanation instead of stretching the leaders', () => {
+  const parts = Array.from({length: 12}, (unused, index) => ({id: 'part-' + index, number: index + 1, title: 'Part ' + index, description: 'An explanation.', meshNames: ['Centrifuge lid'], side: 'left'}));
+  const scene = new ArticulatedManualScene(parts);
+  scene.enable();
+  assert.equal(scene.overlay.element.dataset.layout, 'compact');
+  assert.equal(scene.overlay.compact.hidden, false);
+  for (const entry of scene.overlay.entries) assert.equal(entry.hotspot.hidden, false);
+  const visible = scene.overlay.entries.filter(entry => entry.line.getAttribute('display') === '');
+  assert.equal(visible.length, 1);
+  const points = visible[0].line.getAttribute('points').split(' ').map(point => point.split(',').map(Number));
+  assert.ok(Math.hypot(points.at(-1)[0] - points[0][0], points.at(-1)[1] - points[0][1]) <= 180);
+  scene.destroy();
+});
+
+// %% multi-material authored components
+test('named groups anchor to their material-split meshes and follow the component transform', () => {
+  const scene = new ArticulatedManualScene([{id: 'sockets', number: 1, title: 'Tube sockets', meshNames: ['Rack perforated plate']}]);
+  const plate = new THREE.Group();
+  plate.name = 'Rack_perforated_plate';
+  plate.position.set(-.3, .4, 0);
+  for (const [index, horizontal] of [.25, .75].entries()) {
+    const section = new THREE.Mesh(new THREE.BoxGeometry(.4, .2, .05), scene.mesh.material);
+    section.name = plate.name + '_' + (index + 1);
+    section.position.x = horizontal;
+    plate.add(section);
+  }
+  scene.root.add(plate);
+  scene.enable();
+  const entry = scene.overlay.entries[0];
+  assert.equal(entry.hotspot.hidden, false);
+  for (const angle of [0, Math.PI / 2]) {
+    plate.rotation.z = angle;
+    scene.overlay.render();
+    const expected = Manual.projectAnchor(THREE, plate.localToWorld(new THREE.Vector3(.5, 0, 0)), scene.camera, scene.host.clientWidth, scene.host.clientHeight);
+    assert.ok(Math.abs(Number.parseFloat(entry.hotspot.style.left) - expected.x) < .0001);
+    assert.ok(Math.abs(Number.parseFloat(entry.hotspot.style.top) - expected.y) < .0001);
+  }
+  plate.visible = false;
+  scene.overlay.render();
+  assert.equal(entry.hotspot.hidden, true);
+  plate.visible = true;
+  for (const section of plate.children) section.visible = false;
+  scene.overlay.render();
+  assert.equal(entry.hotspot.hidden, true);
+  scene.destroy();
 });

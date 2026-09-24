@@ -135,5 +135,103 @@
     ];
   }
 
-  return {centrifuge};
+  // %% dispensing observations and parts
+  const DOSE_STATE = Object.freeze({idle: 'Ready', dispensing: 'Dispensing', complete: 'Dose complete', blocked: 'Stopped'});
+
+  class DispenserObservation {
+    constructor(snapshot) {
+      this.snapshot = snapshot || {};
+      this.available = this.snapshot.available === true;
+    }
+
+    /** Preserve the measured inventory of each independent reagent channel. */
+    reservoir(channel) {
+      const reservoirs = this.snapshot.reservoirs;
+      const reservoir = this.available && Array.isArray(reservoirs) && reservoirs.find(item => item.id === channel);
+      if (!reservoir || !Number.isFinite(reservoir.volumeMl) || !Number.isFinite(reservoir.capacityMl)) return 'Reservoir volume unknown.';
+      return reservoir.volumeMl.toFixed(2) + ' / ' + reservoir.capacityMl.toFixed(2) + ' ml remaining.';
+    }
+
+    /** Report server-confirmed dose progress rather than extrapolating flow. */
+    display() {
+      const state = this.snapshot;
+      if (!this.available || !Number.isFinite(state.deliveredMl) || !Number.isFinite(state.requestedMl)) return 'Dose progress unknown.';
+      const status = DOSE_STATE[state.state] || 'State unknown';
+      return status + ' · ' + state.deliveredMl.toFixed(2) + ' / ' + state.requestedMl.toFixed(2) + ' ml';
+    }
+  }
+
+  /** Describe separate reagent feeds and the front-open vessel receiving area. */
+  function dispenser(metadata) {
+    return [
+      {id: 'amber', number: 1, title: 'Amber reservoir', side: 'left', meshNames: ['Pipetting amber bottle'],
+        description: 'Supplies the amber reagent through its own feed line. Refill selected reagent in the Pipetting station panel.',
+        describe: snapshot => new DispenserObservation(snapshot).reservoir('amber')},
+      {id: 'teal', number: 2, title: 'Teal reservoir', side: 'right', meshNames: ['Pipetting teal bottle'],
+        description: 'Supplies the teal reagent through a separate feed line. The two reservoirs retain independent inventories.',
+        describe: snapshot => new DispenserObservation(snapshot).reservoir('teal')},
+      {id: 'nozzles', number: 3, title: 'Dosing outlets', side: 'right', meshNames: ['Pipetting amber nozzle'],
+        description: 'Two adjacent outlets dispense into an open, upright glass. Select the reagent and dose in the Pipetting station panel.'},
+      {id: 'receiving', number: 4, title: 'Sample position', side: 'right', meshNames: ['Pipetting receiving inset'],
+        description: 'The front-open cradle supports the receiving glass. Use Position selected glass before dispensing.'},
+      {id: 'display', number: 5, title: 'Dose display', side: 'left', meshNames: ['Pipetting display'],
+        description: 'Shows the confirmed amount delivered and the requested dose in millilitres.',
+        describe: snapshot => new DispenserObservation(snapshot).display()},
+      {id: 'head', number: 6, title: 'Dispensing head', side: 'left', meshNames: ['Pipetting head cover'],
+        description: 'Supports the reagent tubing and both dosing outlets above the receiving glass.'},
+    ];
+  }
+
+  // %% balance observations and parts
+  class ScaleObservation {
+    constructor(snapshot) {
+      this.snapshot = snapshot || {};
+      this.available = this.snapshot.available === true;
+    }
+
+    /** Retain the distinction between measured net mass and settling state. */
+    display() {
+      const state = this.snapshot;
+      if (!this.available || !Number.isFinite(state.grams)) return 'Mass reading unknown.';
+      const stability = state.stable === true ? 'stable' : state.stable === false ? 'settling' : 'stability unknown';
+      return state.grams.toFixed(3) + ' g · ' + stability;
+    }
+
+    /** Expose only the offset explicitly confirmed by the scale. */
+    tare() {
+      return this.available && Number.isFinite(this.snapshot.tareGrams)
+        ? 'Stored tare: ' + this.snapshot.tareGrams.toFixed(3) + ' g.' : 'Stored tare unknown.';
+    }
+  }
+
+  /** Describe the contact-measuring pan, live display and tare operation. */
+  function scale(metadata) {
+    return [
+      {id: 'pan', number: 1, title: 'Weighing pan', side: 'left', meshNames: ['Balance weighing pan'],
+        description: 'Measures the load transmitted through physical contacts. Release the glass onto the pan and wait for the reading to settle.'},
+      {id: 'display', number: 2, title: 'Mass display', side: 'right', meshNames: ['Balance display'],
+        description: 'Shows the measured net load in grams after subtracting the stored tare.',
+        describe: snapshot => new ScaleObservation(snapshot).display()},
+      {id: 'housing', number: 3, title: 'Balance housing', side: 'left', meshNames: ['Instrument base'],
+        description: 'Supports the weighing assembly. Use Tare / zero in the Scale panel after the measurement has settled.',
+        describe: snapshot => new ScaleObservation(snapshot).tare()},
+    ];
+  }
+
+  // %% reusable rack parts
+  /** Describe socket geometry without inferring occupation from an authored location. */
+  function rack(metadata) {
+    const slots = metadata && metadata.slots;
+    const identifiers = Array.isArray(slots) && slots.length ? ' Positions: ' + slots.map(slot => slot.id).join(', ') + '.' : ' Identify each position using the labels on the upper plate.';
+    return [
+      {id: 'sockets', number: 1, title: 'Tube sockets', side: 'right', meshNames: ['Rack perforated plate'],
+        description: 'Through-holes guide upright sample glasses.' + identifiers},
+      {id: 'base', number: 2, title: 'Support plate', side: 'left', meshNames: ['Rack base'],
+        description: 'Supports the bottoms of inserted glasses. Lift a glass above the upper plate before moving it sideways.'},
+      {id: 'standoffs', number: 3, title: 'Rack columns', side: 'left', meshNames: ['Rack standoff'],
+        description: 'Connect the lower support and perforated upper plate, keeping the socket height fixed.'},
+    ];
+  }
+
+  return {centrifuge, dispenser, scale, rack};
 });

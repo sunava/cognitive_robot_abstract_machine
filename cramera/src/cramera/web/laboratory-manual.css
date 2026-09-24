@@ -70,7 +70,6 @@
 .laboratory-manual-compact {
   position: absolute;
   z-index: 1;
-  bottom: 18px;
   box-sizing: border-box;
   max-height: calc(100% - 36px);
   overflow: auto;
@@ -130,3 +129,9 @@
 .laboratory-manual-controls[hidden] { display: none !important; }
 .laboratory-manual-hide-controls .laboratory-physics,
 .laboratory-manual-hide-controls .laboratory-workbench { display: none !important; }
+
+/* %% readable local part titles with one expanded explanation */
+.laboratory-manual-card[data-selected="false"] .laboratory-manual-description,
+.laboratory-manual-card[data-selected="false"] .laboratory-manual-status { display: none; }
+.laboratory-manual-card[data-selected="false"] { padding-top: 9px; padding-bottom: 9px; }
+.laboratory-manual-card[data-selected="true"] { z-index: 1; }

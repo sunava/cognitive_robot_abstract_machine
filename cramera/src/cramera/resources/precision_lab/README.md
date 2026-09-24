@@ -13,15 +13,19 @@ joint, and a bounded lid joint. `scene.json` records the opposing holder pairs
 and rotor-local sample positions. The included initial viewer frame opens the
 lid; a newly loaded planning world exposes both joints for ordinary CRAM control.
 
-In the browser, enable **Layers → Manual mode** to inspect the centrifuge with
-numbered labels and leader lines. The lines follow their authored parts as the
-camera moves or the lid opens. Each callout explains the part; live observations
-add the lid lock state, rotor speed, cycle countdown, loading balance, and the
-active manual's sample requirement. Missing observations remain unknown.
-In a live physics scene, open the lid to show the interior rotor and sample-holder
-annotations. The mode folds the Layers and instrument panels to make room for the
-diagram; **Show controls** restores access to the instrument. Narrow views show
-a selectable numbered index with a leader to the selected explanation.
+Click the centrifuge, dual dispenser, scale or tube rack in the browser and choose
+**Open manual**. **Layers → Manual mode** opens the currently selected device;
+the **Manual instrument** selector switches between the four instruments.
+Numbered titles sit close to their parts with short leader lines. Select a title
+or number to expand its explanation. The lines follow camera movement and
+articulation. Live observations add the relevant instrument's measurements and
+state; missing observations remain unknown. In a live physics scene, open the
+centrifuge lid to show its interior annotations. **Show controls** restores the
+instrument controls, and **Exit manual** returns to the ordinary scene.
+
+The adjacent `resources/laboratory_devices/` catalog provides four independently
+loadable URDF folders, each with its own local meshes and documentation. These
+portable models preserve the geometry and joints used in this assembled scene.
 
 The runtime bundle ships with the `cramera` Python package and requires no
 Blender installation, local scene cache, browser, server, or PR2 recording.

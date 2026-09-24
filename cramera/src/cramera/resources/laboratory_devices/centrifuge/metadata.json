@@ -1,0 +1,15 @@
+{
+  "device": "centrifuge",
+  "rootLink": "laboratory_centrifuge_base",
+  "units": "metres",
+  "upAxis": "Z",
+  "laboratoryOrigin": [
+    -0.53,
+    -0.07,
+    0.9
+  ],
+  "joints": [
+    "laboratory_centrifuge_rotor_joint",
+    "laboratory_centrifuge_lid_joint"
+  ]
+}

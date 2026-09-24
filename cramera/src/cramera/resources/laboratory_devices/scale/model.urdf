@@ -1,0 +1,382 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="scale">
+  <link name="laboratory_balance">
+    <collision name="weighing_pan">
+      <origin xyz="0 0 0" />
+      <geometry>
+        <cylinder radius="0.085" length="0.012" />
+      </geometry>
+    </collision>
+    <collision name="housing">
+      <origin xyz="0 -0.02 -0.037" rpy="0 0 0" />
+      <geometry>
+        <box size="0.3 0.22 0.058" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_0">
+      <origin xyz="0.01375 0 0.026" rpy="0 0 0" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_1">
+      <origin xyz="0.01328148 0.0035587619 0.026" rpy="0 0 0.26179939" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_2">
+      <origin xyz="0.011907849 0.006875 0.026" rpy="0 0 0.52359878" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_3">
+      <origin xyz="0.0097227182 0.0097227182 0.026" rpy="0 0 0.78539816" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_4">
+      <origin xyz="0.006875 0.011907849 0.026" rpy="0 0 1.0471976" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_5">
+      <origin xyz="0.0035587619 0.01328148 0.026" rpy="0 0 1.3089969" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_6">
+      <origin xyz="8.4194467e-19 0.01375 0.026" rpy="0 0 1.5707963" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_7">
+      <origin xyz="-0.0035587619 0.01328148 0.026" rpy="0 0 1.8325957" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_8">
+      <origin xyz="-0.006875 0.011907849 0.026" rpy="0 0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_9">
+      <origin xyz="-0.0097227182 0.0097227182 0.026" rpy="0 0 2.3561945" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_10">
+      <origin xyz="-0.011907849 0.006875 0.026" rpy="0 0 2.6179939" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_11">
+      <origin xyz="-0.01328148 0.0035587619 0.026" rpy="0 0 2.8797933" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_12">
+      <origin xyz="-0.01375 1.6838893e-18 0.026" rpy="0 0 3.1415927" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_13">
+      <origin xyz="-0.01328148 -0.0035587619 0.026" rpy="0 0 3.403392" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_14">
+      <origin xyz="-0.011907849 -0.006875 0.026" rpy="0 0 3.6651914" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_15">
+      <origin xyz="-0.0097227182 -0.0097227182 0.026" rpy="0 0 3.9269908" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_16">
+      <origin xyz="-0.006875 -0.011907849 0.026" rpy="0 0 4.1887902" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_17">
+      <origin xyz="-0.0035587619 -0.01328148 0.026" rpy="0 0 4.4505896" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_18">
+      <origin xyz="-2.525834e-18 -0.01375 0.026" rpy="0 0 4.712389" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_19">
+      <origin xyz="0.0035587619 -0.01328148 0.026" rpy="0 0 4.9741884" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_20">
+      <origin xyz="0.006875 -0.011907849 0.026" rpy="0 0 5.2359878" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_21">
+      <origin xyz="0.0097227182 -0.0097227182 0.026" rpy="0 0 5.4977871" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_22">
+      <origin xyz="0.011907849 -0.006875 0.026" rpy="0 0 5.7595865" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <collision name="weighing_holder_23">
+      <origin xyz="0.01328148 -0.0035587619 0.026" rpy="0 0 6.0213859" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+    </collision>
+    <visual>
+      <geometry>
+        <mesh filename="assets/scale.glb" />
+      </geometry>
+    </visual>
+    <visual name="weighing_holder_0">
+      <origin xyz="0.01375 0 0.026" rpy="0 0 0" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_1">
+      <origin xyz="0.01328148 0.0035587619 0.026" rpy="0 0 0.26179939" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_2">
+      <origin xyz="0.011907849 0.006875 0.026" rpy="0 0 0.52359878" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_3">
+      <origin xyz="0.0097227182 0.0097227182 0.026" rpy="0 0 0.78539816" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_4">
+      <origin xyz="0.006875 0.011907849 0.026" rpy="0 0 1.0471976" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_5">
+      <origin xyz="0.0035587619 0.01328148 0.026" rpy="0 0 1.3089969" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_6">
+      <origin xyz="8.4194467e-19 0.01375 0.026" rpy="0 0 1.5707963" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_7">
+      <origin xyz="-0.0035587619 0.01328148 0.026" rpy="0 0 1.8325957" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_8">
+      <origin xyz="-0.006875 0.011907849 0.026" rpy="0 0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_9">
+      <origin xyz="-0.0097227182 0.0097227182 0.026" rpy="0 0 2.3561945" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_10">
+      <origin xyz="-0.011907849 0.006875 0.026" rpy="0 0 2.6179939" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_11">
+      <origin xyz="-0.01328148 0.0035587619 0.026" rpy="0 0 2.8797933" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_12">
+      <origin xyz="-0.01375 1.6838893e-18 0.026" rpy="0 0 3.1415927" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_13">
+      <origin xyz="-0.01328148 -0.0035587619 0.026" rpy="0 0 3.403392" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_14">
+      <origin xyz="-0.011907849 -0.006875 0.026" rpy="0 0 3.6651914" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_15">
+      <origin xyz="-0.0097227182 -0.0097227182 0.026" rpy="0 0 3.9269908" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_16">
+      <origin xyz="-0.006875 -0.011907849 0.026" rpy="0 0 4.1887902" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_17">
+      <origin xyz="-0.0035587619 -0.01328148 0.026" rpy="0 0 4.4505896" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_18">
+      <origin xyz="-2.525834e-18 -0.01375 0.026" rpy="0 0 4.712389" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_19">
+      <origin xyz="0.0035587619 -0.01328148 0.026" rpy="0 0 4.9741884" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_20">
+      <origin xyz="0.006875 -0.011907849 0.026" rpy="0 0 5.2359878" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_21">
+      <origin xyz="0.0097227182 -0.0097227182 0.026" rpy="0 0 5.4977871" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_22">
+      <origin xyz="0.011907849 -0.006875 0.026" rpy="0 0 5.7595865" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+    <visual name="weighing_holder_23">
+      <origin xyz="0.01328148 -0.0035587619 0.026" rpy="0 0 6.0213859" />
+      <geometry>
+        <box size="0.0045 0.0042128799 0.04" />
+      </geometry>
+      <material name="Satin stainless steel">
+        <color rgba="0.721568627 0.768627451 0.768627451 1" />
+      </material>
+    </visual>
+  </link>
+</robot>

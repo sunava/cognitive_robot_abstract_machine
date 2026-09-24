@@ -1,0 +1,12 @@
+{
+  "device": "tube_rack",
+  "rootLink": "laboratory_rack",
+  "units": "metres",
+  "upAxis": "Z",
+  "laboratoryOrigin": [
+    0.22,
+    -0.04,
+    0.9
+  ],
+  "joints": []
+}

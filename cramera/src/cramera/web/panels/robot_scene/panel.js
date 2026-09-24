@@ -46,7 +46,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     '    <label class="lp-row" title="debug markers the CRAM system publishes (collisions, costmaps, spatial types)"><input type="checkbox" id="lyr-markers" checked><span>ROS markers</span><button id="marker-gear" class="marker-gear" title="marker topics and namespaces">⚙</button></label>' +
     '    <div id="marker-settings" class="marker-settings hidden"></div>' +
     '    <label id="lyr-contacts-row" class="lp-row" style="display:none" title="Show or hide contact points and orange target markers"><input type="checkbox" id="lyr-contacts" checked><span>Contact points &amp; targets</span></label>' +
-    '    <label id="lyr-manual-row" class="lp-row" style="display:none" title="Label centrifuge parts with numbered guide lines and explanations"><input type="checkbox" id="lyr-manual"><span>Manual mode</span><button id="manual-focus" type="button" class="layer-gear" title="Focus centrifuge manual" aria-label="Focus centrifuge manual">⌖</button></label>' +
+    '    <label id="lyr-manual-row" class="lp-row" style="display:none" title="Explain the selected laboratory instrument"><input type="checkbox" id="lyr-manual"><span>Manual mode</span><button id="manual-focus" type="button" class="layer-gear" title="Focus selected instrument" aria-label="Focus selected instrument">⌖</button></label>' +
     '    <label class="lp-row" title="an axis triad on every frame of the world — URDF links and loose objects (red X, green Y, blue Z)"><input type="checkbox" id="lyr-frames"><span>TF frames</span><button id="frame-gear" class="layer-gear" title="frame axis size and names">⚙</button></label>' +
     '    <div id="frame-settings" class="frame-settings hidden"></div>' +
     '    <label class="lp-row"><input type="checkbox" id="lyr-labels"><span>Object labels</span></label>' +
@@ -1116,6 +1116,14 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     return { group: objectMeshes[o.userData.simObj], name: o.userData.simObj };
   }
 
+  function pickLaboratoryDevice(e) {
+    if (!laboratoryManualMode) return null;
+    pointerNdc(e);
+    dragRay.setFromCamera(dragNdc, camera);
+    const targets = models.map(function (model) { return model.obj; }).concat(Object.values(objectMeshes));
+    return LaboratoryDevices.pick(dragRay.intersectObjects(targets, true));
+  }
+
   // %% surface snapping: rest a dragged object on whatever is beneath it
   // cast a ray straight down through the object and drop it onto the highest
   // surface (table, counter, another object, else the floor) — never floating.
@@ -1171,6 +1179,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     if (e.button !== 0) return;
     clickX = e.clientX; clickY = e.clientY; clickArmed = true;
     if (playing) return;
+    if (pickLaboratoryDevice(e)) return;
     const p = pickDraggable(e);
     if (!p) return;
     if (SCENE && SCENE.laboratory && p.name) return;
@@ -1291,6 +1300,8 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
   renderer.domElement.addEventListener('pointercancel', function () { clickArmed = false; endDrag(); });
 
   function classifyClick(e) {
+    const device = pickLaboratoryDevice(e);
+    if (device && laboratoryManualMode.selectDevice(device)) return device;
     pointerNdc(e);
     dragRay.setFromCamera(dragNdc, camera);
     let hits = dragRay.intersectObjects(draggableMeshes(), false);
@@ -2174,8 +2185,14 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
   }
   // %% numbered instrument guide
   function bindLaboratoryManualMode() {
-    const metadata = (SCENE.physics || SCENE.laboratory || {}).centrifuge;
-    if (!metadata || typeof LaboratoryManual === 'undefined' || typeof LaboratoryManualParts === 'undefined') return null;
+    const config = SCENE.physics || SCENE.laboratory || {};
+    if (!(config.centrifuge || config.pipetting || config.scale || config.rackSlots)
+      || typeof LaboratoryManual === 'undefined' || typeof LaboratoryManualParts === 'undefined'
+      || typeof LaboratoryDevices === 'undefined') return null;
+    const devices = LaboratoryDevices.catalog(config);
+    let selected = devices[0];
+    let hasSelection = false;
+    const observations = {};
     const host = root.querySelector('.stage');
     const checkbox = $('lyr-manual');
     const row = $('lyr-manual-row');
@@ -2184,7 +2201,37 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     controlsButton.type = 'button';
     controlsButton.className = 'laboratory-manual-controls';
     controlsButton.hidden = true;
-    host.appendChild(controlsButton);
+    function make(tag, className, parent) {
+      const element = root.ownerDocument.createElement(tag);
+      element.className = className;
+      parent.appendChild(element);
+      return element;
+    }
+    const toolbar = make('div', 'laboratory-device-toolbar', host);
+    toolbar.hidden = true;
+    const selector = make('select', 'laboratory-device-select', toolbar);
+    selector.setAttribute('aria-label', 'Manual instrument');
+    for (const device of devices) {
+      const option = make('option', '', selector);
+      option.value = device.id;
+      option.textContent = device.title;
+    }
+    selector.value = selected.id;
+    toolbar.appendChild(controlsButton);
+    const exitButton = make('button', 'laboratory-device-exit', toolbar);
+    exitButton.type = 'button';
+    exitButton.textContent = 'Exit manual';
+    const inspector = make('section', 'laboratory-device-inspector', host);
+    inspector.setAttribute('aria-label', 'Selected instrument');
+    inspector.hidden = true;
+    const inspectorTitle = make('strong', 'laboratory-device-name', inspector);
+    const openButton = make('button', 'laboratory-device-open', inspector);
+    openButton.type = 'button';
+    openButton.textContent = 'Open manual';
+    const closeButton = make('button', 'laboratory-device-dismiss', inspector);
+    closeButton.type = 'button';
+    closeButton.textContent = '×';
+    closeButton.setAttribute('aria-label', 'Dismiss instrument selection');
     let controlsVisible = true;
     let previousLayersFolded = null;
     function showControls(visible) {
@@ -2196,21 +2243,48 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     }
     const overlay = LaboratoryManual.create({
       THREE, root: worldRoot, host, camera,
-      parts: LaboratoryManualParts.centrifuge(metadata),
+      parts: LaboratoryManualParts[selected.factory](selected.metadata),
       reservedRight: function () {
         if (checkbox.checked && !controlsVisible) return 0;
         const panel = root.querySelector('.laboratory-physics') || root.querySelector('.laboratory-workbench');
         return panel ? Math.max(0, host.getBoundingClientRect().right - panel.getBoundingClientRect().left + 12) : 0;
       },
       reservedTopLeft: function () {
-        return Math.max(0, $('layers-panel').getBoundingClientRect().bottom - host.getBoundingClientRect().top + 12);
+        const bottom = Math.max($('layers-panel').getBoundingClientRect().bottom, toolbar.hidden ? 0 : toolbar.getBoundingClientRect().bottom);
+        return Math.max(0, bottom - host.getBoundingClientRect().top + 12);
       },
-      reservedTopRight: function () { return 60; },
+      reservedTopRight: function () {
+        return toolbar.hidden ? 60 : Math.max(60, toolbar.getBoundingClientRect().bottom - host.getBoundingClientRect().top + 12);
+      },
     });
     function focus() {
-      const origin = metadata.origin;
-      const target = [origin[0], origin[1], origin[2] + .25];
-      focusSceneCamera([target[0] + .46, target[1] - .80, target[2] + .58], target);
+      worldRoot.updateMatrixWorld(true);
+      const bounds = new THREE.Box3();
+      worldRoot.traverse(function (node) {
+        if (node.isMesh && LaboratoryDevices.identify(node) === selected.id) bounds.expandByObject(node);
+      });
+      if (bounds.isEmpty()) return;
+      const center = worldRoot.worldToLocal(bounds.getCenter(new THREE.Vector3()));
+      const radius = bounds.getSize(new THREE.Vector3()).length() / 2;
+      const aspect = Math.min(1, host.clientWidth / host.clientHeight);
+      const halfAngle = Math.atan(Math.tan(camera.fov * Math.PI / 360) * aspect);
+      const distance = radius / Math.sin(halfAngle) * 1.3;
+      const position = new THREE.Vector3(.46, -.80, .58).normalize().multiplyScalar(distance).add(center);
+      focusSceneCamera(position.toArray(), center.toArray());
+    }
+    function selectDevice(id) {
+      const device = devices.find(function (entry) { return entry.id === id; });
+      if (!device) return false;
+      selected = device;
+      hasSelection = true;
+      selector.value = id;
+      inspectorTitle.textContent = device.title;
+      inspector.hidden = checkbox.checked;
+      overlay.setParts(LaboratoryManualParts[device.factory](device.metadata));
+      overlay.update(observations[id] || null);
+      if (checkbox.checked) focus();
+      needsRender = true;
+      return true;
     }
     function toggle() {
       if (checkbox.checked) {
@@ -2223,6 +2297,9 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
         showFold();
       }
       controlsButton.hidden = !checkbox.checked;
+      toolbar.hidden = !checkbox.checked;
+      inspector.hidden = checkbox.checked || !hasSelection;
+      host.classList.toggle('laboratory-device-manual', checkbox.checked);
       showControls(!checkbox.checked);
       overlay.setVisible(checkbox.checked);
       if (checkbox.checked) focus();
@@ -2238,21 +2315,40 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       showControls(!controlsVisible);
       overlay.render();
     }
+    function changeDevice() { selectDevice(selector.value); }
+    function exitManual() { checkbox.checked = false; toggle(); }
+    function dismiss() { inspector.hidden = true; }
     row.style.display = '';
     button.disabled = false;
     overlay.setVisible(checkbox.checked);
     checkbox.addEventListener('change', toggle);
     button.addEventListener('click', inspect);
     controlsButton.addEventListener('click', toggleControls);
+    selector.addEventListener('change', changeDevice);
+    openButton.addEventListener('click', inspect);
+    exitButton.addEventListener('click', exitManual);
+    closeButton.addEventListener('click', dismiss);
     return {
-      update: function (snapshot) { overlay.update(snapshot); },
+      selectDevice,
+      update: function (snapshot, id) {
+        const instrument = id || 'centrifuge';
+        observations[instrument] = snapshot;
+        if (selected.id === instrument) overlay.update(snapshot);
+      },
       render: function () { overlay.render(); },
       destroy: function () {
         checkbox.removeEventListener('change', toggle);
         button.removeEventListener('click', inspect);
         controlsButton.removeEventListener('click', toggleControls);
+        selector.removeEventListener('change', changeDevice);
+        openButton.removeEventListener('click', inspect);
+        exitButton.removeEventListener('click', exitManual);
+        closeButton.removeEventListener('click', dismiss);
         controlsButton.remove();
+        toolbar.remove();
+        inspector.remove();
         host.classList.remove('laboratory-manual-hide-controls');
+        host.classList.remove('laboratory-device-manual');
         checkbox.checked = false;
         row.style.display = 'none';
         overlay.destroy();
@@ -2301,6 +2397,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       },
       setScaleState: function (snapshot) {
         if (scale) scale.update(snapshot);
+        if (typeof laboratoryManualMode !== 'undefined' && laboratoryManualMode) laboratoryManualMode.update(snapshot, 'scale');
         needsRender = true;
       },
       setCentrifugeState: function (snapshot) {
@@ -2310,6 +2407,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       },
       setPipettingState: function (snapshot, contents, poses) {
         if (pipetting) pipetting.update(snapshot, contents, poses);
+        if (typeof laboratoryManualMode !== 'undefined' && laboratoryManualMode) laboratoryManualMode.update(snapshot, 'dispenser');
         needsRender = true;
       },
       setContactsVisible: function (visible) {

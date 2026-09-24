@@ -1,0 +1,12 @@
+{
+  "device": "dual_dispenser",
+  "rootLink": "laboratory_pipetting_station",
+  "units": "metres",
+  "upAxis": "Z",
+  "laboratoryOrigin": [
+    -0.1,
+    0.0,
+    0.9
+  ],
+  "joints": []
+}

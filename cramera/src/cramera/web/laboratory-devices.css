@@ -1,0 +1,43 @@
+/* %% selected instrument and manual controls */
+.laboratory-device-toolbar,
+.laboratory-device-inspector {
+  position: absolute;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid #bacdce;
+  border-radius: 8px;
+  background: rgba(249, 254, 253, .97);
+  box-shadow: 0 3px 14px #18323d20;
+  color: #18323d;
+  font: 12px/1.4 system-ui, sans-serif;
+}
+.laboratory-device-toolbar[hidden],
+.laboratory-device-inspector[hidden] { display: none; }
+.laboratory-device-toolbar { top: 14px; right: 16px; max-width: calc(100% - 150px); flex-wrap: wrap; }
+.laboratory-device-inspector { left: 16px; bottom: 32px; max-width: calc(100% - 50px); }
+.laboratory-device-toolbar select,
+.laboratory-device-toolbar button,
+.laboratory-device-inspector button {
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid #95b7b8;
+  border-radius: 5px;
+  background: #f9fdfc;
+  color: #234b50;
+  font: inherit;
+  cursor: pointer;
+}
+.laboratory-device-toolbar .laboratory-manual-controls { position: static; box-shadow: none; }
+.laboratory-device-toolbar select { min-width: 130px; }
+.laboratory-device-inspector .laboratory-device-open { background: #187970; color: white; border-color: #187970; }
+.laboratory-device-inspector .laboratory-device-dismiss { border: none; padding: 2px 6px; font-size: 18px; }
+.laboratory-device-manual .laboratory-physics { top: 86px; max-height: calc(100% - 102px); }
+@media (max-width: 600px) {
+  .laboratory-device-toolbar { top: 58px; left: 14px; right: 14px; max-width: none; gap: 5px; }
+  .laboratory-device-toolbar select { flex: 1; min-width: 0; }
+  .laboratory-device-toolbar button { padding: 4px 6px; }
+  .laboratory-device-manual .laboratory-physics { top: 126px; max-height: calc(100% - 142px); }
+}

@@ -7,10 +7,10 @@
 })(typeof window === 'undefined' ? globalThis : window, function () {
   'use strict';
 
-  // %% projected labels and bounded rails
+  // %% projected labels and local leaders
   const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
   const Layout = Object.freeze({RAILS: 'rails', COMPACT: 'compact'});
-  const DIMENSIONS = Object.freeze({cardWidth: 208, estimatedHeight: 98, margin: 18, gap: 12, minimumRailWidth: 700, minimumCompactWidth: 220, maximumCompactWidth: 360, leftTop: 300, rightTop: 70});
+  const DIMENSIONS = Object.freeze({cardWidth: 208, estimatedHeight: 98, margin: 18, gap: 12, leaderGap: 36, maximumLeader: 180, minimumRailWidth: 700, minimumCompactWidth: 220, maximumCompactWidth: 360, leftTop: 300, rightTop: 70});
 
   function normalizedName(value) { return String(value || '').replace(/[\s_]+/g, ' ').trim().toLowerCase(); }
 
@@ -30,15 +30,25 @@
     const ordered = items.slice().sort((left, right) => left.point.y - right.point.y);
     const required = ordered.reduce((sum, item) => sum + item.height, 0) + Math.max(0, ordered.length - 1) * gap;
     if (required > bottom - top) return null;
-    let cursor = top;
+    const blocks = [];
+    let offset = 0;
     for (const item of ordered) {
-      item.top = Math.max(cursor, Math.min(bottom - item.height, item.point.y - item.height / 2));
-      cursor = item.top + item.height + gap;
+      const target = item.point.y - item.height / 2 - offset;
+      blocks.push({items: [{item, offset}], sum: target, count: 1});
+      while (blocks.length > 1) {
+        const current = blocks[blocks.length - 1];
+        const previous = blocks[blocks.length - 2];
+        if (previous.sum / previous.count <= current.sum / current.count) break;
+        previous.items.push(...current.items);
+        previous.sum += current.sum;
+        previous.count += current.count;
+        blocks.pop();
+      }
+      offset += item.height + gap;
     }
-    cursor = bottom;
-    for (let index = ordered.length - 1; index >= 0; index -= 1) {
-      ordered[index].top = Math.min(ordered[index].top, cursor - ordered[index].height);
-      cursor = ordered[index].top - gap;
+    for (const block of blocks) {
+      const base = Math.max(top, Math.min(bottom - required, block.sum / block.count));
+      for (const placement of block.items) placement.item.top = base + placement.offset;
     }
     return ordered;
   }
@@ -53,6 +63,10 @@
       this.node = null;
       this.center = new THREE.Vector3();
       this.point = new THREE.Vector3();
+      this.bounds = new THREE.Box3();
+      this.childBounds = new THREE.Box3();
+      this.inverse = new THREE.Matrix4();
+      this.relative = new THREE.Matrix4();
     }
 
     /** Resolve late-loaded nodes and retain a point in the component's own frame. */
@@ -65,15 +79,34 @@
       }
       this.root.traverse(node => {
         if (this.node || (!this.names.has(normalizedName(node.name)) && !this.names.has(normalizedName(node.userData && node.userData.name)))) return;
-        if (!node.geometry && !this.part.position) return;
-        this.node = node;
-        if (this.part.position) this.center.fromArray(this.part.position);
-        else {
-          if (!node.geometry.boundingBox) node.geometry.computeBoundingBox();
-          node.geometry.boundingBox.getCenter(this.center);
-        }
+        if (this.measure(node)) this.node = node;
       });
       return Boolean(this.node);
+    }
+
+    /** Union a component's visible material meshes in the named component frame. */
+    measure(node) {
+      if (this.part.position) { this.center.fromArray(this.part.position); return true; }
+      if (node.geometry) {
+        if (!node.geometry.boundingBox) node.geometry.computeBoundingBox();
+        node.geometry.boundingBox.getCenter(this.center);
+        return true;
+      }
+      this.bounds.makeEmpty();
+      this.inverse.copy(node.matrixWorld).invert();
+      node.traverse(child => {
+        if (!child.geometry) return;
+        for (let ancestor = child; ancestor && ancestor !== node; ancestor = ancestor.parent) {
+          if (ancestor.visible === false) return;
+        }
+        if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
+        this.relative.copy(this.inverse).multiply(child.matrixWorld);
+        this.childBounds.copy(child.geometry.boundingBox).applyMatrix4(this.relative);
+        this.bounds.union(this.childBounds);
+      });
+      if (this.bounds.isEmpty()) return false;
+      this.bounds.getCenter(this.center);
+      return true;
     }
 
     /** Follow every parent articulation while respecting authored visibility. */
@@ -82,6 +115,7 @@
       for (let ancestor = this.node; ancestor; ancestor = ancestor.parent) {
         if (ancestor.visible === false) return null;
       }
+      if (!this.node.geometry && !this.measure(this.node)) return null;
       return this.point.copy(this.center).applyMatrix4(this.node.matrixWorld);
     }
   }
@@ -117,7 +151,8 @@
       this.empty = this.make('div', 'laboratory-manual-empty', this.element);
       this.empty.textContent = 'Move the instrument into view to explore its parts.';
       this.empty.hidden = true;
-      this.entries = (options.parts || []).map(part => this.makeEntry(part));
+      this.entries = [];
+      this.setParts(options.parts || []);
       this.host.appendChild(this.element);
     }
 
@@ -180,6 +215,22 @@
       return Number.isFinite(measurement) ? Math.max(0, measurement) : fallback;
     }
 
+    /** Replace the selected instrument without retaining its controls or observations. */
+    setParts(parts) {
+      if (this.destroyed) return;
+      const removed = new Set(this.entries.flatMap(entry => [entry.hotspot, entry.card, entry.chip, entry.line]));
+      this.listeners = this.listeners.filter(listener => {
+        if (!removed.has(listener.element)) return true;
+        listener.element.removeEventListener(listener.event, listener.callback);
+        return false;
+      });
+      for (const element of removed) if (element.parentNode) element.parentNode.removeChild(element);
+      this.selected = null;
+      this.snapshot = null;
+      this.entries = parts.map(part => this.makeEntry(part));
+      if (this.visible) this.render();
+    }
+
     /** Show the guide without changing the instrument or issuing commands. */
     setVisible(visible) {
       if (this.destroyed) return;
@@ -240,11 +291,19 @@
       }
     }
 
+    /** Keep both the label columns and every leader close to the instrument. */
     placeRails(projected, availableWidth, height) {
-      if (availableWidth < DIMENSIONS.minimumRailWidth) return false;
+      if (availableWidth < DIMENSIONS.minimumRailWidth || !projected.length) return false;
+      const horizontal = projected.map(entry => entry.point.x);
+      const leftEdge = Math.min(...horizontal) - DIMENSIONS.leaderGap;
+      const rightEdge = Math.max(...horizontal) + DIMENSIONS.leaderGap;
       const rails = [];
       for (const side of ['left', 'right']) {
-        const items = projected.filter(entry => (entry.part.side || 'left') === side).map(entry => {
+        const left = side === 'left' ? leftEdge - DIMENSIONS.cardWidth : rightEdge;
+        const entries = projected.filter(entry => (entry.part.side || 'left') === side);
+        if (!entries.length) continue;
+        if (left < DIMENSIONS.margin || left + DIMENSIONS.cardWidth > availableWidth - DIMENSIONS.margin) return false;
+        const items = entries.map(entry => {
           entry.card.style.width = DIMENSIONS.cardWidth + 'px';
           entry.card.hidden = false;
           return {entry, point: entry.point, height: entry.card.offsetHeight || DIMENSIONS.estimatedHeight};
@@ -252,25 +311,55 @@
         const top = this.reservation(side === 'left' ? 'reservedTopLeft' : 'reservedTopRight', side === 'left' ? DIMENSIONS.leftTop : DIMENSIONS.rightTop);
         const positions = layoutRail(items, top, height - DIMENSIONS.margin, DIMENSIONS.gap);
         if (!positions) return false;
-        rails.push({side, positions});
+        const edge = side === 'left' ? left + DIMENSIONS.cardWidth : left;
+        const elbow = edge + (side === 'left' ? DIMENSIONS.gap : -DIMENSIONS.gap);
+        for (const item of positions) {
+          const middle = item.top + item.height / 2;
+          if (Math.hypot(item.point.x - elbow, item.point.y - middle) + DIMENSIONS.gap > DIMENSIONS.maximumLeader) return false;
+        }
+        rails.push({left, edge, elbow, positions});
       }
       for (const rail of rails) {
-        const left = rail.side === 'left' ? DIMENSIONS.margin : availableWidth - DIMENSIONS.cardWidth - DIMENSIONS.margin;
         for (const item of rail.positions) {
           const entry = item.entry;
-          entry.card.style.left = left + 'px';
+          entry.card.style.left = rail.left + 'px';
           entry.card.style.top = item.top + 'px';
-          const edge = rail.side === 'left' ? left + DIMENSIONS.cardWidth : left;
-          const elbow = edge + (rail.side === 'left' ? DIMENSIONS.gap : -DIMENSIONS.gap);
           const middle = item.top + item.height / 2;
-          entry.line.setAttribute('points', [entry.point.x + ',' + entry.point.y, elbow + ',' + middle, edge + ',' + middle].join(' '));
+          entry.line.setAttribute('points', [entry.point.x + ',' + entry.point.y, rail.elbow + ',' + middle, rail.edge + ',' + middle].join(' '));
           entry.line.setAttribute('display', '');
         }
       }
       return true;
     }
 
-    /** Connect the selected component to the readable compact explanation. */
+    /** Find a nearby readable card position without covering its selected marker. */
+    compactPosition(point, width, cardHeight, availableWidth, height) {
+      const gap = DIMENSIONS.leaderGap;
+      const margin = DIMENSIONS.margin;
+      const positions = [
+        {left: point.x - gap - width, top: point.y - cardHeight / 2},
+        {left: point.x + gap, top: point.y - cardHeight / 2},
+        {left: point.x - width / 2, top: point.y + gap},
+        {left: point.x - width / 2, top: point.y - gap - cardHeight},
+      ];
+      const candidates = [];
+      for (const position of positions) {
+        const left = Math.max(margin, Math.min(availableWidth - margin - width, position.left));
+        const reservedTop = this.reservation(left < availableWidth / 2 ? 'reservedTopLeft' : 'reservedTopRight', 0);
+        const top = Math.max(margin, reservedTop, Math.min(height - margin - cardHeight, position.top));
+        if (top + cardHeight > height - margin) continue;
+        const right = left + width;
+        const bottom = top + cardHeight;
+        if (point.x > left - margin && point.x < right + margin && point.y > top - margin && point.y < bottom + margin) continue;
+        const endpoint = {x: Math.max(left, Math.min(right, point.x)), y: Math.max(top, Math.min(bottom, point.y))};
+        const distance = Math.hypot(point.x - endpoint.x, point.y - endpoint.y);
+        if (distance <= DIMENSIONS.maximumLeader) candidates.push({left, top, endpoint, distance});
+      }
+      candidates.sort((left, right) => left.distance - right.distance);
+      return candidates[0] || null;
+    }
+
+    /** Show one explanation next to its part when the local columns do not fit. */
     placeCompact(projected, availableWidth, height) {
       for (const entry of projected) {
         entry.card.hidden = true;
@@ -279,30 +368,17 @@
       const width = Math.min(DIMENSIONS.maximumCompactWidth, availableWidth - DIMENSIONS.margin * 2);
       this.compact.hidden = !projected.length || width < DIMENSIONS.minimumCompactWidth || height < DIMENSIONS.estimatedHeight + DIMENSIONS.margin * 2;
       if (this.compact.hidden) return;
-      this.compact.style.left = DIMENSIONS.margin + 'px';
-      this.compact.style.bottom = DIMENSIONS.margin + 'px';
       this.compact.style.width = width + 'px';
+      this.compact.style.bottom = 'auto';
       const selected = projected.find(entry => entry.part.id === this.selected);
       if (!selected) return;
-      const left = DIMENSIONS.margin;
-      const right = left + width;
-      const bottom = height - DIMENSIONS.margin;
-      const top = bottom - Math.min(this.compact.offsetHeight || DIMENSIONS.estimatedHeight, height - DIMENSIONS.margin * 2);
-      const point = selected.point;
-      let endpoint;
-      let elbow;
-      if (point.y <= top || point.y >= bottom) {
-        const horizontal = Math.max(left + DIMENSIONS.gap, Math.min(right - DIMENSIONS.gap, point.x));
-        const vertical = point.y <= top ? top : bottom;
-        endpoint = {x: horizontal, y: vertical};
-        elbow = {x: horizontal, y: vertical + (point.y <= top ? -DIMENSIONS.gap : DIMENSIONS.gap)};
-      } else {
-        const horizontal = point.x < left + width / 2 ? left : right;
-        const vertical = Math.max(top + DIMENSIONS.gap, Math.min(bottom - DIMENSIONS.gap, point.y));
-        endpoint = {x: horizontal, y: vertical};
-        elbow = {x: horizontal + (horizontal === left ? -DIMENSIONS.gap : DIMENSIONS.gap), y: vertical};
-      }
-      selected.line.setAttribute('points', [point, elbow, endpoint].map(value => value.x + ',' + value.y).join(' '));
+      const cardHeight = this.compact.offsetHeight || DIMENSIONS.estimatedHeight;
+      const position = this.compactPosition(selected.point, width, cardHeight, availableWidth, height);
+      if (!position) { this.compact.hidden = true; return; }
+      this.compact.style.left = position.left + 'px';
+      this.compact.style.top = position.top + 'px';
+      this.compact.style.bottom = height - position.top - cardHeight + 'px';
+      selected.line.setAttribute('points', [selected.point, position.endpoint].map(value => value.x + ',' + value.y).join(' '));
       selected.line.setAttribute('display', '');
     }
 

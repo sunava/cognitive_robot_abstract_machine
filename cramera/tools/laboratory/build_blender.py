@@ -63,6 +63,56 @@ class BrandingName(StrEnum):
     INSTRUMENT_TITLE = "Pipetting brand"
     TRAY = "Work tray"
     PIPETTE = "Pipette body"
+    WALL = "Wall AICOR logo"
+    BALANCE = "Balance AICOR logo"
+    RACK = "Rack AICOR logo"
+    CENTRIFUGE = "Centrifuge AICOR logo"
+    DISPENSER = "Dispenser AICOR logo"
+    CHAMBER = "Centrifuge chamber shell"
+
+
+@dataclass(frozen=True)
+class LogoPlacement:
+    """Artwork dimensions and mounting surface in an instrument's frame."""
+
+    name: BrandingName
+    """Stable scene name of the artwork mesh."""
+    center: tuple[float, float, float]
+    """Center of the front-facing artwork before surface projection."""
+    width: float
+    """Printed artwork width in metres."""
+    surface: BrandingName | None = None
+    """Curved housing onto which the artwork is projected."""
+    segments: int = 48
+    """Horizontal subdivisions preserving the housing curvature."""
+    clearance: float = 0.0002
+    """Outward offset preventing coincident surface rendering."""
+
+    @classmethod
+    def for_asset(cls, asset: AssetName) -> tuple[LogoPlacement, ...]:
+        """Place each logo in an unobstructed area of its instrument."""
+        return {
+            AssetName.ENVIRONMENT: (
+                cls(BrandingName.WALL, (-0.40, 1.0995, 2.04), 0.90),
+                cls(BrandingName.BALANCE, (0.750, 0.0797, 0.940), 0.058),
+                cls(BrandingName.RACK, (0.22, -0.0952, 0.903), 0.010),
+            ),
+            AssetName.CENTRIFUGE_BASE: (
+                cls(
+                    BrandingName.CENTRIFUGE,
+                    (0, -0.17, 0.173),
+                    0.086,
+                    BrandingName.CHAMBER,
+                ),
+            ),
+            AssetName.PIPETTING: (
+                cls(BrandingName.DISPENSER, (-0.054, 0.0391, 0.124), 0.065),
+            ),
+        }[asset]
+
+
+class LogoProjectionError(RuntimeError):
+    """The proposed artwork extends beyond its supporting housing."""
 
 
 class MaterialName(StrEnum):
@@ -102,7 +152,7 @@ class BuildOptions:
     pipetting_only: bool = False
     """Export only the dispensing station and preserve existing laboratory assets."""
     branding_only: bool = False
-    """Refresh the existing room and dispenser artwork without rebuilding bodies."""
+    """Refresh existing instrument artwork without rebuilding bodies."""
 
 
 @dataclass
@@ -260,47 +310,82 @@ class LaboratoryBuilder:
         return self.register(bpy.context.object, name, material)
 
     def logo(self) -> None:
-        """Mount the unchanged white AICOR artwork on a contrasting teal plaque."""
-        if self.current == AssetName.ENVIRONMENT:
-            center, width, border, depth = (-0.40, 1.097, 2.04), 0.90, 0.022, 0.006
-        else:
-            center, width, border, depth = (-0.0545, 0.039, 0.2215), 0.081, 0.002, 0.001
+        """Print teal AICOR lettering directly on each instrument surface."""
         image = bpy.data.images.load(
             str(Path(__file__).parents[2] / "src/cramera/web/img" / BrandingName.IMAGE),
             check_existing=True,
         )
         image.pack()
-        height = width * image.size[1] / image.size[0]
-        self.box(
-            f"{self.current} {BrandingName.PLAQUE}",
-            center,
-            (width + border * 2, depth, height + border * 2),
-            MaterialName.TEAL,
-            border / 3,
-        )
-        bpy.ops.mesh.primitive_plane_add(
-            size=1,
-            location=(center[0], center[1] - depth / 2 - 0.0001, center[2]),
-            rotation=(pi / 2, 0, 0),
-        )
-        scene_object = self.register(
-            bpy.context.object,
-            f"{self.current} {BrandingName.LOGO}",
-            MaterialName.WHITE,
-        )
-        scene_object.scale = (width, height, 1)
         material = bpy.data.materials.new(BrandingName.MATERIAL)
         material.use_nodes = True
         material.blend_method = "BLEND"
         material.use_screen_refraction = False
+        color = self.library.materials[MaterialName.TEAL].diffuse_color
+        material.diffuse_color = color
         shader = material.node_tree.nodes.get("Principled BSDF")
         shader.inputs["Roughness"].default_value = 0.48
         texture = material.node_tree.nodes.new("ShaderNodeTexImage")
         texture.image = image
-        material.node_tree.links.new(
-            texture.outputs["Color"], shader.inputs["Base Color"]
-        )
+        tint = material.node_tree.nodes.new("ShaderNodeMix")
+        tint.data_type = "RGBA"
+        tint.blend_type = "MULTIPLY"
+        tint.inputs[0].default_value = 1
+        tint.inputs[7].default_value = color
+        material.node_tree.links.new(texture.outputs["Color"], tint.inputs[6])
+        material.node_tree.links.new(tint.outputs[2], shader.inputs["Base Color"])
         material.node_tree.links.new(texture.outputs["Alpha"], shader.inputs["Alpha"])
+        for placement in LogoPlacement.for_asset(self.current):
+            self.mount_logo(placement, image, material)
+
+    def mount_logo(
+        self,
+        placement: LogoPlacement,
+        image: bpy.types.Image,
+        material: bpy.types.Material,
+    ) -> None:
+        """Apply the original artwork to a flat or curved housing surface."""
+        height = placement.width * image.size[1] / image.size[0]
+        segments = placement.segments if placement.surface else 1
+        vertices = []
+        coordinates = []
+        bpy.context.view_layer.update()
+        for row in (0, 1):
+            for column in range(segments + 1):
+                horizontal = column / segments
+                vertex = Vector(
+                    (
+                        placement.center[0] + (horizontal - 0.5) * placement.width,
+                        placement.center[1],
+                        placement.center[2] + (row - 0.5) * height,
+                    )
+                )
+                if placement.surface:
+                    surface = bpy.data.objects[placement.surface]
+                    inverse = surface.matrix_world.inverted()
+                    found, hit, _, _ = surface.ray_cast(
+                        inverse @ vertex,
+                        inverse.to_3x3() @ Vector((0, 1, 0)),
+                    )
+                    if not found:
+                        raise LogoProjectionError(placement.name)
+                    vertex = surface.matrix_world @ hit
+                    vertex.y -= placement.clearance
+                vertices.append(tuple(vertex))
+                coordinates.append((horizontal, row))
+        faces = [
+            (column, column + 1, column + segments + 2, column + segments + 1)
+            for column in range(segments)
+        ]
+        mesh = bpy.data.meshes.new(placement.name)
+        mesh.from_pydata(vertices, [], faces)
+        mesh.update()
+        artwork = mesh.uv_layers.new()
+        for polygon in mesh.polygons:
+            for index in polygon.loop_indices:
+                artwork.data[index].uv = coordinates[mesh.loops[index].vertex_index]
+        scene_object = bpy.data.objects.new(placement.name, mesh)
+        bpy.context.collection.objects.link(scene_object)
+        self.register(scene_object, placement.name, MaterialName.WHITE)
         scene_object.data.materials.clear()
         scene_object.data.materials.append(material)
 
@@ -479,7 +564,6 @@ class LaboratoryBuilder:
                 (0.012, 0.16, 0.17),
                 MaterialName.STEEL,
             )
-        self.logo()
         self.text(
             "Laboratory subtitle",
             "L A B O R A T O R Y   /   0 1",
@@ -561,6 +645,7 @@ class LaboratoryBuilder:
             0.018,
             MaterialName.TEAL,
         )
+        self.logo()
 
     def build_bottle(self, x: float, y: float, base: float, height: float) -> None:
         """Create capped reagent bottles for static room dressing."""
@@ -789,6 +874,7 @@ class LaboratoryBuilder:
             MaterialName.TEAL,
             0.004,
         )
+        self.logo()
         self.export_asset(AssetName.CENTRIFUGE_BASE, dimensions.origin)
 
         self.current = AssetName.CENTRIFUGE_ROTOR
@@ -1343,7 +1429,11 @@ class LaboratoryBuilder:
             BrandingName.TRAY,
             BrandingName.PIPETTE,
         )
-        for asset in (AssetName.ENVIRONMENT, AssetName.PIPETTING):
+        for asset in (
+            AssetName.ENVIRONMENT,
+            AssetName.CENTRIFUGE_BASE,
+            AssetName.PIPETTING,
+        ):
             body = bpy.data.objects[asset.value]
             placement = tuple(body.location)
             objects = []
