@@ -1,0 +1,25 @@
+{
+  "joint_positions": {
+    "pr2/torso_lift_joint": 0.3231391690249719,
+    "pr2/l_shoulder_pan_joint": 0.790244278718963,
+    "pr2/l_shoulder_lift_joint": -0.08045891001644562,
+    "pr2/l_upper_arm_roll_joint": 1.1460403985220278,
+    "pr2/l_elbow_flex_joint": -2.1194446123735524,
+    "pr2/l_forearm_roll_joint": 9.06804250819232,
+    "pr2/l_wrist_flex_joint": -1.4033361101662152,
+    "pr2/l_wrist_roll_joint": -1.254039101470204,
+    "pr2/l_gripper_r_finger_joint": 0.10743610477897358,
+    "pr2/l_gripper_r_finger_tip_joint": 0.1074118412167826,
+    "pr2/l_gripper_l_finger_joint": 0.10743676708066217,
+    "pr2/l_gripper_l_finger_tip_joint": 0.10741304283180658
+  },
+  "sample_pose": [
+    0.1581195995528218,
+    -0.14988076037863882,
+    1.139747663752225,
+    0.9920923607978374,
+    0.00023158504088860988,
+    0.0008073258907684654,
+    0.1255071401946858
+  ]
+}

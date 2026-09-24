@@ -197,15 +197,28 @@ class LaboratorySampleTransfer(LaboratoryMixingProgram):
             )
 
         def travel(
-            position: np.ndarray, destination: np.ndarray, closed: bool
+            position: np.ndarray,
+            destination: np.ndarray,
+            closed: bool,
+            corridor_depth: float = 0.0,
         ) -> np.ndarray:
             """Translate a fixed arm posture with force-limited planar base servos."""
             nonlocal base
             if abs(destination[0] - base[0]) > self.parameters.position_tolerance:
-                if abs(base[1]) > self.parameters.position_tolerance:
-                    position = travel(position, np.array([base[0], 0.0]), closed)
-                if abs(destination[1]) > self.parameters.position_tolerance:
-                    position = travel(position, np.array([destination[0], 0.0]), closed)
+                if abs(base[1] - corridor_depth) > self.parameters.position_tolerance:
+                    position = travel(
+                        position, np.array([base[0], corridor_depth]), closed
+                    )
+                if (
+                    abs(destination[1] - corridor_depth)
+                    > self.parameters.position_tolerance
+                ):
+                    position = travel(
+                        position,
+                        np.array([destination[0], corridor_depth]),
+                        closed,
+                        corridor_depth,
+                    )
             delta = destination - base
             if not mobile or np.linalg.norm(delta) < 0.002:
                 return position
@@ -318,11 +331,15 @@ class LaboratorySampleTransfer(LaboratoryMixingProgram):
         )
         append(MixingPhase.PLACE, corridor, 6.0, True)
         desired_base = self._base_target(target)
+        travel_depth = 0.0
+        if target[2] < 0.8:
+            travel_depth = self.cabinet_front_depth - self.front_depth
+            desired_base[1] = travel_depth
         if (
             mobile
             and np.linalg.norm(desired_base - base) > self.parameters.position_tolerance
         ):
-            corridor = travel(corridor, desired_base, True)
+            corridor = travel(corridor, desired_base, True, travel_depth)
         if self.grasp == SampleGrasp.TOP and self._at_rack(target):
             corridor = travel(
                 corridor,
