@@ -106,7 +106,7 @@ class LogoPlacement:
                 ),
             ),
             AssetName.PIPETTING: (
-                cls(BrandingName.DISPENSER, (-0.054, 0.0391, 0.124), 0.065),
+                cls(BrandingName.DISPENSER, (-0.063, 0.0391, 0.227), 0.065),
             ),
         }[asset]
 
@@ -402,6 +402,105 @@ class LaboratoryBuilder:
                 (0.012, 0.025, 0.014),
                 MaterialName.STEEL,
             )
+
+    def surface_lettering(
+        self, lettering: bpy.types.Object, surface: bpy.types.Object
+    ) -> None:
+        """Center lettering and conform its printed faces to a curved housing."""
+        horizontal = [vertex.co.x for vertex in lettering.data.vertices]
+        lettering.location.x -= (min(horizontal) + max(horizontal)) / 2
+        bpy.context.view_layer.update()
+        lettering_inverse = lettering.matrix_world.inverted()
+        surface_inverse = surface.matrix_world.inverted()
+        printing_clearance = 0.0002
+        for vertex in lettering.data.vertices:
+            position = lettering.matrix_world @ vertex.co
+            printing_depth = lettering.location.y - position.y
+            found, hit, _, _ = surface.ray_cast(
+                surface_inverse @ position,
+                surface_inverse.to_3x3() @ Vector((0, 1, 0)),
+            )
+            if not found:
+                raise LogoProjectionError(lettering.name)
+            position = surface.matrix_world @ hit
+            position.y -= printing_clearance + printing_depth
+            vertex.co = lettering_inverse @ position
+        lettering.data.update()
+
+    def centrifuge_control_enclosure(
+        self, surface: bpy.types.Object, front: float
+    ) -> None:
+        """Seat a rounded control enclosure against the cylindrical housing."""
+        width, height, center_height = 0.216, 0.067, 0.079
+        corner_radius, bevel, mounting_depth = 0.008, 0.003, 0.0001
+        segments = 96
+        vertices = []
+        faces = []
+        bpy.context.view_layer.update()
+        inverse = surface.matrix_world.inverted()
+        for column in range(segments + 1):
+            horizontal = width * (column / segments - 0.5)
+            inner_horizontal = horizontal * (width - 2 * bevel) / width
+            profiles = []
+            for coordinate, profile_width, profile_height, radius in (
+                (
+                    inner_horizontal,
+                    width - 2 * bevel,
+                    height - 2 * bevel,
+                    corner_radius - bevel,
+                ),
+                (horizontal, width, height, corner_radius),
+            ):
+                corner_offset = max(0, abs(coordinate) - (profile_width / 2 - radius))
+                extent = (
+                    profile_height / 2
+                    - radius
+                    + (max(0, radius**2 - corner_offset**2)) ** 0.5
+                )
+                profiles.append((center_height - extent, center_height + extent))
+            for level in profiles[0]:
+                vertices.append((inner_horizontal, front, level))
+            for level in profiles[1]:
+                vertices.append((horizontal, front + bevel, level))
+            for level in profiles[1]:
+                start = Vector((horizontal, front, level))
+                found, hit, _, _ = surface.ray_cast(
+                    inverse @ start, inverse.to_3x3() @ Vector((0, 1, 0))
+                )
+                if not found:
+                    raise LogoProjectionError("Centrifuge control bezel")
+                position = surface.matrix_world @ hit
+                position.y += mounting_depth
+                vertices.append(tuple(position))
+        for column in range(segments):
+            left = column * 6
+            right = left + 6
+            faces.extend(
+                (
+                    (left, right, right + 1, left + 1),
+                    (left + 2, right + 2, right, left),
+                    (left + 1, right + 1, right + 3, left + 3),
+                    (left + 4, right + 4, right + 2, left + 2),
+                    (left + 3, right + 3, right + 5, left + 5),
+                    (left + 4, left + 5, right + 5, right + 4),
+                )
+            )
+        end = segments * 6
+        faces.extend(
+            (
+                (0, 1, 3, 2),
+                (2, 3, 5, 4),
+                (end + 2, end + 3, end + 1, end),
+                (end + 4, end + 5, end + 3, end + 2),
+            )
+        )
+        name = "Centrifuge control bezel"
+        mesh = bpy.data.meshes.new(name)
+        mesh.from_pydata(vertices, [], faces)
+        mesh.update()
+        scene_object = bpy.data.objects.new(name, mesh)
+        bpy.context.collection.objects.link(scene_object)
+        self.register(scene_object, name, MaterialName.TEAL)
 
     def drill(
         self, plate: bpy.types.Object, centre: tuple[float, float, float], radius: float
@@ -814,48 +913,45 @@ class LaboratoryBuilder:
             ),
             MaterialName.DARK,
         )
-        self.box(
-            "Centrifuge control bezel",
-            (0, -0.151, 0.079),
-            (0.216, 0.019, 0.067),
-            MaterialName.TEAL,
-            0.008,
-        )
+        chamber = bpy.data.objects[BrandingName.CHAMBER]
+        control_front = -0.1685
+        self.centrifuge_control_enclosure(chamber, control_front)
         self.box(
             "Centrifuge display",
-            (-0.025, -0.161, 0.081),
+            (-0.025, control_front + 0.0013, 0.081),
             (0.123, 0.003, 0.034),
             MaterialName.DARK,
-            0.003,
+            0.0005,
         )
         self.text(
             "Centrifuge status lettering",
             "READY",
-            (-0.075, -0.163, 0.085),
+            (-0.075, control_front - 0.00025, 0.085),
             0.010,
             MaterialName.PALE_TEAL,
         )
         self.text(
             "Centrifuge capacity lettering",
             "4 x 15 ml",
-            (-0.075, -0.163, 0.072),
+            (-0.075, control_front - 0.00025, 0.072),
             0.008,
             MaterialName.WHITE,
         )
         self.box(
             "Centrifuge run key",
-            (0.078, -0.163, 0.083),
+            (0.078, control_front, 0.083),
             (0.023, 0.006, 0.024),
             MaterialName.PALE_TEAL,
             0.005,
         )
-        self.text(
+        identity = self.text(
             "Centrifuge engraved identity",
             "CENTRIFUGE",
-            (-0.065, -0.163, 0.129),
+            (0, -0.2, 0.129),
             0.010,
             MaterialName.TEAL,
         )
+        self.surface_lettering(identity, chamber)
         for side in (-1, 1):
             for index in range(6):
                 depth = -0.035 + index * 0.014
@@ -1048,6 +1144,13 @@ class LaboratoryBuilder:
     def build_pipetting(self) -> None:
         """Model the bench dispenser with two reservoirs and an open receiving bay."""
         dimensions = PipettingDimensions()
+        cover_center = (0, -0.032, 0.233)
+        cover_size = (0.051, 0.187, 0.006)
+        cover_top = cover_center[2] + cover_size[2] / 2
+        inlet_length = 0.012
+        inlet_insertion = 0.002
+        inlet_height = cover_top - inlet_insertion + inlet_length / 2
+        inlet_radius = 0.0037
         self.current = AssetName.PIPETTING
         self.box(
             "Pipetting enamel platform",
@@ -1087,8 +1190,8 @@ class LaboratoryBuilder:
         )
         self.box(
             "Pipetting head cover",
-            (0, -0.032, 0.233),
-            (0.051, 0.187, 0.006),
+            cover_center,
+            cover_size,
             MaterialName.WHITE,
             0.002,
         )
@@ -1274,14 +1377,27 @@ class LaboratoryBuilder:
                     MaterialName.LABEL,
                     0,
                 )
+            inlet_position = (sign * 0.009, -0.101, inlet_height)
+            self.cylinder(
+                f"Pipetting {channel} head inlet coupling",
+                inlet_position,
+                inlet_radius,
+                inlet_length,
+                MaterialName.STEEL,
+            )
             self.pipetting_tubing(
                 f"Pipetting {channel} feed tube",
                 (
-                    (horizontal, 0.085, 0.395),
+                    (horizontal, 0.085, 0.390),
                     (horizontal, 0.040, 0.408),
                     (sign * 0.019, 0.018, 0.354),
-                    (sign * 0.011, -0.021, 0.247),
-                    (sign * 0.009, -0.101, 0.242),
+                    (sign * 0.011, -0.021, 0.279),
+                    (
+                        inlet_position[0],
+                        inlet_position[1],
+                        inlet_position[2] + inlet_length * 1.5,
+                    ),
+                    inlet_position,
                 ),
                 MaterialName.PALE_TEAL if index else MaterialName.LABEL,
             )
@@ -1342,7 +1458,9 @@ class LaboratoryBuilder:
             bpy.ops.object.select_all(action="SELECT")
             bpy.ops.object.delete(use_global=False)
         for scene_object in list(bpy.data.objects):
-            if scene_object.name.startswith(("Pipetting", "pipetting_")):
+            if scene_object.name.startswith(
+                ("Pipetting", "pipetting_", BrandingName.DISPENSER)
+            ):
                 bpy.data.objects.remove(scene_object, do_unlink=True)
         (self.options.output / "assets").mkdir(parents=True, exist_ok=True)
         self.library.build()

@@ -61,6 +61,23 @@ test('late authored assets replace only static screen lettering and keep the pan
   assert.deepEqual(scene.letters.map(node => node.visible), [true, true, true]);
 });
 
+test('the live reading sits flush on the authored screen without a visible air gap', () => {
+  const scene = new InstrumentDisplayScene();
+  scene.addInstrument();
+  scene.update();
+  scene.root.updateMatrixWorld(true);
+  const screenBounds = new THREE.Box3().setFromObject(scene.screen);
+  const front = scene.root.worldToLocal(new THREE.Vector3(
+    (screenBounds.min.x + screenBounds.max.x) / 2,
+    (screenBounds.min.y + screenBounds.max.y) / 2,
+    screenBounds.max.z,
+  ));
+  const gap = front.y - scene.display.mesh.position.y;
+  const maximumPrintingGap = 0.0002;
+  assert.ok(gap > 0 && gap <= maximumPrintingGap, `Screen overlay floats ${gap} m above its surface`);
+  scene.display.destroy();
+});
+
 test('the in-scene countdown and speed use server measurements without a browser clock', () => {
   const scene = new InstrumentDisplayScene();
   scene.addInstrument();

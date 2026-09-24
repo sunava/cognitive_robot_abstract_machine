@@ -13,7 +13,7 @@
   const LETTER_NAMES = new Set(['Centrifuge status lettering', 'Centrifuge_status_lettering', 'Centrifuge capacity lettering', 'Centrifuge_capacity_lettering']);
   const CANVAS_SIZE = Object.freeze([768, 192]);
   const SCREEN_INSET = .94;
-  const SCREEN_OFFSET = .0007;
+  const SCREEN_OFFSET = .0001;
   const Status = Object.freeze({UNAVAILABLE: 'NO DATA', OPEN: 'OPEN', LID: 'LID', CHECK: 'CHECK', READY: 'READY', RUNNING: 'RUNNING', BRAKING: 'BRAKING'});
 
   /** Derive display text from one authoritative observation without advancing a clock. */
