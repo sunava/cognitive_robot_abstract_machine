@@ -34,6 +34,7 @@ from cramera.laboratory_workflow_command import (
 )
 
 if TYPE_CHECKING:
+    from cramera.laboratory_gaze import LaboratoryGaze
     from cramera.laboratory_physics_robot import LaboratoryRobotPhysics
     from cramera.laboratory_sample_transfer import LaboratorySampleTransfer
 
@@ -76,6 +77,8 @@ class WorkflowField(StrEnum):
     """Finite operation labels accepted so far."""
     FAILURE = "failure"
     """Unmet physical acceptance condition."""
+    GAZE = "gaze"
+    """Measured camera tracking, absent until the first manipulation begins."""
     SCALE = "scale"
     """Authored balance metadata."""
     PAN_POSITION = "panPosition"
@@ -297,6 +300,8 @@ class LaboratoryWorkflowProgram:
     """Whether the current instrument command has already been issued."""
     motion: LaboratorySampleTransfer | None = field(init=False, default=None)
     """Contact-verified robot transfer currently responsible for joint targets."""
+    gaze: LaboratoryGaze | None = field(init=False, default=None)
+    """Persistent head-only pointing controller following the measured working tool."""
     error: str | None = field(init=False, default=None)
     """Physical or inventory condition that stopped the recipe."""
     dose_before: float = field(init=False, default=0.0)
@@ -337,6 +342,7 @@ class LaboratoryWorkflowProgram:
         self.spin_remaining = 0.0
         self.spin_timer_complete = False
         self.motion = None
+        self.gaze = None
         self.error = None
         self.load_verified = False
 
@@ -580,6 +586,16 @@ class LaboratoryWorkflowProgram:
             self._start_transfer()
         if self.motion is not None:
             self.motion.advance()
+        self._advance_gaze()
+
+    def _advance_gaze(self) -> None:
+        """Follow the actual working gripper throughout active recipe operations."""
+        if self.gaze is None and not self._is_transfer():
+            return
+        if self.gaze is None:
+            gaze_module = importlib.import_module("cramera.laboratory_gaze")
+            self.gaze = gaze_module.LaboratoryGaze(self.physics)
+        self.gaze.advance()
 
     def _is_transfer(self) -> bool:
         """Identify intentions that must be carried by the physical robot gripper."""
@@ -1111,6 +1127,9 @@ class LaboratoryWorkflowProgram:
                     ],
                     WorkflowField.COMPLETED: self._completed_stages(),
                     WorkflowField.FAILURE: self.error,
+                    WorkflowField.GAZE: (
+                        self.gaze.snapshot() if self.gaze is not None else None
+                    ),
                     WorkflowCommandField.RESERVED: self.state
                     in (ProgramState.RUNNING, ProgramState.PAUSED),
                 },

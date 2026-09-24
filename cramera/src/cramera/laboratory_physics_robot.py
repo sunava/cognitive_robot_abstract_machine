@@ -48,10 +48,23 @@ class RobotBaseJoint(StrEnum):
     """Rotation about the world vertical axis."""
 
 
+class RobotHeadJoint(StrEnum):
+    """Independently actuated joints orienting the PR2's head sensors."""
+
+    PAN = "pr2/head_pan_joint"
+    """Horizontal rotation about the torso's vertical axis."""
+    TILT = "pr2/head_tilt_joint"
+    """Vertical rotation about the head's lateral axis."""
+
+
 @dataclass(frozen=True)
 class RobotPhysicsParameters:
-    """Bounded arm, gripper, torso and optional planar base servos."""
+    """Bounded head, arm, gripper, torso and optional planar base servos."""
 
+    head_stiffness: float = 80.0
+    """Head servo stiffness in Newton meters per radian."""
+    head_damping: float = 8.0
+    """Head servo damping in Newton meter seconds per radian."""
     arm_stiffness: float = 6000.0
     """Arm servo stiffness in Newton meters per radian."""
     arm_damping: float = 70.0
@@ -204,7 +217,9 @@ class LaboratoryRobotCollisionModel(LaboratoryCollisionModel):
 
     @staticmethod
     def _articulated(name: str) -> bool:
-        """Identify the torso, arms and mechanically coupled finger joints."""
+        """Identify the head, torso, arms and mechanically coupled finger joints."""
+        if name in RobotHeadJoint:
+            return True
         suffix = name.removeprefix("pr2/")
         if suffix == "torso_lift_joint":
             return True
@@ -331,6 +346,7 @@ class LaboratoryRobotCollisionModel(LaboratoryCollisionModel):
     ) -> None:
         """Add a scalar articulation and its servo or mechanical mimic constraint."""
         name = joint.attrib["name"]
+        source_joint = source_joints[name.removeprefix("pr2/")]
         properties = {
             "name": name,
             "type": "slide" if joint.attrib["type"] == "prismatic" else "hinge",
@@ -338,11 +354,14 @@ class LaboratoryRobotCollisionModel(LaboratoryCollisionModel):
             "armature": "0.00001" if "finger" in name else "0.01",
             "damping": "0.001",
         }
-        limit = joint.find("limit")
+        limit = (
+            source_joint.find("limit")
+            if name in RobotHeadJoint
+            else joint.find("limit")
+        )
         if limit is not None:
             properties["range"] = f"{limit.attrib['lower']} {limit.attrib['upper']}"
         ElementTree.SubElement(body, "joint", **properties)
-        source_joint = source_joints[name.removeprefix("pr2/")]
         mimic = source_joint.find("mimic")
         if mimic is not None:
             ElementTree.SubElement(
@@ -356,7 +375,13 @@ class LaboratoryRobotCollisionModel(LaboratoryCollisionModel):
             )
             return
         parameters = self.robot_parameters
-        if "finger" in name:
+        if name in RobotHeadJoint:
+            stiffness, damping, maximum = (
+                parameters.head_stiffness,
+                parameters.head_damping,
+                float(limit.attrib["effort"]),
+            )
+        elif "finger" in name:
             stiffness, damping, maximum = (
                 parameters.finger_stiffness,
                 parameters.finger_damping,

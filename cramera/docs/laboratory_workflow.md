@@ -4,9 +4,9 @@ The full demo processes the clear, amber, teal, and reserve samples through the 
 dispenser, balance, centrifuge, and sample cooler. Each initially empty vial receives
 **1 ml of reagent A and 1 ml of reagent B**.
 
-**Validation:** a fresh complete four-sample MuJoCo run passed, including five seconds
-of settling after both doors closed. All four samples retained their full 2 ml and
-occupied R1–R4; the rotor was stopped and all rotor holders were released.
+**Reference validation:** a fresh complete four-sample MuJoCo run passed, including
+five seconds of settling after both doors closed. All four samples retained their
+full 2 ml and occupied R1–R4; the rotor was stopped and all rotor holders were released.
 
 ## Access and controls
 
@@ -94,6 +94,13 @@ continues from them.
 - **Mobile base:** bounded planar translation and heading joints move the PR2 base
   through force-limited actuators and contact dynamics. The model does not simulate
   wheel steering, tire slip, odometry, or autonomous navigation.
+- **Gaze:** a native Giskard `Pointing` constraint continuously follows the measured
+  left gripper tool with the PR2's optical camera. It updates at 20 Hz in simulation
+  time and controls only head pan and tilt; arm and base targets remain with the
+  manipulation controller. The head uses physical servos, the original URDF joint
+  and torque limits, and bounded command speed. If a direction cannot be reached,
+  the joint limits take priority. Pause holds the last bounded head targets;
+  resume continues from measured state without catching up elapsed pause time.
 - **Lid and door:** simulated joint actuators open and close the centrifuge lid and
   cooler door, with measured joint state and collision geometry. These operations
   do not currently represent the robot hand grasping a handle or pressing a button.
@@ -115,7 +122,8 @@ The recipe and its observations are implemented in
 [`laboratory_workflow.py`](../src/cramera/laboratory_workflow.py). Reusable sample
 transfers live in
 [`laboratory_sample_transfer.py`](../src/cramera/laboratory_sample_transfer.py),
-and the browser panel in
+head tracking in [`laboratory_gaze.py`](../src/cramera/laboratory_gaze.py), and the
+browser panel in
 [`laboratory-workflow.js`](../src/cramera/web/core/laboratory-workflow.js).
 
 The authenticated workflow endpoint is
@@ -125,10 +133,24 @@ The shared gateway mounts this endpoint below `/laboratory/`. Progress is publis
 as `robot.workflow` alongside the normal robot state; the browser does not create
 sample results locally.
 
+`robot.workflow.gaze` reports the active `Pointing` constraint, measured target and
+camera frame names, and the current optical-axis error in radians. It is `null`
+until the first manipulation starts. The error is measured from MuJoCo frames,
+not from the head controller's predicted positions.
+
 Focused pytest checks passed for command validation, paused ownership, measured
 doses and weights, balance/interlock evidence, mobile and articulated motion, and
-browser controls. The complete physical acceptance test also passed from a fresh
-reset through closed-door storage. It checks actual retained volumes and supported
-occupants, and verifies that controller intentions and observations do not directly
+browser controls. The reference physical acceptance test passed from a fresh
+reset through closed-door storage before head tracking was added. It checks actual
+retained volumes and supported occupants, and verifies that controller intentions
+and observations do not directly
 change body or joint positions. Browser-control tests cover the English controls;
 the embedded browser could not provide a WebGL context for visual inspection.
+
+Head tracking has separate tests for moving targets and support frames, continued
+tracking after initial alignment, pause/resume, head-only commands, joint limits,
+and measured status. A physical integration run also completed the first sample's
+two doses and supported weighing with gaze active, preserved both doses and the
+measured gross mass, and kept the gripper within five degrees of the camera axis
+during dosing and weighing. The complete four-sample run has not been repeated
+with head tracking enabled.
