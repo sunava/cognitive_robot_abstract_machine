@@ -1192,11 +1192,19 @@ class LaboratoryBuilder:
         )
         self.box(
             "Centrifuge lid grip",
-            (0, -0.291, 0.024),
-            (0.069, 0.019, 0.025),
+            dimensions.handle_center,
+            dimensions.handle_size,
             MaterialName.TEAL,
             0.006,
         )
+        for position in dimensions.handle_mounts:
+            self.box(
+                "Centrifuge lid grip support",
+                position,
+                dimensions.handle_mount_size,
+                MaterialName.TEAL,
+                0.004,
+            )
         self.export_asset(
             AssetName.CENTRIFUGE_LID,
             tuple(

@@ -214,6 +214,17 @@ class RefrigeratorDimensions:
             RefrigeratorBox(
                 "refrigerator_door_bottom", (0.25, 0, -0.2675), (0.428, 0.032, 0.045)
             ),
+            RefrigeratorBox(
+                "refrigerator_handle", (0.482, -0.044, 0.0), (0.018, 0.018, 0.203)
+            ),
+            *(
+                RefrigeratorBox(
+                    f"refrigerator_handle_mount_{index}",
+                    (0.482, -0.026, elevation),
+                    (0.016, 0.035, 0.016),
+                )
+                for index, elevation in enumerate((-0.085, 0.085))
+            ),
         )
 
     def metadata(self) -> dict[str, object]:

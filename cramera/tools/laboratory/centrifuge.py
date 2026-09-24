@@ -81,7 +81,7 @@ class CentrifugeField(StrEnum):
 class CentrifugeDimensions:
     """Metric dimensions accommodating the laboratory's existing tubes."""
 
-    origin: tuple[float, float, float] = (-0.53, -0.07, 0.9)
+    origin: tuple[float, float, float] = (-0.53, -0.18, 0.9)
     """Stationary housing origin on the laboratory work surface."""
     width: float = 0.34
     """Full housing width."""
@@ -99,8 +99,19 @@ class CentrifugeDimensions:
     """Drive-axis origin relative to the stationary housing."""
     lid_origin: tuple[float, float, float] = (0.0, 0.155, 0.223)
     """Hinge origin relative to the stationary housing."""
-    open_angle: float = 1.85
+    open_angle: float = 1.35
     """Positive opening angle around the negative horizontal axis."""
+    handle_center: tuple[float, float, float] = (0.0, -0.210, 0.090)
+    """Raised grip centre providing fingertip clearance above the closed cover."""
+    handle_size: tuple[float, float, float] = (0.069, 0.019, 0.020)
+    """Full dimensions of the horizontal grip bar."""
+    handle_mounts: tuple[tuple[float, float, float], ...] = (
+        (-0.026, -0.210, 0.047),
+        (0.026, -0.210, 0.047),
+    )
+    """Two supports joining the raised handle to the protective cover."""
+    handle_mount_size: tuple[float, float, float] = (0.014, 0.016, 0.086)
+    """Full dimensions of each handle support."""
     slot_radius: float = 0.072
     """Distance from the rotor axis to each sample centre."""
     slot_bottom: float = 0.008
@@ -313,6 +324,16 @@ class CentrifugeDescription:
             (0.0, -dimensions.lid_origin[1], 0.007),
             (0.30, 0.30, 0.014),
         )
+        self.description.box(
+            lid,
+            "lid_handle",
+            dimensions.handle_center,
+            dimensions.handle_size,
+        )
+        for index, position in enumerate(dimensions.handle_mounts):
+            self.description.box(
+                lid, f"lid_handle_mount_{index}", position, dimensions.handle_mount_size
+            )
         self.description.inertia(
             lid, 0.55, (0.0, -dimensions.lid_origin[1], 0.007), (0.30, 0.30, 0.014)
         )

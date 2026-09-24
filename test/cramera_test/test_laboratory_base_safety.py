@@ -9,6 +9,10 @@ import numpy as np
 import pytest
 
 from cramera.laboratory_centrifuge_command import CentrifugeAction
+from cramera.laboratory_hinge_manipulation import (
+    HingeInstrument,
+    LaboratoryHingeManipulation,
+)
 from cramera.laboratory_physics_program import ProgramState
 from cramera.laboratory_sample_transfer import LaboratorySampleTransfer, SampleGrasp
 from cramera.laboratory_physics_robot import LaboratoryRobotPhysics, RobotBaseJoint
@@ -219,3 +223,32 @@ def test_base_rotation_checks_the_swept_arm_arc(
     with pytest.raises(UnsafeBasePath):
         LaboratoryBasePath(physics).validate({RobotBaseJoint.HEADING: np.pi})
     np.testing.assert_array_equal(physics.data.qpos, before)
+
+
+def test_refrigerator_dock_clears_the_complete_door_swing(
+    mobile_robot: LaboratoryRobotPhysics,
+) -> None:
+    """
+    The opening door must stay outside the stationary robot chassis throughout its arc.
+    """
+    physics = mobile_robot
+    manipulation = LaboratoryHingeManipulation(
+        physics, HingeInstrument.REFRIGERATOR, True
+    )
+    scratch = mujoco.MjData(physics.model)
+    scratch.qpos[:] = physics.data.qpos
+    for joint, target in zip(
+        (RobotBaseJoint.HORIZONTAL, RobotBaseJoint.DEPTH), manipulation.dock
+    ):
+        scratch.qpos[physics.robot_joints[joint].position_index] = target
+    chassis = physics.model.body("pr2/base_link").id
+    for angle in np.linspace(0.0, manipulation.target_angle, 100):
+        scratch.qpos[physics.model.jnt_qposadr[manipulation.joint]] = angle
+        mujoco.mj_forward(physics.model, scratch)
+        for contact in scratch.contact[: scratch.ncon]:
+            bodies = {
+                physics.model.geom_bodyid[contact.geom1],
+                physics.model.geom_bodyid[contact.geom2],
+            }
+            if chassis in bodies:
+                assert contact.dist >= -0.0001, (angle, contact.dist)

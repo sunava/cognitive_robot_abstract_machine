@@ -4,7 +4,7 @@
     {
       "laboratory_drawer_joint": 0.0,
       "laboratory_centrifuge_rotor_joint": 0.0,
-      "laboratory_centrifuge_lid_joint": 1.85,
+      "laboratory_centrifuge_lid_joint": 1.35,
       "laboratory_refrigerator_door_joint": 0.0
     }
   ],
