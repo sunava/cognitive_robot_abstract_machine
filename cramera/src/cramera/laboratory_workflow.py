@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import math
+import weakref
 from dataclasses import dataclass, field
 from enum import StrEnum
 from itertools import permutations
@@ -12,7 +13,7 @@ import mujoco
 import numpy as np
 from typing_extensions import Any, ClassVar, TYPE_CHECKING
 
-from cramera.laboratory_centrifuge import CentrifugeGeometry
+from cramera.laboratory_centrifuge import CentrifugeGeometry, InvalidCentrifugeOperation
 from cramera.laboratory_centrifuge_command import CentrifugeAction
 from cramera.laboratory_mixing_program import LaboratoryMixingProgram, MixingField
 from cramera.laboratory_physics import InvalidPhysicsTarget
@@ -22,7 +23,12 @@ from cramera.laboratory_pipetting import (
     PipettingSource,
     PipettingState,
 )
-from cramera.laboratory_refrigerator import RefrigeratorGeometry
+from cramera.laboratory_pipetting_command import InvalidPipettingCommand
+from cramera.laboratory_refrigerator import (
+    RefrigeratorGeometry,
+    InvalidRefrigeratorOperation,
+)
+from cramera.laboratory_robot_base import UnsafeBasePath
 from cramera.laboratory_refrigerator_command import (
     RefrigeratorAction,
     RefrigeratorField,
@@ -34,6 +40,10 @@ from cramera.laboratory_workflow_command import (
 )
 
 if TYPE_CHECKING:
+    from cramera.laboratory_actions import LaboratoryAction
+    from cramera.laboratory_actions import LaboratoryActionRequest
+    from cramera.laboratory_plan import LaboratoryPlanExecution
+    from cramera.laboratory_hinge_manipulation import LaboratoryHingeManipulation
     from cramera.laboratory_gaze import LaboratoryGaze
     from cramera.laboratory_physics_robot import LaboratoryRobotPhysics
     from cramera.laboratory_sample_transfer import LaboratorySampleTransfer
@@ -79,6 +89,8 @@ class WorkflowField(StrEnum):
     """Unmet physical acceptance condition."""
     GAZE = "gaze"
     """Measured camera tracking, absent until the first manipulation begins."""
+    PLAN = "plan"
+    """Native Coraplex plan lifecycle and completed action count."""
     SCALE = "scale"
     """Authored balance metadata."""
     PAN_POSITION = "panPosition"
@@ -162,6 +174,8 @@ class WorkflowStep(StrEnum):
     """Require measured upright supported cooler occupancy."""
     CLOSE_REFRIGERATOR = "Close sample cooler door"
     """Request and observe closed refrigerated storage."""
+    VERIFY = "Verify completed laboratory workflow"
+    """Accept only retained doses, processed samples and closed instruments."""
 
 
 @dataclass(frozen=True)
@@ -188,6 +202,8 @@ class WorkflowParameters:
     """Maximum initial tube-axis tilt from vertical in radians."""
     mass_tolerance_grams: float = 0.05
     """Maximum difference between stable pan load and the complete sample mass."""
+    contact_threshold: float = 0.005
+    """Minimum normal force in Newtons on each fingertip during dosing."""
 
 
 @dataclass
@@ -300,6 +316,8 @@ class LaboratoryWorkflowProgram:
     """Whether the current instrument command has already been issued."""
     motion: LaboratorySampleTransfer | None = field(init=False, default=None)
     """Contact-verified robot transfer currently responsible for joint targets."""
+    hinge: LaboratoryHingeManipulation | None = field(init=False, default=None)
+    """Contact-verified robot operation of a lid or storage door."""
     gaze: LaboratoryGaze | None = field(init=False, default=None)
     """Persistent head-only pointing controller following the measured working tool."""
     error: str | None = field(init=False, default=None)
@@ -316,6 +334,22 @@ class LaboratoryWorkflowProgram:
     """Whether the observed timed cycle finished with the rotor fully stopped."""
     load_verified: bool = field(init=False, default=False)
     """Whether all four weighed samples were confirmed secured and balanced."""
+    execution: LaboratoryPlanExecution | None = field(init=False, default=None)
+    """Native plan controlling the order of independently executed operations."""
+    request: LaboratoryActionRequest | None = field(init=False, default=None)
+    """Action parameters accepted from the native execution boundary."""
+    intention: WorkflowIntention | None = field(init=False, default=None)
+    """Current native action's presentation and associated measurement record."""
+    plan_requested: bool = field(init=False, default=False)
+    """Whether ordinary execution has requested a native plan on its first tick."""
+    cleanup: weakref.finalize | None = field(init=False, default=None, repr=False)
+    """Cancel a waiting plan when its owning simulation program is discarded."""
+    selected_actions: tuple[LaboratoryAction, ...] | None = field(
+        init=False, default=None
+    )
+    """Optional independent native action sequence operating on existing samples."""
+    workflow_verified: bool = field(init=False, default=False)
+    """Whether the complete batch passed its explicit final verification action."""
 
     SAMPLE_KEYS: ClassVar[tuple[LaboratoryBody, ...]] = (
         LaboratoryBody.CLEAR_TUBE,
@@ -333,6 +367,20 @@ class LaboratoryWorkflowProgram:
 
     def reset(self) -> None:
         """Clear recipe evidence while leaving physical reset to the session owner."""
+        if self.hinge is not None:
+            self.hinge.cancel()
+        self.hinge = None
+        if self.execution is not None:
+            self.execution.cancel()
+        if self.cleanup is not None:
+            self.cleanup.detach()
+            self.cleanup = None
+        self.execution = None
+        self.request = None
+        self.intention = None
+        self.plan_requested = False
+        self.selected_actions = None
+        self.workflow_verified = False
         self.state = ProgramState.IDLE
         self.samples = [WorkflowSample(key) for key in self.SAMPLE_KEYS]
         self.steps = self._recipe()
@@ -347,56 +395,33 @@ class LaboratoryWorkflowProgram:
         self.load_verified = False
 
     def _recipe(self) -> list[WorkflowIntention]:
-        """Vacate front rack samples before approaching rear-row samples."""
-        steps = []
-        for index in range(len(self.samples)):
-            for operation, stage in (
-                (WorkflowStep.DISPENSER, WorkflowStage.FILL),
-                (WorkflowStep.DOSE_A, WorkflowStage.FILL),
-                (WorkflowStep.DOSE_B, WorkflowStage.FILL),
-                (WorkflowStep.SCALE, WorkflowStage.WEIGH),
-                (WorkflowStep.WEIGH, WorkflowStage.WEIGH),
-                (WorkflowStep.REGRASP, WorkflowStage.LOAD),
-            ):
-                steps.append(WorkflowIntention(operation, stage, index))
-            if index == 0:
-                steps.append(
-                    WorkflowIntention(WorkflowStep.OPEN_CENTRIFUGE, WorkflowStage.LOAD)
-                )
-            for operation in (
-                WorkflowStep.ASSIGN,
-                WorkflowStep.LOAD,
-                WorkflowStep.SECURE,
-            ):
-                steps.append(WorkflowIntention(operation, WorkflowStage.LOAD, index))
-        steps.extend(
-            (
-                WorkflowIntention(WorkflowStep.BALANCE, WorkflowStage.LOAD),
-                WorkflowIntention(WorkflowStep.CLOSE_CENTRIFUGE, WorkflowStage.SPIN),
-                WorkflowIntention(WorkflowStep.SPIN, WorkflowStage.SPIN),
-                WorkflowIntention(WorkflowStep.OPEN_CENTRIFUGE, WorkflowStage.STORE),
-                WorkflowIntention(WorkflowStep.OPEN_REFRIGERATOR, WorkflowStage.STORE),
-            )
+        """Describe the native recipe for progress reporting without executing it."""
+        intentions = []
+        processed = self.spin_finished
+        for action in self.make_actions():
+            intention = self._request_intention(action.request, processed)
+            intentions.append(intention)
+            processed = processed or intention.operation == WorkflowStep.SPIN
+        return intentions
+
+    def make_actions(self) -> list[LaboratoryAction]:
+        """Build either the selected reusable operations or the full native recipe."""
+        if self.selected_actions is not None:
+            return list(self.selected_actions)
+        plan_module = importlib.import_module("cramera.laboratory_plan")
+        recipe = plan_module.LaboratoryPlan(
+            tuple(sample.key for sample in self.samples),
+            self.parameters.dose_ml,
+            self.parameters.rotor_rpm,
+            self.parameters.spin_seconds,
         )
-        for index in range(len(self.samples)):
-            for operation in (
-                WorkflowStep.RELEASE,
-                WorkflowStep.UNLOAD,
-                WorkflowStep.STORE,
-                WorkflowStep.CONFIRM_STORAGE,
-            ):
-                steps.append(WorkflowIntention(operation, WorkflowStage.STORE, index))
-        steps.extend(
-            (
-                WorkflowIntention(WorkflowStep.CLOSE_REFRIGERATOR, WorkflowStage.STORE),
-                WorkflowIntention(WorkflowStep.CLOSE_CENTRIFUGE, WorkflowStage.STORE),
-            )
-        )
-        return steps
+        return recipe.actions()
 
     @property
     def step(self) -> WorkflowIntention:
         """Current operation, retaining the final intention after completion."""
+        if self.intention is not None:
+            return self.intention
         return self.steps[min(self.step_index, len(self.steps) - 1)]
 
     @property
@@ -528,6 +553,7 @@ class LaboratoryWorkflowProgram:
         if self.state == ProgramState.IDLE:
             self._validate_start()
             self.physics.release()
+            self.plan_requested = True
         elif self.issued and self.step.operation in (
             WorkflowStep.DOSE_A,
             WorkflowStep.DOSE_B,
@@ -536,7 +562,7 @@ class LaboratoryWorkflowProgram:
             if (
                 station.key != self.sample.key
                 or station.source != self._dose_source()
-                or abs(station.requested_ml - self.parameters.dose_ml)
+                or abs(station.requested_ml - self.dose_ml)
                 > self.parameters.volume_tolerance_ml
             ):
                 raise InvalidPhysicsTarget(
@@ -546,6 +572,49 @@ class LaboratoryWorkflowProgram:
                 self.physics.pipetting_command(PipettingAction.RESUME)
         if self.motion is not None and self.motion.state == ProgramState.PAUSED:
             self.motion.start()
+        if self.hinge is not None and self.hinge.state == ProgramState.PAUSED:
+            self.hinge.start()
+        if self.execution is not None:
+            self.execution.resume()
+        self.state = ProgramState.RUNNING
+
+    def start_actions(self, actions: list[LaboratoryAction]) -> None:
+        """Run an independent native action sequence without resetting the laboratory."""
+        if self.state in (ProgramState.RUNNING, ProgramState.PAUSED):
+            raise InvalidPhysicsTarget(
+                "Finish or reset the active plan before replacing its actions"
+            )
+        action_module = importlib.import_module("cramera.laboratory_actions")
+        if not actions or any(
+            not isinstance(action, action_module.LaboratoryAction) for action in actions
+        ):
+            raise InvalidPhysicsTarget("Select at least one laboratory contact action")
+        sample_keys = {sample.key for sample in self.samples}
+        if any(
+            action.request.object_key is not None
+            and action.request.object_key not in sample_keys
+            for action in actions
+        ):
+            raise InvalidPhysicsTarget(
+                "The selected action references an unknown laboratory sample"
+            )
+        if self.execution is not None:
+            self.execution.cancel()
+        if self.cleanup is not None:
+            self.cleanup.detach()
+            self.cleanup = None
+        self.execution = None
+        self.selected_actions = tuple(actions)
+        self.request = self.intention = None
+        self.steps = self._recipe()
+        self.step_index = 0
+        self.step_time = self.elapsed = 0.0
+        self.issued = False
+        self.motion = self.hinge = None
+        self.error = None
+        self.workflow_verified = False
+        self.physics.release()
+        self.plan_requested = True
         self.state = ProgramState.RUNNING
 
     def pause(self) -> None:
@@ -556,46 +625,230 @@ class LaboratoryWorkflowProgram:
             self.physics.pipetting_command(PipettingAction.STOP)
         if self.motion is not None:
             self.motion.pause()
+        if self.hinge is not None:
+            self.hinge.pause()
+        if self.execution is not None:
+            self.execution.pause()
         self.state = ProgramState.PAUSED
 
     def _fail(self, message: str) -> None:
         """Stop reagent delivery and rotor drive while retaining failure evidence."""
         self.pause()
+        if self.hinge is not None:
+            self.hinge.cancel()
         if self.physics.centrifuge.target_rpm > 0:
             self.physics.centrifuge_command(CentrifugeAction.STOP)
         self.error = message
         self.state = ProgramState.FAILED
+        if self.execution is not None:
+            measurement_module = importlib.import_module(
+                "cramera.laboratory_plan_world"
+            )
+            self.execution.complete(
+                message,
+                measurement=measurement_module.LaboratoryPlanWorld.capture(
+                    self.physics
+                ),
+            )
+
+    def stop(self) -> None:
+        """Cancel the active native plan and retain its physical failure evidence."""
+        if self.state in (ProgramState.RUNNING, ProgramState.PAUSED):
+            self._fail("The laboratory program was stopped")
+        if self.execution is not None:
+            self.execution.cancel()
 
     def advance(self) -> None:
         """Advance robot joint intentions without editing object dynamic poses."""
+        try:
+            self._advance_action()
+        except (
+            InvalidPhysicsTarget,
+            InvalidCentrifugeOperation,
+            InvalidRefrigeratorOperation,
+            InvalidPipettingCommand,
+            UnsafeBasePath,
+        ) as error:
+            self._fail(str(error))
+
+    def _advance_action(self) -> None:
+        """Advance one physical action under the native plan's ownership."""
         if self.state != ProgramState.RUNNING:
             return
+        if self.plan_requested and self.execution is None:
+            plan_module = importlib.import_module("cramera.laboratory_plan")
+            self.execution = plan_module.LaboratoryPlanExecution()
+            self.cleanup = weakref.finalize(self, self.execution.cancel)
+            self.execution.start(self)
+            if not self._accept_request():
+                return
         self.step_time += self.physics.timestep
         self.elapsed += self.physics.timestep
         timeout = (
             self.parameters.transfer_timeout
-            if self._is_transfer()
+            if self._is_transfer() or self._is_hinge()
             else self.parameters.operation_timeout
         )
         if self.step.operation == WorkflowStep.SPIN:
-            timeout += self.parameters.spin_seconds
+            timeout += self.spin_seconds
         if self.step_time > timeout:
             self._fail(f"Timed out: {self.step.operation}")
             return
         if self._is_transfer() and self.motion is None:
             self._start_transfer()
+        if self._is_hinge() and self.hinge is None:
+            self._start_hinge()
         if self.motion is not None:
             self.motion.advance()
+        if self.hinge is not None:
+            self.hinge.advance()
         self._advance_gaze()
 
     def _advance_gaze(self) -> None:
         """Follow the actual working gripper throughout active recipe operations."""
-        if self.gaze is None and not self._is_transfer():
+        if self.gaze is None and not (self._is_transfer() or self._is_hinge()):
             return
         if self.gaze is None:
             gaze_module = importlib.import_module("cramera.laboratory_gaze")
             self.gaze = gaze_module.LaboratoryGaze(self.physics)
         self.gaze.advance()
+
+    def _accept_request(self) -> bool:
+        """Accept the next native action's parameters without advancing physics."""
+        request = self.execution.wait_for_request()
+        if request is None:
+            if self.execution.error is not None:
+                self._fail(self.execution.error)
+            elif self.selected_actions is not None:
+                self.state = ProgramState.SUCCEEDED
+            elif self.state != ProgramState.SUCCEEDED:
+                self._fail("The native plan ended before final verification")
+            return False
+        self.request = request
+        self.intention = self._request_intention(request, self.spin_finished)
+        if self.intention.operation == WorkflowStep.SPIN:
+            self.spin_observed = self.spin_timer_complete = self.spin_finished = False
+            self.spin_remaining = 0.0
+        return True
+
+    def _request_intention(
+        self, request: LaboratoryActionRequest, processed: bool
+    ) -> WorkflowIntention:
+        """Associate one independent operation with its user-visible evidence."""
+        actions = importlib.import_module("cramera.laboratory_actions")
+        operation_type = actions.LaboratoryOperation
+        destination_type = actions.SampleDestination
+        operations = {
+            operation_type.DISPENSE: (
+                (
+                    WorkflowStep.DOSE_A
+                    if request.source == PipettingSource.AMBER
+                    else WorkflowStep.DOSE_B
+                ),
+                WorkflowStage.FILL,
+            ),
+            operation_type.WEIGH: (WorkflowStep.WEIGH, WorkflowStage.WEIGH),
+            operation_type.ASSIGN_ROTOR_HOLDER: (
+                WorkflowStep.ASSIGN,
+                WorkflowStage.LOAD,
+            ),
+            operation_type.VERIFY_ROTOR_BALANCE: (
+                WorkflowStep.BALANCE,
+                WorkflowStage.LOAD,
+            ),
+            operation_type.SECURE: (WorkflowStep.SECURE, WorkflowStage.LOAD),
+            operation_type.RELEASE: (WorkflowStep.RELEASE, WorkflowStage.STORE),
+            operation_type.RUN_CENTRIFUGE: (WorkflowStep.SPIN, WorkflowStage.SPIN),
+            operation_type.CONFIRM_STORAGE: (
+                WorkflowStep.CONFIRM_STORAGE,
+                WorkflowStage.STORE,
+            ),
+            operation_type.VERIFY_WORKFLOW: (
+                WorkflowStep.VERIFY,
+                WorkflowStage.COMPLETE,
+            ),
+        }
+        if request.operation == operation_type.TRANSFER:
+            transfers = {
+                destination_type.DISPENSER: (
+                    WorkflowStep.DISPENSER,
+                    WorkflowStage.FILL,
+                ),
+                destination_type.SCALE: (WorkflowStep.SCALE, WorkflowStage.WEIGH),
+                destination_type.RACK: (
+                    (WorkflowStep.UNLOAD, WorkflowStage.STORE)
+                    if request.grasp == actions.LaboratoryGrasp.TOP
+                    else (WorkflowStep.REGRASP, WorkflowStage.LOAD)
+                ),
+                destination_type.CENTRIFUGE: (WorkflowStep.LOAD, WorkflowStage.LOAD),
+                destination_type.REFRIGERATOR: (
+                    WorkflowStep.STORE,
+                    WorkflowStage.STORE,
+                ),
+            }
+            operation, stage = transfers[request.destination]
+        elif request.operation in (
+            operation_type.OPEN_INSTRUMENT,
+            operation_type.CLOSE_INSTRUMENT,
+        ):
+            opening = request.operation == operation_type.OPEN_INSTRUMENT
+            if request.instrument == actions.LaboratoryInstrument.CENTRIFUGE:
+                operation = (
+                    WorkflowStep.OPEN_CENTRIFUGE
+                    if opening
+                    else WorkflowStep.CLOSE_CENTRIFUGE
+                )
+                stage = (
+                    WorkflowStage.STORE
+                    if processed
+                    else (WorkflowStage.LOAD if opening else WorkflowStage.SPIN)
+                )
+            else:
+                operation = (
+                    WorkflowStep.OPEN_REFRIGERATOR
+                    if opening
+                    else WorkflowStep.CLOSE_REFRIGERATOR
+                )
+                stage = WorkflowStage.STORE
+        else:
+            operation, stage = operations[request.operation]
+        sample_index = (
+            None
+            if request.object_key is None
+            else next(
+                index
+                for index, sample in enumerate(self.samples)
+                if sample.key == request.object_key
+            )
+        )
+        return WorkflowIntention(operation, stage, sample_index)
+
+    @property
+    def dose_ml(self) -> float:
+        """Requested quantity of the active dose, independently of the recipe."""
+        return (
+            self.request.volume_ml
+            if self.request is not None and self.request.volume_ml is not None
+            else self.parameters.dose_ml
+        )
+
+    @property
+    def spin_seconds(self) -> float:
+        """Requested duration of the active centrifugation action."""
+        return (
+            self.request.duration
+            if self.request is not None and self.request.duration is not None
+            else self.parameters.spin_seconds
+        )
+
+    @property
+    def rotor_rpm(self) -> float:
+        """Requested rotor speed of the active centrifugation action."""
+        return (
+            self.request.rpm
+            if self.request is not None and self.request.rpm is not None
+            else self.parameters.rotor_rpm
+        )
 
     def _is_transfer(self) -> bool:
         """Identify intentions that must be carried by the physical robot gripper."""
@@ -607,6 +860,32 @@ class LaboratoryWorkflowProgram:
             WorkflowStep.UNLOAD,
             WorkflowStep.STORE,
         )
+
+    def _is_hinge(self) -> bool:
+        """Identify opening and closing actions driven through a grasped handle."""
+        return self.step.operation in (
+            WorkflowStep.OPEN_CENTRIFUGE,
+            WorkflowStep.CLOSE_CENTRIFUGE,
+            WorkflowStep.OPEN_REFRIGERATOR,
+            WorkflowStep.CLOSE_REFRIGERATOR,
+        )
+
+    def _start_hinge(self) -> None:
+        """Delegate one articulated handle movement to the physical robot."""
+        module = importlib.import_module("cramera.laboratory_hinge_manipulation")
+        instrument = (
+            module.HingeInstrument.CENTRIFUGE
+            if self.step.operation
+            in (WorkflowStep.OPEN_CENTRIFUGE, WorkflowStep.CLOSE_CENTRIFUGE)
+            else module.HingeInstrument.REFRIGERATOR
+        )
+        self.hinge = module.LaboratoryHingeManipulation(
+            self.physics,
+            instrument,
+            opening=self.step.operation
+            in (WorkflowStep.OPEN_CENTRIFUGE, WorkflowStep.OPEN_REFRIGERATOR),
+        )
+        self.hinge.start()
 
     def _start_transfer(self) -> None:
         """Construct a measured-source contact transfer to the selected support."""
@@ -625,16 +904,16 @@ class LaboratoryWorkflowProgram:
             destination = self._regrasp_position()
             support = LaboratoryBody.RACK
         elif operation == WorkflowStep.LOAD:
+            if self.sample.centrifuge_slot not in self.physics.centrifuge.slots:
+                raise InvalidPhysicsTarget(
+                    "Assign a rotor holder before transferring the sample"
+                )
             destination = self.physics.centrifuge.slot_position(
                 self.sample.centrifuge_slot
             )
             support = CentrifugeGeometry.ROTOR_BODY
         else:
-            destination = next(
-                slot[RefrigeratorField.POSITION]
-                for slot in self.physics.refrigerator.metadata[RefrigeratorField.SLOTS]
-                if slot[RefrigeratorField.ID] == self.sample.refrigerator_slot
-            )
+            destination = self._reserve_cooler_position()
             support = RefrigeratorGeometry.BASE
         motion_module = importlib.import_module("cramera.laboratory_sample_transfer")
         grasp = (
@@ -642,23 +921,90 @@ class LaboratoryWorkflowProgram:
             if operation in (WorkflowStep.LOAD, WorkflowStep.UNLOAD)
             else motion_module.SampleGrasp.FRONT
         )
+        if self.request is not None:
+            grasp = motion_module.SampleGrasp(self.request.grasp)
         self.motion = motion_module.LaboratorySampleTransfer(
             physics=self.physics,
             object_key=self.sample.key,
             destination=tuple(destination),
             support_body=support,
-            release_at_destination=operation != WorkflowStep.DISPENSER,
-            from_held=operation == WorkflowStep.SCALE,
+            release_at_destination=(
+                self.request.release_at_destination
+                if self.request is not None
+                else operation != WorkflowStep.DISPENSER
+            ),
+            from_held=(
+                self.request.from_held
+                if self.request is not None
+                else operation == WorkflowStep.SCALE
+            ),
             grasp=grasp,
         )
         self.motion.start()
         self.sample.location = WorkflowLocation.ROBOT
         self.sample.rack_slot = None
 
+    def _reserve_cooler_position(self) -> np.ndarray:
+        """Reserve an unoccupied cooler support while retaining valid prior assignments."""
+        refrigerator = self.physics.refrigerator
+        if not refrigerator.available:
+            raise InvalidPhysicsTarget("This laboratory has no sample cooler")
+        slots = {
+            slot[RefrigeratorField.ID]: slot[RefrigeratorField.POSITION]
+            for slot in refrigerator.metadata[RefrigeratorField.SLOTS]
+        }
+        occupants = refrigerator.occupants()
+        reserved = {
+            sample.refrigerator_slot
+            for sample in self.samples
+            if sample.key != self.sample.key and sample.refrigerator_slot is not None
+        }
+        available = {
+            identifier: position
+            for identifier, position in slots.items()
+            if identifier not in reserved
+            and occupants[identifier] in (None, self.sample.key)
+        }
+        assigned = self.sample.refrigerator_slot
+        if assigned is not None:
+            if assigned not in available:
+                raise InvalidPhysicsTarget(
+                    "The assigned cooler position is occupied or unavailable"
+                )
+            return np.asarray(available[assigned])
+        if not available:
+            raise InvalidPhysicsTarget(
+                "No unoccupied unreserved cooler position is available"
+            )
+        self.sample.refrigerator_slot = next(iter(available))
+        return np.asarray(available[self.sample.refrigerator_slot])
+
     def observe(self) -> None:
         """Advance only after robot, liquid, load or instrument evidence confirms it."""
+        try:
+            self._observe_action()
+        except (
+            InvalidPhysicsTarget,
+            InvalidCentrifugeOperation,
+            InvalidRefrigeratorOperation,
+            InvalidPipettingCommand,
+            UnsafeBasePath,
+        ) as error:
+            self._fail(str(error))
+
+    def _observe_action(self) -> None:
+        """Confirm the current action from the integrated physical state."""
         self._observe_cycle()
         if self.state != ProgramState.RUNNING:
+            return
+        if self._is_hinge():
+            if self.hinge is None:
+                return
+            self.hinge.observe()
+            if self.hinge.state == ProgramState.FAILED:
+                self._fail(self.hinge.error or "Robot handle manipulation failed")
+            elif self.hinge.state == ProgramState.SUCCEEDED:
+                self._next()
             return
         if self.motion is not None:
             self.motion.observe()
@@ -696,8 +1042,6 @@ class LaboratoryWorkflowProgram:
 
     def _held_sample(self) -> bool:
         """Measure bilateral fingertip ownership during a stationary dose."""
-        if self.motion is None:
-            return False
         body = self.physics.objects[self.sample.key].body_id
         forces = {name: 0.0 for name in LaboratoryMixingProgram.FINGERTIPS}
         for index, contact in enumerate(self.physics.data.contact):
@@ -715,8 +1059,7 @@ class LaboratoryWorkflowProgram:
                 )
                 forces[other] += max(0.0, float(force[0]))
         return all(
-            force > self.motion.parameters.contact_threshold
-            for force in forces.values()
+            force > self.parameters.contact_threshold for force in forces.values()
         )
 
     def _dose_complete(self) -> bool:
@@ -730,7 +1073,7 @@ class LaboratoryWorkflowProgram:
             reason = station.blocked_reason(
                 self.sample.key,
                 source,
-                self.parameters.dose_ml,
+                self.dose_ml,
                 self.physics._object_poses(),
                 frozenset(),
             )
@@ -742,7 +1085,7 @@ class LaboratoryWorkflowProgram:
                 PipettingAction.DISPENSE,
                 key=self.sample.key,
                 source=source,
-                volume_ml=self.parameters.dose_ml,
+                volume_ml=self.dose_ml,
             )
             self.issued = True
             return False
@@ -755,8 +1098,7 @@ class LaboratoryWorkflowProgram:
             self.physics.liquid.tubes[self.sample.key].volume_ml - self.dose_before
         )
         if (
-            abs(received - self.parameters.dose_ml)
-            > self.parameters.volume_tolerance_ml
+            abs(received - self.dose_ml) > self.parameters.volume_tolerance_ml
             or abs(station.delivered_ml - received)
             > self.parameters.volume_tolerance_ml
         ):
@@ -858,6 +1200,52 @@ class LaboratoryWorkflowProgram:
         self.load_verified = True
         return True
 
+    def _verify_rotor_balance(self, required_sample_keys: tuple[str, ...]) -> bool:
+        """Validate physical balance and any explicitly required weighed batch."""
+        centrifuge = self.physics.centrifuge
+        if not centrifuge.available or not centrifuge.balanced:
+            raise InvalidPhysicsTarget("The secured rotor load is not balanced")
+        centrifuge._require_manual_load()
+        if not required_sample_keys:
+            return True
+        required = set(required_sample_keys)
+        observed = {
+            slot.key for slot in centrifuge.slots.values() if slot.key is not None
+        }
+        if len(required) != len(required_sample_keys) or required != observed:
+            raise InvalidPhysicsTarget(
+                "The secured rotor inventory does not match the required sample batch"
+            )
+        if required == set(self.SAMPLE_KEYS):
+            return self._validate_loaded_balance()
+        samples = {sample.key: sample for sample in self.samples}
+        if not required.issubset(samples):
+            raise InvalidPhysicsTarget("The required batch names an unknown sample")
+        for slot in centrifuge.slots.values():
+            if slot.key is None:
+                continue
+            sample = samples[slot.key]
+            if (
+                sample.centrifuge_slot != slot.identifier
+                or sample.weight_grams is None
+                or not math.isfinite(sample.weight_grams)
+            ):
+                raise InvalidPhysicsTarget(
+                    "Each required sample needs recorded weighing and holder evidence"
+                )
+        for slot in centrifuge.slots.values():
+            if slot.key is None:
+                continue
+            opposite = centrifuge.slots[slot.opposite]
+            if (
+                abs(samples[slot.key].weight_grams - samples[opposite.key].weight_grams)
+                > centrifuge.parameters.balance_grams
+            ):
+                raise InvalidPhysicsTarget(
+                    "The required opposing pair does not match its measured masses"
+                )
+        return True
+
     def _seated_in_holder(self) -> bool:
         """Require the exact holder floor, upright pose and low seating velocity."""
         centrifuge = self.physics.centrifuge
@@ -907,6 +1295,9 @@ class LaboratoryWorkflowProgram:
         operation = self.step.operation
         centrifuge = self.physics.centrifuge
         refrigerator = self.physics.refrigerator
+        if operation == WorkflowStep.VERIFY:
+            self._verify_complete()
+            return self.state == ProgramState.SUCCEEDED
         if operation in (WorkflowStep.DOSE_A, WorkflowStep.DOSE_B):
             return self._dose_complete()
         if operation == WorkflowStep.WEIGH:
@@ -914,37 +1305,10 @@ class LaboratoryWorkflowProgram:
         if operation == WorkflowStep.ASSIGN:
             return self._assign_next_slot()
         if operation == WorkflowStep.BALANCE:
-            return self._validate_loaded_balance()
-        if operation in (WorkflowStep.OPEN_CENTRIFUGE, WorkflowStep.CLOSE_CENTRIFUGE):
-            if not self.issued:
-                if not centrifuge.stopped:
-                    return False
-                self.physics.centrifuge_command(
-                    CentrifugeAction.OPEN
-                    if operation == WorkflowStep.OPEN_CENTRIFUGE
-                    else CentrifugeAction.CLOSE
-                )
-                self.issued = True
-            return (
-                centrifuge.lid_open
-                if operation == WorkflowStep.OPEN_CENTRIFUGE
-                else centrifuge.lid_closed
-            )
-        if operation in (
-            WorkflowStep.OPEN_REFRIGERATOR,
-            WorkflowStep.CLOSE_REFRIGERATOR,
-        ):
-            if not self.issued:
-                self.physics.refrigerator_command(
-                    RefrigeratorAction.OPEN
-                    if operation == WorkflowStep.OPEN_REFRIGERATOR
-                    else RefrigeratorAction.CLOSE
-                )
-                self.issued = True
-            return (
-                refrigerator.door_open
-                if operation == WorkflowStep.OPEN_REFRIGERATOR
-                else refrigerator.door_closed
+            return self._verify_rotor_balance(
+                self.request.required_sample_keys
+                if self.request is not None
+                else self.SAMPLE_KEYS
             )
         if operation == WorkflowStep.SECURE:
             if not self._seated_in_holder():
@@ -958,6 +1322,17 @@ class LaboratoryWorkflowProgram:
         if operation == WorkflowStep.RELEASE:
             if not centrifuge.stopped or not centrifuge.lid_open:
                 return False
+            holder = next(
+                (
+                    slot
+                    for slot in centrifuge.slots.values()
+                    if slot.key == self.sample.key
+                ),
+                None,
+            )
+            if holder is None:
+                raise InvalidPhysicsTarget("The sample has no secured rotor holder")
+            self.sample.centrifuge_slot = holder.identifier
             self.physics.centrifuge_command(
                 CentrifugeAction.RELEASE, slot=self.sample.centrifuge_slot
             )
@@ -1015,10 +1390,10 @@ class LaboratoryWorkflowProgram:
                 return False
             self.physics.centrifuge_command(
                 CentrifugeAction.START,
-                rpm=min(self.parameters.rotor_rpm, centrifuge.maximum_rpm),
-                duration=self.parameters.spin_seconds,
+                rpm=min(self.rotor_rpm, centrifuge.maximum_rpm),
+                duration=self.spin_seconds,
             )
-            self.spin_remaining = self.parameters.spin_seconds
+            self.spin_remaining = self.spin_seconds
             self.issued = True
             return False
         self.spin_observed = self.spin_observed or centrifuge.timer_started
@@ -1044,6 +1419,21 @@ class LaboratoryWorkflowProgram:
         self.step_index += 1
         self.step_time = 0.0
         self.issued = False
+        self.hinge = None
+        if self.execution is not None:
+            measurement_module = importlib.import_module(
+                "cramera.laboratory_plan_world"
+            )
+            self.execution.complete(
+                measurement=measurement_module.LaboratoryPlanWorld.capture(self.physics)
+            )
+            if self._accept_request():
+                if self.step.operation not in (
+                    WorkflowStep.DOSE_A,
+                    WorkflowStep.DOSE_B,
+                ):
+                    self.motion = None
+            return
         if self.step.operation not in (WorkflowStep.DOSE_A, WorkflowStep.DOSE_B):
             self.motion = None
         if self.step_index == len(self.steps):
@@ -1078,6 +1468,7 @@ class LaboratoryWorkflowProgram:
             self._fail("The stored samples did not retain both complete reagent doses")
             return
         self.state = ProgramState.SUCCEEDED
+        self.workflow_verified = True
 
     def _completed_stages(self) -> list[WorkflowStage]:
         """Publish batch completion only after every sample has its evidence."""
@@ -1093,7 +1484,7 @@ class LaboratoryWorkflowProgram:
             completed.append(WorkflowStage.LOAD)
         if self.spin_finished:
             completed.append(WorkflowStage.SPIN)
-        if self.state == ProgramState.SUCCEEDED:
+        if self.workflow_verified:
             completed.extend((WorkflowStage.STORE, WorkflowStage.COMPLETE))
         return completed
 
@@ -1106,7 +1497,7 @@ class LaboratoryWorkflowProgram:
                 ProgramField.STATE: self.state,
                 ProgramField.PHASE: (
                     self.step.stage
-                    if self.state != ProgramState.SUCCEEDED
+                    if not self.workflow_verified
                     else WorkflowStage.COMPLETE
                 ),
                 ProgramField.PROGRESS: self.step_index / len(self.steps),
@@ -1115,7 +1506,7 @@ class LaboratoryWorkflowProgram:
                 WorkflowField.WORKFLOW: {
                     WorkflowField.STAGE: (
                         self.step.stage
-                        if self.state != ProgramState.SUCCEEDED
+                        if not self.workflow_verified
                         else WorkflowStage.COMPLETE
                     ),
                     WorkflowField.STAGE_LABEL: self.step.operation,
@@ -1129,6 +1520,11 @@ class LaboratoryWorkflowProgram:
                     WorkflowField.FAILURE: self.error,
                     WorkflowField.GAZE: (
                         self.gaze.snapshot() if self.gaze is not None else None
+                    ),
+                    WorkflowField.PLAN: (
+                        self.execution.snapshot()
+                        if self.execution is not None
+                        else None
                     ),
                     WorkflowCommandField.RESERVED: self.state
                     in (ProgramState.RUNNING, ProgramState.PAUSED),

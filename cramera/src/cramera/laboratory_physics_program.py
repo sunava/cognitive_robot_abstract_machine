@@ -779,6 +779,16 @@ class LaboratoryProgramPhysics:
         """Pause the reference while physical gravity and contacts remain active."""
         self.program.pause()
 
+    def stop_program(self) -> None:
+        """Cancel native action execution without resetting physical poses."""
+        program_type = importlib.import_module(
+            "cramera.laboratory_workflow"
+        ).LaboratoryWorkflowProgram
+        if isinstance(self.program, program_type):
+            self.program.stop()
+        else:
+            self.program.pause()
+
     def set_target(
         self, key: str, position: list[float], orientation: list[float] | None = None
     ) -> None:

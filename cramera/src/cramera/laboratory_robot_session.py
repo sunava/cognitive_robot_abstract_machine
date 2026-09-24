@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 
-from typing_extensions import Any, ClassVar, Protocol
+from typing_extensions import Any, ClassVar, Protocol, runtime_checkable
 
 from cramera import paths
 from cramera.laboratory_workflow_command import WorkflowCommand, WorkflowField
@@ -93,6 +93,14 @@ class RobotField(StrEnum):
     """Recorded model pose with XYZW orientation."""
     LINKS = "links"
     """Number of links in the renderer model."""
+
+
+@runtime_checkable
+class ProgramCancellation(Protocol):
+    """A simulation that owns a cancellable program worker."""
+
+    def stop_program(self) -> None:
+        """Terminate program execution while preserving physical state."""
 
 
 class ProgramSimulation(ContactSimulation, Protocol):
@@ -351,6 +359,9 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
             return self._status()
 
     def _stop_physics(self) -> None:
-        """Pause motor commands and remove manual forces after worker termination."""
-        self.physics.pause_program()
+        """Terminate program ownership and remove manual forces after worker shutdown."""
+        if isinstance(self.physics, ProgramCancellation):
+            self.physics.stop_program()
+        else:
+            self.physics.pause_program()
         super()._stop_physics()
