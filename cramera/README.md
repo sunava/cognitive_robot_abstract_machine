@@ -24,6 +24,13 @@ It also ships a **Plan Builder**: compose a plan by drag and drop, place objects
 targets in the live 3D scene, attach plain-language constraints, and generate a runnable
 `RobotDemonstration`.
 
+Enable **Layers → Robot view** for a small window showing the rendered scene from
+the robot's camera. It follows the robot during playback and live motion. Choose
+a camera from the window's menu and use **Enlarge** to fill the scene panel.
+**Escape** restores the small view; the close button or
+layer checkbox hides it. This is a viewpoint of the digital twin, not a sensor
+video stream. Scenes without a camera or head frame show an availability message.
+
 ## Quick start
 
 cramera lives inside the CRAM monorepo; this repository is a read-only mirror of its

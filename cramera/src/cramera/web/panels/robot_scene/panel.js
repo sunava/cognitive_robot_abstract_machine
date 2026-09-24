@@ -51,11 +51,22 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     '    <div id="frame-settings" class="frame-settings hidden"></div>' +
     '    <label class="lp-row"><input type="checkbox" id="lyr-labels"><span>Object labels</span></label>' +
     '    <label class="lp-row"><input type="checkbox" id="lyr-floor" checked><span>Floor shadow</span></label>' +
+    '    <label class="lp-row" title="Show the scene from a robot camera"><input type="checkbox" id="lyr-robot-view"><span>Robot view</span></label>' +
     '    <label class="lp-row" title="Keep the robot in view: the camera glides after it while a recording plays or a live demo runs. Off, the camera stays where you pointed it"><input type="checkbox" id="lyr-follow" checked><span>Follow robot</span></label>' +
     '    <label class="lp-row" title="Attach to a running demo whenever one is reachable — including the next run after this one ends — instead of only once per page"><input type="checkbox" id="lyr-auto-live" checked><span>Auto-attach live</span></label>' +
     '    <div class="lp-legend" id="lp-legend"></div>' +
     '    <div class="lp-joints" id="lp-joints"></div>' +
     '  </div>' +
+    '  <section id="robot-camera" class="robot-camera" aria-label="Robot view" hidden>' +
+    '    <header class="robot-camera-head"><strong>Robot view</strong>' +
+    '      <button type="button" data-robot-camera="expand" aria-label="Enlarge robot view" aria-expanded="false">⛶</button>' +
+    '      <button type="button" data-robot-camera="close" title="Close robot view" aria-label="Close robot view">×</button>' +
+    '    </header>' +
+    '    <select data-robot-camera="source" aria-label="Robot camera"></select>' +
+    '    <div data-robot-camera="viewport" class="robot-camera-viewport" title="Double-click to enlarge or restore">' +
+    '      <div data-robot-camera="status" class="robot-camera-status" role="status"></div>' +
+    '    </div>' +
+    '  </section>' +
     '  <div id="live-indicator" class="live-indicator">● LIVE</div>' +
     '  <div id="step-caption" class="step-caption hidden"></div>' +
     '  <div class="stage-hint">drag orbit · scroll zoom · right-drag pan · drag objects &amp; the blue place target</div>' +
@@ -276,6 +287,11 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
   let laboratoryManualMode = null;
   let laboratoryRobotPhysicsEntry = null;
   const models = [];              // {name, prefix, robot, obj}
+  const robotCameraPanel = new RobotCameraPanel({
+    THREE, root: $('robot-camera'), layer: $('lyr-robot-view'),
+    renderer, scene: scene3, container, ResizeObserver,
+    invalidate: function () { needsRender = true; },
+  });
   let robotModel = null;          // the bundle's own robot entry
   const objectMeshes = {};       // mesh key ('milk.stl') -> THREE.Group
   const guidedKeys = new Set();  // keys the Plan Builder asked to flag with a bobbing arrow (until grabbed)
@@ -2069,6 +2085,8 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     }
     if (!needsRender && !moved && !controls.autoRotate) return;
     renderFrame();
+    robotCameraPanel.refreshModels(models, robotModel);
+    robotCameraPanel.render();
     needsRender = false;
   }
   tick();
@@ -3193,6 +3211,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
 
   return {
     destroy: function () {
+      robotCameraPanel.destroy();
       if (laboratoryWorkbench) laboratoryWorkbench.destroy();
       if (laboratoryRobotPhysicsEntry) laboratoryRobotPhysicsEntry.destroy();
       if (laboratoryContactLayer) laboratoryContactLayer.destroy();
