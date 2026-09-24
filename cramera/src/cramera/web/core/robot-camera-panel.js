@@ -2,6 +2,8 @@
 (function (global) {
   'use strict';
 
+  const WINDOW_MARGIN = 8;
+
   class RobotCameraPanel {
     /** Mount an optional robot viewpoint on the scene's existing renderer. */
     constructor(options) {
@@ -15,7 +17,13 @@
       this.selected = null;
       this.chosen = false;
       this.expanded = false;
+      this.position = null;
+      /** Last inset position relative to the scene container. */
+      this.drag = null;
+      /** Captured pointer and its offset within the window. */
       this.listeners = [];
+      this.header = this.root.querySelector('.robot-camera-head');
+      this.header.title = 'Drag to move the robot view';
       this.viewport = this.root.querySelector('[data-robot-camera="viewport"]');
       this.canvas = this.root.ownerDocument.createElement('canvas');
       this.canvas.setAttribute('aria-hidden', 'true');
@@ -47,8 +55,17 @@
       for (const name of ['pointerdown', 'wheel', 'dblclick']) {
         this.listen(this.root, name, event => event.stopPropagation());
       }
-      this.observer = new options.ResizeObserver(() => options.invalidate());
+      this.listen(this.header, 'pointerdown', event => this.startDrag(event));
+      this.listen(this.header, 'pointermove', event => this.moveDrag(event));
+      for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+        this.listen(this.header, name, event => this.endDrag(event));
+      }
+      this.observer = new options.ResizeObserver(() => {
+        this.fitPosition();
+        options.invalidate();
+      });
       this.observer.observe(this.viewport);
+      this.observer.observe(options.container);
       this.setVisible(false);
       this.setExpanded(false);
       this.setModels([]);
@@ -62,15 +79,21 @@
 
     /** Keep the layer checkbox and window visibility in agreement. */
     setVisible(visible) {
+      if (!visible) this.endDrag();
       this.layer.checked = visible;
       this.root.hidden = !visible;
+      if (visible) this.fitPosition();
       this.options.invalidate();
     }
 
     /** Switch between the inset and a large view within the scene panel. */
     setExpanded(expanded) {
+      this.endDrag();
       this.expanded = expanded;
       this.root.classList.toggle('expanded', expanded);
+      if (expanded) {
+        for (const edge of ['left', 'top', 'right', 'bottom']) this.root.style[edge] = '';
+      } else this.fitPosition();
       const label = expanded ? 'Restore robot view' : 'Enlarge robot view';
       this.expand.textContent = expanded ? '↙' : '⛶';
       this.expand.title = label;
@@ -79,6 +102,55 @@
       this.options.invalidate();
     }
 
+    // %% window movement
+    /** Capture a primary pointer on the title bar, leaving buttons clickable. */
+    startDrag(event) {
+      if (this.root.hidden || this.expanded || this.drag || event.button !== 0 ||
+          event.isPrimary === false || event.target.closest('button')) return;
+      const bounds = this.root.getBoundingClientRect();
+      this.drag = {pointer: event.pointerId, offsetX: event.clientX - bounds.left,
+        offsetY: event.clientY - bounds.top};
+      this.header.setPointerCapture(event.pointerId);
+      this.root.classList.toggle('dragging', true);
+      event.preventDefault();
+    }
+
+    /** Move the inset with its captured pointer while keeping it inside the scene. */
+    moveDrag(event) {
+      if (!this.drag || event.pointerId !== this.drag.pointer) return;
+      const container = this.options.container.getBoundingClientRect();
+      this.position = {left: event.clientX - container.left - this.drag.offsetX,
+        top: event.clientY - container.top - this.drag.offsetY};
+      this.fitPosition();
+      this.options.invalidate();
+    }
+
+    /** Release a completed or interrupted drag without moving the overview camera. */
+    endDrag(event) {
+      if (!this.drag || (event && event.pointerId !== this.drag.pointer)) return;
+      const pointer = this.drag.pointer;
+      this.drag = null;
+      if (this.header.hasPointerCapture(pointer)) this.header.releasePointerCapture(pointer);
+      this.root.classList.toggle('dragging', false);
+    }
+
+    /** Keep a manually placed window reachable after resizing or restoring it. */
+    fitPosition() {
+      if (!this.position || this.root.hidden || this.expanded) return;
+      const container = this.options.container.getBoundingClientRect();
+      const bounds = this.root.getBoundingClientRect();
+      if (!container.width || !container.height) return;
+      const horizontalMargin = Math.min(WINDOW_MARGIN, Math.max(0, (container.width - bounds.width) / 2));
+      const verticalMargin = Math.min(WINDOW_MARGIN, Math.max(0, (container.height - bounds.height) / 2));
+      this.position.left = Math.max(horizontalMargin, Math.min(this.position.left, container.width - bounds.width - horizontalMargin));
+      this.position.top = Math.max(verticalMargin, Math.min(this.position.top, container.height - bounds.height - verticalMargin));
+      this.root.style.left = this.position.left + 'px';
+      this.root.style.top = this.position.top + 'px';
+      this.root.style.right = 'auto';
+      this.root.style.bottom = 'auto';
+    }
+
+    // %% camera selection and rendering
     /** Refresh sources after asynchronous model loads, retaining explicit choices. */
     setModels(models, primary) {
       this.modelCount = models.length;
@@ -144,6 +216,7 @@
 
     /** Release observers and input handlers when the scene is unmounted. */
     destroy() {
+      this.endDrag();
       this.observer.disconnect();
       this.listeners.forEach(({element, name, handler}) => element.removeEventListener(name, handler));
       this.listeners = [];

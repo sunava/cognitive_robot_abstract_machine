@@ -152,7 +152,7 @@ body{
 
 /* %% robot camera inset */
 .robot-camera{
-  position:absolute;right:14px;bottom:48px;z-index:5;
+  position:absolute;right:14px;bottom:48px;z-index:10;
   width:min(320px,calc(100% - 28px));height:min(248px,calc(100% - 100px));
   min-width:min(220px,calc(100% - 28px));
   max-width:calc(100% - 28px);max-height:calc(100% - 62px);
@@ -163,8 +163,11 @@ body{
 .robot-camera.expanded{width:calc(100% - 28px);height:calc(100% - 62px)}
 .robot-camera-head{
   display:flex;align-items:center;gap:6px;padding:7px 9px;flex:none;
-  background:var(--panel);border-bottom:1px solid var(--line);font-size:12px
+  background:var(--panel);border-bottom:1px solid var(--line);font-size:12px;
+  cursor:grab;touch-action:none;user-select:none
 }
+.robot-camera.dragging .robot-camera-head{cursor:grabbing}
+.robot-camera.expanded .robot-camera-head{cursor:default}
 .robot-camera-head strong{margin-right:auto}
 .robot-camera-head button{
   display:grid;place-items:center;width:26px;height:24px;padding:0;
