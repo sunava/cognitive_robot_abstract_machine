@@ -16,8 +16,10 @@ from enum import StrEnum
 from math import cos, pi, sin
 from pathlib import Path
 
+import bmesh
 import bpy
 from mathutils import Vector
+from mathutils.bvhtree import BVHTree
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from geometry import LatheMesh, ProfilePoint, TubeDimensions
@@ -130,6 +132,10 @@ class MaterialName(StrEnum):
     AMBER = "Amber solution"
     LIQUID_TEAL = "Teal solution"
     LABEL = "Ceramic graduation ink"
+    PAPER = "Matte white adhesive label"
+    """Opaque uncoated paper for reservoir identification."""
+    TEAL_PAPER = "Matte teal adhesive label"
+    """Tinted uncoated paper for stored reagents."""
     LIGHT = "Diffuser"
 
 
@@ -198,6 +204,8 @@ class MaterialLibrary:
         self.create(MaterialName.AMBER, (0.82, 0.32, 0.055), 0.045, 0, 0.92, 1.333)
         self.create(MaterialName.LIQUID_TEAL, (0.12, 0.56, 0.52), 0.04, 0, 0.93, 1.333)
         self.create(MaterialName.LABEL, (0.63, 0.70, 0.69), 0.45)
+        self.create(MaterialName.PAPER, (0.84, 0.87, 0.84), 0.78)
+        self.create(MaterialName.TEAL_PAPER, (0.33, 0.54, 0.52), 0.78)
         diffuser = self.create(MaterialName.LIGHT, (0.94, 0.98, 1), 0.28)
         shader = diffuser.node_tree.nodes.get("Principled BSDF")
         shader.inputs["Emission Color"].default_value = (0.75, 0.9, 1, 1)
@@ -404,28 +412,97 @@ class LaboratoryBuilder:
             )
 
     def surface_lettering(
-        self, lettering: bpy.types.Object, surface: bpy.types.Object
+        self,
+        lettering: bpy.types.Object,
+        surface: bpy.types.Object,
+        clearance: float = 0.0002,
+        subdivisions: int = 0,
     ) -> None:
         """Center lettering and conform its printed faces to a curved housing."""
+        if subdivisions:
+            mesh = bmesh.new()
+            mesh.from_mesh(lettering.data)
+            bmesh.ops.subdivide_edges(
+                mesh, edges=list(mesh.edges), cuts=subdivisions, use_grid_fill=True
+            )
+            mesh.to_mesh(lettering.data)
+            mesh.free()
         horizontal = [vertex.co.x for vertex in lettering.data.vertices]
         lettering.location.x -= (min(horizontal) + max(horizontal)) / 2
         bpy.context.view_layer.update()
         lettering_inverse = lettering.matrix_world.inverted()
         surface_inverse = surface.matrix_world.inverted()
-        printing_clearance = 0.0002
+        support = BVHTree.FromPolygons(
+            [vertex.co for vertex in surface.data.vertices],
+            [tuple(face.vertices) for face in surface.data.polygons],
+        )
         for vertex in lettering.data.vertices:
             position = lettering.matrix_world @ vertex.co
             printing_depth = lettering.location.y - position.y
-            found, hit, _, _ = surface.ray_cast(
+            hit, _, _, _ = support.ray_cast(
                 surface_inverse @ position,
                 surface_inverse.to_3x3() @ Vector((0, 1, 0)),
             )
-            if not found:
+            if hit is None:
                 raise LogoProjectionError(lettering.name)
             position = surface.matrix_world @ hit
-            position.y -= printing_clearance + printing_depth
+            position.y -= clearance + printing_depth
             vertex.co = lettering_inverse @ position
         lettering.data.update()
+
+    def adhesive_label(
+        self,
+        name: str,
+        surface: bpy.types.Object,
+        center: tuple[float, float, float],
+        width: float,
+        height: float,
+        material: MaterialName,
+    ) -> bpy.types.Object:
+        """Fit a thin, rounded paper label against the actual bottle surface."""
+        segments = 96
+        corner_radius = min(width, height) * 0.03
+        adhesive_clearance, paper_thickness = 0.00004, 0.00008
+        vertices, faces = [], []
+        bpy.context.view_layer.update()
+        inverse = surface.matrix_world.inverted()
+        for column in range(segments + 1):
+            horizontal = width * (column / segments - 0.5)
+            corner = max(0, abs(horizontal) - (width / 2 - corner_radius))
+            extent = (
+                height / 2 - corner_radius + max(0, corner_radius**2 - corner**2) ** 0.5
+            )
+            for clearance in (adhesive_clearance + paper_thickness, adhesive_clearance):
+                for vertical in (-extent, extent):
+                    start = Vector(
+                        (center[0] + horizontal, center[1], center[2] + vertical)
+                    )
+                    found, hit, _, _ = surface.ray_cast(
+                        inverse @ start, inverse.to_3x3() @ Vector((0, 1, 0))
+                    )
+                    if not found:
+                        raise LogoProjectionError(name)
+                    position = surface.matrix_world @ hit
+                    position.y -= clearance
+                    vertices.append(tuple(position))
+        for column in range(segments):
+            left, right = column * 4, (column + 1) * 4
+            faces.extend(
+                (
+                    (left, right, right + 1, left + 1),
+                    (left + 2, left + 3, right + 3, right + 2),
+                    (left, left + 2, right + 2, right),
+                    (left + 1, right + 1, right + 3, left + 3),
+                )
+            )
+        end = segments * 4
+        faces.extend(((0, 1, 3, 2), (end, end + 2, end + 3, end + 1)))
+        mesh = bpy.data.meshes.new(name)
+        mesh.from_pydata(vertices, [], faces)
+        mesh.update()
+        label = bpy.data.objects.new(name, mesh)
+        bpy.context.collection.objects.link(label)
+        return self.register(label, name, material)
 
     def centrifuge_control_enclosure(
         self, surface: bpy.types.Object, front: float
@@ -758,7 +835,7 @@ class LaboratoryBuilder:
             ProfilePoint(radius * 0.55, height * 0.91),
             ProfilePoint(0, height * 0.91),
         )
-        self.lathe("Reagent bottle", profile, MaterialName.WHITE, (x, y, base))
+        bottle = self.lathe("Reagent bottle", profile, MaterialName.WHITE, (x, y, base))
         self.cylinder(
             "Bottle screw cap",
             (x, y, base + height * 0.935),
@@ -766,27 +843,38 @@ class LaboratoryBuilder:
             height * 0.13,
             MaterialName.TEAL,
         )
-        self.box(
-            "Bottle label",
+        self.label_reagent_bottle(bottle, x, y, base, height)
+
+    def label_reagent_bottle(
+        self, bottle: bpy.types.Object, x: float, y: float, base: float, height: float
+    ) -> None:
+        """Apply a fitted paper label and printed identification to a stored reagent."""
+        radius = height * 0.23
+        suffix = bottle.name.removeprefix("Reagent bottle")
+        label = self.adhesive_label(
+            f"Bottle label{suffix}",
+            bottle,
             (x, y - radius - 0.0004, base + height * 0.41),
-            (radius * 1.33, 0.0007, height * 0.32),
-            MaterialName.PALE_TEAL,
-            0.0002,
+            radius * 1.33,
+            height * 0.32,
+            MaterialName.TEAL_PAPER,
         )
-        self.text(
-            "Bottle lettering",
+        title = self.text(
+            f"Bottle lettering{suffix}",
             "BUFFER",
-            (x - radius * 0.53, y - radius - 0.001, base + height * 0.45),
+            (x, y - radius - 0.001, base + height * 0.45),
             height * 0.071,
             MaterialName.WHITE,
         )
-        self.text(
-            "Bottle specification",
+        specification = self.text(
+            f"Bottle specification{suffix}",
             "pH 7.4",
-            (x - radius * 0.45, y - radius - 0.001, base + height * 0.32),
+            (x, y - radius - 0.001, base + height * 0.32),
             height * 0.057,
             MaterialName.WHITE,
         )
+        self.surface_lettering(title, label, clearance=0.00008, subdivisions=3)
+        self.surface_lettering(specification, label, clearance=0.00008, subdivisions=3)
 
     def build_drawer(self) -> None:
         """Build a hollow tray centred on the prismatic joint origin."""
@@ -1282,7 +1370,7 @@ class LaboratoryBuilder:
                 0.004,
                 MaterialName.TEAL,
             )
-            self.lathe(
+            bottle = self.lathe(
                 f"Pipetting {channel} bottle",
                 (
                     ProfilePoint(0, 0.254),
@@ -1348,26 +1436,31 @@ class LaboratoryBuilder:
                 0.010,
                 MaterialName.STEEL,
             )
-            self.box(
+            label = self.adhesive_label(
                 f"Pipetting {channel} bottle label",
+                bottle,
                 (horizontal, 0.0598, 0.291),
-                (0.036, 0.001, 0.024),
-                MaterialName.WHITE,
-                0.001,
+                0.036,
+                0.024,
+                MaterialName.PAPER,
             )
-            self.text(
+            title = self.text(
                 f"Pipetting {channel} label text",
                 f"REAGENT {chr(65 + index)}",
-                (horizontal - 0.015, 0.0592, 0.294),
+                (horizontal, 0.0592, 0.294),
                 0.0038,
                 MaterialName.TEAL,
             )
-            self.text(
+            identification = self.text(
                 f"Pipetting {channel} identification",
                 str(channel).upper(),
-                (horizontal - 0.012, 0.0592, 0.284),
+                (horizontal, 0.0592, 0.284),
                 0.0045,
                 MaterialName.TEAL,
+            )
+            self.surface_lettering(title, label, clearance=0.00008, subdivisions=3)
+            self.surface_lettering(
+                identification, label, clearance=0.00008, subdivisions=3
             )
             for graduation in range(5):
                 self.box(
