@@ -280,30 +280,39 @@
       const container = this.options.container.getBoundingClientRect();
       const left = bounds.left - container.left;
       const bottom = container.bottom - bounds.bottom;
+      const height = Math.min(bounds.height, bounds.width / this.pose.camera.aspect);
+      const width = height * this.pose.camera.aspect;
+      const image = {left: left + (bounds.width - width) / 2,
+        bottom: bottom + (bounds.height - height) / 2, width, height};
       const renderer = this.options.renderer;
       renderer.getViewport(this.savedViewport);
       renderer.getScissor(this.savedScissor);
       const scissorTest = renderer.getScissorTest();
-      renderer.setViewport(left, bottom, bounds.width, bounds.height);
-      renderer.setScissor(left, bottom, bounds.width, bounds.height);
+      renderer.setViewport(image.left, image.bottom, image.width, image.height);
+      renderer.setScissor(image.left, image.bottom, image.width, image.height);
       renderer.setScissorTest(true);
       renderer.clear();
       renderer.render(this.options.scene, this.pose.camera);
-      this.copyViewport(renderer.domElement, renderer.getPixelRatio(), left, bottom, bounds.width, bounds.height);
+      this.copyViewport(renderer.domElement, renderer.getPixelRatio(), image, bounds.width, bounds.height);
       renderer.setViewport(this.savedViewport);
       renderer.setScissor(this.savedScissor);
       renderer.setScissorTest(scissorTest);
     }
 
-    /** Cover other scene overlays with the freshly rendered camera image. */
-    copyViewport(source, pixelRatio, left, bottom, width, height) {
+    /** Center the full camera image on opaque margins without changing its proportions. */
+    copyViewport(source, pixelRatio, image, width, height) {
       const pixelWidth = Math.floor(width * pixelRatio);
       const pixelHeight = Math.floor(height * pixelRatio);
+      const imageWidth = Math.floor(image.width * pixelRatio);
+      const imageHeight = Math.floor(image.height * pixelRatio);
       if (this.canvas.width !== pixelWidth) this.canvas.width = pixelWidth;
       if (this.canvas.height !== pixelHeight) this.canvas.height = pixelHeight;
+      this.context.fillStyle = '#000000';
+      this.context.fillRect(0, 0, pixelWidth, pixelHeight);
       this.context.drawImage(source,
-        Math.floor(left * pixelRatio), source.height - Math.floor(bottom * pixelRatio) - pixelHeight,
-        pixelWidth, pixelHeight, 0, 0, pixelWidth, pixelHeight);
+        Math.floor(image.left * pixelRatio), source.height - Math.floor(image.bottom * pixelRatio) - imageHeight,
+        imageWidth, imageHeight, Math.floor((pixelWidth - imageWidth) / 2),
+        Math.floor((pixelHeight - imageHeight) / 2), imageWidth, imageHeight);
     }
 
     /** Release observers and input handlers when the scene is unmounted. */

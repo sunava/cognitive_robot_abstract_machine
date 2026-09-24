@@ -183,19 +183,25 @@ test('camera follows changed robot placement and articulated head without a prio
   assertVector(cameraUp(pose.camera), [0, 1, 0]);
 });
 
-test('resizing updates camera projection to the viewport aspect ratio', () => {
+test('window resizing preserves both camera fields of view and projected scene points', () => {
   const RobotCamera = loadRobotCamera();
   const scene = new ArticulatedViewpoint();
   const pose = new RobotCamera.Pose(THREE);
   const source = {link: scene.head, optical: true};
   pose.update(source, 320, 180);
   const previousProjection = pose.camera.projectionMatrix.clone();
+  const aspect = pose.camera.aspect;
+  const fieldOfView = pose.camera.getEffectiveFOV();
+  const landmark = new THREE.Vector3(0.3, -0.2, 2).applyMatrix4(scene.head.matrixWorld);
+  const projected = landmark.clone().project(pose.camera);
 
-  pose.update(source, 500, 500);
-
-  assert.equal(pose.camera.aspect, 1);
-  assert.equal(pose.camera.projectionMatrix.equals(previousProjection), false);
-  assert.equal(pose.camera.projectionMatrix.elements[0], pose.camera.projectionMatrix.elements[5]);
+  for (const [width, height] of [[500, 500], [900, 180], [180, 900], [1280, 960]]) {
+    pose.update(source, width, height);
+    assert.equal(pose.camera.aspect, aspect);
+    assert.equal(pose.camera.getEffectiveFOV(), fieldOfView);
+    assert.equal(pose.camera.projectionMatrix.equals(previousProjection), true);
+    assertVector(landmark.clone().project(pose.camera), projected.toArray());
+  }
 });
 
 test('an absent source leaves the camera pose unchanged and cannot render a robot view', () => {

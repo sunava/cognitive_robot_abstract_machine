@@ -20,7 +20,11 @@ class ViewElement {
     this.capturedPointers = new Set();
     this.classes = new Set();
     this.draws = [];
-    this.context = {drawImage: (...arguments_) => this.draws.push(arguments_)};
+    this.fills = [];
+    this.context = {
+      drawImage: (...arguments_) => this.draws.push(arguments_),
+      fillRect: (...arguments_) => this.fills.push(arguments_),
+    };
     this.classList = {toggle: (name, enabled) => enabled ? this.classes.add(name) : this.classes.delete(name)};
     this.ownerDocument = {createElement: () => new ViewElement()};
   }
@@ -163,7 +167,7 @@ test('hidden and missing-camera panels skip the second render', () => {
   assert.equal(view.elements.get('[data-robot-camera="status"]').hidden, false);
 });
 
-test('inset uses CSS coordinates and restores the main renderer state', () => {
+test('inset centers the camera image in CSS coordinates and restores the main renderer state', () => {
   const view = mount();
   const originalViewport = view.renderer.viewport.clone();
   const originalScissor = view.renderer.scissor.clone();
@@ -172,7 +176,7 @@ test('inset uses CSS coordinates and restores the main renderer state', () => {
   view.layer.dispatch('change');
   view.panel.render();
   assert.equal(view.renderer.renders.length, 1);
-  assert.deepEqual(view.renderer.renders[0].viewport.toArray(), [400, 150, 280, 180]);
+  assert.deepEqual(view.renderer.renders[0].viewport.toArray(), [420, 150, 240, 180]);
   assert.equal(view.renderer.renders[0].scissorTest, true);
   assert.deepEqual(view.renderer.viewport, originalViewport);
   assert.deepEqual(view.renderer.scissor, originalScissor);
@@ -518,7 +522,7 @@ test('an explicit camera choice survives another model finishing loading', () =>
   assert.equal(select.value, hand.id);
 });
 
-test('the window copies the rendered viewport at device resolution to cover underlying menus', () => {
+test('the window centers an undistorted image on opaque margins at device resolution', () => {
   const view = mount();
   view.panel.setModels([{name: 'pr2', robot: true, obj: {links: {wide_stereo_optical_frame: new THREE.Object3D()}}}]);
   view.layer.checked = true;
@@ -529,5 +533,27 @@ test('the window copies the rendered viewport at device resolution to cover unde
   assert.ok(canvas);
   assert.equal(canvas.width, 560);
   assert.equal(canvas.height, 360);
-  assert.deepEqual(canvas.draws, [[view.renderer.domElement, 800, 540, 560, 360, 0, 0, 560, 360]]);
+  assert.deepEqual(canvas.fills, [[0, 0, 560, 360]]);
+  assert.deepEqual(canvas.draws, [[view.renderer.domElement, 840, 540, 480, 360, 40, 0, 480, 360]]);
+});
+
+test('tall and wide windows preserve the camera projection and clear obsolete image areas', () => {
+  const view = mount();
+  view.panel.setModels([{name: 'pr2', robot: true, obj: {links: {wide_stereo_optical_frame: new THREE.Object3D()}}}]);
+  show(view);
+  const viewport = view.elements.get('[data-robot-camera="viewport"]');
+  viewport.bounds = {left: 500, bottom: 500, width: 400, height: 180};
+  view.panel.render();
+  const projection = view.panel.pose.camera.projectionMatrix.clone();
+  const canvas = viewport.children[0];
+  assert.deepEqual(view.renderer.renders[0].viewport.toArray(), [480, 150, 240, 180]);
+  assert.deepEqual(canvas.draws[0].slice(5), [160, 0, 480, 360]);
+
+  viewport.bounds = {left: 500, bottom: 500, width: 280, height: 360};
+  view.panel.render();
+  assert.equal(view.panel.pose.camera.projectionMatrix.equals(projection), true);
+  assert.deepEqual(view.renderer.renders[1].viewport.toArray(), [400, 225, 280, 210]);
+  assert.deepEqual(canvas.draws[1].slice(5), [0, 150, 560, 420]);
+  assert.deepEqual(canvas.fills, [[0, 0, 800, 360], [0, 0, 560, 720]]);
+  assert.equal(canvas.context.fillStyle, '#000000');
 });

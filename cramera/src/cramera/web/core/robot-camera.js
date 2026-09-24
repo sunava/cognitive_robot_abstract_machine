@@ -3,7 +3,7 @@
   'use strict';
 
   // %% camera frames
-  const CAMERA_CONFIGURATION = Object.freeze({ fieldOfView: 60, near: 0.02, far: 200 });
+  const CAMERA_CONFIGURATION = Object.freeze({ fieldOfView: 60, aspectRatio: 4 / 3, near: 0.02, far: 200 });
   const CAMERA_LABEL = 'Robot';
   const PREFERRED_FRAMES = Object.freeze([
     'wide_stereo_optical_frame', 'head_center_camera_frame', 'head_rgbd_sensor_link',
@@ -96,7 +96,8 @@
   class Pose {
     constructor(three) {
       this.camera = new three.PerspectiveCamera(
-        CAMERA_CONFIGURATION.fieldOfView, 1, CAMERA_CONFIGURATION.near, CAMERA_CONFIGURATION.far
+        CAMERA_CONFIGURATION.fieldOfView, CAMERA_CONFIGURATION.aspectRatio,
+        CAMERA_CONFIGURATION.near, CAMERA_CONFIGURATION.far
       );
       /** Camera used to render the robot's view into its viewport. */
       this.orientation = new three.Quaternion();
@@ -107,7 +108,7 @@
       /** World point one unit ahead of the camera. */
     }
 
-    /** Follow the link's current world pose and fit a visible viewport. */
+    /** Follow the link's current world pose while preserving the camera's field of view. */
     update(source, width, height) {
       if (!source || !source.link || !Number.isFinite(width) || !Number.isFinite(height) ||
           width <= 0 || height <= 0) return false;
@@ -118,8 +119,6 @@
       this.camera.up.set(0, source.optical ? -1 : 0, source.optical ? 0 : 1).applyQuaternion(this.orientation);
       this.target.copy(this.camera.position).add(this.forward);
       this.camera.lookAt(this.target);
-      this.camera.aspect = width / height;
-      this.camera.updateProjectionMatrix();
       this.camera.updateMatrixWorld(true);
       return true;
     }
