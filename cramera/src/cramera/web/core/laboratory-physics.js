@@ -1,10 +1,11 @@
 /* Force-driven laboratory manipulation with authoritative simulation feedback. */
 (function (root, factory) {
   'use strict';
-  const laboratory = factory();
+  const refrigerator = typeof module !== 'undefined' && module.exports ? require('./laboratory-refrigerator.js') : root.LaboratoryRefrigerator;
+  const laboratory = factory(refrigerator);
   if (typeof module !== 'undefined' && module.exports) module.exports = laboratory;
   if (root) root.LaboratoryPhysics = laboratory;
-})(typeof window !== 'undefined' ? window : null, function () {
+})(typeof window !== 'undefined' ? window : null, function (Refrigerator) {
   'use strict';
 
   // %% simulation service
@@ -17,6 +18,7 @@
     CENTRIFUGE: '/api/laboratory/physics/centrifuge',
     MANUAL: '/api/laboratory/physics/manual',
     PIPETTING: '/api/laboratory/physics/pipetting',
+    REFRIGERATOR: '/api/laboratory/physics/refrigerator',
   });
   const RobotRoutes = Object.freeze({
     START: '/api/laboratory/physics/robot/start', STATE: '/api/laboratory/physics/robot/state',
@@ -30,6 +32,7 @@
     MANUAL: '/api/laboratory/physics/robot/manual',
     PIPETTING: '/api/laboratory/physics/robot/pipetting',
     PIPETTE: '/api/laboratory/physics/robot/pipette',
+    REFRIGERATOR: '/api/laboratory/physics/robot/refrigerator',
   });
   const RobotStates = Object.freeze({IDLE: 'idle', RUNNING: 'running', PAUSED: 'paused', SUCCEEDED: 'succeeded', FAILED: 'failed'});
   const RobotSources = Object.freeze({TRANSFER: 'recorded_cram_joint_targets', MIXING: 'laboratory_liquid_mixing', PIPETTING: 'laboratory_pipetting'});
@@ -87,6 +90,7 @@
     runMixing() { return this.post(this.routes.MIX); }
     runPipetting() { return this.post(this.routes.PIPETTE); }
     pipetting(command) { return this.post(this.routes.PIPETTING, command); }
+    refrigerator(command) { return this.post(this.routes.REFRIGERATOR, command); }
     pause() { return this.post(this.routes.PAUSE); }
     fillLiquid(key, volumeMl) { return this.post(this.routes.LIQUID, {key, volumeMl}); }
     tareScale() { return this.post(this.routes.TARE); }
@@ -110,6 +114,11 @@
       this.centrifuge = null;
       this.pipetting = null;
       this.pipettingRevision = 0;
+      this.refrigerator = null;
+      this.refrigeratorSlot = config.refrigerator && config.refrigerator.slots.length ? config.refrigerator.slots[0].id : null;
+      this.refrigeratorTransfer = null;
+      this.refrigeratorError = null;
+      this.refrigeratorRevision = 0;
       this.pipettingTransfer = null;
       this.pipettingError = null;
       this.centrifugeSlot = 'C1';
@@ -145,9 +154,90 @@
     manualBusy() { return this.activeCommand === 'manual' || this.queue.some(command => command.type === 'manual'); }
     pipettingBusy() { return this.activeCommand === 'pipetting' || this.queue.some(command => command.type === 'pipetting'); }
     dispensing() { return Boolean(this.pipetting && this.pipetting.state === 'dispensing'); }
+    refrigeratorBusy() { return this.activeCommand === 'refrigerator' || this.queue.some(command => command.type === 'refrigerator'); }
+    stored(key) { return Boolean(this.refrigerator && this.refrigerator.slots.some(slot => slot.key === key)); }
+    refrigeratorReady() {
+      return this.manualReady() && this.refrigerator && this.refrigerator.available && !this.refrigeratorBusy()
+        && !this.refrigeratorTransfer && !this.scaleTransfer && !this.centrifugeTransfer && !this.centrifugePair
+        && !this.pipettingTransfer && !this.dispensing() && !this.pipettingBusy() && !this.liquidBusy() && !this.draining;
+    }
+    selectedRefrigeratorSlot() { return this.refrigerator && this.refrigerator.slots.find(slot => slot.id === this.refrigeratorSlot); }
+    commandRefrigerator(action) {
+      if (!this.refrigeratorReady() || ![Refrigerator.Actions.OPEN, Refrigerator.Actions.CLOSE].includes(action)) return Promise.resolve(false);
+      this.refrigeratorRevision += 1;
+      this.refrigeratorError = null;
+      return this.enqueue({type:'refrigerator',payload:{action}});
+    }
+    /** Move an existing unowned glass through the open cabinet front into a free holder. */
+    storeRefrigerator() {
+      const slot=this.selectedRefrigeratorSlot(),pose=this.objects[this.selected];
+      if(!this.refrigeratorReady() || !this.refrigerator.doorOpen || !slot || slot.key || !pose || !this.selectedLiquid() || this.secured(this.selected) || this.stored(this.selected)) return Promise.resolve(false);
+      return this.beginRefrigeratorTransfer(Refrigerator.Actions.STORE,this.selected,slot,Refrigerator.storagePath(pose,slot.position,this.config.pipetting));
+    }
+    /** Return a stored sample to an unoccupied rack support after exiting the cabinet. */
+    retrieveRefrigerator() {
+      const slot=this.selectedRefrigeratorSlot();
+      if(!this.refrigeratorReady() || !this.refrigerator.doorOpen || !slot || !slot.key || !this.objects[slot.key]) return Promise.resolve(false);
+      const destination=Refrigerator.returnPosition(this.config,this.objects,slot.key);
+      if(!destination) {this.refrigeratorError='Free a rack position before retrieving a sample.';this.changed();return Promise.resolve(false);}
+      return this.beginRefrigeratorTransfer(Refrigerator.Actions.RETRIEVE,slot.key,slot,Refrigerator.retrievalPath(this.objects[slot.key],destination));
+    }
+    beginRefrigeratorTransfer(type,key,slot,waypoints) {
+      if(waypoints.some(position=>position.some((value,axis)=>value<this.config.bounds.min[axis] || value>this.config.bounds.max[axis]))) return Promise.resolve(false);
+      this.refrigeratorError=null;this.error=null;
+      this.refrigeratorTransfer={type,key,slot:slot.id,index:0,startedAt:Date.now(),waypoints,previousPose:this.objects[key].slice(),previousTime:this.simulationTime};
+      return this.targetCommand(key,waypoints[0],Refrigerator.Upright);
+    }
+    stopRefrigeratorTransfer() {
+      const transfer=this.refrigeratorTransfer;
+      if(!transfer || !this.objects[transfer.key])return Promise.resolve(false);
+      const pose=this.objects[transfer.key];
+      const command=this.targetCommand(transfer.key,pose.slice(0,3),pose.slice(3));
+      this.refrigeratorTransfer=null;
+      this.refrigeratorError=null;
+      this.changed();
+      return command;
+    }
+    /** Advance only from measured poses and release after stable physical support. */
+    async advanceRefrigeratorTransfer() {
+      const transfer=this.refrigeratorTransfer;
+      if(!transfer || this.refrigeratorBusy() || this.draining)return;
+      if(!this.manualReady() || this.error || !this.refrigerator || !this.refrigerator.doorOpen) {this.refrigeratorTransfer=null;return;}
+      const pose=this.objects[transfer.key];
+      if(!pose) {this.refrigeratorTransfer=null;return;}
+      if(Date.now()-transfer.startedAt>Refrigerator.Settings.TIMEOUT) {
+        if(transfer.released) {
+          this.refrigeratorTransfer=null;
+          this.refrigeratorError='The released sample has not settled securely. Check its placement before continuing.';
+        } else {
+          await this.stopRefrigeratorTransfer();
+          this.refrigeratorError='The sample path is blocked. Motion stopped at the observed position; adjust the held glass or release it.';
+        }
+        return;
+      }
+      const stable=Refrigerator.settled(transfer,pose,this.simulationTime);
+      const target=transfer.waypoints[transfer.index];
+      const distance=Math.hypot(...target.map((value,axis)=>value-pose[axis]));
+      const upright=Math.abs(pose[6])/Math.hypot(...pose.slice(3))>=Math.cos(Refrigerator.Settings.ANGLE/2);
+      if(distance>Refrigerator.Settings.TOLERANCE || !upright)return;
+      if(transfer.index===transfer.waypoints.length-1) {
+        if(!stable)return;
+        const support=transfer.type===Refrigerator.Actions.RETRIEVE ? Refrigerator.Settings.RACK_BODY : this.config.refrigerator.body;
+        const supported=this.contacts.some(contact=>contact.force>0 &&
+          ((contact.bodyA===transfer.key && contact.bodyB===support) || (contact.bodyB===transfer.key && contact.bodyA===support)));
+        if(!supported)return;
+        if(!transfer.released) {transfer.released=true;await this.enqueue({type:'release'});this.target=null;return;}
+        if(transfer.type===Refrigerator.Actions.STORE && !this.refrigerator.slots.some(slot=>slot.id===transfer.slot && slot.key===transfer.key))return;
+        this.refrigeratorTransfer=null;this.changed();return;
+      }
+      transfer.index+=1;transfer.startedAt=Date.now();
+      const next=transfer.waypoints[transfer.index].slice();
+      if(transfer.index===transfer.waypoints.length-1)next[2]-=Refrigerator.Settings.SEATING_DEPTH;
+      await this.targetCommand(transfer.key,next,Refrigerator.Upright);
+    }
     pipettingReady() {
       return this.manualReady() && this.pipetting && this.pipetting.available && !this.dispensing() && !this.pipettingBusy()
-        && !this.pipettingTransfer && !this.scaleTransfer && !this.centrifugeTransfer && !this.centrifugePair && !this.draining;
+        && !this.pipettingTransfer && !this.scaleTransfer && !this.centrifugeTransfer && !this.centrifugePair && !this.refrigeratorTransfer && !this.refrigeratorBusy() && !this.draining;
     }
     canDispense(source, volumeMl) {
       if (!this.pipettingReady() || this.secured(this.selected) || !Number.isFinite(volumeMl)) return false;
@@ -174,7 +264,7 @@
     /** Approach the nozzle horizontally after clearing the rack in front. */
     moveToPipette() {
       const pose = this.objects[this.selected];
-      if (!this.pipettingReady() || !pose || !this.selectedLiquid() || this.secured(this.selected)) return Promise.resolve(false);
+      if (!this.pipettingReady() || !pose || !this.selectedLiquid() || this.secured(this.selected) || this.stored(this.selected)) return Promise.resolve(false);
       const destination = this.pipetting.targetPosition;
       if (Math.hypot(...destination.map((value, axis) => value - pose[axis])) <= SCALE_MOVE_TOLERANCE && this.observedTilt() <= 3) return Promise.resolve(true);
       const elevation = Math.max(pose[2], destination[2]) + LIFT_CLEARANCE;
@@ -237,7 +327,7 @@
     }
     centrifugeAccessible() {
       return this.manualReady() && this.centrifuge && this.centrifuge.available && this.centrifuge.lidOpen
-        && !this.centrifuge.locked && Math.abs(this.centrifuge.rpm) <= CentrifugeSettings.STOPPED_RPM && !this.centrifugeBusy();
+        && !this.centrifuge.locked && Math.abs(this.centrifuge.rpm) <= CentrifugeSettings.STOPPED_RPM && !this.centrifugeBusy() && !this.refrigeratorTransfer && !this.refrigeratorBusy();
     }
     commandCentrifuge(action, options) {
       const instrument = this.centrifuge;
@@ -259,7 +349,7 @@
     /** Find unoccupied glass tubes in selection order, excluding secured samples. */
     freeCentrifugeTubes() {
       const keys = this.config.objects.map(object => object.key).filter(key => this.objects[key]
-        && this.liquid && this.liquid.tubes && this.liquid.tubes[key] && !this.secured(key));
+        && this.liquid && this.liquid.tubes && this.liquid.tubes[key] && !this.secured(key) && !this.stored(key));
       return keys.includes(this.selected) ? [this.selected, ...keys.filter(key => key !== this.selected)] : keys;
     }
     /** Fill free opposing holders or complete one unmatched secured sample. */
@@ -380,7 +470,7 @@
     }
     beginCentrifugeLoad(key, slotId) {
       const slot = this.centrifuge && this.centrifuge.slots.find(item => item.id === slotId), pose = this.objects[key];
-      if (!this.centrifugeAccessible() || !slot || slot.key || !pose || !this.liquid || !this.liquid.tubes[key] || this.secured(key) || this.centrifugeTransfer) return Promise.resolve(false);
+      if (!this.centrifugeAccessible() || !slot || slot.key || !pose || !this.liquid || !this.liquid.tubes[key] || this.secured(key) || this.stored(key) || this.centrifugeTransfer) return Promise.resolve(false);
       const elevation = Math.max(pose[2], slot.position[2]) + LIFT_CLEARANCE;
       if (elevation > this.config.bounds.max[2]) return Promise.resolve(false);
       this.scaleTransfer = null;
@@ -523,6 +613,8 @@
       return position.map((value, axis) => Math.min(this.config.bounds.max[axis], Math.max(this.config.bounds.min[axis], value)));
     }
     setTarget(key, position, orientation) {
+      this.refrigeratorTransfer = null;
+      this.refrigeratorError = null;
       this.pipettingTransfer = null;
       this.centrifugeTransfer = null;
       this.centrifugePair = null;
@@ -533,7 +625,7 @@
     }
     targetCommand(key, position, orientation) {
       const bounded = this.bounded(position);
-      if (!this.manualReady() || !this.known(key) || this.secured(key) || !bounded) return Promise.resolve(false);
+      if (!this.manualReady() || !this.known(key) || this.secured(key) || (this.stored(key) && !(this.refrigeratorTransfer && this.refrigeratorTransfer.key === key)) || !bounded) return Promise.resolve(false);
       const rotation = orientation || (this.target && this.target.key === key && this.target.orientation);
       if (rotation && (!Array.isArray(rotation) || rotation.length !== 4 || !rotation.every(Number.isFinite) || Math.hypot(...rotation) === 0)) return Promise.resolve(false);
       this.selected = key;
@@ -544,7 +636,7 @@
       return this.enqueue({type: 'target', target: {...this.target, position: bounded.slice()}});
     }
     moveToScale() {
-      if (this.pipettingTransfer || this.dispensing() || this.pipettingBusy()) return Promise.resolve(false);
+      if (this.pipettingTransfer || this.dispensing() || this.pipettingBusy() || this.refrigeratorTransfer || this.refrigeratorBusy() || this.stored(this.selected)) return Promise.resolve(false);
       const pose = this.objects[this.selected];
       const scale = this.config.scale;
       if (!this.manualReady() || !pose || !scale || !scale.panPosition || this.scaleTransfer || this.centrifugeTransfer || this.centrifugePair || this.secured(this.selected)) return Promise.resolve(false);
@@ -616,6 +708,7 @@
       await this.targetCommand(transfer.key, next.position, next.orientation);
     }
     hold(key) {
+      if (this.refrigeratorTransfer && this.refrigeratorTransfer.key === key) return this.stopRefrigeratorTransfer();
       const pose = this.objects[key];
       return pose ? this.setTarget(key, pose.slice(0, 3)) : Promise.resolve(false);
     }
@@ -656,7 +749,7 @@
       return this.fillLiquidCommand(this.selected, volumeMl);
     }
     fillLiquidCommand(key, volumeMl) {
-      if (this.dispensing() || this.pipettingBusy() || this.pipettingTransfer) return Promise.resolve(false);
+      if (this.dispensing() || this.pipettingBusy() || this.pipettingTransfer || this.refrigeratorTransfer || this.refrigeratorBusy() || this.stored(this.selected)) return Promise.resolve(false);
       const tube = this.liquid && this.liquid.tubes && this.liquid.tubes[key];
       if (!this.manualReady() || this.secured(key) || !tube || !Number.isFinite(volumeMl) || volumeMl < 0 || volumeMl > tube.capacityMl) return Promise.resolve(false);
       this.revision += 1;
@@ -685,8 +778,8 @@
     runMixing() { return this.startProgram('runMixing'); }
     runPipetting() { return this.startProgram('runPipetting'); }
     startProgram(type) {
-      if (this.dispensing() || this.pipettingBusy() || this.pipettingTransfer) return Promise.resolve(false);
-      if (!this.config.robot || !this.ready() || this.robotBusy() || this.centrifugeTransfer || this.centrifugePair || this.centrifugeOwnsObjects()) return Promise.resolve(false);
+      if (this.dispensing() || this.pipettingBusy() || this.pipettingTransfer || this.refrigeratorTransfer || this.refrigeratorBusy() || this.stored(this.selected)) return Promise.resolve(false);
+      if ((this.refrigerator && this.refrigerator.slots.some(slot => slot.key)) || !this.config.robot || !this.ready() || this.robotBusy() || this.centrifugeTransfer || this.centrifugePair || this.centrifugeOwnsObjects()) return Promise.resolve(false);
       this.robotRequest = type;
       return this.clear(type);
     }
@@ -696,6 +789,10 @@
       return this.clear('pause');
     }
     clear(type) {
+      this.refrigeratorTransfer = null;
+      this.refrigeratorError = null;
+      this.refrigeratorRevision += 1;
+      if (type === 'reset' && this.adapter.setRefrigeratorState) this.adapter.setRefrigeratorState(null);
       this.pipettingTransfer = null;
       this.pipettingError = null;
       this.pipettingRevision += 1;
@@ -731,11 +828,16 @@
         try {
           let answer;
           if (command.type === 'target') answer = await this.service.target(command.target);
+          else if (command.type === 'refrigerator') answer = await this.service.refrigerator(command.payload);
           else if (command.type === 'pipetting') answer = await this.service.pipetting(command.payload);
           else if (command.type === 'centrifuge') answer = await this.service.centrifuge(command.payload);
           else if (command.type === 'manual') answer = await this.service.importManual(command.payload);
           else if (command.type === 'fillLiquid') answer = await this.service.fillLiquid(command.key, command.volumeMl);
           else answer = await this.service[command.type]();
+          if (answer.refrigerator && !this.disposed) {
+            this.refrigerator = answer.refrigerator;
+            if (this.adapter.setRefrigeratorState) this.adapter.setRefrigeratorState(this.refrigerator);
+          }
           if (answer.pipetting && !this.disposed) {
             this.pipetting = answer.pipetting;
             if (this.adapter.setPipettingState) this.adapter.setPipettingState(this.pipetting);
@@ -769,6 +871,7 @@
           this.error = null;
         } catch (error) {
           this.error = error.message;
+          if (command.type === 'refrigerator') this.refrigeratorError = error.message;
           if (command.type === 'pipetting') this.pipettingError = error.message;
           if (command.type === 'manual') this.manualError = error.message;
           else {
@@ -777,11 +880,13 @@
             this.dragged = null;
             this.scaleTransfer = null;
             this.pipettingTransfer = null;
+            this.refrigeratorTransfer = null;
             this.centrifugeTransfer = null;
             this.centrifugePair = null;
             this.queue = this.queue.filter(pending => pending.type !== 'target');
           }
         }
+        if (['refrigerator', 'reset', ...ProgramCommands].includes(command.type)) this.refrigeratorRevision += 1;
         if (LiquidCommands.includes(command.type)) this.liquidRevision += 1;
         if (['pipetting', 'reset', ...ProgramCommands].includes(command.type)) this.pipettingRevision += 1;
         if (ScaleCommands.includes(command.type)) this.scaleRevision += 1;
@@ -806,6 +911,8 @@
       const centrifugePending = this.centrifugeBusy();
       const pipettingRevision = this.pipettingRevision;
       const pipettingPending = this.pipettingBusy();
+      const refrigeratorRevision = this.refrigeratorRevision;
+      const refrigeratorPending = this.refrigeratorBusy();
       this.polling = true;
       try {
         const answer = await this.service.state();
@@ -833,12 +940,18 @@
           this.scale = answer.scale || null;
           if (this.adapter.setScaleState) this.adapter.setScaleState(this.scale);
         }
+        if (!refrigeratorPending && !this.refrigeratorBusy() && refrigeratorRevision === this.refrigeratorRevision) {
+          this.refrigerator = answer.refrigerator || null;
+          if (this.refrigerator && this.refrigerator.joints && this.adapter.setJointFrames) this.adapter.setJointFrames(this.refrigerator.joints);
+          if (this.adapter.setRefrigeratorState) this.adapter.setRefrigeratorState(this.ready() ? this.refrigerator : null);
+        }
         if (!centrifugePending && !this.centrifugeBusy() && centrifugeRevision === this.centrifugeRevision) {
           this.centrifuge = answer.centrifuge || null;
           if (this.centrifuge && this.centrifuge.joints && this.adapter.setJointFrames) this.adapter.setJointFrames(this.centrifuge.joints);
           if (this.adapter.setCentrifugeState) this.adapter.setCentrifugeState(this.ready() ? this.centrifuge : null);
         }
-        this.error = answer.error || this.scaleTransferError || this.centrifugeTransferError || this.pipettingError || null;
+        this.error = answer.error || this.scaleTransferError || this.centrifugeTransferError || this.pipettingError || this.refrigeratorError || null;
+        await this.advanceRefrigeratorTransfer();
         await this.advancePipettingTransfer();
         await this.advanceScaleTransfer();
         await this.advanceCentrifugeTransfer();
@@ -846,6 +959,9 @@
       } catch (error) {
         if (runRevision !== this.runRevision) return;
         this.state = 'failed';
+        this.refrigerator = null;
+        this.refrigeratorTransfer = null;
+        if (this.adapter.setRefrigeratorState) this.adapter.setRefrigeratorState(null);
         this.pipetting = null;
         this.pipettingTransfer = null;
         if (this.adapter.setPipettingState) this.adapter.setPipettingState(null);
@@ -869,7 +985,7 @@
       const distance = pose ? Math.hypot(...this.target.position.map((value, axis) => value - pose[axis])) : 0;
       return {contactCount: relevant.length, force, distance};
     }
-    destroy() { this.disposed = true; this.queue = []; this.scaleTransfer = null; this.centrifugeTransfer = null; this.centrifugePair = null; this.pipettingTransfer = null; }
+    destroy() { this.disposed = true; this.queue = []; this.scaleTransfer = null; this.centrifugeTransfer = null; this.centrifugePair = null; this.pipettingTransfer = null; this.refrigeratorTransfer = null; }
   }
 
   // %% compact manipulation controls
@@ -907,6 +1023,28 @@
       option.value = object.key;
     }
     const controller = new Controller(config, service, adapter, render);
+    const refrigerator = element('section', panel, 'laboratory-physics-refrigerator');
+    element('h4', refrigerator, '', 'Sample refrigerator');
+    const refrigeratorTemperature = element('p', refrigerator, 'laboratory-physics-refrigerator-temperature');
+    const refrigeratorStatus = element('p', refrigerator, 'laboratory-physics-refrigerator-status');
+    refrigeratorStatus.setAttribute('role', 'status');
+    const refrigeratorSlotLabel = element('label', refrigerator, 'laboratory-physics-field', 'Storage position');
+    const refrigeratorSlot = element('select', refrigeratorSlotLabel, 'laboratory-physics-refrigerator-slot');
+    for (const slot of config.refrigerator && config.refrigerator.slots || []) {
+      const option = element('option', refrigeratorSlot, '', slot.id);
+      option.value = slot.id;
+    }
+    listen(refrigeratorSlot, 'change', () => { if (!controller.refrigeratorTransfer) controller.refrigeratorSlot = refrigeratorSlot.value; render(); });
+    const refrigeratorOpen = button(refrigerator, 'Open door', () => controller.commandRefrigerator('open'), 'laboratory-physics-refrigerator-open');
+    const refrigeratorClose = button(refrigerator, 'Close door', () => controller.commandRefrigerator('close'), 'laboratory-physics-refrigerator-close');
+    const refrigeratorStore = button(refrigerator, 'Store selected glass', () => controller.storeRefrigerator(), 'laboratory-physics-refrigerator-store');
+    const refrigeratorRetrieve = button(refrigerator, 'Retrieve sample to rack', () => controller.retrieveRefrigerator(), 'laboratory-physics-refrigerator-retrieve');
+    const refrigeratorCancel = button(refrigerator, 'Stop transfer', () => controller.stopRefrigeratorTransfer(), 'laboratory-physics-refrigerator-cancel');
+    if (adapter.focus && config.refrigerator) button(refrigerator, 'View refrigerator', () => {
+      const origin = config.refrigerator.origin;
+      adapter.focus([origin[0]+.65,origin[1]-1.1,origin[2]+.90],[origin[0],origin[1]-.05,origin[2]+.42]);
+    }, 'laboratory-physics-refrigerator-view');
+    element('p', refrigerator, 'laboratory-physics-note', 'Open the door, select a free position and store an existing glass. Manual transfers use contact physics. Cabinet temperature is simulated; close the door to cool toward 4 °C. Retrieve stored samples before starting a PR2 task.');
     const pipetting = element('section', panel, 'laboratory-physics-pipetting');
     element('h4', pipetting, '', 'Pipetting station');
     const pipettingStatus = element('p', pipetting, 'laboratory-physics-pipetting-status');
@@ -1111,7 +1249,7 @@
       robotMotionNote = element('p', panel, 'laboratory-physics-robot-motion-note');
     }
     select.value = controller.selected;
-    listen(select, 'change', () => { controller.pipettingTransfer = null; controller.scaleTransfer = null; controller.centrifugeTransfer = null; controller.centrifugePair = null; controller.selected = select.value; render(); });
+    listen(select, 'change', () => { controller.refrigeratorTransfer = null; controller.pipettingTransfer = null; controller.scaleTransfer = null; controller.centrifugeTransfer = null; controller.centrifugePair = null; controller.selected = select.value; render(); });
     const hold = button(panel, 'Hold glass', () => controller.hold(select.value), 'laboratory-physics-hold');
     const moves = element('div', panel, 'laboratory-physics-moves');
     const motion = [
@@ -1144,6 +1282,28 @@
       const reading = controller.scale;
       const instrument = controller.centrifuge;
       const station = controller.pipetting;
+      const cabinet = controller.refrigerator;
+      const storage = controller.selectedRefrigeratorSlot();
+      const cabinetReady = controller.refrigeratorReady();
+      const returnSupport = storage && storage.key && config.refrigerator ? Refrigerator.returnPosition(config, controller.objects, storage.key) : null;
+      refrigerator.hidden = !config.refrigerator;
+      refrigeratorTemperature.textContent = cabinet && cabinet.available ? cabinet.temperatureC.toFixed(1) + ' °C · simulated' : '-- °C';
+      refrigeratorStatus.textContent = controller.refrigeratorError || (!cabinet || !cabinet.available ? 'Refrigerator unavailable'
+        : (cabinet.doorOpen ? 'Door open' : cabinet.doorClosed ? 'Door closed' : 'Door moving')
+          + ' · ' + cabinet.slots.filter(slot => slot.key).length + ' / ' + cabinet.slots.length + ' samples stored'
+          + (controller.refrigeratorTransfer ? ' · ' + (controller.refrigeratorTransfer.type === 'store' ? 'Storing sample …' : 'Returning sample to rack …') : ''));
+      if (storage && storage.key && !returnSupport && !controller.refrigeratorTransfer) refrigeratorStatus.textContent += ' · Free a rack position before retrieving a sample.';
+      refrigeratorSlot.disabled = !cabinetReady;
+      refrigeratorSlot.value = controller.refrigeratorSlot;
+      for (const option of refrigeratorSlot.children) {
+        const item = cabinet && cabinet.slots.find(slot => slot.id === option.value);
+        option.textContent = option.value + (item ? ' · ' + (item.key || 'Empty') : ' · Unknown');
+      }
+      refrigeratorOpen.disabled = !cabinetReady || cabinet.doorOpen;
+      refrigeratorClose.disabled = !cabinetReady || cabinet.doorClosed;
+      refrigeratorStore.disabled = !cabinetReady || !cabinet.doorOpen || !storage || Boolean(storage.key) || !controller.selectedLiquid() || controller.secured(controller.selected) || controller.stored(controller.selected);
+      refrigeratorRetrieve.disabled = !cabinetReady || !cabinet.doorOpen || !storage || !storage.key || !returnSupport;
+      refrigeratorCancel.hidden = !controller.refrigeratorTransfer;
       pipetting.hidden = !config.pipetting && !station;
       pipettingStatus.textContent = controller.pipettingError || (controller.pipettingTransfer ? 'Positioning the glass …'
         : !station || !station.available ? 'Pipetting station unavailable'
@@ -1159,9 +1319,9 @@
       if (viewPipetting) viewPipetting.disabled = !station || !station.available;
       renderManual(instrument);
       const slot = controller.selectedCentrifugeSlot();
-      const secured = controller.secured(controller.selected);
+      const secured = controller.secured(controller.selected) || controller.stored(controller.selected);
       const pair = controller.centrifugePair;
-      const instrumentBusy = controller.centrifugeBusy() || Boolean(controller.centrifugeTransfer) || Boolean(pair);
+      const instrumentBusy = controller.centrifugeBusy() || Boolean(controller.centrifugeTransfer) || Boolean(pair) || Boolean(controller.refrigeratorTransfer) || controller.refrigeratorBusy();
       const accessible = controller.centrifugeAccessible() && !instrumentBusy;
       centrifuge.hidden = !config.centrifuge && !instrument;
       if (viewCentrifuge) viewCentrifuge.disabled = !instrument || !instrument.available;
@@ -1199,13 +1359,13 @@
       scaleStatus.textContent = !reading || !reading.available ? 'Scale unavailable'
         : (reading.stable ? 'Stable' : 'Settling …') + ' · Tare: ' + reading.tareGrams.toFixed(3) + ' g';
       tare.disabled = !manualReady || Boolean(pair) || !reading || !reading.available || !reading.stable || controller.scaleBusy();
-      moveToScale.disabled = !manualReady || Boolean(pair) || !config.scale || !controller.objects[controller.selected] || Boolean(controller.scaleTransfer) || Boolean(controller.centrifugeTransfer) || secured;
+      moveToScale.disabled = !manualReady || Boolean(pair) || !config.scale || !controller.objects[controller.selected] || Boolean(controller.scaleTransfer) || Boolean(controller.centrifugeTransfer) || Boolean(controller.refrigeratorTransfer) || controller.refrigeratorBusy() || secured;
       cancelScale.hidden = !controller.scaleTransfer;
       if (controller.scaleTransfer) scaleStatus.textContent = 'Lifting the object, moving it to the scale and setting it down …';
       start.hidden = ready;
       start.disabled = controller.starting;
       select.value = controller.selected;
-      select.disabled = !manualReady || Boolean(pair);
+      select.disabled = !manualReady || Boolean(pair) || Boolean(controller.refrigeratorTransfer);
       for (const control of [hold, ...motion]) control.disabled = !manualReady || Boolean(pair) || secured;
       reset.disabled = !ready;
       release.disabled = !manualReady || !controller.target;
@@ -1231,7 +1391,7 @@
         const dosing = controller.robot.source === RobotSources.PIPETTING;
         const paused = controller.robot.state === RobotStates.PAUSED;
         robotMotionNote.textContent = mixing || dosing ? 'Motion: local contact controller. Contacts: MuJoCo.' : 'Joint targets: recorded CRAM plan. Motion and contacts: MuJoCo.';
-        robotRun.disabled = !ready || Boolean(controller.robotBusy()) || Boolean(controller.centrifugeTransfer) || Boolean(pair) || controller.centrifugeOwnsObjects() || controller.dispensing() || controller.pipettingBusy() || Boolean(controller.pipettingTransfer);
+        robotRun.disabled = !ready || Boolean(controller.robotBusy()) || Boolean(controller.centrifugeTransfer) || Boolean(pair) || controller.centrifugeOwnsObjects() || controller.dispensing() || controller.pipettingBusy() || Boolean(controller.pipettingTransfer) || Boolean(controller.refrigeratorTransfer) || controller.refrigeratorBusy() || Boolean(cabinet && cabinet.slots.some(slot => slot.key));
         robotRun.textContent = paused && !mixing && !dosing ? 'Resume PR2' : 'Start PR2: A1 → A3';
         robotPipette.disabled = robotRun.disabled || !station || !station.available;
         robotPipette.textContent = paused && dosing ? 'Resume pipetting demo' : 'Start pipetting demo';

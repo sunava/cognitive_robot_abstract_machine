@@ -93,6 +93,121 @@
       }
     ]
   },
+  "refrigerator": {
+    "body": "laboratory_refrigerator_base",
+    "doorBody": "laboratory_refrigerator_door",
+    "joint": "laboratory_refrigerator_base_joint",
+    "doorJoint": "laboratory_refrigerator_door_joint",
+    "asset": "assets/refrigerator_base.glb",
+    "doorAsset": "assets/refrigerator_door.glb",
+    "origin": [
+      -1.23,
+      0.0,
+      0.0
+    ],
+    "doorOrigin": [
+      -0.25,
+      -0.31,
+      0.43
+    ],
+    "doorOpen": 1.75,
+    "dimensions": [
+      0.54,
+      0.58,
+      0.84
+    ],
+    "displayMesh": "Refrigerator display",
+    "displayPosition": [
+      -1.14,
+      -0.2932,
+      0.775
+    ],
+    "displaySize": [
+      0.145,
+      0.036
+    ],
+    "targetTemperature": 4.0,
+    "slots": [
+      {
+        "id": "R1",
+        "position": [
+          -1.37,
+          -0.1,
+          0.24
+        ],
+        "localPosition": [
+          -0.14,
+          -0.1,
+          0.24
+        ]
+      },
+      {
+        "id": "R2",
+        "position": [
+          -1.23,
+          -0.1,
+          0.24
+        ],
+        "localPosition": [
+          0.0,
+          -0.1,
+          0.24
+        ]
+      },
+      {
+        "id": "R3",
+        "position": [
+          -1.0899999999999999,
+          -0.1,
+          0.24
+        ],
+        "localPosition": [
+          0.14,
+          -0.1,
+          0.24
+        ]
+      },
+      {
+        "id": "R4",
+        "position": [
+          -1.37,
+          -0.1,
+          0.48
+        ],
+        "localPosition": [
+          -0.14,
+          -0.1,
+          0.48
+        ]
+      },
+      {
+        "id": "R5",
+        "position": [
+          -1.23,
+          -0.1,
+          0.48
+        ],
+        "localPosition": [
+          0.0,
+          -0.1,
+          0.48
+        ]
+      },
+      {
+        "id": "R6",
+        "position": [
+          -1.0899999999999999,
+          -0.1,
+          0.48
+        ],
+        "localPosition": [
+          0.14,
+          -0.1,
+          0.48
+        ]
+      }
+    ]
+  },
   "tube": {
     "height": 0.15,
     "outerRadius": 0.009,

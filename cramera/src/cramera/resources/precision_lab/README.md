@@ -13,9 +13,22 @@ joint, and a bounded lid joint. `scene.json` records the opposing holder pairs
 and rotor-local sample positions. The included initial viewer frame opens the
 lid; a newly loaded planning world exposes both joints for ordinary CRAM control.
 
-Click the centrifuge, dual dispenser, scale or tube rack in the browser and choose
+The compact sample refrigerator stands beside the bench. Its glass door is a
+separate articulated body, and two shelves provide six numbered sample holders.
+The interactive physics session controls the door, observes supported samples,
+and models cabinet temperature approaching the cooling target or room temperature
+according to the door state. This is a reduced temperature simulation.
+
+In the physics controls, select **Sample refrigerator → View refrigerator**, then
+**Open door**. Select a glass and a free storage position R1–R6, and choose
+**Store selected glass**. **Retrieve sample to rack** returns the selected stored
+sample to a free rack position. These manual transfers use physical force targets;
+the PR2 does not execute a refrigerator plan. Close the door to cool toward 4 °C.
+Retrieve stored samples before starting an existing PR2 demonstration.
+
+Click the centrifuge, dual dispenser, scale, tube rack or refrigerator and choose
 **Open manual**. **Layers → Manual mode** opens the currently selected device;
-the **Manual instrument** selector switches between the four instruments.
+the **Manual instrument** selector switches between instruments.
 Numbered titles sit close to their parts with short leader lines. Select a title
 or number to expand its explanation. The lines follow camera movement and
 articulation. Live observations add the relevant instrument's measurements and
@@ -23,7 +36,7 @@ state; missing observations remain unknown. In a live physics scene, open the
 centrifuge lid to show its interior annotations. **Show controls** restores the
 instrument controls, and **Exit manual** returns to the ordinary scene.
 
-The adjacent `resources/laboratory_devices/` catalog provides four independently
+The adjacent `resources/laboratory_devices/` catalog provides independently
 loadable URDF folders, each with its own local meshes and documentation. These
 portable models preserve the geometry and joints used in this assembled scene.
 

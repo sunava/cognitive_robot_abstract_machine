@@ -14,6 +14,10 @@ from typing_extensions import Any, ClassVar, Protocol
 
 from cramera import paths
 from cramera.laboratory_pipetting_command import PipettingAction, PipettingCommand
+from cramera.laboratory_refrigerator_command import (
+    RefrigeratorCommand,
+    RefrigeratorField,
+)
 from cramera.laboratory_centrifuge_command import (
     CentrifugeAction,
     CentrifugeCommand,
@@ -47,6 +51,8 @@ class RobotPhysicsRoute(StrEnum):
     """Run the robot demonstration with two measured reagent doses."""
     CENTRIFUGE = "/api/laboratory/physics/robot/centrifuge"
     """Operate the centrifuge beside the articulated robot."""
+    REFRIGERATOR = "/api/laboratory/physics/robot/refrigerator"
+    """Operate the sample cabinet while the robot program is inactive."""
     MANUAL = "/api/laboratory/physics/robot/manual"
     """Read operating rules while the robot program is paused or inactive."""
     SCALE_TARE = "/api/laboratory/physics/robot/scale/tare"
@@ -179,6 +185,9 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
         instrument = snapshot.get(CentrifugeField.CENTRIFUGE)
         if isinstance(instrument, dict):
             frame.update(instrument.get(CentrifugeField.JOINTS, {}))
+        refrigerator = snapshot.get(RefrigeratorField.REFRIGERATOR)
+        if isinstance(refrigerator, dict):
+            frame.update(refrigerator.get(RefrigeratorField.JOINTS, {}))
         trajectory[PhysicsField.FRAMES] = [frame]
         trajectory_path.write_text(json.dumps(trajectory, indent=2))
 
@@ -245,6 +254,16 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
         ):
             raise InvalidPhysicsRequest(
                 "Pause the PR2 program before operating the centrifuge."
+            )
+
+    def _validate_refrigerator(self, command: RefrigeratorCommand) -> None:
+        """Require the robot program to yield before moving the refrigerator door."""
+        if (
+            self.physics.snapshot()[RobotField.ROBOT][PhysicsField.STATE]
+            == PhysicsState.RUNNING
+        ):
+            raise InvalidPhysicsRequest(
+                "Pause the PR2 program before operating the refrigerator."
             )
 
     def _validate_manual(self) -> None:

@@ -2186,7 +2186,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
   // %% numbered instrument guide
   function bindLaboratoryManualMode() {
     const config = SCENE.physics || SCENE.laboratory || {};
-    if (!(config.centrifuge || config.pipetting || config.scale || config.rackSlots)
+    if (!(config.centrifuge || config.pipetting || config.scale || config.rackSlots || config.refrigerator)
       || typeof LaboratoryManual === 'undefined' || typeof LaboratoryManualParts === 'undefined'
       || typeof LaboratoryDevices === 'undefined') return null;
     const devices = LaboratoryDevices.catalog(config);
@@ -2367,6 +2367,8 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       : LaboratoryCentrifuge.create(THREE, worldRoot, root.ownerDocument);
     const pipetting = typeof LaboratoryPipetting === 'undefined' || !SCENE.physics.pipetting ? null
       : LaboratoryPipetting.create(THREE, worldRoot, SCENE.physics.pipetting, root.ownerDocument);
+    const refrigerator = typeof LaboratoryRefrigerator === 'undefined' || !SCENE.physics.refrigerator ? null
+      : LaboratoryRefrigerator.create(THREE, worldRoot, root.ownerDocument);
     const contactGeometry = new THREE.SphereGeometry(0.003, 10, 8);
     const contactMaterial = new THREE.MeshBasicMaterial({color: 0xe34b35, depthTest: false});
     const targetGeometry = new THREE.SphereGeometry(0.008, 16, 12);
@@ -2414,6 +2416,11 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
         feedback.visible = Boolean(visible);
         needsRender = true;
       },
+      setRefrigeratorState: function (snapshot) {
+        if (refrigerator) refrigerator.update(snapshot);
+        if (typeof laboratoryManualMode !== 'undefined' && laboratoryManualMode) laboratoryManualMode.update(snapshot, 'refrigerator');
+        needsRender = true;
+      },
       showContacts: function (contacts, desired) {
         const visible = contacts.filter(function (contact) { return contact.force > 0; }).slice(0, 64);
         while (dots.length < visible.length) {
@@ -2436,6 +2443,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
         if (scale) scale.destroy();
         if (centrifuge) centrifuge.destroy();
         if (pipetting) pipetting.destroy();
+        if (refrigerator) refrigerator.destroy();
         worldRoot.remove(feedback);
         contactGeometry.dispose(); contactMaterial.dispose();
         targetGeometry.dispose(); targetMaterial.dispose();

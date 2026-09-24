@@ -14,6 +14,7 @@ import numpy as np
 from typing_extensions import Any, ClassVar, TYPE_CHECKING
 
 from cramera.laboratory_centrifuge_command import CentrifugeAction
+from cramera.laboratory_refrigerator_command import RefrigeratorAction
 from cramera.laboratory_liquid import LiquidField
 from cramera.laboratory_physics import InvalidPhysicsTarget
 from cramera.laboratory_pipetting import PipettingAction, PipettingState
@@ -612,9 +613,19 @@ class LaboratoryProgramPhysics:
                 "Stop the centrifuge and release all secured glasses before starting or resuming the PR2 program"
             )
 
+    def _require_empty_refrigerator(self) -> None:
+        """Preserve stored samples when robot demonstrations restore loose vessels."""
+        if any(
+            key is not None for key in self.physics.refrigerator.occupants().values()
+        ):
+            raise InvalidPhysicsTarget(
+                "Retrieve stored refrigerator samples before starting or resuming the PR2 program"
+            )
+
     def run_program(self) -> None:
         """Resume or restore initial body poses while retaining current tube contents."""
         self._require_free_centrifuge()
+        self._require_empty_refrigerator()
         self._require_idle_station()
         if not isinstance(self.program, LaboratoryPhysicsProgram):
             self._require_switchable()
@@ -641,6 +652,7 @@ class LaboratoryProgramPhysics:
     def run_mixing(self) -> None:
         """Start the fixed mixing recipe or resume its current physical state."""
         self._require_free_centrifuge()
+        self._require_empty_refrigerator()
         self._require_idle_station()
         program_type = importlib.import_module(
             "cramera.laboratory_mixing_program"
@@ -666,6 +678,7 @@ class LaboratoryProgramPhysics:
     def run_pipetting(self) -> None:
         """Pick the current A1 receiver without restoring objects or replacing liquids."""
         self._require_free_centrifuge()
+        self._require_empty_refrigerator()
         program_type = importlib.import_module(
             "cramera.laboratory_pipetting_program"
         ).LaboratoryPipettingProgram
@@ -747,6 +760,14 @@ class LaboratoryProgramPhysics:
         self.physics.centrifuge_command(
             action, slot=slot, key=key, rpm=rpm, duration=duration
         )
+
+    def refrigerator_command(self, action: RefrigeratorAction | str) -> None:
+        """Preserve robot ownership while forwarding cabinet door requests."""
+        if self.program.state == ProgramState.RUNNING:
+            raise InvalidPhysicsTarget(
+                "Pause the PR2 program before operating the refrigerator"
+            )
+        self.physics.refrigerator_command(action)
 
     def tare_scale(self) -> None:
         """Zero the physical scale while the robot controller is inactive."""

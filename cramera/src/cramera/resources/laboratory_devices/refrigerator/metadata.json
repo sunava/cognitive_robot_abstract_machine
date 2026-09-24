@@ -1,0 +1,14 @@
+{
+  "device": "refrigerator",
+  "rootLink": "laboratory_refrigerator_base",
+  "units": "metres",
+  "upAxis": "Z",
+  "laboratoryOrigin": [
+    -1.23,
+    0.0,
+    0.0
+  ],
+  "joints": [
+    "laboratory_refrigerator_door_joint"
+  ]
+}

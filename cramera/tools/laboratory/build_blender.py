@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from geometry import LatheMesh, ProfilePoint, TubeDimensions
 from centrifuge import CentrifugeDimensions, CentrifugePart
 from pipetting import PipettingChannel, PipettingDimensions, PipettingPart
+from refrigerator import RefrigeratorDimensions, RefrigeratorPart
 
 
 # %% Asset contract
@@ -44,6 +45,10 @@ class AssetName(StrEnum):
     CENTRIFUGE_LID = CentrifugePart.LID_ASSET.value
     PIPETTING = PipettingPart.ASSET.value
     """Stationary dual-feed dispensing instrument."""
+    REFRIGERATOR_BASE = RefrigeratorPart.BASE_ASSET.value
+    """Insulated floor-standing cabinet with sample shelves."""
+    REFRIGERATOR_DOOR = RefrigeratorPart.DOOR_ASSET.value
+    """Independently hinged glazed door."""
 
 
 class RenderView(StrEnum):
@@ -71,6 +76,7 @@ class BrandingName(StrEnum):
     CENTRIFUGE = "Centrifuge AICOR logo"
     DISPENSER = "Dispenser AICOR logo"
     CHAMBER = "Centrifuge chamber shell"
+    REFRIGERATOR = "Refrigerator AICOR logo"
 
 
 @dataclass(frozen=True)
@@ -109,6 +115,9 @@ class LogoPlacement:
             ),
             AssetName.PIPETTING: (
                 cls(BrandingName.DISPENSER, (-0.063, 0.0391, 0.227), 0.065),
+            ),
+            AssetName.REFRIGERATOR_BASE: (
+                cls(BrandingName.REFRIGERATOR, (-0.118, -0.2902, 0.791), 0.14),
             ),
         }[asset]
 
@@ -159,6 +168,8 @@ class BuildOptions:
     """Export only the dispensing station and preserve existing laboratory assets."""
     branding_only: bool = False
     """Refresh existing instrument artwork without rebuilding bodies."""
+    refrigerator_only: bool = False
+    """Add or replace the cold-storage cabinet while preserving the room."""
 
 
 @dataclass
@@ -1541,6 +1552,248 @@ class LaboratoryBuilder:
         )
         self.export_asset(AssetName.PIPETTING, dimensions.origin)
 
+    def build_refrigerator(self) -> None:
+        """Author an insulated cabinet, six open sample supports and glass door."""
+        dimensions = RefrigeratorDimensions()
+        self.current = AssetName.REFRIGERATOR_BASE
+        for box in dimensions.cabinet_boxes():
+            shelf = "shelf" in box.name
+            self.box(
+                box.name.replace("refrigerator_", "Refrigerator ").replace("_", " "),
+                box.center,
+                box.size,
+                MaterialName.STEEL if shelf else MaterialName.WHITE,
+                0.002 if shelf else 0.006,
+            )
+        self.box(
+            "Refrigerator interior liner",
+            (0, 0.2485, 0.43),
+            (0.468, 0.003, 0.575),
+            MaterialName.PALE_TEAL,
+            0.001,
+        )
+        for horizontal in (-0.231, 0.231):
+            self.box(
+                "Refrigerator shelf rail",
+                (horizontal, -0.005, 0.23),
+                (0.008, 0.465, 0.018),
+                MaterialName.WHITE,
+            )
+            self.box(
+                "Refrigerator shelf rail",
+                (horizontal, -0.005, 0.47),
+                (0.008, 0.465, 0.018),
+                MaterialName.WHITE,
+            )
+            self.box(
+                "Refrigerator interior light",
+                (horizontal, -0.23, 0.44),
+                (0.007, 0.008, 0.48),
+                MaterialName.LIGHT,
+                0.002,
+            )
+        for horizontal in (-0.22, 0.22):
+            for depth in (-0.235, 0.235):
+                self.cylinder(
+                    "Refrigerator leveling foot",
+                    (horizontal, depth, 0.01),
+                    0.026,
+                    0.02,
+                    MaterialName.DARK,
+                )
+        self.box(
+            "Refrigerator ventilation plinth",
+            (0, -0.292, 0.08),
+            (0.462, 0.009, 0.092),
+            MaterialName.TEAL,
+            0.004,
+        )
+        for level in range(5):
+            self.box(
+                "Refrigerator ventilation slot",
+                (0, -0.297, 0.052 + level * 0.014),
+                (0.397, 0.0015, 0.0045),
+                MaterialName.DARK,
+                0.0005,
+            )
+        for elevation in (-0.18, 0.18):
+            self.box(
+                "Refrigerator hinge mounting",
+                (
+                    dimensions.door_origin[0],
+                    -0.299,
+                    dimensions.door_origin[2] + elevation,
+                ),
+                (0.022, 0.035, 0.056),
+                MaterialName.STEEL,
+                0.003,
+            )
+        self.logo()
+        self.text(
+            "Refrigerator instrument label",
+            "SAMPLE COOLER",
+            (-0.183, -0.2904, 0.753),
+            0.014,
+            MaterialName.TEAL,
+        )
+        self.box(
+            "Refrigerator display bezel",
+            (dimensions.display[0], -0.291, dimensions.display[2]),
+            (
+                dimensions.display_size[0] + 0.013,
+                0.006,
+                dimensions.display_size[1] + 0.012,
+            ),
+            MaterialName.TEAL,
+            0.003,
+        )
+        self.box(
+            RefrigeratorPart.DISPLAY,
+            dimensions.display,
+            (dimensions.display_size[0], 0.002, dimensions.display_size[1]),
+            MaterialName.DARK,
+            0.0005,
+        )
+        for index, position in enumerate(dimensions.slot_positions()):
+            inner = dimensions.collar_inner_radius
+            outer = dimensions.collar_outer_radius
+            height = dimensions.collar_height
+            self.lathe(
+                f"Refrigerator R{index + 1} sample collar",
+                (
+                    ProfilePoint(inner, 0),
+                    ProfilePoint(outer, 0),
+                    ProfilePoint(outer, height - 0.002),
+                    ProfilePoint(outer - 0.002, height),
+                    ProfilePoint(inner + 0.001, height),
+                    ProfilePoint(inner, height - 0.002),
+                    ProfilePoint(inner, 0),
+                ),
+                MaterialName.TEAL,
+                position,
+            )
+            self.text(
+                f"Refrigerator R{index + 1} label",
+                f"R{index + 1}",
+                (position[0] - 0.008, position[1] - 0.041, position[2] + 0.0002),
+                0.013,
+                MaterialName.TEAL,
+                (0, 0, 0),
+            )
+        self.export_asset(AssetName.REFRIGERATOR_BASE, dimensions.origin)
+
+        self.current = AssetName.REFRIGERATOR_DOOR
+        for box in dimensions.door_boxes():
+            is_glass = box.name == RefrigeratorPart.GLASS
+            name = (
+                "Refrigerator door glass"
+                if is_glass
+                else box.name.replace("refrigerator_", "Refrigerator ").replace(
+                    "_", " "
+                )
+            )
+            self.box(
+                name,
+                box.center,
+                box.size,
+                MaterialName.GLASS if is_glass else MaterialName.TEAL,
+                0.001 if is_glass else 0.004,
+            )
+        for horizontal in (0.038, 0.462):
+            self.box(
+                "Refrigerator glazing gasket",
+                (horizontal, -0.001, 0),
+                (0.006, 0.012, 0.492),
+                MaterialName.DARK,
+                0.001,
+            )
+        for elevation in (-0.244, 0.244):
+            self.box(
+                "Refrigerator glazing gasket",
+                (0.25, -0.001, elevation),
+                (0.425, 0.012, 0.006),
+                MaterialName.DARK,
+                0.001,
+            )
+        for elevation in (-0.18, 0.18):
+            self.cylinder(
+                "Refrigerator door hinge",
+                (0, 0, elevation),
+                0.012,
+                0.062,
+                MaterialName.STEEL,
+            )
+        for elevation in (-0.085, 0.085):
+            self.box(
+                "Refrigerator handle mounting",
+                (0.482, -0.026, elevation),
+                (0.016, 0.035, 0.016),
+                MaterialName.STEEL,
+                0.004,
+            )
+        self.box(
+            "Refrigerator handle",
+            (0.482, -0.044, 0),
+            (0.018, 0.018, 0.203),
+            MaterialName.STEEL,
+            0.006,
+        )
+        self.export_asset(
+            AssetName.REFRIGERATOR_DOOR,
+            tuple(dimensions.world_position(dimensions.door_origin)),
+        )
+        door = bpy.data.objects[AssetName.REFRIGERATOR_DOOR]
+        constraint = door.constraints.new("LIMIT_ROTATION")
+        constraint.name = "Front-left door hinge"
+        constraint.owner_space = "LOCAL"
+        constraint.use_limit_x = constraint.use_limit_y = constraint.use_limit_z = True
+        constraint.min_z = -dimensions.door_open
+        constraint.max_z = 0
+        constraint.use_transform_limit = True
+
+    def build_refrigerator_assets(self) -> None:
+        """Update the editable cold-storage model and preserve every room object."""
+        source = self.options.output / "laboratory.blend"
+        existing_source = source.exists()
+        if existing_source:
+            bpy.ops.wm.open_mainfile(filepath=str(source))
+        else:
+            bpy.ops.object.select_all(action="SELECT")
+            bpy.ops.object.delete(use_global=False)
+        for scene_object in list(bpy.data.objects):
+            if scene_object.name.startswith(("Refrigerator", "refrigerator_")):
+                bpy.data.objects.remove(scene_object, do_unlink=True)
+        (self.options.output / "assets").mkdir(parents=True, exist_ok=True)
+        self.library.build()
+        self.build_refrigerator()
+        if not existing_source:
+            self.setup_render()
+        bpy.context.preferences.filepaths.save_version = 0
+        bpy.ops.wm.save_as_mainfile(filepath=str(source))
+        position = RefrigeratorDimensions().origin
+        scene = bpy.context.scene
+        scene.camera = self.camera(
+            "Refrigerator detail",
+            (position[0] + 0.72, -1.32, 1.07),
+            (position[0], 0, 0.43),
+            53,
+            11,
+        )
+        scene.cycles.samples = self.options.samples
+        scene.cycles.use_denoising = False
+        scene.render.resolution_x = self.options.width
+        scene.render.resolution_y = round(self.options.width * 1.12)
+        scene.render.resolution_percentage = 100
+        scene.render.filepath = str(self.options.output / "render_refrigerator.png")
+        bpy.ops.wm.save_as_mainfile(
+            filepath=str(self.options.output / "refrigerator.blend")
+        )
+        (self.options.output / "assets" / "refrigerator_measurements.json").write_text(
+            json.dumps(self.measurements, indent=2) + "\n"
+        )
+        if self.options.render:
+            bpy.ops.render.render(write_still=True)
+
     def build_pipetting_assets(self) -> None:
         """Add an editable dispenser and detail render without rebuilding the lab."""
         source = self.options.output / "laboratory.blend"
@@ -1854,6 +2107,9 @@ class LaboratoryBuilder:
         if self.options.pipetting_only:
             self.build_pipetting_assets()
             return
+        if self.options.refrigerator_only:
+            self.build_refrigerator_assets()
+            return
         bpy.ops.object.select_all(action="SELECT")
         bpy.ops.object.delete(use_global=False)
         bpy.context.scene.unit_settings.system = "METRIC"
@@ -1879,6 +2135,7 @@ class LaboratoryBuilder:
         self.export_asset(AssetName.STOPPER, (0.50, -0.12, 0.900))
         self.build_centrifuge()
         self.build_pipetting()
+        self.build_refrigerator()
         cameras = self.setup_render()
         bpy.context.scene.camera = cameras[0]
         bpy.context.scene.render.filepath = str(
@@ -1917,6 +2174,7 @@ def main() -> None:
     parser.add_argument("--centrifuge-only", action="store_true")
     parser.add_argument("--pipetting-only", action="store_true")
     parser.add_argument("--branding-only", action="store_true")
+    parser.add_argument("--refrigerator-only", action="store_true")
     parser.add_argument(
         "--view", type=RenderView, choices=list(RenderView), default=RenderView.ALL
     )
@@ -1933,6 +2191,7 @@ def main() -> None:
             arguments.centrifuge_only,
             arguments.pipetting_only,
             arguments.branding_only,
+            arguments.refrigerator_only,
         )
     ).build()
 

@@ -21,6 +21,8 @@ class LaboratoryDevice(StrEnum):
     """Weighing instrument with its pan and open sample support."""
     TUBE_RACK = "tube_rack"
     """Six-position rack retaining open insertion apertures."""
+    REFRIGERATOR = "refrigerator"
+    """Compact sample refrigerator with a glass door and six storage positions."""
 
 
 class DeviceResourceFile(StrEnum):

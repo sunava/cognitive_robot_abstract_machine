@@ -13,12 +13,14 @@
     {id:'dispenser', title:'Dual dispenser', factory:'dispenser', field:'pipetting', pattern:/^(pipetting\b|dispenser aicor logo\b|laboratory pipetting\b)/},
     {id:'scale', title:'Scale', factory:'scale', field:'scale', pattern:/^(balance\b|instrument base\b|laboratory scale\b)/},
     {id:'rack', title:'Tube rack', factory:'rack', field:null, pattern:/^(rack\b|socket identifier\b|laboratory rack\b)/},
+    {id:'refrigerator', title:'Sample refrigerator', factory:'refrigerator', field:'refrigerator', pattern:/^(refrigerator\b|laboratory refrigerator\b)/},
   ]);
   function normalized(value) { return String(value || '').replace(/_/g,' ').toLowerCase(); }
 
   /** Attach each device's own authored metadata to its manual definition. */
   function catalog(config) {
-    return Definitions.map(device => Object.assign({},device,{metadata:device.field ? config[device.field] || {} : {slots:config.rackSlots}}));
+    return Definitions.filter(device => device.id !== 'refrigerator' || config.refrigerator)
+      .map(device => Object.assign({},device,{metadata:device.field ? config[device.field] || {} : {slots:config.rackSlots}}));
   }
 
   /** Recognize the nearest named component without treating the whole room as one object. */

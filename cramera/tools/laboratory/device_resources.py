@@ -94,6 +94,7 @@ class DeviceDefinition:
         return (
             cls(LaboratoryDevice.CENTRIFUGE, "laboratory_centrifuge_base"),
             cls(LaboratoryDevice.DUAL_DISPENSER, "laboratory_pipetting_station"),
+            cls(LaboratoryDevice.REFRIGERATOR, "laboratory_refrigerator_base"),
             cls(
                 LaboratoryDevice.SCALE,
                 "laboratory_balance",
@@ -245,7 +246,7 @@ class DeviceResourceExporter:
     source: Path
     """Laboratory bundle with URDF and material-bearing GLB assets."""
     output: Path
-    """Parent folder receiving the four independently portable resources."""
+    """Parent folder receiving independently portable instrument resources."""
 
     def export(self) -> None:
         """Copy device subtrees while keeping all local collision and joint values."""

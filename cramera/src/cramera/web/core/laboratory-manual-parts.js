@@ -233,5 +233,27 @@
     ];
   }
 
-  return {centrifuge, dispenser, scale, rack};
+  // %% simulated cold storage
+  /** Explain articulated access, physical support and the reduced cabinet thermal model. */
+  function refrigerator(metadata) {
+    return [
+      {id:'door',number:1,title:'Glass door',side:'left',meshNames:['Refrigerator door glass'],
+        description:'Open the door in the Sample refrigerator panel before moving a glass. The hinged door and cabinet resist contact.',
+        describe:snapshot=>!snapshot || !snapshot.available ? 'Door state unknown.' : snapshot.doorOpen ? 'Open · sample access available.' : snapshot.doorClosed ? 'Closed.' : 'Door moving.'},
+      {id:'handle',number:2,title:'Door handle',side:'right',meshNames:['Refrigerator handle'],
+        description:'Use Open door and Close door in the controls. Sample transfers require the door to remain fully open.'},
+      {id:'holders',number:3,title:'Sample holders',side:'left',meshNames:['Refrigerator R1 sample collar'],
+        description:'Six open collars support existing glasses on two shelves. Select R1–R6 and Store selected glass. Retrieve sample returns it to a free rack position.',
+        visible:snapshot=>Boolean(snapshot && snapshot.doorOpen),
+        describe:snapshot=>!snapshot || !snapshot.available ? 'Occupancy unknown.' : snapshot.slots.filter(slot=>slot.key).length+' / '+snapshot.slots.length+' positions occupied.'},
+      {id:'shelf',number:4,title:'Storage shelf',side:'right',meshNames:['Refrigerator shelf 1'],
+        description:'The shelf supports the glass through measured contacts. Manual transfers enter through the front and release only after the sample settles.',
+        visible:snapshot=>Boolean(snapshot && snapshot.doorOpen)},
+      {id:'display',number:5,title:'Cabinet temperature',side:'right',meshNames:['Refrigerator display'],
+        description:'Shows the simulated cabinet temperature. Opening the door warms the cabinet; closing it cools toward the set point. Sample temperatures are not individually simulated.',
+        describe:snapshot=>!snapshot || !snapshot.available || !Number.isFinite(snapshot.temperatureC) ? 'Temperature unknown.' : snapshot.temperatureC.toFixed(1)+' °C · simulated · target '+snapshot.targetTemperatureC.toFixed(1)+' °C'},
+    ];
+  }
+
+  return {centrifuge, dispenser, scale, rack, refrigerator};
 });

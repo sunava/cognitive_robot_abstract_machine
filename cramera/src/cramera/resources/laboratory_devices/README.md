@@ -10,6 +10,7 @@ files embed their material images. Coordinates are metres with Z up.
 | `dual_dispenser` | Dual reservoirs, nozzles, display and receiving cradle | Platform centre at the support surface |
 | `scale` | Housing, weighing pan and open sample support collisions | Centre of the weighing pan |
 | `tube_rack` | Two rows of three open positions | Base centre at the support surface |
+| `refrigerator` | Compact cabinet, articulated glass door and six sample holders | Base centre at floor level |
 
 The portable models retain the laboratory's link names, contact geometry and
 joint limits. `metadata.json` records each original placement in the assembled
@@ -36,10 +37,11 @@ model.copy_to(Path("my_devices"))
 ```
 
 Choose a different parser prefix for each instance to avoid duplicate body and
-joint names. Load all four by iterating over `LaboratoryDevice`.
+joint names. Load every available model by iterating over `LaboratoryDevice`.
 
 These URDFs supply appearance, articulation and collision geometry. Instrument
-controllers, weighing measurements, dispensing liquid, centrifuge interlocks and
+controllers, weighing measurements, dispensing liquid, centrifuge interlocks,
+simulated refrigeration temperatures and
 the existing browser controls are implemented by the laboratory simulation; a
 generic URDF loader does not execute those behaviors automatically. Collision
 apertures use the same compound approximations as the assembled laboratory.

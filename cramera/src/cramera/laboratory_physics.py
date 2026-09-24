@@ -30,6 +30,14 @@ from cramera.laboratory_pipetting import (
     PipettingField,
     PipettingState,
 )
+from cramera.laboratory_refrigerator import (
+    RefrigeratorCollisionModel,
+    LaboratoryRefrigerator,
+)
+from cramera.laboratory_refrigerator_command import (
+    RefrigeratorAction,
+    RefrigeratorField,
+)
 from cramera.laboratory_scale import LaboratoryScale, ScaleGeometry
 from cramera.laboratory_world import LaboratoryAsset, LaboratoryWorld
 
@@ -192,6 +200,7 @@ class LaboratoryCollisionModel:
             self.root,
             tuple(item["key"] for item in self.scene["laboratory"]["tubes"]),
         ).complete()
+        RefrigeratorCollisionModel(self.root).complete()
         return mujoco.MjModel.from_xml_string(
             ElementTree.tostring(self.root, encoding="unicode")
         )
@@ -232,6 +241,7 @@ class LaboratoryCollisionModel:
         body = ElementTree.SubElement(parent, "body", name=name, **pose)
         self._add_collisions(body, links[name], description)
         CentrifugeCollisionModel.add_joint(body, links[name], joint)
+        RefrigeratorCollisionModel.add_joint(body, links[name], joint)
         for child, child_joint in children.items():
             if child_joint.find("parent").attrib["link"] == name:
                 self._add_environment_link(child, links, children, body, description)
@@ -356,6 +366,9 @@ class LaboratoryPhysics:
     centrifuge: LaboratoryCentrifuge = field(init=False)
     """Articulated rotor, measured holder clamps and operating interlocks."""
 
+    refrigerator: LaboratoryRefrigerator = field(init=False)
+    """Physical cabinet door, contact-grounded inventory and reduced cooling."""
+
     pipetting: LaboratoryPipetting = field(init=False)
     """Finite reagent delivery with measured vessel alignment interlocks."""
 
@@ -390,6 +403,12 @@ class LaboratoryPhysics:
             self.scene["laboratory"].get(CentrifugeField.CENTRIFUGE, {}),
             tuple(self.liquid.tubes),
         )
+        self.refrigerator = LaboratoryRefrigerator(
+            self.model,
+            self.data,
+            self.scene["laboratory"].get(RefrigeratorField.REFRIGERATOR, {}),
+            tuple(self.liquid.tubes),
+        )
         self.reset()
 
     def _build_model(self) -> mujoco.MjModel:
@@ -416,6 +435,7 @@ class LaboratoryPhysics:
         self.liquid_mass.synchronize(self.liquid)
         self.centrifuge.reset()
         self.pipetting.reset()
+        self.refrigerator.reset()
         mujoco.mj_forward(self.model, self.data)
         self.scale.reset()
 
@@ -426,6 +446,7 @@ class LaboratoryPhysics:
         if key not in self.objects:
             raise InvalidPhysicsTarget(f"Unknown movable laboratory object: {key}")
         self.centrifuge.validate_manipulation(key)
+        self.refrigerator.validate_manipulation(key)
         if not isinstance(position, (list, tuple)) or len(position) != 3:
             raise InvalidPhysicsTarget("Position must contain three finite numbers")
         if any(
@@ -463,6 +484,7 @@ class LaboratoryPhysics:
     def fill_liquid(self, key: str, volume_ml: float) -> None:
         """Set a tube's liquid quantity without changing its physical pose."""
         self.centrifuge.validate_manipulation(key)
+        self.refrigerator.validate_manipulation(key)
         if (
             self.pipetting.state == PipettingState.DISPENSING
             and self.pipetting.key == key
@@ -497,6 +519,10 @@ class LaboratoryPhysics:
         return frozenset(
             slot.key for slot in self.centrifuge.slots.values() if slot.key is not None
         )
+
+    def refrigerator_command(self, action: RefrigeratorAction | str) -> None:
+        """Request bounded cabinet door motion without moving samples."""
+        self.refrigerator.command(action)
 
     def tare_scale(self) -> None:
         """Zero the balance at its current settled load."""
@@ -587,6 +613,7 @@ class LaboratoryPhysics:
         for _ in range(count):
             self._apply_grasp()
             self.centrifuge.advance(self.timestep)
+            self.refrigerator.advance(self.timestep)
             mujoco.mj_step(self.model, self.data)
             self._observe_contacts()
             self.liquid_elapsed += self.timestep
@@ -650,6 +677,7 @@ class LaboratoryPhysics:
             PipettingField.PIPETTING: self.pipetting.snapshot(),
             PhysicsField.SCALE: self.scale.snapshot(),
             CentrifugeField.CENTRIFUGE: self.centrifuge.snapshot(),
+            RefrigeratorField.REFRIGERATOR: self.refrigerator.snapshot(),
             PhysicsField.TARGET: (
                 None
                 if self.target is None

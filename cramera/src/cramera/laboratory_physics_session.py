@@ -18,6 +18,10 @@ from typing_extensions import Any, ClassVar, Protocol
 from cramera import paths
 from cramera.laboratory_centrifuge_command import CentrifugeCommand, CentrifugeField
 from cramera.laboratory_pipetting_command import PipettingCommand, PipettingField
+from cramera.laboratory_refrigerator_command import (
+    RefrigeratorCommand,
+    RefrigeratorField,
+)
 
 
 # %% contact session contract
@@ -36,6 +40,8 @@ class PhysicsRoute(StrEnum):
     """Operate the finite-reservoir dispensing station."""
     CENTRIFUGE = "/api/laboratory/physics/centrifuge"
     """Operate the articulated laboratory centrifuge."""
+    REFRIGERATOR = "/api/laboratory/physics/refrigerator"
+    """Operate the sample refrigerator door."""
     MANUAL = "/api/laboratory/physics/manual"
     """Read a validated centrifuge operating document."""
     SCALE_TARE = "/api/laboratory/physics/scale/tare"
@@ -94,6 +100,8 @@ class PhysicsField(StrEnum):
     """The contact laboratory controls and bounds."""
     SCALE = "scale"
     """The laboratory scale placement or measured load."""
+    RACK_SLOTS = "rackSlots"
+    """Authored tube support poses available for sample retrieval."""
     BOUNDS = "bounds"
     """The permitted target range in world coordinates."""
     MINIMUM = "min"
@@ -171,6 +179,9 @@ class ContactSimulation(Protocol):
     ) -> None:
         """Operate the physical lid, holder fixture, or timed rotor drive."""
 
+    def refrigerator_command(self, action: str) -> None:
+        """Operate the refrigerator door through its physical actuator."""
+
     def tare_scale(self) -> None:
         """Use the current stable scale load as the zero reference."""
 
@@ -218,7 +229,7 @@ class LaboratoryPhysicsSession:
     """The independent contact laboratory bundle."""
     VIEWER_URL: ClassVar[str] = f"/index.html?scene={SCENE_NAME}&layout=scene&offline=1"
     """The viewer URL isolated from the robot live bridge."""
-    TARGET_MINIMUM: ClassVar[tuple[float, float, float]] = (-0.8, -0.65, 0.8)
+    TARGET_MINIMUM: ClassVar[tuple[float, float, float]] = (-1.55, -0.85, 0.15)
     """The minimum permitted manipulation target coordinates."""
     TARGET_MAXIMUM: ClassVar[tuple[float, float, float]] = (0.8, 0.45, 1.6)
     """The maximum permitted manipulation target coordinates."""
@@ -347,6 +358,17 @@ class LaboratoryPhysicsSession:
         """Reject dose receivers outside the authored object catalog."""
         if command.key is not None and command.key not in self.object_keys:
             raise InvalidPhysicsRequest("Unknown laboratory object")
+
+    def refrigerator_command(self, command: RefrigeratorCommand) -> dict[str, Any]:
+        """Serialize door requests against physical stepping and robot ownership."""
+        with self.lock:
+            self._require_running()
+            self._validate_refrigerator(command)
+            self.physics.refrigerator_command(command.action)
+            return self._status()
+
+    def _validate_refrigerator(self, command: RefrigeratorCommand) -> None:
+        """Allow cabinet operation while manual manipulation owns the session."""
 
     def tare_scale(self) -> dict[str, Any]:
         """Zero the scale while serializing against physical stepping."""
@@ -497,10 +519,15 @@ class LaboratoryPhysicsSession:
                 PhysicsField.MAXIMUM: list(self.TARGET_MAXIMUM),
             },
             PhysicsField.CAMERAS: laboratory.get(PhysicsField.CAMERAS, {}),
+            PhysicsField.RACK_SLOTS: laboratory.get(PhysicsField.RACK_SLOTS, []),
         }
         if PipettingField.PIPETTING in laboratory:
             scene[PhysicsField.PHYSICS][PipettingField.PIPETTING] = laboratory[
                 PipettingField.PIPETTING
+            ]
+        if RefrigeratorField.REFRIGERATOR in laboratory:
+            scene[PhysicsField.PHYSICS][RefrigeratorField.REFRIGERATOR] = laboratory[
+                RefrigeratorField.REFRIGERATOR
             ]
         if CentrifugeField.CENTRIFUGE in laboratory:
             scene[PhysicsField.PHYSICS][CentrifugeField.CENTRIFUGE] = laboratory[
@@ -531,6 +558,11 @@ class LaboratoryPhysicsSession:
         if isinstance(instrument, dict):
             trajectory[PhysicsField.FRAMES][0].update(
                 instrument.get(CentrifugeField.JOINTS, {})
+            )
+        refrigerator = self.physics.snapshot().get(RefrigeratorField.REFRIGERATOR)
+        if isinstance(refrigerator, dict):
+            trajectory[PhysicsField.FRAMES][0].update(
+                refrigerator.get(RefrigeratorField.JOINTS, {})
             )
         (self.output_directory / PhysicsFile.TRAJECTORY).write_text(
             json.dumps(trajectory, indent=2)

@@ -15,6 +15,11 @@ from typing_extensions import Any
 from geometry import LatheMesh, TubeDimensions
 from centrifuge import CentrifugeDescription, CentrifugeDimensions, CentrifugePart
 from pipetting import PipettingDescription, PipettingDimensions
+from refrigerator import (
+    RefrigeratorDescription,
+    RefrigeratorDimensions,
+    RefrigeratorPart,
+)
 
 # %% artifact names and dimensions
 
@@ -46,6 +51,8 @@ class Field(StrEnum):
     CENTRIFUGE = "centrifuge"
     PIPETTING = "pipetting"
     """Fixed dispensing instrument and its receiving target."""
+    REFRIGERATOR = "refrigerator"
+    """Floor-standing sample storage with an articulated glazed door."""
     PAN_POSITION = "panPosition"
     PAN_RADIUS = "panRadius"
     DISPLAY_POSITION = "displayPosition"
@@ -447,10 +454,18 @@ class LaboratoryBundle:
         ] = CentrifugeDimensions().metadata()
         PipettingDescription(description).build()
         self.scene[Field.LABORATORY][Field.PIPETTING] = PipettingDimensions().metadata()
+        RefrigeratorDescription(description).build()
+        self.scene[Field.LABORATORY][
+            Field.REFRIGERATOR
+        ] = RefrigeratorDimensions().metadata()
         model = self.scene["models"][0]
         model["links"] = len(description.root.findall("link"))
         model["movableJoints"].extend(
-            (CentrifugePart.ROTOR_JOINT, CentrifugePart.LID_JOINT)
+            (
+                CentrifugePart.ROTOR_JOINT,
+                CentrifugePart.LID_JOINT,
+                RefrigeratorPart.DOOR_JOINT,
+            )
         )
         description.write(self.output / Artifact.ENVIRONMENT)
 
@@ -603,6 +618,7 @@ class LaboratoryBundle:
                     "collisionAperture": "square approximation",
                     "slots": self.scene[Field.LABORATORY]["rackSlots"],
                 },
+                Field.REFRIGERATOR: RefrigeratorDimensions().metadata(),
                 "tube": {
                     "height": dimensions.height,
                     "outerRadius": dimensions.outer_radius,
@@ -634,6 +650,7 @@ class LaboratoryBundle:
                         drawer_joint: 0.0,
                         CentrifugePart.ROTOR_JOINT: 0.0,
                         CentrifugePart.LID_JOINT: CentrifugeDimensions().open_angle,
+                        RefrigeratorPart.DOOR_JOINT: 0.0,
                     }
                 ],
                 "objects": [initial_objects],
