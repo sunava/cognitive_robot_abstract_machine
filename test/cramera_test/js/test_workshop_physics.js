@@ -395,3 +395,29 @@ test('driver alignment cannot claim success from pose proximity without contact'
   assert.equal(result.ok, false);
   assert.match(result.message, /contact|align/i);
 });
+
+test('lifting a horizontal driver tolerates spring sag before strict upright alignment', async () => {
+  const workshop = new PhysicsWorkshop();
+  workshop.state.objects.driver = [.52, -.26, .946, 0, Math.SQRT1_2, 0, Math.SQRT1_2];
+  workshop.state.thread = {screw: 'screw_1', state: 'seated', driverAligned: false, driverTargetPose: [.28, -.1, 1.13, 0, 0, 0, 1]};
+  const command = workshop.client.command;
+  let now = 0, moves = 0;
+  workshop.controller.clock = {now: () => now, wait: async milliseconds => { now += milliseconds; }};
+  workshop.client.command = async body => {
+    if (body.action === 'move') {
+      moves += 1;
+      workshop.state.objects[body.object] = body.pose.slice();
+      if (moves === 1) {
+        const saggedAngle = Math.PI / 2 + .17;
+        workshop.state.objects.driver.splice(3, 4, 0, Math.sin(saggedAngle / 2), 0, Math.cos(saggedAngle / 2));
+      }
+      if (moves === 3) workshop.state.thread.driverAligned = true;
+    }
+    return command(body);
+  };
+  await workshop.controller.start();
+  const result = await workshop.controller.align('driver');
+  assert.equal(result.ok, true);
+  assert.equal(moves, 3);
+  assert.equal(workshop.controller.snapshot.thread.driverAligned, true);
+});

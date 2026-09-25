@@ -415,6 +415,7 @@
   }
 
   // %% authenticated, authoritative physics
+  const Waypoint = Object.freeze({LIFT: 'lift', TRANSIT: 'transit', FINAL: 'final'});
   const Physics = Object.freeze({POLL_MS: 100, MOVE_STEP: .025, ANGLE_STEP: Math.PI / 12, TARGET_DECIMALS: 6, CLEARANCE: 1.3, POSITION_TOLERANCE: .006, ANGLE_TOLERANCE: .08, WAYPOINT_TIMEOUT_MS: 8000, FINAL_POSITION_TOLERANCE: .0015, FINAL_ANGLE_TOLERANCE: .04, CONTACT_TIMEOUT_MS: 2000});
 
   /** Keep all workshop requests inside the current authenticated viewer mount. */
@@ -573,7 +574,8 @@
     drive(direction) { return this.command({action: 'drive', direction}, direction ? 'Driver torque active. Alignment and thread contact are checked by physics.' : 'Driver stopped.'); }
 
     /** Stop at blocked contacts instead of continuing from an unachieved target. */
-    async waitForPose(key, desired, revision, final = false) {
+    async waitForPose(key, desired, revision, phase = Waypoint.TRANSIT) {
+      const final = phase === Waypoint.FINAL;
       const positionTolerance = final ? Physics.FINAL_POSITION_TOLERANCE : Physics.POSITION_TOLERANCE;
       const angleTolerance = final ? Physics.FINAL_ANGLE_TOLERANCE : Physics.ANGLE_TOLERANCE;
       const deadline = this.clock.now() + Physics.WAYPOINT_TIMEOUT_MS;
@@ -583,7 +585,7 @@
         const distance = Math.hypot(...actual.slice(0, 3).map((value, axis) => value - desired[axis]));
         const dot = Math.abs(actual.slice(3).reduce((sum, value, axis) => sum + value * desired[axis + 3], 0));
         const angle = 2 * Math.acos(Math.min(1, dot));
-        if (distance <= positionTolerance && angle <= angleTolerance) return {ok: true};
+        if (distance <= positionTolerance && (phase === Waypoint.LIFT || angle <= angleTolerance)) return {ok: true};
         await this.clock.wait(Physics.POLL_MS);
         await this.poll();
       }
@@ -625,11 +627,11 @@
         const height = Math.max(this.config.liftHeight || Physics.CLEARANCE, actual[2], goal[2] + .1);
         const raised = actual.slice(); raised[2] = height;
         const above = goal.slice(); above[2] = height;
-        for (const waypoint of [raised, above, goal]) {
+        for (const [waypoint, phase] of [[raised, Waypoint.LIFT], [above, Waypoint.TRANSIT], [goal, Waypoint.FINAL]]) {
           if (revision !== this.alignmentRevision) return {ok: false, message: 'Alignment stopped.'};
           result = await this.moveTo(waypoint);
           if (!result.ok) return result;
-          result = await this.waitForPose(key, waypoint, revision, waypoint === goal);
+          result = await this.waitForPose(key, waypoint, revision, phase);
           if (!result.ok) return result;
         }
         if (kind !== 'driver') {
