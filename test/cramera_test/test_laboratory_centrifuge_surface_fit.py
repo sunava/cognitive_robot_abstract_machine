@@ -31,7 +31,7 @@ def centrifuge_surfaces() -> dict[str, trimesh.Trimesh]:
     """
     path = (
         Path(__file__).parents[2]
-        / "cramera/src/cramera/resources/precision_lab/assets/centrifuge_base.glb"
+        / "cramera/src/cramera/resources/aicor_medical_lab/assets/centrifuge_base.glb"
     )
     scene = trimesh.load(path, force="scene", process=False, merge_primitives=True)
     return {name: scene.geometry[scene.graph[name][1]] for name in CentrifugeSurface}

@@ -83,7 +83,7 @@ def test_packaged_world_includes_the_reserve_glass() -> None:
     """
     packaged = (
         Path(__file__).resolve().parents[2]
-        / "cramera/src/cramera/resources/precision_lab"
+        / "cramera/src/cramera/resources/aicor_medical_lab"
     )
     world = LaboratoryEnvironment(bundle_directory=packaged).create_world()
     assert isinstance(

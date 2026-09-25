@@ -311,11 +311,11 @@ steht und alle Probenhalter freigegeben sind. Dadurch kann ein neuer Demolauf
 keinen laufenden Zentrifugierzyklus zurücksetzen.
 
 Die editierbare Blender-Datei liegt unter
-`~/.cramera/scenes/precision_lab/centrifuge.blend`. Ein gezielter Neuaufbau ergänzt
+`~/.cramera/scenes/aicor_medical_lab/centrifuge.blend`. Ein gezielter Neuaufbau ergänzt
 die Zentrifuge, ohne die bisherigen GLB-Modelle des Labors neu zu exportieren:
 
 ```bash
-blender --background --python cramera/tools/laboratory/build_blender.py -- --output /home/hassouna/.cramera/scenes/precision_lab --centrifuge-only --samples 48 --width 1100
+blender --background --python cramera/tools/laboratory/build_blender.py -- --output /home/hassouna/.cramera/scenes/aicor_medical_lab --centrifuge-only --samples 48 --width 1100
 .venv/bin/python cramera/tools/laboratory/bundle.py
 ```
 
@@ -329,20 +329,20 @@ verändertem Rotorwinkel sowie den Betrieb an der Obergrenze von 300 U/min:
 
 ## Umgesetzter erster Prototyp
 
-Die Szene `precision_lab` enthält eine gestaltete Laborbank mit Regal und
+Die Szene `aicor_medical_lab` enthält eine gestaltete Laborbank mit Regal und
 Laborzubehör, eine ausziehbare Schublade, einen Ständer mit sechs offenen
 Steckplätzen, drei unabhängige Hohlgläser und einen abnehmbaren Stopfen.
 Zwei Gläser enthalten getrennte sichtbare Flüssigkeitskörper.
 
 Die lokale Vorschau ist unter
-[Laborbank in CRAMERA](http://127.0.0.1:8716/index.html?scene=precision_lab&layout=scene&offline=1)
+[Laborbank in CRAMERA](http://127.0.0.1:8716/index.html?scene=aicor_medical_lab&layout=scene&offline=1)
 erreichbar, solange der Vorschauprozess läuft. Rechts befindet sich die Bedienung
 für Schublade, Glasaufnahme, Einsetzen, Stopfen, Kameras und Zurücksetzen.
 Gläser werden über diese Bedienung bewegt; freies Ziehen ist hier abgeschaltet,
 damit die angezeigte Belegung der Steckplätze konsistent bleibt.
 
 Die Blender-Datei und erzeugten Assets liegen lokal unter
-`~/.cramera/scenes/precision_lab/`:
+`~/.cramera/scenes/aicor_medical_lab/`:
 
 - `laboratory.blend`: editierbare Modelle, Materialien und zwei Kameras.
 - `render_overview.png`, `render_closeup.png`: Cycles-Referenzbilder.
@@ -408,7 +408,7 @@ Flüssigkeitsmaterialien bleiben erhalten. Live-Ansicht und Aufzeichnung enthalt
 keine manuelle Glassteuerung.
 
 Die PR2-Demo liest Kamera, Belichtung, Umgebungsverschattung und Materialerhaltung
-direkt aus der ursprünglichen `precision_lab/scene.json`. Dieselben Einstellungen
+direkt aus der ursprünglichen `aicor_medical_lab/scene.json`. Dieselben Einstellungen
 gelten für den Live-Export und die gespeicherte Aufzeichnung. Auch asynchron
 nachgeladene Reagenzgläser behalten ihre Glasbehandlung und leuchtenden
 Materialanteile. Der Export übernimmt ausschließlich die Darstellungsvorgaben;
@@ -562,9 +562,9 @@ Bruchgrenzen der Gläser.
 Vom Repository-Verzeichnis aus:
 
 ```bash
-blender --background --python cramera/tools/laboratory/build_blender.py -- --output /home/hassouna/.cramera/scenes/precision_lab --samples 160 --width 1600
+blender --background --python cramera/tools/laboratory/build_blender.py -- --output /home/hassouna/.cramera/scenes/aicor_medical_lab --samples 160 --width 1600
 .venv/bin/python cramera/tools/laboratory/bundle.py
-CRAMERA_SCENE=precision_lab .venv/bin/python -m cramera.server 8716 --no-browser
+CRAMERA_SCENE=aicor_medical_lab .venv/bin/python -m cramera.server 8716 --no-browser
 ```
 
 Blender erstellt zuerst die sichtbaren Modelle; der Bundle-Schritt schreibt die

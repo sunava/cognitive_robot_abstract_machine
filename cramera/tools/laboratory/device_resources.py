@@ -659,7 +659,7 @@ def main() -> None:
     """Export reusable models from an authored laboratory bundle."""
     parser = argparse.ArgumentParser(description=__doc__)
     resources = Path(__file__).resolve().parents[2] / "src/cramera/resources"
-    parser.add_argument("--source", type=Path, default=resources / "precision_lab")
+    parser.add_argument("--source", type=Path, default=resources / "aicor_medical_lab")
     parser.add_argument("--output", type=Path, default=resources / "laboratory_devices")
     parser.add_argument(
         "--prepare-rack",

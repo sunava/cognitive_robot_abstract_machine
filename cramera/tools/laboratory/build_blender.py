@@ -1,9 +1,9 @@
-"""Build the precision laboratory and its independently movable GLB assets.
+"""Build the AICOR medical laboratory and its independently movable GLB assets.
 
 Run with Blender 4.0.2::
 
     blender --background --python cramera/tools/laboratory/build_blender.py -- \
-        --output /home/hassouna/.cramera/scenes/precision_lab --samples 160
+        --output /home/hassouna/.cramera/scenes/aicor_medical_lab --samples 160
 """
 
 from __future__ import annotations
@@ -2226,7 +2226,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path.home() / ".cramera" / "scenes" / "precision_lab",
+        default=Path.home() / ".cramera" / "scenes" / "aicor_medical_lab",
     )
     parser.add_argument("--samples", type=int, default=BuildOptions.samples)
     parser.add_argument("--width", type=int, default=BuildOptions.width)

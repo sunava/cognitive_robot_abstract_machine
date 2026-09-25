@@ -132,7 +132,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       throw error;
     }
     console.warn('[cramera] 3D renderer unavailable:', error);
-    const laboratoryControls = SceneContext.name() === 'precision_lab';
+    const laboratoryControls = ['aicor_medical_lab', 'precision_lab'].includes(SceneContext.name());
     root.innerHTML =
       '<div class="panel-head"><h2>Semantic Digital Twin Scene</h2></div>' +
       '<div class="panel-error">' +

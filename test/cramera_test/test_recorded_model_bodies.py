@@ -35,7 +35,7 @@ def recorded_carrier(
     """
     source = (
         Path(__file__).resolve().parents[2]
-        / "cramera/src/cramera/resources/precision_lab/environment.urdf"
+        / "cramera/src/cramera/resources/aicor_medical_lab/environment.urdf"
     )
     laboratory = URDFParser.from_file(str(source), prefix=request.param).parse()
     world = cylinder_bot_world

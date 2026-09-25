@@ -97,7 +97,7 @@ start_share() {
     }
     curl --fail --silent --max-time 3 "$share_backend_url/api/laboratory/physics/robot/state" >/dev/null || {
         echo "Start the local laboratory server first:" >&2
-        printf 'cd %q && CRAMERA_SCENE=precision_lab .venv/bin/python -m cramera.server 8716 --no-browser\n' "$share_repository" >&2
+        printf 'cd %q && CRAMERA_SCENE=aicor_medical_lab .venv/bin/python -m cramera.server 8716 --no-browser\n' "$share_repository" >&2
         return 1
     }
     mkdir -p -- "$share_state"

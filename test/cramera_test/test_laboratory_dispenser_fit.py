@@ -65,7 +65,7 @@ def dispenser_meshes() -> DispenserMeshes:
     """
     asset = (
         Path(__file__).parents[2]
-        / "cramera/src/cramera/resources/precision_lab/assets"
+        / "cramera/src/cramera/resources/aicor_medical_lab/assets"
         / f"{BrandedAsset.PIPETTING}.glb"
     )
     return DispenserMeshes(trimesh.load(asset, merge_primitives=True))

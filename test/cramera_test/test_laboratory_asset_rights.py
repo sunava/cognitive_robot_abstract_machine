@@ -90,7 +90,9 @@ def standalone_device(tmp_path: Path) -> Path:
     """
     Copy one real laboratory mesh and description into an isolated export.
     """
-    source = Path(__file__).parents[2] / "cramera/src/cramera/resources/precision_lab"
+    source = (
+        Path(__file__).parents[2] / "cramera/src/cramera/resources/aicor_medical_lab"
+    )
     directory = tmp_path / "device"
     (directory / "assets").mkdir(parents=True)
     shutil.copyfile(source / "stopper.urdf", directory / "device.urdf")

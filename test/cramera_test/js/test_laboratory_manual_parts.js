@@ -7,7 +7,7 @@ const test = require('node:test');
 const Parts = require('../../../cramera/src/cramera/web/core/laboratory-manual-parts.js');
 
 // %% authoritative authored fixture
-const resources = path.resolve(__dirname, '../../../cramera/src/cramera/resources/precision_lab');
+const resources = path.resolve(__dirname, '../../../cramera/src/cramera/resources/aicor_medical_lab');
 const metadata = JSON.parse(fs.readFileSync(path.join(resources, 'scene.json'))).laboratory.centrifuge;
 
 /** An observed instrument with an editable manual, retaining the packaged slot topology. */

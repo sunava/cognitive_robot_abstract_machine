@@ -21,7 +21,7 @@ def test_packaged_station_exposes_the_display_and_reservoir_meshes() -> None:
     Runtime display and fill updates can resolve the actual authored mesh names.
     """
     directory = (
-        Path(__file__).parents[2] / "cramera/src/cramera/resources/precision_lab"
+        Path(__file__).parents[2] / "cramera/src/cramera/resources/aicor_medical_lab"
     )
     scene = json.loads((directory / "scene.json").read_text())
     instrument = scene["laboratory"]["pipetting"]

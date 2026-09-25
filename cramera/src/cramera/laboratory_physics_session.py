@@ -229,7 +229,7 @@ class LaboratoryPhysicsSession:
     object_keys: set[str] = field(default_factory=set, init=False)
     """The manipulable authored object identifiers."""
 
-    SOURCE_SCENE: ClassVar[str] = "precision_lab"
+    SOURCE_SCENE: ClassVar[str] = "aicor_medical_lab"
     """The immutable authored laboratory scene."""
     SCENE_NAME: ClassVar[str] = "precision_lab_physics"
     """The independent contact laboratory bundle."""
@@ -269,7 +269,7 @@ class LaboratoryPhysicsSession:
                 directory = paths.resolve_scene_directory(self.SOURCE_SCENE)
                 if directory is None:
                     raise FileNotFoundError(
-                        "The authored precision laboratory is missing"
+                        "The authored AICOR medical laboratory is missing"
                     )
                 self.physics = self._create_physics(directory)
                 self._write_scene(directory)

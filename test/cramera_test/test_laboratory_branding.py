@@ -141,7 +141,7 @@ def branded_body(request: pytest.FixtureRequest) -> BrandedBody:
     """Read each distributable instrument without requiring Blender in CI."""
     path = (
         Path(__file__).parents[2]
-        / "cramera/src/cramera/resources/precision_lab/assets"
+        / "cramera/src/cramera/resources/aicor_medical_lab/assets"
         / f"{request.param}.glb"
     )
     content = path.read_bytes()

@@ -21,7 +21,7 @@ def test_refrigerator_copy_retains_its_articulated_door(tmp_path: Path) -> None:
     folder = resource.copy_to(tmp_path)
     model = LaboratoryDeviceResource(LaboratoryDevice.REFRIGERATOR, tmp_path)
     world = URDFParser.from_file(str(model.urdf), prefix="").parse()
-    scene_path = resource.directory.parents[1] / "precision_lab/scene.json"
+    scene_path = resource.directory.parents[1] / "aicor_medical_lab/scene.json"
     instrument = json.loads(scene_path.read_text())["laboratory"]["refrigerator"]
     description = ElementTree.parse(model.urdf)
     joint = description.find(f"joint[@name='{instrument['doorJoint']}']")

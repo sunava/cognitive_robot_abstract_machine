@@ -17,7 +17,7 @@ def test_branding_refresh_separates_carrier_in_an_existing_source(
     """
     Selective source refresh preserves the independently movable rack contract.
     """
-    source = Path.home() / ".cramera/scenes/precision_lab/laboratory.blend"
+    source = Path.home() / ".cramera/scenes/aicor_medical_lab/laboratory.blend"
     blender = shutil.which("blender")
     if blender is None or not source.is_file():
         pytest.skip("Blender and the editable laboratory source are unavailable")

@@ -35,7 +35,7 @@ from semantic_digital_twin.world_description.shape_collection import ShapeCollec
 class LaboratoryAsset(StrEnum):
     """Authored scene files consumed by the simulation."""
 
-    SCENE_NAME = "precision_lab"
+    SCENE_NAME = "aicor_medical_lab"
     """Scene identifier resolved through CRAMERA's scene roots."""
     SCENE = "scene.json"
     """Manifest declaring the environment and independent objects."""

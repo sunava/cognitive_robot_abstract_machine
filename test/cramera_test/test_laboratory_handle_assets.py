@@ -27,7 +27,7 @@ def test_lid_visual_reaches_the_authored_handle_surface(
     size = np.fromstring(handle.find("geometry/box").attrib["size"], sep=" ")
     resource = (
         Path(__file__).resolve().parents[2]
-        / "cramera/src/cramera/resources/precision_lab/assets/centrifuge_lid.glb"
+        / "cramera/src/cramera/resources/aicor_medical_lab/assets/centrifuge_lid.glb"
     )
     lid = trimesh.load_scene(resource).to_mesh()
     assert lid.bounds[1, 2] == pytest.approx(center[2] + size[2] / 2, abs=0.0001)

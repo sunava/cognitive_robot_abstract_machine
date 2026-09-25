@@ -14,7 +14,7 @@ The package metadata identifies its combination of software and asset terms.
 
 ## Where the notices travel
 
-- The assembled `resources/precision_lab/` bundle contains `LICENSE.txt`,
+- The assembled `resources/aicor_medical_lab/` bundle contains `LICENSE.txt`,
   `NOTICE.md` and `rights.json`.
 - The device catalog and every independent `resources/laboratory_devices/<device>/`
   folder contain the same three documents.

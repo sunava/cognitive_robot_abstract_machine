@@ -116,6 +116,28 @@ test('unrelated renderer failures still reach the panel registry', () => {
 });
 
 // %% laboratory operation without GPU rendering
+test('AICOR medical lab fallback keeps native PR2 controls reachable', () => {
+  const scene = new UnavailableScene(new Error('Error creating WebGL context.'));
+  scene.window.location.search = '?scene=aicor_medical_lab&layout=scene&offline=1';
+  scene.mount();
+  const link = scene.root.querySelector('#laboratory-pr2-controls');
+  assert.ok(link);
+  assert.equal(link.href, 'laboratory-pr2.html');
+});
+
+for (const page of ['laboratory-pr2.html', 'laboratory-live.html']) {
+  test('AICOR medical lab is the workbench return destination from ' + page, () => {
+    const source = fs.readFileSync(path.join(WEB, page), 'utf8');
+    const anchor = source.match(/<a\b[^>]*href="([^"]+)"/);
+    assert.ok(anchor);
+    const destination = new URL(anchor[1].replaceAll('&amp;', '&'), 'https://example.test/laboratory/');
+    assert.equal(destination.pathname, '/laboratory/index.html');
+    assert.equal(destination.searchParams.get('scene'), 'aicor_medical_lab');
+    assert.equal(destination.searchParams.get('layout'), 'scene');
+    assert.equal(destination.searchParams.get('offline'), '1');
+  });
+}
+
 test('the precision laboratory fallback keeps native PR2 controls reachable', () => {
   const scene = new UnavailableScene(new Error('Error creating WebGL context.'));
   scene.window.location.search = '?scene=precision_lab&layout=scene&offline=1';

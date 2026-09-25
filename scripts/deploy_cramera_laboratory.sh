@@ -26,7 +26,7 @@ case "${1:-stage}" in
             cramera/scenes/pr2_breakfast_c/pr2_with_ft2_cableguide.urdf > "$deployment_assets"
         rsync -az --files-from="$deployment_assets" -e "$deployment_transport" ./ "$deployment_host:/srv/cramera-laboratory/"
         rsync -az --exclude='__pycache__' --exclude='*.blend' -e "$deployment_transport" \
-            "$deployment_scenes/precision_lab" "$deployment_scenes/precision_lab_pr2" \
+            "$deployment_scenes/aicor_medical_lab" "$deployment_scenes/precision_lab_pr2" \
             "$deployment_scenes/precision_lab_pr2_physics" "$deployment_host:/var/lib/cramera-laboratory/scenes/"
         "${deployment_ssh[@]}" "$deployment_host" 'umask 077; cat > /etc/cramera-laboratory/password' < "$deployment_password"
         ;;

@@ -76,7 +76,7 @@ def bottle_models() -> dict[BottleAsset, trimesh.Scene]:
     """Load the actual packaged visuals without merging independently named parts."""
     directory = (
         Path(__file__).resolve().parents[2]
-        / "cramera/src/cramera/resources/precision_lab/assets"
+        / "cramera/src/cramera/resources/aicor_medical_lab/assets"
     )
     return {
         asset: trimesh.load(

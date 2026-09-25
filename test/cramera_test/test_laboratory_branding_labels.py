@@ -36,7 +36,7 @@ def recording_directory(tmp_path: Path) -> Path:
     "manifest",
     [
         "cramera/tools/laboratory/specification.json",
-        "cramera/src/cramera/resources/precision_lab/scene.json",
+        "cramera/src/cramera/resources/aicor_medical_lab/scene.json",
     ],
 )
 def test_authored_laboratory_display_name_preserves_scene_identity(

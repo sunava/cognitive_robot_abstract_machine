@@ -29,6 +29,22 @@ def laboratory_directory(tmp_path: Path) -> Path:
     return tmp_path
 
 
+# %% canonical resource identity
+
+
+def test_scene_and_environment_use_the_medical_lab_resource_name(
+    laboratory_directory: Path,
+) -> None:
+    """Fresh exports identify the AICOR medical laboratory consistently."""
+    scene = json.loads((laboratory_directory / "scene.json").read_text())
+    environment = ElementTree.parse(laboratory_directory / "environment.urdf")
+    assert scene["name"] == "aicor_medical_lab"
+    assert environment.getroot().attrib["name"] == scene["name"]
+
+
+# %% independent sample geometry
+
+
 class TestSeparateLaboratoryObjects:
     """Each tube and the stopper retain an independent pose and collision model."""
 

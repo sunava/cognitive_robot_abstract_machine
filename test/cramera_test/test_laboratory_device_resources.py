@@ -25,7 +25,7 @@ def device_resources(laboratory_directory: Path) -> tuple[Path, Path]:
     Export actual authored visuals alongside freshly generated descriptions.
     """
     repository = Path(__file__).resolve().parents[2]
-    source = repository / "cramera/src/cramera/resources/precision_lab/assets"
+    source = repository / "cramera/src/cramera/resources/aicor_medical_lab/assets"
     shutil.copytree(source, laboratory_directory / "assets", dirs_exist_ok=True)
     output = laboratory_directory / "devices"
     result = subprocess.run(

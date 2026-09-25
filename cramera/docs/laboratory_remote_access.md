@@ -50,7 +50,7 @@ The laboratory runs on the workstation in this checkout:
 `/home/hassouna/cram-worktrees/cram-viz`, branch `cramera-port`.
 Its application code is in `cramera/src/cramera`, and browser code is in
 `cramera/src/cramera/web`. Generated laboratory scenes are stored in
-`~/.cramera/scenes/precision_lab*`.
+`~/.cramera/scenes/aicor_medical_lab*`.
 
 The public share uses a password-protected laboratory gateway on
 `127.0.0.1:8717`, followed by a Cloudflare Quick Tunnel providing HTTPS.
@@ -63,7 +63,7 @@ Start the usual laboratory server if it is not already running:
 
 ```bash
 cd /home/hassouna/cram-worktrees/cram-viz
-CRAMERA_SCENE=precision_lab .venv/bin/python -m cramera.server 8716 --no-browser
+CRAMERA_SCENE=aicor_medical_lab .venv/bin/python -m cramera.server 8716 --no-browser
 ```
 
 In another terminal, start the share:

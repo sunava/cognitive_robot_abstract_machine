@@ -49,8 +49,10 @@ def test_pr2_transfers_the_glass_to_a3_with_collision_avoidance() -> None:
     """
     A native grasp carries the glass above its neighbours and releases in A3.
     """
-    if paths.resolve_scene_directory("precision_lab") is None:
-        pytest.skip("Build the precision_lab asset bundle to run its native acceptance")
+    if paths.resolve_scene_directory("aicor_medical_lab") is None:
+        pytest.skip(
+            "Build the aicor_medical_lab asset bundle to run its native acceptance"
+        )
     laboratory = LaboratoryWorld()
     demonstration = LaboratoryDemo(laboratory=laboratory)
     world = demonstration.build_simulated_world()

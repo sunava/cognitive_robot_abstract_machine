@@ -29,7 +29,7 @@ def prepared_rack_assets(laboratory_directory: Path) -> Path:
     """
     repository = Path(__file__).resolve().parents[2]
     shutil.copytree(
-        repository / "cramera/src/cramera/resources/precision_lab/assets",
+        repository / "cramera/src/cramera/resources/aicor_medical_lab/assets",
         laboratory_directory / "assets",
         dirs_exist_ok=True,
     )
