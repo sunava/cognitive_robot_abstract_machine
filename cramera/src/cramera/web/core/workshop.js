@@ -785,6 +785,8 @@
       for (const direction of [-1, 1]) button(axes, name + (direction < 0 ? ' −' : ' +'), () => controller.tilt(axis, direction * Physics.ANGLE_STEP), held);
     }
     const observation = element('p', inventory, 'workshop-held');
+    const editor = element('a', body, 'workshop-demo', 'Arrange a scene in Scene Builder');
+    editor.href = 'scene_builder.html';
     const threadSection = element('details', body, 'workshop-thread');
     element('summary', threadSection, null, 'Screw driving');
     element('p', threadSection, 'workshop-note', 'Select a screw and use Position screw, then Align driver. Each move lifts above the bench first. The tool applies torque; an ideal thread constraint couples rotation and insertion. No material removal is simulated.');

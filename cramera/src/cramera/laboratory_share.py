@@ -22,6 +22,8 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from typing_extensions import ClassVar
 
 from cramera import paths
+from cramera.scene_builder import SceneBuilderService
+from cramera.scene_builder_http import SceneBuilderHttp, SceneBuilderRoute
 from cramera.laboratory_branding import LaboratoryBranding
 from cramera.laboratory_robot_session import RobotPhysicsRoute
 from cramera.mesh_format import MeshFormat
@@ -128,6 +130,10 @@ class ShareOptions:
     """Optional explicit workshop recording exposed beside the workshop."""
     path_prefix: str = ""
     """Optional public mount path without a trailing slash."""
+    builder_directory: Path | None = None
+    """Explicit library of named model roots available to workshop authoring."""
+    builder_drafts_directory: Path | None = None
+    """Writable scene document store independent of immutable model releases."""
 
     def __post_init__(self) -> None:
         """Reject ambiguous mount paths before they can affect public routes."""
@@ -190,6 +196,8 @@ class ShareOptions:
         parser.add_argument("--public-origin-file", type=Path, required=True)
         parser.add_argument("--path-prefix", default="")
         parser.add_argument("--scene-directory", type=Path)
+        parser.add_argument("--builder-directory", type=Path)
+        parser.add_argument("--builder-drafts-directory", type=Path)
         parser.add_argument("--replay-directory", type=Path)
         parser.add_argument(
             "--scene-name",
@@ -267,11 +275,15 @@ class LaboratoryAssets:
     def _web_files(self) -> None:
         """Allow the viewer's declared scripts, styles and images."""
         root = paths.WEB_ROOT.resolve()
-        manifest = root / ShareFile.INDEX
-        parser = DocumentDependencies()
-        parser.feed(manifest.read_text())
-        pending = [AssetReference(manifest, str(ShareFile.INDEX))]
-        pending.extend(AssetReference(manifest, ref) for ref in parser.references)
+        manifests = [root / ShareFile.INDEX]
+        if self.scene_name == SharedScene.WORKSHOP:
+            manifests.append(root / str(SceneBuilderRoute.PAGE).lstrip("/"))
+        pending = []
+        for manifest in manifests:
+            parser = DocumentDependencies()
+            parser.feed(manifest.read_text())
+            pending.append(AssetReference(manifest, manifest.name))
+            pending.extend(AssetReference(manifest, ref) for ref in parser.references)
         resolver = OfflineSceneAssets(root)
         while pending:
             reference = pending.pop()
@@ -405,6 +417,8 @@ class LaboratoryShareServer(ThreadingHTTPServer):
     """Allowed public assets."""
     workshop_physics: WorkshopSession | None
     """Dedicated workshop contact world, absent from laboratory gateways."""
+    scene_builder: SceneBuilderHttp | None
+    """Isolated authoring library and document store for the workshop gateway."""
     daemon_threads: ClassVar[bool] = True
     """Discard incomplete connections when shutting down."""
 
@@ -430,6 +444,25 @@ class LaboratoryShareServer(ThreadingHTTPServer):
             if options.scene_name == SharedScene.WORKSHOP
             else None
         )
+        self.scene_builder = None
+        if options.scene_name == SharedScene.WORKSHOP:
+            roots = {"scene": directory}
+            if options.replay_directory is not None:
+                roots["replay"] = options.replay_directory
+            if options.builder_directory is not None:
+                roots = {
+                    child.name: child
+                    for child in options.builder_directory.iterdir()
+                    if child.is_dir() and not child.is_symlink()
+                }
+            self.scene_builder = SceneBuilderHttp(
+                service=SceneBuilderService(
+                    roots=roots,
+                    drafts_directory=options.builder_drafts_directory
+                    or paths.data_directory() / "scene-builder",
+                    url_prefix=options.public_path(SceneBuilderRoute.ASSETS),
+                )
+            )
         super().__init__((ShareOptions.LOOPBACK, options.port), ShareHandler)
 
     def server_close(self) -> None:
@@ -506,7 +539,7 @@ class ShareHandler(BaseHTTPRequestHandler):
             if not route.startswith(prefix + "/"):
                 return None
             route = route.removeprefix(prefix)
-        if parsed.query and route != ShareRoute.INDEX:
+        if parsed.query and route not in (ShareRoute.INDEX, SceneBuilderRoute.TEMPLATE):
             return None
         return route
 
@@ -613,9 +646,20 @@ class ShareHandler(BaseHTTPRequestHandler):
             self._reply(HTTPStatus.BAD_REQUEST, b"Invalid login form.")
             return
         password = form.get("password", [])
+        destination = form.get("next", [self.server.options.viewer_route])
         if (
-            set(form) != {"password"}
+            set(form) - {"password", "next"}
             or len(password) != 1
+            or len(destination) != 1
+            or destination[0]
+            not in (
+                self.server.options.viewer_route,
+                *(
+                    [SceneBuilderRoute.PAGE]
+                    if self.server.scene_builder is not None
+                    else []
+                ),
+            )
             or not hmac.compare_digest(password[0].encode(), self.server.password)
         ):
             self._reply(HTTPStatus.UNAUTHORIZED, b"Incorrect password.")
@@ -623,9 +667,7 @@ class ShareHandler(BaseHTTPRequestHandler):
         self._reply(
             HTTPStatus.SEE_OTHER,
             headers={
-                "Location": self.server.options.public_path(
-                    self.server.options.viewer_route
-                ),
+                "Location": self.server.options.public_path(destination[0]),
                 "Set-Cookie": (
                     f"{self.server.options.cookie_name}={self.server.session}; "
                     "Path=/; HttpOnly; SameSite=Strict; Secure"
@@ -675,12 +717,23 @@ class ShareHandler(BaseHTTPRequestHandler):
             self._reply(HTTPStatus.NOT_FOUND)
             return
         if not self._authenticated():
-            if route in (ShareRoute.ROOT, ShareRoute.INDEX, ShareRoute.LOGIN):
+            builder_login = (
+                route == SceneBuilderRoute.PAGE
+                and self.server.scene_builder is not None
+            )
+            if (
+                route in (ShareRoute.ROOT, ShareRoute.INDEX, ShareRoute.LOGIN)
+                or builder_login
+            ):
+                login = (paths.WEB_ROOT / ShareFile.LOGIN).read_bytes()
+                if builder_login:
+                    login = login.replace(
+                        b'<label for="password">',
+                        b'<input type="hidden" name="next" value="/scene_builder.html"><label for="password">',
+                    )
                 self._reply(
                     HTTPStatus.OK,
-                    self._public_payload(
-                        ShareFile.LOGIN, (paths.WEB_ROOT / ShareFile.LOGIN).read_bytes()
-                    ),
+                    self._public_payload(ShareFile.LOGIN, login),
                     "text/html; charset=utf-8",
                 )
             else:
@@ -705,6 +758,10 @@ class ShareHandler(BaseHTTPRequestHandler):
             return
         if self.server.options.robot_controls and route == RobotPhysicsRoute.STATE:
             self._proxy(route)
+            return
+        if self.server.scene_builder is not None and SceneBuilderHttp.handles(route):
+            response = self.server.scene_builder.get(route, urlsplit(self.path).query)
+            self._reply(response.status, response.body, response.content_type)
             return
         if self.server.workshop_physics is not None and route == WorkshopRoute.STATE:
             self._reply(
@@ -744,6 +801,9 @@ class ShareHandler(BaseHTTPRequestHandler):
         workshop_command = (
             route == WorkshopRoute.COMMAND and self.server.workshop_physics is not None
         )
+        builder_command = (
+            route == SceneBuilderRoute.DRAFTS and self.server.scene_builder is not None
+        )
         if (
             route != ShareRoute.LOGIN
             and (
@@ -756,6 +816,7 @@ class ShareHandler(BaseHTTPRequestHandler):
                 }
             )
             and not workshop_command
+            and not builder_command
         ):
             self._reply(HTTPStatus.NOT_FOUND)
             return
@@ -766,6 +827,12 @@ class ShareHandler(BaseHTTPRequestHandler):
             return
         if workshop_command:
             self._workshop_command()
+            return
+        if builder_command:
+            body = self._body("application/json", SceneBuilderHttp.MAX_BODY_BYTES)
+            if body is not None:
+                response = self.server.scene_builder.post(route, body)
+                self._reply(response.status, response.body, response.content_type)
             return
         maximum_bytes = (
             ShareOptions.MAX_MANUAL_BODY_BYTES

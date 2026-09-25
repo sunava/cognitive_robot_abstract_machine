@@ -47,9 +47,11 @@ from dataclasses import dataclass
 from http import HTTPMethod, HTTPStatus
 from pathlib import Path
 from typing_extensions import Any, Callable, ClassVar, Dict, List, Optional
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from cramera import paths
+from cramera.scene_builder import SceneBuilderService
+from cramera.scene_builder_http import SceneBuilderHttp, SceneBuilderResponse
 from cramera.laboratory_centrifuge_command import CentrifugeCommand, ManualRequest
 from cramera.laboratory_instrument_command import InstrumentCommand
 from cramera.laboratory_pipetting_command import PipettingCommand
@@ -127,6 +129,8 @@ Krrood's SymbolGraph singleton is not threadsafe; queries are serialized.
 class LaboratoryServer(socketserver.ThreadingTCPServer):
     """Own the fixed laboratory child independently of individual HTTP requests."""
 
+    scene_builder: SceneBuilderHttp
+    """Confined model catalog and persistent scene drafts."""
     workshop_physics: WorkshopSession
     """Independent force-controlled workshop world."""
     laboratory_run: LaboratoryRun
@@ -142,6 +146,7 @@ class LaboratoryServer(socketserver.ThreadingTCPServer):
         handler: type[http.server.BaseHTTPRequestHandler],
     ) -> None:
         """Initialize the localhost listener and its laboratory execution state."""
+        self.scene_builder = SceneBuilderHttp(service=SceneBuilderService())
         self.workshop_physics = WorkshopSession(factory=WorkshopPhysics)
         self.laboratory_run = LaboratoryRun(paths.data_directory())
         self.laboratory_physics = LaboratoryPhysicsSession(paths.data_directory())
@@ -319,6 +324,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         Route static files, scene bundles and the read-only API.
         """
         route = self.path.split("?")[0]
+        if SceneBuilderHttp.handles(route):
+            return self._scene_builder_get()
         if route == WorkshopRoute.STATE:
             if not isinstance(self.server, LaboratoryServer):
                 return self._send_error(
@@ -391,6 +398,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         workbench.
         """
         route = self.path.split("?")[0]
+        if SceneBuilderHttp.handles(route):
+            return self._scene_builder_post()
         if route == WorkshopRoute.COMMAND:
             return self._workshop_request()
         if route in PhysicsRoute and route != PhysicsRoute.STATE:
@@ -416,6 +425,70 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if route == "/api/plan/scaffold/stop":
             return self._stop_scaffold()
         return self._send_error("unknown endpoint", 404)
+
+    # %% independent scene authoring
+    def _scene_builder_response(self, response: SceneBuilderResponse) -> None:
+        """Write a resource or validated authoring response."""
+        self.send_response(response.status)
+        self.send_header("Content-Type", response.content_type)
+        self.send_header("Content-Length", str(len(response.body)))
+        self.end_headers()
+        self.wfile.write(response.body)
+
+    def _scene_builder_host(self) -> bool:
+        """Accept only the loopback host names of this local authoring listener."""
+        expected = [
+            ["%s:%d" % (host, self.server.server_address[1])]
+            for host in ("localhost", "127.0.0.1")
+        ]
+        return self.headers.get_all("Host") in expected
+
+    def _scene_builder_get(self) -> None:
+        """Read a confined resource or saved layout without starting a robot."""
+        if not self._scene_builder_host():
+            return self._send_error("Unknown authoring host", HTTPStatus.FORBIDDEN)
+        request = urlparse(self.path)
+        response = self.server.scene_builder.get(unquote(request.path), request.query)
+        self._scene_builder_response(response)
+
+    def _scene_builder_post(self) -> None:
+        """Save a bounded same-origin authoring document."""
+        if not self._scene_builder_host():
+            return self._send_error("Unknown authoring host", HTTPStatus.FORBIDDEN)
+        expected_origins = {
+            "http://%s:%d" % (host, self.server.server_address[1])
+            for host in ("localhost", "127.0.0.1")
+        }
+        origin = self.headers.get("Origin")
+        if (origin is not None and origin not in expected_origins) or self.headers.get(
+            "Sec-Fetch-Site"
+        ) == "cross-site":
+            return self._send_error(
+                "A same-origin request is required", HTTPStatus.FORBIDDEN
+            )
+        lengths = self.headers.get_all("Content-Length", [])
+        if (
+            self.headers.get("Transfer-Encoding") is not None
+            or len(lengths) != 1
+            or not lengths[0].isdigit()
+            or self.headers.get("Content-Type", "").split(";", 1)[0]
+            != "application/json"
+            or urlparse(self.path).query
+        ):
+            return self._send_error(
+                "Invalid scene document request", HTTPStatus.BAD_REQUEST
+            )
+        length = int(lengths[0])
+        if length > SceneBuilderHttp.MAX_BODY_BYTES:
+            return self._send_error(
+                "Scene document is too large", HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+            )
+        body = self.rfile.read(length)
+        if len(body) != length:
+            return self._send_error("Incomplete scene document", HTTPStatus.BAD_REQUEST)
+        self._scene_builder_response(
+            self.server.scene_builder.post(unquote(urlparse(self.path).path), body)
+        )
 
     # %% workshop contact controls
     def _workshop_request(self) -> None:

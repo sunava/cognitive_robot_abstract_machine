@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Scene Builder · CRAMERA</title>
+  <link rel="stylesheet" href="scene_builder.css">
+</head>
+<body>
+<header class="builder-header">
+  <a class="brand" href="index.html">CRAMERA <span>Scene Builder</span></a>
+  <label class="scene-name">Scene name<input id="scene-name" value="Untitled scene" maxlength="160"></label>
+  <span id="save-indicator" class="muted">Draft</span>
+  <div class="header-actions">
+    <button id="undo" title="Undo (Ctrl / Cmd + Z)" disabled>Undo</button>
+    <button id="redo" title="Redo (Ctrl / Cmd + Shift + Z)" disabled>Redo</button>
+    <button id="export">Export JSON</button>
+    <button id="save" class="primary">Save draft</button>
+  </div>
+</header>
+<main id="scene-builder" class="builder-layout">
+  <aside class="library panel" aria-label="Asset library">
+    <div class="panel-heading"><h1>Build your scene</h1><span class="badge">EDIT MODE</span></div>
+    <p class="hint">Arrange furniture, objects and robot spawn poses. No simulation runs in this editor.</p>
+    <details class="project-menu" open>
+      <summary>Scene drafts</summary>
+      <div class="button-row"><button id="new-scene">New scene</button><button id="import">Import JSON</button></div>
+      <input id="import-file" type="file" accept="application/json,.json" hidden>
+      <label>Start from an existing scene<select id="scene-template"><option value="">Choose a scene…</option></select></label>
+      <button id="load-template" disabled>Open scene copy</button>
+      <label>Saved drafts<select id="draft-list"><option value="">Choose a draft…</option></select></label>
+      <div class="button-row"><button id="load-draft" disabled>Load draft</button><button id="save-copy">Save a copy</button></div>
+    </details>
+    <div class="library-title"><h2>Asset library</h2><span id="asset-count" class="muted">Loading…</span></div>
+    <label class="search-label">Search assets<input id="asset-search" type="search" placeholder="PR2, workbench, cabinet…" autocomplete="off"></label>
+    <label>Category<select id="asset-category"><option value="">All assets</option><option value="environment">Environments</option><option value="robot">Robots</option><option value="object">Objects</option></select></label>
+    <div id="asset-library" class="asset-list" aria-label="Available assets"></div>
+  </aside>
+  <section class="viewport-panel" aria-label="Scene editor">
+    <div class="viewport-toolbar">
+      <div class="button-row" role="group" aria-label="Transform mode"><button id="mode-translate" aria-pressed="true">Move</button><button id="mode-rotate" aria-pressed="false">Rotate</button></div>
+      <div class="button-row"><button id="frame-selection">Frame selected</button><button id="frame-all">Frame all</button></div>
+    </div>
+    <div id="viewport" class="viewport"></div>
+    <div id="view-fallback" class="view-fallback" hidden><h2>3D view unavailable</h2><p id="view-error">This browser could not create a WebGL context.</p><p>You can still arrange objects using the position fields, then save or export the scene.</p></div>
+    <div class="viewport-caption"><span>Drag the handles to place objects · Scroll to zoom · Orbit to inspect</span><span>Z up · metres</span></div>
+    <div id="status" role="status" aria-live="polite">Loading the asset catalog…</div>
+  </section>
+  <aside class="inspector panel" aria-label="Scene objects and properties">
+    <div class="library-title"><h2>Objects in scene</h2><span id="instance-count" class="muted">0</span></div>
+    <div id="instance-list" class="instance-list" aria-label="Scene objects"></div>
+    <div id="empty-inspector" class="empty-note">Add an asset or open a scene copy to start arranging.</div>
+    <section id="selection-editor" hidden>
+      <div class="selection-heading"><h2>Selected object</h2><span id="selection-kind" class="badge"></span></div>
+      <label>Name<input id="instance-name" maxlength="160"></label>
+      <div class="button-row"><button id="duplicate">Duplicate</button><button id="delete" class="danger">Delete</button></div>
+      <label>Edit part<select id="part-select"><option value="">Whole object / robot spawn</option></select></label>
+      <p id="part-help" class="hint">The whole model moves together, including articulated children.</p>
+      <fieldset><legend>Position <span id="position-reference">in world</span> · m</legend><div class="vector-fields">
+        <label>X<input id="position-x" type="number" step="0.05"></label><label>Y<input id="position-y" type="number" step="0.05"></label><label>Z<input id="position-z" type="number" step="0.05"></label>
+      </div></fieldset>
+      <fieldset><legend>Rotation · degrees</legend><div class="vector-fields">
+        <label>Roll<input id="rotation-x" type="number" step="5"></label><label>Pitch<input id="rotation-y" type="number" step="5"></label><label>Yaw<input id="rotation-z" type="number" step="5"></label>
+      </div></fieldset>
+      <fieldset id="scale-fields"><legend>Scale · multiplier</legend><div class="vector-fields">
+        <label>X<input id="scale-x" type="number" step="0.01" min="0.000001"></label><label>Y<input id="scale-y" type="number" step="0.01" min="0.000001"></label><label>Z<input id="scale-z" type="number" step="0.01" min="0.000001"></label>
+      </div></fieldset>
+      <button id="reset-part" hidden>Restore original part placement</button>
+      <details id="joints-section"><summary>Articulated joints</summary><div id="joint-fields"></div></details>
+      <details id="asset-notices"><summary>Asset provenance</summary><div id="notice-list"></div></details>
+    </section>
+  </aside>
+</main>
+<script src="vendor/three.min.js"></script>
+<script src="vendor/RoomEnvironment.js"></script>
+<script src="vendor/STLLoader.js"></script>
+<script src="vendor/OBJLoader.js"></script>
+<script src="vendor/MTLLoader.js"></script>
+<script src="vendor/ColladaLoader.js"></script>
+<script src="vendor/GLTFLoader.js"></script>
+<script src="vendor/OrbitControls.js"></script>
+<script src="vendor/TransformControls.js"></script>
+<script src="vendor/URDFLoader.js"></script>
+<script src="core/authored-materials.js"></script>
+<script src="core/scene-builder-state.js"></script>
+<script src="core/scene-builder-view.js"></script>
+<script src="scene_builder.js"></script>
+</body>
+</html>
