@@ -292,6 +292,8 @@ class _CancelBecauseExternalCollisionViolated(_CancelBecauseCollisionViolated):
             for task in self.tasks
             if task.observation_state == ObservationStateValues.FALSE
         ]
+        if not violated_tasks:
+            return None
         collisions = []
         thresholds = []
         for task in violated_tasks:
@@ -682,6 +684,8 @@ class _CancelBecauseSelfCollisionViolated(_CancelBecauseCollisionViolated):
             for task in self.tasks
             if task.observation_state == ObservationStateValues.FALSE
         ]
+        if not violated_tasks:
+            return None
         collisions = []
         thresholds = []
         for task in violated_tasks:
