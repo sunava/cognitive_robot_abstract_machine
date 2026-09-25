@@ -1272,6 +1272,19 @@ class SceneBuilder:
             report=report,
         )
 
+    def _recorded_model_bodies(self, models: List[BundledModel]) -> Dict[str, str]:
+        """Map recorded object keys to the authored model links that already draw them."""
+        described = {
+            self._body_name_of(model, link)
+            for model in models
+            for link in model.report.links
+        }
+        return {
+            key: str(body.name)
+            for key, body in self.recorder.recorded_objects().items()
+            if str(body.name) in described
+        }
+
     def _object_of_body(
         self, body: Body, key: str, index: int, palette: ObjectPalette
     ) -> Dict[str, Any]:
@@ -1559,6 +1572,8 @@ class SceneBuilder:
             self._bundle_model(source, bundler, world_body_names, base_body)
             for source, bundler in bundled_sources
         ]
+        model_bodies = self._recorded_model_bodies(bundled_models)
+        objects = [entry for entry in objects if entry["key"] not in model_bodies]
         environment = self._bundle_unclaimed_bodies(bundled_models, objects)
         if environment is not None:
             bundled_models.append(environment)
@@ -1593,19 +1608,30 @@ class SceneBuilder:
                 self.recorder.world, list(self.recorder.recorded_objects().values())
             ).scene_fields(),
         }
+        if model_bodies:
+            scene[SceneField.MODEL_BODIES.value] = model_bodies
         self.write_statecharts(scene)
         write_json_atomically(
             Path(self.output_directory) / "scene.json", scene, indent=1
         )
+        trajectory = {
+            "framesPerSecond": frames_per_second,
+            "frames": frames,
+            TrajectoryField.FRAME_TIMES.value: self.frame_times(),
+            "base": base,
+            "objects": object_poses,
+        }
+        if model_bodies:
+            trajectory[TrajectoryField.BODY_POSES.value] = [
+                {
+                    model_bodies[key]: pose
+                    for key, pose in frame.items()
+                    if key in model_bodies
+                }
+                for frame in object_poses
+            ]
         write_json_atomically(
-            Path(self.output_directory) / "trajectory.json",
-            {
-                "framesPerSecond": frames_per_second,
-                "frames": frames,
-                TrajectoryField.FRAME_TIMES.value: self.frame_times(),
-                "base": base,
-                "objects": object_poses,
-            },
+            Path(self.output_directory) / "trajectory.json", trajectory
         )
         return scene
 

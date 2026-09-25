@@ -35,10 +35,18 @@ when a question asks for it out loud.
 
 class TrajectoryField(StrEnum):
     """
-    Key a recorded scene's trajectory carries its frame stamps under.
+    Recorded frame timestamps and independently moving model bodies.
     """
 
     FRAME_TIMES = "at"
+    """
+    Absolute timestamps of recorded frames.
+    """
+
+    BODY_POSES = "bodyPoses"
+    """
+    World poses keyed by the names of links already present in bundled models.
+    """
 
 
 class SceneField(StrEnum):
@@ -54,6 +62,11 @@ class SceneField(StrEnum):
     TASK = "task"
     ROBOT_NAME = "robotName"
     ENVIRONMENT_NAME = "environmentName"
+    MODEL_BODIES = "modelBodies"
+    """
+    Recorded object keys mapped to source-owned model link names.
+    """
+
     PLAN_TREES = "planTrees"
     """
     Executed plan hierarchies available during recorded playback.

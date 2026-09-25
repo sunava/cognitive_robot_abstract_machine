@@ -22,6 +22,11 @@ from typing_extensions import Any
 
 from cramera.laboratory_centrifuge import CentrifugeCollisionModel, LaboratoryCentrifuge
 from cramera.laboratory_centrifuge_command import CentrifugeAction, CentrifugeField
+from cramera.laboratory_drawer import (
+    DrawerCollisionModel,
+    DrawerField,
+    LaboratoryDrawer,
+)
 from cramera.laboratory_liquid import LaboratoryLiquid
 from cramera.laboratory_mass import LaboratoryLiquidMass
 from cramera.laboratory_pipetting import (
@@ -29,6 +34,12 @@ from cramera.laboratory_pipetting import (
     LaboratoryPipetting,
     PipettingField,
     PipettingState,
+)
+from cramera.laboratory_rack import (
+    LaboratoryRack,
+    RackCollisionModel,
+    RackField,
+    RackGeometry,
 )
 from cramera.laboratory_refrigerator import (
     RefrigeratorCollisionModel,
@@ -207,6 +218,7 @@ class LaboratoryCollisionModel:
             tuple(item["key"] for item in self.scene["laboratory"]["tubes"]),
         ).complete()
         RefrigeratorCollisionModel(self.root).complete()
+        DrawerCollisionModel(self.root).complete()
         return mujoco.MjModel.from_xml_string(
             ElementTree.tostring(self.root, encoding="unicode")
         )
@@ -259,6 +271,9 @@ class LaboratoryCollisionModel:
         """Preserve named contact bodies and the instrument's physical hinges."""
         joint = children.get(name)
         pose = self._pose(joint.find("origin") if joint is not None else None)
+        if RackCollisionModel.dynamic(joint):
+            parent = self.world
+            pose = RackCollisionModel.world_pose(name, children)
         descendants = [
             child
             for child, child_joint in children.items()
@@ -279,6 +294,8 @@ class LaboratoryCollisionModel:
         self._add_collisions(body, links[name], description)
         CentrifugeCollisionModel.add_joint(body, links[name], joint)
         RefrigeratorCollisionModel.add_joint(body, links[name], joint)
+        DrawerCollisionModel.add_joint(body, links[name], joint)
+        RackCollisionModel.add_joint(body, links[name], joint)
         for child in descendants:
             self._add_environment_link(child, links, children, body, description)
 
@@ -405,6 +422,12 @@ class LaboratoryPhysics:
     refrigerator: LaboratoryRefrigerator = field(init=False)
     """Physical cabinet door, contact-grounded inventory and reduced cooling."""
 
+    drawer: LaboratoryDrawer = field(init=False)
+    """Physical prismatic rail with motor-free hand manipulation."""
+
+    rack: LaboratoryRack = field(init=False)
+    """Independent carrier with measured sample slots and contact support."""
+
     pipetting: LaboratoryPipetting = field(init=False)
     """Finite reagent delivery with measured vessel alignment interlocks."""
 
@@ -445,6 +468,8 @@ class LaboratoryPhysics:
             self.scene["laboratory"].get(RefrigeratorField.REFRIGERATOR, {}),
             tuple(self.liquid.tubes),
         )
+        self.drawer = LaboratoryDrawer(self.model, self.data)
+        self.rack = LaboratoryRack(self.model, self.data, self.scene["laboratory"])
         self.reset()
 
     def _build_model(self) -> mujoco.MjModel:
@@ -472,6 +497,7 @@ class LaboratoryPhysics:
         self.centrifuge.reset()
         self.pipetting.reset()
         self.refrigerator.reset()
+        self.drawer.reset()
         mujoco.mj_forward(self.model, self.data)
         self.scale.reset()
 
@@ -559,6 +585,10 @@ class LaboratoryPhysics:
     def refrigerator_command(self, action: RefrigeratorAction | str) -> None:
         """Request bounded cabinet door motion without moving samples."""
         self.refrigerator.command(action)
+
+    def prepare_rack_in_drawer(self) -> None:
+        """Initialize the rack and separate samples inside the drawer at demo setup."""
+        self.rack.prepare_in_drawer()
 
     def tare_scale(self) -> None:
         """Zero the balance at its current settled load."""
@@ -650,6 +680,7 @@ class LaboratoryPhysics:
             self._apply_grasp()
             self.centrifuge.advance(self.timestep)
             self.refrigerator.advance(self.timestep)
+            self.drawer.advance(self.timestep)
             mujoco.mj_step(self.model, self.data)
             self._observe_contacts()
             self.liquid_elapsed += self.timestep
@@ -714,6 +745,9 @@ class LaboratoryPhysics:
             PhysicsField.SCALE: self.scale.snapshot(),
             CentrifugeField.CENTRIFUGE: self.centrifuge.snapshot(),
             RefrigeratorField.REFRIGERATOR: self.refrigerator.snapshot(),
+            DrawerField.DRAWER: self.drawer.snapshot(),
+            RackField.RACK: self.rack.snapshot(),
+            RackField.BODY_POSES: {RackGeometry.BODY: self.rack.pose},
             PhysicsField.TARGET: (
                 None
                 if self.target is None

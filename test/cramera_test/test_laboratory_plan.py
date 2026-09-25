@@ -17,6 +17,7 @@ from cramera.laboratory_physics_program import LaboratoryProgramPhysics, Program
 from cramera.laboratory_physics_robot import RobotHeadJoint
 from cramera.laboratory_robot_session import LaboratoryRobotSession
 from cramera.laboratory_workflow import WorkflowStep
+from cramera.laboratory_actions import LaboratoryInstrument, LaboratoryOperation
 from semantic_digital_twin.datastructures.prefixed_name import PrefixedName
 
 from .test_laboratory_bundle import laboratory_directory
@@ -42,8 +43,15 @@ def test_live_workflow_executes_a_native_plan(
         assert isinstance(program.execution.plan.context, Context)
         assert isinstance(program.execution.plan.root, SequentialNode)
         assert program.execution.plan.root.status == TaskStatus.RUNNING
-        assert program.execution.active_request.object_key == program.samples[0].key
-        assert program.step.operation == WorkflowStep.DISPENSER
+        assert program.execution.active_request.object_key is None
+        assert (
+            program.execution.active_request.operation
+            == LaboratoryOperation.OPEN_INSTRUMENT
+        )
+        assert (
+            program.execution.active_request.instrument == LaboratoryInstrument.DRAWER
+        )
+        assert program.step.operation == WorkflowStep.OPEN_DRAWER
     finally:
         program.reset()
 

@@ -26,7 +26,7 @@
       "urdf": "environment.urdf",
       "prefix": "",
       "robot": false,
-      "links": 17,
+      "links": 18,
       "movableJoints": [
         "laboratory_drawer_joint",
         "laboratory_centrifuge_rotor_joint",
@@ -264,6 +264,13 @@
           0.985
         ]
       }
+    },
+    "rack": {
+      "drawerOffset": [
+        0.0,
+        -0.1,
+        0.0
+      ]
     },
     "scale": {
       "panPosition": [

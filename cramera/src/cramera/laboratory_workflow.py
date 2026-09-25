@@ -40,6 +40,8 @@ from cramera.laboratory_workflow_command import (
 )
 
 if TYPE_CHECKING:
+    from cramera.laboratory_drawer_manipulation import LaboratoryDrawerManipulation
+    from cramera.laboratory_rack_transfer import LaboratoryRackTransfer
     from cramera.laboratory_actions import LaboratoryAction
     from cramera.laboratory_actions import LaboratoryActionRequest
     from cramera.laboratory_plan import LaboratoryPlanExecution
@@ -100,6 +102,8 @@ class WorkflowField(StrEnum):
 class WorkflowStage(StrEnum):
     """User-visible categories of the sample preparation recipe."""
 
+    PREPARE = "prepare"
+    """Retrieve the rack of empty samples from the storage drawer."""
     FILL = "fill"
     """Move and meter both reagents into each sample."""
     WEIGH = "weigh"
@@ -136,6 +140,12 @@ class WorkflowLocation(StrEnum):
 class WorkflowStep(StrEnum):
     """Finite operations accepted from instrument and contact evidence."""
 
+    OPEN_DRAWER = "Open sample drawer"
+    """Pull the drawer open using the physical handle."""
+    RETRIEVE_RACK = "Carry the four empty samples to the workbench"
+    """Lift and place the loaded rack through its carry handle."""
+    CLOSE_DRAWER = "Close sample drawer"
+    """Return the emptied drawer to its closed endpoint."""
     DISPENSER = "Move sample to dispenser"
     """Sample aligned under the reagent outlet."""
     DOSE_A = "Dispense 1 ml of reagent A"
@@ -316,8 +326,12 @@ class LaboratoryWorkflowProgram:
     """Whether the current instrument command has already been issued."""
     motion: LaboratorySampleTransfer | None = field(init=False, default=None)
     """Contact-verified robot transfer currently responsible for joint targets."""
-    hinge: LaboratoryHingeManipulation | None = field(init=False, default=None)
-    """Contact-verified robot operation of a lid or storage door."""
+    hinge: LaboratoryHingeManipulation | LaboratoryDrawerManipulation | None = field(
+        init=False, default=None
+    )
+    """Contact-verified robot operation of an articulated instrument or drawer."""
+    rack_motion: LaboratoryRackTransfer | None = field(init=False, default=None)
+    """Contact-driven transport of the rack and its separately simulated samples."""
     gaze: LaboratoryGaze | None = field(init=False, default=None)
     """Persistent head-only pointing controller following the measured working tool."""
     error: str | None = field(init=False, default=None)
@@ -369,6 +383,9 @@ class LaboratoryWorkflowProgram:
         """Clear recipe evidence while leaving physical reset to the session owner."""
         if self.hinge is not None:
             self.hinge.cancel()
+        if self.rack_motion is not None:
+            self.rack_motion.cancel()
+        self.rack_motion = None
         self.hinge = None
         if self.execution is not None:
             self.execution.cancel()
@@ -434,13 +451,15 @@ class LaboratoryWorkflowProgram:
         )
 
     def _rack_position(self, key: str) -> np.ndarray:
-        """Resolve an authored sample's original rack support."""
+        """Resolve the sample's original slot in the currently measured rack frame."""
         laboratory = self.physics.scene[LaboratoryField.LABORATORY]
         slot = next(
             item[LaboratoryField.SLOT]
             for item in laboratory[LaboratoryField.TUBES]
             if item[LaboratoryField.KEY] == key
         )
+        if self.physics.rack.movable:
+            return self.physics.rack.slot_position(slot)
         return np.asarray(
             next(
                 item[LaboratoryField.POSE][:3]
@@ -450,7 +469,9 @@ class LaboratoryWorkflowProgram:
         )
 
     def _regrasp_position(self) -> np.ndarray:
-        """Resolve the shared authored rack support for changes of grasp."""
+        """Resolve the measured rack support used for changes of grasp."""
+        if self.physics.rack.movable:
+            return self.physics.rack.slot_position(self.REGRASP_SLOT)
         return np.asarray(
             next(
                 slot[LaboratoryField.POSE][:3]
@@ -463,6 +484,10 @@ class LaboratoryWorkflowProgram:
 
     def _validate_start(self) -> None:
         """Require explicitly prepared empty tubes and available empty instruments."""
+        if not self.physics.drawer.available or not self.physics.rack.movable:
+            raise InvalidPhysicsTarget(
+                "The full demo requires the movable sample rack and drawer"
+            )
         instruments = (
             self.physics.pipetting,
             self.physics.scale,
@@ -574,6 +599,11 @@ class LaboratoryWorkflowProgram:
             self.motion.start()
         if self.hinge is not None and self.hinge.state == ProgramState.PAUSED:
             self.hinge.start()
+        if (
+            self.rack_motion is not None
+            and self.rack_motion.state == ProgramState.PAUSED
+        ):
+            self.rack_motion.start()
         if self.execution is not None:
             self.execution.resume()
         self.state = ProgramState.RUNNING
@@ -611,6 +641,9 @@ class LaboratoryWorkflowProgram:
         self.step_time = self.elapsed = 0.0
         self.issued = False
         self.motion = self.hinge = None
+        if self.rack_motion is not None:
+            self.rack_motion.cancel()
+        self.rack_motion = None
         self.error = None
         self.workflow_verified = False
         self.physics.release()
@@ -627,6 +660,8 @@ class LaboratoryWorkflowProgram:
             self.motion.pause()
         if self.hinge is not None:
             self.hinge.pause()
+        if self.rack_motion is not None:
+            self.rack_motion.pause()
         if self.execution is not None:
             self.execution.pause()
         self.state = ProgramState.PAUSED
@@ -636,6 +671,8 @@ class LaboratoryWorkflowProgram:
         self.pause()
         if self.hinge is not None:
             self.hinge.cancel()
+        if self.rack_motion is not None:
+            self.rack_motion.cancel()
         if self.physics.centrifuge.target_rpm > 0:
             self.physics.centrifuge_command(CentrifugeAction.STOP)
         self.error = message
@@ -686,7 +723,7 @@ class LaboratoryWorkflowProgram:
         self.elapsed += self.physics.timestep
         timeout = (
             self.parameters.transfer_timeout
-            if self._is_transfer() or self._is_hinge()
+            if self._is_transfer() or self._is_hinge() or self._is_rack_transfer()
             else self.parameters.operation_timeout
         )
         if self.step.operation == WorkflowStep.SPIN:
@@ -698,15 +735,25 @@ class LaboratoryWorkflowProgram:
             self._start_transfer()
         if self._is_hinge() and self.hinge is None:
             self._start_hinge()
+        if self._is_rack_transfer() and self.rack_motion is None:
+            module = importlib.import_module("cramera.laboratory_rack_transfer")
+            self.rack_motion = module.LaboratoryRackTransfer(
+                self.physics, required_sample_keys=self.request.required_sample_keys
+            )
+            self.rack_motion.start()
         if self.motion is not None:
             self.motion.advance()
         if self.hinge is not None:
             self.hinge.advance()
+        if self.rack_motion is not None:
+            self.rack_motion.advance()
         self._advance_gaze()
 
     def _advance_gaze(self) -> None:
         """Follow the actual working gripper throughout active recipe operations."""
-        if self.gaze is None and not (self._is_transfer() or self._is_hinge()):
+        if self.gaze is None and not (
+            self._is_transfer() or self._is_hinge() or self._is_rack_transfer()
+        ):
             return
         if self.gaze is None:
             gaze_module = importlib.import_module("cramera.laboratory_gaze")
@@ -739,6 +786,10 @@ class LaboratoryWorkflowProgram:
         operation_type = actions.LaboratoryOperation
         destination_type = actions.SampleDestination
         operations = {
+            operation_type.RETRIEVE_RACK: (
+                WorkflowStep.RETRIEVE_RACK,
+                WorkflowStage.PREPARE,
+            ),
             operation_type.DISPENSE: (
                 (
                     WorkflowStep.DOSE_A
@@ -792,7 +843,12 @@ class LaboratoryWorkflowProgram:
             operation_type.CLOSE_INSTRUMENT,
         ):
             opening = request.operation == operation_type.OPEN_INSTRUMENT
-            if request.instrument == actions.LaboratoryInstrument.CENTRIFUGE:
+            if request.instrument == actions.LaboratoryInstrument.DRAWER:
+                operation = (
+                    WorkflowStep.OPEN_DRAWER if opening else WorkflowStep.CLOSE_DRAWER
+                )
+                stage = WorkflowStage.PREPARE
+            elif request.instrument == actions.LaboratoryInstrument.CENTRIFUGE:
                 operation = (
                     WorkflowStep.OPEN_CENTRIFUGE
                     if opening
@@ -864,14 +920,27 @@ class LaboratoryWorkflowProgram:
     def _is_hinge(self) -> bool:
         """Identify opening and closing actions driven through a grasped handle."""
         return self.step.operation in (
+            WorkflowStep.OPEN_DRAWER,
+            WorkflowStep.CLOSE_DRAWER,
             WorkflowStep.OPEN_CENTRIFUGE,
             WorkflowStep.CLOSE_CENTRIFUGE,
             WorkflowStep.OPEN_REFRIGERATOR,
             WorkflowStep.CLOSE_REFRIGERATOR,
         )
 
+    def _is_rack_transfer(self) -> bool:
+        """Identify transport of the complete supported batch."""
+        return self.step.operation == WorkflowStep.RETRIEVE_RACK
+
     def _start_hinge(self) -> None:
         """Delegate one articulated handle movement to the physical robot."""
+        if self.step.operation in (WorkflowStep.OPEN_DRAWER, WorkflowStep.CLOSE_DRAWER):
+            module = importlib.import_module("cramera.laboratory_drawer_manipulation")
+            self.hinge = module.LaboratoryDrawerManipulation(
+                self.physics, opening=self.step.operation == WorkflowStep.OPEN_DRAWER
+            )
+            self.hinge.start()
+            return
         module = importlib.import_module("cramera.laboratory_hinge_manipulation")
         instrument = (
             module.HingeInstrument.CENTRIFUGE
@@ -996,6 +1065,15 @@ class LaboratoryWorkflowProgram:
         """Confirm the current action from the integrated physical state."""
         self._observe_cycle()
         if self.state != ProgramState.RUNNING:
+            return
+        if self._is_rack_transfer():
+            if self.rack_motion is None:
+                return
+            self.rack_motion.observe()
+            if self.rack_motion.state == ProgramState.FAILED:
+                self._fail(self.rack_motion.error or "Rack retrieval failed")
+            elif self.rack_motion.state == ProgramState.SUCCEEDED:
+                self._next()
             return
         if self._is_hinge():
             if self.hinge is None:
@@ -1420,6 +1498,7 @@ class LaboratoryWorkflowProgram:
         self.step_time = 0.0
         self.issued = False
         self.hinge = None
+        self.rack_motion = None
         if self.execution is not None:
             measurement_module = importlib.import_module(
                 "cramera.laboratory_plan_world"

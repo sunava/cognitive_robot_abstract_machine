@@ -25,6 +25,8 @@ class LaboratoryOperation(StrEnum):
 
     TRANSFER = "transfer"
     """Move a sample using measured gripper contacts."""
+    RETRIEVE_RACK = "retrieve_rack"
+    """Carry the loaded rack from an open drawer onto the workbench."""
     DISPENSE = "dispense"
     """Deliver one measured reagent dose."""
     WEIGH = "weigh"
@@ -80,6 +82,8 @@ class LaboratoryInstrument(StrEnum):
     """The rotor's protective lid."""
     REFRIGERATOR = "refrigerator"
     """The sample cooler's glass door."""
+    DRAWER = "drawer"
+    """The sliding storage drawer beneath the workbench."""
 
 
 @dataclass(frozen=True)
@@ -224,6 +228,16 @@ class LaboratoryAction(ActionDescription, ABC):
     def _action_plan(self) -> PlanNode:
         """Keep physical dispatch deferred until native sequential execution."""
         return sequential([LaboratoryOperationNode(request=self.request)])
+
+
+@dataclass
+class RetrieveRackAction(LaboratoryAction):
+    """Carry the sample rack to the bench while retaining its specified vessels."""
+
+    required_sample_keys: tuple[str, ...]
+    """Vessels that must remain upright and supported throughout transport."""
+    operation: ClassVar[LaboratoryOperation] = LaboratoryOperation.RETRIEVE_RACK
+    """Contact-verified loaded rack transport dispatch."""
 
 
 @dataclass

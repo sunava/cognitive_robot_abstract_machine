@@ -24,6 +24,7 @@ from cramera.laboratory_actions import (
     LaboratoryInstrument,
     OpenInstrumentAction,
     ReleaseSampleAction,
+    RetrieveRackAction,
     RunCentrifugeAction,
     SampleDestination,
     SecureSampleAction,
@@ -58,7 +59,11 @@ class LaboratoryPlan:
 
     def actions(self) -> list[ActionDescription]:
         """Compose independent actions without requiring a live simulator."""
-        actions = []
+        actions = [
+            OpenInstrumentAction(LaboratoryInstrument.DRAWER),
+            RetrieveRackAction(required_sample_keys=self.sample_keys),
+            CloseInstrumentAction(LaboratoryInstrument.DRAWER),
+        ]
         for index, key in enumerate(self.sample_keys):
             actions.extend(
                 [

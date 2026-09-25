@@ -850,6 +850,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       robotModel.obj.position.x += bo.x; robotModel.obj.position.y += bo.y;
     }
     if (traj.modelBases) ModelPoses.apply(models, traj.modelBases[i0], traj.modelBases[i1], t, setPose);
+    if (traj.bodyPoses) ModelPoses.applyBodies(models, worldRoot, traj.bodyPoses[i0], traj.bodyPoses[i1], t, setPose);
     if (traj.objects) Object.keys(objectMeshes).forEach(function (name) { applyObjectFrame(name, f); });
     if (SCENE && SCENE.segments) {
       const seg = SCENE.segments.find(function (s) { return i0 >= s.start && i0 < s.end; });
@@ -1871,6 +1872,13 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     // every bundled model root the bridge streams: a second robot drives, a moved
     // environment model follows (the primary robot's entry re-applies st.base)
     ModelPoses.apply(models, st.modelBases, null, 0, setPose);
+    const modelBodies = SCENE && SCENE.modelBodies || {};
+    const bodyPoses = {};
+    for (const key in st.objects || {}) {
+      if (modelBodies[key]) bodyPoses[modelBodies[key]] = st.objects[key];
+    }
+    Object.assign(bodyPoses, st.bodyPoses);
+    ModelPoses.applyBodies(models, worldRoot, bodyPoses, null, 0, setPose);
     if (typeof st.markersVersion === 'number' && st.markersVersion !== lastMarkersVersion) {
       lastMarkersVersion = st.markersVersion;
       refreshMarkers();
@@ -1878,6 +1886,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     let unknown = false;
     liveStateKeys = st.objects || {};
     for (const key in liveStateKeys) {
+      if (modelBodies[key]) continue;
       if (key === liveDraggedKey && !(SCENE && SCENE.physics)) continue;
       const g = objectMeshes[key];
       if (g) {
@@ -1915,6 +1924,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
         const liveKeys = {};
         live.forEach(function (o) {
           liveKeys[o.key] = 1;
+          if (SCENE && SCENE.modelBodies && SCENE.modelBodies[o.key]) return;
           if (objectMeshes[o.key]) {                  // already present — reuse
             objectMeshes[o.key].visible = true;
             return;
@@ -2409,6 +2419,10 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
         const object = objectMeshes[key];
         if (!object) return;
         setPose(object, pose, pose, 0);
+        needsRender = true;
+      },
+      setBodyPoses: function (poses) {
+        ModelPoses.applyBodies(models, worldRoot, poses, null, 0, setPose);
         needsRender = true;
       },
       setLiquidState: function (snapshot) {

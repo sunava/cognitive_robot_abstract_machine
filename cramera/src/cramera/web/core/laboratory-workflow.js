@@ -12,14 +12,14 @@
   const States = Object.freeze({IDLE: 'idle', RUNNING: 'running', PAUSED: 'paused', SUCCEEDED: 'succeeded', FAILED: 'failed'});
   const Labels = Object.freeze({idle: 'Ready for the full laboratory demo', running: 'Laboratory workflow running',
     paused: 'Laboratory workflow paused', succeeded: 'Laboratory workflow complete', failed: 'Laboratory workflow stopped'});
-  const Stages = Object.freeze({prepare: 'Preparing four samples', fill: 'Filling at the dual dispenser', weigh: 'Measuring sample mass',
+  const Stages = Object.freeze({prepare: 'Bringing the sample rack from the drawer to the bench', fill: 'Filling at the dual dispenser', weigh: 'Measuring sample mass',
     load_centrifuge: 'Loading the centrifuge', spin: 'Running the balanced centrifuge', store: 'Storing samples in the cooler', complete: 'Complete'});
   const Locations = Object.freeze({rack: 'In the sample rack', robot: 'PR2 transfer in progress', dispenser: 'At the dual dispenser',
     scale: 'On the scale', regrasp: 'At the grasp-change position', centrifuge: 'In the centrifuge', refrigerator: 'In the sample cooler'});
   const Buttons = Object.freeze({START: 'Prepare & run full demo', RESUME: 'Resume full demo', PAUSE: 'Pause full demo', RESET: 'Reset laboratory'});
   const PausedNote = 'Samples are reserved for the paused workflow. Resume the demo or reset the laboratory.';
-  const Recipe = 'Resets the demo with four empty samples. For each sample: dispense 1 ml of reagent A and 1 ml of reagent B, weigh it, then load the centrifuge. The robot uses A1 to change between front and top grasps. Once all four are loaded, run the balanced cycle and store them in the cooler.';
-  const ObservationNote = 'Measured in simulation. Mass is recorded after the scale settles. The lid and cooler door use simulated actuators.';
+  const Recipe = 'Resets the demo with four empty samples in the drawer. PR2 opens the drawer, carries the loaded rack onto the bench, then closes the drawer. For each sample: dispense 1 ml of reagent A and 1 ml of reagent B, weigh it, then load the centrifuge. The robot uses A1 to change between front and top grasps. Once all four are loaded, run the balanced cycle and store them in the cooler.';
+  const ObservationNote = 'Measured in simulation. Mass is recorded after the scale settles. PR2 opens and closes the drawer, lid and cooler door through physical gripper contacts with their handles.';
 
   /** Whether the server reports that this workflow still owns its samples. */
   function active(robot) {

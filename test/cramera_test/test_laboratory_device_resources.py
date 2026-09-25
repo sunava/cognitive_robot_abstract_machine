@@ -36,6 +36,7 @@ def device_resources(laboratory_directory: Path) -> tuple[Path, Path]:
             str(laboratory_directory),
             "--output",
             str(output),
+            "--prepare-rack",
         ],
         capture_output=True,
         text=True,
@@ -131,8 +132,18 @@ def test_extracted_visuals_have_exact_device_local_geometry(
     Static instruments contain their own meshes with the laboratory offset removed.
     """
     output, source = device_resources
+    description = ElementTree.parse(source / "environment.urdf")
+    attached = description.find(
+        f"link[@name='laboratory_{'balance' if device == 'scale' else 'rack'}']/visual/geometry/mesh"
+    )
+    original_path = source / (
+        attached.attrib["filename"]
+        if attached is not None
+        else "assets/environment.glb"
+    )
+    source_offset = (0, 0, 0) if attached is not None else origin
     original = trimesh.load(
-        source / "assets/environment.glb",
+        original_path,
         force="scene",
         process=False,
         merge_primitives=True,
@@ -157,7 +168,7 @@ def test_extracted_visuals_have_exact_device_local_geometry(
             extracted.geometry[extracted_geometry].vertices, extracted_transform
         )
         np.testing.assert_allclose(
-            extracted_vertices, original_vertices - origin, atol=1e-7
+            extracted_vertices, original_vertices - source_offset, atol=1e-7
         )
     assert (output / device / "assets" / mesh_name).stat().st_size < (
         source / "assets/environment.glb"

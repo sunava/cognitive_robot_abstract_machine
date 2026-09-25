@@ -92,6 +92,12 @@ class PhysicsField(StrEnum):
     """The display name of an object."""
     OBJECTS = "objects"
     """The authored object catalog or simulated pose mapping."""
+    BODY_POSES = "bodyPoses"
+    """Measured world poses of independently moving authored model bodies."""
+    DRAWER = "drawer"
+    """Measured sliding drawer state."""
+    JOINTS = "joints"
+    """Measured articulation coordinates of an instrument."""
     LABORATORY = "laboratory"
     """Manual manipulation metadata incompatible with force-based movement."""
     CAMERAS = "cameras"
@@ -549,17 +555,25 @@ class LaboratoryPhysicsSession:
         original_trajectory = json.loads(
             (source_directory / PhysicsFile.TRAJECTORY).read_text()
         )
+        snapshot = self.physics.snapshot()
         trajectory = {
             PhysicsField.FRAMES_PER_SECOND: 1,
             PhysicsField.FRAMES: original_trajectory.get(PhysicsField.FRAMES, [{}])[:1],
-            PhysicsField.OBJECTS: [self.physics.snapshot()[PhysicsField.OBJECTS]],
+            PhysicsField.OBJECTS: [snapshot[PhysicsField.OBJECTS]],
         }
-        instrument = self.physics.snapshot().get(CentrifugeField.CENTRIFUGE)
+        if PhysicsField.BODY_POSES in snapshot:
+            trajectory[PhysicsField.BODY_POSES] = [snapshot[PhysicsField.BODY_POSES]]
+        drawer = snapshot.get(PhysicsField.DRAWER)
+        if isinstance(drawer, dict):
+            trajectory[PhysicsField.FRAMES][0].update(
+                drawer.get(PhysicsField.JOINTS, {})
+            )
+        instrument = snapshot.get(CentrifugeField.CENTRIFUGE)
         if isinstance(instrument, dict):
             trajectory[PhysicsField.FRAMES][0].update(
                 instrument.get(CentrifugeField.JOINTS, {})
             )
-        refrigerator = self.physics.snapshot().get(RefrigeratorField.REFRIGERATOR)
+        refrigerator = snapshot.get(RefrigeratorField.REFRIGERATOR)
         if isinstance(refrigerator, dict):
             trajectory[PhysicsField.FRAMES][0].update(
                 refrigerator.get(RefrigeratorField.JOINTS, {})

@@ -22,7 +22,7 @@ from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from geometry import LatheMesh, ProfilePoint, TubeDimensions
+from geometry import LatheMesh, ProfilePoint, RackDimensions, TubeDimensions
 from centrifuge import CentrifugeDimensions, CentrifugePart
 from pipetting import PipettingChannel, PipettingDimensions, PipettingPart
 from refrigerator import RefrigeratorDimensions, RefrigeratorPart
@@ -34,6 +34,8 @@ class AssetName(StrEnum):
 
     ENVIRONMENT = "environment"
     DRAWER = "drawer"
+    TUBE_RACK = "tube_rack"
+    """Independent carrier with six sockets and a front grasp bar."""
     TUBE_CLEAR = "tube_clear"
     TUBE_AMBER = "tube_amber"
     TUBE_TEAL = "tube_teal"
@@ -77,6 +79,10 @@ class BrandingName(StrEnum):
     DISPENSER = "Dispenser AICOR logo"
     CHAMBER = "Centrifuge chamber shell"
     REFRIGERATOR = "Refrigerator AICOR logo"
+    DRAWER_MAT = "Drawer mat"
+    """Decorative mat removed to expose the sample carrier support floor."""
+    DRAWER_DIVIDER = "Tray divider"
+    """Old tray separators occupying the stored rack footprint."""
 
 
 @dataclass(frozen=True)
@@ -103,8 +109,9 @@ class LogoPlacement:
             AssetName.ENVIRONMENT: (
                 cls(BrandingName.WALL, (-0.40, 1.0995, 2.04), 0.90),
                 cls(BrandingName.BALANCE, (0.750, 0.0797, 0.940), 0.058),
-                cls(BrandingName.RACK, (0.22, -0.0952, 0.903), 0.010),
             ),
+            AssetName.TUBE_RACK: (cls(BrandingName.RACK, (0, -0.0552, 0.003), 0.010),),
+            AssetName.DRAWER: (),
             AssetName.CENTRIFUGE_BASE: (
                 cls(
                     BrandingName.CENTRIFUGE,
@@ -606,8 +613,11 @@ class LaboratoryBuilder:
         bpy.data.objects.remove(cutter, do_unlink=True)
 
     def build_rack(self) -> None:
-        """Build six unobstructed sockets above a shallow support plate."""
-        x, y, z = 0.22, -0.04, 0.900
+        """Build and export the independent six-socket carrier and its grasp bar."""
+        previous = self.current
+        self.current = AssetName.TUBE_RACK
+        dimensions = RackDimensions()
+        x, y, z = 0.0, 0.0, 0.0
         self.box(
             "Rack base", (x, y, z + 0.003), (0.19, 0.11, 0.006), MaterialName.PALE_TEAL
         )
@@ -617,9 +627,15 @@ class LaboratoryBuilder:
             (0.19, 0.11, 0.006),
             MaterialName.TEAL,
         )
-        for column, offset_x in enumerate((-0.06, 0, 0.06)):
-            for row, offset_y in enumerate((-0.025, 0.025)):
+        for column, offset_x in enumerate(dimensions.columns):
+            for row, offset_y in enumerate(dimensions.rows):
                 self.drill(plate, (x + offset_x, y + offset_y, z + 0.065), 0.0115)
+                self.lathe(
+                    f"Rack lower guide {column}_{row}",
+                    dimensions.guide_profile(),
+                    MaterialName.PALE_TEAL,
+                    (offset_x, offset_y, 0),
+                )
                 self.text(
                     "Socket identifier",
                     f"{chr(65 + row)}{column + 1}",
@@ -637,6 +653,23 @@ class LaboratoryBuilder:
                     0.056,
                     MaterialName.STEEL,
                 )
+        self.box(
+            "Rack carry handle",
+            dimensions.handle_center,
+            dimensions.handle_size,
+            MaterialName.STEEL,
+            0.004,
+        )
+        for horizontal in (-0.052, 0.052):
+            self.box(
+                "Rack carry mounting",
+                (horizontal, -0.0875, 0.055),
+                (0.012, 0.075, 0.014),
+                MaterialName.STEEL,
+            )
+        self.logo()
+        self.export_asset(AssetName.TUBE_RACK, dimensions.origin)
+        self.current = previous
 
     def build_bench(self) -> None:
         """Build a worktop and cabinets around the open sliding-drawer bay."""
@@ -674,7 +707,7 @@ class LaboratoryBuilder:
         )
         self.box(
             "Upper cross member",
-            (0, 0.02, 0.813),
+            (0, 0.02, 0.833),
             (1.62, 0.64, 0.05),
             MaterialName.WHITE,
         )
@@ -897,11 +930,6 @@ class LaboratoryBuilder:
             self.box("Drawer side", (x, 0, 0), (0.012, 0.62, 0.14), MaterialName.STEEL)
         self.box("Drawer back", (0, 0.304, 0), (0.55, 0.012, 0.14), MaterialName.STEEL)
         self.box("Drawer face", (0, -0.304, 0), (0.55, 0.012, 0.14), MaterialName.TEAL)
-        self.box("Drawer mat", (0, 0, -0.056), (0.517, 0.581, 0.003), MaterialName.DARK)
-        for x in (-0.09, 0.09):
-            self.box(
-                "Tray divider", (x, 0, -0.021), (0.005, 0.57, 0.065), MaterialName.STEEL
-            )
         self.handle("Drawer pull", (0, -0.316, 0.015))
 
     def build_tube(self, asset: AssetName, liquid: MaterialName | None) -> None:
@@ -1895,14 +1923,32 @@ class LaboratoryBuilder:
         source = self.options.output / "laboratory.blend"
         bpy.ops.wm.open_mainfile(filepath=str(source))
         self.library.build()
+        if AssetName.TUBE_RACK not in bpy.data.objects:
+            room = bpy.data.objects[AssetName.ENVIRONMENT]
+            for scene_object in list(room.children):
+                if scene_object.name.startswith(
+                    ("Rack", "Socket identifier", "Tube rack")
+                ):
+                    bpy.data.objects.remove(scene_object, do_unlink=True)
+            self.build_rack()
+        cross_member = bpy.data.objects["Upper cross member"]
+        heights = [
+            (cross_member.matrix_world @ Vector(point)).z
+            for point in cross_member.bound_box
+        ]
+        cross_member.location.z += 0.833 - (min(heights) + max(heights)) / 2
         retired = (
             BrandingName.ROOM_TITLE,
             BrandingName.INSTRUMENT_TITLE,
             BrandingName.TRAY,
             BrandingName.PIPETTE,
+            BrandingName.DRAWER_MAT,
+            BrandingName.DRAWER_DIVIDER,
         )
         for asset in (
             AssetName.ENVIRONMENT,
+            AssetName.TUBE_RACK,
+            AssetName.DRAWER,
             AssetName.CENTRIFUGE_BASE,
             AssetName.PIPETTING,
         ):

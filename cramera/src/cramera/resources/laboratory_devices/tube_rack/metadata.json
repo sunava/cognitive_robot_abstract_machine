@@ -8,5 +8,7 @@
     -0.04,
     0.9
   ],
-  "joints": []
+  "joints": [
+    "laboratory_rack_handle_joint"
+  ]
 }

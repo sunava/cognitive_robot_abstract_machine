@@ -9,17 +9,22 @@ import shutil
 import struct
 import xml.etree.ElementTree as ElementTree
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import IntEnum, StrEnum
 from pathlib import Path
 
 from typing_extensions import Any
 
+import numpy as np
+import trimesh
+
 from bundle import BalancePart
+from geometry import RackDimensions
 from cramera.laboratory_devices import (
     DeviceResourceFile,
     LaboratoryDevice,
     LaboratoryDeviceResource,
 )
+from cramera.laboratory_world import CabinetPart, CabinetStructure
 
 # %% external document vocabulary
 
@@ -44,6 +49,10 @@ class ModelField(StrEnum):
     MATERIAL = "material"
     COLOR = "color"
     SUPPORT_FINISH = "Satin stainless steel"
+    BOX = "box"
+    """Axis-aligned contact primitive."""
+    SIZE = "size"
+    """Full extents of a contact box."""
 
 
 class GlbField(StrEnum):
@@ -73,6 +82,77 @@ class GlbField(StrEnum):
     SCALE = "scale"
     SPARSE = "sparse"
     URI = "uri"
+    MATERIALS = "materials"
+    """Shared material definitions retained from the source asset."""
+    MATERIAL = "material"
+    """Material index on one mesh primitive."""
+    POSITION = "POSITION"
+    """Vertex position accessor."""
+    NORMAL = "NORMAL"
+    """Vertex normal accessor."""
+    COMPONENT_TYPE = "componentType"
+    """Numeric storage format of an accessor."""
+    COUNT = "count"
+    """Number of accessor elements."""
+    TYPE = "type"
+    """Number of components per accessor element."""
+    MINIMUM = "min"
+    """Lower accessor bounds per component."""
+    MAXIMUM = "max"
+    """Upper accessor bounds per component."""
+
+
+class GlbComponent(IntEnum):
+    """Standard glTF numeric storage formats for appended geometry."""
+
+    FLOAT = 5126
+    """Single-precision positions and normals."""
+    UNSIGNED_INT = 5125
+    """Unsigned 32-bit triangle indices."""
+
+
+class GlbShape(StrEnum):
+    """Standard accessor dimensions for appended mesh attributes."""
+
+    VECTOR = "VEC3"
+    """Three spatial components per vertex."""
+    SCALAR = "SCALAR"
+    """One index per element."""
+
+
+class CarrierArtwork(StrEnum):
+    """Authored carrier and drawer meshes used by asset preparation."""
+
+    ROOM = "environment.glb"
+    """Stationary room asset with retained surface materials."""
+    DRAWER = "drawer.glb"
+    """Moving drawer body containing the original handle mesh."""
+    HANDLE_PREFIX = "Rack carry"
+    """Generated carry bar and mounting meshes."""
+    HANDLE = "Rack carry handle"
+    """Visible front carry bar."""
+    LEFT_MOUNT = "Rack carry mounting"
+    """First carry bar support."""
+    RIGHT_MOUNT = "Rack carry mounting.001"
+    """Second carry bar support."""
+    HANDLE_COLLISION = "rack_handle"
+    """Authored contact box determining the carry bar bounds."""
+    LEFT_COLLISION = "rack_handle_mount_0"
+    """First authored mounting contact box."""
+    RIGHT_COLLISION = "rack_handle_mount_1"
+    """Second authored mounting contact box."""
+    DRAWER_HANDLE = "Drawer pull"
+    """Bevelled handle used as the carry bar shape."""
+    DRAWER_MOUNT = "Drawer pull mounting"
+    """Bevelled support used as the carrier mounting shape."""
+    MAT = "Drawer mat"
+    """Decorative layer above the actual drawer floor."""
+    DIVIDER = "Tray divider"
+    """Interior separators occupying the sample carrier footprint."""
+    GUIDE_PREFIX = "Rack lower guide"
+    """Hollow lower sample guides with widened insertion mouths."""
+    GUIDE_FINISH = "Pale teal powder coat"
+    """Powder coat shared with the carrier's lower plate."""
 
 
 @dataclass(frozen=True)
@@ -151,14 +231,18 @@ class StaticGlb:
         )
 
     def extract(
-        self, prefixes: tuple[str, ...], origin: tuple[float, ...]
+        self,
+        prefixes: tuple[str, ...],
+        origin: tuple[float, ...],
+        *,
+        exclude: bool = False,
     ) -> StaticGlb:
         """Select baked room meshes and express them in a device-local frame."""
         document = copy.deepcopy(self.document)
         nodes = [
             node
             for node in document[GlbField.NODES]
-            if node.get(GlbField.NAME, "").startswith(prefixes)
+            if node.get(GlbField.NAME, "").startswith(prefixes) != exclude
         ]
         if not nodes:
             raise ValueError(f"No instrument meshes match {prefixes}")
@@ -235,6 +319,104 @@ class StaticGlb:
         document[GlbField.SCENE] = 0
         return StaticGlb(document, bytes(binary))
 
+    def set_center(self, name: str, position: np.ndarray) -> None:
+        """Place a baked mesh at a measured center without rewriting its vertices."""
+        node = next(
+            item
+            for item in self.document[GlbField.NODES]
+            if item[GlbField.NAME] == name
+        )
+        mesh = self.document[GlbField.MESHES][node[GlbField.MESH]]
+        accessors = [
+            self.document[GlbField.ACCESSORS][
+                primitive[GlbField.ATTRIBUTES][GlbField.POSITION]
+            ]
+            for primitive in mesh[GlbField.PRIMITIVES]
+        ]
+        lower = np.min([item[GlbField.MINIMUM] for item in accessors], axis=0)
+        upper = np.max([item[GlbField.MAXIMUM] for item in accessors], axis=0)
+        node[GlbField.TRANSLATION] = (position - (lower + upper) / 2).tolist()
+
+    def add_mesh(self, name: str, mesh: trimesh.Trimesh, material: str) -> None:
+        """Append a static mesh while retaining all existing artwork buffers."""
+        if any(
+            node.get(GlbField.NAME) == name for node in self.document[GlbField.NODES]
+        ):
+            return
+        material_index = next(
+            index
+            for index, item in enumerate(self.document[GlbField.MATERIALS])
+            if item.get(GlbField.NAME) == material
+        )
+        positions = self.add_accessor(
+            np.asarray(mesh.vertices, dtype="<f4"), GlbComponent.FLOAT, GlbShape.VECTOR
+        )
+        normals = self.add_accessor(
+            np.asarray(mesh.vertex_normals, dtype="<f4"),
+            GlbComponent.FLOAT,
+            GlbShape.VECTOR,
+        )
+        indices = self.add_accessor(
+            np.asarray(mesh.faces, dtype="<u4").reshape(-1),
+            GlbComponent.UNSIGNED_INT,
+            GlbShape.SCALAR,
+        )
+        self.document[GlbField.MESHES].append(
+            {
+                GlbField.NAME: name,
+                GlbField.PRIMITIVES: [
+                    {
+                        GlbField.ATTRIBUTES: {
+                            GlbField.POSITION: positions,
+                            GlbField.NORMAL: normals,
+                        },
+                        GlbField.INDICES: indices,
+                        GlbField.MATERIAL: material_index,
+                    }
+                ],
+            }
+        )
+        self.document[GlbField.NODES].append(
+            {
+                GlbField.NAME: name,
+                GlbField.MESH: len(self.document[GlbField.MESHES]) - 1,
+            }
+        )
+        self.document[GlbField.SCENES][self.document.get(GlbField.SCENE, 0)][
+            GlbField.NODES
+        ].append(len(self.document[GlbField.NODES]) - 1)
+
+    def add_accessor(
+        self, values: np.ndarray, component_type: GlbComponent, shape: GlbShape
+    ) -> int:
+        """Append one aligned standard glTF numeric array and return its accessor."""
+        padding = b"\0" * (-len(self.binary) % 4)
+        offset = len(self.binary) + len(padding)
+        content = values.tobytes()
+        self.binary += padding + content
+        views = self.document[GlbField.BUFFER_VIEWS]
+        views.append(
+            {
+                GlbField.BUFFER: 0,
+                GlbField.BYTE_OFFSET: offset,
+                GlbField.BYTE_LENGTH: len(content),
+            }
+        )
+        accessors = self.document[GlbField.ACCESSORS]
+        bounds = values.reshape(len(values), -1)
+        accessors.append(
+            {
+                GlbField.BUFFER_VIEW: len(views) - 1,
+                GlbField.COMPONENT_TYPE: component_type,
+                GlbField.COUNT: len(values),
+                GlbField.TYPE: shape,
+                GlbField.MINIMUM: bounds.min(axis=0).tolist(),
+                GlbField.MAXIMUM: bounds.max(axis=0).tolist(),
+            }
+        )
+        self.document[GlbField.BUFFERS][0][GlbField.BYTE_LENGTH] = len(self.binary)
+        return len(accessors) - 1
+
 
 # %% independent URDF subtrees
 
@@ -247,6 +429,108 @@ class DeviceResourceExporter:
     """Laboratory bundle with URDF and material-bearing GLB assets."""
     output: Path
     """Parent folder receiving independently portable instrument resources."""
+
+    def prepare_rack(self) -> None:
+        """Separate the movable rack and align drawer artwork with contact geometry."""
+        definition = next(
+            item
+            for item in DeviceDefinition.catalog()
+            if item.device is LaboratoryDevice.TUBE_RACK
+        )
+        assets = self.source / DeviceResourceFile.ASSETS
+        description = ElementTree.parse(self.source / ModelField.ENVIRONMENT)
+        attachment = next(
+            joint
+            for joint in description.findall(ModelField.JOINT)
+            if joint.find(ModelField.CHILD).attrib[ModelField.LINK]
+            == definition.root_link
+        )
+        origin = tuple(
+            float(value)
+            for value in attachment.find(ModelField.ORIGIN)
+            .attrib[ModelField.XYZ]
+            .split()
+        )
+        room = StaticGlb.read(assets / CarrierArtwork.ROOM)
+        if any(
+            node.get(GlbField.NAME, "").startswith(definition.mesh_prefixes)
+            for node in room.document[GlbField.NODES]
+        ):
+            rack = room.extract(definition.mesh_prefixes, origin)
+            room = room.extract(definition.mesh_prefixes, (0, 0, 0), exclude=True)
+        else:
+            rack = StaticGlb.read(assets / definition.visual_filename)
+        rack = rack.extract(
+            (CarrierArtwork.HANDLE_PREFIX, CarrierArtwork.GUIDE_PREFIX),
+            (0, 0, 0),
+            exclude=True,
+        )
+        cross_member = next(
+            panel
+            for panel in CabinetStructure().panels()
+            if panel.part is CabinetPart.CROSS_MEMBER
+        )
+        room.set_center(
+            CabinetPart.CROSS_MEMBER.value, cross_member.origin.to_np()[:3, 3]
+        )
+        drawer = trimesh.load_scene(
+            assets / CarrierArtwork.DRAWER, process=False, merge_primitives=True
+        )
+        for collision_name, visual_name, template in (
+            (
+                CarrierArtwork.HANDLE_COLLISION,
+                CarrierArtwork.HANDLE,
+                CarrierArtwork.DRAWER_HANDLE,
+            ),
+            (
+                CarrierArtwork.LEFT_COLLISION,
+                CarrierArtwork.LEFT_MOUNT,
+                CarrierArtwork.DRAWER_MOUNT,
+            ),
+            (
+                CarrierArtwork.RIGHT_COLLISION,
+                CarrierArtwork.RIGHT_MOUNT,
+                CarrierArtwork.DRAWER_MOUNT,
+            ),
+        ):
+            collision = description.find(
+                f"link[@name='{definition.root_link}']/collision[@name='{collision_name}']"
+            )
+            center = np.fromstring(
+                collision.find(ModelField.ORIGIN).attrib[ModelField.XYZ], sep=" "
+            )
+            size = np.fromstring(
+                collision.find(f"{ModelField.GEOMETRY}/{ModelField.BOX}").attrib[
+                    ModelField.SIZE
+                ],
+                sep=" ",
+            )
+            transform, geometry = drawer.graph[template]
+            mesh = drawer.geometry[geometry].copy()
+            mesh.apply_transform(transform)
+            mesh.apply_translation(-mesh.bounds.mean(axis=0))
+            mesh.apply_scale(size / mesh.extents)
+            mesh.apply_translation(center)
+            rack.add_mesh(visual_name, mesh, ModelField.SUPPORT_FINISH)
+        dimensions = RackDimensions()
+        profile = np.array(
+            [(point.radius, point.height) for point in dimensions.guide_profile()]
+        )
+        guide = trimesh.creation.revolve(profile, sections=96)
+        for column, horizontal in enumerate(dimensions.columns):
+            for row, depth in enumerate(dimensions.rows):
+                mesh = guide.copy()
+                mesh.apply_translation((horizontal, depth, 0))
+                rack.add_mesh(
+                    f"{CarrierArtwork.GUIDE_PREFIX} {column}_{row}",
+                    mesh,
+                    CarrierArtwork.GUIDE_FINISH,
+                )
+        rack.write(assets / definition.visual_filename)
+        room.write(assets / CarrierArtwork.ROOM)
+        StaticGlb.read(assets / CarrierArtwork.DRAWER).extract(
+            (CarrierArtwork.MAT, CarrierArtwork.DIVIDER), (0, 0, 0), exclude=True
+        ).write(assets / CarrierArtwork.DRAWER)
 
     def export(self) -> None:
         """Copy device subtrees while keeping all local collision and joint values."""
@@ -303,11 +587,14 @@ class DeviceResourceExporter:
             .attrib[ModelField.XYZ]
             .split()
         )
-        if definition.visual_filename:
+        link = root.find(f"link[@name='{definition.root_link}']")
+        extracted = bool(
+            definition.visual_filename and not link.findall(ModelField.VISUAL)
+        )
+        if extracted:
             room.extract(definition.mesh_prefixes, origin).write(
                 assets / definition.visual_filename
             )
-            link = root.find(f"link[@name='{definition.root_link}']")
             visual = ElementTree.SubElement(link, ModelField.VISUAL)
             geometry = ElementTree.SubElement(visual, ModelField.GEOMETRY)
             ElementTree.SubElement(
@@ -322,10 +609,7 @@ class DeviceResourceExporter:
             if relative.is_absolute() or ".." in relative.parts:
                 raise ValueError(f"Device assets must be relative: {relative}")
             destination = resource.directory / relative
-            if (
-                definition.visual_filename
-                and relative.name == definition.visual_filename
-            ):
+            if extracted and relative.name == definition.visual_filename:
                 continue
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(self.source / relative, destination)
@@ -374,8 +658,16 @@ def main() -> None:
     resources = Path(__file__).resolve().parents[2] / "src/cramera/resources"
     parser.add_argument("--source", type=Path, default=resources / "precision_lab")
     parser.add_argument("--output", type=Path, default=resources / "laboratory_devices")
+    parser.add_argument(
+        "--prepare-rack",
+        action="store_true",
+        help="Separate rack artwork and clear the drawer for its loaded carrier",
+    )
     arguments = parser.parse_args()
-    DeviceResourceExporter(arguments.source, arguments.output).export()
+    exporter = DeviceResourceExporter(arguments.source, arguments.output)
+    if arguments.prepare_rack:
+        exporter.prepare_rack()
+    exporter.export()
 
 
 if __name__ == "__main__":

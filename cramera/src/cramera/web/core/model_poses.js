@@ -23,6 +23,27 @@
       });
     }
 
+    /** Apply observed laboratory-frame poses to individual authored model links. */
+    static applyBodies(models, root, current, next, fraction, setPose) {
+      if (!current) return;
+      root.updateMatrixWorld(true);
+      for (const [name, pose] of Object.entries(current)) {
+        for (const model of models) {
+          const local = model.prefix ? name.startsWith(model.prefix + '/') ? name.slice(model.prefix.length + 1) : null : name;
+          const link = local && model.obj.links && model.obj.links[local];
+          if (!link || !link.parent) continue;
+          const observed = new root.constructor();
+          setPose(observed, pose, next && next[name] || pose, fraction);
+          observed.updateMatrix();
+          link.parent.updateWorldMatrix(true, false);
+          const transform = link.parent.matrixWorld.clone().invert().multiply(root.matrixWorld).multiply(observed.matrix);
+          transform.decompose(link.position, link.quaternion, link.scale);
+          link.updateMatrixWorld(true);
+          break;
+        }
+      }
+    }
+
     /** Read the saved annotation belonging to one loaded model. */
     static metadata(scene, model) {
       const entries = scene.robots || (scene.robot ? [scene.robot] : []);

@@ -669,6 +669,7 @@ class LaboratoryProgramPhysics:
         self.physics.reset()
         for key in program_type.SAMPLE_KEYS:
             self.physics.fill_liquid(key, 0.0)
+        self.physics.prepare_rack_in_drawer()
         candidate = program_type(self.physics)
         self.program = candidate
         self.instrument_command = None

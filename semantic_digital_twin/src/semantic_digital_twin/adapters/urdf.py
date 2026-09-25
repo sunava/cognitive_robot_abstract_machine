@@ -31,6 +31,7 @@ from semantic_digital_twin.utils import (
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connection_properties import JointDynamics
 from semantic_digital_twin.world_description.connections import (
+    Connection6DoF,
     RevoluteConnection,
     PrismaticConnection,
     FixedConnection,
@@ -58,7 +59,7 @@ connection_type_map = {  # 'unknown': JointType.UNKNOWN,
     "revolute": RevoluteConnection,
     "continuous": RevoluteConnection,
     "prismatic": PrismaticConnection,
-    # 'floating': JointType.FLOATING,
+    "floating": Connection6DoF,
     # 'planar': JointType.PLANAR,
     "fixed": FixedConnection,
 }
@@ -262,6 +263,14 @@ class URDFParser(WorldModelParser):
                 name=connection_name,
                 parent=parent,
                 child=child,
+                parent_T_connection_expression=parent_T_connection,
+            )
+        if connection_type is Connection6DoF:
+            return Connection6DoF.create_with_dofs(
+                world=world,
+                parent=parent,
+                child=child,
+                name=connection_name,
                 parent_T_connection_expression=parent_T_connection,
             )
 

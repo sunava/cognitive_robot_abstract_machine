@@ -8,6 +8,7 @@ body's axes. Drawer, lid and door movement therefore move their handle frames.
 | Handle frame | Parent body |
 | --- | --- |
 | `laboratory_drawer_handle` | `laboratory_drawer` |
+| `laboratory_rack_handle` | `laboratory_rack` |
 | `laboratory_cabinet_lower_handle` | `laboratory_room` |
 | `laboratory_cabinet_middle_handle` | `laboratory_room` |
 | `laboratory_cabinet_right_handle` | `laboratory_room` |
@@ -37,7 +38,7 @@ grip = world.get_body_by_name(LaboratoryHandle.CENTRIFUGE_LID)
 world_T_grip = world.compute_forward_kinematics(world.root, grip)
 ```
 
-The independent centrifuge and refrigerator resources retain their handle links
+The independent centrifuge, refrigerator and tube-rack resources retain their handle links
 in `resources/laboratory_devices/<device>/model.urdf`. A generic URDF load exposes
 these named frames; the assembled laboratory loader adds the semantic annotations.
 These are model frames available to the viewer and CRAM world, not a separately

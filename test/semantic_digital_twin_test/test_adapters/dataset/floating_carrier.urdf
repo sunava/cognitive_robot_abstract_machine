@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<robot name="floating_carrier">
+  <link name="root" />
+  <link name="platform" />
+  <link name="carrier" />
+  <link name="handle" />
+  <joint name="platform_joint" type="fixed">
+    <parent link="root" />
+    <child link="platform" />
+    <origin xyz="1 2 0.2" rpy="0 0 0.3" />
+  </joint>
+  <joint name="carrier_joint" type="floating">
+    <parent link="platform" />
+    <child link="carrier" />
+    <origin xyz="0.4 -0.1 0.6" rpy="0.1 0.2 -0.3" />
+  </joint>
+  <joint name="handle_joint" type="fixed">
+    <parent link="carrier" />
+    <child link="handle" />
+    <origin xyz="0.1 0.02 0.04" rpy="0.3 0 0" />
+  </joint>
+</robot>

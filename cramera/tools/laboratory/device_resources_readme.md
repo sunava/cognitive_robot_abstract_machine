@@ -49,5 +49,10 @@ apertures use the same compound approximations as the assembled laboratory.
 Regenerate the folders after authoring asset changes:
 
 ```sh
-.venv/bin/python cramera/tools/laboratory/device_resources.py
+.venv/bin/python cramera/tools/laboratory/device_resources.py --prepare-rack
 ```
+
+The preparation step separates the rack from older room assets, adds its carry
+handle and hollow lower sample guides, and clears the drawer floor. It preserves
+the embedded materials and can be repeated after regenerating the laboratory
+URDF without rendering the room again.

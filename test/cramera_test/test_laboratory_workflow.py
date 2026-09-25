@@ -127,7 +127,7 @@ def test_snapshot_does_not_report_unmeasured_weights_or_doses(robot_physics):
     """
     program = LaboratoryWorkflowProgram(robot_physics)
     status = program.snapshot()[WorkflowField.WORKFLOW]
-    assert status[WorkflowField.STAGE] == WorkflowStage.FILL
+    assert status[WorkflowField.STAGE] == WorkflowStage.PREPARE
     for sample in status[WorkflowField.SAMPLES]:
         assert sample[WorkflowField.DOSE_A] is None
         assert sample[WorkflowField.DOSE_B] is None

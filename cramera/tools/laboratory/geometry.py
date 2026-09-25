@@ -8,6 +8,69 @@ from dataclasses import dataclass
 from math import cos, pi, sin
 
 
+# %% Sample carrier dimensions
+@dataclass(frozen=True)
+class RackDimensions:
+    """Open rack plate and foot dimensions in its local frame."""
+
+    origin: tuple[float, float, float] = (0.22, -0.04, 0.900)
+    """Lower centre of the rack in the laboratory frame."""
+    width: float = 0.19
+    """Full extent across the three columns."""
+    depth: float = 0.11
+    """Full extent across the two rows."""
+    base_thickness: float = 0.006
+    """Thickness of the lower plate."""
+    top_bottom: float = 0.062
+    """Elevation of the underside of the upper plate."""
+    top_thickness: float = 0.006
+    """Thickness of the upper plate."""
+    hole_radius: float = 0.0115
+    """Radius of the open visual holes and half-width of collision apertures."""
+    columns: tuple[float, ...] = (-0.06, 0.0, 0.06)
+    """Horizontal hole centres."""
+    rows: tuple[float, ...] = (-0.025, 0.025)
+    """Depth coordinates of the hole centres."""
+    handle_center: tuple[float, float, float] = (0.0, -0.125, 0.055)
+    """Front carry bar centre providing vertical jaw clearance."""
+    handle_size: tuple[float, float, float] = (0.12, 0.024, 0.024)
+    """Carry bar extents in rack coordinates."""
+    mass: float = 0.18
+    """Empty rack mass in kilograms."""
+    drawer_offset: tuple[float, float, float] = (0.0, -0.10, 0.0)
+    """Stored centre relative to the drawer floor centre."""
+    guide_inner_radius: float = 0.0095
+    """Straight lower bore radius surrounding each rounded vessel bottom."""
+    guide_outer_radius: float = 0.012
+    """Outside radius of the lower guide wall."""
+    guide_bore_height: float = 0.010
+    """Straight guide height above the bottom plate."""
+    guide_flare_height: float = 0.006
+    """Height of the widening upper entry funnel."""
+    guide_entry_radius: float = 0.0115
+    """Inside radius at the funnel mouth."""
+    guide_segments: int = 12
+    """Number of tangent collision segments around each guide."""
+
+    def guide_profile(self) -> tuple[ProfilePoint, ...]:
+        """Return the closed hollow guide wall with a widened insertion mouth."""
+        lower = self.base_thickness
+        shoulder = lower + self.guide_bore_height
+        upper = shoulder + self.guide_flare_height
+        outer_entry = (
+            self.guide_outer_radius + self.guide_entry_radius - self.guide_inner_radius
+        )
+        return (
+            ProfilePoint(self.guide_inner_radius, lower),
+            ProfilePoint(self.guide_outer_radius, lower),
+            ProfilePoint(self.guide_outer_radius, shoulder),
+            ProfilePoint(outer_entry, upper),
+            ProfilePoint(self.guide_entry_radius, upper),
+            ProfilePoint(self.guide_inner_radius, shoulder),
+            ProfilePoint(self.guide_inner_radius, lower),
+        )
+
+
 # %% Revolved cross sections
 @dataclass(frozen=True)
 class ProfilePoint:

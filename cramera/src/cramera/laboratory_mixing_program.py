@@ -660,7 +660,13 @@ class LaboratoryMixingProgram:
         if self.stage.joint_targets is not None:
             self._set_joint_targets(
                 {
-                    name: start + fraction * (target - start)
+                    name: float(
+                        np.clip(
+                            start + fraction * (target - start),
+                            self.physics.robot_joints[name].lower,
+                            self.physics.robot_joints[name].upper,
+                        )
+                    )
                     for name, target in self.stage.joint_targets.items()
                     for start in [self.start_joint_targets[name]]
                 },

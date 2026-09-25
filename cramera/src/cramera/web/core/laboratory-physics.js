@@ -1008,6 +1008,8 @@
           }
         }
         if (answer.frames && this.adapter.setJointFrames) this.adapter.setJointFrames(answer.frames);
+        if (answer.drawer && answer.drawer.joints && this.adapter.setJointFrames) this.adapter.setJointFrames(answer.drawer.joints);
+        if (answer.bodyPoses && this.adapter.setBodyPoses) this.adapter.setBodyPoses(answer.bodyPoses);
         for (const [key, pose] of Object.entries(this.objects)) this.adapter.setObjectPose(key, pose);
         if (!liquidPending && !this.liquidBusy() && liquidRevision === this.liquidRevision) {
           this.liquid = answer.liquid || null;

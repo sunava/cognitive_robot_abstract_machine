@@ -14,7 +14,7 @@ from typing_extensions import Any
 
 from cramera.laboratory_handles import LaboratoryHandle
 
-from geometry import LatheMesh, TubeDimensions
+from geometry import LatheMesh, RackDimensions, TubeDimensions
 from centrifuge import CentrifugeDescription, CentrifugeDimensions, CentrifugePart
 from pipetting import PipettingDescription, PipettingDimensions
 from refrigerator import (
@@ -47,6 +47,10 @@ class Field(StrEnum):
     URDF = "urdf"
     LABORATORY = "laboratory"
     DRAWER = "drawer"
+    RACK = "rack"
+    """Movable sample support and its preparation placement."""
+    DRAWER_OFFSET = "drawerOffset"
+    """Rack centre relative to the drawer floor during explicit preparation."""
     JOINT = "joint"
     OPEN = "open"
     SCALE = "scale"
@@ -167,30 +171,6 @@ class BalanceDimensions:
         return (*self.origin[:2], self.origin[2] + self.pan_thickness / 2)
 
 
-@dataclass(frozen=True)
-class RackDimensions:
-    """Open rack plate and foot dimensions in its local frame."""
-
-    origin: tuple[float, float, float] = (0.22, -0.04, 0.900)
-    """Lower centre of the rack in the laboratory frame."""
-    width: float = 0.19
-    """Full extent across the three columns."""
-    depth: float = 0.11
-    """Full extent across the two rows."""
-    base_thickness: float = 0.006
-    """Thickness of the lower plate."""
-    top_bottom: float = 0.062
-    """Elevation of the underside of the upper plate."""
-    top_thickness: float = 0.006
-    """Thickness of the upper plate."""
-    hole_radius: float = 0.0115
-    """Radius of the open visual holes and half-width of collision apertures."""
-    columns: tuple[float, ...] = (-0.06, 0.0, 0.06)
-    """Horizontal hole centres."""
-    rows: tuple[float, ...] = (-0.025, 0.025)
-    """Depth coordinates of the hole centres."""
-
-
 @dataclass
 class UrdfDescription:
     """An articulated body with separate visual and collision geometry."""
@@ -224,6 +204,8 @@ class UrdfDescription:
         center: tuple[float, float, float],
         size: tuple[float, float, float],
         yaw: float = 0.0,
+        *,
+        pitch: float = 0.0,
     ) -> None:
         """Add one oriented rectangular collision primitive."""
         collision = ElementTree.SubElement(link, "collision", name=name)
@@ -231,7 +213,7 @@ class UrdfDescription:
             collision,
             "origin",
             xyz=self.coordinates(center),
-            rpy=self.coordinates((0.0, 0.0, yaw)),
+            rpy=self.coordinates((0.0, pitch, yaw)),
         )
         geometry = ElementTree.SubElement(collision, "geometry")
         ElementTree.SubElement(geometry, "box", size=self.coordinates(size))
@@ -293,13 +275,17 @@ class UrdfDescription:
         child: str,
         origin: tuple[float, float, float],
         travel: float | None = None,
+        *,
+        floating: bool = False,
     ) -> None:
-        """Connect a fixed frame or a bounded drawer to its parent."""
+        """Connect a fixed, freely carried or bounded sliding body to its parent."""
         joint = ElementTree.SubElement(
             self.root,
             "joint",
             name=name,
-            type="fixed" if travel is None else "prismatic",
+            type=(
+                "floating" if floating else ("fixed" if travel is None else "prismatic")
+            ),
         )
         ElementTree.SubElement(joint, "parent", link=parent)
         ElementTree.SubElement(joint, "child", link=child)
@@ -418,14 +404,47 @@ class LaboratoryBundle:
                 (0.55, 0.012, 0.14),
             )
         description.inertia(drawer_link, 3.5, (0.0, 0.0, 0.0), (0.55, 0.62, 0.14))
+        description.box(
+            drawer_link, "drawer_handle", (0.0, -0.336, 0.015), (0.14, 0.014, 0.014)
+        )
+        for index, horizontal in enumerate((-0.061, 0.061)):
+            description.box(
+                drawer_link,
+                f"drawer_handle_mount_{index}",
+                (horizontal, -0.323, 0.015),
+                (0.012, 0.025, 0.014),
+            )
         dimensions = RackDimensions()
-        rack = description.link("laboratory_rack")
+        rack = description.link("laboratory_rack", "assets/tube_rack.glb")
         description.joint(
             "laboratory_rack_joint",
             "laboratory_root",
             "laboratory_rack",
             dimensions.origin,
+            floating=True,
         )
+        description.inertia(
+            rack,
+            dimensions.mass,
+            (0.0, 0.0, 0.034),
+            (dimensions.width, dimensions.depth, 0.068),
+        )
+        description.box(
+            rack, "rack_handle", dimensions.handle_center, dimensions.handle_size
+        )
+        for index, horizontal in enumerate((-0.052, 0.052)):
+            description.box(
+                rack,
+                f"rack_handle_mount_{index}",
+                (horizontal, -0.0875, 0.055),
+                (0.012, 0.075, 0.014),
+            )
+        HandleFrame(
+            LaboratoryHandle.RACK, "laboratory_rack", dimensions.handle_center
+        ).build(description)
+        self.scene[Field.LABORATORY][Field.RACK] = {
+            Field.DRAWER_OFFSET: dimensions.drawer_offset
+        }
         description.box(
             rack,
             "rack_base",
@@ -475,6 +494,7 @@ class LaboratoryBundle:
                     ),
                     (right - left, back - front, dimensions.top_thickness),
                 )
+        self.rack_guides(description, rack, dimensions)
         self.balance(description)
         CentrifugeDescription(description).build()
         self.scene[Field.LABORATORY][
@@ -497,6 +517,63 @@ class LaboratoryBundle:
             )
         )
         description.write(self.output / Artifact.ENVIRONMENT)
+
+    def rack_guides(
+        self,
+        description: UrdfDescription,
+        rack: ElementTree.Element,
+        dimensions: RackDimensions,
+    ) -> None:
+        """Guide rounded glass bottoms with open bores and flared insertion rims."""
+        thickness = dimensions.guide_outer_radius - dimensions.guide_inner_radius
+        flare = dimensions.guide_entry_radius - dimensions.guide_inner_radius
+        pitch = math.atan2(flare, dimensions.guide_flare_height)
+        for column, horizontal in enumerate(dimensions.columns):
+            for row, depth in enumerate(dimensions.rows):
+                for segment in range(dimensions.guide_segments):
+                    yaw = 2 * math.pi * segment / dimensions.guide_segments
+                    radius = dimensions.guide_inner_radius + thickness / 2
+                    width = (
+                        2
+                        * dimensions.guide_outer_radius
+                        * math.tan(math.pi / dimensions.guide_segments)
+                    )
+                    description.box(
+                        rack,
+                        f"lower_socket_{column}_{row}_{segment}",
+                        (
+                            horizontal + radius * math.cos(yaw),
+                            depth + radius * math.sin(yaw),
+                            dimensions.base_thickness
+                            + dimensions.guide_bore_height / 2,
+                        ),
+                        (thickness, width, dimensions.guide_bore_height),
+                        yaw,
+                    )
+                    radius += flare / 2
+                    width = (
+                        2
+                        * (dimensions.guide_outer_radius + flare)
+                        * math.tan(math.pi / dimensions.guide_segments)
+                    )
+                    description.box(
+                        rack,
+                        f"upper_socket_{column}_{row}_{segment}",
+                        (
+                            horizontal + radius * math.cos(yaw),
+                            depth + radius * math.sin(yaw),
+                            dimensions.base_thickness
+                            + dimensions.guide_bore_height
+                            + dimensions.guide_flare_height / 2,
+                        ),
+                        (
+                            thickness * math.cos(pitch),
+                            width,
+                            dimensions.guide_flare_height / math.cos(pitch),
+                        ),
+                        yaw,
+                        pitch=pitch,
+                    )
 
     def handles(self, description: UrdfDescription) -> None:
         """Expose each authored pull at its grip centre on the supporting body."""

@@ -143,6 +143,11 @@ class LaboratoryBasePath:
     Maximum displacement between intermediate clearance checks in meters.
     """
 
+    held_objects: tuple[str, ...] = ()
+    """
+    Independent bodies carried together with the robot, including their support.
+    """
+
     scratch: mujoco.MjData = field(init=False)
     """
     Independent kinematic state used solely for swept collision queries.
@@ -164,13 +169,17 @@ class LaboratoryBasePath:
         """
         model = self.physics.model
         self.scratch = mujoco.MjData(model)
-        held_body = model.body(self.held_object).id if self.held_object else None
+        if self.held_object is not None:
+            self.held_objects = tuple(
+                dict.fromkeys((self.held_object, *self.held_objects))
+            )
+        held_bodies = {model.body(name).id for name in self.held_objects}
         self.moving_geometry = np.array(
             [
                 index
                 for index in range(model.ngeom)
                 if model.body(model.geom_bodyid[index]).name.startswith("pr2/")
-                or model.geom_bodyid[index] == held_body
+                or model.geom_bodyid[index] in held_bodies
             ],
             dtype=int,
         )
@@ -230,20 +239,22 @@ class LaboratoryBasePath:
                 self.scratch.qpos[self.physics.robot_joints[name].position_index] += (
                     amount * difference
                 )
-            if self.held_object is not None:
-                self._move_held_object(amount, differences)
+            for name in self.held_objects:
+                self._move_held_object(name, amount, differences)
             mujoco.mj_kinematics(model, self.scratch)
             obstruction = self._check_clearance()
             if obstruction is not None:
                 return obstruction
         return None
 
-    def _move_held_object(self, amount: float, differences: dict[str, float]) -> None:
+    def _move_held_object(
+        self, name: str, amount: float, differences: dict[str, float]
+    ) -> None:
         """
         Translate and rotate the carried collision hull with the sampled base pose.
         """
         model = self.physics.model
-        body = model.body(self.held_object).id
+        body = model.body(name).id
         coordinate = model.jnt_qposadr[model.body_jntadr[body]]
         base = self.physics.data.xpos[model.body("robot_mount").id]
         heading = Rotation.from_euler(

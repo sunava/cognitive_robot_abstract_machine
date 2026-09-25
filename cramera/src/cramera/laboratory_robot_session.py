@@ -210,6 +210,9 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
         trajectory = json.loads(trajectory_path.read_text())
         snapshot = self.physics.snapshot()
         frame = dict(snapshot[PhysicsField.FRAMES])
+        drawer = snapshot.get(PhysicsField.DRAWER)
+        if isinstance(drawer, dict):
+            frame.update(drawer.get(PhysicsField.JOINTS, {}))
         instrument = snapshot.get(CentrifugeField.CENTRIFUGE)
         if isinstance(instrument, dict):
             frame.update(instrument.get(CentrifugeField.JOINTS, {}))

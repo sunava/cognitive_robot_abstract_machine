@@ -16,6 +16,11 @@ class LaboratoryHandle(StrEnum):
     Handle fixed to the articulated bench drawer.
     """
 
+    RACK = "laboratory_rack_handle"
+    """
+    Carry handle on the freely movable vial rack.
+    """
+
     CABINET_LOWER = "laboratory_cabinet_lower_handle"
     """
     Handle on the stationary lower cabinet front.

@@ -277,7 +277,7 @@ class CabinetStructure:
             ),
             CabinetPanel(
                 CabinetPart.CROSS_MEMBER,
-                HomogeneousTransformationMatrix.from_xyz_rpy(0, 0.02, 0.813),
+                HomogeneousTransformationMatrix.from_xyz_rpy(0, 0.02, 0.833),
                 Scale(1.62, 0.64, 0.05),
             ),
             CabinetPanel(
