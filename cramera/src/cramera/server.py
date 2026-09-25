@@ -83,6 +83,13 @@ from cramera.models_workbench import (
 )
 from cramera.onboard.scene_index import InvalidSceneName, merged_scene_index
 from cramera.payload import CrameraPayload
+from cramera.workshop_physics import WorkshopPhysics
+from cramera.workshop_session import (
+    WorkshopCommand,
+    WorkshopRoute,
+    WorkshopSession,
+    WorkshopSessionInactive,
+)
 
 logger = get_logger(__name__)
 
@@ -120,6 +127,8 @@ Krrood's SymbolGraph singleton is not threadsafe; queries are serialized.
 class LaboratoryServer(socketserver.ThreadingTCPServer):
     """Own the fixed laboratory child independently of individual HTTP requests."""
 
+    workshop_physics: WorkshopSession
+    """Independent force-controlled workshop world."""
     laboratory_run: LaboratoryRun
     """The single laboratory execution supervised by this viewer server."""
     laboratory_physics: LaboratoryPhysicsSession
@@ -133,6 +142,7 @@ class LaboratoryServer(socketserver.ThreadingTCPServer):
         handler: type[http.server.BaseHTTPRequestHandler],
     ) -> None:
         """Initialize the localhost listener and its laboratory execution state."""
+        self.workshop_physics = WorkshopSession(factory=WorkshopPhysics)
         self.laboratory_run = LaboratoryRun(paths.data_directory())
         self.laboratory_physics = LaboratoryPhysicsSession(paths.data_directory())
         self.laboratory_robot_physics = LaboratoryRobotSession(paths.data_directory())
@@ -141,12 +151,14 @@ class LaboratoryServer(socketserver.ThreadingTCPServer):
     def shutdown(self) -> None:
         """Stop accepting requests and terminate the owned contact simulation."""
         super().shutdown()
+        self.workshop_physics.close()
         self.laboratory_physics.stop()
         self.laboratory_robot_physics.stop()
 
     def server_close(self) -> None:
         """Close request threads and release the contact simulation worker."""
         super().server_close()
+        self.workshop_physics.close()
         self.laboratory_physics.stop()
         self.laboratory_robot_physics.stop()
 
@@ -186,7 +198,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         """Keep routine physics polls quiet while retaining other access logs."""
         if (
             self.command == HTTPMethod.GET
-            and self.path.split("?")[0] in (PhysicsRoute.STATE, RobotPhysicsRoute.STATE)
+            and self.path.split("?")[0]
+            in (PhysicsRoute.STATE, RobotPhysicsRoute.STATE, WorkshopRoute.STATE)
             and str(code) == str(HTTPStatus.OK.value)
         ):
             return
@@ -306,6 +319,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         Route static files, scene bundles and the read-only API.
         """
         route = self.path.split("?")[0]
+        if route == WorkshopRoute.STATE:
+            if not isinstance(self.server, LaboratoryServer):
+                return self._send_error(
+                    "Workshop simulation is unavailable", HTTPStatus.SERVICE_UNAVAILABLE
+                )
+            return self._send_json(self.server.workshop_physics.state())
         if route == PhysicsRoute.STATE:
             return self._laboratory_physics_status()
         if route == RobotPhysicsRoute.STATE:
@@ -372,6 +391,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         workbench.
         """
         route = self.path.split("?")[0]
+        if route == WorkshopRoute.COMMAND:
+            return self._workshop_request()
         if route in PhysicsRoute and route != PhysicsRoute.STATE:
             return self._laboratory_physics_request(PhysicsRoute(route))
         if route in RobotPhysicsRoute and route != RobotPhysicsRoute.STATE:
@@ -395,6 +416,33 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if route == "/api/plan/scaffold/stop":
             return self._stop_scaffold()
         return self._send_error("unknown endpoint", 404)
+
+    # %% workshop contact controls
+    def _workshop_request(self) -> None:
+        """Accept local same-origin force commands for the workshop."""
+        if not isinstance(self.server, LaboratoryServer):
+            return self._send_error(
+                "Workshop simulation is unavailable", HTTPStatus.SERVICE_UNAVAILABLE
+            )
+        expected_origins = {
+            "http://%s:%d" % (host, self.server.server_address[1])
+            for host in ("localhost", "127.0.0.1")
+        }
+        origin = self.headers.get("Origin")
+        if (origin is not None and origin not in expected_origins) or self.headers.get(
+            "Sec-Fetch-Site"
+        ) == "cross-site":
+            return self._send_error(
+                "A same-origin request is required", HTTPStatus.FORBIDDEN
+            )
+        try:
+            command = WorkshopCommand.from_json(self._request_body())
+            result = self.server.workshop_physics.command(command)
+        except WorkshopSessionInactive as error:
+            return self._send_error(str(error), HTTPStatus.CONFLICT)
+        except (TypeError, ValueError) as error:
+            return self._send_error(str(error), HTTPStatus.BAD_REQUEST)
+        return self._send_json(result)
 
     # %% contact laboratory
     def _laboratory_physics_status(self, robot: bool = False) -> None:

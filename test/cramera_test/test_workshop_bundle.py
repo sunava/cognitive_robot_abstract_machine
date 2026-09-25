@@ -43,15 +43,17 @@ def test_parts_are_independent_bodies_with_initial_poses(
     scene = json.loads((workshop_directory / "scene.json").read_text())
     trajectory = json.loads((workshop_directory / scene["trajectory"]).read_text())
     expected = {
-        item["key"] for item in scene["workshop"]["parts"] + scene["workshop"]["bins"]
+        item["key"]
+        for item in scene["workshop"]["parts"]
+        + scene["workshop"]["bins"]
+        + [scene["workshop"]["assembly"], scene["workshop"]["driver"]]
     }
     assert {item["key"] for item in scene["objects"]} == expected
     assert len(scene["workshop"]["parts"]) == 10
     for item in scene["objects"]:
         model = ElementTree.parse(workshop_directory / item["urdf"])
         assert model.find("link").attrib["name"] == item["key"]
-        assert len(model.findall("link")) == 1
-        assert not model.findall("joint")
+        assert all(joint.attrib["type"] == "fixed" for joint in model.findall("joint"))
         assert len(model.findall(".//collision")) >= 2
         assert trajectory["objects"][0][item["key"]] == item["spawn"]
 
@@ -88,7 +90,7 @@ def test_bin_cavity_and_assembly_socket_are_not_solid_boxes(
     """
     box = ElementTree.parse(workshop_directory / "screw_box.urdf")
     assert len(box.findall(".//collision")) == 5
-    model = ElementTree.parse(workshop_directory / "environment.urdf")
+    model = ElementTree.parse(workshop_directory / "workshop_assembly.urdf")
     assembly = model.find("link[@name='workshop_assembly']")
     collisions = assembly.findall("collision")
     assert len(collisions) >= 16

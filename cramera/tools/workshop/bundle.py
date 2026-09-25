@@ -49,16 +49,10 @@ class WorkshopBundle:
         model.joint("workshop_floor_joint", Asset.ROOT, "workshop_floor", (0, 0, 0))
         model.box(room, "rear_wall", (0, 1.00, 1.40), (4.7, 0.12, 2.8))
         model.box(room, "left_wall", (-2.31, 0.14, 1.40), (0.12, 1.75, 2.8))
-        for x in (-0.95, 0.95):
-            for y in (-0.30, 0.30):
-                model.box(room, "bench_leg", (x, y, 0.433), (0.065, 0.065, 0.855))
-        for x in (-1.044, -0.516):
-            model.box(room, "cabinet_side", (x, 0.009, 0.497), (0.030, 0.64, 0.69))
-        model.box(room, "cabinet_rear", (-0.78, 0.315, 0.497), (0.54, 0.025, 0.69))
-        model.box(room, "cabinet_plinth", (-0.78, 0, 0.17), (0.55, 0.64, 0.034))
-        model.box(room, "lower_wood_shelf", (0.36, 0, 0.183), (1.06, 0.57, 0.028))
-        for y in (-0.305, 0.305):
-            model.box(room, "bench_apron", (0, y, 0.81), (1.94, 0.046, 0.075))
+        for index, component in enumerate(self.geometry.structure()):
+            model.box(
+                room, f"{component.kind}_{index}", component.centre, component.size
+            )
         for x in (1.218, 1.742):
             for y in (-0.13, 0.43):
                 model.box(room, "shelf_upright", (x, y, 0.825), (0.036, 0.036, 1.65))
@@ -66,7 +60,8 @@ class WorkshopBundle:
             model.box(room, "shelf_board", (1.48, 0.15, z), (0.55, 0.60, 0.025))
         for drawer in self.geometry.drawers():
             link = model.link(drawer["link"], Asset.DRAWER_MESH)
-            self.open_box(model, link, self.geometry.drawer_size, 0.012)
+            self.open_box(model, link, self.geometry.drawer_size, 0.009)
+            model.box(link, "felt_floor", (0, 0, 0.010), (0.455, 0.535, 0.002))
             model.box(link, "front", (0, -0.285, 0.076), (0.48, 0.020, 0.148))
             model.inertia(link, 2.0, (0, 0, 0.07), self.geometry.drawer_size)
             model.joint(
@@ -78,32 +73,19 @@ class WorkshopBundle:
             )
             handle = model.link(drawer["handle"])
             model.box(handle, "grasp_bar", (0, 0, 0), (0.158, 0.016, 0.021))
+            for x in (-0.065, 0.065):
+                model.box(handle, "mount", (x, 0.011, 0), (0.016, 0.028, 0.018))
             model.joint(
                 f"{drawer['handle']}_joint",
                 drawer["link"],
                 drawer["handle"],
                 self.geometry.drawer_handle,
             )
-        assembly = model.link(Asset.ASSEMBLY, Asset.ASSEMBLY_MESH)
-        self.socket_collisions(model, assembly)
-        model.joint(
-            "workshop_assembly_joint",
-            Asset.ROOT,
-            Asset.ASSEMBLY,
-            self.geometry.assembly_origin,
-        )
-        model.link(Asset.SOCKET)
-        model.joint(
-            "workshop_socket_joint",
-            Asset.ASSEMBLY,
-            Asset.SOCKET,
-            (0, 0, self.geometry.socket_height),
-        )
         model.write(self.output / Asset.ENVIRONMENT)
 
     def socket_collisions(self, model: UrdfDescription, link) -> None:
         """
-        Approximate a circular pilot hole using a clear sixteen-sided bore.
+        Retain a clear cylindrical opening within the collision strip approximation.
         """
         width, depth, height = self.geometry.assembly_size
         radius = self.geometry.socket_radius
@@ -157,12 +139,51 @@ class WorkshopBundle:
 
     def object(self, key: str, kind: PartKind) -> None:
         """
-        Write one freely movable fastener or sorting box.
+        Write an independent object with its collision geometry and local frames.
         """
         model = UrdfDescription.named(key)
         link = model.link(key, f"assets/{kind}.glb")
         geometry = self.geometry
-        if kind is PartKind.BIN:
+        if kind is PartKind.ASSEMBLY:
+            self.socket_collisions(model, link)
+            for x in (-0.109, 0.109):
+                model.box(link, "clamping_strip", (x, 0, 0.002), (0.020, 0.235, 0.004))
+            model.inertia(
+                link, 1.5, (0, 0, geometry.assembly_size[2] / 2), geometry.assembly_size
+            )
+            model.link(Asset.SOCKET)
+            model.joint(
+                "workshop_socket_joint",
+                key,
+                Asset.SOCKET,
+                (0, 0, geometry.socket_height),
+            )
+        elif kind is PartKind.DRIVER:
+            blade = geometry.driver_blade_size
+            model.box(link, "flat_blade", (0, 0, blade[2] / 2), blade)
+            model.cylinder(link, "shaft", 0.0045, 0.100, 0.076)
+            model.cylinder(link, "handle", 0.024, 0.104, 0.178)
+            model.inertia(link, 0.28, (0, 0, 0.155), (0.048, 0.048, 0.23))
+            for name, origin in (
+                (Asset.DRIVER_TIP, (0, 0, 0)),
+                (Asset.DRIVER_GRASP, geometry.driver_grasp),
+            ):
+                model.link(name)
+                model.joint(f"{name}_joint", key, name, origin)
+        elif kind is PartKind.STORAGE_BOX:
+            self.open_box(
+                model, link, geometry.storage_box_size, geometry.storage_box_wall
+            )
+            model.inertia(link, 0.8, (0, 0, 0.09), geometry.storage_box_size)
+            handle_name = f"{key}_handle"
+            handle = model.link(handle_name)
+            model.box(handle, "carrying_bar", (0, 0, 0), (0.14, 0.014, 0.020))
+            for x in (-0.06, 0.06):
+                model.box(handle, "mount", (x, 0.013, 0), (0.012, 0.026, 0.020))
+            model.joint(
+                f"{handle_name}_joint", key, handle_name, geometry.storage_box_handle
+            )
+        elif kind is PartKind.BIN:
             self.open_box(model, link, geometry.bin_size, geometry.bin_wall)
             model.inertia(link, 0.20, (0, 0, 0.025), geometry.bin_size)
         else:
@@ -184,9 +205,41 @@ class WorkshopBundle:
                 )
             )
             model.cylinder(link, "shaft", radius, length, length / 2)
-            model.cylinder(
-                link, "head", head_radius, head_thickness, length + head_thickness / 2
-            )
+            if kind is PartKind.SCREW:
+                slot_length, slot_width, slot_depth = geometry.screw_slot_size
+                lower_height = head_thickness - slot_depth
+                model.cylinder(
+                    link,
+                    "head_base",
+                    head_radius,
+                    lower_height,
+                    length + lower_height / 2,
+                )
+                upper_centre = length + head_thickness - slot_depth / 2
+                half_extent = head_radius * math.cos(math.pi / 6)
+                cheek_width = half_extent - slot_width / 2
+                end_width = half_extent - slot_length / 2
+                for side in (-1, 1):
+                    model.box(
+                        link,
+                        "slot_cheek",
+                        (0, side * (slot_width / 2 + cheek_width / 2), upper_centre),
+                        (2 * half_extent, cheek_width, slot_depth),
+                    )
+                    model.box(
+                        link,
+                        "slot_end",
+                        (side * (slot_length / 2 + end_width / 2), 0, upper_centre),
+                        (end_width, slot_width, slot_depth),
+                    )
+            else:
+                model.cylinder(
+                    link,
+                    "head",
+                    head_radius,
+                    head_thickness,
+                    length + head_thickness / 2,
+                )
             model.inertia(
                 link,
                 mass,
@@ -203,7 +256,12 @@ class WorkshopBundle:
         self.environment()
         metadata = self.geometry.metadata()
         objects = []
-        for item in [*metadata["parts"], *metadata["bins"]]:
+        for item in [
+            *metadata["parts"],
+            *metadata["bins"],
+            metadata["assembly"],
+            metadata["driver"],
+        ]:
             key = item["key"]
             kind = PartKind(item.get("kind", PartKind.BIN))
             self.object(key, kind)
@@ -232,7 +290,7 @@ class WorkshopBundle:
                     "urdf": Asset.ENVIRONMENT,
                     "prefix": "",
                     "robot": False,
-                    "links": 10,
+                    "links": 2 + 2 * len(metadata["drawers"]),
                     "movableJoints": joints,
                     "preserveMaterials": True,
                 }
@@ -249,7 +307,8 @@ class WorkshopBundle:
             "name": Asset.SCENE_NAME,
             "units": "metres",
             "upAxis": "Z",
-            "handles": [drawer["handle"] for drawer in metadata["drawers"]],
+            "handles": [drawer["handle"] for drawer in metadata["drawers"]]
+            + [item["handle"] for item in metadata["bins"] if "handle" in item],
             "socket": {"frame": Asset.SOCKET, "radius": self.geometry.socket_radius},
             "workshop": metadata,
         }

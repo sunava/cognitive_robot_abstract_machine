@@ -283,6 +283,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
   let traj = null;
   let laboratoryWorkbench = null;
   let workshopControls = null;
+  let workshopContactLayer = null;
   let laboratoryPhysics = null;
   let laboratoryContactLayer = null;
   let laboratoryManualMode = null;
@@ -1200,7 +1201,8 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     if (pickLaboratoryDevice(e)) return;
     const p = pickDraggable(e);
     if (!p) return;
-    if (SCENE && (SCENE.laboratory || SCENE.workshop) && p.name) return;
+    if (SCENE && SCENE.laboratory && p.name) return;
+    if (SCENE && SCENE.workshop && (!workshopControls || !p.name || !workshopControls.controller.beginDrag(p.name))) return;
     if (SCENE && SCENE.physics && (!laboratoryPhysics || !p.name || !laboratoryPhysics.controller.beginDrag(p.name))) return;
     if (liveOn && p.marker) return;    // the place marker has no meaning live
     if (p.name && guidedKeys.has(p.name)) { guidedKeys.delete(p.name); arrowOver(p.name, false); }  // grabbed -> stop guiding
@@ -1212,7 +1214,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     p.group.getWorldPosition(dragStartWorld);
     // horizontal drag plane through the grabbed thing (world y-up)
     _dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), dragStartWorld);
-    if (laboratoryPhysics) {
+    if (laboratoryPhysics || workshopControls) {
       const hit = surfacePointAt(e);
       if (hit) {
         worldRoot.worldToLocal(hit);
@@ -1224,7 +1226,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
   }, { capture: true });
   renderer.domElement.addEventListener('pointermove', function (e) {
     if (!dragging) {
-      if (!playing && e.buttons === 0 && !(SCENE && (SCENE.laboratory || SCENE.workshop)))
+      if (!playing && e.buttons === 0 && !(SCENE && SCENE.laboratory))
         renderer.domElement.style.cursor = pickDraggable(e) ? 'grab' : '';
       return;
     }
@@ -1235,6 +1237,11 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       const hit = surfacePointAt(e);             // world point on the drag plane
       if (hit) {
         worldRoot.worldToLocal(hit);             // map frame (z-up)
+        if (typeof workshopControls !== 'undefined' && workshopControls) {
+          const offset = dragTarget.physicsOffset || {x: 0, y: 0};
+          workshopControls.controller.dragTo([hit.x + offset.x, hit.y + offset.y, hit.z]);
+          return;
+        }
         if (laboratoryPhysics) {
           const offset = dragTarget.physicsOffset || {x: 0, y: 0};
           laboratoryPhysics.controller.dragTo([hit.x + offset.x, hit.y + offset.y, hit.z]);
@@ -1294,6 +1301,8 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     if (!dragging) return;
     if (laboratoryPhysics && dragTarget && dragTarget.name) {
       laboratoryPhysics.controller.release();
+    } else if (workshopControls && dragTarget && dragTarget.name) {
+      workshopControls.controller.endDrag();
     } else if (liveOn && dragTarget && dragTarget.name) {
       const g = objectMeshes[dragTarget.name];
       postLiveMove(dragTarget.name, g.position.x, g.position.y, g.position.z, true);
@@ -1520,6 +1529,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     if (!host) return;
     host.innerHTML = '';
     jointControls.length = 0;
+    if (SCENE && SCENE.workshop) return;
     const entries = JointRouting.movableJoints(models);
     if (!entries.length) return;
     host.innerHTML = '<div class="lp-joints-title">Doors &amp; drawers<button id="joints-fold" class="layer-gear lp-fold"></button></div>';
@@ -2213,19 +2223,58 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       focus: focusSceneCamera,
     };
   }
-  function workshopAdapter() {
-    const adapter = laboratoryAdapter();
-    const objectsReady = adapter.isReady;
-    adapter.isReady = function () {
-      return objectsReady() && SCENE.workshop.drawers.every(function (drawer) {
-        return !!JointRouting.jointFor(models, drawer.joint);
-      });
+  // %% measured workshop bodies and optional contact markers
+  function workshopPhysicsAdapter() {
+    const feedback = new THREE.Group();
+    const geometry = new THREE.SphereGeometry(.003, 8, 6);
+    const material = new THREE.MeshBasicMaterial({color: 0xe57c3b, depthTest: false});
+    const targetGeometry = new THREE.SphereGeometry(.009, 12, 8);
+    const targetMaterial = new THREE.MeshBasicMaterial({color: 0xf1a52d, wireframe: true, depthTest: false});
+    const target = new THREE.Mesh(targetGeometry, targetMaterial);
+    target.visible = false;
+    target.renderOrder = 10;
+    feedback.add(target);
+    worldRoot.add(feedback);
+    const dots = [];
+    return {
+      isReady: function () {
+        return !liveOn && SCENE.objects.every(function (entry) { return !!objectMeshes[entry.key]; })
+          && SCENE.workshop.drawers.every(function (drawer) { return !!JointRouting.jointFor(models, drawer.joint); });
+      },
+      pause: stopTrajectory,
+      focus: focusSceneCamera,
+      applySnapshot: function (snapshot) {
+        for (const [key, pose] of Object.entries(snapshot.objects || {})) {
+          const object = objectMeshes[key];
+          if (object) setPose(object, pose, pose, 0);
+        }
+        for (const [name, position] of Object.entries(snapshot.joints || {})) {
+          const joint = JointRouting.jointFor(models, name);
+          if (joint) joint.setJointValue(position);
+        }
+        const contacts = (snapshot.contacts || []).filter(function (contact) { return contact.force > 0; }).slice(0, 64);
+        while (dots.length < contacts.length) {
+          const dot = new THREE.Mesh(geometry, material);
+          dot.renderOrder = 11;
+          dots.push(dot);
+          feedback.add(dot);
+        }
+        dots.forEach(function (dot, index) {
+          dot.visible = index < contacts.length;
+          if (dot.visible) dot.position.fromArray(contacts[index].position);
+        });
+        target.visible = !!snapshot.target;
+        if (snapshot.target) target.position.fromArray(snapshot.target);
+        refreshFrameAxes();
+        needsRender = true;
+      },
+      setContactsVisible: function (visible) { feedback.visible = Boolean(visible); needsRender = true; },
+      destroy: function () {
+        worldRoot.remove(feedback);
+        geometry.dispose(); material.dispose();
+        targetGeometry.dispose(); targetMaterial.dispose();
+      },
     };
-    adapter.getJoint = function (name) {
-      const joint = JointRouting.jointFor(models, name);
-      return joint ? joint.angle : null;
-    };
-    return adapter;
   }
   // %% numbered instrument guide
   function bindLaboratoryManualMode() {
@@ -2560,14 +2609,22 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
   // %% independent workshop controls
   RobotView.onReady(function () {
     if (!SCENE.workshop || workshopControls || typeof Workshop === 'undefined') return;
-    workshopControls = Workshop.mount(
-      root.querySelector('.stage'), Object.assign({}, SCENE.workshop, {assetRights: SCENE.assetRights}), workshopAdapter()
+    stopTrajectory();
+    const adapter = workshopPhysicsAdapter();
+    workshopControls = Workshop.mountPhysics(
+      root.querySelector('.stage'), Object.assign({}, SCENE.workshop, {objects: SCENE.objects, assetRights: SCENE.assetRights}), adapter,
+      new Workshop.PhysicsClient(window.fetch.bind(window), window.location.href)
     );
+    workshopContactLayer = bindLaboratoryContactLayer(adapter);
     root.classList.add('workshop-scene');
     layersFolded = true;
     showFold();
     root.querySelector('.panel-head h2').textContent = 'AICOR Wood Workshop';
-    root.querySelector('.stage-hint').textContent = 'Drag to orbit · Scroll to zoom · Select a screw or nail · Use the workshop controls to move it';
+    root.querySelector('.stage-hint').textContent = 'Drag objects · Release to drop · Grab, lift and tilt with the controls · Drag empty space to orbit';
+    if (liveBtn) liveBtn.hidden = true;
+    if (playBtn) playBtn.disabled = true;
+    if (scrubber) scrubber.disabled = true;
+    if (speedSelect) speedSelect.disabled = true;
     workshopControls.refresh();
   });
 
@@ -3260,6 +3317,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     destroy: function () {
       robotCameraPanel.destroy();
       if (laboratoryWorkbench) laboratoryWorkbench.destroy();
+      if (workshopContactLayer) workshopContactLayer.destroy();
       if (workshopControls) workshopControls.destroy();
       if (laboratoryRobotPhysicsEntry) laboratoryRobotPhysicsEntry.destroy();
       if (laboratoryContactLayer) laboratoryContactLayer.destroy();

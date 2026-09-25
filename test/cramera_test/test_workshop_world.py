@@ -51,7 +51,8 @@ def test_free_parts_and_handle_annotations_follow_manifest(
         str(annotation.root.name)
         for annotation in world.get_semantic_annotations_by_type(Handle)
     }
-    assert handles == {drawer["handle"] for drawer in scene["workshop"]["drawers"]}
+    semantics = json.loads((workshop_bundle / "semantics.json").read_text())
+    assert handles == set(semantics["handles"])
     for item in scene["objects"]:
         body = world.get_body_by_name(item["key"])
         assert isinstance(body.parent_connection, Connection6DoF)

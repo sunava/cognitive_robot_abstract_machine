@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="storage_box_1"><!-- CRAMERA laboratory asset rights:
+Principal author: Vanessa Hassouna
+Institution: AICOR Institute
+Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.
+License: LicenseRef-AICOR-Workshop-Assets
+See LICENSE.txt and NOTICE.md.
+-->
+  <link name="storage_box_1">
+    <visual>
+      <geometry>
+        <mesh filename="assets/storage_box.glb" />
+      </geometry>
+    </visual>
+    <collision name="floor">
+      <origin xyz="0 0 0.005" rpy="0 0 0" />
+      <geometry>
+        <box size="0.24 0.44 0.01" />
+      </geometry>
+    </collision>
+    <collision name="side_-1">
+      <origin xyz="-0.115 0 0.115" rpy="0 0 0" />
+      <geometry>
+        <box size="0.01 0.44 0.23" />
+      </geometry>
+    </collision>
+    <collision name="end_-1">
+      <origin xyz="0 -0.215 0.115" rpy="0 0 0" />
+      <geometry>
+        <box size="0.22 0.01 0.23" />
+      </geometry>
+    </collision>
+    <collision name="side_1">
+      <origin xyz="0.115 0 0.115" rpy="0 0 0" />
+      <geometry>
+        <box size="0.01 0.44 0.23" />
+      </geometry>
+    </collision>
+    <collision name="end_1">
+      <origin xyz="0 0.215 0.115" rpy="0 0 0" />
+      <geometry>
+        <box size="0.22 0.01 0.23" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0.09" />
+      <mass value="0.8" />
+      <inertia ixx="0.016433333333333335" iyy="0.007366666666666667" izz="0.016746666666666667" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <link name="storage_box_1_handle">
+    <collision name="carrying_bar">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.14 0.014 0.02" />
+      </geometry>
+    </collision>
+    <collision name="mount">
+      <origin xyz="-0.06 0.013 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.012 0.026 0.02" />
+      </geometry>
+    </collision>
+    <collision name="mount">
+      <origin xyz="0.06 0.013 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.012 0.026 0.02" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="storage_box_1_handle_joint" type="fixed">
+    <parent link="storage_box_1" />
+    <child link="storage_box_1_handle" />
+    <origin xyz="0 -0.246 0.175" rpy="0 0 0" />
+  </joint>
+</robot>

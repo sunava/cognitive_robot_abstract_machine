@@ -21,6 +21,8 @@ from cramera.offline_assets import (
     OfflineAssetError,
     OfflineAssetProblem,
 )
+from cramera.workshop_session import WorkshopRoute, WorkshopSession
+from .test_workshop_session import ContactWorld
 from .test_laboratory_share import (
     SharedLaboratory,
     shared_laboratory,
@@ -262,3 +264,118 @@ def test_asset_rights_do_not_expand_the_existing_laboratory_allowlist(
     )
     assert f"/scenes/{SharedScene.LABORATORY}/LICENSE.txt" not in assets.files
     assert f"/scenes/{SharedScene.LABORATORY}/meshes/NOTICE.md" not in assets.files
+
+
+# %% dedicated contact controls
+def test_workshop_physics_requires_login_and_runs_only_in_its_gateway(
+    shared_laboratory: SharedLaboratory,
+) -> None:
+    """
+    Authenticated workshop requests never reach the laboratory backend.
+    """
+    assert shared_laboratory.request(WorkshopRoute.STATE).status == 401
+    shared_laboratory.login()
+    result = shared_laboratory.request(WorkshopRoute.STATE)
+    assert result.status == 200
+    assert json.loads(result.body)["running"] is False
+    assert shared_laboratory.backend.requests == []
+
+
+@pytest.mark.parametrize("sharing_prefix", ["", "/workshop"])
+def test_workshop_physics_commands_advance_the_owned_session(
+    shared_laboratory: SharedLaboratory,
+) -> None:
+    """
+    Mounted and root gateways use one physical session for control and reads.
+    """
+    world = ContactWorld()
+    shared_laboratory.server.workshop_physics = WorkshopSession(factory=lambda: world)
+    shared_laboratory.login()
+    response = shared_laboratory.request(
+        shared_laboratory.options.public_path(WorkshopRoute.COMMAND),
+        method="POST",
+        body=json.dumps({"action": "start"}).encode(),
+        headers={
+            "Origin": shared_laboratory.origin,
+            "Content-Type": "application/json",
+        },
+    )
+    assert response.status == 200
+    assert json.loads(response.body)["running"] is True
+    assert world.stepped.wait(1)
+    state = shared_laboratory.request(
+        shared_laboratory.options.public_path(WorkshopRoute.STATE)
+    )
+    assert json.loads(state.body)["time"] > 0
+    assert shared_laboratory.backend.requests == []
+
+
+@pytest.mark.parametrize("origin", [None, "https://untrusted.example.test"])
+def test_workshop_physics_rejects_cross_origin_commands(
+    shared_laboratory: SharedLaboratory,
+    origin: str | None,
+) -> None:
+    """
+    A workshop cookie cannot authorize another site's force commands.
+    """
+    shared_laboratory.login()
+    headers = {"Content-Type": "application/json"}
+    if origin is not None:
+        headers["Origin"] = origin
+    result = shared_laboratory.request(
+        WorkshopRoute.COMMAND,
+        method="POST",
+        body=b'{"action":"start"}',
+        headers=headers,
+    )
+    assert result.status == 403
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        b"{",
+        b'{"action":"drive","direction":2}',
+        b'{"action":"move","pose":[0,0,1,0,0,0,NaN]}',
+    ],
+)
+def test_workshop_physics_reports_invalid_commands_as_json(
+    shared_laboratory: SharedLaboratory,
+    payload: bytes,
+) -> None:
+    """
+    Malformed controls are rejected before any engine is constructed.
+    """
+    shared_laboratory.login()
+    result = shared_laboratory.request(
+        WorkshopRoute.COMMAND,
+        method="POST",
+        body=payload,
+        headers={
+            "Origin": shared_laboratory.origin,
+            "Content-Type": "application/json",
+        },
+    )
+    assert result.status == 400
+    assert "error" in json.loads(result.body)
+
+
+@pytest.mark.parametrize("sharing_scene", [SharedScene.LABORATORY])
+def test_laboratory_does_not_expose_workshop_controls(
+    shared_laboratory: SharedLaboratory,
+) -> None:
+    """
+    Enabling contact controls leaves the medical lab's API boundary unchanged.
+    """
+    shared_laboratory.login()
+    assert shared_laboratory.request(WorkshopRoute.STATE).status == 404
+    result = shared_laboratory.request(
+        WorkshopRoute.COMMAND,
+        method="POST",
+        body=b'{"action":"start"}',
+        headers={
+            "Origin": shared_laboratory.origin,
+            "Content-Type": "application/json",
+        },
+    )
+    assert result.status == 404

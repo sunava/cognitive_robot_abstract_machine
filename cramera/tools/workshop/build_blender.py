@@ -25,6 +25,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "laboratory"))
 from build_blender import LaboratoryBuilder, MaterialLibrary, MaterialName
 from rights import LaboratoryAssetRights, PackagePath
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from spec import Geometry, StructureKind
+
 
 # %% Authoring contract
 class WorkshopAsset(StrEnum):
@@ -36,6 +39,8 @@ class WorkshopAsset(StrEnum):
     SCREW = "screw"
     NAIL = "nail"
     ASSEMBLY = "assembly"
+    DRIVER = "driver"
+    STORAGE_BOX = "storage_box"
 
 
 class Finish(StrEnum):
@@ -75,6 +80,8 @@ class WorkshopBuilder(LaboratoryBuilder):
     """Shared physically based material palette."""
     current: WorkshopAsset = WorkshopAsset.ENVIRONMENT
     """Rigid body receiving new mesh components."""
+    geometry: Geometry = field(default_factory=Geometry)
+    """Shared metric support and tool dimensions for collision-compatible visuals."""
     logo_image: bpy.types.Image | None = None
     """Packed original artwork recoloured with the workshop teal."""
 
@@ -316,13 +323,24 @@ class WorkshopBuilder(LaboratoryBuilder):
         modifier.width = 0.0006
         modifier.segments = 2
         bpy.ops.object.modifier_apply(modifier=modifier.name)
-        self.box(
-            name + " driver slot",
-            (centre[0], centre[1], centre[2] + height / 2 + 0.00005),
-            (radius * 1.2, 0.002, 0.00015),
-            MaterialName.DARK,
-            0,
+        slot_length, slot_width, slot_depth = self.geometry.screw_slot_size
+        bpy.ops.mesh.primitive_cube_add(
+            size=1,
+            location=(
+                centre[0],
+                centre[1],
+                centre[2] + height / 2 - slot_depth / 2 + 0.001,
+            ),
         )
+        cutter = bpy.context.object
+        cutter.dimensions = (slot_length, slot_width, slot_depth + 0.002)
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        bpy.context.view_layer.objects.active = body
+        recess = body.modifiers.new("Open driver recess", "BOOLEAN")
+        recess.operation = "DIFFERENCE"
+        recess.object = cutter
+        bpy.ops.object.modifier_apply(modifier=recess.name)
+        bpy.data.objects.remove(cutter, do_unlink=True)
 
     def drill(self, position: tuple[float, float, float]) -> None:
         """Construct a cordless driver with motor casing, trigger and removable-style battery."""
@@ -413,7 +431,6 @@ class WorkshopBuilder(LaboratoryBuilder):
                 MaterialName.DARK,
                 0.001,
             )
-        self.print_logo("Driver AICOR", (x - 0.004, y - 0.0532, z + 0.197), 0.055)
 
     def tools(self) -> None:
         """Arrange a timber tool board, bit caddy and familiar hand tools."""
@@ -434,7 +451,6 @@ class WorkshopBuilder(LaboratoryBuilder):
                     MaterialName.DARK,
                 )
                 body.rotation_euler.x = pi / 2
-        self.print_logo("Tool wall AICOR", (-0.66, 0.3712, 1.78), 0.37)
         self.text(
             "Tool wall subtitle",
             "WOODWORK / ASSEMBLY",
@@ -445,7 +461,6 @@ class WorkshopBuilder(LaboratoryBuilder):
         self.wood(
             "Tool caddy rail", (-0.57, 0.292, 1.19), (0.64, 0.12, 0.071), pale=True
         )
-        self.print_logo("Holder AICOR", (-0.78, 0.2308, 1.185), 0.13)
         for index in range(5):
             x = -0.76 + index * 0.105
             self.rod(
@@ -476,7 +491,6 @@ class WorkshopBuilder(LaboratoryBuilder):
         self.wood(
             "Drill bit caddy", (0.10, 0.205, 0.945), (0.40, 0.13, 0.05), pale=True
         )
-        self.print_logo("Bit holder AICOR", (0.10, 0.1398, 0.946), 0.11)
         for index in range(8):
             x = -0.063 + index * 0.044
             radius = 0.002 + index * 0.0008
@@ -510,7 +524,6 @@ class WorkshopBuilder(LaboratoryBuilder):
         self.wood(
             "Driver docking base", (0.64, 0.19, 0.928), (0.24, 0.16, 0.016), pale=True
         )
-        self.print_logo("Dock AICOR", (0.65, 0.1098, 0.929), 0.10)
         # The saw plate and hammer remain fixed exhibits on the tool wall.
         self.box(
             "Saw steel blade",
@@ -535,7 +548,6 @@ class WorkshopBuilder(LaboratoryBuilder):
             pale=False,
             bevel=0.013,
         )
-        self.print_logo("Saw AICOR", (0.637, 0.331, 1.426), 0.075)
         self.wood(
             "Hammer ash handle", (0.79, 0.339, 1.20), (0.028, 0.029, 0.30), bevel=0.010
         )
@@ -639,40 +651,28 @@ class WorkshopBuilder(LaboratoryBuilder):
             MaterialName.TEAL,
         )
         self.wood("Solid ash bench top", (0, 0, 0.8875), (2.2, 0.8, 0.065), bevel=0.008)
-        for x in (-0.95, 0.95):
-            for y in (-0.30, 0.30):
-                self.box(
-                    "Bench steel leg",
-                    (x, y, 0.433),
-                    (0.065, 0.065, 0.855),
-                    MaterialName.TEAL,
-                    0.006,
+        for index, component in enumerate(self.geometry.structure()):
+            if component.kind == StructureKind.LOWER_SHELF:
+                self.wood(
+                    f"{component.kind}_{index}",
+                    component.centre,
+                    component.size,
+                    pale=True,
                 )
-                self.box(
-                    "Bench leveling pad",
-                    (x, y, 0.013),
-                    (0.083, 0.083, 0.026),
-                    MaterialName.DARK,
-                    0.007,
-                )
+                continue
+            material = {
+                StructureKind.FOOT: MaterialName.DARK,
+                StructureKind.CABINET_SIDE: MaterialName.WHITE,
+                StructureKind.CABINET_REAR: MaterialName.WHITE,
+                StructureKind.SLIDE: MaterialName.STEEL,
+            }.get(component.kind, MaterialName.TEAL)
             self.box(
-                "Bench lower side brace",
-                (x, 0, 0.15),
-                (0.046, 0.60, 0.046),
-                MaterialName.TEAL,
-                0.003,
+                f"{component.kind}_{index}",
+                component.centre,
+                component.size,
+                material,
+                min(0.003, min(component.size) / 4),
             )
-        for y in (-0.305, 0.305):
-            self.box(
-                "Bench apron",
-                (0, y, 0.81),
-                (1.94, 0.046, 0.075),
-                MaterialName.TEAL,
-                0.004,
-            )
-        self.wood(
-            "Lower storage shelf", (0.36, 0, 0.183), (1.06, 0.57, 0.028), pale=True
-        )
         for index in range(5):
             self.wood(
                 "Stored timber offcut",
@@ -680,8 +680,7 @@ class WorkshopBuilder(LaboratoryBuilder):
                 (0.81 - index * 0.078, 0.26, 0.037),
                 pale=index % 2 == 0,
             )
-        self.print_logo("Bench apron AICOR", (0.58, -0.3288, 0.810), 0.22)
-        self.print_logo("Bench ash AICOR", (-0.82, -0.4002, 0.886), 0.27)
+        self.print_logo("Bench ash AICOR", (-0.82, -0.4002, 0.886), 0.15)
         self.text(
             "Bench serial",
             "01 / WOODWORK",
@@ -689,45 +688,6 @@ class WorkshopBuilder(LaboratoryBuilder):
             0.019,
             MaterialName.TEAL,
         )
-        for x in (-1.044, -0.516):
-            self.box(
-                "Drawer cabinet side",
-                (x, 0.009, 0.497),
-                (0.03, 0.64, 0.69),
-                MaterialName.WHITE,
-                0.004,
-            )
-        self.box(
-            "Drawer cabinet back",
-            (-0.78, 0.315, 0.497),
-            (0.54, 0.025, 0.69),
-            MaterialName.WHITE,
-            0.003,
-        )
-        self.box(
-            "Drawer cabinet plinth",
-            (-0.78, 0, 0.17),
-            (0.55, 0.64, 0.034),
-            MaterialName.TEAL,
-            0.004,
-        )
-        for z in (0.29, 0.48, 0.67, 0.83):
-            self.box(
-                "Drawer cabinet cross rail",
-                (-0.78, -0.304, z),
-                (0.50, 0.023, 0.018),
-                MaterialName.TEAL,
-                0.002,
-            )
-        for z in (0.31, 0.50, 0.69):
-            for x in (-1.014, -0.546):
-                self.box(
-                    "Drawer slide rail",
-                    (x, 0.015, z),
-                    (0.015, 0.50, 0.018),
-                    MaterialName.STEEL,
-                    0.001,
-                )
         self.tools()
         self.shelves()
         self.vise()
@@ -760,37 +720,6 @@ class WorkshopBuilder(LaboratoryBuilder):
                 MaterialName.WHITE,
                 0.002,
             )
-        self.print_logo("Shelf crown AICOR", (x, 0.15 - 0.301, 1.541), 0.25)
-        for level, z in enumerate((0.144, 0.544)):
-            for side in (-1, 1):
-                centre = (x + side * 0.137, y - 0.026, z)
-                self.open_box(
-                    "Shelf parts crate",
-                    centre,
-                    (0.24, 0.44, 0.23),
-                    MaterialName.PALE_TEAL,
-                    0.010,
-                )
-                self.print_logo(
-                    "Storage box AICOR",
-                    (centre[0], centre[1] - 0.2202, z + 0.139),
-                    0.135,
-                )
-                self.text(
-                    "Storage box description",
-                    "TIMBER" if level else "FIXINGS",
-                    (centre[0] - 0.042, centre[1] - 0.2204, z + 0.085),
-                    0.016,
-                    MaterialName.TEAL,
-                )
-                for offset in (-0.062, 0.062):
-                    self.box(
-                        "Crate handle opening",
-                        (centre[0] + offset, centre[1] - 0.226, z + 0.198),
-                        (0.055, 0.002, 0.013),
-                        MaterialName.DARK,
-                        0.004,
-                    )
         for index in range(4):
             self.wood(
                 "Shelf board stack",
@@ -854,7 +783,6 @@ class WorkshopBuilder(LaboratoryBuilder):
             0.006,
             MaterialName.STEEL,
         )
-        self.print_logo("Vise AICOR", (0.90, -0.4113, 0.986), 0.105)
 
     def drawer(self) -> None:
         """Build the drawer cavity and a raised pull with a consistent grasp frame."""
@@ -876,7 +804,6 @@ class WorkshopBuilder(LaboratoryBuilder):
             pale=True,
             bevel=0.001,
         )
-        self.print_logo("Drawer AICOR", (-0.157, -0.2953, 0.103), 0.105)
         for x in (-0.065, 0.065):
             self.box(
                 "Pull mounting foot",
@@ -910,7 +837,6 @@ class WorkshopBuilder(LaboratoryBuilder):
             MaterialName.PALE_TEAL,
             0.006,
         )
-        self.print_logo("Fastener bin AICOR", (0, -0.1603, 0.039), 0.105)
         for x in (-0.115, 0.115):
             self.box(
                 "Bin side grip",
@@ -919,6 +845,39 @@ class WorkshopBuilder(LaboratoryBuilder):
                 MaterialName.TEAL,
                 0.002,
             )
+
+    def storage_box(self) -> None:
+        """Create a loose shelf container with an independent carrying handle."""
+        self.current = WorkshopAsset.STORAGE_BOX
+        self.open_box(
+            "Storage container",
+            (0, 0, 0),
+            self.geometry.storage_box_size,
+            MaterialName.PALE_TEAL,
+            self.geometry.storage_box_wall,
+        )
+        self.box(
+            "Storage carrying bar",
+            self.geometry.storage_box_handle,
+            (0.14, 0.014, 0.020),
+            MaterialName.DARK,
+            0.004,
+        )
+        for x in (-0.06, 0.06):
+            self.box(
+                "Storage handle mount",
+                (x, -0.233, 0.175),
+                (0.012, 0.026, 0.020),
+                MaterialName.DARK,
+                0.003,
+            )
+        self.text(
+            "Storage label",
+            "STORAGE",
+            (-0.044, -0.2203, 0.092),
+            0.014,
+            MaterialName.TEAL,
+        )
 
     def screw(self) -> None:
         """Create a large visible screw thread around a solid shank and hex head."""
@@ -932,7 +891,7 @@ class WorkshopBuilder(LaboratoryBuilder):
             location=(0, 0, 0.009),
         )
         self.register(bpy.context.object, "Screw pilot tip", Finish.BRASS)
-        turns = 10
+        turns = 0.086 / self.geometry.screw_thread_pitch
         points = []
         for index in range(721):
             angle = index / 720 * turns * 2 * pi
@@ -941,6 +900,47 @@ class WorkshopBuilder(LaboratoryBuilder):
         self.tube_curve("Continuous screw thread", points, 0.00175, Finish.BRASS)
         self.cylinder("Screw head washer", (0, 0, 0.109), 0.022, 0.004, Finish.BRASS)
         self.hex_head("Screw hex head", (0, 0, 0.119), 0.026, 0.018, Finish.BRASS)
+
+    def screwdriver(self) -> None:
+        """Create a separate flat-blade tool with a measured tip and grip frame."""
+        self.current = WorkshopAsset.DRIVER
+        blade = self.geometry.driver_blade_size
+        self.box(
+            "Screwdriver flat blade",
+            (0, 0, blade[2] / 2),
+            blade,
+            MaterialName.STEEL,
+            0.0003,
+        )
+        self.cylinder(
+            "Screwdriver round shaft", (0, 0, 0.076), 0.0045, 0.100, MaterialName.STEEL
+        )
+        self.cylinder(
+            "Screwdriver shoulder", (0, 0, 0.123), 0.011, 0.012, MaterialName.DARK
+        )
+        self.cylinder(
+            "Screwdriver grip", (0, 0, 0.175), 0.024, 0.098, MaterialName.TEAL
+        )
+        for height in (0.131, 0.222):
+            bpy.ops.mesh.primitive_uv_sphere_add(
+                segments=32, ring_count=16, radius=1, location=(0, 0, height)
+            )
+            cap = self.register(
+                bpy.context.object, "Screwdriver grip cap", MaterialName.TEAL
+            )
+            cap.scale = (0.024, 0.024, 0.008)
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+            for face in cap.data.polygons:
+                face.use_smooth = True
+        for index in range(8):
+            angle = index * pi / 4
+            self.cylinder(
+                "Screwdriver rubber inset",
+                (0.0215 * cos(angle), 0.0215 * sin(angle), 0.177),
+                0.0022,
+                0.067,
+                MaterialName.DARK,
+            )
 
     def nail(self) -> None:
         """Create a separate steel nail with a sharp tip and flattened head."""
@@ -955,11 +955,18 @@ class WorkshopBuilder(LaboratoryBuilder):
     def assembly(self) -> None:
         """Model a timber assembly block with a real circular pilot opening."""
         self.current = WorkshopAsset.ASSEMBLY
+        height = self.geometry.assembly_size[2]
         body = self.wood(
-            "Pilot-hole timber block", (0, 0, 0.0375), (0.25, 0.20, 0.075), bevel=0.003
+            "Pilot-hole timber block",
+            (0, 0, height / 2),
+            self.geometry.assembly_size,
+            bevel=0.003,
         )
         bpy.ops.mesh.primitive_cylinder_add(
-            vertices=96, radius=0.014, depth=0.12, location=(0, 0, 0.0375)
+            vertices=96,
+            radius=self.geometry.socket_radius,
+            depth=height + 0.04,
+            location=(0, 0, height / 2),
         )
         cutter = bpy.context.object
         bpy.context.view_layer.objects.active = body
@@ -968,7 +975,6 @@ class WorkshopBuilder(LaboratoryBuilder):
         modifier.object = cutter
         bpy.ops.object.modifier_apply(modifier=modifier.name)
         bpy.data.objects.remove(cutter, do_unlink=True)
-        self.print_logo("Assembly AICOR", (0, -0.1002, 0.042), 0.13)
         self.text(
             "Assembly pilot legend",
             "PILOT 28",
@@ -1046,7 +1052,23 @@ class WorkshopBuilder(LaboratoryBuilder):
             instance = original.copy()
             bpy.context.collection.objects.link(instance)
             instance.parent = body
-        self.export_asset(WorkshopAsset.ASSEMBLY, (0.28, -0.10, 0.92))
+        storage = [
+            item for item in self.geometry.bins() if item.get("kind") == "storage_box"
+        ]
+        self.export_asset(WorkshopAsset.STORAGE_BOX, tuple(storage[0]["home"][:3]))
+        for item in storage[1:]:
+            parent = bpy.data.objects.new(item["key"], None)
+            bpy.context.collection.objects.link(parent)
+            parent.location = tuple(item["home"][:3])
+            for original in self.objects[WorkshopAsset.STORAGE_BOX]:
+                instance = original.copy()
+                bpy.context.collection.objects.link(instance)
+                instance.parent = parent
+        self.export_asset(WorkshopAsset.ASSEMBLY, self.geometry.assembly_origin)
+        self.export_asset(
+            WorkshopAsset.DRIVER, tuple(self.geometry.driver()["home"][:3])
+        )
+        bpy.data.objects[WorkshopAsset.DRIVER].rotation_euler = (0, pi / 2, 0)
         self.export_asset(WorkshopAsset.SCREW, (-0.28, -0.12, 0.935))
         bpy.data.objects[WorkshopAsset.SCREW].rotation_euler = (0, pi / 2, 0.28)
         self.export_asset(WorkshopAsset.NAIL, (-0.77, -0.14, 0.929))
@@ -1144,7 +1166,7 @@ class WorkshopBuilder(LaboratoryBuilder):
                 bpy.ops.render.render(write_still=True)
 
     def build(self) -> None:
-        """Create six independent GLB resources and the editable Blender workshop."""
+        """Create independently movable GLB resources and the editable Blender workshop."""
         self.options.output.joinpath("assets").mkdir(parents=True, exist_ok=True)
         self.options.source.mkdir(parents=True, exist_ok=True)
         bpy.ops.object.select_all(action="SELECT")
@@ -1153,9 +1175,11 @@ class WorkshopBuilder(LaboratoryBuilder):
         self.environment()
         self.drawer()
         self.bin()
+        self.storage_box()
         self.screw()
         self.nail()
         self.assembly()
+        self.screwdriver()
         self.pose_assets()
         LaboratoryAssetRights(
             source=Path(__file__).with_name(PackagePath.CANONICAL)

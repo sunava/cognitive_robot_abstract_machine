@@ -10,6 +10,7 @@ import secrets
 from argparse import ArgumentParser
 from dataclasses import dataclass, field
 from enum import StrEnum
+from functools import partial
 from html.parser import HTMLParser
 from http import HTTPStatus
 from http.client import HTTPConnection, HTTPException
@@ -31,6 +32,14 @@ from cramera.offline_assets import (
     OfflineSceneAssets,
     SceneAssetField,
 )
+from cramera.workshop_physics import WorkshopPhysics
+from cramera.workshop_session import (
+    WorkshopCommand,
+    WorkshopField,
+    WorkshopRoute,
+    WorkshopSession,
+    WorkshopSessionInactive,
+)
 
 
 # %% shared configuration
@@ -42,7 +51,7 @@ class SharedScene(StrEnum):
     WORKSHOP_REPLAY = "aicor_workshop_pr2"
     """Validated native PR2 recording for the workshop."""
     WORKSHOP = "aicor_workshop"
-    """Wood workshop with browser manipulation and recorded robot motion."""
+    """Wood workshop with contact physics and recorded robot motion."""
 
 
 class ShareRoute(StrEnum):
@@ -393,6 +402,8 @@ class LaboratoryShareServer(ThreadingHTTPServer):
     """Random process-local browser session token."""
     assets: LaboratoryAssets
     """Allowed public assets."""
+    workshop_physics: WorkshopSession | None
+    """Dedicated workshop contact world, absent from laboratory gateways."""
     daemon_threads: ClassVar[bool] = True
     """Discard incomplete connections when shutting down."""
 
@@ -411,7 +422,20 @@ class LaboratoryShareServer(ThreadingHTTPServer):
         self.assets = LaboratoryAssets(
             directory, options.scene_name, options.replay_directory
         )
+        self.workshop_physics = (
+            WorkshopSession(
+                factory=partial(WorkshopPhysics, bundle_directory=directory)
+            )
+            if options.scene_name == SharedScene.WORKSHOP
+            else None
+        )
         super().__init__((ShareOptions.LOOPBACK, options.port), ShareHandler)
+
+    def server_close(self) -> None:
+        """Release contact controls before closing the workshop listener."""
+        if self.workshop_physics is not None:
+            self.workshop_physics.close()
+        super().server_close()
 
 
 class ShareHandler(BaseHTTPRequestHandler):
@@ -681,6 +705,13 @@ class ShareHandler(BaseHTTPRequestHandler):
         if self.server.options.robot_controls and route == RobotPhysicsRoute.STATE:
             self._proxy(route)
             return
+        if self.server.workshop_physics is not None and route == WorkshopRoute.STATE:
+            self._reply(
+                HTTPStatus.OK,
+                json.dumps(self.server.workshop_physics.state()).encode(),
+                "application/json",
+            )
+            return
         if route == ShareRoute.SCENE_INDEX:
             self._reply(
                 HTTPStatus.OK, self.server.assets.scene_index(), "application/json"
@@ -709,12 +740,21 @@ class ShareHandler(BaseHTTPRequestHandler):
         if route != ShareRoute.LOGIN and not self._authenticated():
             self._reply(HTTPStatus.UNAUTHORIZED, b"Login required.")
             return
-        if route != ShareRoute.LOGIN and (
-            not self.server.options.robot_controls
-            or route
-            not in {
-                entry for entry in RobotPhysicsRoute if entry != RobotPhysicsRoute.STATE
-            }
+        workshop_command = (
+            route == WorkshopRoute.COMMAND and self.server.workshop_physics is not None
+        )
+        if (
+            route != ShareRoute.LOGIN
+            and (
+                not self.server.options.robot_controls
+                or route
+                not in {
+                    entry
+                    for entry in RobotPhysicsRoute
+                    if entry != RobotPhysicsRoute.STATE
+                }
+            )
+            and not workshop_command
         ):
             self._reply(HTTPStatus.NOT_FOUND)
             return
@@ -722,6 +762,9 @@ class ShareHandler(BaseHTTPRequestHandler):
             return
         if route == ShareRoute.LOGIN:
             self._login()
+            return
+        if workshop_command:
+            self._workshop_command()
             return
         maximum_bytes = (
             ShareOptions.MAX_MANUAL_BODY_BYTES
@@ -731,6 +774,30 @@ class ShareHandler(BaseHTTPRequestHandler):
         body = self._body("application/json", maximum_bytes)
         if body is not None:
             self._proxy(route, body)
+
+    def _workshop_command(self) -> None:
+        """Apply a bounded command to this gateway's independent contact world."""
+        body = self._body("application/json")
+        if body is None:
+            return
+        try:
+            command = WorkshopCommand.from_json(json.loads(body))
+            state = self.server.workshop_physics.command(command)
+        except (ValueError, TypeError) as error:
+            self._reply(
+                HTTPStatus.BAD_REQUEST,
+                json.dumps({WorkshopField.ERROR: str(error)}).encode(),
+                "application/json",
+            )
+            return
+        except WorkshopSessionInactive as error:
+            self._reply(
+                HTTPStatus.CONFLICT,
+                json.dumps({WorkshopField.ERROR: str(error)}).encode(),
+                "application/json",
+            )
+            return
+        self._reply(HTTPStatus.OK, json.dumps(state).encode(), "application/json")
 
 
 def make_server(options: ShareOptions) -> LaboratoryShareServer:

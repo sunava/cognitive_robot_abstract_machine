@@ -88,3 +88,13 @@
   .workshop-body { padding: 0 10px 10px; }
   .workshop-intro { display: none; }
 }
+/* Measured motion stays separate from spring targets and thread approximation. */
+.workshop-physics .workshop-camera-row { margin-top: 7px; }
+.workshop-translation { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 7px; }
+.workshop-rotations { margin-top: 9px; color: #527369; }
+.workshop-rotations summary, .workshop-thread summary { cursor: pointer; }
+.workshop-thread { border-top: 1px solid #dbe1d8; margin-top: 12px; padding-top: 9px; }
+.workshop-thread > summary { font-weight: 650; }
+.workshop-thread .workshop-placement { margin-top: 7px; }
+.workshop-physics .workshop-status { min-height: 30px; }
+.workshop-physics .workshop-badge { font-size: 9px; letter-spacing: .03em; }

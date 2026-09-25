@@ -30,6 +30,7 @@ class WorkshopAsset(StrEnum):
 
     SCENE_NAME = "aicor_workshop"
     SCENE = "scene.json"
+    SEMANTICS = "semantics.json"
     RESOURCES = "resources"
     SCREW = "screw_1"
     SOCKET = "workshop_socket"
@@ -153,16 +154,19 @@ class WorkshopWorld:
                 parent_T_connection_expression=HomogeneousTransformationMatrix(),
             )
             world.merge_world(environment, root_connection=connection)
-        with world.modify_world():
-            for drawer in self.scene["workshop"]["drawers"]:
-                world.add_semantic_annotation(
-                    Handle(root=world.get_body_by_name(drawer["handle"]))
-                )
         for item in self.objects:
             object_world = URDFParser.from_file(
                 str(self.bundle_directory / item.description), prefix=""
             ).parse()
             world.merge_world_at_pose(object_world, item.pose.to_homogeneous_matrix())
+        semantics = json.loads(
+            (self.bundle_directory / WorkshopAsset.SEMANTICS).read_text()
+        )
+        with world.modify_world():
+            for handle in semantics["handles"]:
+                world.add_semantic_annotation(
+                    Handle(root=world.get_body_by_name(handle))
+                )
         return world
 
     def build(self) -> World:

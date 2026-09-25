@@ -5,7 +5,11 @@
   "handles": [
     "workshop_drawer_1_handle",
     "workshop_drawer_2_handle",
-    "workshop_drawer_3_handle"
+    "workshop_drawer_3_handle",
+    "storage_box_1_handle",
+    "storage_box_2_handle",
+    "storage_box_3_handle",
+    "storage_box_4_handle"
   ],
   "socket": {
     "frame": "workshop_socket",
@@ -221,9 +225,81 @@
           0,
           1
         ]
+      },
+      {
+        "key": "storage_box_1",
+        "label": "Storage box 1",
+        "kind": "storage_box",
+        "home": [
+          1.343,
+          0.124,
+          0.144,
+          0,
+          0,
+          0,
+          1
+        ],
+        "handle": "storage_box_1_handle"
+      },
+      {
+        "key": "storage_box_2",
+        "label": "Storage box 2",
+        "kind": "storage_box",
+        "home": [
+          1.617,
+          0.124,
+          0.144,
+          0,
+          0,
+          0,
+          1
+        ],
+        "handle": "storage_box_2_handle"
+      },
+      {
+        "key": "storage_box_3",
+        "label": "Storage box 3",
+        "kind": "storage_box",
+        "home": [
+          1.343,
+          0.124,
+          0.544,
+          0,
+          0,
+          0,
+          1
+        ],
+        "handle": "storage_box_3_handle"
+      },
+      {
+        "key": "storage_box_4",
+        "label": "Storage box 4",
+        "kind": "storage_box",
+        "home": [
+          1.617,
+          0.124,
+          0.544,
+          0,
+          0,
+          0,
+          1
+        ],
+        "handle": "storage_box_4_handle"
       }
     ],
     "assembly": {
+      "key": "workshop_assembly",
+      "label": "Wooden workpiece",
+      "kind": "assembly",
+      "home": [
+        0.28,
+        -0.1,
+        0.92,
+        0,
+        0,
+        0,
+        1
+      ],
       "pose": [
         0.28,
         -0.1,
@@ -236,22 +312,88 @@
       "socketPose": [
         0.28,
         -0.1,
-        0.9620000000000001,
+        1.02,
         0,
         0,
         0,
         1
-      ]
+      ],
+      "localSocket": [
+        0,
+        0,
+        0.1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "socketFrame": "workshop_socket",
+      "localMouth": [
+        0,
+        0,
+        0.14
+      ],
+      "maximumDepth": 0.11
+    },
+    "driver": {
+      "key": "driver",
+      "label": "Screwdriver",
+      "kind": "driver",
+      "home": [
+        0.52,
+        -0.26,
+        0.946,
+        0,
+        0.7071067811865476,
+        0,
+        0.7071067811865476
+      ],
+      "bitTip": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        -1
+      ],
+      "grasp": [
+        0.0,
+        0.0,
+        0.165
+      ],
+      "bladeSize": [
+        0.03,
+        0.004,
+        0.026
+      ],
+      "bladeDirection": [
+        1,
+        0,
+        0
+      ],
+      "bitFrame": "driver_tip",
+      "graspFrame": "driver_grasp"
+    },
+    "screw": {
+      "headTop": 0.128,
+      "slotSize": [
+        0.034,
+        0.006,
+        0.006
+      ],
+      "threadPitch": 0.006
     },
     "liftHeight": 1.3,
     "bounds": {
       "min": [
-        -1.05,
-        -0.36
+        -1.15,
+        -0.6
       ],
       "max": [
-        1.05,
-        0.1
+        1.85,
+        0.55
       ]
     },
     "cameras": {

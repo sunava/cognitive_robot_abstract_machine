@@ -262,7 +262,7 @@ test('mounted controls become available only after all scene objects are ready',
   mounted.destroy();
 });
 
-test('the workshop scene-ready hook mounts once with its independent metadata and author credit', () => {
+test('the workshop scene-ready hook mounts authoritative physics once with its independent metadata and author credit', () => {
   const source = fs.readFileSync(path.join(__dirname, '../../../cramera/src/cramera/web/panels/robot_scene/panel.js'), 'utf8');
   const start = source.indexOf('  // %% independent workshop controls');
   const end = source.indexOf('  // %% bus: outbound', start);
@@ -276,11 +276,16 @@ test('the workshop scene-ready hook mounts once with its independent metadata an
   let ready;
   const context = {
     workshopControls: null,
-    SCENE: {workshop: workshop.config, assetRights: rights},
-    Workshop: {mount(host, config, adapter) { mounts += 1; received = {host, config, adapter}; return {refresh() {}}; }},
+    SCENE: {workshop: workshop.config, objects: workshop.config.parts, assetRights: rights},
+    Workshop: {PhysicsClient: class { constructor(fetch, url) { this.url = url; } }, mountPhysics(host, config, adapter, client) { mounts += 1; received = {host, config, adapter, client}; return {refresh() {}}; }},
+    window: {fetch() {}, location: {href: 'https://example.test/workshop/'}},
+    workshopContactLayer: null,
+    bindLaboratoryContactLayer: () => ({}),
+    stopTrajectory() {},
+    liveBtn: {}, playBtn: {}, scrubber: {}, speedSelect: {},
     RobotView: {onReady(callback) { ready = callback; }},
     root: {querySelector: selector => nodes.get(selector), classList: {add() {}}},
-    workshopAdapter: () => workshop.adapter,
+    workshopPhysicsAdapter: () => workshop.adapter,
     layersFolded: false,
     showFold() { folded += 1; },
   };
@@ -291,6 +296,9 @@ test('the workshop scene-ready hook mounts once with its independent metadata an
   assert.equal(received.host, nodes.get('.stage'));
   assert.equal(received.config.parts, workshop.config.parts);
   assert.equal(received.config.assetRights, rights);
+  assert.equal(received.config.objects, workshop.config.parts);
+  assert.equal(received.client.url, context.window.location.href);
+  assert.equal(context.playBtn.disabled, true);
   assert.equal(received.adapter, workshop.adapter);
   assert.equal(nodes.get('.panel-head h2').textContent, 'AICOR Wood Workshop');
   assert.equal(context.layersFolded, true);

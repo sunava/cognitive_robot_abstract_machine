@@ -13,18 +13,23 @@ independent prismatic joints and fixed child handle frames. `scene.json` describ
 the assembled viewer scene, and `semantics.json` records the handle and socket
 frames. Units are metres with Z up; the workbench front faces negative Y.
 
-Ten fasteners and two open sorting boxes are separate bodies, each with its own
-URDF, mesh reference and initial pose: `screw_1`–`screw_5`, `nail_1`–`nail_5`,
-`screw_box` and `nail_box`. They share reusable local meshes under `assets/`.
+Eighteen objects are separate bodies, each with its own URDF, mesh reference and
+initial pose: `screw_1`–`screw_5`, `nail_1`–`nail_5`, `screw_box`, `nail_box`,
+`storage_box_1`–`storage_box_4`, `workshop_assembly` and `driver`. They share reusable
+local meshes under `assets/`. Box walls have open collision geometry, and all four
+shelf boxes have child handle frames.
 Screw and nail origins are at their tips, with their shafts along local positive Z.
 The wooden assembly block has an actual pilot hole in both its visual and
 collision geometry. Tools and timber stored on the shelves are fixed visual props.
 
-The CRAMERA workshop controls open/close each drawer, select and lift one fastener,
-move it above the bench, return it to its box and seat a screw in the pilot hole.
-These controls position objects directly; they do not simulate force, free falling,
-cutting wood or thread friction. URDF loading supplies geometry and articulation;
-application controllers and robot plans are separate from the model resources.
+The CRAMERA workshop controls run a MuJoCo contact world using these collision
+shapes. Boxes and their loose contents move through gravity, friction and contacts;
+manipulation and drawer controls apply bounded forces. Screwdriver contact and
+measured rotation drive an ideal thread constraint in the pilot hole. This does
+not model cutting wood, material damage or detailed thread-flank contact. URDF
+loading alone supplies geometry and articulation; physics controllers and robot
+plans are separate from the model resources. The native PR2 replay is separate
+from the interactive contact world.
 
 Load the full environment in CRAM:
 

@@ -1,0 +1,207 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="workshop_assembly"><!-- CRAMERA laboratory asset rights:
+Principal author: Vanessa Hassouna
+Institution: AICOR Institute
+Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.
+License: LicenseRef-AICOR-Workshop-Assets
+See LICENSE.txt and NOTICE.md.
+-->
+  <link name="workshop_assembly">
+    <visual>
+      <geometry>
+        <mesh filename="assets/assembly.glb" />
+      </geometry>
+    </visual>
+    <collision name="wood_0">
+      <origin xyz="0 -0.095833333 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_1">
+      <origin xyz="0 -0.0875 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_2">
+      <origin xyz="0 -0.079166667 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_3">
+      <origin xyz="0 -0.070833333 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_4">
+      <origin xyz="0 -0.0625 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_5">
+      <origin xyz="0 -0.054166667 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_6">
+      <origin xyz="0 -0.045833333 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_7">
+      <origin xyz="0 -0.0375 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_8">
+      <origin xyz="0 -0.029166667 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_9">
+      <origin xyz="0 -0.020833333 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_10_-1">
+      <origin xyz="-0.068124846 -0.0125 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.11375031 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_10_1">
+      <origin xyz="0.068124846 -0.0125 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.11375031 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_11_-1">
+      <origin xyz="-0.0695 -0.0041666667 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.111 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_11_1">
+      <origin xyz="0.0695 -0.0041666667 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.111 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_12_-1">
+      <origin xyz="-0.0695 0.0041666667 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.111 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_12_1">
+      <origin xyz="0.0695 0.0041666667 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.111 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_13_-1">
+      <origin xyz="-0.068124846 0.0125 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.11375031 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_13_1">
+      <origin xyz="0.068124846 0.0125 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.11375031 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_14">
+      <origin xyz="0 0.020833333 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_15">
+      <origin xyz="0 0.029166667 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_16">
+      <origin xyz="0 0.0375 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_17">
+      <origin xyz="0 0.045833333 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_18">
+      <origin xyz="0 0.054166667 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_19">
+      <origin xyz="0 0.0625 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_20">
+      <origin xyz="0 0.070833333 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_21">
+      <origin xyz="0 0.079166667 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_22">
+      <origin xyz="0 0.0875 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="wood_23">
+      <origin xyz="0 0.095833333 0.07" rpy="0 0 0" />
+      <geometry>
+        <box size="0.25 0.0083333333 0.14" />
+      </geometry>
+    </collision>
+    <collision name="clamping_strip">
+      <origin xyz="-0.109 0 0.002" rpy="0 0 0" />
+      <geometry>
+        <box size="0.02 0.235 0.004" />
+      </geometry>
+    </collision>
+    <collision name="clamping_strip">
+      <origin xyz="0.109 0 0.002" rpy="0 0 0" />
+      <geometry>
+        <box size="0.02 0.235 0.004" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0.07" />
+      <mass value="1.5" />
+      <inertia ixx="0.007450000000000002" iyy="0.0102625" izz="0.0128125" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <link name="workshop_socket" />
+  <joint name="workshop_socket_joint" type="fixed">
+    <parent link="workshop_assembly" />
+    <child link="workshop_socket" />
+    <origin xyz="0 0 0.1" rpy="0 0 0" />
+  </joint>
+</robot>
