@@ -10,6 +10,10 @@
     static HISTORY_LIMIT = 100;
     static MAX_COORDINATE = 10000;
     static MAX_SCALE = 1000;
+    static POINT_CLOUD_DEFAULTS = Object.freeze({visible: true, locked: true, pointSize: .006, opacity: .65});
+    static MIN_POINT_SIZE = .0001;
+    static MAX_POINT_SIZE = .1;
+    static MIN_OPACITY = .05;
     static FORBIDDEN_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 
     constructor(assets = [], document = SceneBuilderState.empty()) {
@@ -49,6 +53,19 @@
       return {position: this.vector(value.position, `${label} position`), rotation: this.vector(value.rotation, `${label} rotation`)};
     }
 
+    static pointCloud(settings) {
+      this.record(settings, 'point cloud', ['visible', 'locked', 'pointSize', 'opacity']);
+      const result = {...this.POINT_CLOUD_DEFAULTS, ...settings};
+      if (typeof result.visible !== 'boolean' || typeof result.locked !== 'boolean') throw new SceneDocumentError('Reference visibility and lock must be booleans.');
+      if (typeof result.pointSize !== 'number' || !Number.isFinite(result.pointSize) || result.pointSize < this.MIN_POINT_SIZE || result.pointSize > this.MAX_POINT_SIZE) throw new SceneDocumentError('Point size must be between 0.1 and 100 mm.');
+      if (typeof result.opacity !== 'number' || !Number.isFinite(result.opacity) || result.opacity < this.MIN_OPACITY || result.opacity > 1) throw new SceneDocumentError('Reference opacity must be between 0.05 and 1.');
+      return result;
+    }
+
+    static assertEditable(instance) {
+      if (instance.pointCloud?.locked) throw new SceneDocumentError('Unlock this reference to change its placement or scale.');
+    }
+
     /** Reject unknown versions and malformed values before recording any edit. */
     static validate(document) {
       this.record(document, 'document', ['version', 'name', 'instances', 'sourceScene', 'notices']);
@@ -57,7 +74,7 @@
       if (!Array.isArray(document.instances) || document.instances.length > this.MAX_INSTANCES) throw new SceneDocumentError(`A scene supports up to ${this.MAX_INSTANCES} instances.`);
       const identities = new Set();
       const instances = document.instances.map((instance) => {
-        this.record(instance, 'instance', ['id', 'assetId', 'name', 'position', 'rotation', 'scale', 'linkOffsets', 'jointPositions']);
+        this.record(instance, 'instance', ['id', 'assetId', 'name', 'position', 'rotation', 'scale', 'linkOffsets', 'jointPositions', 'pointCloud']);
         this.text(instance.id, 'Instance id', 96);
         if (!/^[A-Za-z0-9_-]+$/.test(instance.id)) throw new SceneDocumentError('Invalid instance id.');
         this.text(instance.assetId, 'Asset id', 2048);
@@ -79,7 +96,9 @@
         }
         const scale = this.vector(instance.scale ?? [1, 1, 1], 'Scale');
         if (scale.some((value) => value <= 0 || value > this.MAX_SCALE)) throw new SceneDocumentError('Scale values must be positive.');
-        return {id: instance.id, assetId: instance.assetId, name: instance.name, position: this.vector(instance.position, 'Position'), rotation: this.vector(instance.rotation, 'Rotation'), scale, linkOffsets, jointPositions};
+        const result = {id: instance.id, assetId: instance.assetId, name: instance.name, position: this.vector(instance.position, 'Position'), rotation: this.vector(instance.rotation, 'Rotation'), scale, linkOffsets, jointPositions};
+        if (instance.pointCloud !== undefined) result.pointCloud = this.pointCloud(instance.pointCloud);
+        return result;
       });
       const result = {version: this.VERSION, name: document.name, instances, notices: []};
       if (document.sourceScene !== undefined) result.sourceScene = this.text(document.sourceScene, 'Source scene', 1024);
@@ -126,10 +145,11 @@
       return id;
     }
 
-    add(assetId) {
+    add(assetId, options = {}) {
       const asset = this.assets.get(assetId);
       if (!asset) throw new SceneDocumentError('This asset is unavailable in the catalog.');
-      const instance = {id: this.nextId(), assetId, name: asset.name, position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], linkOffsets: {}, jointPositions: {}};
+      const instance = {id: this.nextId(), assetId, name: options.name ?? asset.name, position: [0, 0, 0], rotation: [0, 0, 0], scale: options.scale ?? [1, 1, 1], linkOffsets: {}, jointPositions: {}};
+      if (asset.kind === 'point-cloud') instance.pointCloud = {...SceneBuilderState.POINT_CLOUD_DEFAULTS};
       const notices = new Map(this.current.notices.map((notice) => [notice.url, notice]));
       for (const notice of asset.notices || []) notices.set(notice.url, notice);
       this.replace({...this.document, instances: [...this.document.instances, instance], notices: [...notices.values()]});
@@ -151,15 +171,25 @@
     renameInstance(id, name) { this.edit(id, (instance) => { instance.name = name; }); }
 
     transform(id, pose, linkName = null) {
-      const validated = SceneBuilderState.pose(pose, 'Transform');
+      SceneBuilderState.record(pose, 'transform', ['position', 'rotation', 'scale']);
+      const validated = SceneBuilderState.pose({position: pose.position, rotation: pose.rotation}, 'Transform');
+      if (pose.scale !== undefined && linkName) throw new SceneDocumentError('Scale applies to whole objects, not individual URDF parts.');
       if (linkName && SceneBuilderState.FORBIDDEN_KEYS.has(linkName)) throw new SceneDocumentError('Invalid link name.');
       this.edit(id, (instance) => {
+        SceneBuilderState.assertEditable(instance);
         if (linkName) instance.linkOffsets[linkName] = validated;
-        else Object.assign(instance, validated);
+        else Object.assign(instance, validated, pose.scale === undefined ? {} : {scale: pose.scale});
       });
     }
 
-    setScale(id, scale) { this.edit(id, (instance) => { instance.scale = scale; }); }
+    setScale(id, scale) { this.edit(id, (instance) => { SceneBuilderState.assertEditable(instance); instance.scale = scale; }); }
+    setPointCloud(id, changes) {
+      SceneBuilderState.record(changes, 'point cloud', ['visible', 'locked', 'pointSize', 'opacity']);
+      this.edit(id, (instance) => {
+        if (!instance.pointCloud) throw new SceneDocumentError('Select a point cloud reference first.');
+        instance.pointCloud = SceneBuilderState.pointCloud({...instance.pointCloud, ...changes});
+      });
+    }
     resetLink(id, linkName) { this.edit(id, (instance) => { delete instance.linkOffsets[linkName]; }); }
     setJoint(id, joint, value) {
       if (SceneBuilderState.FORBIDDEN_KEYS.has(joint)) throw new SceneDocumentError('Invalid joint name.');

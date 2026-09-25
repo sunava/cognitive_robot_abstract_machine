@@ -11,6 +11,8 @@
   const ROTATION_ORDER = 'ZYX';
   const DEFAULT_POSITION = [0, 0, 0];
   const DEFAULT_SCALE = [1, 1, 1];
+  const MAXIMUM_SCALE = 1000;
+  const POINT_CLOUD_DEFAULTS = Object.freeze({visible:true, locked:true, pointSize:.006, opacity:.65});
   const DRAG_CLICK_DISTANCE = 5;
 
   function vector(values, fallback) {
@@ -26,7 +28,7 @@
     const rotation = vector(transform.rotation, DEFAULT_POSITION);
     const quaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(...rotation, ROTATION_ORDER));
     const scale = vector(transform.scale, DEFAULT_SCALE);
-    if (scale.some(value => value <= 0)) throw new TypeError('Scale must be positive.');
+    if (scale.some(value => value <= 0 || value > MAXIMUM_SCALE)) throw new TypeError('Scale must be positive and at most ' + MAXIMUM_SCALE + '.');
     return new THREE.Matrix4().compose(position, quaternion, new THREE.Vector3().fromArray(scale));
   }
 
@@ -63,6 +65,7 @@
       this.id = specification.id;
       this.assetId = specification.assetId;
       this.root = root;
+      this.isPointCloud = Boolean(root.isPoints && root.userData.pointCloud);
       this.group = new THREE.Group();
       this.group.name = specification.name;
       this.group.userData.sceneBuilderInstance = this.id;
@@ -80,6 +83,8 @@
     /** Apply a placement without modifying authored transforms or joint axes. */
     apply(specification) {
       const placement = matrix(this.THREE, specification);
+      const pointCloud = this.isPointCloud ? Object.assign({}, POINT_CLOUD_DEFAULTS, specification.pointCloud || {}) : null;
+      if (pointCloud && (typeof pointCloud.visible !== 'boolean' || typeof pointCloud.locked !== 'boolean' || !Number.isFinite(pointCloud.pointSize) || pointCloud.pointSize < .0001 || pointCloud.pointSize > .1 || !Number.isFinite(pointCloud.opacity) || pointCloud.opacity < .05 || pointCloud.opacity > 1)) throw new TypeError('Invalid point-cloud reference appearance.');
       const offsets = new Map();
       Object.entries(specification.linkOffsets || {}).forEach(([name, offset]) => {
         if (!this.authored.has(name)) throw new TypeError('Unknown model link: ' + name);
@@ -90,6 +95,14 @@
       });
       placement.decompose(this.group.position, this.group.quaternion, this.group.scale);
       this.group.name = specification.name;
+      this.pointCloud = pointCloud;
+      if (pointCloud) {
+        this.group.visible = pointCloud.visible;
+        this.root.material.size = pointCloud.pointSize;
+        this.root.material.opacity = pointCloud.opacity;
+        this.root.material.transparent = true;
+        this.root.material.depthWrite = false;
+      }
       this.authored.forEach((baseline, name) => {
         const parent_T_link = offsets.has(name) ? offsets.get(name).clone().multiply(baseline) : baseline;
         const link = this.root.links[name];
@@ -135,6 +148,7 @@
       this.THREE = options.THREE || global.THREE;
       this.baseURL = options.baseURL || global.location.href;
       this.URDFLoader = options.URDFLoader || global.URDFLoader;
+      this.PointCloudSupport = options.PointCloudSupport || global.PointCloudSupport;
     }
 
     resolveURL(path) {
@@ -180,7 +194,13 @@
     mesh(url, format, manager, urdf) {
       const THREE = this.THREE;
       return new Promise((resolve, reject) => {
-        if (format === 'glb' || format === 'gltf') {
+        if (format === 'ply' || format === 'pcd') {
+          const loader = new THREE.FileLoader(manager);
+          loader.setResponseType('arraybuffer');
+          loader.load(url, buffer => {
+            Promise.resolve().then(() => this.PointCloudSupport.parse(buffer, format, THREE)).then(resolve, reject);
+          }, undefined, reject);
+        } else if (format === 'glb' || format === 'gltf') {
           new THREE.GLTFLoader(manager).load(url, result => resolve(result.scene), undefined, reject);
         } else if (format === 'stl') {
           new THREE.STLLoader(manager).load(url, geometry => resolve(new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({color:0xc8d2d3, roughness:.65}))), undefined, reject);
@@ -220,6 +240,7 @@
       this.available = false;
       this.disposed = false;
       this.mode = 'translate';
+      this.scaleLinked = true;
       this.onError = options.onError || (() => {});
       try {
         this.renderer = options.rendererFactory ? options.rendererFactory() : new this.THREE.WebGLRenderer({antialias:true, alpha:false});
@@ -353,18 +374,22 @@
       if (!this.available) return;
       const instance = this.instances.get(instanceId);
       const target = instance ? instance.target(linkName) : null;
-      if (target && this.gizmo.object === target) return;
+      const editable = instance && (!instance.pointCloud || (instance.pointCloud.visible && !instance.pointCloud.locked)) && !(linkName && this.mode === 'scale');
+      if (editable && target && this.gizmo.object === target) return;
       this.gizmo.detach(); this.selectionBox.visible = false;
       if (!instance) return;
-      this.gizmo.attach(target); this.gizmo.setMode(this.mode);
-      this.selectionBox.setFromObject(target); this.selectionBox.visible = true;
+      if (editable) { this.gizmo.attach(target); this.gizmo.setMode(this.mode); }
+      this.selectionBox.setFromObject(target); this.selectionBox.visible = instance.group.visible;
     }
 
     setMode(mode) {
-      if (!['translate', 'rotate'].includes(mode)) throw new TypeError('Unknown transform mode.');
+      if (!['translate', 'rotate', 'scale'].includes(mode)) throw new TypeError('Unknown transform mode.');
       this.mode = mode;
       if (this.gizmo) this.gizmo.setMode(mode);
+      if (this.selection) this.setSelection(this.selection.instanceId, this.selection.linkName);
     }
+
+    setScaleLinked(linked) { this.scaleLinked = Boolean(linked); }
 
     setSnap(enabled) {
       if (!this.gizmo) return;
@@ -377,9 +402,30 @@
       return instance ? instance.structure() : {links:[], joints:[]};
     }
 
-    beginTransform() { this.transformChanged = false; }
+    beginTransform() {
+      this.transformChanged = false;
+      const instance = this.selection && this.instances.get(this.selection.instanceId);
+      const target = instance && instance.target(this.selection.linkName);
+      this.scaleStart = target ? target.scale.clone() : null;
+      this.validScale = this.scaleStart ? this.scaleStart.clone() : null;
+    }
 
-    changeTransform() { this.transformChanged = true; }
+    changeTransform() {
+      if (this.mode === 'scale' && this.scaleStart) {
+        const instance = this.instances.get(this.selection.instanceId);
+        const target = instance.target(this.selection.linkName);
+        if (this.selection.linkName || (instance.pointCloud && instance.pointCloud.locked)) { target.scale.copy(this.scaleStart); return; }
+        if (this.scaleLinked !== false) {
+          const axis = (this.gizmo.axis || 'X').toLowerCase()[0];
+          const component = ['x','y','z'].includes(axis) ? axis : 'x';
+          const ratio = target.scale[component] / this.scaleStart[component];
+          target.scale.copy(this.scaleStart).multiplyScalar(ratio);
+        }
+        if (target.scale.toArray().some(value => !Number.isFinite(value) || value <= 0 || value > MAXIMUM_SCALE)) { target.scale.copy(this.validScale); return; }
+        this.validScale.copy(target.scale);
+      }
+      this.transformChanged = true;
+    }
 
     /** Commit a drag as one history step while rendering intermediate poses. */
     finishTransform() {
@@ -391,7 +437,13 @@
     emitTransform() {
       if (!this.selection || !this.options.onTransform) return;
       const instance = this.instances.get(this.selection.instanceId);
+      if (!instance || (instance.pointCloud && instance.pointCloud.locked) || (this.mode === 'scale' && this.selection.linkName)) return;
       this.options.onTransform(Object.assign({}, this.selection, instance.transform(this.selection.linkName)));
+    }
+
+    /** Locked scan references never obscure selection of editable scene objects. */
+    pickableObjects() {
+      return [...this.instances.values()].filter(instance => instance.group.visible && (!instance.pointCloud || !instance.pointCloud.locked)).map(instance => instance.group);
     }
 
     pick(event) {
@@ -400,7 +452,8 @@
       const rectangle = this.renderer.domElement.getBoundingClientRect();
       const pointer = new this.THREE.Vector2(2 * (event.clientX - rectangle.left) / rectangle.width - 1, 1 - 2 * (event.clientY - rectangle.top) / rectangle.height);
       const ray = new this.THREE.Raycaster(); ray.setFromCamera(pointer, this.camera);
-      const hit = ray.intersectObjects(this.content.children, true)[0];
+      ray.params.Points.threshold = .012;
+      const hit = ray.intersectObjects(this.pickableObjects(), true)[0];
       if (!hit) return;
       let current = hit.object;
       let linkName = null;

@@ -32,14 +32,22 @@
       <label>Saved drafts<select id="draft-list"><option value="">Choose a draft…</option></select></label>
       <div class="button-row"><button id="load-draft" disabled>Load draft</button><button id="save-copy">Save a copy</button></div>
     </details>
+    <details class="scan-import" open>
+      <summary>Room reference</summary>
+      <p class="hint">Use a scanned room as a background while arranging objects.</p>
+      <label>Source units<select id="scan-units"><option value="m">Metres (m)</option><option value="cm">Centimetres (cm)</option><option value="mm">Millimetres (mm)</option></select></label>
+      <button id="load-scan">Load point cloud</button>
+      <input id="scan-file" type="file" accept=".ply,.pcd" hidden>
+      <p class="hint">PLY or PCD · up to 64 MiB / 2 million points. Stored with your drafts on this server.</p>
+    </details>
     <div class="library-title"><h2>Asset library</h2><span id="asset-count" class="muted">Loading…</span></div>
     <label class="search-label">Search assets<input id="asset-search" type="search" placeholder="PR2, workbench, cabinet…" autocomplete="off"></label>
-    <label>Category<select id="asset-category"><option value="">All assets</option><option value="environment">Environments</option><option value="robot">Robots</option><option value="object">Objects</option></select></label>
+    <label>Category<select id="asset-category"><option value="">All assets</option><option value="environment">Environments</option><option value="robot">Robots</option><option value="object">Objects</option><option value="point-cloud">Point clouds</option></select></label>
     <div id="asset-library" class="asset-list" aria-label="Available assets"></div>
   </aside>
   <section class="viewport-panel" aria-label="Scene editor">
     <div class="viewport-toolbar">
-      <div class="button-row" role="group" aria-label="Transform mode"><button id="mode-translate" aria-pressed="true">Move</button><button id="mode-rotate" aria-pressed="false">Rotate</button></div>
+      <div class="button-row" role="group" aria-label="Transform mode"><button id="mode-translate" aria-pressed="true">Move</button><button id="mode-rotate" aria-pressed="false">Rotate</button><button id="mode-scale" aria-pressed="false" title="Scale a whole object; individual URDF parts cannot be scaled">Scale</button></div>
       <div class="button-row"><button id="frame-selection">Frame selected</button><button id="frame-all">Frame all</button></div>
     </div>
     <div id="viewport" class="viewport"></div>
@@ -55,6 +63,13 @@
       <div class="selection-heading"><h2>Selected object</h2><span id="selection-kind" class="badge"></span></div>
       <label>Name<input id="instance-name" maxlength="160"></label>
       <div class="button-row"><button id="duplicate">Duplicate</button><button id="delete" class="danger">Delete</button></div>
+      <section id="reference-settings" class="reference-settings" hidden>
+        <h2>Point cloud reference</h2>
+        <label class="checkbox-label"><input id="reference-visible" type="checkbox" checked> Show reference</label>
+        <label class="checkbox-label"><input id="reference-locked" type="checkbox" checked> Lock reference</label>
+        <p class="hint">Unlock to move, rotate or scale the scan. Its original coordinates are preserved.</p>
+        <div class="reference-fields"><label>Opacity<input id="reference-opacity" type="number" min="0.05" max="1" step="0.05" value="0.65"></label><label>Point size · mm<input id="reference-point-size" type="number" min="0.1" max="100" step="1" value="6"></label></div>
+      </section>
       <label>Edit part<select id="part-select"><option value="">Whole object / robot spawn</option></select></label>
       <p id="part-help" class="hint">The whole model moves together, including articulated children.</p>
       <fieldset><legend>Position <span id="position-reference">in world</span> · m</legend><div class="vector-fields">
@@ -63,9 +78,12 @@
       <fieldset><legend>Rotation · degrees</legend><div class="vector-fields">
         <label>Roll<input id="rotation-x" type="number" step="5"></label><label>Pitch<input id="rotation-y" type="number" step="5"></label><label>Yaw<input id="rotation-z" type="number" step="5"></label>
       </div></fieldset>
-      <fieldset id="scale-fields"><legend>Scale · multiplier</legend><div class="vector-fields">
+      <fieldset id="scale-fields"><legend>Scale · multiplier</legend>
+        <label class="checkbox-label"><input id="scale-linked" type="checkbox" checked> Keep proportions</label>
+        <div class="vector-fields">
         <label>X<input id="scale-x" type="number" step="0.01" min="0.000001"></label><label>Y<input id="scale-y" type="number" step="0.01" min="0.000001"></label><label>Z<input id="scale-z" type="number" step="0.01" min="0.000001"></label>
       </div></fieldset>
+      <div id="scale-shortcuts" class="button-row"><button id="scale-half">× 0.5</button><button id="scale-double">× 2</button><button id="scale-reset" title="Reset all scale multipliers to 1">Reset scale</button></div>
       <button id="reset-part" hidden>Restore original part placement</button>
       <details id="joints-section"><summary>Articulated joints</summary><div id="joint-fields"></div></details>
       <details id="asset-notices"><summary>Asset provenance</summary><div id="notice-list"></div></details>
@@ -84,6 +102,7 @@
 <script src="vendor/URDFLoader.js"></script>
 <script src="core/authored-materials.js"></script>
 <script src="core/scene-builder-state.js"></script>
+<script src="core/scene-builder-point-cloud.js"></script>
 <script src="core/scene-builder-view.js"></script>
 <script src="scene_builder.js"></script>
 </body>

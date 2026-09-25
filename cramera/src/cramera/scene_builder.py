@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import mimetypes
 import os
@@ -19,6 +20,12 @@ from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit
 
 from cramera import paths
+from cramera.scene_builder_point_cloud import (
+    PointCloudField,
+    PointCloudFormat,
+    PointCloudLimits,
+    PointCloudSource,
+)
 
 
 # %% resource and document vocabulary
@@ -35,6 +42,7 @@ class BuilderField(StrEnum):
     SCALE = "scale"
     LINK_OFFSETS = "linkOffsets"
     JOINT_POSITIONS = "jointPositions"
+    POINT_CLOUD = "pointCloud"
     NOTICES = "notices"
     URL = "url"
     SOURCE_SCENE = "sourceScene"
@@ -59,6 +67,7 @@ class ResourceKind(StrEnum):
     ROBOT = "robot"
     ENVIRONMENT = "environment"
     OBJECT = "object"
+    POINT_CLOUD = "point-cloud"
 
 
 class ResourceFile(StrEnum):
@@ -76,6 +85,10 @@ class ResourceFile(StrEnum):
 
 MODEL_SUFFIXES = frozenset({".urdf", ".glb", ".gltf", ".stl", ".obj", ".dae"})
 """Model formats supported by the existing browser loaders."""
+POINT_CLOUD_SUFFIXES = frozenset(f".{format_name}" for format_name in PointCloudFormat)
+"""Point-cloud source formats shown as spatial references."""
+RESOURCE_SUFFIXES = MODEL_SUFFIXES | POINT_CLOUD_SUFFIXES
+"""Visual resources accepted as editable scene instances."""
 DEPENDENCY_SUFFIXES = frozenset(
     {
         ".mtl",
@@ -192,6 +205,7 @@ class SceneDocument:
             BuilderField.SCALE,
             BuilderField.LINK_OFFSETS,
             BuilderField.JOINT_POSITIONS,
+            BuilderField.POINT_CLOUD,
         }
         if not isinstance(payload, dict) or set(payload) - allowed:
             raise InvalidSceneBuilderRequest("Invalid scene instance fields.")
@@ -212,7 +226,7 @@ class SceneDocument:
             or len(joints) > MAXIMUM_INSTANCES
         ):
             raise InvalidSceneBuilderRequest("Invalid articulation overrides.")
-        return {
+        normalized = {
             BuilderField.ID: identifier,
             BuilderField.ASSET_ID: cls._text(
                 payload.get(BuilderField.ASSET_ID), maximum=2048
@@ -230,6 +244,47 @@ class SceneDocument:
                 for key, value in joints.items()
             },
         }
+        if BuilderField.POINT_CLOUD in payload:
+            normalized[BuilderField.POINT_CLOUD] = cls._point_cloud(
+                payload[BuilderField.POINT_CLOUD]
+            )
+        return normalized
+
+    @classmethod
+    def _point_cloud(cls, payload: object) -> dict:
+        """Validate optional scan visibility, editing lock and display appearance."""
+        defaults = {
+            PointCloudField.VISIBLE: True,
+            PointCloudField.LOCKED: True,
+            PointCloudField.POINT_SIZE: PointCloudLimits.DEFAULT_POINT_SIZE,
+            PointCloudField.OPACITY: PointCloudLimits.DEFAULT_OPACITY,
+        }
+        if not isinstance(payload, dict) or set(payload) - defaults.keys():
+            raise InvalidSceneBuilderRequest("Invalid point-cloud display settings.")
+        result = defaults | payload
+        if any(
+            not isinstance(result[key], bool)
+            for key in (PointCloudField.VISIBLE, PointCloudField.LOCKED)
+        ):
+            raise InvalidSceneBuilderRequest(
+                "Point-cloud visibility and lock must be booleans."
+            )
+        size = cls._number(result[PointCloudField.POINT_SIZE])
+        opacity = cls._number(result[PointCloudField.OPACITY])
+        if (
+            not PointCloudLimits.MINIMUM_POINT_SIZE
+            <= size
+            <= PointCloudLimits.MAXIMUM_POINT_SIZE
+            or not PointCloudLimits.MINIMUM_OPACITY
+            <= opacity
+            <= PointCloudLimits.MAXIMUM_OPACITY
+        ):
+            raise InvalidSceneBuilderRequest(
+                "Point-cloud appearance exceeds its supported bounds."
+            )
+        result[PointCloudField.POINT_SIZE] = size
+        result[PointCloudField.OPACITY] = opacity
+        return result
 
     @classmethod
     def _offset(cls, payload: object) -> dict:
@@ -329,6 +384,15 @@ class SceneBuilderService:
             .expanduser()
             .resolve()
         )
+        uploads = self.drafts_directory / PointCloudField.DIRECTORY
+        if uploads.is_symlink() or (
+            PointCloudField.ROOT in self.roots
+            and self.roots[PointCloudField.ROOT] != uploads
+        ):
+            raise InvalidSceneBuilderRequest(
+                "The point_clouds root is reserved for persistent uploads."
+            )
+        self.roots[PointCloudField.ROOT] = uploads
         if (
             not self.url_prefix.startswith("/")
             or self.url_prefix.startswith("//")
@@ -375,7 +439,7 @@ class SceneBuilderService:
             )
         if (
             asset
-            and target.suffix.lower() not in MODEL_SUFFIXES | DEPENDENCY_SUFFIXES
+            and target.suffix.lower() not in RESOURCE_SUFFIXES | DEPENDENCY_SUFFIXES
             and target.name not in NOTICE_NAMES
         ):
             raise InvalidSceneBuilderRequest(
@@ -471,40 +535,96 @@ class SceneBuilderService:
                     )
         assets = []
         for identifier, path in files:
-            if path.suffix.lower() not in MODEL_SUFFIXES:
+            if path.suffix.lower() not in RESOURCE_SUFFIXES:
                 continue
             category = categories.get(path.resolve(), ResourceKind.OBJECT)
             if "worlds" in path.parts:
                 category = ResourceKind.ENVIRONMENT
             if any(part in {"robots", "robot_descriptions"} for part in path.parts):
                 category = ResourceKind.ROBOT
-            assets.append(
-                {
-                    BuilderField.ID: identifier,
-                    BuilderField.NAME: (
-                        path.parent.name
-                        if path.stem in {"model", "environment", "robot"}
-                        else path.stem
-                    ),
-                    BuilderField.FORMAT: path.suffix.lower().removeprefix("."),
-                    BuilderField.KIND: (
-                        ResourceKind.URDF
-                        if path.suffix.lower() == ".urdf"
-                        else ResourceKind.MESH
-                    ),
-                    BuilderField.CATEGORY: category,
-                    BuilderField.URL: self._url(identifier),
-                    BuilderField.ROOT: identifier.split("/", 1)[0],
-                    BuilderField.PATH: identifier.split("/", 1)[1],
-                    BuilderField.METADATA: {},
-                    BuilderField.NOTICES: self._notices(identifier),
-                }
-            )
+            assets.append(self._asset(identifier, path, category=category))
         return {
             BuilderField.ASSETS: assets,
             BuilderField.SCENES: scenes,
             BuilderField.DRAFTS: self.list_drafts(),
         }
+
+    def _asset(
+        self,
+        identifier: str,
+        path: Path,
+        *,
+        category: ResourceKind = ResourceKind.OBJECT,
+    ) -> dict:
+        """Describe one local visual resource and its original attribution."""
+        kind = (
+            ResourceKind.URDF if path.suffix.lower() == ".urdf" else ResourceKind.MESH
+        )
+        metadata = {}
+        if path.suffix.lower() in POINT_CLOUD_SUFFIXES:
+            kind = category = ResourceKind.POINT_CLOUD
+            if identifier.startswith(PointCloudField.ROOT + "/"):
+                metadata_path = path.with_suffix(PointCloudField.METADATA_SUFFIX)
+                if metadata_path.is_file() and not metadata_path.is_symlink():
+                    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        return {
+            BuilderField.ID: identifier,
+            BuilderField.NAME: (
+                path.parent.name
+                if path.stem in {"model", "environment", "robot"}
+                else path.stem
+            ),
+            BuilderField.FORMAT: path.suffix.lower().removeprefix("."),
+            BuilderField.KIND: kind,
+            BuilderField.CATEGORY: category,
+            BuilderField.URL: self._url(identifier),
+            BuilderField.ROOT: identifier.split("/", 1)[0],
+            BuilderField.PATH: identifier.split("/", 1)[1],
+            BuilderField.METADATA: metadata,
+            BuilderField.NOTICES: self._notices(identifier),
+        }
+
+    def import_point_cloud(self, format_name: str, body: bytes) -> dict:
+        """Validate and atomically retain original point-cloud bytes for future scenes."""
+        source = PointCloudSource.validate(format_name, body)
+        directory = self.roots[PointCloudField.ROOT]
+        if (
+            directory.is_symlink()
+            or directory.resolve() != self.drafts_directory / PointCloudField.DIRECTORY
+        ):
+            raise InvalidSceneBuilderRequest(
+                "Point-cloud storage leaves its dedicated directory."
+            )
+        filename = f"{hashlib.sha256(body).hexdigest()}.{format_name}"
+        target = directory / filename
+        if target.is_symlink():
+            raise InvalidSceneBuilderRequest(
+                "Point-cloud storage cannot follow an asset symlink."
+            )
+        directory.mkdir(parents=True, exist_ok=True)
+        if not target.exists():
+            with tempfile.NamedTemporaryFile(
+                mode="wb", dir=directory, prefix=".upload-", delete=False
+            ) as temporary:
+                temporary.write(body)
+            os.replace(temporary.name, target)
+        elif not target.is_file() or target.read_bytes() != body:
+            raise InvalidSceneBuilderRequest(
+                "The stored point-cloud content does not match its identifier."
+            )
+        metadata_path = target.with_suffix(PointCloudField.METADATA_SUFFIX)
+        if metadata_path.is_symlink():
+            raise InvalidSceneBuilderRequest(
+                "Point-cloud metadata cannot follow a symlink."
+            )
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=directory, prefix=".metadata-", delete=False
+        ) as temporary:
+            json.dump(source.metadata(), temporary, allow_nan=False)
+            temporary.write("\n")
+        os.replace(temporary.name, metadata_path)
+        identifier = f"{PointCloudField.ROOT}/{filename}"
+        return self._asset(identifier, target)
 
     def _dependency(self, source: Path, reference: str) -> str:
         """Resolve local and package mesh paths solely within configured roots."""
@@ -711,7 +831,7 @@ class SceneBuilderService:
         }
         for instance in document[BuilderField.INSTANCES]:
             identifier = instance[BuilderField.ASSET_ID]
-            if self.resolve_asset(identifier).suffix.lower() not in MODEL_SUFFIXES:
+            if self.resolve_asset(identifier).suffix.lower() not in RESOURCE_SUFFIXES:
                 raise InvalidSceneBuilderRequest(
                     "Scene instances must reference model resources."
                 )

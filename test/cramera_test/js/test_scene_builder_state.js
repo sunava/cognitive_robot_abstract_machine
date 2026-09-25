@@ -67,3 +67,32 @@ assert.throws(() => scaled.setScale(scaledBench.id, [1, 0, 1]), SceneDocumentErr
 assert.throws(() => scaled.transform(scaledBench.id, {position: [10001, 0, 0], rotation: [0, 0, 0]}), SceneDocumentError);
 assert.throws(() => State.validate({...plain(scaled.document), notices: [{name: 'unsafe', url: 'javascript:alert(1)'}]}), SceneDocumentError);
 assert.throws(() => State.validate({...plain(scaled.document), instances: [{...plain(scaledBench), linkOffsets: []}]}), SceneDocumentError);
+
+// %% atomic scale gestures and persistent locked scan references
+const scanAsset = {id: 'point-clouds/scan.ply', name: 'Room scan', category: 'point-cloud', kind: 'point-cloud', format: 'ply'};
+const scanState = new State([...assets, scanAsset]);
+const scan = scanState.add(scanAsset.id, {name: 'Measured room', scale: [.001, .001, .001]});
+assert.deepEqual(plain(scan.pointCloud), plain(State.POINT_CLOUD_DEFAULTS));
+assert.equal(scan.name, 'Measured room');
+assert.deepEqual(plain(scan.scale), [.001, .001, .001]);
+const lockedDocument = scanState.export();
+assert.throws(() => scanState.transform(scan.id, {position: [1, 0, 0], rotation: [0, 0, 0]}), SceneDocumentError);
+assert.throws(() => scanState.setScale(scan.id, [1, 1, 1]), SceneDocumentError);
+assert.equal(scanState.export(), lockedDocument);
+scanState.setPointCloud(scan.id, {locked: false, opacity: .4, pointSize: .01, visible: true});
+const beforeGesture = scanState.export();
+scanState.transform(scan.id, {position: [1, 2, 3], rotation: [0, 0, .3], scale: [2, 3, 4]});
+assert.deepEqual(plain(scanState.instance(scan.id).scale), [2, 3, 4]);
+scanState.undo();
+assert.equal(scanState.export(), beforeGesture, 'Pose and scale must undo as one gesture.');
+scanState.redo();
+const importedScan = new State([...assets, scanAsset], JSON.parse(scanState.export()));
+assert.deepEqual(plain(importedScan.instance(scan.id).pointCloud), {visible: true, locked: false, pointSize: .01, opacity: .4});
+const beforeInvalid = scanState.export();
+for (const change of [{opacity: NaN}, {opacity: 0}, {pointSize: .2}, {pointSize: 0}, {visible: 1}, {locked: 'false'}, {unknown: true}]) assert.throws(() => scanState.setPointCloud(scan.id, change), SceneDocumentError);
+assert.equal(scanState.export(), beforeInvalid);
+const scalableBench = scanState.add('bench');
+assert.equal(Object.hasOwn(scalableBench, 'pointCloud'), false, 'Existing mesh and URDF instances retain their schema.');
+assert.throws(() => scanState.transform(scalableBench.id, {position: [0, 0, 0], rotation: [0, 0, 0], scale: [2, 2, 2]}, 'drawer'), SceneDocumentError);
+assert.throws(() => scanState.transform(scalableBench.id, {position: [8, 0, 0], rotation: [0, 0, 0], scale: [-1, 1, 1]}), SceneDocumentError);
+assert.deepEqual(plain(scanState.instance(scalableBench.id).position), [0, 0, 0]);

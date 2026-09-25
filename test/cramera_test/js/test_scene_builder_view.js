@@ -195,3 +195,105 @@ test('URDF readiness waits for every asynchronous mesh callback', async () => {
   const root = await loading;
   assert.equal(root.getObjectByName('delayedMesh'), mesh);
 });
+
+// %% scale handles and point-cloud references
+function transformView(specification = documentInstance(), root = model()) {
+  const {view} = pendingView();
+  const instance = new SceneBuilderInstance(THREE, specification, root);
+  view.instances.set(instance.id, instance);
+  view.content.add(instance.group);
+  view.gizmo = {object:null, mode:'translate', axis:'X', detach() { this.object = null; }, attach(object) { this.object = object; }, setMode(mode) { this.mode = mode; }};
+  view.selectionBox = {visible:false,setFromObject() {}};
+  view.setSelection(instance.id);
+  return {view,instance};
+}
+
+test('scale gizmo applies a linked ratio without flattening existing proportions', () => {
+  const {view,instance} = transformView(documentInstance({scale:[1,2,3]}));
+  const changes = []; view.options.onTransform = value => changes.push(value);
+  view.setMode('scale'); view.setScaleLinked(true); view.beginTransform();
+  instance.group.scale.x = 2; view.changeTransform(); view.finishTransform();
+  assert.deepEqual(changes[0].scale, [2,4,6]);
+  assert.equal(changes.length, 1);
+});
+
+test('unlinked scale handles change only the dragged component', () => {
+  const {view,instance} = transformView(documentInstance({scale:[1,2,3]}));
+  view.setMode('scale'); view.setScaleLinked(false); view.beginTransform();
+  instance.group.scale.x = 4; view.changeTransform();
+  assert.deepEqual(instance.group.scale.toArray(), [4,2,3]);
+});
+
+test('invalid gizmo scale restores the latest positive bounded placement', () => {
+  const {view,instance} = transformView();
+  view.setMode('scale'); view.setScaleLinked(false); view.beginTransform();
+  instance.group.scale.x = 2; view.changeTransform();
+  for (const invalid of [-1, 0, NaN, Infinity, 1001]) {
+    instance.group.scale.x = invalid; view.changeTransform();
+    assert.deepEqual(instance.group.scale.toArray(), [2,1,1]);
+  }
+});
+
+test('scale mode never attaches to a URDF subtree', () => {
+  const {view,instance} = transformView();
+  view.setSelection(instance.id, 'cabinet'); view.setMode('scale');
+  assert.equal(view.gizmo.object, null);
+  view.setMode('translate');
+  assert.equal(view.gizmo.object, instance.root.links.cabinet);
+});
+
+function cloud() {
+  const root = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial());
+  root.userData.pointCloud = {pointCount:1};
+  return root;
+}
+
+test('locked reference scans remain visible and do not intercept furniture selection', () => {
+  const {view,instance} = transformView(documentInstance({pointCloud:{visible:true,locked:true,pointSize:.012,opacity:.4}}), cloud());
+  assert.equal(view.gizmo.object, null);
+  assert.equal(instance.group.visible, true);
+  assert.equal(instance.root.material.size, .012);
+  assert.equal(instance.root.material.opacity, .4);
+  assert.equal(instance.root.material.depthWrite, false);
+  assert.deepEqual(view.pickableObjects(), []);
+});
+
+test('unlocking a reference permits placement while hiding it removes picking', () => {
+  const {view,instance} = transformView(documentInstance(), cloud());
+  assert.equal(view.gizmo.object, null);
+  instance.apply(documentInstance({pointCloud:{locked:false,visible:true}}));
+  view.setSelection(instance.id);
+  assert.equal(view.gizmo.object, instance.group);
+  assert.deepEqual(view.pickableObjects(), [instance.group]);
+  instance.apply(documentInstance({pointCloud:{locked:false,visible:false}}));
+  assert.equal(instance.group.visible, false);
+  assert.deepEqual(view.pickableObjects(), []);
+});
+
+test('reference appearance updates preserve its source geometry', () => {
+  const root = cloud();
+  const instance = new SceneBuilderInstance(THREE, documentInstance(), root);
+  const geometry = root.geometry;
+  instance.apply(documentInstance({pointCloud:{pointSize:.01,opacity:.5}}));
+  assert.equal(root.geometry, geometry);
+});
+
+test('reference downloads are parsed once and reused for appearance edits', async () => {
+  let requests = 0;
+  let parsed = 0;
+  const source = new ArrayBuffer(8);
+  const points = cloud();
+  class CloudDownload {
+    setResponseType(type) { assert.equal(type, 'arraybuffer'); }
+    load(url, done) { requests += 1; done(source); }
+  }
+  const loader = new SceneBuilderAssetLoader({THREE:{...THREE,FileLoader:CloudDownload},baseURL:'https://example.test/builder/',PointCloudSupport:{parse(buffer, format) { parsed += 1; assert.equal(buffer, source); assert.equal(format, 'ply'); return points; }}});
+  const {view,assets} = pendingView();
+  view.assetLoader = loader;
+  assets.set('scan', {url:'scan.ply',format:'ply',kind:'point-cloud'});
+  await view.setDocument({instances:[documentInstance({assetId:'scan',pointCloud:{locked:true}})]}, assets);
+  await view.setDocument({instances:[documentInstance({assetId:'scan',pointCloud:{locked:true,opacity:.8}})]}, assets);
+  assert.equal(requests, 1);
+  assert.equal(parsed, 1);
+  assert.equal(points.material.opacity, .8);
+});

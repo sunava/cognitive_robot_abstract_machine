@@ -28,6 +28,39 @@ Meshes are selectable model instances. A single combined mesh is not automatical
 segmented into furniture. URDFs expose their authored link hierarchy. Missing model
 dependencies produce a visible load error.
 
+## Scale objects
+
+Select a whole object and choose **Scale** to drag its size handles. The inspector
+also accepts independent X/Y/Z multipliers. **Keep proportions** changes all three
+axes by the same ratio when editing one axis. Scaling applies to the entire model,
+including its articulated children; individual URDF link offsets remain rigid
+transforms. Placement and scale are saved together and undoable.
+
+## Arrange models inside a scanned room
+
+1. Export your scan as a vertex-only PLY or an uncompressed PCD file.
+2. Choose **Source units** (metres, centimetres or millimetres), then **Load point
+   cloud**. The original file is stored with your drafts on this server.
+3. Select the reference, turn off **Lock reference**, and use position, rotation
+   and scale to align the scan with the editor's Z-up coordinate system. Original
+   scan coordinates are retained; the editor does not recenter it automatically.
+4. Enable **Lock reference** again. The scan remains visible while clicks select
+   the furniture and robot models you add over it.
+5. Adjust **Show reference**, opacity and point size as needed, then **Save draft**.
+
+Imports accept up to 64 MiB and two million source points. The renderer displays
+a deterministic sample of at most 250,000 finite points, retaining the full source
+file on the server. PLY supports ASCII and little-/big-endian binary scalar vertex
+properties. PCD supports ASCII and uncompressed binary, including packed RGB.
+Compressed PCD and polygon meshes are not accepted as scan references; export a
+vertex-only PLY or uncompressed PCD first.
+
+Point clouds are visual references. They do not automatically create furniture,
+collision shapes, semantic labels or a physics world. Saved layouts retain their
+visibility, lock, size, opacity and alignment. JSON exports reference the uploaded
+files by stable asset ID; moving a layout to another server requires copying those
+scan files as well.
+
 ## Resource library and documents
 
 Local discovery uses the package's `resources`, configured `scenes`, writable
@@ -45,7 +78,11 @@ they are not executable CRAM plans or newly generated URDF files.
 Drafts are written atomically under `CRAMERA_DATA/scene-builder` by default.
 The API namespace is `/api/scene-builder`, relative to the current protected mount:
 `catalog`, `template?asset=...`, `assets/<root>/<path>`, and `drafts[/<id>]`.
-Only `POST drafts` writes data; it accepts a document and an optional existing ID.
+`POST drafts` accepts a document and an optional existing ID. `POST point-clouds/ply`
+and `POST point-clouds/pcd` accept the original bytes with media type
+`application/octet-stream`. Validated scans are content-addressed under the draft
+store's `point-clouds` subdirectory and catalogued in the reserved `point_clouds`
+resource root. Reimporting the same file reuses its stored asset.
 
 ## Protected deployment
 
@@ -55,3 +92,7 @@ It exposes those configured roots only. Its password, same-origin write checks a
 document size limits apply to the editor as well. Keep the original source files
 and notices in each deployed library; copy model files into matching named roots
 to preserve draft portability.
+
+The gateway needs write access only to its draft store, including the scan
+subdirectory. Configure the reverse proxy to allow a 64 MiB request body for the
+point-cloud upload routes; other document endpoints keep their smaller limit.

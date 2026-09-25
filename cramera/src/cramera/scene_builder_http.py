@@ -16,6 +16,7 @@ from cramera.scene_builder import (
     SceneBuilderService,
     MAXIMUM_DOCUMENT_BYTES,
 )
+from cramera.scene_builder_point_cloud import PointCloudFormat, PointCloudLimits
 
 
 # %% route and document vocabulary
@@ -32,6 +33,8 @@ class SceneBuilderRoute(StrEnum):
     """Confined model and dependency files."""
     DRAFTS = "/api/scene-builder/drafts"
     """Saved scene documents."""
+    POINT_CLOUDS = "/api/scene-builder/point-clouds/"
+    """Bounded scan uploads identified by their declared file format."""
     PAGE = "/scene_builder.html"
     """Standalone editor page."""
 
@@ -49,6 +52,15 @@ class SceneBuilderField(StrEnum):
     """Saved scene summaries."""
     ERROR = "error"
     """Human-readable request failure."""
+
+
+class SceneBuilderMediaType(StrEnum):
+    """Explicit request encodings accepted by the authoring endpoints."""
+
+    DOCUMENT = "application/json"
+    """A serialized layout with references to existing models."""
+    POINT_CLOUD = "application/octet-stream"
+    """The original bytes of a bounded point-cloud file."""
 
 
 @dataclass(frozen=True)
@@ -84,6 +96,36 @@ class SceneBuilderHttp:
     def handles(route: str) -> bool:
         """Return whether a route belongs to the authoring namespace."""
         return route.startswith(SceneBuilderRoute.PREFIX + "/")
+
+    @staticmethod
+    def point_cloud_upload(route: str) -> bool:
+        """Accept only an exact route for a supported scan format."""
+        return route in {
+            SceneBuilderRoute.POINT_CLOUDS + extension for extension in PointCloudFormat
+        }
+
+    @classmethod
+    def accepts_post(cls, route: str) -> bool:
+        """Identify the only operations that write authoring files."""
+        return route == SceneBuilderRoute.DRAFTS or cls.point_cloud_upload(route)
+
+    @classmethod
+    def request_content_type(cls, route: str) -> SceneBuilderMediaType:
+        """Select the declared payload encoding for an authoring operation."""
+        return (
+            SceneBuilderMediaType.POINT_CLOUD
+            if cls.point_cloud_upload(route)
+            else SceneBuilderMediaType.DOCUMENT
+        )
+
+    @classmethod
+    def maximum_body_bytes(cls, route: str) -> int:
+        """Apply the scan upload bound separately from the smaller layout bound."""
+        return (
+            PointCloudLimits.MAXIMUM_BYTES
+            if cls.point_cloud_upload(route)
+            else cls.MAX_BODY_BYTES
+        )
 
     @staticmethod
     def failure(error: Exception, status: HTTPStatus) -> SceneBuilderResponse:
@@ -131,17 +173,23 @@ class SceneBuilderHttp:
         return self.failure(ValueError("Unknown authoring route"), HTTPStatus.NOT_FOUND)
 
     def post(self, route: str, body: bytes) -> SceneBuilderResponse:
-        """Save an explicit document inside the dedicated draft directory."""
-        if route != SceneBuilderRoute.DRAFTS:
+        """Persist a validated layout or scan in the dedicated authoring store."""
+        if not self.accepts_post(route):
             return self.failure(
                 ValueError("Unknown authoring route"), HTTPStatus.NOT_FOUND
             )
-        if len(body) > self.MAX_BODY_BYTES:
+        if len(body) > self.maximum_body_bytes(route):
             return self.failure(
-                ValueError("Scene document is too large"),
+                ValueError("Authoring upload is too large"),
                 HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
             )
         try:
+            if self.point_cloud_upload(route):
+                return SceneBuilderResponse.document(
+                    self.service.import_point_cloud(
+                        route.removeprefix(SceneBuilderRoute.POINT_CLOUDS), body
+                    )
+                )
             payload = json.loads(body)
             if (
                 not isinstance(payload, dict)

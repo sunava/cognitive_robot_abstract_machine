@@ -802,7 +802,8 @@ class ShareHandler(BaseHTTPRequestHandler):
             route == WorkshopRoute.COMMAND and self.server.workshop_physics is not None
         )
         builder_command = (
-            route == SceneBuilderRoute.DRAFTS and self.server.scene_builder is not None
+            SceneBuilderHttp.accepts_post(route)
+            and self.server.scene_builder is not None
         )
         if (
             route != ShareRoute.LOGIN
@@ -829,7 +830,10 @@ class ShareHandler(BaseHTTPRequestHandler):
             self._workshop_command()
             return
         if builder_command:
-            body = self._body("application/json", SceneBuilderHttp.MAX_BODY_BYTES)
+            body = self._body(
+                SceneBuilderHttp.request_content_type(route),
+                SceneBuilderHttp.maximum_body_bytes(route),
+            )
             if body is not None:
                 response = self.server.scene_builder.post(route, body)
                 self._reply(response.status, response.body, response.content_type)

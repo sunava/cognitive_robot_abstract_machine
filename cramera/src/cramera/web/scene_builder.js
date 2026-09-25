@@ -12,6 +12,16 @@
       const options = {credentials: 'same-origin', cache: 'no-store', headers: {Accept: 'application/json'}};
       if (payload !== null) Object.assign(options, {method: 'POST', body: JSON.stringify(payload), headers: {...options.headers, 'Content-Type': 'application/json'}});
       const response = await this.fetcher(new URL(path, this.base), options);
+      return this.readResponse(response);
+    }
+
+    async uploadPointCloud(file, format) {
+      if (!['ply', 'pcd'].includes(format)) throw new Error('Choose a PLY or PCD point cloud file.');
+      const response = await this.fetcher(new URL(`point-clouds/${format}`, this.base), {method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: {Accept: 'application/json', 'Content-Type': 'application/octet-stream'}, body: file});
+      return this.readResponse(response);
+    }
+
+    async readResponse(response) {
       if (!(response.headers.get('content-type') || '').includes('application/json')) throw new Error('The server did not return a scene document. Please sign in again or reopen Scene Builder.');
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || `The request failed (${response.status}).`);
@@ -23,6 +33,9 @@
     static DEGREES = 180 / Math.PI;
     static CATALOG_PAGE_SIZE = 120;
     static MAX_IMPORT_BYTES = 2 * 1024 * 1024;
+    static MAX_SCAN_BYTES = 64 * 1024 * 1024;
+    static SOURCE_UNITS = Object.freeze({m: 1, cm: .01, mm: .001});
+    static TRANSFORM_MODES = Object.freeze(['translate', 'rotate', 'scale']);
 
     constructor() {
       this.api = new SceneBuilderApi(window.location.href);
@@ -35,6 +48,10 @@
       this.savedDocument = null;
       this.storageKey = `cramera.scene-builder.v1:${window.location.pathname}`;
       this.renderSequence = 0;
+      this.sceneRevision = 0;
+      this.linkedScale = true;
+      this.mode = 'translate';
+      this.uploadingScan = false;
       this.bind();
       this.state.subscribe(() => { this.render(); this.storeRecovery(); });
     }
@@ -49,7 +66,7 @@
     bind() {
       const click = (id, action) => this.element(id).addEventListener('click', () => this.attempt(action));
       const change = (id, action) => this.element(id).addEventListener('change', () => this.attempt(action));
-      click('new-scene', () => { this.draftId = null; this.state.replace(window.SceneBuilderState.empty()); this.select(null); this.status('New scene. Add assets from the library.'); });
+      click('new-scene', () => { this.sceneRevision += 1; this.draftId = null; this.savedDocument = null; this.state.replace(window.SceneBuilderState.empty()); this.select(null); this.status('New scene. Add assets from the library.'); });
       click('undo', () => this.state.undo());
       click('redo', () => this.state.redo());
       click('save', () => this.save(false));
@@ -59,6 +76,17 @@
       click('export', () => this.export());
       click('import', () => this.element('import-file').click());
       change('import-file', () => this.import());
+      click('load-scan', () => this.element('scan-file').click());
+      change('scan-file', () => this.uploadScan());
+      this.element('scale-linked').checked = this.linkedScale;
+      change('scale-linked', () => { this.linkedScale = this.element('scale-linked').checked; this.view?.setScaleLinked(this.linkedScale); });
+      click('scale-half', () => this.multiplyScale(.5));
+      click('scale-double', () => this.multiplyScale(2));
+      click('scale-reset', () => this.state.setScale(this.selection, [1, 1, 1]));
+      change('reference-visible', () => this.state.setPointCloud(this.selection, {visible: this.element('reference-visible').checked}));
+      change('reference-locked', () => this.state.setPointCloud(this.selection, {locked: this.element('reference-locked').checked}));
+      change('reference-opacity', () => this.state.setPointCloud(this.selection, {opacity: Number(this.element('reference-opacity').value)}));
+      change('reference-point-size', () => this.state.setPointCloud(this.selection, {pointSize: Number(this.element('reference-point-size').value) / 1000}));
       change('scene-name', () => this.state.rename(this.element('scene-name').value.trim()));
       change('instance-name', () => this.state.renameInstance(this.selection, this.element('instance-name').value.trim()));
       change('part-select', () => this.select(this.selection, this.element('part-select').value || null));
@@ -69,11 +97,11 @@
       click('reset-part', () => this.state.resetLink(this.selection, this.part));
       click('frame-selection', () => this.view?.frameSelection());
       click('frame-all', () => this.view?.frameAll());
-      for (const mode of ['translate', 'rotate']) click(`mode-${mode}`, () => this.setMode(mode));
+      for (const mode of SceneBuilderApp.TRANSFORM_MODES) click(`mode-${mode}`, () => this.setMode(mode));
       for (const axis of ['x', 'y', 'z']) {
         change(`position-${axis}`, () => this.applyPose());
         change(`rotation-${axis}`, () => this.applyPose());
-        change(`scale-${axis}`, () => this.state.setScale(this.selection, this.readVector('scale')));
+        change(`scale-${axis}`, () => this.applyScale(axis));
       }
       this.element('asset-search').addEventListener('input', () => this.renderLibrary());
       change('asset-category', () => this.renderLibrary());
@@ -96,10 +124,11 @@
       this.view = new window.SceneBuilderView({
         container: this.element('viewport'),
         onSelect: (instanceId, linkName) => this.select(instanceId, linkName),
-        onTransform: ({instanceId, linkName, position, rotation}) => this.attempt(() => this.state.transform(instanceId, {position, rotation}, linkName)),
+        onTransform: ({instanceId, linkName, position, rotation, scale}) => this.attempt(() => this.state.transform(instanceId, {...{position, rotation}, ...(!linkName && scale !== undefined ? {scale} : {})}, linkName)),
         onStructure: (instanceId) => { if (instanceId === this.selection) this.renderInspector(); },
         onError: (error) => this.status(error.message || String(error), true),
       });
+      this.view.setScaleLinked(this.linkedScale);
       if (!this.view.available) {
         this.element('view-fallback').hidden = false;
         this.element('view-error').textContent = 'This browser could not create a WebGL context.';
@@ -122,8 +151,14 @@
     }
 
     async save(copy) {
+      const revision = this.sceneRevision;
       const document = this.state.document;
       const result = await this.api.request('drafts', {...(!copy && this.draftId ? {id: this.draftId} : {}), document});
+      if (revision !== this.sceneRevision) {
+        await this.refreshDrafts();
+        this.status('The previous draft was saved. Your current scene is unchanged.');
+        return;
+      }
       this.draftId = result.id;
       const canonical = window.SceneBuilderState.validate(result.document || document);
       if (JSON.stringify(this.state.document) === JSON.stringify(document)) this.state.replace(canonical);
@@ -137,7 +172,9 @@
     async loadDraft() {
       const id = this.element('draft-list').value;
       if (!id) return;
+      const revision = ++this.sceneRevision;
       const result = await this.api.request(`drafts/${encodeURIComponent(id)}`);
+      if (revision !== this.sceneRevision) return;
       this.state.replace(result.document);
       this.draftId = result.id;
       this.savedDocument = JSON.stringify(this.state.document);
@@ -151,7 +188,9 @@
     async loadTemplate() {
       const asset = this.element('scene-template').value;
       if (!asset) return;
+      const revision = ++this.sceneRevision;
       const document = await this.api.request(`template?asset=${encodeURIComponent(asset)}`);
+      if (revision !== this.sceneRevision) return;
       this.state.replace(document);
       this.draftId = null;
       this.savedDocument = null;
@@ -177,7 +216,9 @@
       const file = this.element('import-file').files[0];
       if (!file) return;
       if (file.size > SceneBuilderApp.MAX_IMPORT_BYTES) throw new Error('Scene documents must be smaller than 2 MB.');
+      const revision = ++this.sceneRevision;
       const document = JSON.parse(await file.text());
+      if (revision !== this.sceneRevision) return;
       this.state.replace(document);
       this.draftId = null;
       this.savedDocument = null;
@@ -187,6 +228,41 @@
       this.renderSaveIndicator();
       const missing = this.state.document.instances.filter((instance) => !this.assets.has(instance.assetId));
       this.status(missing.length ? `Imported scene; ${missing.length} asset references are unavailable in this catalog. Their poses remain editable.` : 'Imported scene. Save a draft to keep a server copy.', missing.length > 0);
+    }
+
+    async uploadScan() {
+      const file = this.element('scan-file').files[0];
+      if (!file || this.uploadingScan) return;
+      const format = file.name.split('.').pop().toLowerCase();
+      if (!['ply', 'pcd'].includes(format)) throw new Error('Choose a PLY or PCD point cloud file.');
+      if (!file.size || file.size > SceneBuilderApp.MAX_SCAN_BYTES) throw new Error('Point cloud files must be nonempty and no larger than 64 MiB.');
+      const unitScale = SceneBuilderApp.SOURCE_UNITS[this.element('scan-units').value];
+      if (!unitScale) throw new Error('Select the source units for this scan.');
+      const revision = this.sceneRevision;
+      this.uploadingScan = true;
+      this.element('load-scan').disabled = true;
+      try {
+        this.status('Checking the point cloud…');
+        const metadata = window.PointCloudSupport.inspect(await file.arrayBuffer(), format);
+        this.status(`Uploading ${metadata.finitePointCount.toLocaleString()} points…`);
+        const asset = await this.api.uploadPointCloud(file, format);
+        this.assets.set(asset.id, asset);
+        this.state.assets = this.assets;
+        this.renderLibrary();
+        if (revision !== this.sceneRevision) {
+          this.status(`Point cloud stored in the asset library. The current scene was left unchanged; its source scale is ${unitScale}.`);
+          return;
+        }
+        const name = file.name.replace(/\.(ply|pcd)$/i, '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 160) || asset.name;
+        const instance = this.state.add(asset.id, {name, scale: [unitScale, unitScale, unitScale]});
+        this.select(instance.id);
+        this.renderLibrary();
+        this.status(`Loaded “${name}” as a locked reference. Stored with your drafts on this server. Save the draft to keep its placement.`);
+      } finally {
+        this.uploadingScan = false;
+        this.element('load-scan').disabled = false;
+        this.element('scan-file').value = '';
+      }
     }
 
     storeRecovery() {
@@ -246,6 +322,7 @@
     select(instanceId, linkName = null) {
       this.selection = this.state.instance(instanceId) ? instanceId : null;
       this.part = this.selection ? linkName : null;
+      if (this.part && this.mode === 'scale') this.setMode('translate');
       this.view?.setSelection(this.selection, this.part);
       this.renderInstances();
       this.renderInspector();
@@ -300,6 +377,7 @@
       const instance = this.state.instance(this.selection);
       this.element('selection-editor').hidden = !instance;
       this.element('empty-inspector').hidden = Boolean(instance);
+      this.renderTransformAvailability(instance);
       if (!instance) return;
       const asset = this.assets.get(instance.assetId);
       this.element('selection-kind').textContent = asset?.category || 'Missing asset';
@@ -317,11 +395,32 @@
       this.writeVector('rotation', pose.rotation.map((value) => value * SceneBuilderApp.DEGREES));
       this.writeVector('scale', instance.scale);
       this.element('scale-fields').hidden = Boolean(this.part);
+      this.element('scale-shortcuts').hidden = Boolean(this.part);
+      this.renderReference(instance);
       this.element('reset-part').hidden = !this.part;
       this.element('position-reference').textContent = this.part ? 'offset in parent frame' : 'in world';
       this.element('part-help').textContent = this.part ? 'Move this URDF subtree with its attached parts. Joint motion remains relative to the new placement. Alt-click a part in 3D to select it.' : 'The whole model moves together. For robots this sets the spawn pose. Select an environment part to move furniture individually.';
       this.renderJoints(instance, structure.joints || []);
       this.renderNotices(asset);
+    }
+
+    renderTransformAvailability(instance) {
+      const locked = Boolean(instance?.pointCloud?.locked);
+      for (const mode of SceneBuilderApp.TRANSFORM_MODES) this.element(`mode-${mode}`).disabled = !instance || locked || (mode === 'scale' && Boolean(this.part));
+      for (const prefix of ['position', 'rotation', 'scale']) {
+        for (const axis of ['x', 'y', 'z']) this.element(`${prefix}-${axis}`).disabled = locked;
+      }
+      for (const identifier of ['scale-half', 'scale-double', 'scale-reset', 'scale-linked']) this.element(identifier).disabled = locked || Boolean(this.part);
+    }
+
+    renderReference(instance) {
+      this.element('reference-settings').hidden = !instance.pointCloud;
+      if (!instance.pointCloud) return;
+      const settings = instance.pointCloud;
+      this.element('reference-visible').checked = settings.visible;
+      this.element('reference-locked').checked = settings.locked;
+      if (document.activeElement !== this.element('reference-opacity')) this.element('reference-opacity').value = String(settings.opacity);
+      if (document.activeElement !== this.element('reference-point-size')) this.element('reference-point-size').value = String(settings.pointSize * 1000);
     }
 
     writeVector(prefix, values) {
@@ -341,6 +440,20 @@
 
     applyPose() {
       this.state.transform(this.selection, {position: this.readVector('position'), rotation: this.readVector('rotation').map((value) => value / SceneBuilderApp.DEGREES)}, this.part);
+    }
+
+    applyScale(axis) {
+      if (this.part) throw new Error('Select the whole object to change its scale.');
+      const instance = this.state.instance(this.selection);
+      const index = ['x', 'y', 'z'].indexOf(axis);
+      const requested = this.readVector('scale');
+      const scale = this.linkedScale ? instance.scale.map((value) => value * requested[index] / instance.scale[index]) : requested;
+      this.state.setScale(this.selection, scale);
+    }
+
+    multiplyScale(multiplier) {
+      if (this.part) throw new Error('Select the whole object to change its scale.');
+      this.state.setScale(this.selection, this.state.instance(this.selection).scale.map((value) => value * multiplier));
     }
 
     renderJoints(instance, joints) {
@@ -387,8 +500,11 @@
     }
 
     setMode(mode) {
+      if (!SceneBuilderApp.TRANSFORM_MODES.includes(mode)) throw new Error('Unknown transform mode.');
+      if (mode === 'scale' && this.part) throw new Error('Scale applies to whole objects, not individual URDF parts.');
+      this.mode = mode;
       this.view?.setMode(mode);
-      for (const value of ['translate', 'rotate']) this.element(`mode-${value}`).setAttribute('aria-pressed', String(value === mode));
+      for (const value of SceneBuilderApp.TRANSFORM_MODES) this.element(`mode-${value}`).setAttribute('aria-pressed', String(value === mode));
     }
   }
 

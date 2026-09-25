@@ -4,6 +4,7 @@ The authoring API accepts bounded documents and confined resource requests.
 
 from http import HTTPStatus
 import json
+from pathlib import Path
 
 from cramera.scene_builder_http import SceneBuilderHttp, SceneBuilderRoute
 from .test_scene_builder import builder_service
@@ -60,3 +61,42 @@ def test_malformed_urdf_returns_a_visible_error(builder_service):
     )
     assert response.status == HTTPStatus.BAD_REQUEST
     assert "error" in json.loads(response.body)
+
+
+# %% persistent reference transport
+def test_uploaded_scan_can_be_loaded_through_the_asset_library(builder_service):
+    source = Path(__file__).parent / "dataset/scene_builder/transport_cloud.ply"
+    handler = SceneBuilderHttp(service=builder_service)
+    response = handler.post(SceneBuilderRoute.POINT_CLOUDS + "ply", source.read_bytes())
+    assert response.status == HTTPStatus.OK
+    asset = json.loads(response.body)
+    stored = handler.get(SceneBuilderRoute.ASSETS + asset["id"], "")
+    assert stored.status == HTTPStatus.OK
+    assert stored.body == source.read_bytes()
+    assert (
+        asset in json.loads(handler.get(SceneBuilderRoute.CATALOG, "").body)["assets"]
+    )
+
+
+def test_invalid_scan_upload_is_reported_without_creating_an_asset(builder_service):
+    handler = SceneBuilderHttp(service=builder_service)
+    before = builder_service.catalog()
+    response = handler.post(SceneBuilderRoute.POINT_CLOUDS + "ply", b"not a scan")
+    assert response.status == HTTPStatus.BAD_REQUEST
+    assert builder_service.catalog() == before
+
+
+def test_scan_upload_has_an_independent_bound_from_layout_json(
+    builder_service, monkeypatch
+):
+    source = Path(__file__).parent / "dataset/scene_builder/transport_cloud.ply"
+    monkeypatch.setattr(SceneBuilderHttp, "MAX_BODY_BYTES", 1)
+    handler = SceneBuilderHttp(service=builder_service)
+    assert (
+        handler.post(SceneBuilderRoute.POINT_CLOUDS + "ply", source.read_bytes()).status
+        == HTTPStatus.OK
+    )
+    assert (
+        handler.post(SceneBuilderRoute.DRAFTS, b"{}").status
+        == HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+    )

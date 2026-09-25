@@ -452,7 +452,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self._scene_builder_response(response)
 
     def _scene_builder_post(self) -> None:
-        """Save a bounded same-origin authoring document."""
+        """Save a bounded same-origin layout or reference scan."""
         if not self._scene_builder_host():
             return self._send_error("Unknown authoring host", HTTPStatus.FORBIDDEN)
         expected_origins = {
@@ -466,29 +466,30 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._send_error(
                 "A same-origin request is required", HTTPStatus.FORBIDDEN
             )
+        route = unquote(urlparse(self.path).path)
+        if not SceneBuilderHttp.accepts_post(route):
+            return self._send_error("Unknown authoring route", HTTPStatus.NOT_FOUND)
         lengths = self.headers.get_all("Content-Length", [])
         if (
             self.headers.get("Transfer-Encoding") is not None
             or len(lengths) != 1
             or not lengths[0].isdigit()
             or self.headers.get("Content-Type", "").split(";", 1)[0]
-            != "application/json"
+            != SceneBuilderHttp.request_content_type(route)
             or urlparse(self.path).query
         ):
             return self._send_error(
                 "Invalid scene document request", HTTPStatus.BAD_REQUEST
             )
         length = int(lengths[0])
-        if length > SceneBuilderHttp.MAX_BODY_BYTES:
+        if length > SceneBuilderHttp.maximum_body_bytes(route):
             return self._send_error(
-                "Scene document is too large", HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+                "Authoring upload is too large", HTTPStatus.REQUEST_ENTITY_TOO_LARGE
             )
         body = self.rfile.read(length)
         if len(body) != length:
             return self._send_error("Incomplete scene document", HTTPStatus.BAD_REQUEST)
-        self._scene_builder_response(
-            self.server.scene_builder.post(unquote(urlparse(self.path).path), body)
-        )
+        self._scene_builder_response(self.server.scene_builder.post(route, body))
 
     # %% workshop contact controls
     def _workshop_request(self) -> None:

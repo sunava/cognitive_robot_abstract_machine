@@ -3,6 +3,7 @@ The protected scene editor stores drafts without controlling a simulation.
 """
 
 import json
+from pathlib import Path
 from urllib.parse import urlencode
 
 import pytest
@@ -102,3 +103,57 @@ def test_direct_builder_login_returns_to_the_editor(shared_laboratory):
     )
     assert result.status == 303
     assert result.headers["Location"] == "/workshop" + SceneBuilderRoute.PAGE
+
+
+# %% protected scan storage
+def test_uploaded_scan_remains_password_protected(shared_laboratory):
+    source = Path(__file__).parent / "dataset/scene_builder/transport_cloud.ply"
+    route = shared_laboratory.options.public_path(
+        SceneBuilderRoute.POINT_CLOUDS + "ply"
+    )
+    headers = {
+        "Origin": shared_laboratory.origin,
+        "Content-Type": "application/octet-stream",
+    }
+    assert (
+        shared_laboratory.request(
+            route, method="POST", body=source.read_bytes(), headers=headers
+        ).status
+        == 401
+    )
+    shared_laboratory.login()
+    response = shared_laboratory.request(
+        route, method="POST", body=source.read_bytes(), headers=headers
+    )
+    assert response.status == 200
+    asset = json.loads(response.body)
+    stored = shared_laboratory.request(asset["url"])
+    assert stored.status == 200
+    assert stored.body == source.read_bytes()
+    assert shared_laboratory.request(asset["url"], headers={"Cookie": ""}).status == 401
+    assert shared_laboratory.backend.requests == []
+
+
+def test_cross_origin_scan_cannot_be_stored(shared_laboratory):
+    shared_laboratory.login()
+    response = shared_laboratory.request(
+        shared_laboratory.options.public_path(SceneBuilderRoute.POINT_CLOUDS + "ply"),
+        method="POST",
+        body=b"not a scan",
+        headers={
+            "Origin": "https://untrusted.example",
+            "Content-Type": "application/octet-stream",
+        },
+    )
+    assert response.status == 403
+
+
+def test_scan_upload_requires_binary_media_type(shared_laboratory):
+    shared_laboratory.login()
+    response = shared_laboratory.request(
+        shared_laboratory.options.public_path(SceneBuilderRoute.POINT_CLOUDS + "ply"),
+        method="POST",
+        body=b"not a scan",
+        headers={"Origin": shared_laboratory.origin, "Content-Type": "text/html"},
+    )
+    assert response.status == 400
