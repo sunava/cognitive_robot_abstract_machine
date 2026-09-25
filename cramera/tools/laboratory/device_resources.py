@@ -19,6 +19,7 @@ import trimesh
 
 from bundle import BalancePart
 from geometry import RackDimensions
+from rights import LaboratoryAssetRights
 from cramera.laboratory_devices import (
     DeviceResourceFile,
     LaboratoryDevice,
@@ -544,6 +545,7 @@ class DeviceResourceExporter:
             Path(__file__).with_name("device_resources_readme.md"),
             self.output / DeviceResourceFile.README,
         )
+        LaboratoryAssetRights().install(self.output)
 
     def export_device(
         self,
@@ -632,6 +634,7 @@ class DeviceResourceExporter:
             Path(__file__).with_name("device_descriptions") / f"{definition.device}.md",
             resource.directory / DeviceResourceFile.README,
         )
+        LaboratoryAssetRights().install(resource.directory)
 
     @staticmethod
     def add_scale_support(root: ElementTree.Element) -> None:

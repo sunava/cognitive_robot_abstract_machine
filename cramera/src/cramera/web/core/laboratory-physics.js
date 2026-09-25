@@ -1072,6 +1072,48 @@
     destroy() { this.disposed = true; this.queue = []; this.scaleTransfer = null; this.centrifugeTransfer = null; this.centrifugePair = null; this.pipettingTransfer = null; this.refrigeratorTransfer = null; }
   }
 
+  // %% scene-provided asset credits and permissions
+  const AssetRightsLabels = Object.freeze({
+    copyright: '', license: 'License: ', permissionNotice: '', priorLicenseNotice: '',
+    noticeFile: 'Notice file: ', licenseFile: 'License file: ',
+  });
+
+  /** Show declared asset terms as literal text without requesting external documents. */
+  class AssetRightsView {
+    constructor(host) {
+      const document = host.ownerDocument;
+      const element = (tag, parent, suffix) => {
+        const item = document.createElement(tag);
+        item.className = 'laboratory-asset-rights' + suffix;
+        parent.appendChild(item);
+        return item;
+      };
+      this.root = element('section', host, '');
+      this.credit = element('p', this.root, '-credit');
+      this.details = element('details', this.root, '-details');
+      element('summary', this.details, '-summary').textContent = 'Asset rights & credits';
+      this.fields = new Map(Object.keys(AssetRightsLabels).map(key => [key, element('p', this.details, '-' + key)]));
+    }
+
+    /** Replace all displayed values, clearing old scene metadata when it is absent. */
+    render(rights) {
+      const value = key => rights && typeof rights[key] === 'string' ? rights[key].trim() : '';
+      const author = value('principalAuthor'), institution = value('institution');
+      this.credit.textContent = [author ? 'Principal author: ' + author : '', institution].filter(Boolean).join(' · ');
+      this.credit.hidden = !this.credit.textContent;
+      let hasTerms = false;
+      for (const [key, paragraph] of this.fields) {
+        const text = value(key);
+        paragraph.textContent = text ? AssetRightsLabels[key] + text : '';
+        paragraph.hidden = !text;
+        hasTerms = hasTerms || Boolean(text);
+      }
+      this.details.hidden = !hasTerms;
+      this.root.hidden = !hasTerms && this.credit.hidden;
+      if (!hasTerms) this.details.open = false;
+    }
+  }
+
   // %% compact manipulation controls
   /** Mount object, movement and measured contact controls beside the live scene. */
   function mount(host, config, service, adapter, clock) {
@@ -1100,6 +1142,7 @@
     panel.setAttribute('aria-label', 'Laboratory with contact physics');
     element('h3', panel, '', config.robot ? 'PR2 & contact' : 'Glass & contact');
     element('p', panel, 'laboratory-physics-intro', config.robot ? 'PR2 grasps and moves the glass using contact physics.' : 'Drag, lift and release glasses. Obstacles resist their movement.');
+    const assetRights = new AssetRightsView(panel);
     const label = element('label', panel, 'laboratory-physics-field', 'Object');
     const select = element('select', label, 'laboratory-physics-object');
     for (const object of config.objects) {
@@ -1400,6 +1443,7 @@
     const reset = button(panel, 'Reset laboratory', () => controller.reset(), 'laboratory-physics-reset');
     function render() {
       if (disposed) return;
+      assetRights.render(config.assetRights);
       const ready = controller.ready();
       const manualReady = controller.manualReady();
       const reading = controller.scale;

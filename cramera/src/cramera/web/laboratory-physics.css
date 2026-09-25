@@ -18,6 +18,13 @@
 }
 .laboratory-physics h3 { margin: 0 0 8px; font-size: 19px; }
 .laboratory-physics p { margin: 8px 0; }
+
+/* %% optional scene-provided credits and reuse terms */
+.laboratory-asset-rights { margin: 10px 0; padding: 8px 0; border-block: 1px solid #cbdad7; font-size: 11px; color: #536b64; }
+.laboratory-asset-rights[hidden], .laboratory-asset-rights [hidden] { display: none; }
+.laboratory-asset-rights .laboratory-asset-rights-credit { margin: 0 0 5px; font-weight: 600; }
+.laboratory-asset-rights summary { cursor: pointer; color: #236859; }
+.laboratory-asset-rights details p { white-space: pre-line; overflow-wrap: anywhere; line-height: 1.5; }
 .laboratory-workflow { padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid #cbdad7; }
 .laboratory-workflow h4 { margin: 0 0 5px; font-size: 15px; }
 .laboratory-workflow > button { width: 100%; margin-top: 5px; }

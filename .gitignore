@@ -18,6 +18,10 @@ msg/*Result.msg
 msg/_*.py
 *muh*
 *.txt
+# Permission notices accompany the authored laboratory assets and their exports.
+!cramera/tools/laboratory/asset_rights/LICENSE.txt
+!cramera/src/cramera/resources/precision_lab/LICENSE.txt
+!cramera/src/cramera/resources/laboratory_devices/**/LICENSE.txt
 # The hook tests' scratch clone needs a real requirements.txt at the path
 # check-setup.sh looks for, so this one fixture is checked in.
 !.claude/hooks/tests/fixtures/set-up-clone/**/*.txt

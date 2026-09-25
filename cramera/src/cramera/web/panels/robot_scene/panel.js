@@ -2504,7 +2504,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       stopTrajectory();
       const adapter = laboratoryPhysicsAdapter();
       laboratoryPhysics = LaboratoryPhysics.mount(
-        root.querySelector('.stage'), SCENE.physics,
+        root.querySelector('.stage'), Object.assign({}, SCENE.physics, {assetRights: SCENE.assetRights}),
         new LaboratoryPhysics.Client(window.fetch.bind(window), SCENE.physics), adapter,
       );
       laboratoryPhysics.adapter = adapter;

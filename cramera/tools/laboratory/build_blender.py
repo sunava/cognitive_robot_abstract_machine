@@ -26,6 +26,7 @@ from geometry import LatheMesh, ProfilePoint, RackDimensions, TubeDimensions
 from centrifuge import CentrifugeDimensions, CentrifugePart
 from pipetting import PipettingChannel, PipettingDimensions, PipettingPart
 from refrigerator import RefrigeratorDimensions, RefrigeratorPart
+from rights import LaboratoryAssetRights
 
 
 # %% Asset contract
@@ -2152,6 +2153,11 @@ class LaboratoryBuilder:
 
     def build(self) -> None:
         """Generate every body, save the source and render both reference views."""
+        self._build()
+        LaboratoryAssetRights().install(self.options.output)
+
+    def _build(self) -> None:
+        """Generate either selected instruments or the complete laboratory scene."""
         if self.options.branding_only:
             self.refresh_branding_assets()
             return

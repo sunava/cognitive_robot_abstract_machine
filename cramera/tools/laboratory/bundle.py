@@ -15,6 +15,7 @@ from typing_extensions import Any
 from cramera.laboratory_handles import LaboratoryHandle
 
 from geometry import LatheMesh, RackDimensions, TubeDimensions
+from rights import LaboratoryAssetRights
 from centrifuge import CentrifugeDescription, CentrifugeDimensions, CentrifugePart
 from pipetting import PipettingDescription, PipettingDimensions
 from refrigerator import (
@@ -792,6 +793,7 @@ class LaboratoryBundle:
             },
         )
         self.write_json(Artifact.SCENE, self.scene)
+        LaboratoryAssetRights().install(self.output)
 
 
 # %% command line

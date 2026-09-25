@@ -1,5 +1,11 @@
 <?xml version='1.0' encoding='utf-8'?>
-<robot name="tube_teal">
+<robot name="tube_teal"><!-- CRAMERA laboratory asset rights:
+Principal author: Vanessa Hassouna
+Institution: AICOR Institute
+Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.
+License: LicenseRef-AICOR-Laboratory-Assets
+See LICENSE.txt and NOTICE.md.
+-->
   <link name="tube_teal">
     <visual>
       <geometry>
