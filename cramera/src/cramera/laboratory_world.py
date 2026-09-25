@@ -12,6 +12,7 @@ from pathlib import Path
 from typing_extensions import Any
 
 from cramera import paths
+from cramera.laboratory_handles import LaboratoryHandle
 from semantic_digital_twin.adapters.urdf import URDFParser
 from semantic_digital_twin.api import (
     BodySpecification,
@@ -22,6 +23,7 @@ from semantic_digital_twin.collision_checking.collision_rules import (
     AllowCollisionBetweenGroups,
 )
 from semantic_digital_twin.robots.pr2 import PR2
+from semantic_digital_twin.semantic_annotations.semantic_annotations import Handle
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix, Pose
 from semantic_digital_twin.world import World
 from semantic_digital_twin.world_description.connections import FixedConnection
@@ -416,6 +418,10 @@ class LaboratoryEnvironment:
                 parent_T_connection_expression=HomogeneousTransformationMatrix(),
             )
             world.merge_world(environment, root_connection=connection)
+        with world.modify_world():
+            for body in world.bodies:
+                if str(body.name) in LaboratoryHandle:
+                    world.add_semantic_annotation(Handle(root=body))
         CabinetStructure().populate(world)
         for item in self.description.objects:
             object_world = URDFParser.from_file(

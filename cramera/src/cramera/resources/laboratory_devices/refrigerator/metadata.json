@@ -9,6 +9,7 @@
     0.0
   ],
   "joints": [
-    "laboratory_refrigerator_door_joint"
+    "laboratory_refrigerator_door_joint",
+    "laboratory_refrigerator_door_handle_joint"
   ]
 }

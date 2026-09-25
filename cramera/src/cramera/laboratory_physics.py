@@ -259,13 +259,28 @@ class LaboratoryCollisionModel:
         """Preserve named contact bodies and the instrument's physical hinges."""
         joint = children.get(name)
         pose = self._pose(joint.find("origin") if joint is not None else None)
+        descendants = [
+            child
+            for child, child_joint in children.items()
+            if child_joint.find("parent").attrib["link"] == name
+        ]
+        if (
+            joint is not None
+            and joint.attrib["type"] == "fixed"
+            and len(links[name]) == 0
+            and not descendants
+        ):
+            # Annotation frames must not acquire the robot compiler's minimum mass.
+            ElementTree.SubElement(
+                parent, "site", name=name, size="0.001", rgba="0 0 0 0", **pose
+            )
+            return
         body = ElementTree.SubElement(parent, "body", name=name, **pose)
         self._add_collisions(body, links[name], description)
         CentrifugeCollisionModel.add_joint(body, links[name], joint)
         RefrigeratorCollisionModel.add_joint(body, links[name], joint)
-        for child, child_joint in children.items():
-            if child_joint.find("parent").attrib["link"] == name:
-                self._add_environment_link(child, links, children, body, description)
+        for child in descendants:
+            self._add_environment_link(child, links, children, body, description)
 
     def _add_object(self, item: dict[str, Any]) -> None:
         """Give an authored loose object its own six-degree-of-freedom joint."""

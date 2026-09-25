@@ -107,6 +107,8 @@ class RefrigeratorDimensions:
     """Vertical hinge on the front-left cabinet edge."""
     door_open: float = 1.75
     """Positive travel about the negative vertical axis."""
+    handle_center: tuple[float, float, float] = (0.482, -0.044, 0.0)
+    """Vertical grip centre in the moving door's coordinates."""
     shelf_heights: tuple[float, ...] = (0.24, 0.48)
     """Upper support surfaces of the two removable shelves."""
     slot_columns: tuple[float, ...] = (-0.14, 0.0, 0.14)
@@ -215,7 +217,7 @@ class RefrigeratorDimensions:
                 "refrigerator_door_bottom", (0.25, 0, -0.2675), (0.428, 0.032, 0.045)
             ),
             RefrigeratorBox(
-                "refrigerator_handle", (0.482, -0.044, 0.0), (0.018, 0.018, 0.203)
+                "refrigerator_handle", self.handle_center, (0.018, 0.018, 0.203)
             ),
             *(
                 RefrigeratorBox(

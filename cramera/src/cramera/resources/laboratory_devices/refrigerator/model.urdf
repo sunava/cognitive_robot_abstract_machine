@@ -685,6 +685,7 @@
       <inertia ixx="0.084356" iyy="0.1466" izz="0.062756" ixy="0" ixz="0" iyz="0" />
     </inertial>
   </link>
+  <link name="laboratory_refrigerator_door_handle" />
   <joint name="laboratory_refrigerator_door_joint" type="revolute">
     <parent link="laboratory_refrigerator_base" />
     <child link="laboratory_refrigerator_door" />
@@ -692,5 +693,10 @@
     <axis xyz="0 0 -1" />
     <limit lower="0" upper="1.75" effort="15" velocity="1" />
     <dynamics damping="0.2" friction="0.04" />
+  </joint>
+  <joint name="laboratory_refrigerator_door_handle_joint" type="fixed">
+    <parent link="laboratory_refrigerator_door" />
+    <child link="laboratory_refrigerator_door_handle" />
+    <origin xyz="0.482 -0.044 0" rpy="0 0 0" />
   </joint>
 </robot>

@@ -1858,4 +1858,40 @@
     <limit lower="0" upper="1.75" effort="15" velocity="1" />
     <dynamics damping="0.2" friction="0.04" />
   </joint>
+  <link name="laboratory_drawer_handle" />
+  <joint name="laboratory_drawer_handle_joint" type="fixed">
+    <parent link="laboratory_drawer" />
+    <child link="laboratory_drawer_handle" />
+    <origin xyz="0 -0.336 0.015" rpy="0 0 0" />
+  </joint>
+  <link name="laboratory_cabinet_lower_handle" />
+  <joint name="laboratory_cabinet_lower_handle_joint" type="fixed">
+    <parent link="laboratory_room" />
+    <child link="laboratory_cabinet_lower_handle" />
+    <origin xyz="-0.52 -0.346 0.546" rpy="0 0 0" />
+  </joint>
+  <link name="laboratory_cabinet_middle_handle" />
+  <joint name="laboratory_cabinet_middle_handle_joint" type="fixed">
+    <parent link="laboratory_room" />
+    <child link="laboratory_cabinet_middle_handle" />
+    <origin xyz="0.005 -0.346 0.744" rpy="0 0 0" />
+  </joint>
+  <link name="laboratory_cabinet_right_handle" />
+  <joint name="laboratory_cabinet_right_handle_joint" type="fixed">
+    <parent link="laboratory_room" />
+    <child link="laboratory_cabinet_right_handle" />
+    <origin xyz="0.523 -0.346 0.744" rpy="0 0 0" />
+  </joint>
+  <link name="laboratory_centrifuge_lid_handle" />
+  <joint name="laboratory_centrifuge_lid_handle_joint" type="fixed">
+    <parent link="laboratory_centrifuge_lid" />
+    <child link="laboratory_centrifuge_lid_handle" />
+    <origin xyz="0 -0.21 0.09" rpy="0 0 0" />
+  </joint>
+  <link name="laboratory_refrigerator_door_handle" />
+  <joint name="laboratory_refrigerator_door_handle_joint" type="fixed">
+    <parent link="laboratory_refrigerator_door" />
+    <child link="laboratory_refrigerator_door_handle" />
+    <origin xyz="0.482 -0.044 0" rpy="0 0 0" />
+  </joint>
 </robot>

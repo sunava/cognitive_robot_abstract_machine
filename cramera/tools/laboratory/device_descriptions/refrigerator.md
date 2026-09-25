@@ -8,6 +8,10 @@ Coordinates are metres, with Z up and the front toward negative Y. The cabinet
 is 0.54 m wide, 0.58 m deep and 0.84 m high. Its glass door pivots outward about
 the front-left vertical hinge; the URDF defines the joint axis and limits.
 
+The fixed child link `laboratory_refrigerator_door_handle` identifies the centre
+of the grip bar on `laboratory_refrigerator_door`. Its axes match the door's axes
+and it moves with the hinge. Its geometry remains on the door.
+
 Six open sample holders, R1–R6, stand on two shelves. Cabinet walls, shelves,
 door glass and holders have collision geometry. The room, workbench and robot
 are not included. `metadata.json` records the original laboratory placement.

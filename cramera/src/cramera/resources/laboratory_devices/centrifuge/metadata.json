@@ -10,6 +10,7 @@
   ],
   "joints": [
     "laboratory_centrifuge_rotor_joint",
-    "laboratory_centrifuge_lid_joint"
+    "laboratory_centrifuge_lid_joint",
+    "laboratory_centrifuge_lid_handle_joint"
   ]
 }

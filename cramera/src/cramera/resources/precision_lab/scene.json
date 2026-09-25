@@ -26,7 +26,7 @@
       "urdf": "environment.urdf",
       "prefix": "",
       "robot": false,
-      "links": 11,
+      "links": 17,
       "movableJoints": [
         "laboratory_drawer_joint",
         "laboratory_centrifuge_rotor_joint",

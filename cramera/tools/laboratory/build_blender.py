@@ -1741,7 +1741,7 @@ class LaboratoryBuilder:
             )
         self.box(
             "Refrigerator handle",
-            (0.482, -0.044, 0),
+            dimensions.handle_center,
             (0.018, 0.018, 0.203),
             MaterialName.STEEL,
             0.006,

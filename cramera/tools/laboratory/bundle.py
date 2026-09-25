@@ -12,6 +12,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing_extensions import Any
 
+from cramera.laboratory_handles import LaboratoryHandle
+
 from geometry import LatheMesh, TubeDimensions
 from centrifuge import CentrifugeDescription, CentrifugeDimensions, CentrifugePart
 from pipetting import PipettingDescription, PipettingDimensions
@@ -84,6 +86,32 @@ class BalancePart(StrEnum):
     """Instrument case supporting the pan."""
     HOLDER = "weighing_holder"
     """Open collar transmitting supported vessel loads into the pan."""
+
+
+class BenchPart(StrEnum):
+    """Authored bench bodies supporting the visible cabinet pulls."""
+
+    ROOM = "laboratory_room"
+    """Fixed room and cabinet surfaces."""
+    DRAWER = "laboratory_drawer"
+    """Sliding drawer beneath the worktop."""
+
+
+@dataclass(frozen=True)
+class HandleFrame:
+    """A grip-centred frame attached to its existing visual and collision body."""
+
+    name: LaboratoryHandle
+    """Stable name for semantic lookup and the viewer's frame layer."""
+    parent: str
+    """Body carrying the handle through its articulation."""
+    position: tuple[float, float, float]
+    """Centre of the grip bar in parent coordinates, retaining the parent's axes."""
+
+    def build(self, description: UrdfDescription) -> None:
+        """Attach a massless fixed frame without duplicating existing geometry."""
+        description.link(self.name)
+        description.joint(f"{self.name}_joint", self.parent, self.name, self.position)
 
 
 @dataclass(frozen=True)
@@ -347,11 +375,11 @@ class LaboratoryBundle:
         """Build the bench, open rack and independently sliding drawer."""
         description = UrdfDescription.named("precision_laboratory")
         description.link("laboratory_root")
-        room = description.link("laboratory_room", "assets/environment.glb")
+        room = description.link(BenchPart.ROOM, "assets/environment.glb")
         description.joint(
             "laboratory_room_joint",
             "laboratory_root",
-            "laboratory_room",
+            BenchPart.ROOM,
             (0.0, 0.0, 0.0),
         )
         description.box(room, "worktop", (0.0, 0.0, 0.88), (1.8, 0.75, 0.04))
@@ -364,11 +392,11 @@ class LaboratoryBundle:
                     (0.04, 0.04, 0.86),
                 )
         drawer = self.scene[Field.LABORATORY][Field.DRAWER]
-        drawer_link = description.link("laboratory_drawer", "assets/drawer.glb")
+        drawer_link = description.link(BenchPart.DRAWER, "assets/drawer.glb")
         description.joint(
             drawer[Field.JOINT],
             "laboratory_root",
-            "laboratory_drawer",
+            BenchPart.DRAWER,
             (-0.52, 0.0, 0.69),
             drawer[Field.OPEN],
         )
@@ -458,6 +486,7 @@ class LaboratoryBundle:
         self.scene[Field.LABORATORY][
             Field.REFRIGERATOR
         ] = RefrigeratorDimensions().metadata()
+        self.handles(description)
         model = self.scene["models"][0]
         model["links"] = len(description.root.findall("link"))
         model["movableJoints"].extend(
@@ -468,6 +497,35 @@ class LaboratoryBundle:
             )
         )
         description.write(self.output / Artifact.ENVIRONMENT)
+
+    def handles(self, description: UrdfDescription) -> None:
+        """Expose each authored pull at its grip centre on the supporting body."""
+        frames = (
+            HandleFrame(
+                LaboratoryHandle.DRAWER, BenchPart.DRAWER, (0.0, -0.336, 0.015)
+            ),
+            HandleFrame(
+                LaboratoryHandle.CABINET_LOWER, BenchPart.ROOM, (-0.52, -0.346, 0.546)
+            ),
+            HandleFrame(
+                LaboratoryHandle.CABINET_MIDDLE, BenchPart.ROOM, (0.005, -0.346, 0.744)
+            ),
+            HandleFrame(
+                LaboratoryHandle.CABINET_RIGHT, BenchPart.ROOM, (0.523, -0.346, 0.744)
+            ),
+            HandleFrame(
+                LaboratoryHandle.CENTRIFUGE_LID,
+                CentrifugePart.LID,
+                CentrifugeDimensions().handle_center,
+            ),
+            HandleFrame(
+                LaboratoryHandle.REFRIGERATOR_DOOR,
+                RefrigeratorPart.DOOR,
+                RefrigeratorDimensions().handle_center,
+            ),
+        )
+        for frame in frames:
+            frame.build(description)
 
     def balance(self, description: UrdfDescription) -> None:
         """Add the instrument's contact bodies and matching browser placement."""

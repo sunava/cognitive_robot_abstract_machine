@@ -10,6 +10,10 @@ The rotor retains its continuous vertical axis and four open sample sleeves.
 Joint names and limits are contained in the URDF; the original laboratory
 placement is recorded in `metadata.json`.
 
+The fixed child link `laboratory_centrifuge_lid_handle` identifies the centre of
+the grip bar on `laboratory_centrifuge_lid`. Its axes match the lid's axes and it
+moves with the hinge. Its visual and collision geometry remains on the lid.
+
 This model supplies geometry, contact shapes and articulation. The laboratory's
 motor commands, sample clamps, manual knowledge and safety interlocks require its
 simulation controller and are not implemented by the URDF alone.
