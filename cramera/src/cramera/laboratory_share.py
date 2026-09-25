@@ -189,6 +189,7 @@ class ShareOptions:
         parser.add_argument("--password-file", type=Path, required=True)
         parser.add_argument("--public-origin-file", type=Path, required=True)
         parser.add_argument("--path-prefix", default="")
+        parser.add_argument("--scene-directory", type=Path)
         parser.add_argument("--replay-directory", type=Path)
         parser.add_argument(
             "--scene-name",

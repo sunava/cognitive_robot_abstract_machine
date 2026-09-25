@@ -83,6 +83,8 @@ session runs in `cramera-workshop-gateway.service`, with read-only state at
 `/workshop/api/workshop/state` and authenticated same-origin commands at
 `/workshop/api/workshop/command`. It cannot call the laboratory robot API.
 The gateway is independent of both the laboratory services and `cramera.service`.
+Pin a deployed bundle with `--scene-directory /path/to/release/aicor_workshop` so
+older writable recordings cannot shadow its models or physics metadata.
 The local viewer exposes the same API without the `/workshop` mount prefix.
 All clients observe one shared workshop; it pauses and releases manipulation after
 90 seconds without a client request.

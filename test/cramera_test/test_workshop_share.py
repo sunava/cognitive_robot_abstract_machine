@@ -32,6 +32,26 @@ from .test_laboratory_share import (
 
 
 # %% scene isolation
+def test_gateway_can_pin_a_deployed_scene_directory(tmp_path: Path) -> None:
+    """
+    A release can bypass older recordings in the writable scene catalog.
+    """
+    directory = tmp_path / "release" / "aicor_workshop"
+    options = ShareOptions.parse(
+        [
+            "--password-file",
+            str(tmp_path / "password"),
+            "--public-origin-file",
+            str(tmp_path / "origin"),
+            "--scene-name",
+            "aicor_workshop",
+            "--scene-directory",
+            str(directory),
+        ]
+    )
+    assert options.scene_directory == directory
+
+
 @pytest.fixture
 def fixture_scene(fixture_scene: Path) -> Path:
     """
