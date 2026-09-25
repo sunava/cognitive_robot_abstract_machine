@@ -51,6 +51,7 @@ from urllib.parse import parse_qs, urlparse
 
 from cramera import paths
 from cramera.laboratory_centrifuge_command import CentrifugeCommand, ManualRequest
+from cramera.laboratory_instrument_command import InstrumentCommand
 from cramera.laboratory_pipetting_command import PipettingCommand
 from cramera.laboratory_refrigerator_command import RefrigeratorCommand
 from cramera.laboratory_physics_session import (
@@ -434,6 +435,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 raise InvalidPhysicsRequest("Expected a JSON object")
             if route == RobotPhysicsRoute.WORKFLOW:
                 outcome = session.run_workflow(WorkflowCommand.from_payload(body))
+            elif route == RobotPhysicsRoute.INSTRUMENT:
+                outcome = session.run_instrument(InstrumentCommand.from_payload(body))
             elif route == routes.TARGET:
                 if set(body) not in (
                     {PhysicsField.KEY, PhysicsField.POSITION},

@@ -26,6 +26,12 @@
     return Boolean(robot && robot.source === Source && [States.RUNNING, States.PAUSED].includes(robot.state));
   }
 
+  /** Return a standalone handle request, excluding ordinary hinge observations. */
+  function instrument(robot) {
+    const command = robot && robot.instrument;
+    return command && typeof command === 'object' && typeof command.instrument === 'string' && typeof command.action === 'string' ? command : null;
+  }
+
   /** Format a measurement without treating absent values as measured zeros. */
   function measurement(value, digits) {
     return Number.isFinite(value) ? value.toFixed(digits) : '—';
@@ -69,7 +75,7 @@
       return control;
     }
     render(robot, controls) {
-      const matching = robot && robot.source === Source;
+      const matching = robot && robot.source === Source && !instrument(robot);
       const observed = matching && robot.workflow;
       const state = matching ? robot.state : States.IDLE;
       const error = matching && (robot.error || observed && observed.failure);
@@ -110,5 +116,5 @@
     }
   }
 
-  return {Source, States, Labels, Stages, Locations, Buttons, Recipe, ObservationNote, PausedNote, active, View};
+  return {Source, States, Labels, Stages, Locations, Buttons, Recipe, ObservationNote, PausedNote, active, instrument, View};
 });

@@ -13,6 +13,7 @@ from pathlib import Path
 from typing_extensions import Any, ClassVar, Protocol, runtime_checkable
 
 from cramera import paths
+from cramera.laboratory_instrument_command import InstrumentCommand
 from cramera.laboratory_workflow_command import WorkflowCommand, WorkflowField
 from cramera.laboratory_pipetting_command import PipettingAction, PipettingCommand
 from cramera.laboratory_refrigerator_command import (
@@ -52,6 +53,8 @@ class RobotPhysicsRoute(StrEnum):
     """Run the robot demonstration with two measured reagent doses."""
     WORKFLOW = "/api/laboratory/physics/robot/workflow"
     """Prepare or resume the complete four-sample laboratory workflow."""
+    INSTRUMENT = "/api/laboratory/physics/robot/instrument"
+    """Open or close one instrument using the PR2's handle actions."""
     CENTRIFUGE = "/api/laboratory/physics/robot/centrifuge"
     """Operate the centrifuge beside the articulated robot."""
     REFRIGERATOR = "/api/laboratory/physics/robot/refrigerator"
@@ -120,6 +123,9 @@ class ProgramSimulation(ContactSimulation, Protocol):
 
     def run_workflow(self, prepare: bool) -> None:
         """Prepare fresh demo samples or resume the current processing workflow."""
+
+    def run_instrument(self, command: InstrumentCommand) -> None:
+        """Run the selected robot handle actions while preserving the current scene."""
 
 
 def create_robot_physics(
@@ -270,6 +276,14 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
         with self.lock:
             self._require_running()
             self.physics.run_workflow(prepare=command.prepare)
+            return self._status()
+
+    def run_instrument(self, command: InstrumentCommand) -> dict[str, Any]:
+        """Serialize standalone handle requests against the existing contact world."""
+        with self.lock:
+            self._require_running()
+            self._require_workflow_release()
+            self.physics.run_instrument(command)
             return self._status()
 
     def _require_workflow_release(self) -> None:

@@ -34,6 +34,7 @@
     PIPETTING: '/api/laboratory/physics/robot/pipetting',
     PIPETTE: '/api/laboratory/physics/robot/pipette',
     WORKFLOW: '/api/laboratory/physics/robot/workflow',
+    INSTRUMENT: '/api/laboratory/physics/robot/instrument',
     REFRIGERATOR: '/api/laboratory/physics/robot/refrigerator',
   });
   const RobotStates = Object.freeze({IDLE: 'idle', RUNNING: 'running', PAUSED: 'paused', SUCCEEDED: 'succeeded', FAILED: 'failed'});
@@ -41,6 +42,14 @@
   const RobotLabels = Object.freeze({idle: 'Ready', running: 'PR2 is moving the glass', paused: 'PR2 paused', succeeded: 'Glass transferred', failed: 'Movement stopped'});
   const MixingLabels = Object.freeze({...RobotLabels, running: 'PR2 is mixing the liquids', succeeded: 'Mixture placed in A2'});
   const PipettingLabels = Object.freeze({...RobotLabels, running: 'PR2 is dosing the sample', succeeded: 'Dosed sample returned to A1'});
+  const RobotInstruments = Object.freeze({CENTRIFUGE: 'centrifuge', REFRIGERATOR: 'refrigerator'});
+  const InstrumentActions = Object.freeze({OPEN: 'open', CLOSE: 'close', OPEN_CLOSE: 'open_close'});
+  const InstrumentButtons = Object.freeze({open: 'Robot: open', close: 'Robot: close', open_close: 'Robot: open & close'});
+  const InstrumentLabels = Object.freeze({idle: 'Ready for a robot handle test', running: 'Robot handle test running',
+    paused: 'Robot handle test paused', succeeded: 'Robot handle test complete', failed: 'Robot handle test stopped'});
+  const InstrumentNote = 'PR2 grasps the handle. Existing samples and positions are preserved.';
+  const InstrumentPausedNote = 'The robot handle test is paused. Resume it at the selected device or reset the laboratory.';
+  const InstrumentCommand = 'runInstrument';
   const RobotPhases = Object.freeze({approach: 'Approaching the glass', grasp: 'Checking the contact grasp', lift: 'Lifting the glass', transport: 'Transporting the glass', pour: 'Pouring the liquid', return: 'Returning the source glass', swirl: 'Gently swirling the mixture', place: 'Placing the glass in the rack', release: 'Setting down the glass', settle: 'Checking stable placement', complete: 'Complete'});
   const POLL_INTERVAL = 33;
   const RETRY_INTERVAL = 1500;
@@ -92,6 +101,7 @@
     runMixing() { return this.post(this.routes.MIX); }
     runPipetting() { return this.post(this.routes.PIPETTE); }
     runWorkflow(prepare = true) { return this.post(this.routes.WORKFLOW, {prepare}); }
+    runInstrument(command) { return this.post(this.routes.INSTRUMENT, command); }
     pipetting(command) { return this.post(this.routes.PIPETTING, command); }
     refrigerator(command) { return this.post(this.routes.REFRIGERATOR, command); }
     pause() { return this.post(this.routes.PAUSE); }
@@ -138,6 +148,8 @@
       this.robotRequest = null;
       this.workflowUncertain = false;
       this.workflowError = null;
+      this.instrumentRequest = null;
+      this.instrumentError = null;
       this.selected = config.objects.length ? config.objects[0].key : null;
       this.dragged = null;
       this.state = 'idle';
@@ -782,7 +794,33 @@
     run() { return this.startProgram('run'); }
     runMixing() { return this.startProgram('runMixing'); }
     runPipetting() { return this.startProgram('runPipetting'); }
+    /** Permit only an idle robot or the same paused handle operation to own a device. */
+    instrumentReady(instrument, action) {
+      if (!Object.values(RobotInstruments).includes(instrument) || !Object.values(InstrumentActions).includes(action)) return false;
+      if (!this.config.robot || !this.ready() || this.robotBusy() || this.workflowUncertain || this.draining
+        || this.manualBusy() || this.pipettingBusy() || this.refrigeratorBusy() || this.centrifugeBusy()
+        || this.scaleTransfer || this.centrifugeTransfer || this.centrifugePair || this.pipettingTransfer
+        || this.refrigeratorTransfer || this.dispensing() || this.target || this.robot.holding) return false;
+      const observed = Workflow.instrument(this.robot);
+      if (this.robot.state === RobotStates.PAUSED && (!observed || observed.instrument !== instrument || observed.action !== action)) return false;
+      const device = instrument === RobotInstruments.CENTRIFUGE ? this.centrifuge : this.refrigerator;
+      if (!device || !device.available) return false;
+      return instrument !== RobotInstruments.CENTRIFUGE || (!device.locked && !device.running && Math.abs(device.rpm) <= CentrifugeSettings.STOPPED_RPM);
+    }
+    /** Start a reusable native handle action without preparing or moving samples. */
+    runInstrument(instrument, action) {
+      if (!this.instrumentReady(instrument, action)) return Promise.resolve(false);
+      this.instrumentRequest = {instrument, action};
+      this.instrumentError = null;
+      this.error = null;
+      this.robotRequest = InstrumentCommand;
+      this.workflowUncertain = true;
+      this.revision += 1;
+      this.changed();
+      return this.enqueue({type: InstrumentCommand, payload: this.instrumentRequest, resume: this.robot.state === RobotStates.PAUSED});
+    }
     workflowReady() {
+      if (Workflow.instrument(this.robot) && this.robot.state === RobotStates.PAUSED) return false;
       const resuming = this.robot.source === RobotSources.WORKFLOW && this.robot.state === RobotStates.PAUSED;
       return Boolean(this.config.robot && this.ready() && !this.robotBusy() && !this.workflowUncertain && !this.draining
         && !this.manualBusy() && !this.scaleTransfer && !this.centrifugeTransfer && !this.centrifugePair
@@ -810,6 +848,7 @@
       return this.clear('pause');
     }
     clear(type) {
+      if (type === 'reset' || ProgramCommands.includes(type)) {this.instrumentError = null;this.instrumentRequest = null;}
       this.refrigeratorTransfer = null;
       this.refrigeratorError = null;
       this.refrigeratorRevision += 1;
@@ -848,7 +887,8 @@
         this.activeCommand = command.type;
         try {
           let answer;
-          if (command.type === 'runWorkflow') answer = await this.service.runWorkflow(!(this.robot.source === RobotSources.WORKFLOW && this.robot.state === RobotStates.PAUSED));
+          if (command.type === InstrumentCommand) answer = command.resume ? await this.service.runWorkflow(false) : await this.service.runInstrument(command.payload);
+          else if (command.type === 'runWorkflow') answer = await this.service.runWorkflow(!(this.robot.source === RobotSources.WORKFLOW && this.robot.state === RobotStates.PAUSED));
           else if (command.type === 'target') answer = await this.service.target(command.target);
           else if (command.type === 'refrigerator') answer = await this.service.refrigerator(command.payload);
           else if (command.type === 'pipetting') answer = await this.service.pipetting(command.payload);
@@ -884,6 +924,12 @@
             this.liquid = answer.liquid;
             if (this.adapter.setLiquidState) this.adapter.setLiquidState(this.liquid);
           }
+          if (command.type === InstrumentCommand && !this.disposed) {
+            if (!Workflow.instrument(answer.robot)) throw new Error('Robot handle status was not returned. Refresh before starting again.');
+            this.robot = answer.robot;
+            this.workflowUncertain = false;
+            this.instrumentError = null;
+          }
           if (this.config.robot && [...ProgramCommands, 'pause', 'reset'].includes(command.type)) {
             const startingProgram = ProgramCommands.includes(command.type);
             const state = startingProgram ? RobotStates.RUNNING : (command.type === 'pause' ? RobotStates.PAUSED : RobotStates.IDLE);
@@ -900,6 +946,7 @@
           this.error = null;
         } catch (error) {
           this.error = error.message;
+          if (command.type === InstrumentCommand) this.instrumentError = {...command.payload, message: error.message};
           if (command.type === 'runWorkflow') this.workflowError = error.message;
           if (command.type === 'refrigerator') this.refrigeratorError = error.message;
           if (command.type === 'pipetting') this.pipettingError = error.message;
@@ -921,6 +968,7 @@
         if (['pipetting', 'reset', ...ProgramCommands].includes(command.type)) this.pipettingRevision += 1;
         if (ScaleCommands.includes(command.type)) this.scaleRevision += 1;
         if (['centrifuge', 'manual', 'reset'].includes(command.type) || ProgramCommands.includes(command.type)) this.centrifugeRevision += 1;
+        if (command.type === InstrumentCommand) {this.centrifugeRevision += 1;this.refrigeratorRevision += 1;this.instrumentRequest = null;}
         this.activeCommand = null;
         if (this.robotRequest === command.type) this.robotRequest = null;
         this.changed();
@@ -1057,6 +1105,42 @@
       option.value = object.key;
     }
     const controller = new Controller(config, service, adapter, render);
+    const robotInstrumentControls = new Map();
+    function mountRobotInstrument(parent, instrument) {
+      if (!config.robot) return;
+      const group = element('section', parent, 'laboratory-physics-' + instrument + '-robot');
+      element('h5', group, '', 'Robot handle test');
+      element('p', group, 'laboratory-physics-note', InstrumentNote);
+      const controls = new Map();
+      for (const action of Object.values(InstrumentActions)) {
+        controls.set(action, button(group, InstrumentButtons[action], () => controller.runInstrument(instrument, action),
+          'laboratory-physics-' + instrument + '-robot-' + action));
+      }
+      const status = element('p', group, 'laboratory-physics-' + instrument + '-robot-status');
+      status.setAttribute('role', 'status');
+      robotInstrumentControls.set(instrument, {controls, status});
+    }
+    function renderRobotInstruments() {
+      for (const [instrument, view] of robotInstrumentControls) {
+        const command = Workflow.instrument(controller.robot);
+        const matching = command && command.instrument === instrument;
+        const pending = controller.instrumentRequest && controller.instrumentRequest.instrument === instrument;
+        const failure = controller.instrumentError && controller.instrumentError.instrument === instrument && controller.instrumentError.message;
+        const paused = matching && controller.robot.state === RobotStates.PAUSED;
+        for (const [action, control] of view.controls) {
+          control.disabled = !controller.instrumentReady(instrument, action);
+          control.textContent = paused && command.action === action ? 'Resume: ' + InstrumentButtons[action].slice('Robot: '.length) : InstrumentButtons[action];
+        }
+        const error = failure || matching && controller.robot.error;
+        const label = matching ? InstrumentLabels[controller.robot.state] || controller.robot.state
+          : controller.robotBusy() ? 'PR2 is running another task.'
+          : controller.robot.state === RobotStates.PAUSED ? 'Resume the current robot task or reset the laboratory.'
+          : !controller.ready() ? 'Start the laboratory to use the robot.' : InstrumentLabels.idle;
+        view.status.textContent = error || (pending ? 'Starting robot handle test …' : label
+          + (matching && controller.robot.state === RobotStates.RUNNING && controller.robot.message ? ' · ' + controller.robot.message : ''));
+        view.status.dataset.error = String(Boolean(error));
+      }
+    }
     const workflow = config.robot ? new Workflow.View(panel, {start: () => controller.runWorkflow(), pause: () => controller.pause(), reset: () => controller.reset()}) : null;
     const refrigerator = element('section', panel, 'laboratory-physics-refrigerator');
     element('h4', refrigerator, '', 'Sample refrigerator');
@@ -1072,6 +1156,7 @@
     listen(refrigeratorSlot, 'change', () => { if (!controller.refrigeratorTransfer) controller.refrigeratorSlot = refrigeratorSlot.value; render(); });
     const refrigeratorOpen = button(refrigerator, 'Open door', () => controller.commandRefrigerator('open'), 'laboratory-physics-refrigerator-open');
     const refrigeratorClose = button(refrigerator, 'Close door', () => controller.commandRefrigerator('close'), 'laboratory-physics-refrigerator-close');
+    mountRobotInstrument(refrigerator, RobotInstruments.REFRIGERATOR);
     const refrigeratorStore = button(refrigerator, 'Store selected glass', () => controller.storeRefrigerator(), 'laboratory-physics-refrigerator-store');
     const refrigeratorRetrieve = button(refrigerator, 'Retrieve sample to rack', () => controller.retrieveRefrigerator(), 'laboratory-physics-refrigerator-retrieve');
     const refrigeratorCancel = button(refrigerator, 'Stop transfer', () => controller.stopRefrigeratorTransfer(), 'laboratory-physics-refrigerator-cancel');
@@ -1222,6 +1307,7 @@
     listen(slotSelect, 'change', () => controller.selectCentrifugeSlot(slotSelect.value));
     const lidOpen = button(centrifuge, 'Open lid', () => controller.commandCentrifuge(CentrifugeActions.OPEN), 'laboratory-physics-centrifuge-open');
     const lidClose = button(centrifuge, 'Close lid', () => controller.commandCentrifuge(CentrifugeActions.CLOSE), 'laboratory-physics-centrifuge-close');
+    mountRobotInstrument(centrifuge, RobotInstruments.CENTRIFUGE);
     const loadPair = button(centrifuge, 'Load test pair (2 × 5 ml)', () => controller.loadCentrifugePair(), 'laboratory-physics-centrifuge-pair');
     const pairNote = element('p', centrifuge, 'laboratory-physics-centrifuge-pair-note');
     const loadSample = button(centrifuge, 'Load sample', () => controller.loadCentrifuge(), 'laboratory-physics-centrifuge-load');
@@ -1419,25 +1505,27 @@
         liquidStatus.textContent = tube.volumeMl.toFixed(1) + ' / ' + tube.capacityMl.toFixed(1) + ' ml · Spilled: ' + (Number(controller.liquid.spilledMl) || 0).toFixed(1) + ' ml';
         tiltStatus.textContent = 'Tilt: ' + Math.round(controller.observedTilt()) + '°';
       }
-      status.textContent = controller.error || (controller.starting ? 'Starting laboratory …' : (ready ? (controller.robotBusy() ? 'Manual movement is paused while PR2 is running a task.' : Workflow.active(controller.robot) ? Workflow.PausedNote : (controller.target ? 'Glass held · Use the arrows to move the target.' : 'Select a glass or drag it directly in the scene.')) : 'The simulation is inactive. Start the laboratory to continue.'));
+      status.textContent = controller.error || (controller.starting ? 'Starting laboratory …' : (ready ? (controller.robotBusy() ? 'Manual movement is paused while PR2 is running a task.' : Workflow.active(controller.robot) ? Workflow.instrument(controller.robot) ? InstrumentPausedNote : Workflow.PausedNote : (controller.target ? 'Glass held · Use the arrows to move the target.' : 'Select a glass or drag it directly in the scene.')) : 'The simulation is inactive. Start the laboratory to continue.'));
       status.dataset.error = String(Boolean(controller.error));
       if (config.robot) {
         const mixing = controller.robot.source === RobotSources.MIXING;
         const dosing = controller.robot.source === RobotSources.PIPETTING;
-        const fullDemo = controller.robot.source === RobotSources.WORKFLOW;
+        const handleTest = Boolean(Workflow.instrument(controller.robot));
+        const fullDemo = controller.robot.source === RobotSources.WORKFLOW && !handleTest;
         const workflowOwned = Workflow.active(controller.robot);
         workflow.render(controller.robot, {ready, canStart: controller.workflowReady(), canPause: fullDemo && controller.robot.state === RobotStates.RUNNING, pending: Boolean(controller.draining || controller.robotRequest), error: controller.workflowError || controller.error});
         const paused = controller.robot.state === RobotStates.PAUSED;
-        robotMotionNote.textContent = mixing || dosing || fullDemo ? 'Motion: local contact controller. Contacts: MuJoCo.' : 'Joint targets: recorded CRAM plan. Motion and contacts: MuJoCo.';
+        renderRobotInstruments();
+        robotMotionNote.textContent = mixing || dosing || fullDemo || handleTest ? 'Motion: local contact controller. Contacts: MuJoCo.' : 'Joint targets: recorded CRAM plan. Motion and contacts: MuJoCo.';
         robotRun.disabled = workflowOwned || !ready || Boolean(controller.robotBusy()) || Boolean(controller.centrifugeTransfer) || Boolean(pair) || controller.centrifugeOwnsObjects() || controller.dispensing() || controller.pipettingBusy() || Boolean(controller.pipettingTransfer) || Boolean(controller.refrigeratorTransfer) || controller.refrigeratorBusy() || Boolean(cabinet && cabinet.slots.some(slot => slot.key));
-        robotRun.textContent = paused && !mixing && !dosing && !fullDemo ? 'Resume PR2' : 'Start PR2: A1 → A3';
+        robotRun.textContent = paused && !mixing && !dosing && !fullDemo && !handleTest ? 'Resume PR2' : 'Start PR2: A1 → A3';
         robotPipette.disabled = robotRun.disabled || !station || !station.available;
         robotPipette.textContent = paused && dosing ? 'Resume pipetting demo' : 'Start pipetting demo';
         robotMix.disabled = robotRun.disabled;
         robotMix.textContent = paused && mixing ? 'Resume mixing demo' : 'Start mixing demo';
         robotPause.disabled = !ready || !controller.robotBusy() || controller.robotRequest === 'pause';
         const phase = controller.robot.message || RobotPhases[controller.robot.phase];
-        const label = (fullDemo ? Workflow.Labels : dosing ? PipettingLabels : mixing ? MixingLabels : RobotLabels)[controller.robot.state] || controller.robot.state;
+        const label = (handleTest ? InstrumentLabels : fullDemo ? Workflow.Labels : dosing ? PipettingLabels : mixing ? MixingLabels : RobotLabels)[controller.robot.state] || controller.robot.state;
         robotStatus.textContent = controller.robot.error || (label + (phase && controller.robot.state === RobotStates.RUNNING ? ' · ' + phase : ''));
         robotStatus.dataset.error = String(Boolean(controller.robot.error));
         robotProgress.value = Math.max(0, Math.min(1, Number(controller.robot.progress) || 0));
@@ -1506,5 +1594,5 @@
     return {destroy() { button.removeEventListener('click', start); panel.remove(); }};
   }
 
-  return {Client, Controller, Routes, RobotRoutes, RobotStates, RobotSources, POLL_INTERVAL, MOVE_STEP, TILT_STEP, LIFT_CLEARANCE, SCALE_MOVE_TIMEOUT, CentrifugeActions, CentrifugeSettings, mount, mountStart};
+  return {Client, Controller, Routes, RobotRoutes, RobotStates, RobotSources, RobotInstruments, InstrumentActions, InstrumentButtons, InstrumentLabels, POLL_INTERVAL, MOVE_STEP, TILT_STEP, LIFT_CLEARANCE, SCALE_MOVE_TIMEOUT, CentrifugeActions, CentrifugeSettings, mount, mountStart};
 });

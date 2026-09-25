@@ -31,6 +31,28 @@ disabled until the workflow finishes, fails, or is explicitly reset. Instrument 
 controls remain available. A failed operation reports its reason; neither a timeout
 nor a progress bar reaching its end is sufficient evidence of success.
 
+### Try the robot's lid and door actions separately
+
+The **Centrifuge** and **Sample refrigerator** sections each provide **Robot: open**,
+**Robot: close**, and **Robot: open & close**. These controls run the corresponding
+native `OpenInstrumentAction` and `CloseInstrumentAction` with physical handle
+contacts. They preserve the current laboratory, sample contents, and device state;
+the complete processing recipe is not started. An already reached endpoint needs
+no extra handle movement.
+
+Each device shows its robot operation's status and any failure. Use **Pause PR2**
+to pause; the selected device's action button becomes **Resume: …** and continues
+the same action. A running or paused robot program
+reserves the instruments, so another operation cannot replace it. The centrifuge
+must be stopped before its lid can be manipulated. The ordinary **Open lid** /
+**Close lid** and **Open door** / **Close door** controls continue to operate the
+device motors directly.
+
+The standalone robot acceptance tests cover a centrifuge close followed by an
+open-and-close sequence and a refrigerator open-and-close sequence. Both require
+measured handle contacts, zero hinge-motor force during turning, released fingers
+at the endpoint, and no unintended robot contact with the surrounding furniture.
+
 ## Processing sequence
 
 Samples are handled in the order **clear → amber → teal → reserve**. The front rack

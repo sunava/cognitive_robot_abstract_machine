@@ -14,6 +14,12 @@ import numpy as np
 from typing_extensions import Any, ClassVar, TYPE_CHECKING
 
 from cramera.laboratory_centrifuge_command import CentrifugeAction
+from cramera.laboratory_instrument_command import (
+    InstrumentAction,
+    InstrumentCommand,
+    InstrumentField,
+    InstrumentName,
+)
 from cramera.laboratory_refrigerator_command import RefrigeratorAction
 from cramera.laboratory_liquid import LiquidField
 from cramera.laboratory_physics import InvalidPhysicsTarget
@@ -584,6 +590,8 @@ class LaboratoryProgramPhysics:
         | LaboratoryWorkflowProgram
     ) = field(init=False)
     """The controller and physical acceptance evidence."""
+    instrument_command: InstrumentCommand | None = field(init=False, default=None)
+    """Standalone cover request retained while its native plan owns the controller."""
 
     def __post_init__(self) -> None:
         """Load one program for the articulated physical world."""
@@ -609,6 +617,7 @@ class LaboratoryProgramPhysics:
         """Restore physical state and discard all previous acceptance evidence."""
         self.physics.reset()
         self.program.reset()
+        self.instrument_command = None
 
     def _require_free_centrifuge(self) -> None:
         """Require a stopped rotor and released holders before robot execution."""
@@ -662,7 +671,36 @@ class LaboratoryProgramPhysics:
             self.physics.fill_liquid(key, 0.0)
         candidate = program_type(self.physics)
         self.program = candidate
+        self.instrument_command = None
         candidate.start()
+
+    def run_instrument(self, command: InstrumentCommand) -> None:
+        """Run native handle actions without preparing samples or restoring poses."""
+        self._require_workflow_release()
+        if self.program.state in (ProgramState.RUNNING, ProgramState.PAUSED):
+            raise InvalidPhysicsTarget(
+                "Finish or reset the active PR2 program before starting an instrument action"
+            )
+        self._require_idle_station()
+        if (
+            command.instrument == InstrumentName.CENTRIFUGE
+            and not self.physics.centrifuge.stopped
+        ):
+            raise InvalidPhysicsTarget("Stop the rotor before manipulating its lid")
+        actions = importlib.import_module("cramera.laboratory_actions")
+        instrument = actions.LaboratoryInstrument(command.instrument)
+        selected = []
+        if command.action in (InstrumentAction.OPEN, InstrumentAction.OPEN_CLOSE):
+            selected.append(actions.OpenInstrumentAction(instrument))
+        if command.action in (InstrumentAction.CLOSE, InstrumentAction.OPEN_CLOSE):
+            selected.append(actions.CloseInstrumentAction(instrument))
+        program_type = importlib.import_module(
+            "cramera.laboratory_workflow"
+        ).LaboratoryWorkflowProgram
+        candidate = program_type(self.physics)
+        candidate.start_actions(selected)
+        self.program = candidate
+        self.instrument_command = command
 
     def run_program(self) -> None:
         """Resume or restore initial body poses while retaining current tube contents."""
@@ -675,6 +713,7 @@ class LaboratoryProgramPhysics:
             self.program = LaboratoryPhysicsProgram(
                 self.physics, JointReference.load(self.recording_directory)
             )
+            self.instrument_command = None
         if self.program.state in (
             ProgramState.IDLE,
             ProgramState.SUCCEEDED,
@@ -710,6 +749,7 @@ class LaboratoryProgramPhysics:
         self._require_switchable()
         self.physics.reset()
         self.program = program_type(self.physics)
+        self.instrument_command = None
         self.program.start()
 
     def _require_idle_station(self) -> None:
@@ -740,6 +780,7 @@ class LaboratoryProgramPhysics:
         candidate = program_type(self.physics)
         candidate.start()
         self.program = candidate
+        self.instrument_command = None
 
     def _require_home_base(self) -> None:
         """Require the recorded base pose before starting stationary dispensing."""
@@ -865,4 +906,8 @@ class LaboratoryProgramPhysics:
         """Combine physical object and joint poses with measured program feedback."""
         snapshot = self.physics.snapshot()
         snapshot[ProgramField.ROBOT] = self.program.snapshot()
+        if self.instrument_command is not None:
+            snapshot[ProgramField.ROBOT][
+                InstrumentField.INSTRUMENT
+            ] = self.instrument_command.snapshot()
         return snapshot
