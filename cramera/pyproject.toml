@@ -16,8 +16,8 @@ classifiers = [
 ]
 keywords = ["robotics", "visualization"]
 dynamic = ["version", "dependencies"]
-# Software and original laboratory assets have separately scoped terms.
-license = { text = "GPL-3.0-only AND LicenseRef-AICOR-Laboratory-Assets" }
+# Software, laboratory assets and workshop assets have separately scoped terms.
+license = { text = "GPL-3.0-only AND LicenseRef-AICOR-Laboratory-Assets AND LicenseRef-AICOR-Workshop-Assets" }
 
 [project.urls]
 "Source" = 'https://github.com/cram2/cognitive_robot_abstract_machine'
@@ -32,8 +32,8 @@ where = ["src"]
 include = ["cramera*"]
 
 [tool.setuptools.package-data]
-# The frontend and laboratory world ship with all local runtime assets.
-cramera = ["web/**/*", "resources/aicor_medical_lab/*", "resources/aicor_medical_lab/assets/*", "resources/centrifuge_manuals/*.md", "resources/laboratory_devices/*", "resources/laboratory_devices/*/*", "resources/laboratory_devices/*/assets/*"]
+# The frontend, laboratory and workshop ship with their local runtime assets.
+cramera = ["web/**/*", "resources/aicor_workshop/*", "resources/aicor_workshop/assets/*", "resources/aicor_medical_lab/*", "resources/aicor_medical_lab/assets/*", "resources/centrifuge_manuals/*.md", "resources/laboratory_devices/*", "resources/laboratory_devices/*/*", "resources/laboratory_devices/*/assets/*"]
 
 [tool.setuptools.dynamic]
 version = { attr = "cramera._version.__version__" }

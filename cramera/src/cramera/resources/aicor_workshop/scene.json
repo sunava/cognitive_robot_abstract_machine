@@ -1,0 +1,524 @@
+{
+  "name": "aicor_workshop",
+  "environmentName": "AICOR Wood Workshop",
+  "task": "Woodworking · Articulated storage and loose fasteners",
+  "rendering": {
+    "ambientOcclusion": false,
+    "exposure": 0.72
+  },
+  "framesPerSecond": 1,
+  "trajectory": "trajectory.json",
+  "camera": {
+    "position": [
+      2.4,
+      -3.0,
+      2.15
+    ],
+    "target": [
+      0,
+      0.1,
+      1.0
+    ]
+  },
+  "models": [
+    {
+      "name": "workshop",
+      "urdf": "environment.urdf",
+      "prefix": "",
+      "robot": false,
+      "links": 10,
+      "movableJoints": [
+        "workshop_drawer_1_joint",
+        "workshop_drawer_2_joint",
+        "workshop_drawer_3_joint"
+      ],
+      "preserveMaterials": true
+    }
+  ],
+  "objects": [
+    {
+      "id": "screw_1",
+      "key": "screw_1",
+      "mesh": "assets/screw.glb",
+      "urdf": "screw_1.urdf",
+      "spawn": [
+        -0.378,
+        -0.1,
+        0.9530000000000001,
+        0.0,
+        0.7071067811865476,
+        0.0,
+        0.7071067811865476
+      ],
+      "preserveMaterials": true
+    },
+    {
+      "id": "screw_2",
+      "key": "screw_2",
+      "mesh": "assets/screw.glb",
+      "urdf": "screw_2.urdf",
+      "spawn": [
+        -0.378,
+        -0.22,
+        0.9530000000000001,
+        0.0,
+        0.7071067811865476,
+        0.0,
+        0.7071067811865476
+      ],
+      "preserveMaterials": true
+    },
+    {
+      "id": "screw_3",
+      "key": "screw_3",
+      "mesh": "assets/screw.glb",
+      "urdf": "screw_3.urdf",
+      "spawn": [
+        -0.378,
+        0.01999999999999999,
+        0.9530000000000001,
+        0.0,
+        0.7071067811865476,
+        0.0,
+        0.7071067811865476
+      ],
+      "preserveMaterials": true
+    },
+    {
+      "id": "screw_4",
+      "key": "screw_4",
+      "mesh": "assets/screw.glb",
+      "urdf": "screw_4.urdf",
+      "spawn": [
+        -0.248,
+        -0.22,
+        0.9530000000000001,
+        0.0,
+        0.7071067811865476,
+        0.0,
+        0.7071067811865476
+      ],
+      "preserveMaterials": true
+    },
+    {
+      "id": "screw_5",
+      "key": "screw_5",
+      "mesh": "assets/screw.glb",
+      "urdf": "screw_5.urdf",
+      "spawn": [
+        -0.248,
+        0.01999999999999999,
+        0.9530000000000001,
+        0.0,
+        0.7071067811865476,
+        0.0,
+        0.7071067811865476
+      ],
+      "preserveMaterials": true
+    },
+    {
+      "id": "nail_1",
+      "key": "nail_1",
+      "mesh": "assets/nail.glb",
+      "urdf": "nail_1.urdf",
+      "spawn": [
+        -0.848,
+        -0.1,
+        0.936,
+        0.0,
+        0.7071067811865476,
+        0.0,
+        0.7071067811865476
+      ],
+      "preserveMaterials": true
+    },
+    {
+      "id": "nail_2",
+      "key": "nail_2",
+      "mesh": "assets/nail.glb",
+      "urdf": "nail_2.urdf",
+      "spawn": [
+        -0.848,
+        -0.22,
+        0.936,
+        0.0,
+        0.7071067811865476,
+        0.0,
+        0.7071067811865476
+      ],
+      "preserveMaterials": true
+    },
+    {
+      "id": "nail_3",
+      "key": "nail_3",
+      "mesh": "assets/nail.glb",
+      "urdf": "nail_3.urdf",
+      "spawn": [
+        -0.848,
+        0.01999999999999999,
+        0.936,
+        0.0,
+        0.7071067811865476,
+        0.0,
+        0.7071067811865476
+      ],
+      "preserveMaterials": true
+    },
+    {
+      "id": "nail_4",
+      "key": "nail_4",
+      "mesh": "assets/nail.glb",
+      "urdf": "nail_4.urdf",
+      "spawn": [
+        -0.718,
+        -0.22,
+        0.936,
+        0.0,
+        0.7071067811865476,
+        0.0,
+        0.7071067811865476
+      ],
+      "preserveMaterials": true
+    },
+    {
+      "id": "nail_5",
+      "key": "nail_5",
+      "mesh": "assets/nail.glb",
+      "urdf": "nail_5.urdf",
+      "spawn": [
+        -0.718,
+        0.01999999999999999,
+        0.936,
+        0.0,
+        0.7071067811865476,
+        0.0,
+        0.7071067811865476
+      ],
+      "preserveMaterials": true
+    },
+    {
+      "id": "screw_box",
+      "key": "screw_box",
+      "mesh": "assets/bin.glb",
+      "urdf": "screw_box.urdf",
+      "spawn": [
+        -0.25,
+        -0.1,
+        0.92,
+        0,
+        0,
+        0,
+        1
+      ],
+      "preserveMaterials": true
+    },
+    {
+      "id": "nail_box",
+      "key": "nail_box",
+      "mesh": "assets/bin.glb",
+      "urdf": "nail_box.urdf",
+      "spawn": [
+        -0.72,
+        -0.1,
+        0.92,
+        0,
+        0,
+        0,
+        1
+      ],
+      "preserveMaterials": true
+    }
+  ],
+  "workshop": {
+    "drawers": [
+      {
+        "id": "drawer_1",
+        "label": "Lower drawer",
+        "joint": "workshop_drawer_1_joint",
+        "link": "workshop_drawer_1",
+        "handle": "workshop_drawer_1_handle",
+        "origin": [
+          -0.78,
+          0.0,
+          0.3
+        ],
+        "open": 0.4
+      },
+      {
+        "id": "drawer_2",
+        "label": "Middle drawer",
+        "joint": "workshop_drawer_2_joint",
+        "link": "workshop_drawer_2",
+        "handle": "workshop_drawer_2_handle",
+        "origin": [
+          -0.78,
+          0.0,
+          0.49
+        ],
+        "open": 0.4
+      },
+      {
+        "id": "drawer_3",
+        "label": "Upper drawer",
+        "joint": "workshop_drawer_3_joint",
+        "link": "workshop_drawer_3",
+        "handle": "workshop_drawer_3_handle",
+        "origin": [
+          -0.78,
+          0.0,
+          0.68
+        ],
+        "open": 0.4
+      }
+    ],
+    "parts": [
+      {
+        "key": "screw_1",
+        "label": "Screw 1",
+        "kind": "screw",
+        "home": [
+          -0.378,
+          -0.1,
+          0.9530000000000001,
+          0.0,
+          0.7071067811865476,
+          0.0,
+          0.7071067811865476
+        ]
+      },
+      {
+        "key": "screw_2",
+        "label": "Screw 2",
+        "kind": "screw",
+        "home": [
+          -0.378,
+          -0.22,
+          0.9530000000000001,
+          0.0,
+          0.7071067811865476,
+          0.0,
+          0.7071067811865476
+        ]
+      },
+      {
+        "key": "screw_3",
+        "label": "Screw 3",
+        "kind": "screw",
+        "home": [
+          -0.378,
+          0.01999999999999999,
+          0.9530000000000001,
+          0.0,
+          0.7071067811865476,
+          0.0,
+          0.7071067811865476
+        ]
+      },
+      {
+        "key": "screw_4",
+        "label": "Screw 4",
+        "kind": "screw",
+        "home": [
+          -0.248,
+          -0.22,
+          0.9530000000000001,
+          0.0,
+          0.7071067811865476,
+          0.0,
+          0.7071067811865476
+        ]
+      },
+      {
+        "key": "screw_5",
+        "label": "Screw 5",
+        "kind": "screw",
+        "home": [
+          -0.248,
+          0.01999999999999999,
+          0.9530000000000001,
+          0.0,
+          0.7071067811865476,
+          0.0,
+          0.7071067811865476
+        ]
+      },
+      {
+        "key": "nail_1",
+        "label": "Nail 1",
+        "kind": "nail",
+        "home": [
+          -0.848,
+          -0.1,
+          0.936,
+          0.0,
+          0.7071067811865476,
+          0.0,
+          0.7071067811865476
+        ]
+      },
+      {
+        "key": "nail_2",
+        "label": "Nail 2",
+        "kind": "nail",
+        "home": [
+          -0.848,
+          -0.22,
+          0.936,
+          0.0,
+          0.7071067811865476,
+          0.0,
+          0.7071067811865476
+        ]
+      },
+      {
+        "key": "nail_3",
+        "label": "Nail 3",
+        "kind": "nail",
+        "home": [
+          -0.848,
+          0.01999999999999999,
+          0.936,
+          0.0,
+          0.7071067811865476,
+          0.0,
+          0.7071067811865476
+        ]
+      },
+      {
+        "key": "nail_4",
+        "label": "Nail 4",
+        "kind": "nail",
+        "home": [
+          -0.718,
+          -0.22,
+          0.936,
+          0.0,
+          0.7071067811865476,
+          0.0,
+          0.7071067811865476
+        ]
+      },
+      {
+        "key": "nail_5",
+        "label": "Nail 5",
+        "kind": "nail",
+        "home": [
+          -0.718,
+          0.01999999999999999,
+          0.936,
+          0.0,
+          0.7071067811865476,
+          0.0,
+          0.7071067811865476
+        ]
+      }
+    ],
+    "bins": [
+      {
+        "key": "screw_box",
+        "label": "Screw box",
+        "home": [
+          -0.25,
+          -0.1,
+          0.92,
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "key": "nail_box",
+        "label": "Nail box",
+        "home": [
+          -0.72,
+          -0.1,
+          0.92,
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "assembly": {
+      "pose": [
+        0.28,
+        -0.1,
+        0.92,
+        0,
+        0,
+        0,
+        1
+      ],
+      "socketPose": [
+        0.28,
+        -0.1,
+        0.9620000000000001,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    "liftHeight": 1.3,
+    "bounds": {
+      "min": [
+        -1.05,
+        -0.36
+      ],
+      "max": [
+        1.05,
+        0.1
+      ]
+    },
+    "cameras": {
+      "overview": {
+        "position": [
+          2.4,
+          -3.0,
+          2.15
+        ],
+        "target": [
+          0,
+          0.1,
+          1.0
+        ]
+      },
+      "bench": {
+        "position": [
+          1.3,
+          -1.7,
+          1.8
+        ],
+        "target": [
+          -0.05,
+          -0.05,
+          1.0
+        ]
+      },
+      "drawers": {
+        "position": [
+          -1.8,
+          -1.6,
+          1.0
+        ],
+        "target": [
+          -0.78,
+          -0.1,
+          0.5
+        ]
+      }
+    }
+  },
+  "assetRights": {
+    "principalAuthor": "Vanessa Hassouna",
+    "institution": "AICOR Institute",
+    "copyright": "Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.",
+    "license": "LicenseRef-AICOR-Workshop-Assets",
+    "permissionNotice": "Reuse, modification and redistribution of the original workshop assets require prior written permission from Vanessa Hassouna, except where an existing licence or applicable law permits them. Permission requests: hassouna@uni-bremen.de.",
+    "priorLicenseNotice": "Existing third-party rights and any permissions already validly granted remain unaffected. This notice does not create copyright in otherwise unprotected material.",
+    "licenseFile": "LICENSE.txt",
+    "noticeFile": "NOTICE.md"
+  }
+}

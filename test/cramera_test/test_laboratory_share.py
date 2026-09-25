@@ -14,7 +14,7 @@ import pytest
 
 from cramera import paths
 from cramera.laboratory_robot_session import RobotPhysicsRoute
-from cramera.laboratory_share import ShareOptions, ShareRoute, make_server
+from cramera.laboratory_share import SharedScene, ShareOptions, ShareRoute, make_server
 
 
 # %% isolated HTTP peers
@@ -149,7 +149,24 @@ def sharing_prefix() -> str:
 
 
 @pytest.fixture
-def shared_laboratory(fixture_scene: Path, sharing_prefix: str) -> SharedLaboratory:
+def sharing_scene() -> SharedScene:
+    """Retain the laboratory as the default shared scene."""
+    return SharedScene.LABORATORY
+
+
+@pytest.fixture
+def sharing_replay() -> bool:
+    """Exclude optional workshop recordings by default."""
+    return False
+
+
+@pytest.fixture
+def shared_laboratory(
+    fixture_scene: Path,
+    sharing_prefix: str,
+    sharing_scene: SharedScene,
+    sharing_replay: bool,
+) -> SharedLaboratory:
     """Serve the existing miniature scene behind an authenticated gateway."""
     password = "test-only-strong-password"
     origin = "https://laboratory.example.test"
@@ -165,6 +182,10 @@ def shared_laboratory(fixture_scene: Path, sharing_prefix: str) -> SharedLaborat
         public_origin_file=origin_file,
         scene_directory=fixture_scene / "scenes" / "fixture",
         path_prefix=sharing_prefix,
+        scene_name=sharing_scene,
+        replay_directory=(
+            fixture_scene / "scenes" / "fixture" if sharing_replay else None
+        ),
     )
     server = make_server(options)
     workers = [

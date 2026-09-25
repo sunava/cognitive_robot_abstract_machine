@@ -1,0 +1,90 @@
+/* Compact workshop controls keep the workbench visible during inspection. */
+.workshop-scene .layers-panel {
+  left: auto;
+  right: 12px;
+  top: 12px;
+  z-index: 6;
+  box-sizing: border-box;
+  min-width: 0;
+  width: min(190px, calc(100% - 24px));
+}
+.workshop-scene .layers-panel.folded { width: auto; }
+.workshop-scene .lp-row { gap: 6px; font-size: 11px; }
+.workshop-scene .lp-joint { grid-template-columns: minmax(0, 1fr) 56px 32px; gap: 4px; font-size: 10px; }
+.workshop-controls {
+  position: absolute;
+  z-index: 5;
+  top: 12px;
+  left: 12px;
+  width: min(290px, calc(100% - 24px));
+  max-height: calc(100% - 56px);
+  overflow: auto;
+  border: 1px solid #bfd0ca;
+  border-radius: 12px;
+  background: rgba(252, 250, 244, .96);
+  color: #263e3b;
+  box-shadow: 0 4px 22px #173c3524;
+  font: 12px/1.45 system-ui, sans-serif;
+  scrollbar-width: thin;
+}
+.workshop-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+.workshop-heading::-webkit-details-marker { display: none; }
+.workshop-heading::before { content: '▾'; color: #62847a; }
+.workshop-controls:not([open]) .workshop-heading::before { content: '▸'; }
+.workshop-title { flex: 1; font-size: 14px; font-weight: 700; }
+.workshop-badge { color: #26786f; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+.workshop-body { padding: 0 14px 14px; }
+.workshop-intro { margin: 0 0 10px; color: #657771; }
+.workshop-demo { display: block; margin: 0 0 10px; padding: 8px 10px; border: 1px solid #26786f; border-radius: 6px; color: #26786f; text-align: center; font-weight: 650; }
+.workshop-demo:hover { background: #e9f3ee; }
+.workshop-camera-row, .workshop-placement, .workshop-movement { display: flex; gap: 6px; }
+.workshop-camera-row > *, .workshop-placement > *, .workshop-movement > * { flex: 1; }
+.workshop-controls button, .workshop-controls select {
+  box-sizing: border-box;
+  min-height: 32px;
+  border: 1px solid #bfd0ca;
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: #fffef9;
+  color: #2e5750;
+  font: inherit;
+}
+.workshop-controls button { cursor: pointer; }
+.workshop-controls button:hover:not(:disabled) { border-color: #28786f; background: #e9f3ee; }
+.workshop-controls button:focus-visible, .workshop-controls select:focus-visible,
+.workshop-controls summary:focus-visible { outline: 2px solid #28786f; outline-offset: 2px; }
+.workshop-controls button:disabled { opacity: .42; cursor: default; }
+.workshop-controls .workshop-primary { border-color: #26786f; background: #26786f; color: #fff; }
+.workshop-controls .workshop-primary:hover:not(:disabled) { background: #1f645d; }
+.workshop-section { min-width: 0; margin: 14px 0 0; padding: 8px 0 0; border: 0; border-top: 1px solid #dbe1d8; }
+.workshop-section legend { padding: 0 7px 0 0; color: #657771; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.workshop-drawer-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 5px; }
+.workshop-drawer-row button { min-width: 64px; }
+.workshop-part-label { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 8px; }
+.workshop-part-select { min-width: 0; flex: 1; max-width: 155px; }
+.workshop-section > .workshop-primary { width: 100%; }
+.workshop-movement { margin: 7px 0; }
+.workshop-movement button { font-size: 17px; line-height: 1; }
+.workshop-held { color: #527369; margin: 8px 0 0; font-size: 11px; }
+.workshop-status { margin: 12px 0 9px; padding: 8px; border-radius: 6px; background: #e8eee4; font-size: 11px; }
+.workshop-status[data-error='true'] { background: #fbecd9; color: #825b27; }
+.workshop-controls[data-busy='true'] .workshop-status { opacity: .65; }
+.workshop-reset { width: 100%; }
+.workshop-note, .workshop-rights { color: #74827a; font-size: 10px; }
+.workshop-note { margin: 8px 0 0; }
+.workshop-rights { margin-top: 8px; }
+.workshop-rights p { margin: 6px 0; }
+.workshop-rights summary { cursor: pointer; }
+@media (max-width: 700px) {
+  .workshop-scene .layers-panel { right: 8px; top: 8px; }
+  .workshop-controls { top: 8px; left: 8px; width: 235px; max-height: calc(100% - 52px); }
+  .workshop-body { padding: 0 10px 10px; }
+  .workshop-intro { display: none; }
+}

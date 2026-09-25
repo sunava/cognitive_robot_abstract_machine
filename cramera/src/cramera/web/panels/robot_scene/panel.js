@@ -282,6 +282,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
   let sceneBase = null;          // static/scenes/<name>/
   let traj = null;
   let laboratoryWorkbench = null;
+  let workshopControls = null;
   let laboratoryPhysics = null;
   let laboratoryContactLayer = null;
   let laboratoryManualMode = null;
@@ -1199,7 +1200,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     if (pickLaboratoryDevice(e)) return;
     const p = pickDraggable(e);
     if (!p) return;
-    if (SCENE && SCENE.laboratory && p.name) return;
+    if (SCENE && (SCENE.laboratory || SCENE.workshop) && p.name) return;
     if (SCENE && SCENE.physics && (!laboratoryPhysics || !p.name || !laboratoryPhysics.controller.beginDrag(p.name))) return;
     if (liveOn && p.marker) return;    // the place marker has no meaning live
     if (p.name && guidedKeys.has(p.name)) { guidedKeys.delete(p.name); arrowOver(p.name, false); }  // grabbed -> stop guiding
@@ -1223,7 +1224,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
   }, { capture: true });
   renderer.domElement.addEventListener('pointermove', function (e) {
     if (!dragging) {
-      if (!playing && e.buttons === 0 && !(SCENE && SCENE.laboratory))
+      if (!playing && e.buttons === 0 && !(SCENE && (SCENE.laboratory || SCENE.workshop)))
         renderer.domElement.style.cursor = pickDraggable(e) ? 'grab' : '';
       return;
     }
@@ -1647,7 +1648,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     return 'http://' + (m ? m[1] : (window.location.hostname + ':8765'));
   }
   function probeLive() {
-    if (offlineMode || (SCENE && SCENE.laboratory)) return;
+    if (offlineMode || (SCENE && (SCENE.laboratory || SCENE.workshop))) return;
     fetch(liveUrl() + '/info').then(function (r) { return r.json(); })
       .then(function (info) {
         if (liveBtn && !liveOn) liveBtn.style.display = info ? '' : 'none';
@@ -1855,6 +1856,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       frameTriads.push(triad);
     });
     if (laboratoryWorkbench) laboratoryWorkbench.refresh();
+    if (workshopControls) workshopControls.refresh();
     needsRender = true;
   }
 
@@ -2211,6 +2213,20 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       focus: focusSceneCamera,
     };
   }
+  function workshopAdapter() {
+    const adapter = laboratoryAdapter();
+    const objectsReady = adapter.isReady;
+    adapter.isReady = function () {
+      return objectsReady() && SCENE.workshop.drawers.every(function (drawer) {
+        return !!JointRouting.jointFor(models, drawer.joint);
+      });
+    };
+    adapter.getJoint = function (name) {
+      const joint = JointRouting.jointFor(models, name);
+      return joint ? joint.angle : null;
+    };
+    return adapter;
+  }
   // %% numbered instrument guide
   function bindLaboratoryManualMode() {
     const config = SCENE.physics || SCENE.laboratory || {};
@@ -2541,8 +2557,25 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     if (laboratoryWorkbench) laboratoryWorkbench.refresh();
   });
 
+  // %% independent workshop controls
+  RobotView.onReady(function () {
+    if (!SCENE.workshop || workshopControls || typeof Workshop === 'undefined') return;
+    workshopControls = Workshop.mount(
+      root.querySelector('.stage'), Object.assign({}, SCENE.workshop, {assetRights: SCENE.assetRights}), workshopAdapter()
+    );
+    root.classList.add('workshop-scene');
+    layersFolded = true;
+    showFold();
+    root.querySelector('.panel-head h2').textContent = 'AICOR Wood Workshop';
+    root.querySelector('.stage-hint').textContent = 'Drag to orbit · Scroll to zoom · Select a screw or nail · Use the workshop controls to move it';
+    workshopControls.refresh();
+  });
+
   // %% bus: outbound
-  RobotView.onPartClick(function (id) { bus.emit('scene:part-clicked', { id: id }); });
+  RobotView.onPartClick(function (id) {
+    if (workshopControls) workshopControls.select(id);
+    bus.emit('scene:part-clicked', { id: id });
+  });
   RobotView.onLiveChange(function (on) { bus.emit('live:changed', { on: on, url: liveUrl() }); });
 
   // %% bus: inbound
@@ -3227,6 +3260,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     destroy: function () {
       robotCameraPanel.destroy();
       if (laboratoryWorkbench) laboratoryWorkbench.destroy();
+      if (workshopControls) workshopControls.destroy();
       if (laboratoryRobotPhysicsEntry) laboratoryRobotPhysicsEntry.destroy();
       if (laboratoryContactLayer) laboratoryContactLayer.destroy();
       if (laboratoryManualMode) laboratoryManualMode.destroy();

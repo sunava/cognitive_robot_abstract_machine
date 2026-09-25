@@ -23,8 +23,10 @@ from typing_extensions import ClassVar
 from cramera import paths
 from cramera.laboratory_branding import LaboratoryBranding
 from cramera.laboratory_robot_session import RobotPhysicsRoute
+from cramera.mesh_format import MeshFormat
 from cramera.offline_assets import (
     AssetDependencies,
+    AssetFormat,
     AssetReference,
     OfflineSceneAssets,
     SceneAssetField,
@@ -32,6 +34,17 @@ from cramera.offline_assets import (
 
 
 # %% shared configuration
+class SharedScene(StrEnum):
+    """Scenes explicitly supported by separate protected gateways."""
+
+    LABORATORY = "precision_lab_pr2_physics"
+    """Laboratory with its dedicated robot simulation API."""
+    WORKSHOP_REPLAY = "aicor_workshop_pr2"
+    """Validated native PR2 recording for the workshop."""
+    WORKSHOP = "aicor_workshop"
+    """Wood workshop with browser manipulation and recorded robot motion."""
+
+
 class ShareRoute(StrEnum):
     """Public entry points of the fixed laboratory."""
 
@@ -56,6 +69,21 @@ class ShareFile(StrEnum):
     """Password form served before authentication."""
     PHYSICS_CLIENT = "core/laboratory-physics.js"
     """Browser client containing the laboratory's absolute API routes."""
+
+
+class SharedRightsField(StrEnum):
+    """Explicit rights references carried by workshop manifests and glTF assets."""
+
+    RIGHTS = "assetRights"
+    """Metadata documenting the original workshop assets."""
+    LICENSE = "licenseFile"
+    """Relative location of the declared reuse terms."""
+    NOTICE = "noticeFile"
+    """Relative location of the declared attribution notice."""
+    ASSET = "asset"
+    """glTF asset metadata container."""
+    EXTRAS = "extras"
+    """glTF extension data containing asset rights."""
 
 
 @dataclass(frozen=True)
@@ -85,17 +113,44 @@ class ShareOptions:
     """Existing local simulation server port."""
     scene_directory: Path | None = None
     """Optional fixed bundle directory, otherwise resolved from the scene catalog."""
+    scene_name: SharedScene = SharedScene.LABORATORY
+    """Single scene exposed by this gateway instance."""
+    replay_directory: Path | None = None
+    """Optional explicit workshop recording exposed beside the workshop."""
     path_prefix: str = ""
     """Optional public mount path without a trailing slash."""
 
     def __post_init__(self) -> None:
         """Reject ambiguous mount paths before they can affect public routes."""
+        SharedScene(self.scene_name)
+        if (
+            self.replay_directory is not None
+            and self.scene_name != SharedScene.WORKSHOP
+        ):
+            raise ValueError("A recording directory is only valid for a workshop share")
         if self.path_prefix and not re.fullmatch(
             r"(?:/[A-Za-z0-9_-]+)+", self.path_prefix
         ):
             raise ValueError(
                 "The sharing prefix must contain only canonical path segments"
             )
+
+    @property
+    def viewer_route(self) -> str:
+        """Select the fixed scene without permitting arbitrary query parameters."""
+        return f"/index.html?scene={self.scene_name}&layout=scene&offline=1"
+
+    @property
+    def cookie_name(self) -> str:
+        """Keep workshop and laboratory browser sessions independent."""
+        if self.scene_name == SharedScene.LABORATORY:
+            return self.COOKIE_NAME
+        return "__Host-cramera_workshop"
+
+    @property
+    def robot_controls(self) -> bool:
+        """Enable the laboratory API only for its own gateway."""
+        return self.scene_name == SharedScene.LABORATORY
 
     def public_path(self, route: str) -> str:
         """Place an internal route beneath the configured public mount."""
@@ -125,6 +180,13 @@ class ShareOptions:
         parser.add_argument("--password-file", type=Path, required=True)
         parser.add_argument("--public-origin-file", type=Path, required=True)
         parser.add_argument("--path-prefix", default="")
+        parser.add_argument("--replay-directory", type=Path)
+        parser.add_argument(
+            "--scene-name",
+            type=SharedScene,
+            choices=list(SharedScene),
+            default=SharedScene.LABORATORY,
+        )
         options = parser.parse_args(arguments)
         if not 0 <= options.port <= 65535 or not 1 <= options.backend_port <= 65535:
             parser.error("Listener ports must be valid TCP ports")
@@ -175,6 +237,10 @@ class LaboratoryAssets:
 
     scene_directory: Path
     """Bundle containing the shared scene."""
+    scene_name: SharedScene = SharedScene.LABORATORY
+    """Public name of this one scene."""
+    replay_directory: Path | None = None
+    """Explicit optional second workshop bundle."""
     files: dict[str, SharedAsset] = field(default_factory=dict, init=False)
     """Public request paths mapped to individually validated files."""
 
@@ -182,6 +248,11 @@ class LaboratoryAssets:
         """Build both dependency graphs before opening a listener."""
         self._web_files()
         self._scene_files()
+        if self.replay_directory is not None:
+            recording = LaboratoryAssets(
+                self.replay_directory, SharedScene.WORKSHOP_REPLAY
+            )
+            self.files.update(recording.files)
 
     def _web_files(self) -> None:
         """Allow the viewer's declared scripts, styles and images."""
@@ -214,6 +285,7 @@ class LaboratoryAssets:
         manifest = root / SceneAssetField.SCENE
         document = json.loads(manifest.read_text())
         references = [SceneAssetField.SCENE, document[SceneAssetField.TRAJECTORY]]
+        references.extend(self._rights_references(document))
         references.extend(
             model[SceneAssetField.URDF]
             for model in document.get(SceneAssetField.MODELS, [])
@@ -231,33 +303,81 @@ class LaboratoryAssets:
             path = resolver.resolve_reference(reference.source, reference.location)
             if path is None:
                 continue
-            route = (
-                f"/scenes/{ShareOptions.SCENE_NAME}/{path.relative_to(root).as_posix()}"
-            )
+            route = f"/scenes/{self.scene_name}/{path.relative_to(root).as_posix()}"
             if route in self.files:
                 continue
             self.files[route] = SharedAsset(path, root)
+            dependencies = AssetDependencies(path)
             pending.extend(
-                AssetReference(path, ref)
-                for ref in AssetDependencies(path).references()
+                AssetReference(path, ref) for ref in dependencies.references()
             )
+            if self.scene_name != SharedScene.LABORATORY and path.suffix.lower() in (
+                AssetFormat.GLTF,
+                MeshFormat.GLB,
+            ):
+                asset_metadata = dependencies.gltf_document().get(
+                    SharedRightsField.ASSET, {}
+                )
+                pending.extend(
+                    AssetReference(path, reference)
+                    for reference in self._rights_references(
+                        asset_metadata.get(SharedRightsField.EXTRAS, {})
+                    )
+                )
 
-    @staticmethod
-    def scene_index() -> bytes:
-        """Return only the shared laboratory's scene-picker entry."""
-        return json.dumps(
-            {
-                "default": ShareOptions.SCENE_NAME,
-                "scenes": [
-                    {
-                        "name": ShareOptions.SCENE_NAME,
-                        "robot": "pr2",
-                        "environment": LaboratoryBranding.NAME,
-                        "task": "PR2 · Contact physics and liquids",
-                    }
-                ],
-            }
-        ).encode()
+    def _rights_references(self, document: dict) -> list[str]:
+        """Expose only declared workshop notice files through the confined resolver."""
+        if self.scene_name not in (SharedScene.WORKSHOP, SharedScene.WORKSHOP_REPLAY):
+            return []
+        rights = document.get(SharedRightsField.RIGHTS, {})
+        if not isinstance(rights, dict):
+            return []
+        return [
+            rights[field]
+            for field in (SharedRightsField.LICENSE, SharedRightsField.NOTICE)
+            if field in rights and isinstance(rights[field], str)
+        ]
+
+    @property
+    def scene_names(self) -> tuple[SharedScene, ...]:
+        """Return exactly the configured main scene and optional recording."""
+        if self.replay_directory is not None:
+            return self.scene_name, SharedScene.WORKSHOP_REPLAY
+        return (self.scene_name,)
+
+    @property
+    def viewer_routes(self) -> tuple[str, ...]:
+        """Accept canonical viewer queries only for configured scenes."""
+        return tuple(
+            f"/index.html?scene={name}&layout=scene&offline=1"
+            for name in self.scene_names
+        )
+
+    def scene_index(self) -> bytes:
+        """Return only this gateway's explicitly configured scenes."""
+        entries = []
+        for name in self.scene_names:
+            laboratory = name == SharedScene.LABORATORY
+            robot = name != SharedScene.WORKSHOP
+            entries.append(
+                {
+                    "name": name,
+                    "robot": "pr2" if robot else "",
+                    "environment": (
+                        LaboratoryBranding.NAME if laboratory else "AICOR Wood Workshop"
+                    ),
+                    "task": (
+                        "PR2 · Contact physics and liquids"
+                        if laboratory
+                        else (
+                            "PR2 · Screw assembly recording"
+                            if robot
+                            else "Woodworking and assembly"
+                        )
+                    ),
+                }
+            )
+        return json.dumps({"default": self.scene_name, "scenes": entries}).encode()
 
 
 # %% authenticated HTTP gateway
@@ -284,11 +404,13 @@ class LaboratoryShareServer(ThreadingHTTPServer):
             raise ValueError("The sharing password must contain at least 20 bytes")
         self.session = secrets.token_urlsafe(32)
         directory = options.scene_directory or paths.resolve_scene_directory(
-            ShareOptions.SCENE_NAME
+            options.scene_name
         )
         if directory is None:
             raise FileNotFoundError("The laboratory scene has not been generated")
-        self.assets = LaboratoryAssets(directory)
+        self.assets = LaboratoryAssets(
+            directory, options.scene_name, options.replay_directory
+        )
         super().__init__((ShareOptions.LOOPBACK, options.port), ShareHandler)
 
 
@@ -366,6 +488,24 @@ class ShareHandler(BaseHTTPRequestHandler):
     def _public_payload(self, route: str, payload: bytes) -> bytes:
         """Keep form and simulation requests beneath this laboratory's mount."""
         options = self.server.options
+        if (
+            route == f"/scenes/{SharedScene.WORKSHOP}/scene.json"
+            and options.replay_directory is not None
+        ):
+            scene = json.loads(payload)
+            scene.setdefault("workshop", {})[
+                "demoUrl"
+            ] = f"index.html?scene={SharedScene.WORKSHOP_REPLAY}&layout=scene&offline=1"
+            payload = json.dumps(scene, indent=2).encode()
+        if route == ShareFile.LOGIN and options.scene_name == SharedScene.WORKSHOP:
+            payload = (
+                payload.replace(b"CRAMERA Laboratory", b"AICOR Workshop")
+                .replace(
+                    b"laboratory with PR2, contact physics and liquids",
+                    b"wood workshop, movable drawers and assembly parts",
+                )
+                .replace(b"Open laboratory", b"Open workshop")
+            )
         if not options.path_prefix:
             return payload
         if route == ShareFile.LOGIN:
@@ -397,10 +537,10 @@ class ShareHandler(BaseHTTPRequestHandler):
             cookie.load(self.headers.get("Cookie", ""))
         except CookieError:
             return False
-        if ShareOptions.COOKIE_NAME not in cookie:
+        if self.server.options.cookie_name not in cookie:
             return False
         return hmac.compare_digest(
-            cookie[ShareOptions.COOKIE_NAME].value.encode(),
+            cookie[self.server.options.cookie_name].value.encode(),
             self.server.session.encode(),
         )
 
@@ -458,9 +598,11 @@ class ShareHandler(BaseHTTPRequestHandler):
         self._reply(
             HTTPStatus.SEE_OTHER,
             headers={
-                "Location": self.server.options.public_path(ShareRoute.VIEWER),
+                "Location": self.server.options.public_path(
+                    self.server.options.viewer_route
+                ),
                 "Set-Cookie": (
-                    f"{ShareOptions.COOKIE_NAME}={self.server.session}; "
+                    f"{self.server.options.cookie_name}={self.server.session}; "
                     "Path=/; HttpOnly; SameSite=Strict; Secure"
                 ),
             },
@@ -521,16 +663,22 @@ class ShareHandler(BaseHTTPRequestHandler):
             return
         if route in (ShareRoute.ROOT, ShareRoute.LOGIN) or (
             route == ShareRoute.INDEX
-            and self.path != self.server.options.public_path(ShareRoute.VIEWER)
+            and self.path
+            not in tuple(
+                self.server.options.public_path(viewer)
+                for viewer in self.server.assets.viewer_routes
+            )
         ):
             self._reply(
                 HTTPStatus.SEE_OTHER,
                 headers={
-                    "Location": self.server.options.public_path(ShareRoute.VIEWER)
+                    "Location": self.server.options.public_path(
+                        self.server.options.viewer_route
+                    )
                 },
             )
             return
-        if route == RobotPhysicsRoute.STATE:
+        if self.server.options.robot_controls and route == RobotPhysicsRoute.STATE:
             self._proxy(route)
             return
         if route == ShareRoute.SCENE_INDEX:
@@ -561,9 +709,13 @@ class ShareHandler(BaseHTTPRequestHandler):
         if route != ShareRoute.LOGIN and not self._authenticated():
             self._reply(HTTPStatus.UNAUTHORIZED, b"Login required.")
             return
-        if route != ShareRoute.LOGIN and route not in {
-            entry for entry in RobotPhysicsRoute if entry != RobotPhysicsRoute.STATE
-        }:
+        if route != ShareRoute.LOGIN and (
+            not self.server.options.robot_controls
+            or route
+            not in {
+                entry for entry in RobotPhysicsRoute if entry != RobotPhysicsRoute.STATE
+            }
+        ):
             self._reply(HTTPStatus.NOT_FOUND)
             return
         if not self._same_origin(origin):

@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="nail_5"><!-- CRAMERA laboratory asset rights:
+Principal author: Vanessa Hassouna
+Institution: AICOR Institute
+Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.
+License: LicenseRef-AICOR-Workshop-Assets
+See LICENSE.txt and NOTICE.md.
+-->
+  <link name="nail_5">
+    <visual>
+      <geometry>
+        <mesh filename="assets/nail.glb" />
+      </geometry>
+    </visual>
+    <collision name="shaft">
+      <origin xyz="0 0 0.0375" />
+      <geometry>
+        <cylinder radius="0.0035" length="0.075" />
+      </geometry>
+    </collision>
+    <collision name="head">
+      <origin xyz="0 0 0.078" />
+      <geometry>
+        <cylinder radius="0.009" length="0.006" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0.045" />
+      <mass value="0.01" />
+      <inertia ixx="5.7375e-06" iyy="5.7375e-06" izz="5.399999999999999e-07" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+</robot>

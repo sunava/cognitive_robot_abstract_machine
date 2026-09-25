@@ -20,6 +20,8 @@ msg/_*.py
 *.txt
 # Permission notices accompany the authored laboratory assets and their exports.
 !cramera/tools/laboratory/asset_rights/LICENSE.txt
+!cramera/tools/workshop/asset_rights/LICENSE.txt
+!cramera/src/cramera/resources/aicor_workshop/LICENSE.txt
 !cramera/src/cramera/resources/aicor_medical_lab/LICENSE.txt
 !cramera/src/cramera/resources/laboratory_devices/**/LICENSE.txt
 # The hook tests' scratch clone needs a real requirements.txt at the path
