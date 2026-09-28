@@ -691,6 +691,22 @@ class WorkshopBuilder(LaboratoryBuilder):
         self.tools()
         self.shelves()
         self.vise()
+        for index, component in enumerate(self.geometry.driver_cradle()):
+            self.wood(
+                f"Screwdriver cradle {index}",
+                component.centre,
+                component.size,
+                pale=True,
+                bevel=0.0005,
+            )
+        for index, component in enumerate(self.geometry.assembly_jig()):
+            self.wood(
+                f"Pilot assembly jig {index}",
+                component.centre,
+                component.size,
+                pale=True,
+                bevel=0.0005,
+            )
 
     def shelves(self) -> None:
         """Build a separate shelving unit with timber shelves and open storage boxes."""
@@ -720,19 +736,13 @@ class WorkshopBuilder(LaboratoryBuilder):
                 MaterialName.WHITE,
                 0.002,
             )
-        for index in range(4):
+        for index, component in enumerate(self.geometry.shelf_stock()):
             self.wood(
-                "Shelf board stack",
-                (x - 0.03, y, 0.998 + index * 0.055),
-                (0.43, 0.42, 0.042),
+                f"Shelf stock {index}",
+                component.centre,
+                component.size,
                 pale=index % 2 == 0,
             )
-        self.wood(
-            "Shelf upright offcut",
-            (x + 0.19, y + 0.07, 1.255),
-            (0.045, 0.28, 0.48),
-            pale=False,
-        )
         self.box(
             "Workshop wall task light",
             (0, 0.29, 1.947),
@@ -833,15 +843,24 @@ class WorkshopBuilder(LaboratoryBuilder):
         self.open_box(
             "Fastener bin",
             (0, 0, 0),
-            (0.28, 0.32, 0.075),
+            self.geometry.bin_size,
             MaterialName.PALE_TEAL,
-            0.006,
+            self.geometry.bin_wall,
         )
-        for x in (-0.115, 0.115):
+        self.box(
+            "Fastener carrying bar",
+            self.geometry.bin_handle,
+            self.geometry.bin_handle_size,
+            MaterialName.TEAL,
+            0.003,
+        )
+        handle_x, handle_y, handle_z = self.geometry.bin_handle
+        mount_x, mount_y, mount_z = self.geometry.bin_handle_mount
+        for side in (-1, 1):
             self.box(
-                "Bin side grip",
-                (x, -0.164, 0.060),
-                (0.025, 0.006, 0.011),
+                "Fastener handle mount",
+                (handle_x + side * mount_x, handle_y + mount_y, handle_z + mount_z),
+                self.geometry.bin_handle_mount_size,
                 MaterialName.TEAL,
                 0.002,
             )
@@ -978,19 +997,23 @@ class WorkshopBuilder(LaboratoryBuilder):
         self.text(
             "Assembly pilot legend",
             "PILOT 28",
-            (-0.096, -0.1003, 0.012),
+            (-0.096, -0.065, height + 0.0002),
             0.011,
             MaterialName.TEAL,
+            rotation=(0, 0, 0),
         )
         for x in (-0.109, 0.109):
             self.box(
                 "Block clamping strip",
                 (x, 0, 0.002),
-                (0.020, 0.235, 0.004),
+                (0.020, self.geometry.assembly_size[1], 0.004),
                 MaterialName.TEAL,
                 0.002,
             )
-            for y in (-0.108, 0.108):
+            for y in (
+                -self.geometry.assembly_size[1] / 2 + 0.010,
+                self.geometry.assembly_size[1] / 2 - 0.010,
+            ):
                 self.cylinder(
                     "Strip mounting hole",
                     (x, y, 0.0041),
@@ -1044,7 +1067,7 @@ class WorkshopBuilder(LaboratoryBuilder):
                 instance = original.copy()
                 bpy.context.collection.objects.link(instance)
                 instance.parent = body
-        self.export_asset(WorkshopAsset.BIN, (-0.25, -0.10, 0.92))
+        self.export_asset(WorkshopAsset.BIN, self.geometry.screw_box_origin)
         body = bpy.data.objects.new("Nail bin", None)
         bpy.context.collection.objects.link(body)
         body.location = (-0.72, -0.10, 0.92)
@@ -1065,28 +1088,22 @@ class WorkshopBuilder(LaboratoryBuilder):
                 bpy.context.collection.objects.link(instance)
                 instance.parent = parent
         self.export_asset(WorkshopAsset.ASSEMBLY, self.geometry.assembly_origin)
+        bpy.data.objects[WorkshopAsset.ASSEMBLY].rotation_euler = (pi / 2, 0, 0)
         self.export_asset(
             WorkshopAsset.DRIVER, tuple(self.geometry.driver()["home"][:3])
         )
         bpy.data.objects[WorkshopAsset.DRIVER].rotation_euler = (0, pi / 2, 0)
-        self.export_asset(WorkshopAsset.SCREW, (-0.28, -0.12, 0.935))
-        bpy.data.objects[WorkshopAsset.SCREW].rotation_euler = (0, pi / 2, 0.28)
-        self.export_asset(WorkshopAsset.NAIL, (-0.77, -0.14, 0.929))
-        bpy.data.objects[WorkshopAsset.NAIL].rotation_euler = (0, pi / 2, 0.48)
-        random = np.random.default_rng(84)
-        for asset, count, centre in (
-            (WorkshopAsset.SCREW, 5, (-0.28, -0.10, 0.943)),
-            (WorkshopAsset.NAIL, 16, (-0.76, -0.10, 0.934)),
-        ):
-            for index in range(count):
-                parent = bpy.data.objects.new(f"{asset.value} preview {index}", None)
+        for asset in (WorkshopAsset.SCREW, WorkshopAsset.NAIL):
+            parts = [
+                part for part in self.geometry.parts() if part["kind"] == asset.value
+            ]
+            self.export_asset(asset, tuple(parts[0]["home"][:3]))
+            bpy.data.objects[asset].rotation_euler = (0, pi / 2, 0)
+            for part in parts[1:]:
+                parent = bpy.data.objects.new(part["key"], None)
                 bpy.context.collection.objects.link(parent)
-                parent.location = (
-                    centre[0] + random.uniform(-0.055, 0.045),
-                    centre[1] + random.uniform(-0.063, 0.063),
-                    centre[2] + index * 0.0015,
-                )
-                parent.rotation_euler = (0, pi / 2, random.uniform(-0.65, 0.65))
+                parent.location = tuple(part["home"][:3])
+                parent.rotation_euler = (0, pi / 2, 0)
                 for original in self.objects[asset]:
                     instance = original.copy()
                     bpy.context.collection.objects.link(instance)

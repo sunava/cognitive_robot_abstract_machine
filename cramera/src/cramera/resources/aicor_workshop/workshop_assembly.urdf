@@ -183,13 +183,13 @@ See LICENSE.txt and NOTICE.md.
     <collision name="clamping_strip">
       <origin xyz="-0.109 0 0.002" rpy="0 0 0" />
       <geometry>
-        <box size="0.02 0.235 0.004" />
+        <box size="0.02 0.2 0.004" />
       </geometry>
     </collision>
     <collision name="clamping_strip">
       <origin xyz="0.109 0 0.002" rpy="0 0 0" />
       <geometry>
-        <box size="0.02 0.235 0.004" />
+        <box size="0.02 0.2 0.004" />
       </geometry>
     </collision>
     <inertial>

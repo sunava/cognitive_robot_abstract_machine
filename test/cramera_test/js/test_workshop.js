@@ -322,3 +322,62 @@ test('a validated local robot recording is linked only when declared in the scen
   assert.equal(document.host.flatten().some(item => item.tagName === 'a'), false);
   third.destroy();
 });
+
+// %% native recorded sequence and playback boundaries
+test('native demo panel presents metadata steps and restarts the full controller recording', () => {
+  const document = new WorkshopControls();
+  const calls = [];
+  let frame = 0;
+  const config = {kind: 'native-recording', steps: ['Retrieve screw box from right shelf', 'Place screw box on workbench', 'Drive screw'], stepRanges: [{name: 'Retrieve screw box from right shelf', startFrame: 0, endFrame: 9}, {name: 'Drive screw', startFrame: 10, endFrame: 20}]};
+  const adapter = {hasTrajectory: () => true, seek: value => calls.push(['seek', value]), play: () => calls.push(['play']), playhead: () => frame};
+  const mounted = Workshop.mountRecording(document.host, config, adapter);
+  assert.ok(mounted);
+  assert.deepEqual(document.host.flatten().filter(item => item.tagName === 'li').map(item => item.textContent), config.steps);
+  document.button('Play from start').listeners.get('click')();
+  assert.deepEqual(calls, [['seek', 0], ['play']]);
+  frame = 15;
+  mounted.refresh();
+  const steps = document.host.flatten().filter(item => item.tagName === 'li');
+  assert.equal(steps[2].attributes.get('aria-current'), 'step');
+  assert.equal(steps[0].attributes.get('aria-current'), 'false');
+  assert.match(document.host.flatten().find(item => item.className === 'workshop-demo-note').textContent, /recording.*MuJoCo/i);
+  assert.equal(document.host.flatten().find(item => item.tagName === 'a').href, 'index.html?scene=aicor_workshop&layout=scene&offline=1');
+  mounted.destroy();
+  assert.deepEqual(document.host.children, []);
+});
+
+test('unknown or unavailable recordings do not start playback or display a fabricated sequence', () => {
+  const document = new WorkshopControls();
+  const calls = [];
+  const adapter = {hasTrajectory: () => false, seek: value => calls.push(value), play: () => calls.push('play'), playhead: () => 0};
+  assert.equal(Workshop.mountRecording(document.host, {kind: 'external'}, adapter), null);
+  const mounted = Workshop.mountRecording(document.host, {kind: 'native-recording', steps: []}, adapter);
+  assert.equal(document.button('Play from start').disabled, true);
+  mounted.start();
+  assert.deepEqual(calls, []);
+  mounted.destroy();
+});
+
+test('recorded workshop ready hook autoplays once only when explicitly requested', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../../../cramera/src/cramera/web/panels/robot_scene/panel.js'), 'utf8');
+  const start = source.indexOf('  // %% recorded workshop sequence');
+  const end = source.indexOf('  // %% playback speed', start);
+  assert.ok(start >= 0 && end > start);
+  const run = search => {
+    let ready;
+    let starts = 0;
+    let mounts = 0;
+    const nodes = new Map(['.stage', '.panel-head h2', '.stage-hint'].map(key => [key, {}]));
+    const context = {workshopRecording: null, SCENE: {workshopDemo: {kind: 'native-recording'}}, URLSearchParams,
+      window: {location: {search}}, root: {querySelector: selector => nodes.get(selector), classList: {add() {}}},
+      Workshop: {mountRecording() { mounts += 1; return {start() { starts += 1; }, refresh() {}}; }},
+      RobotView: {onReady(callback) { ready = callback; }, onPlayheadChange() {}, hasTrajectory() { return true; }, seek() {}, playTrajectory() {}, getPlayhead() { return 0; }},
+      playBtn: {classList: {add() {}}}, liveBtn: {},
+    };
+    vm.runInNewContext(source.slice(start, end), context);
+    ready(); ready();
+    return {starts, mounts};
+  };
+  assert.deepEqual(run('?scene=aicor_workshop_pr2&offline=1&autoplay=1'), {starts: 1, mounts: 1});
+  assert.deepEqual(run('?scene=aicor_workshop_pr2&offline=1'), {starts: 0, mounts: 1});
+});

@@ -52,6 +52,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 from cramera import paths
 from cramera.scene_builder import SceneBuilderService
 from cramera.scene_builder_http import SceneBuilderHttp, SceneBuilderResponse
+from cramera.cable_session import CableRoute, CableSession
 from cramera.laboratory_centrifuge_command import CentrifugeCommand, ManualRequest
 from cramera.laboratory_instrument_command import InstrumentCommand
 from cramera.laboratory_pipetting_command import PipettingCommand
@@ -139,6 +140,8 @@ class LaboratoryServer(socketserver.ThreadingTCPServer):
     """The isolated contact laboratory and its simulation worker."""
     laboratory_robot_physics: LaboratoryRobotSession
     """The PR2 and laboratory in a shared contact simulation."""
+    cable_lab: CableSession
+    """The native composite cable and friction gripper simulation."""
 
     def __init__(
         self,
@@ -151,6 +154,7 @@ class LaboratoryServer(socketserver.ThreadingTCPServer):
         self.laboratory_run = LaboratoryRun(paths.data_directory())
         self.laboratory_physics = LaboratoryPhysicsSession(paths.data_directory())
         self.laboratory_robot_physics = LaboratoryRobotSession(paths.data_directory())
+        self.cable_lab = CableSession()
         super().__init__(address, handler)
 
     def shutdown(self) -> None:
@@ -159,6 +163,7 @@ class LaboratoryServer(socketserver.ThreadingTCPServer):
         self.workshop_physics.close()
         self.laboratory_physics.stop()
         self.laboratory_robot_physics.stop()
+        self.cable_lab.stop()
 
     def server_close(self) -> None:
         """Close request threads and release the contact simulation worker."""
@@ -166,6 +171,7 @@ class LaboratoryServer(socketserver.ThreadingTCPServer):
         self.workshop_physics.close()
         self.laboratory_physics.stop()
         self.laboratory_robot_physics.stop()
+        self.cable_lab.stop()
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -332,6 +338,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     "Workshop simulation is unavailable", HTTPStatus.SERVICE_UNAVAILABLE
                 )
             return self._send_json(self.server.workshop_physics.state())
+        if route == CableRoute.STATE:
+            if not isinstance(self.server, LaboratoryServer):
+                return self._send_error("Cable simulation is unavailable", 503)
+            return self._send_json(self.server.cable_lab.status())
         if route == PhysicsRoute.STATE:
             return self._laboratory_physics_status()
         if route == RobotPhysicsRoute.STATE:
@@ -402,6 +412,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._scene_builder_post()
         if route == WorkshopRoute.COMMAND:
             return self._workshop_request()
+        if route in CableRoute and route != CableRoute.STATE:
+            return self._cable_request(CableRoute(route))
         if route in PhysicsRoute and route != PhysicsRoute.STATE:
             return self._laboratory_physics_request(PhysicsRoute(route))
         if route in RobotPhysicsRoute and route != RobotPhysicsRoute.STATE:
@@ -425,6 +437,45 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if route == "/api/plan/scaffold/stop":
             return self._stop_scaffold()
         return self._send_error("unknown endpoint", 404)
+
+    # %% native cable laboratory
+    def _cable_request(self, route: CableRoute) -> None:
+        """Accept same-origin configuration and physical gripper commands."""
+        if not isinstance(self.server, LaboratoryServer):
+            return self._send_error("Cable simulation is unavailable", 503)
+        expected_origins = {
+            "http://%s:%d" % (host, self.server.server_address[1])
+            for host in ("localhost", "127.0.0.1")
+        }
+        origin = self.headers.get("Origin")
+        if (origin is not None and origin not in expected_origins) or self.headers.get(
+            "Sec-Fetch-Site"
+        ) == "cross-site":
+            return self._send_error("A same-origin request is required", 403)
+        try:
+            payload = self._request_body()
+            if not isinstance(payload, dict):
+                raise ValueError("Expected a JSON object")
+            session = self.server.cable_lab
+            if route == CableRoute.START:
+                outcome = session.start(payload)
+            elif route == CableRoute.COMMAND:
+                outcome = session.command(payload)
+            else:
+                if payload:
+                    raise ValueError("This operation accepts no parameters")
+                outcome = (
+                    session.reset() if route == CableRoute.RESET else session.stop()
+                )
+        except PhysicsSessionInactive as error:
+            return self._send_error(str(error), HTTPStatus.CONFLICT)
+        except (TypeError, ValueError) as error:
+            return self._send_error(str(error), HTTPStatus.BAD_REQUEST)
+        status = HTTPStatus.ACCEPTED if route == CableRoute.START else HTTPStatus.OK
+        self._send_json(
+            outcome,
+            status if outcome[PhysicsField.OK] else HTTPStatus.INTERNAL_SERVER_ERROR,
+        )
 
     # %% independent scene authoring
     def _scene_builder_response(self, response: SceneBuilderResponse) -> None:

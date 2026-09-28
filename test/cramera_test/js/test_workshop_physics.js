@@ -165,6 +165,36 @@ test('destroy prevents late responses from updating the detached viewer', async 
 });
 
 // %% measured alignment paths
+for (const kind of ['screw', 'driver']) {
+  test(`horizontal ${kind} alignment enters along its measured shaft axis`, async () => {
+    const workshop = new PhysicsWorkshop();
+    const goal = [.24, -.16, 1.03, Math.SQRT1_2, 0, 0, Math.SQRT1_2];
+    workshop.state.thread = {screw: 'screw_1', state: 'seated', driverAligned: false,
+      screwTargetPose: goal, driverTargetPose: goal};
+    const command = workshop.client.command;
+    workshop.client.command = async body => {
+      if (body.action === 'move') {
+        workshop.state.objects[body.object] = body.pose.slice();
+        if (body.pose.slice(0, 3).every((value, index) => value === goal[index])) {
+          workshop.state.thread.driverAligned = true;
+        }
+      }
+      return command(body);
+    };
+    await workshop.controller.start();
+    const result = await workshop.controller.align(kind);
+    assert.equal(result.ok, true);
+    const moves = workshop.commands.filter(body => body.action === 'move');
+    const approach = moves.at(-2).pose;
+    assert.equal(moves.length, 4);
+    assert.equal(approach[0], goal[0]);
+    assert.equal(approach[2], goal[2]);
+    assert.ok(approach[1] < goal[1] - .1);
+    assert.ok(moves[1].pose[2] >= 1.25);
+    assert.deepEqual(moves.at(-1).pose.slice(0, 3), goal.slice(0, 3));
+  });
+}
+
 test('aligning the selected screw lifts clear before crossing and seats through physics targets', async () => {
   const workshop = new PhysicsWorkshop();
   const goal = [.28, -.1, .9952, 0, 0, 0, 1];
@@ -420,4 +450,20 @@ test('lifting a horizontal driver tolerates spring sag before strict upright ali
   assert.equal(result.ok, true);
   assert.equal(moves, 3);
   assert.equal(workshop.controller.snapshot.thread.driverAligned, true);
+});
+
+test('full robot demo entry starts the whole recording and distinguishes the interactive contact world', async () => {
+  const workshop = new PhysicsWorkshop();
+  const document = new PhysicalControlsDocument();
+  workshop.config.demoUrl = 'index.html?scene=aicor_workshop_pr2&layout=scene&offline=1';
+  const mounted = Workshop.mountPhysics(document.host, workshop.config, workshop.adapter, workshop.client);
+  try {
+    await mounted.controller.queue;
+    const link = document.host.flatten().find(item => item.tagName === 'a' && item.textContent === 'Start full PR2 demo');
+    assert.ok(link);
+    assert.equal(link.href, workshop.config.demoUrl + '&autoplay=1');
+    const description = document.host.flatten().find(item => item.className === 'workshop-demo-description');
+    assert.match(description.textContent, /right shelf.*workbench.*screw.*screwdriver/i);
+    assert.match(document.host.flatten().find(item => item.className === 'workshop-demo-note').textContent, /recorded.*separate/i);
+  } finally { mounted.destroy(); }
 });

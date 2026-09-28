@@ -60,6 +60,9 @@ class StructureKind(StrEnum):
     PLINTH = "cabinet_plinth"
     CROSSRAIL = "cabinet_crossrail"
     SLIDE = "cabinet_slide"
+    SHELF_STOCK = "shelf_stock"
+    DRIVER_CRADLE = "driver_cradle"
+    ASSEMBLY_JIG = "assembly_jig"
 
 
 @dataclass(frozen=True)
@@ -125,6 +128,36 @@ class Geometry:
     Box floor and wall thickness.
     """
 
+    bin_handle: tuple[float, float, float] = (0.0, -0.204, 0.055)
+    """
+    Front carrying-bar grasp frame relative to the fastener box bottom centre.
+    """
+
+    bin_handle_size: tuple[float, float, float] = (0.070, 0.014, 0.018)
+    """
+    Carrying-bar dimensions allowing either a horizontal or vertical pinch.
+    """
+
+    bin_handle_mount: tuple[float, float, float] = (0.029, 0.021, 0.0)
+    """
+    One carrying-bar mount centre relative to its grasp frame, mirrored across X.
+    """
+
+    bin_handle_mount_size: tuple[float, float, float] = (0.012, 0.042, 0.018)
+    """
+    Connecting bracket dimensions between the carrying bar and front wall.
+    """
+
+    screw_box_origin: tuple[float, float, float] = (1.48, 0.10, 0.974)
+    """
+    Loaded screw box bottom centre on the right shelf, above its board surface.
+    """
+
+    screw_box_bench: tuple[float, float, float] = (-0.25, -0.22, 0.92)
+    """
+    Front worktop destination keeping the loaded box reachable from the clear aisle.
+    """
+
     screw_length: float = 0.11
     """
     Screw shaft length from its tip frame.
@@ -175,9 +208,9 @@ class Geometry:
     Open pilot-hole radius, exceeding the screw shaft radius.
     """
 
-    assembly_origin: tuple[float, float, float] = (0.28, -0.10, 0.92)
+    assembly_origin: tuple[float, float, float] = (0.24, 0.10, 1.11)
     """
-    Assembly block bottom centre in world coordinates.
+    Upright assembly block rear-face centre in world coordinates.
     """
 
     socket_height: float = 0.10
@@ -218,6 +251,21 @@ class Geometry:
     driver_grasp: tuple[float, float, float] = (0.0, 0.0, 0.165)
     """
     Grasp centre inside the screwdriver handle, relative to its bit tip.
+    """
+
+    driver_origin: tuple[float, float, float] = (0.40, -0.30, 1.04)
+    """
+    Horizontal screwdriver tip on an elevated worktop cradle.
+    """
+
+    driver_shaft_radius: float = 0.0045
+    """
+    Cylindrical steel shaft radius used by its cradle and collision body.
+    """
+
+    driver_handle_radius: float = 0.024
+    """
+    Cylindrical handgrip radius used by its cradle and collision body.
     """
 
     def structure(self) -> list[StructureBox]:
@@ -290,20 +338,72 @@ class Geometry:
                 )
         return parts
 
+    def shelf_stock(self) -> list[StructureBox]:
+        """
+        Store timber above the fastener shelf with matching visible and solid bounds.
+        """
+        return [
+            StructureBox(
+                StructureKind.SHELF_STOCK,
+                (1.45, 0.15, 1.584 + index * 0.042),
+                (0.43, 0.42, 0.042),
+            )
+            for index in range(4)
+        ] + [
+            StructureBox(
+                StructureKind.SHELF_STOCK,
+                (1.715, 0.22, 1.803),
+                (0.045, 0.28, 0.48),
+            )
+        ]
+
+    def driver_cradle(self) -> list[StructureBox]:
+        """
+        Support the screwdriver outside its finger grasp with a shaft groove.
+        """
+        x, y, z = self.driver_origin
+        base_top = self.bench_height + 0.01
+        parts = [
+            StructureBox(
+                StructureKind.DRIVER_CRADLE,
+                (x + 0.15, y, self.bench_height + 0.005),
+                (0.24, 0.08, 0.01),
+            )
+        ]
+        for offset, radius in (
+            (0.055, self.driver_shaft_radius),
+            (0.217, self.driver_handle_radius),
+        ):
+            top = z - radius
+            parts.append(
+                StructureBox(
+                    StructureKind.DRIVER_CRADLE,
+                    (x + offset, y, (base_top + top) / 2),
+                    (0.012, 0.012, top - base_top),
+                )
+            )
+        for side in (-1, 1):
+            parts.append(
+                StructureBox(
+                    StructureKind.DRIVER_CRADLE,
+                    (x + 0.055, y + side * 0.0105, z),
+                    (0.012, 0.004, 0.010),
+                )
+            )
+        return parts
+
     def assembly(self) -> dict:
         """
         Describe the movable wooden workpiece and its attached pilot frame.
         """
-        home = [*self.assembly_origin, 0, 0, 0, 1]
+        orientation = [math.sqrt(0.5), 0, 0, math.sqrt(0.5)]
+        home = [*self.assembly_origin, *orientation]
         local = [0, 0, self.socket_height, 0, 0, 0, 1]
         socket = [
             self.assembly_origin[0],
-            self.assembly_origin[1],
-            self.assembly_origin[2] + self.socket_height,
-            0,
-            0,
-            0,
-            1,
+            self.assembly_origin[1] - self.socket_height,
+            self.assembly_origin[2],
+            *orientation,
         ]
         return {
             "key": Asset.ASSEMBLY,
@@ -318,6 +418,37 @@ class Geometry:
             "maximumDepth": self.screw_length,
         }
 
+    def assembly_jig(self) -> list[StructureBox]:
+        """
+        Support the aisle-facing pilot block with a pedestal, rear brace and side stops.
+        """
+        x, y, z = self.assembly_origin
+        width, depth, height = self.assembly_size
+        floor = z - depth / 2
+        center_y = y - height / 2
+        shim_height = floor - self.bench_height
+        parts = [
+            StructureBox(
+                StructureKind.ASSEMBLY_JIG,
+                (x, center_y, self.bench_height + shim_height / 2),
+                (width + 0.04, height + 0.04, shim_height),
+            ),
+            StructureBox(
+                StructureKind.ASSEMBLY_JIG,
+                (x, y + 0.010, floor + depth / 2),
+                (width + 0.04, 0.02, depth),
+            ),
+        ]
+        for side in (-1, 1):
+            parts.append(
+                StructureBox(
+                    StructureKind.ASSEMBLY_JIG,
+                    (x + side * (width / 2 + 0.007), center_y, floor + 0.0125),
+                    (0.012, height + 0.02, 0.025),
+                )
+            )
+        return parts
+
     def driver(self) -> dict:
         """
         Publish the screwdriver bit, handle and compatible blade dimensions.
@@ -326,7 +457,7 @@ class Geometry:
             "key": Asset.DRIVER,
             "label": "Screwdriver",
             "kind": PartKind.DRIVER,
-            "home": [0.52, -0.26, 0.946, 0, math.sqrt(0.5), 0, math.sqrt(0.5)],
+            "home": [*self.driver_origin, 0, math.sqrt(0.5), 0, math.sqrt(0.5)],
             "bitTip": [0, 0, 0],
             "axis": [0, 0, -1],
             "grasp": list(self.driver_grasp),
@@ -359,16 +490,19 @@ class Geometry:
         """
         Expose independently movable sorting boxes.
         """
-        tabletop = [
+        fasteners = [
             {
                 "key": "screw_box",
                 "label": "Screw box",
-                "home": [-0.25, -0.10, self.bench_height, 0, 0, 0, 1],
+                "home": [*self.screw_box_origin, 0, 0, 0, 1],
+                "benchPose": [*self.screw_box_bench, 0, 0, 0, 1],
+                "handle": "screw_box_handle",
             },
             {
                 "key": "nail_box",
                 "label": "Nail box",
                 "home": [-0.72, -0.10, self.bench_height, 0, 0, 0, 1],
+                "handle": "nail_box_handle",
             },
         ]
 
@@ -385,7 +519,7 @@ class Geometry:
                 start=1,
             )
         ]
-        return tabletop + storage
+        return fasteners + storage
 
     def parts(self) -> list[dict]:
         """
@@ -402,7 +536,7 @@ class Geometry:
             ):
                 x = bin_item["home"][0] - 0.128 + column * 0.130
                 y = bin_item["home"][1] + row * 0.12
-                z = self.bench_height + self.bin_wall + radius + 0.001
+                z = bin_item["home"][2] + self.bin_wall + radius + 0.001
                 parts.append(
                     {
                         "key": f"{kind}_{index}",

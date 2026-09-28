@@ -48,4 +48,29 @@ See LICENSE.txt and NOTICE.md.
       <inertia ixx="0.001800416666666667" iyy="0.001400416666666667" izz="0.0030133333333333336" ixy="0" ixz="0" iyz="0" />
     </inertial>
   </link>
+  <link name="nail_box_handle">
+    <collision name="carrying_bar">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.07 0.014 0.018" />
+      </geometry>
+    </collision>
+    <collision name="mount">
+      <origin xyz="-0.029 0.021 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.012 0.042 0.018" />
+      </geometry>
+    </collision>
+    <collision name="mount">
+      <origin xyz="0.029 0.021 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.012 0.042 0.018" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="nail_box_handle_joint" type="fixed">
+    <parent link="nail_box" />
+    <child link="nail_box_handle" />
+    <origin xyz="0 -0.204 0.055" rpy="0 0 0" />
+  </joint>
 </robot>

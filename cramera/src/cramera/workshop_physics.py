@@ -61,6 +61,10 @@ class WorkshopPhysicsParameters:
     """Thread position stiffness in newtons per metre."""
     thread_force: float = 20.0
     """Maximum thread constraint reaction force."""
+    thread_angular_spring: float = 20.0
+    """Pilot-axis rotational stiffness in newton metres per radian."""
+    thread_torque: float = 1.2
+    """Maximum passive rotational reaction at the ideal pilot constraint."""
     driver_speed: float = 2.0 * math.pi
     """Requested driver angular speed in radians per second."""
     maximum_contacts: int = 64
@@ -459,21 +463,23 @@ class WorkshopPhysics:
         )
         mass = self.model.body_mass[body]
         damping = 2.0 * math.sqrt(mass * spring)
-        force = (
-            spring * (target[:3] - measured[:3])
-            - damping * velocity[3:]
-            - mass * self.model.opt.gravity
-        )
+        origin_offset = self.data.xpos[body] - self.data.xipos[body]
+        origin_velocity = velocity[3:] + np.cross(velocity[:3], origin_offset)
+        origin_force = spring * (target[:3] - measured[:3]) - damping * origin_velocity
+        gravity_compensation = -mass * self.model.opt.gravity
+        requested_force = origin_force + gravity_compensation
+        force = self.bounded(requested_force, maximum_force)
+        requested_norm = float(np.linalg.norm(requested_force))
+        scale = float(np.linalg.norm(force)) / requested_norm if requested_norm else 1.0
         error = (Rotation.from_quat(target[3:]) * world_R_body.inv()).as_rotvec()
         angular_damping = 2.0 * math.sqrt(
             float(max(self.model.body_inertia[body])) * self.parameters.angular_spring
         )
         torque = self.parameters.angular_spring * error - angular_damping * velocity[:3]
-        force = self.bounded(force, maximum_force)
         torque = self.bounded(torque, self.parameters.maximum_torque)
         self.data.xfrc_applied[body, :3] += force
         self.data.xfrc_applied[body, 3:] += torque + np.cross(
-            self.data.xpos[body] - self.data.xipos[body], force
+            origin_offset, scale * origin_force
         )
 
     def step(self, duration: float) -> None:
@@ -609,6 +615,10 @@ class WorkshopPhysics:
             raise InvalidWorkshopCommand(
                 "Hold and align the driver in a seated screw's head slot first."
             )
+        if self.parameters.maximum_torque <= 0:
+            self.drive(0)
+            self.thread_phase = ThreadState.STOPPED
+            return
         self.direction = direction
         self.guided_driver = True
         self.contact_gap_time = 0.0
@@ -634,8 +644,11 @@ class WorkshopPhysics:
                 ):
                     self.seated_screw = key
                     self.thread_turns = 0.0
-                    self.initial_screw_rotation = (
+                    relative_rotation = (
                         world_R_assembly.inv() * Rotation.from_quat(screw[3:])
+                    ).as_quat()
+                    self.initial_screw_rotation = Rotation.from_quat(
+                        [0, 0, relative_rotation[2], relative_rotation[3]]
                     )
                     self.thread_phase = ThreadState.SEATED
                     break
@@ -762,13 +775,13 @@ class WorkshopPhysics:
         ).as_rotvec()
         angular_damping = 2.0 * math.sqrt(
             float(max(self.model.body_inertia[screw_body]))
-            * self.parameters.angular_spring
+            * self.parameters.thread_angular_spring
         )
-        torque = self.parameters.angular_spring * error - angular_damping * (
+        torque = self.parameters.thread_angular_spring * error - angular_damping * (
             screw_velocity[:3] - assembly_velocity[:3]
         )
         force = self.bounded(force, self.parameters.thread_force)
-        torque = self.bounded(torque, self.parameters.maximum_torque)
+        torque = self.bounded(torque, self.parameters.thread_torque)
         for body, sign in ((screw_body, 1.0), (assembly_body, -1.0)):
             self.data.xfrc_applied[body, :3] += sign * force
             self.data.xfrc_applied[body, 3:] += sign * (

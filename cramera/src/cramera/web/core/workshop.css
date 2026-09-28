@@ -98,3 +98,14 @@
 .workshop-thread .workshop-placement { margin-top: 7px; }
 .workshop-physics .workshop-status { min-height: 30px; }
 .workshop-physics .workshop-badge { font-size: 9px; letter-spacing: .03em; }
+
+/* Native plan replay shows only stages recorded by the controller. */
+.workshop-demo.workshop-primary {background:#26786f;color:#fff}
+.workshop-demo.workshop-primary:hover {background:#1f645d}
+.workshop-demo-description {margin:0 0 6px;color:#527369;font-size:11px}
+.workshop-demo-note {margin:0 0 12px;color:#74827a;font-size:10px;line-height:1.45}
+.workshop-recording-start {width:100%}
+.workshop-demo-steps {padding-left:20px;margin:14px 0;font-size:11px}
+.workshop-demo-steps li {padding:5px 6px;border-radius:4px;color:#527369}
+.workshop-demo-steps li[aria-current='step'] {background:#dbeee7;color:#1f645d;font-weight:650}
+.workshop-recording .workshop-badge {font-size:9px;letter-spacing:.03em}

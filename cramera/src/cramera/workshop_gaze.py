@@ -18,7 +18,9 @@ from giskardpy.motion_statechart.goals.templates import Parallel
 from giskardpy.motion_statechart.graph_node import NodeArtifacts
 from giskardpy.motion_statechart.tasks.pointing import Pointing
 from semantic_digital_twin.robots.pr2 import PR2
-from semantic_digital_twin.spatial_types import Point3, Vector3
+from semantic_digital_twin.spatial_types import Point3, Vector3, Pose
+from giskardpy.motion_statechart.tasks.cartesian_tasks import CartesianPose
+from semantic_digital_twin.world import World
 
 
 # %% continuously observed manipulation target
@@ -84,4 +86,29 @@ class WorkshopMoveToolCenterPoint(MoveToolCenterPointMotion, AlternativeMotion[P
         )
         return ManipulationWithGaze(
             [super()._motion_chart, gaze], name=GazeTask.MOVE_WITH_GAZE
+        )
+
+
+@dataclass
+class WorkshopAnchoredToolCenterPoint(WorkshopMoveToolCenterPoint):
+    """Keep the mobile base at its station while approaching a physical grasp."""
+
+    @property
+    def _motion_chart(self) -> ManipulationWithGaze:
+        """Avoid collision-driven base drift shifting a tool target away from an object."""
+        goal = super()._motion_chart
+        goal.nodes.append(self.base_hold(self.world, self.robot))
+        return goal
+
+    @staticmethod
+    def base_hold(world: World, robot: PR2) -> CartesianPose:
+        """Hold the measured station throughout a manipulation controller stage."""
+        return CartesianPose(
+            name="Hold workshop base",
+            root_link=world.root,
+            tip_link=robot.root,
+            goal_pose=Pose(reference_frame=robot.root),
+            translation_threshold=0.0001,
+            orientation_threshold=0.0001,
+            weight=DefaultWeights.WEIGHT_ABOVE_COLLISION_AVOIDANCE,
         )

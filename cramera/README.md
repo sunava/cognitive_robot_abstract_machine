@@ -33,6 +33,10 @@ video stream. Scenes without a camera or head frame show an availability message
 
 ## Quick start
 
+The **Cable Lab** navigation entry opens an independent native MuJoCo cable
+experiment with a physical friction gripper, live contact forces, and adjustable
+cable parameters. See the [Composite Cable Lab guide](docs/composite_cable_lab.md).
+
 cramera lives inside the CRAM monorepo; this repository is a read-only mirror of its
 `cramera/` directory, kept in sync by a scheduled workflow.
 

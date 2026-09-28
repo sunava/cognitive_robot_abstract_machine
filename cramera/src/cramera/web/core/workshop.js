@@ -416,7 +416,7 @@
 
   // %% authenticated, authoritative physics
   const Waypoint = Object.freeze({LIFT: 'lift', TRANSIT: 'transit', FINAL: 'final'});
-  const Physics = Object.freeze({POLL_MS: 100, MOVE_STEP: .025, ANGLE_STEP: Math.PI / 12, TARGET_DECIMALS: 6, CLEARANCE: 1.3, POSITION_TOLERANCE: .006, ANGLE_TOLERANCE: .08, WAYPOINT_TIMEOUT_MS: 8000, FINAL_POSITION_TOLERANCE: .0015, FINAL_ANGLE_TOLERANCE: .04, CONTACT_TIMEOUT_MS: 2000});
+  const Physics = Object.freeze({POLL_MS: 100, MOVE_STEP: .025, ANGLE_STEP: Math.PI / 12, TARGET_DECIMALS: 6, CLEARANCE: 1.3, APPROACH_CLEARANCE: .15, AXIS_TOLERANCE: 1e-6, POSITION_TOLERANCE: .006, ANGLE_TOLERANCE: .08, WAYPOINT_TIMEOUT_MS: 8000, FINAL_POSITION_TOLERANCE: .0015, FINAL_ANGLE_TOLERANCE: .04, CONTACT_TIMEOUT_MS: 2000});
 
   /** Keep all workshop requests inside the current authenticated viewer mount. */
   class PhysicsClient {
@@ -626,8 +626,17 @@
         const actual = this.snapshot.objects[key];
         const height = Math.max(this.config.liftHeight || Physics.CLEARANCE, actual[2], goal[2] + .1);
         const raised = actual.slice(); raised[2] = height;
-        const above = goal.slice(); above[2] = height;
-        for (const [waypoint, phase] of [[raised, Waypoint.LIFT], [above, Waypoint.TRANSIT], [goal, Waypoint.FINAL]]) {
+        const [x, y, z, w] = goal.slice(3);
+        const axis = [2 * (x * z + y * w), 2 * (y * z - x * w), 1 - 2 * (x * x + y * y)];
+        const clearance = axis[2] > 1 - Physics.AXIS_TOLERANCE
+          ? Math.max(Physics.APPROACH_CLEARANCE, height - goal[2]) : Physics.APPROACH_CLEARANCE;
+        const approach = goal.slice();
+        for (let index = 0; index < 3; index += 1) approach[index] += axis[index] * clearance;
+        const above = approach.slice(); above[2] = Math.max(height, approach[2]);
+        const waypoints = [[raised, Waypoint.LIFT], [above, Waypoint.TRANSIT]];
+        if (Math.abs(above[2] - approach[2]) > Physics.AXIS_TOLERANCE) waypoints.push([approach, Waypoint.TRANSIT]);
+        waypoints.push([goal, Waypoint.FINAL]);
+        for (const [waypoint, phase] of waypoints) {
           if (revision !== this.alignmentRevision) return {ok: false, message: 'Alignment stopped.'};
           result = await this.moveTo(waypoint);
           if (!result.ok) return result;
@@ -702,6 +711,53 @@
   }
 
   // %% physical manipulation controls
+  // %% native controller recording presentation
+  /** Present recorded plan stages and restart from the first measured frame. */
+  function mountRecording(host, config, adapter) {
+    if (!config || config.kind !== 'native-recording') return null;
+    const document = host.ownerDocument;
+    function element(tag, parent, className, text) {
+      const item = document.createElement(tag);
+      if (className) item.className = className;
+      if (text) item.textContent = text;
+      parent.appendChild(item);
+      return item;
+    }
+    const panel = element('details', host, 'workshop-controls workshop-recording');
+    panel.open = true;
+    panel.setAttribute('aria-label', 'Recorded PR2 workshop demo');
+    const heading = element('summary', panel, 'workshop-heading');
+    element('span', heading, 'workshop-title', 'PR2 assembly demo');
+    element('span', heading, 'workshop-badge', 'Recorded');
+    const body = element('div', panel, 'workshop-body');
+    const play = element('button', body, 'workshop-primary workshop-recording-start', 'Play from start');
+    play.type = 'button';
+    const list = element('ol', body, 'workshop-demo-steps');
+    const steps = (Array.isArray(config.steps) ? config.steps : []).filter(step => typeof step === 'string' && step.trim());
+    const rows = steps.map(step => element('li', list, null, step));
+    element('p', body, 'workshop-demo-note', 'Native robot-plan recording. The interactive MuJoCo contact world runs separately; this playback does not drive its physics.');
+    const back = element('a', body, 'workshop-demo', 'Back to interactive workshop');
+    back.href = 'index.html?scene=aicor_workshop&layout=scene&offline=1';
+    function refresh() {
+      play.disabled = !adapter.hasTrajectory();
+      const frame = adapter.playhead();
+      const active = (Array.isArray(config.stepRanges) ? config.stepRanges : []).find(range =>
+        range && typeof range.name === 'string' && Number.isFinite(range.startFrame)
+        && Number.isFinite(range.endFrame) && range.endFrame >= range.startFrame
+        && frame >= range.startFrame && frame <= range.endFrame);
+      rows.forEach((row, index) => row.setAttribute('aria-current', active && active.name === steps[index] ? 'step' : 'false'));
+    }
+    function start() {
+      if (!adapter.hasTrajectory()) return;
+      adapter.seek(0);
+      adapter.play();
+      refresh();
+    }
+    play.addEventListener('click', start);
+    refresh();
+    return {start, refresh, destroy() { play.removeEventListener('click', start); panel.remove(); }};
+  }
+
   /** Mount compact controls which expose forces, independent contents and thread approximation. */
   function mountPhysics(host, config, adapter, client) {
     const controller = new PhysicsController(config, adapter, client);
@@ -740,6 +796,14 @@
     const badge = element('span', heading, 'workshop-badge', 'MuJoCo');
     const body = element('div', panel, 'workshop-body');
     element('p', body, 'workshop-intro', 'Drag a box or loose part. Grab it to lift and tilt; release to let gravity act.');
+    if (typeof config.demoUrl === 'string' && /^index\.html\?[^\s#]*$/.test(config.demoUrl)) {
+      const demo = element('a', body, 'workshop-demo workshop-primary', 'Start full PR2 demo');
+      const destination = new URL(config.demoUrl, 'https://cramera.invalid/');
+      destination.searchParams.set('autoplay', '1');
+      demo.href = destination.pathname.slice(1) + destination.search;
+      element('p', body, 'workshop-demo-description', 'Retrieve the screw box from the right shelf, place it on the workbench, pick a screw and assemble it with the screwdriver.');
+      element('p', body, 'workshop-demo-note', 'Opens a recorded robot plan. The interactive contact simulation is separate.');
+    }
     const runRow = element('div', body, 'workshop-placement');
     const run = button(runRow, 'Start physics', () => controller.isRunning() ? controller.pause() : controller.start(), () => !controller.pending);
     button(runRow, 'Reset', () => controller.reset(), () => !!controller.snapshot && adapter.isReady() && !controller.pending);
@@ -801,10 +865,6 @@
     const status = element('p', body, 'workshop-status');
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
-    if (typeof config.demoUrl === 'string' && /^index\.html\?[^\s#]*$/.test(config.demoUrl)) {
-      const demo = element('a', body, 'workshop-demo', 'Watch recorded PR2 assembly');
-      demo.href = config.demoUrl;
-    }
     if (config.assetRights) {
       const rights = element('details', body, 'workshop-rights');
       element('summary', rights, null, 'Asset rights & credits');
@@ -847,5 +907,5 @@
     };
   }
 
-  return {Controller, Codes, Motion, Outcome, mount, PhysicsClient, PhysicsController, mountPhysics};
+  return {Controller, Codes, Motion, Outcome, mount, PhysicsClient, PhysicsController, mountPhysics, mountRecording};
 });

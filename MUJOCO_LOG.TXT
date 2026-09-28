@@ -1,0 +1,63 @@
+Wed Sep 23 15:21:42 2026
+WARNING: Insufficient arena memory for the number of constraints generated. Increase arena memory allocation above 16M bytes. Time = 0.0000.
+
+Thu Sep 24 14:15:41 2026
+WARNING: Nan, Inf or huge value in QVEL at DOF 6. The simulation is unstable. Time = 0.0000.
+
+Thu Sep 24 14:15:42 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 9. The simulation is unstable. Time = 3.5390.
+
+Thu Sep 24 14:16:04 2026
+WARNING: Nan, Inf or huge value in QPOS at DOF 14. The simulation is unstable. Time = 0.0000.
+
+Thu Sep 24 14:16:05 2026
+WARNING: Nan, Inf or huge value in QPOS at DOF 14. The simulation is unstable. Time = 0.0000.
+
+Thu Sep 24 14:16:42 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 9. The simulation is unstable. Time = 3.5390.
+
+Thu Sep 24 14:16:59 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 34. The simulation is unstable. Time = 1.8825.
+
+Thu Sep 24 14:22:03 2026
+WARNING: Nan, Inf or huge value in QVEL at DOF 20. The simulation is unstable. Time = 138.0430.
+
+Thu Sep 24 14:24:20 2026
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 40.0340.
+
+Thu Sep 24 14:24:55 2026
+WARNING: Nan, Inf or huge value in QVEL at DOF 5. The simulation is unstable. Time = 120.9790.
+
+Thu Sep 24 14:26:07 2026
+WARNING: Nan, Inf or huge value in QVEL at DOF 5. The simulation is unstable. Time = 120.9790.
+
+Fri Sep 25 15:42:55 2026
+WARNING: Nan, Inf or huge value in QPOS at DOF 128. The simulation is unstable. Time = 0.0000.
+
+Fri Sep 25 15:46:13 2026
+WARNING: Nan, Inf or huge value in QVEL at DOF 110. The simulation is unstable. Time = 0.0000.
+
+Fri Sep 25 15:47:20 2026
+WARNING: Nan, Inf or huge value in QVEL at DOF 110. The simulation is unstable. Time = 0.0000.
+
+Fri Sep 25 15:51:19 2026
+WARNING: Nan, Inf or huge value in QVEL at DOF 110. The simulation is unstable. Time = 0.0000.
+
+Fri Sep 25 23:35:14 2026
+WARNING: Nan, Inf or huge value in QVEL at DOF 110. The simulation is unstable. Time = 0.0000.
+
+Sat Sep 26 00:20:45 2026
+WARNING: Nan, Inf or huge value in QVEL at DOF 110. The simulation is unstable. Time = 0.0000.
+
+Sat Sep 26 00:23:34 2026
+WARNING: Nan, Inf or huge value in QVEL at DOF 110. The simulation is unstable. Time = 0.0000.
+
+Sat Sep 26 00:32:10 2026
+WARNING: Nan, Inf or huge value in QVEL at DOF 110. The simulation is unstable. Time = 0.0000.
+
+Sat Sep 26 00:36:05 2026
+WARNING: Nan, Inf or huge value in QVEL at DOF 110. The simulation is unstable. Time = 0.0000.
+
+Sat Sep 26 00:40:38 2026
+WARNING: Nan, Inf or huge value in QVEL at DOF 110. The simulation is unstable. Time = 0.0000.
+

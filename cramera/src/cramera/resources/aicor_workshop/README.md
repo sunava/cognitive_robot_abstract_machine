@@ -16,11 +16,18 @@ frames. Units are metres with Z up; the workbench front faces negative Y.
 Eighteen objects are separate bodies, each with its own URDF, mesh reference and
 initial pose: `screw_1`–`screw_5`, `nail_1`–`nail_5`, `screw_box`, `nail_box`,
 `storage_box_1`–`storage_box_4`, `workshop_assembly` and `driver`. They share reusable
-local meshes under `assets/`. Box walls have open collision geometry, and all four
-shelf boxes have child handle frames.
+local meshes under `assets/`. Box walls have open collision geometry, and all six
+boxes have child handle frames. The loaded screw box starts on the right shelving;
+its `benchPose` in the workshop metadata identifies its destination near the front
+worktop edge, within reach from the robot's clear aisle position.
 Screw and nail origins are at their tips, with their shafts along local positive Z.
+The screwdriver rests horizontally near the front worktop edge on a wooden cradle
+that supports its shaft and rear handle, leaving the handle accessible to the robot.
 The wooden assembly block has an actual pilot hole in both its visual and
-collision geometry. Tools and timber stored on the shelves are fixed visual props.
+collision geometry. A raised wooden jig supports it with the pilot facing the
+aisle, so the robot can insert the screwdriver horizontally. The pedestal, rear
+brace and side stops have matching contact geometry. Tools and timber stored on
+the shelves are fixed visual props.
 
 The CRAMERA workshop controls run a MuJoCo contact world using these collision
 shapes. Boxes and their loose contents move through gravity, friction and contacts;

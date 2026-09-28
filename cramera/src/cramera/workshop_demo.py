@@ -197,17 +197,21 @@ class WorkshopDemo:
     Controller angular tolerance, in radians.
     """
 
+    stationary_base: bool = True
+    """Remove the mobile drive for the original fixed-station placement demo."""
+
     def build_context(self, world: World) -> Context:
         """
         Park the unused arm and keep the base outside the workshop furniture.
         """
         [robot] = world.get_semantic_annotations_by_type(PR2)
-        robot.mobile_base.full_body_controlled = True
-        with world.modify_world():
-            world.move_branch_with_fixed_connection(
-                robot.root, robot.root.parent_connection.parent
-            )
-            world.delete_orphaned_dofs()
+        robot.mobile_base.full_body_controlled = self.stationary_base
+        if self.stationary_base:
+            with world.modify_world():
+                world.move_branch_with_fixed_connection(
+                    robot.root, robot.root.parent_connection.parent
+                )
+                world.delete_orphaned_dofs()
         for arm in (robot.left_arm, robot.right_arm):
             arm.get_joint_state_by_type(StaticJointState.PARK).apply_to(world)
         robot.get_torso().get_joint_state_by_type(TorsoState.HIGH).apply_to(world)

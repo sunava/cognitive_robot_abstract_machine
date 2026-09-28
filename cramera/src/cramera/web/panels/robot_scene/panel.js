@@ -283,6 +283,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
   let traj = null;
   let laboratoryWorkbench = null;
   let workshopControls = null;
+  let workshopRecording = null;
   let workshopContactLayer = null;
   let laboratoryPhysics = null;
   let laboratoryContactLayer = null;
@@ -2667,6 +2668,30 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     bus.emit('scene:step', { step: step });
   });
 
+  // %% recorded workshop sequence
+  RobotView.onReady(function () {
+    if (!SCENE.workshopDemo || workshopRecording || typeof Workshop === 'undefined') return;
+    workshopRecording = Workshop.mountRecording(root.querySelector('.stage'), SCENE.workshopDemo, {
+      hasTrajectory: function () { return RobotView.hasTrajectory(); },
+      seek: function (frame) { RobotView.seek(frame); },
+      play: function () {
+        RobotView.playTrajectory();
+        playBtn.classList.add('playing');
+        playBtn.textContent = '⏸ Stop';
+      },
+      playhead: function () { return RobotView.getPlayhead(); },
+    });
+    if (!workshopRecording) return;
+    root.classList.add('workshop-scene');
+    root.querySelector('.panel-head h2').textContent = 'PR2 workshop assembly';
+    root.querySelector('.stage-hint').textContent = 'Recorded robot plan · Use playback controls to pause, seek or replay';
+    if (liveBtn) liveBtn.hidden = true;
+    if (new URLSearchParams(window.location.search).get('autoplay') === '1') workshopRecording.start();
+  });
+  RobotView.onPlayheadChange(function () {
+    if (workshopRecording) workshopRecording.refresh();
+  });
+
   // %% playback speed
   const speedSelect = $('playback-speed');
   RecordingMode.SPEED_OPTIONS.forEach(function (speed) {
@@ -3319,6 +3344,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       if (laboratoryWorkbench) laboratoryWorkbench.destroy();
       if (workshopContactLayer) workshopContactLayer.destroy();
       if (workshopControls) workshopControls.destroy();
+      if (workshopRecording) workshopRecording.destroy();
       if (laboratoryRobotPhysicsEntry) laboratoryRobotPhysicsEntry.destroy();
       if (laboratoryContactLayer) laboratoryContactLayer.destroy();
       if (laboratoryManualMode) laboratoryManualMode.destroy();

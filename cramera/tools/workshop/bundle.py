@@ -58,6 +58,14 @@ class WorkshopBundle:
                 model.box(room, "shelf_upright", (x, y, 0.825), (0.036, 0.036, 1.65))
         for z in (0.13, 0.53, 0.96, 1.55):
             model.box(room, "shelf_board", (1.48, 0.15, z), (0.55, 0.60, 0.025))
+        for index, component in enumerate(
+            self.geometry.shelf_stock()
+            + self.geometry.driver_cradle()
+            + self.geometry.assembly_jig()
+        ):
+            model.box(
+                room, f"{component.kind}_{index}", component.centre, component.size
+            )
         for drawer in self.geometry.drawers():
             link = model.link(drawer["link"], Asset.DRAWER_MESH)
             self.open_box(model, link, self.geometry.drawer_size, 0.009)
@@ -147,7 +155,12 @@ class WorkshopBundle:
         if kind is PartKind.ASSEMBLY:
             self.socket_collisions(model, link)
             for x in (-0.109, 0.109):
-                model.box(link, "clamping_strip", (x, 0, 0.002), (0.020, 0.235, 0.004))
+                model.box(
+                    link,
+                    "clamping_strip",
+                    (x, 0, 0.002),
+                    (0.020, geometry.assembly_size[1], 0.004),
+                )
             model.inertia(
                 link, 1.5, (0, 0, geometry.assembly_size[2] / 2), geometry.assembly_size
             )
@@ -161,8 +174,8 @@ class WorkshopBundle:
         elif kind is PartKind.DRIVER:
             blade = geometry.driver_blade_size
             model.box(link, "flat_blade", (0, 0, blade[2] / 2), blade)
-            model.cylinder(link, "shaft", 0.0045, 0.100, 0.076)
-            model.cylinder(link, "handle", 0.024, 0.104, 0.178)
+            model.cylinder(link, "shaft", geometry.driver_shaft_radius, 0.100, 0.076)
+            model.cylinder(link, "handle", geometry.driver_handle_radius, 0.104, 0.178)
             model.inertia(link, 0.28, (0, 0, 0.155), (0.048, 0.048, 0.23))
             for name, origin in (
                 (Asset.DRIVER_TIP, (0, 0, 0)),
@@ -186,6 +199,18 @@ class WorkshopBundle:
         elif kind is PartKind.BIN:
             self.open_box(model, link, geometry.bin_size, geometry.bin_wall)
             model.inertia(link, 0.20, (0, 0, 0.025), geometry.bin_size)
+            handle_name = f"{key}_handle"
+            handle = model.link(handle_name)
+            model.box(handle, "carrying_bar", (0, 0, 0), geometry.bin_handle_size)
+            mount_x, mount_y, mount_z = geometry.bin_handle_mount
+            for side in (-1, 1):
+                model.box(
+                    handle,
+                    "mount",
+                    (side * mount_x, mount_y, mount_z),
+                    geometry.bin_handle_mount_size,
+                )
+            model.joint(f"{handle_name}_joint", key, handle_name, geometry.bin_handle)
         else:
             length, radius, head_radius, head_thickness, mass = (
                 (

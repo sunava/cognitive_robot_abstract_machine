@@ -89,7 +89,7 @@ def test_bin_cavity_and_assembly_socket_are_not_solid_boxes(
     Separate walls leave open space for loose parts and the inserted screw.
     """
     box = ElementTree.parse(workshop_directory / "screw_box.urdf")
-    assert len(box.findall(".//collision")) == 5
+    assert len(box.findall("link[@name='screw_box']/collision")) == 5
     model = ElementTree.parse(workshop_directory / "workshop_assembly.urdf")
     assembly = model.find("link[@name='workshop_assembly']")
     collisions = assembly.findall("collision")
@@ -97,3 +97,25 @@ def test_bin_cavity_and_assembly_socket_are_not_solid_boxes(
     for collision in collisions:
         x, y, _ = map(float, collision.find("origin").attrib["xyz"].split())
         assert x * x + y * y > 0
+
+
+def test_fastener_boxes_publish_graspable_handle_frames(
+    workshop_directory: Path,
+) -> None:
+    """
+    Both fastener containers provide attached carrying bars and semantic handles.
+    """
+    scene = json.loads((workshop_directory / "scene.json").read_text())
+    semantics = json.loads((workshop_directory / "semantics.json").read_text())
+    for item in scene["workshop"]["bins"][:2]:
+        model = ElementTree.parse(workshop_directory / (item["key"] + ".urdf"))
+        handle = model.find(f"link[@name='{item['handle']}']")
+        assert item["handle"] in semantics["handles"]
+        joint = model.find(f"joint[@name='{item['handle']}_joint']")
+        assert joint.attrib["type"] == "fixed"
+        assert joint.find("parent").attrib["link"] == item["key"]
+        bar = handle.find("collision[@name='carrying_bar']/geometry/box")
+        width, depth, height = map(float, bar.attrib["size"].split())
+        assert 0 < width < 0.09
+        assert 0 < height < 0.03
+        assert 0 < depth < 0.02

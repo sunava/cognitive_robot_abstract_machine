@@ -6,17 +6,20 @@ from __future__ import annotations
 
 from pathlib import Path
 from dataclasses import replace
+import xml.etree.ElementTree as ElementTree
 
 import mujoco
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
+from typing_extensions import Iterator
 
 from cramera.workshop_physics import (
     InvalidWorkshopCommand,
     WorkshopPhysics,
     WorkshopSimulationFailure,
 )
+from cramera.workshop_session import WorkshopAction, WorkshopCommand, WorkshopSession
 
 from .test_workshop_bundle import workshop_directory
 
@@ -29,6 +32,20 @@ def physics(workshop_directory: Path) -> WorkshopPhysics:
     Create the portable workshop without loading render meshes.
     """
     return WorkshopPhysics(workshop_directory)
+
+
+@pytest.fixture
+def commands(physics: WorkshopPhysics) -> Iterator[WorkshopSession]:
+    """
+    Use the real command dispatcher while advancing solver time deterministically.
+    """
+    session = WorkshopSession(factory=lambda: physics)
+    try:
+        with session.lock:
+            session.command(WorkshopCommand(WorkshopAction.START))
+            yield session
+    finally:
+        session.close()
 
 
 def relative_position(
@@ -77,7 +94,89 @@ def test_grab_and_move_apply_force_without_teleporting(
     assert physics.state()["target"] == target
     physics.release()
     physics.step(1.0)
-    assert 0.918 < physics.state()["objects"]["screw_box"][2] < 0.925
+    assert physics.state()["objects"]["screw_box"][2] == pytest.approx(
+        original[2], abs=0.002
+    )
+
+
+def test_gravity_compensation_does_not_rotate_an_offcenter_held_tool(
+    physics: WorkshopPhysics,
+) -> None:
+    """
+    Supporting a horizontal driver at its target must not create a pitch moment.
+    """
+    key = "driver"
+    physics.data.xfrc_applied[:] = 0
+    physics.apply_grasp(
+        key,
+        physics.pose(key),
+        physics.parameters.spring,
+        physics.parameters.maximum_force,
+    )
+    body = physics.objects[key]
+    np.testing.assert_allclose(physics.data.xfrc_applied[body, 3:], 0, atol=1e-12)
+    np.testing.assert_allclose(
+        physics.data.xfrc_applied[body, :3],
+        -physics.model.body_mass[body] * physics.model.opt.gravity,
+    )
+
+
+def test_screwdriver_settles_on_its_elevated_cradle(
+    physics: WorkshopPhysics, workshop_directory: Path
+) -> None:
+    """
+    The tool remains reachable above the worktop after unforced gravity settling.
+    """
+    initial = np.asarray(physics.state()["objects"]["driver"])
+    physics.step(1.5)
+    settled = np.asarray(physics.state()["objects"]["driver"])
+    assert settled[:3] == pytest.approx(initial[:3], abs=0.003)
+    assert abs(np.dot(settled[3:], initial[3:])) > 0.9999
+    worktop = ElementTree.parse(workshop_directory / "environment.urdf").find(
+        "link/collision[@name='worktop']"
+    )
+    worktop_center = np.fromstring(worktop.find("origin").attrib["xyz"], sep=" ")
+    worktop_size = np.fromstring(worktop.find("geometry/box").attrib["size"], sep=" ")
+    bench_height = worktop_center[2] + worktop_size[2] / 2
+    assert settled[2] - bench_height > 0.10
+    assert any(
+        "driver" in (contact["bodyA"], contact["bodyB"])
+        for contact in physics.state()["contacts"]
+    )
+
+
+def test_horizontal_workpiece_remains_supported_in_the_jig(
+    physics: WorkshopPhysics,
+) -> None:
+    """
+    Unforced gravity preserves the aisle-facing pilot pose above the bench.
+    """
+    initial = np.asarray(physics.state()["objects"]["workshop_assembly"])
+    physics.step(1.5)
+    settled = np.asarray(physics.state()["objects"]["workshop_assembly"])
+    assert settled[:3] == pytest.approx(initial[:3], abs=0.003)
+    assert abs(np.dot(settled[3:], initial[3:])) > 0.9999
+    assert any(
+        "workshop_assembly" in (contact["bodyA"], contact["bodyB"])
+        for contact in physics.state()["contacts"]
+    )
+
+
+def test_assembly_backstop_resists_horizontal_insertion_load(
+    physics: WorkshopPhysics,
+) -> None:
+    """
+    The locating stop prevents a small inward load from losing pilot capture.
+    """
+    physics.step(0.25)
+    initial = physics.pose("workshop_assembly")
+    target = initial.copy()
+    target[1] += 0.03
+    physics.grab("workshop_assembly")
+    physics.move(target.tolist())
+    physics.step(0.5)
+    actual = physics.pose("workshop_assembly")
+    assert abs(actual[1] - initial[1]) < physics.parameters.pilot_capture_height
 
 
 def test_tilted_box_contents_slide_relative_to_box(physics: WorkshopPhysics) -> None:
@@ -201,6 +300,29 @@ def seat_screw_and_driver(physics: WorkshopPhysics) -> None:
     physics.step(0.20)
 
 
+def test_pilot_straightens_a_captured_tilt_through_contact_dynamics(
+    physics: WorkshopPhysics,
+) -> None:
+    """
+    An accepted entrance tilt is restored toward the fixed pilot axis.
+    """
+    physics.step(0.3)
+    target = physics.state()["thread"]["screwTargetPose"]
+    target[3:] = (
+        (Rotation.from_quat(target[3:]) * Rotation.from_euler("x", 0.06))
+        .as_quat()
+        .tolist()
+    )
+    place_initial_body(physics, "screw_1", target)
+    before = physics.pose("screw_1").copy()
+    physics.update_thread()
+    np.testing.assert_array_equal(physics.pose("screw_1"), before)
+    physics.step(0.8)
+    axis = Rotation.from_quat(physics.pose("screw_1")[3:]).apply([0, 0, 1])
+    relative = physics.socket()[1].inv().apply(axis)
+    assert np.linalg.norm(relative[:2]) < physics.parameters.pilot_angle / 4
+
+
 def test_driver_requires_aligned_contact_with_a_seated_screw(
     physics: WorkshopPhysics,
 ) -> None:
@@ -240,9 +362,14 @@ def test_thread_cannot_advance_without_measured_tool_rotation(
 ) -> None:
     seat_screw_and_driver(physics)
     physics.parameters = replace(physics.parameters, maximum_torque=0.0)
+    initial_depth = physics.state()["thread"]["depth"]
     physics.drive(1)
     physics.step(0.5)
     assert abs(physics.state()["thread"]["turns"]) < 0.005
+    assert physics.direction == 0
+    assert physics.state()["thread"]["depth"] <= (
+        initial_depth + physics.parameters.pilot_capture_height
+    )
 
 
 def test_thread_reactions_conserve_total_force_and_moment(
@@ -280,37 +407,44 @@ def test_automatic_solver_reset_is_reported_even_on_first_step(
 
 def test_physical_pickup_position_release_and_driver_alignment(
     physics: WorkshopPhysics,
+    commands: WorkshopSession,
 ) -> None:
     physics.step(0.4)
-    physics.grab("screw_1")
+    commands.command(WorkshopCommand(WorkshopAction.GRAB, object="screw_1"))
     target = physics.state()["objects"]["screw_1"]
     target[2] = 1.40
-    physics.move(target)
+    commands.command(
+        WorkshopCommand(WorkshopAction.MOVE, object="screw_1", pose=target)
+    )
     physics.step(0.7)
     goal = physics.state()["thread"]["screwTargetPose"]
-    above = list(goal)
-    above[2] = 1.40
-    physics.move(above)
+    approach = np.asarray(goal)
+    approach[:3] += Rotation.from_quat(goal[3:]).apply([0, 0, 0.15])
+    commands.command(
+        WorkshopCommand(WorkshopAction.MOVE, object="screw_1", pose=approach.tolist())
+    )
     physics.step(0.8)
-    physics.move(goal)
+    commands.command(WorkshopCommand(WorkshopAction.MOVE, object="screw_1", pose=goal))
     physics.step(0.8)
-    physics.release()
+    commands.command(WorkshopCommand(WorkshopAction.RELEASE))
     physics.step(0.2)
     assert physics.state()["thread"]["state"] == "seated"
-    physics.grab("driver")
+    commands.command(WorkshopCommand(WorkshopAction.GRAB, object="driver"))
     target = physics.state()["objects"]["driver"]
     target[2] = 1.45
-    physics.move(target)
+    commands.command(WorkshopCommand(WorkshopAction.MOVE, object="driver", pose=target))
     physics.step(0.7)
     goal = physics.state()["thread"]["driverTargetPose"]
-    above = list(goal)
-    above[2] = 1.45
-    physics.move(above)
+    approach = np.asarray(goal)
+    approach[:3] += Rotation.from_quat(goal[3:]).apply([0, 0, 0.15])
+    commands.command(
+        WorkshopCommand(WorkshopAction.MOVE, object="driver", pose=approach.tolist())
+    )
     physics.step(0.8)
-    physics.move(goal)
+    commands.command(WorkshopCommand(WorkshopAction.MOVE, object="driver", pose=goal))
     physics.step(0.8)
     assert physics.state()["thread"]["engaged"]
-    physics.drive(1)
+    commands.command(WorkshopCommand(WorkshopAction.DRIVE, direction=1))
     physics.step(0.5)
     assert physics.state()["thread"]["turns"] > 0.15
 

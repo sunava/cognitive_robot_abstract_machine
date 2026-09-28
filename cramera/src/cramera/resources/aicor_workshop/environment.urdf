@@ -252,6 +252,90 @@ See LICENSE.txt and NOTICE.md.
         <box size="0.55 0.6 0.025" />
       </geometry>
     </collision>
+    <collision name="shelf_stock_0">
+      <origin xyz="1.45 0.15 1.584" rpy="0 0 0" />
+      <geometry>
+        <box size="0.43 0.42 0.042" />
+      </geometry>
+    </collision>
+    <collision name="shelf_stock_1">
+      <origin xyz="1.45 0.15 1.626" rpy="0 0 0" />
+      <geometry>
+        <box size="0.43 0.42 0.042" />
+      </geometry>
+    </collision>
+    <collision name="shelf_stock_2">
+      <origin xyz="1.45 0.15 1.668" rpy="0 0 0" />
+      <geometry>
+        <box size="0.43 0.42 0.042" />
+      </geometry>
+    </collision>
+    <collision name="shelf_stock_3">
+      <origin xyz="1.45 0.15 1.71" rpy="0 0 0" />
+      <geometry>
+        <box size="0.43 0.42 0.042" />
+      </geometry>
+    </collision>
+    <collision name="shelf_stock_4">
+      <origin xyz="1.715 0.22 1.803" rpy="0 0 0" />
+      <geometry>
+        <box size="0.045 0.28 0.48" />
+      </geometry>
+    </collision>
+    <collision name="driver_cradle_5">
+      <origin xyz="0.55 -0.3 0.925" rpy="0 0 0" />
+      <geometry>
+        <box size="0.24 0.08 0.01" />
+      </geometry>
+    </collision>
+    <collision name="driver_cradle_6">
+      <origin xyz="0.455 -0.3 0.98275" rpy="0 0 0" />
+      <geometry>
+        <box size="0.012 0.012 0.1055" />
+      </geometry>
+    </collision>
+    <collision name="driver_cradle_7">
+      <origin xyz="0.617 -0.3 0.973" rpy="0 0 0" />
+      <geometry>
+        <box size="0.012 0.012 0.086" />
+      </geometry>
+    </collision>
+    <collision name="driver_cradle_8">
+      <origin xyz="0.455 -0.3105 1.04" rpy="0 0 0" />
+      <geometry>
+        <box size="0.012 0.004 0.01" />
+      </geometry>
+    </collision>
+    <collision name="driver_cradle_9">
+      <origin xyz="0.455 -0.2895 1.04" rpy="0 0 0" />
+      <geometry>
+        <box size="0.012 0.004 0.01" />
+      </geometry>
+    </collision>
+    <collision name="assembly_jig_10">
+      <origin xyz="0.24 0.03 0.965" rpy="0 0 0" />
+      <geometry>
+        <box size="0.29 0.18 0.09" />
+      </geometry>
+    </collision>
+    <collision name="assembly_jig_11">
+      <origin xyz="0.24 0.11 1.11" rpy="0 0 0" />
+      <geometry>
+        <box size="0.29 0.02 0.2" />
+      </geometry>
+    </collision>
+    <collision name="assembly_jig_12">
+      <origin xyz="0.108 0.03 1.0225" rpy="0 0 0" />
+      <geometry>
+        <box size="0.012 0.16 0.025" />
+      </geometry>
+    </collision>
+    <collision name="assembly_jig_13">
+      <origin xyz="0.372 0.03 1.0225" rpy="0 0 0" />
+      <geometry>
+        <box size="0.012 0.16 0.025" />
+      </geometry>
+    </collision>
   </link>
   <link name="workshop_floor">
     <collision name="floor">

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Composite Cable Lab · CRAMERA</title>
+  <link rel="stylesheet" href="cable-lab.css">
+  <script src="vendor/three.min.js" defer></script>
+  <script src="vendor/OrbitControls.js" defer></script>
+  <script src="cable-lab.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html"><img src="img/aicor-logo.png" alt="AICOR"></a>
+    <nav aria-label="Main navigation"><a href="index.html">Scene</a><a href="models.html">Models</a><a href="plan_builder.html">Plan Builder</a><a href="teleop.html">Sandbox</a><a href="cable-lab.html" aria-current="page">Cable Lab</a></nav>
+    <span class="engine">MuJoCo · native composite</span>
+  </header>
+  <main>
+    <section class="workspace" aria-labelledby="lab-title">
+      <div class="workspace-head">
+        <div><p class="eyebrow">CRAMERA / PHYSICS LAB</p><h1 id="lab-title">Composite cable</h1><p class="subtitle">Pinch, lift, and watch the contact physics.</p></div>
+        <span id="simulation-status" class="status" role="status">Connecting</span>
+      </div>
+      <div class="viewport" id="viewport" aria-label="Interactive 3D view of the simulated cable">
+        <div class="view-caption"><span class="live-dot"></span><span id="view-caption">Waiting for the simulator</span></div>
+        <div class="view-empty" id="view-empty"><strong>Your next experiment starts here.</strong><span>Build the cable to begin a live simulation.</span></div>
+        <div class="view-legend"><span><i class="swatch cable"></i>Cable</span><span><i class="swatch pad"></i>Gripper pads</span><span><i class="swatch contact"></i>Contact</span><label><input type="checkbox" id="show-points"> Semantic points</label></div>
+        <button type="button" class="view-home" id="camera-home" title="Reset camera view" aria-label="Reset camera view">⌖</button>
+        <span class="view-hint">Drag to orbit · scroll to zoom · right-drag to pan</span>
+      </div>
+      <div id="lab-error" class="notice error" role="alert" hidden></div>
+      <div id="lab-warning" class="notice warning" role="status" hidden></div>
+      <div class="readings" aria-label="Live physics measurements">
+        <div><span>SIMULATION TIME</span><strong id="reading-time">—</strong></div>
+        <div><span>PAD CONTACTS</span><strong id="reading-contacts">—</strong></div>
+        <div><span>NORMAL FORCE</span><strong id="reading-normal">—</strong></div>
+        <div><span>FRICTION FORCE</span><strong id="reading-friction">—</strong></div>
+      </div>
+      <section class="manipulation" aria-labelledby="manipulation-title">
+        <div class="section-title"><h2 id="manipulation-title">Gripper</h2><span id="grasp-status">No contact data</span></div>
+        <div class="gripper-buttons"><button type="button" class="accent" data-action="pinch" disabled>Pinch</button><button type="button" data-action="release" disabled>Open</button><span class="button-divider"></span><button type="button" data-action="lift" disabled>↑ Lift 5 cm</button><button type="button" data-action="lower" disabled>↓ Lower 5 cm</button></div>
+        <p class="hint">The pads hold the cable through friction. Opening lets an unanchored cable fall; a pinned cable stays attached at its first point.</p>
+      </section>
+    </section>
+    <aside aria-label="Cable configuration">
+      <form id="cable-config">
+        <div class="configuration-head"><p class="eyebrow">EXPERIMENT SETUP</p><h2>Cable properties</h2><p>Changes take effect when you build a new cable.</p></div>
+        <div class="presets"><button type="button" id="preset-anchored" class="small">Pinned cable</button><button type="button" id="preset-loose" class="small">Free cable · pinch test</button></div>
+        <fieldset><legend>Geometry &amp; mass</legend><div class="field-grid">
+          <label>Elements<input name="segment_count" type="number" min="2" max="100" step="1" value="10" required></label>
+          <label>Element length <span>m</span><input name="segment_length" type="number" min="0.005" max="0.2" step="0.005" value="0.03" required></label>
+          <label>Radius <span>m</span><input name="radius" type="number" min="0.001" max="0.03" step="0.001" value="0.005" required></label>
+          <label>Total mass <span>kg</span><input name="mass" type="number" min="0.001" max="10" step="0.001" value="0.1" required></label>
+        </div><p class="dimension" id="cable-dimension">0.30 m cable · 10 elements</p></fieldset>
+        <fieldset><legend>Material &amp; contact</legend><div class="field-grid">
+          <label>Bending stiffness <span>Pa</span><input name="bend" type="number" min="0" max="1000000000" step="1000" value="100000" required></label>
+          <label>Twisting stiffness <span>Pa</span><input name="twist" type="number" min="0" max="1000000000" step="1000" value="100000" required></label>
+        </div><label class="friction-label">Sliding friction <output id="friction-value">1.00</output><input name="friction" type="range" min="0" max="2" step="0.01" value="1"></label><div class="range-labels"><span>Slippery</span><span>High friction</span></div><p class="hint">Lower friction to inspect slip and loss of contact.</p></fieldset>
+        <fieldset><legend>Anchor</legend><label class="checkbox-label"><input name="anchor_to_parent" type="checkbox" checked> Pin the first cable point</label><details><summary>Spawn offset &amp; direction</summary><p class="hint">Relative to the anchor frame. Direction defaults to local +X.</p><div class="axis-label">Offset · meters</div><div class="triple">
+          <label>X<input name="anchor_offset_x" type="number" value="0" step="0.01" required></label><label>Y<input name="anchor_offset_y" type="number" value="0" step="0.01" required></label><label>Z<input name="anchor_offset_z" type="number" value="0" step="0.01" required></label>
+        </div><div class="axis-label">Rotation · radians</div><div class="triple">
+          <label>Roll<input name="anchor_rpy_x" type="number" value="0" step="0.1" required></label><label>Pitch<input name="anchor_rpy_y" type="number" value="0" step="0.1" required></label><label>Yaw<input name="anchor_rpy_z" type="number" value="0" step="0.1" required></label>
+        </div></details></fieldset>
+        <div class="lifecycle"><button id="start-button" type="submit" class="primary">Build &amp; start</button><div class="field-grid"><button id="reset-button" type="button" disabled>Reset</button><button id="stop-button" type="button" disabled>Stop physics</button></div></div>
+      </form>
+      <div class="method-note"><span class="method-mark">∿</span><p>Rigid cable elements, ball joints, and real contact forces.<br><span>Live poses come from the background MuJoCo simulation.</span></p></div>
+    </aside>
+  </main>
+</body>
+</html>

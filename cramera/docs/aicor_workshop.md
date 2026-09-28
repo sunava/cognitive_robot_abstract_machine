@@ -23,8 +23,10 @@ Handle TF frames and measured contacts can be shown through **Layers**.
 
 Under **Screw driving**, use **Position screw**, **Align driver**, then **Drive in**.
 **Reverse** withdraws it and **Stop** stops rotation. These alignment controls move
-force targets through elevated waypoints; the displayed geometry always follows
-measured MuJoCo poses. They do not teleport a blocked object to its destination.
+force targets through clearance waypoints and approach along the measured pilot
+axis. The wooden workpiece is supported in a bench fixture with its pilot hole
+facing the robot horizontally. The displayed geometry always follows measured
+MuJoCo poses; a blocked object does not jump to its destination.
 
 The contact model uses primitive collision shapes, gravity and friction. Screw
 driving adds an ideal thread constraint: after alignment and contact engagement,
@@ -35,30 +37,73 @@ The UI reports actual insertion depth and tool engagement.
 
 ## Native PR2 plan
 
-`cramera/src/cramera/workshop_demo.py` defines the native `WorkshopDemo`, a
-`Context`, modular `PickUpScrewAction` / `PlaceAction`, a `sequential` plan and
-execution inside `with simulated_robot_advanced`. It uses Giskard motion planning,
-collision geometry and a geometric finger closing limit. It targets the prepared
-pilot hole; no material-removal or physical screw-thread simulation is claimed.
-The base is fixed for this bench task, and a Giskard pointing constraint makes the
-head follow the working gripper. The active arm uses a 20 mm preferred planning
-clearance; penetration remains forbidden. The standalone workshop world retains
-the mobile base.
+Choose **Start full PR2 demo** at the top of the workshop controls. It opens the
+native recording and starts at its first frame. The replay panel lists the plan's
+recorded stages; **Play from start** restarts the whole sequence. The ordinary
+playback controls can pause, seek and change playback speed. **Back to interactive
+workshop** returns to the separate contact simulation.
+
+The ten recorded phases are:
+
+1. Retrieve the screw box from the right shelf and place it on the workbench.
+2. Pick up a screw with the left hand.
+3. Move to the assembly station.
+4. Pick up the screwdriver with the right hand.
+5. Steady the screw at the horizontal pilot hole in the supported workpiece.
+6. Align the screwdriver with the screw head.
+7. Engage the blade and begin the thread while the left hand provides support.
+8. Open and retract the supporting hand.
+9. Drive the screw to its final insertion depth.
+10. Put the screwdriver down.
+
+`cramera/src/cramera/workshop_assembly_demo.py` defines `WorkshopAssemblyDemo` using a
+`Context`, modular actions, a `sequential` plan and execution inside
+`with simulated_robot_advanced`. Screwdriver operations are separate
+`AlignScrewdriverAction`, `EngageScrewAction`, `ReleaseScrewSupportAction` and
+`DriveScrewAction` actions. The controller uses Giskard arm motion, collision
+geometry and gaze constraints; object transfers and tool use belong to the same
+native world.
+
+The native screw connection is an ideal kinematic thread with a 6 mm pitch per
+revolution. Engagement checks the measured screwdriver bit and screw slot before
+connecting the screw to the pilot hole. This model relates tool rotation to screw
+travel; it does not simulate tightening torque, friction forces, wood cutting or
+material damage. The browser's interactive MuJoCo contact world is independent.
+Playing the recorded PR2 sequence does not operate that physics session.
+
+During carrier retrieval, a separate MuJoCo world resolves individual screw contacts
+and sliding. The measured relative screw poses are projected into the native box
+frame. This is one-way coupling: those contact forces do not act back on the robot.
+Each screw retains a free six-degree-of-freedom connection under the carrier while
+it is carried, so navigation includes the contents in the carried branch. After
+placement, the screws return to the world frame for native pickup. A recording is
+rejected if any screw's measured collision bounds lie outside the box cavity at
+the end of retrieval. The acceptance metrics include carrier lag, relative slip,
+projection correction and contents retention.
+
+Call `WorkshopContents.start()` before constructing the sequential plan. This
+prepares the carrier's free connections before Giskard binds its goals. The action
+callback checks that preparation has happened and performs no late reparenting at
+action start.
 
 Run from the configured CRAM environment:
 
 ```bash
-.venv/bin/python -m cramera.workshop_demo
+.venv/bin/python -m cramera.workshop_assembly_demo
 ```
 
-Only successful runs with checked final pose are exported as `aicor_workshop_pr2`
-in the local scene directory. This recorded scene is separate from the interactive
-MuJoCo world. Its frames are actual native controller states, not authored robot
-keyframes; playback does not control the workshop contact session.
-`acceptance_metrics.json` records placement accuracy, measured collision and finger
-clearance, release, unchanged neighboring parts and stationary-base checks. The
-recording covers pickup, transport, insertion and release. Screwdriver operation
-is currently available through the interactive physics controls.
+Only a successful run with validated final state is exported as
+`aicor_workshop_pr2` in the local scene directory. Its frames are actual native
+controller states, not authored robot keyframes. `acceptance_metrics.json` records
+the exporter's execution checks. The `workshopDemo.steps` metadata supplies the
+English sequence shown in the replay panel. Optional `stepRanges` entries use
+`name`, `startFrame` and `endFrame` from the recording to highlight the current
+stage; absent ranges leave the sequence as an ordered list.
+
+Publication additionally validates a frozen copy with `WorkshopRelease`: all ten
+actions must succeed, all five screws must be retained, every stage must cover its
+actual frames, and acceptance and trajectory data must agree. Replay timing remains
+one frame per native 50 Hz control tick. An older partial demo cannot pass this gate.
 
 ## Blender source and regeneration
 
