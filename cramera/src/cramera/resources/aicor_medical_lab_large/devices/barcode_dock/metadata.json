@@ -1,0 +1,62 @@
+{
+  "device": "barcode_dock",
+  "title": "Barcode scanner dock",
+  "description": "Weighted charging cradle for the independent handheld barcode scanner.",
+  "rootLink": "barcode_dock_base",
+  "units": "metres",
+  "upAxis": "Z",
+  "frontAxis": "-Y",
+  "joints": [],
+  "frames": [
+    {
+      "name": "barcode_dock_scanner_mount",
+      "parent": "barcode_dock_base",
+      "position": [
+        0,
+        -0.008,
+        0.044
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "mount"
+    },
+    {
+      "name": "barcode_dock_body_grasp",
+      "parent": "barcode_dock_base",
+      "position": [
+        0,
+        0,
+        0.02
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "grasp"
+    }
+  ],
+  "accessories": [
+    "barcode_scanner"
+  ],
+  "blender": "model.blend",
+  "previews": {
+    "closed": "preview.png",
+    "open": "preview_open.png"
+  },
+  "modelScope": "Original articulated concept model. Instrument controls and measurements require a separate controller.",
+  "inertialModel": "Nominal masses with compound-bounds box inertia; not calibrated hardware parameters.",
+  "assetRights": {
+    "principalAuthor": "Vanessa Hassouna",
+    "institution": "AICOR Institute",
+    "copyright": "Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.",
+    "license": "LicenseRef-AICOR-Laboratory-Assets",
+    "permissionNotice": "Reuse, modification and redistribution of the original laboratory assets require prior written permission from Vanessa Hassouna, except where an existing licence or applicable law permits them. Permission requests: hassouna@uni-bremen.de.",
+    "priorLicenseNotice": "Existing third-party rights and any permissions already validly granted remain unaffected. This notice does not create copyright in otherwise unprotected material.",
+    "licenseFile": "LICENSE.txt",
+    "noticeFile": "NOTICE.md"
+  }
+}

@@ -1,0 +1,52 @@
+AICOR Laboratory Asset Permission Notice
+Identifier: LicenseRef-AICOR-Laboratory-Assets
+Effective date: 2026-09-25
+
+Copyright (c) 2026 Vanessa Hassouna, to the extent copyright subsists.
+Principal author and design direction: Vanessa Hassouna
+Institution: AICOR Institute
+Permissions contact: hassouna@uni-bremen.de
+
+1. Scope
+
+This notice concerns the original laboratory asset content supplied with it:
+the laboratory room and workbench, drawer, sample rack, glassware, stopper,
+centrifuge, dual dispenser, balance and sample refrigerator; their original
+model geometry, authored materials, collision geometry, model descriptions,
+layout and associated model documentation. It accompanies the assembled
+laboratory bundle and each independently packaged device.
+
+It does not relicense CRAM, CRAMERA, the authoring and simulation source code,
+Blender, the PR2 robot description, external libraries, existing logo artwork,
+fonts or other third-party material. Those retain their own applicable rights
+and licence terms. AICOR's name and logo are not licensed for separate use by
+this notice.
+
+2. Permission required
+
+No general licence to use, reproduce, modify, redistribute, sublicense or
+commercially exploit the covered asset content is granted by this notice.
+Where such acts require the relevant rights holder's permission, obtain prior
+written permission from Vanessa Hassouna. A written permission may specify
+the permitted purpose, recipients, modifications and distribution conditions.
+Authorized access to the provided demonstration permits viewing and interacting
+with that demonstration. It does not grant permission to extract, reuse or
+redistribute its underlying assets. Receipt of asset files is not itself a
+grant of those permissions. The owner's own use and separately authorized use
+are unaffected.
+
+3. Existing permissions and statutory rights
+
+This notice does not withdraw or narrow any licence or other permission
+already validly granted, including any applicable GPL or LGPL permissions.
+It does not restrict uses permitted by applicable law or rights obtained
+independently from their lawful holder. Existing third-party notices must be
+preserved. This notice cannot grant rights that its issuer does not hold.
+
+4. Attribution and protection
+
+The author and institution details record the project's stated attribution.
+They do not themselves establish copyright, transfer rights, or determine
+whether a particular human-authored or AI-assisted element is protectable.
+No exclusive right is asserted over unprotected ideas, facts, procedures or
+material in the public domain. See NOTICE.md for provenance and exclusions.

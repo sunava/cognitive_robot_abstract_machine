@@ -54,6 +54,7 @@ from cramera.scene_builder import SceneBuilderService
 from cramera.scene_builder_http import SceneBuilderHttp, SceneBuilderResponse
 from cramera.cable_session import CableRoute, CableSession
 from cramera.laboratory_centrifuge_command import CentrifugeCommand, ManualRequest
+from cramera.laboratory_configuration import LaboratoryConfiguration
 from cramera.laboratory_instrument_command import InstrumentCommand
 from cramera.laboratory_pipetting_command import PipettingCommand
 from cramera.laboratory_refrigerator_command import RefrigeratorCommand
@@ -67,6 +68,7 @@ from cramera.laboratory_physics_session import (
 from cramera.laboratory_runs import LaboratoryRoute, LaboratoryRun, RunField
 from cramera.laboratory_robot_session import LaboratoryRobotSession, RobotPhysicsRoute
 from cramera.laboratory_workflow_command import WorkflowCommand
+from cramera.medical_lab_command import MedicalLabCommand
 from cramera.live.frame_range import FrameRange, InvalidFrameRange
 from cramera.live.recording_storage import (
     NoSavedRecording,
@@ -152,8 +154,13 @@ class LaboratoryServer(socketserver.ThreadingTCPServer):
         self.scene_builder = SceneBuilderHttp(service=SceneBuilderService())
         self.workshop_physics = WorkshopSession(factory=WorkshopPhysics)
         self.laboratory_run = LaboratoryRun(paths.data_directory())
-        self.laboratory_physics = LaboratoryPhysicsSession(paths.data_directory())
-        self.laboratory_robot_physics = LaboratoryRobotSession(paths.data_directory())
+        laboratory = LaboratoryConfiguration.from_environment()
+        self.laboratory_physics = LaboratoryPhysicsSession(
+            paths.data_directory(), source_directory=laboratory.source_directory
+        )
+        self.laboratory_robot_physics = LaboratoryRobotSession(
+            paths.data_directory(), source_directory=laboratory.source_directory
+        )
         self.cable_lab = CableSession()
         super().__init__(address, handler)
 
@@ -610,6 +617,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 outcome = session.run_workflow(WorkflowCommand.from_payload(body))
             elif route == RobotPhysicsRoute.INSTRUMENT:
                 outcome = session.run_instrument(InstrumentCommand.from_payload(body))
+            elif route == RobotPhysicsRoute.DEVICES:
+                outcome = session.run_devices(MedicalLabCommand.from_payload(body))
             elif route == routes.TARGET:
                 if set(body) not in (
                     {PhysicsField.KEY, PhysicsField.POSITION},

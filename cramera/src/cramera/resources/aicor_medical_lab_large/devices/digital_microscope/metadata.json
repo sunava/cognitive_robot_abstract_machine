@@ -1,0 +1,126 @@
+{
+  "device": "digital_microscope",
+  "title": "Digital microscope",
+  "description": "Digital microscope with a focus carriage, a two-axis slide stage and a three-position objective turret.",
+  "rootLink": "digital_microscope_base",
+  "units": "metres",
+  "upAxis": "Z",
+  "frontAxis": "-Y",
+  "joints": [
+    {
+      "name": "digital_microscope_monitor_joint",
+      "type": "revolute",
+      "lower": -0.12,
+      "upper": 0.5,
+      "inspectionPosition": 0.2
+    },
+    {
+      "name": "digital_microscope_objective_turret_joint",
+      "type": "revolute",
+      "lower": -2.0943951023931953,
+      "upper": 2.0943951023931953,
+      "inspectionPosition": 2.0943951023931953
+    },
+    {
+      "name": "digital_microscope_focus_carriage_joint",
+      "type": "prismatic",
+      "lower": -0.02,
+      "upper": 0.02,
+      "inspectionPosition": 0.01
+    },
+    {
+      "name": "digital_microscope_slide_x_joint",
+      "type": "prismatic",
+      "lower": -0.028,
+      "upper": 0.028,
+      "inspectionPosition": 0.02
+    },
+    {
+      "name": "digital_microscope_slide_y_joint",
+      "type": "prismatic",
+      "lower": -0.02,
+      "upper": 0.02,
+      "inspectionPosition": -0.015
+    }
+  ],
+  "frames": [
+    {
+      "name": "digital_microscope_sample_stage",
+      "parent": "digital_microscope_slide_y",
+      "position": [
+        0,
+        0,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "digital_microscope_focus_control",
+      "parent": "digital_microscope_focus_carriage",
+      "position": [
+        0.108,
+        0,
+        0.005
+      ],
+      "rotation": [
+        0,
+        1.5707963267948966,
+        0
+      ],
+      "role": "control"
+    },
+    {
+      "name": "digital_microscope_body_grasp",
+      "parent": "digital_microscope_base",
+      "position": [
+        0,
+        0.133,
+        0.247
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "grasp"
+    },
+    {
+      "name": "digital_microscope_objective_axis",
+      "parent": "digital_microscope_optical_head",
+      "position": [
+        0,
+        -0.028,
+        -0.118
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "measurement"
+    }
+  ],
+  "accessories": [],
+  "blender": "model.blend",
+  "previews": {
+    "closed": "preview.png",
+    "open": "preview_open.png"
+  },
+  "modelScope": "Original articulated concept model. Instrument controls and measurements require a separate controller.",
+  "inertialModel": "Nominal masses with compound-bounds box inertia; not calibrated hardware parameters.",
+  "assetRights": {
+    "principalAuthor": "Vanessa Hassouna",
+    "institution": "AICOR Institute",
+    "copyright": "Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.",
+    "license": "LicenseRef-AICOR-Laboratory-Assets",
+    "permissionNotice": "Reuse, modification and redistribution of the original laboratory assets require prior written permission from Vanessa Hassouna, except where an existing licence or applicable law permits them. Permission requests: hassouna@uni-bremen.de.",
+    "priorLicenseNotice": "Existing third-party rights and any permissions already validly granted remain unaffected. This notice does not create copyright in otherwise unprotected material.",
+    "licenseFile": "LICENSE.txt",
+    "noticeFile": "NOTICE.md"
+  }
+}

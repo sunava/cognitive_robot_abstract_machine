@@ -1,0 +1,107 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="barcode_scanner"><!-- CRAMERA laboratory asset rights:
+Principal author: Vanessa Hassouna
+Institution: AICOR Institute
+Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.
+License: LicenseRef-AICOR-Laboratory-Assets
+See LICENSE.txt and NOTICE.md.
+-->
+  <link name="barcode_scanner_body">
+    <visual>
+      <geometry>
+        <mesh filename="assets/body.glb" />
+      </geometry>
+    </visual>
+    <collision name="barcode_scanner_body_contact_0">
+      <origin xyz="0 0.014 0.067" rpy="0.15 0 0" />
+      <geometry>
+        <box size="0.038 0.047 0.115" />
+      </geometry>
+    </collision>
+    <collision name="barcode_scanner_body_contact_1">
+      <origin xyz="0 0.04 0.064" rpy="0.15 0 0" />
+      <geometry>
+        <box size="0.027 0.005 0.082" />
+      </geometry>
+    </collision>
+    <collision name="barcode_scanner_body_contact_2">
+      <origin xyz="0 0.023 0.011" rpy="0 0 0" />
+      <geometry>
+        <box size="0.043 0.05 0.019" />
+      </geometry>
+    </collision>
+    <collision name="barcode_scanner_body_contact_3">
+      <origin xyz="0 -0.015 0.146" rpy="0 0 0" />
+      <geometry>
+        <box size="0.079 0.128 0.058" />
+      </geometry>
+    </collision>
+    <collision name="barcode_scanner_body_contact_4">
+      <origin xyz="0 -0.016 0.127" rpy="0 0 0" />
+      <geometry>
+        <box size="0.077 0.125 0.01" />
+      </geometry>
+    </collision>
+    <collision name="barcode_scanner_body_contact_5">
+      <origin xyz="0 -0.079 0.147" rpy="0 0 0" />
+      <geometry>
+        <box size="0.066 0.011 0.04" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 -0.018875 0.089" />
+      <mass value="0.23" />
+      <inertia ixx="0.0009401836979166667" iyy="0.0007065983333333333" izz="0.0004728236979166666" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <link name="barcode_scanner_trigger">
+    <visual>
+      <geometry>
+        <mesh filename="assets/trigger.glb" />
+      </geometry>
+    </visual>
+    <collision name="barcode_scanner_trigger_contact_0">
+      <origin xyz="0 -0.005 -0.012" rpy="-0.15 0 0" />
+      <geometry>
+        <box size="0.028 0.012 0.03" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 -0.005 -0.012" />
+      <mass value="0.008" />
+      <inertia ixx="8.378496991974429e-07" iyy="1.1823363115250408e-06" izz="7.008467210057355e-07" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <joint name="barcode_scanner_trigger_joint" type="revolute">
+    <parent link="barcode_scanner_body" />
+    <child link="barcode_scanner_trigger" />
+    <origin xyz="0 -0.021 0.113" rpy="0 0 0" />
+    <axis xyz="1 0 0" />
+    <limit effort="20" velocity="1" lower="0" upper="0.22" />
+    <dynamics damping="0.1" friction="0.02" />
+  </joint>
+  <link name="barcode_scanner_body_grasp" />
+  <joint name="barcode_scanner_body_grasp_joint" type="fixed">
+    <parent link="barcode_scanner_body" />
+    <child link="barcode_scanner_body_grasp" />
+    <origin xyz="0 0.012 0.068" rpy="0 0 0" />
+  </joint>
+  <link name="barcode_scanner_scan_axis" />
+  <joint name="barcode_scanner_scan_axis_joint" type="fixed">
+    <parent link="barcode_scanner_body" />
+    <child link="barcode_scanner_scan_axis" />
+    <origin xyz="0 -0.086 0.148" rpy="1.57079633 0 0" />
+  </joint>
+  <link name="barcode_scanner_trigger_control" />
+  <joint name="barcode_scanner_trigger_control_joint" type="fixed">
+    <parent link="barcode_scanner_trigger" />
+    <child link="barcode_scanner_trigger_control" />
+    <origin xyz="0 -0.012 -0.015" rpy="0 0 0" />
+  </joint>
+  <link name="barcode_scanner_dock_contact" />
+  <joint name="barcode_scanner_dock_contact_joint" type="fixed">
+    <parent link="barcode_scanner_body" />
+    <child link="barcode_scanner_dock_contact" />
+    <origin xyz="0 0.023 0.003" rpy="0 0 0" />
+  </joint>
+</robot>

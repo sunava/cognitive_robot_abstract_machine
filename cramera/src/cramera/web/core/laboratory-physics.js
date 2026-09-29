@@ -3,10 +3,11 @@
   'use strict';
   const refrigerator = typeof module !== 'undefined' && module.exports ? require('./laboratory-refrigerator.js') : root.LaboratoryRefrigerator;
   const workflow = typeof module !== 'undefined' && module.exports ? require('./laboratory-workflow.js') : root.LaboratoryWorkflow;
-  const laboratory = factory(refrigerator, workflow);
+  const medicalLab = typeof module !== 'undefined' && module.exports ? require('./medical-lab.js') : root.MedicalLab;
+  const laboratory = factory(refrigerator, workflow, medicalLab);
   if (typeof module !== 'undefined' && module.exports) module.exports = laboratory;
   if (root) root.LaboratoryPhysics = laboratory;
-})(typeof window !== 'undefined' ? window : null, function (Refrigerator, Workflow) {
+})(typeof window !== 'undefined' ? window : null, function (Refrigerator, Workflow, MedicalLab) {
   'use strict';
 
   // %% simulation service
@@ -35,6 +36,7 @@
     PIPETTE: '/api/laboratory/physics/robot/pipette',
     WORKFLOW: '/api/laboratory/physics/robot/workflow',
     INSTRUMENT: '/api/laboratory/physics/robot/instrument',
+    DEVICES: '/api/laboratory/physics/robot/devices',
     REFRIGERATOR: '/api/laboratory/physics/robot/refrigerator',
   });
   const RobotStates = Object.freeze({IDLE: 'idle', RUNNING: 'running', PAUSED: 'paused', SUCCEEDED: 'succeeded', FAILED: 'failed'});
@@ -102,6 +104,7 @@
     runPipetting() { return this.post(this.routes.PIPETTE); }
     runWorkflow(prepare = true) { return this.post(this.routes.WORKFLOW, {prepare}); }
     runInstrument(command) { return this.post(this.routes.INSTRUMENT, command); }
+    devices(command) { return this.post(this.routes.DEVICES, command); }
     pipetting(command) { return this.post(this.routes.PIPETTING, command); }
     refrigerator(command) { return this.post(this.routes.REFRIGERATOR, command); }
     pause() { return this.post(this.routes.PAUSE); }
@@ -150,6 +153,10 @@
       this.workflowError = null;
       this.instrumentRequest = null;
       this.instrumentError = null;
+      this.instruments = null;
+      this.devicePending = false;
+      this.deviceUncertain = false;
+      this.deviceError = null;
       this.selected = config.objects.length ? config.objects[0].key : null;
       this.dragged = null;
       this.state = 'idle';
@@ -167,7 +174,45 @@
     }
     ready() { return !this.disposed && !this.starting && this.state === 'running'; }
     robotBusy() { return this.config.robot && (this.robotRequest || this.robot.state === RobotStates.RUNNING); }
-    manualReady() { return this.ready() && !this.robotBusy() && !this.workflowUncertain && !Workflow.active(this.robot) && !this.manualBusy(); }
+    manualReady() { return this.ready() && !this.robotBusy() && !this.devicesBusy() && !this.workflowUncertain && !Workflow.active(this.robot) && !this.manualBusy(); }
+    devicesBusy() {
+      const state = this.instruments && this.instruments.demo && this.instruments.demo.state;
+      return this.devicePending || this.deviceUncertain || [MedicalLab.States.RUNNING, MedicalLab.States.PAUSED].includes(state);
+    }
+    /** A mechanism demonstration and a robot task may never own the scene together. */
+    deviceReady(action, device) {
+      if (!this.config.medicalLab || !this.ready() || !this.instruments || !this.instruments.demo
+        || this.devicePending || this.draining || this.robotBusy() || this.robot.state === RobotStates.PAUSED
+        || this.workflowUncertain || this.manualBusy() || this.pipettingBusy() || this.refrigeratorBusy()
+        || this.centrifugeBusy() || this.scaleTransfer || this.centrifugeTransfer || this.centrifugePair
+        || this.pipettingTransfer || this.refrigeratorTransfer || this.dispensing() || this.target || this.robot.holding) return false;
+      const demo = this.instruments.demo;
+      if (action === MedicalLab.Actions.RESET) return true;
+      if (this.deviceUncertain) return false;
+      if (action === MedicalLab.Actions.PAUSE) return demo.state === MedicalLab.States.RUNNING;
+      if (demo.state === MedicalLab.States.RUNNING) return false;
+      if (demo.state === MedicalLab.States.PAUSED && (action !== MedicalLab.Actions.RUN || device !== demo.device)) return false;
+      if (![MedicalLab.Actions.RUN, MedicalLab.Actions.OPEN, MedicalLab.Actions.CLOSE].includes(action)) return false;
+      const devices = this.config.medicalLab.instruments || [];
+      return device === MedicalLab.AllDevices ? action === MedicalLab.Actions.RUN && devices.some(item => item.joints.length)
+        : devices.some(item => item.id === device && item.joints.length);
+    }
+    runDevices(command) {
+      if (!this.deviceReady(command.action, command.device)) return Promise.resolve(false);
+      this.devicePending = true;
+      this.deviceUncertain = true;
+      this.deviceError = null;
+      this.error = null;
+      this.revision += 1;
+      this.changed();
+      return this.enqueue({type: 'devices', payload: command});
+    }
+    /** Joint positions are observations; authored inspection targets never render poses. */
+    applyInstruments(observed) {
+      this.instruments = observed;
+      this.deviceUncertain = false;
+      if (observed.joints && this.adapter.setJointFrames) this.adapter.setJointFrames(observed.joints);
+    }
     manualBusy() { return this.activeCommand === 'manual' || this.queue.some(command => command.type === 'manual'); }
     pipettingBusy() { return this.activeCommand === 'pipetting' || this.queue.some(command => command.type === 'pipetting'); }
     dispensing() { return Boolean(this.pipetting && this.pipetting.state === 'dispensing'); }
@@ -797,7 +842,7 @@
     /** Permit only an idle robot or the same paused handle operation to own a device. */
     instrumentReady(instrument, action) {
       if (!Object.values(RobotInstruments).includes(instrument) || !Object.values(InstrumentActions).includes(action)) return false;
-      if (!this.config.robot || !this.ready() || this.robotBusy() || this.workflowUncertain || this.draining
+      if (!this.config.robot || !this.ready() || this.robotBusy() || this.devicesBusy() || this.workflowUncertain || this.draining
         || this.manualBusy() || this.pipettingBusy() || this.refrigeratorBusy() || this.centrifugeBusy()
         || this.scaleTransfer || this.centrifugeTransfer || this.centrifugePair || this.pipettingTransfer
         || this.refrigeratorTransfer || this.dispensing() || this.target || this.robot.holding) return false;
@@ -822,7 +867,7 @@
     workflowReady() {
       if (Workflow.instrument(this.robot) && this.robot.state === RobotStates.PAUSED) return false;
       const resuming = this.robot.source === RobotSources.WORKFLOW && this.robot.state === RobotStates.PAUSED;
-      return Boolean(this.config.robot && this.ready() && !this.robotBusy() && !this.workflowUncertain && !this.draining
+      return Boolean(this.config.robot && this.ready() && !this.robotBusy() && !this.devicesBusy() && !this.workflowUncertain && !this.draining
         && !this.manualBusy() && !this.scaleTransfer && !this.centrifugeTransfer && !this.centrifugePair
         && !this.pipettingTransfer && !this.refrigeratorTransfer && (resuming || !this.dispensing())
         && this.pipetting && this.pipetting.available && this.scale && this.scale.available
@@ -836,7 +881,7 @@
       return this.clear('runWorkflow');
     }
     startProgram(type) {
-      if (this.workflowUncertain || Workflow.active(this.robot)) return Promise.resolve(false);
+      if (this.devicesBusy() || this.workflowUncertain || Workflow.active(this.robot)) return Promise.resolve(false);
       if (this.dispensing() || this.pipettingBusy() || this.pipettingTransfer || this.refrigeratorTransfer || this.refrigeratorBusy() || this.stored(this.selected)) return Promise.resolve(false);
       if ((this.refrigerator && this.refrigerator.slots.some(slot => slot.key)) || !this.config.robot || !this.ready() || this.robotBusy() || this.centrifugeTransfer || this.centrifugePair || this.centrifugeOwnsObjects()) return Promise.resolve(false);
       this.robotRequest = type;
@@ -888,6 +933,7 @@
         try {
           let answer;
           if (command.type === InstrumentCommand) answer = command.resume ? await this.service.runWorkflow(false) : await this.service.runInstrument(command.payload);
+          else if (command.type === 'devices') answer = await this.service.devices(command.payload);
           else if (command.type === 'runWorkflow') answer = await this.service.runWorkflow(!(this.robot.source === RobotSources.WORKFLOW && this.robot.state === RobotStates.PAUSED));
           else if (command.type === 'target') answer = await this.service.target(command.target);
           else if (command.type === 'refrigerator') answer = await this.service.refrigerator(command.payload);
@@ -896,6 +942,8 @@
           else if (command.type === 'manual') answer = await this.service.importManual(command.payload);
           else if (command.type === 'fillLiquid') answer = await this.service.fillLiquid(command.key, command.volumeMl);
           else answer = await this.service[command.type]();
+          if (!this.disposed && answer.instruments) this.applyInstruments(answer.instruments);
+          if (command.type === 'devices' && !answer.instruments) throw new Error('Instrument state was not returned. Refresh before starting again.');
           if (answer.refrigerator && !this.disposed) {
             this.refrigerator = answer.refrigerator;
             if (this.adapter.setRefrigeratorState) this.adapter.setRefrigeratorState(this.refrigerator);
@@ -946,6 +994,7 @@
           this.error = null;
         } catch (error) {
           this.error = error.message;
+          if (command.type === 'devices') this.deviceError = error.message;
           if (command.type === InstrumentCommand) this.instrumentError = {...command.payload, message: error.message};
           if (command.type === 'runWorkflow') this.workflowError = error.message;
           if (command.type === 'refrigerator') this.refrigeratorError = error.message;
@@ -970,6 +1019,7 @@
         if (['centrifuge', 'manual', 'reset'].includes(command.type) || ProgramCommands.includes(command.type)) this.centrifugeRevision += 1;
         if (command.type === InstrumentCommand) {this.centrifugeRevision += 1;this.refrigeratorRevision += 1;this.instrumentRequest = null;}
         this.activeCommand = null;
+        if (command.type === 'devices') this.devicePending = false;
         if (this.robotRequest === command.type) this.robotRequest = null;
         this.changed();
       }
@@ -1000,6 +1050,7 @@
         this.objects = answer.objects || {};
         this.contacts = answer.contacts || [];
         if (!commandPending && !this.draining && revision === this.revision) {
+          if (answer.instruments) this.applyInstruments(answer.instruments);
           if (!this.centrifugeTransfer) this.target = answer.target || null;
           this.robot = answer.robot || this.robot;
           if (answer.robot) {
@@ -1138,18 +1189,34 @@
       listen(item, 'click', callback);
       return item;
     }
-    const panel = element('section', host, 'laboratory-physics');
+    const panel = element('section', host, config.medicalLab ? 'laboratory-physics laboratory-physics-expanded' : 'laboratory-physics');
     panel.setAttribute('aria-label', 'Laboratory with contact physics');
-    element('h3', panel, '', config.robot ? 'PR2 & contact' : 'Glass & contact');
+    element('h3', panel, '', config.medicalLab ? 'AICOR Medical Lab' : config.robot ? 'PR2 & contact' : 'Glass & contact');
     element('p', panel, 'laboratory-physics-intro', config.robot ? 'PR2 grasps and moves the glass using contact physics.' : 'Drag, lift and release glasses. Obstacles resist their movement.');
-    const assetRights = new AssetRightsView(panel);
-    const label = element('label', panel, 'laboratory-physics-field', 'Object');
+    const expandedStart = config.medicalLab ? button(panel, 'Start / resume laboratory', () => controller.start(), 'laboratory-physics-start') : null;
+    const medicalHost = config.medicalLab ? element('div', panel, 'medical-lab-host') : null;
+    const body = config.medicalLab ? element('details', panel, 'medical-lab-legacy') : panel;
+    if (config.medicalLab) element('summary', body, '', 'Sample handling & robot controls');
+    const assetRights = new AssetRightsView(body);
+    const label = element('label', body, 'laboratory-physics-field', 'Object');
     const select = element('select', label, 'laboratory-physics-object');
     for (const object of config.objects) {
       const option = element('option', select, '', object.label || object.key);
       option.value = object.key;
     }
     const controller = new Controller(config, service, adapter, render);
+    const medical = config.medicalLab ? new MedicalLab.View(medicalHost, config.medicalLab, {
+      devices: command => controller.runDevices(command),
+      focus: adapter.focus ? (position, target) => adapter.focus(position, target) : null,
+      robot: id => {
+        if (id === 'workflow') return controller.runWorkflow();
+        if (id === 'pipetting') return controller.runPipetting();
+        if (id === 'mixing') return controller.runMixing();
+        if (id === 'transfer') return controller.run();
+        return controller.runInstrument(id, InstrumentActions.OPEN_CLOSE);
+      },
+      pauseRobot: () => controller.pause(),
+    }) : null;
     const robotInstrumentControls = new Map();
     function mountRobotInstrument(parent, instrument) {
       if (!config.robot) return;
@@ -1186,8 +1253,8 @@
         view.status.dataset.error = String(Boolean(error));
       }
     }
-    const workflow = config.robot ? new Workflow.View(panel, {start: () => controller.runWorkflow(), pause: () => controller.pause(), reset: () => controller.reset()}) : null;
-    const refrigerator = element('section', panel, 'laboratory-physics-refrigerator');
+    const workflow = config.robot ? new Workflow.View(body, {start: () => controller.runWorkflow(), pause: () => controller.pause(), reset: () => controller.reset()}) : null;
+    const refrigerator = element('section', body, 'laboratory-physics-refrigerator');
     element('h4', refrigerator, '', 'Sample refrigerator');
     const refrigeratorTemperature = element('p', refrigerator, 'laboratory-physics-refrigerator-temperature');
     const refrigeratorStatus = element('p', refrigerator, 'laboratory-physics-refrigerator-status');
@@ -1210,7 +1277,7 @@
       adapter.focus([origin[0]+.65,origin[1]-1.1,origin[2]+.90],[origin[0],origin[1]-.05,origin[2]+.42]);
     }, 'laboratory-physics-refrigerator-view');
     element('p', refrigerator, 'laboratory-physics-note', 'Open the door, select a free position and store an existing glass. Manual transfers use contact physics. Cabinet temperature is simulated; close the door to cool toward 4 °C. Retrieve stored samples before starting a PR2 task.');
-    const pipetting = element('section', panel, 'laboratory-physics-pipetting');
+    const pipetting = element('section', body, 'laboratory-physics-pipetting');
     element('h4', pipetting, '', 'Pipetting station');
     const pipettingStatus = element('p', pipetting, 'laboratory-physics-pipetting-status');
     pipettingStatus.setAttribute('role', 'status');
@@ -1235,7 +1302,7 @@
       adapter.focus([position[0] + .30, position[1] - .48, position[2] + .34], [position[0], position[1] + .04, position[2] + .15]);
     }, 'laboratory-physics-pipetting-view') : null;
     element('p', pipetting, 'laboratory-physics-note', 'Position an open, upright glass under the nozzle, then dispense. Two separate reagent lines supply measured doses from finite reservoirs.');
-    const scale = element('section', panel, 'laboratory-physics-scale');
+    const scale = element('section', body, 'laboratory-physics-scale');
     element('h4', scale, '', 'Scale');
     const scaleReading = element('p', scale, 'laboratory-physics-scale-reading');
     const scaleStatus = element('p', scale, 'laboratory-physics-scale-status');
@@ -1247,7 +1314,7 @@
       const position = config.scale.panPosition;
       adapter.focus([position[0] + .28, position[1] - .45, position[2] + .3], position);
     }, 'laboratory-physics-scale-view') : null;
-    const centrifuge = element('section', panel, 'laboratory-physics-centrifuge');
+    const centrifuge = element('section', body, 'laboratory-physics-centrifuge');
     element('h4', centrifuge, '', 'Centrifuge');
     const centrifugeStatus = element('p', centrifuge, 'laboratory-physics-centrifuge-status');
     centrifugeStatus.setAttribute('role', 'status');
@@ -1374,7 +1441,7 @@
       const center = [0, 1, 2].map(axis => slots.reduce((sum, slot) => sum + slot.position[axis], 0) / slots.length);
       adapter.focus([center[0] + .32, center[1] - .52, center[2] + .4], center);
     }, 'laboratory-physics-centrifuge-view') : null;
-    const liquid = element('section', panel, 'laboratory-physics-liquid');
+    const liquid = element('section', body, 'laboratory-physics-liquid');
     element('h4', liquid, '', 'Liquid');
     const liquidStatus = element('p', liquid, 'laboratory-physics-liquid-status');
     const volumeLabel = element('label', liquid, 'laboratory-physics-volume-label', 'Volume (ml)');
@@ -1396,28 +1463,28 @@
     const tiltStatus = element('p', liquid, 'laboratory-physics-tilt-status');
     const viewGlass = adapter.focus ? button(liquid, 'View glass', () => controller.viewGlass(), 'laboratory-physics-view-glass') : null;
     element('p', liquid, 'laboratory-physics-note', 'Lift before tilting. Simplified liquid model.');
-    const start = button(panel, 'Start / resume laboratory', () => controller.start(), 'laboratory-physics-start');
+    const start = expandedStart || button(panel, 'Start / resume laboratory', () => controller.start(), 'laboratory-physics-start');
     let robotRun, robotMix, robotPipette, robotPause, robotStatus, robotProgress, robotMeasurements, robotMotionNote;
     if (config.robot) {
       robotPipette = button(pipetting, 'Start pipetting demo', () => controller.runPipetting(), 'laboratory-physics-robot-pipette');
       element('p', pipetting, 'laboratory-physics-note', 'PR2 holds the clear glass under the nozzle, adds 1 ml of each reagent and returns the sample to A1.');
-      robotMix = button(panel, 'Start mixing demo', () => controller.runMixing(), 'laboratory-physics-robot-mix');
-      element('p', panel, 'laboratory-physics-robot-recipe', 'Pour 5 ml each of amber and teal liquid into the clear glass, gently swirl, then place it in A2. Starting a new run restores these volumes and the initial positions.');
-      robotRun = button(panel, 'Start PR2: A1 → A3', () => controller.run(), 'laboratory-physics-robot-run');
-      element('p', panel, 'laboratory-physics-robot-reset-note', 'A new run resets PR2 and the glasses; liquid volumes are preserved. Paused runs can be resumed.');
-      robotPause = button(panel, 'Pause PR2', () => controller.pause(), 'laboratory-physics-robot-pause');
-      robotStatus = element('p', panel, 'laboratory-physics-robot-status');
+      robotMix = button(body, 'Start mixing demo', () => controller.runMixing(), 'laboratory-physics-robot-mix');
+      element('p', body, 'laboratory-physics-robot-recipe', 'Pour 5 ml each of amber and teal liquid into the clear glass, gently swirl, then place it in A2. Starting a new run restores these volumes and the initial positions.');
+      robotRun = button(body, 'Start PR2: A1 → A3', () => controller.run(), 'laboratory-physics-robot-run');
+      element('p', body, 'laboratory-physics-robot-reset-note', 'A new run resets PR2 and the glasses; liquid volumes are preserved. Paused runs can be resumed.');
+      robotPause = button(body, 'Pause PR2', () => controller.pause(), 'laboratory-physics-robot-pause');
+      robotStatus = element('p', body, 'laboratory-physics-robot-status');
       robotStatus.setAttribute('role', 'status');
-      robotProgress = element('progress', panel, 'laboratory-physics-robot-progress');
+      robotProgress = element('progress', body, 'laboratory-physics-robot-progress');
       robotProgress.max = 1;
       robotProgress.setAttribute('aria-label', 'PR2 movement progress');
-      robotMeasurements = element('p', panel, 'laboratory-physics-robot-measurements');
-      robotMotionNote = element('p', panel, 'laboratory-physics-robot-motion-note');
+      robotMeasurements = element('p', body, 'laboratory-physics-robot-measurements');
+      robotMotionNote = element('p', body, 'laboratory-physics-robot-motion-note');
     }
     select.value = controller.selected;
     listen(select, 'change', () => { controller.refrigeratorTransfer = null; controller.pipettingTransfer = null; controller.scaleTransfer = null; controller.centrifugeTransfer = null; controller.centrifugePair = null; controller.selected = select.value; render(); });
-    const hold = button(panel, 'Hold glass', () => controller.hold(select.value), 'laboratory-physics-hold');
-    const moves = element('div', panel, 'laboratory-physics-moves');
+    const hold = button(body, 'Hold glass', () => controller.hold(select.value), 'laboratory-physics-hold');
+    const moves = element('div', body, 'laboratory-physics-moves');
     const motion = [
       ['←', [-MOVE_STEP, 0, 0], 'Move left'], ['↑', [0, MOVE_STEP, 0], 'Move back'],
       ['↓', [0, -MOVE_STEP, 0], 'Move forward'], ['→', [MOVE_STEP, 0, 0], 'Move right'],
@@ -1428,19 +1495,19 @@
       control.title = title + ' · 1 cm';
       return control;
     });
-    const release = button(panel, 'Release glass', () => controller.release(), 'laboratory-physics-release');
-    const status = element('p', panel, 'laboratory-physics-status');
+    const release = button(body, 'Release glass', () => controller.release(), 'laboratory-physics-release');
+    const status = element('p', body, 'laboratory-physics-status');
     status.setAttribute('role', 'status');
-    const force = element('p', panel, 'laboratory-physics-force');
-    const distance = element('p', panel, 'laboratory-physics-distance');
-    element('p', panel, 'laboratory-physics-note', 'Orange: desired position · Red: contact points');
-    const camera = element('div', panel, 'laboratory-physics-cameras');
+    const force = element('p', body, 'laboratory-physics-force');
+    const distance = element('p', body, 'laboratory-physics-distance');
+    element('p', body, 'laboratory-physics-note', 'Orange: desired position · Red: contact points');
+    const camera = element('div', body, 'laboratory-physics-cameras');
     if (config.cameras && adapter.focus) {
       for (const [name, text] of [['closeup', 'Close-up'], ['overview', 'Overview']]) {
         if (config.cameras[name]) button(camera, text, () => adapter.focus(config.cameras[name].position, config.cameras[name].target));
       }
     }
-    const reset = button(panel, 'Reset laboratory', () => controller.reset(), 'laboratory-physics-reset');
+    const reset = button(body, 'Reset laboratory', () => controller.reset(), 'laboratory-physics-reset');
     function render() {
       if (disposed) return;
       assetRights.render(config.assetRights);
@@ -1563,7 +1630,7 @@
         const paused = controller.robot.state === RobotStates.PAUSED;
         renderRobotInstruments();
         robotMotionNote.textContent = mixing || dosing || fullDemo || handleTest ? 'Motion: local contact controller. Contacts: MuJoCo.' : 'Joint targets: recorded CRAM plan. Motion and contacts: MuJoCo.';
-        robotRun.disabled = workflowOwned || !ready || Boolean(controller.robotBusy()) || Boolean(controller.centrifugeTransfer) || Boolean(pair) || controller.centrifugeOwnsObjects() || controller.dispensing() || controller.pipettingBusy() || Boolean(controller.pipettingTransfer) || Boolean(controller.refrigeratorTransfer) || controller.refrigeratorBusy() || Boolean(cabinet && cabinet.slots.some(slot => slot.key));
+        robotRun.disabled = controller.devicesBusy() || workflowOwned || !ready || Boolean(controller.robotBusy()) || Boolean(controller.centrifugeTransfer) || Boolean(pair) || controller.centrifugeOwnsObjects() || controller.dispensing() || controller.pipettingBusy() || Boolean(controller.pipettingTransfer) || Boolean(controller.refrigeratorTransfer) || controller.refrigeratorBusy() || Boolean(cabinet && cabinet.slots.some(slot => slot.key));
         robotRun.textContent = paused && !mixing && !dosing && !fullDemo && !handleTest ? 'Resume PR2' : 'Start PR2: A1 → A3';
         robotPipette.disabled = robotRun.disabled || !station || !station.available;
         robotPipette.textContent = paused && dosing ? 'Resume pipetting demo' : 'Start pipetting demo';
@@ -1581,6 +1648,18 @@
         robotMeasurements.textContent = measurements.join(' · ');
         robotMeasurements.hidden = !measurements.length;
       }
+      if (medical) medical.render(controller.instruments, {
+        ready, pending: controller.devicePending, error: controller.deviceError,
+        canCommand: (action, device) => controller.deviceReady(action, device),
+        robot: controller.robot, robotCanPause: Boolean(robotPause && !robotPause.disabled),
+        robotError: controller.workflowError || controller.instrumentError && controller.instrumentError.message,
+        robotReady: {
+          workflow: controller.workflowReady(), pipetting: Boolean(robotPipette && !robotPipette.disabled),
+          mixing: Boolean(robotMix && !robotMix.disabled), transfer: Boolean(robotRun && !robotRun.disabled),
+          centrifuge: controller.instrumentReady(RobotInstruments.CENTRIFUGE, InstrumentActions.OPEN_CLOSE),
+          refrigerator: controller.instrumentReady(RobotInstruments.REFRIGERATOR, InstrumentActions.OPEN_CLOSE),
+        },
+      });
       const feedback = controller.feedback();
       force.textContent = 'Contacts: ' + feedback.contactCount + ' · ' + feedback.force.toFixed(2) + ' N';
       if (config.robot && controller.robot.holding) {
@@ -1601,6 +1680,7 @@
         controller.destroy();
         scheduler.clearInterval(timer);
         listeners.forEach(remove => remove());
+        if (medical) medical.destroy();
         if (workflow) workflow.destroy();
         panel.remove();
       },

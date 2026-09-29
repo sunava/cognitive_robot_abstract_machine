@@ -1,0 +1,881 @@
+{
+  "identifier": "electronic_pipette",
+  "title": "Electronic Pipette",
+  "description": "Single-channel pipette with separate plunger and tip-ejector travel.",
+  "parts": [
+    {
+      "name": "body",
+      "parent": null,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 0.15,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "grip",
+          "center": [
+            0,
+            0,
+            0.204
+          ],
+          "dimensions": [
+            0.037,
+            0.034,
+            0.154
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.014,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "back_grip",
+          "center": [
+            0,
+            0.016,
+            0.189
+          ],
+          "dimensions": [
+            0.021,
+            0.005,
+            0.09
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.007,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cone",
+          "name": "lower_body",
+          "center": [
+            0,
+            0,
+            0.117
+          ],
+          "dimensions": [
+            0.008,
+            0.017,
+            0.042
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "shaft",
+          "center": [
+            0,
+            0,
+            0.07
+          ],
+          "dimensions": [
+            0.0055,
+            0.055
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "tip_seat",
+          "center": [
+            0,
+            0,
+            0.039
+          ],
+          "dimensions": [
+            0.0048,
+            0.0022,
+            0.015
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "tip_seal",
+          "center": [
+            0,
+            0,
+            0.045
+          ],
+          "dimensions": [
+            0.0051,
+            0.0042,
+            0.002
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "screen_bezel",
+          "center": [
+            0,
+            -0.017,
+            0.248
+          ],
+          "dimensions": [
+            0.029,
+            0.004,
+            0.037
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.003,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "display",
+          "center": [
+            0,
+            -0.0193,
+            0.249
+          ],
+          "dimensions": [
+            0.024,
+            0.001,
+            0.027
+          ],
+          "material": "screen",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "1000",
+          "center": [
+            0,
+            -0.02,
+            0.254
+          ],
+          "dimensions": [
+            0.005,
+            0.022
+          ],
+          "material": "paper",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "1000",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "uL",
+          "center": [
+            0,
+            -0.02,
+            0.243
+          ],
+          "dimensions": [
+            0.003,
+            0
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "uL",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "volume_button_0",
+          "center": [
+            -0.008,
+            -0.018,
+            0.22
+          ],
+          "dimensions": [
+            0.004,
+            0.003
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "volume_button_1",
+          "center": [
+            0.008,
+            -0.018,
+            0.22
+          ],
+          "dimensions": [
+            0.004,
+            0.003
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "-",
+          "center": [
+            -0.008,
+            -0.02,
+            0.22
+          ],
+          "dimensions": [
+            0.004,
+            0
+          ],
+          "material": "paper",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "-",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "+",
+          "center": [
+            0.008,
+            -0.02,
+            0.22
+          ],
+          "dimensions": [
+            0.004,
+            0
+          ],
+          "material": "paper",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "+",
+          "points": []
+        },
+        {
+          "kind": "logo",
+          "name": "AICOR logo",
+          "center": [
+            0,
+            -0.0172,
+            0.191
+          ],
+          "dimensions": [
+            0.027
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "P1000",
+          "center": [
+            0,
+            -0.0174,
+            0.178
+          ],
+          "dimensions": [
+            0.0036,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "P1000",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "finger_rest",
+          "center": [
+            0,
+            0.028,
+            0.268
+          ],
+          "dimensions": [
+            0.034,
+            0.036,
+            0.009
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "finger_hook",
+          "center": [
+            0,
+            0.044,
+            0.261
+          ],
+          "dimensions": [
+            0.03,
+            0.008,
+            0.019
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.003,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "grip_ridge_0",
+          "center": [
+            0,
+            0.018,
+            0.15
+          ],
+          "dimensions": [
+            0.019,
+            0.002,
+            0.003
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "grip_ridge_1",
+          "center": [
+            0,
+            0.018,
+            0.159
+          ],
+          "dimensions": [
+            0.019,
+            0.002,
+            0.003
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "grip_ridge_2",
+          "center": [
+            0,
+            0.018,
+            0.16799999999999998
+          ],
+          "dimensions": [
+            0.019,
+            0.002,
+            0.003
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "grip_ridge_3",
+          "center": [
+            0,
+            0.018,
+            0.177
+          ],
+          "dimensions": [
+            0.019,
+            0.002,
+            0.003
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "grip_ridge_4",
+          "center": [
+            0,
+            0.018,
+            0.186
+          ],
+          "dimensions": [
+            0.019,
+            0.002,
+            0.003
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "plunger",
+      "parent": "body",
+      "origin": [
+        0,
+        0,
+        0.281
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "prismatic",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": -0.007,
+      "upper": 0,
+      "open_value": -0.006,
+      "mass": 0.01,
+      "shapes": [
+        {
+          "kind": "cylinder",
+          "name": "stem",
+          "center": [
+            0,
+            0,
+            0.006
+          ],
+          "dimensions": [
+            0.005,
+            0.014
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "thumb_pad",
+          "center": [
+            0,
+            0,
+            0.016
+          ],
+          "dimensions": [
+            0.014,
+            0.007
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "DOSE",
+          "center": [
+            0,
+            0,
+            0.0196
+          ],
+          "dimensions": [
+            0.003,
+            0
+          ],
+          "material": "paper",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "DOSE",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "tip_ejector",
+      "parent": "body",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "prismatic",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": -0.009,
+      "upper": 0,
+      "open_value": -0.008,
+      "mass": 0.015,
+      "shapes": [
+        {
+          "kind": "ring",
+          "name": "ejector_collar",
+          "center": [
+            0,
+            0,
+            0.056
+          ],
+          "dimensions": [
+            0.009,
+            0.006,
+            0.012
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "ejector_rod",
+          "center": [
+            0.01,
+            0.002,
+            0.109
+          ],
+          "dimensions": [
+            0.004,
+            0.005,
+            0.102
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "ejector_button",
+          "center": [
+            0.024,
+            0,
+            0.271
+          ],
+          "dimensions": [
+            0.013,
+            0.022,
+            0.016
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "ejector_upper_rod",
+          "center": [
+            0.02,
+            0.007,
+            0.214
+          ],
+          "dimensions": [
+            0.004,
+            0.005,
+            0.109
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "ejector_bridge",
+          "center": [
+            0.015,
+            0.003,
+            0.162
+          ],
+          "dimensions": [
+            0.014,
+            0.007,
+            0.005
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "name": "tip_mount",
+      "parent": "body",
+      "position": [
+        0,
+        0,
+        0.0315
+      ],
+      "role": "tool_attachment",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "grip_center",
+      "parent": "body",
+      "position": [
+        0,
+        0,
+        0.181
+      ],
+      "role": "grasp",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "plunger_contact",
+      "parent": "plunger",
+      "position": [
+        0,
+        0,
+        0.0195
+      ],
+      "role": "control",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "ejector_contact",
+      "parent": "tip_ejector",
+      "position": [
+        0.024,
+        0,
+        0.279
+      ],
+      "role": "control",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "accessories": [
+    "tip_rack"
+  ]
+}

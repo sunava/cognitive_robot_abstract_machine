@@ -1,0 +1,384 @@
+{
+  "identifier": "ph_probe",
+  "title": "pH probe",
+  "description": "Removable glass electrode with a sensing bulb, protective cage and detachable cable connector.",
+  "parts": [
+    {
+      "name": "probe",
+      "parent": null,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 0.08,
+      "shapes": [
+        {
+          "kind": "sphere",
+          "name": "sensing_bulb",
+          "center": [
+            0,
+            0,
+            0.015
+          ],
+          "dimensions": [
+            0.006
+          ],
+          "material": "glass",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "glass_stem",
+          "center": [
+            0,
+            0,
+            0.059
+          ],
+          "dimensions": [
+            0.0055,
+            0.084
+          ],
+          "material": "glass",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "electrode_core",
+          "center": [
+            0,
+            0,
+            0.067
+          ],
+          "dimensions": [
+            0.0014,
+            0.076
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "tip_guard",
+          "center": [
+            0.008,
+            0.0,
+            0.033
+          ],
+          "dimensions": [
+            0.003,
+            0.003,
+            0.055
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0008,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "tip_guard",
+          "center": [
+            4.898587196589413e-19,
+            0.008,
+            0.033
+          ],
+          "dimensions": [
+            0.003,
+            0.003,
+            0.055
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0008,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "tip_guard",
+          "center": [
+            -0.008,
+            9.797174393178825e-19,
+            0.033
+          ],
+          "dimensions": [
+            0.003,
+            0.003,
+            0.055
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0008,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "tip_guard",
+          "center": [
+            -1.4695761589768239e-18,
+            -0.008,
+            0.033
+          ],
+          "dimensions": [
+            0.003,
+            0.003,
+            0.055
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0008,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "guard_collar",
+          "center": [
+            0,
+            0,
+            0.059
+          ],
+          "dimensions": [
+            0.0105,
+            0.006,
+            0.009
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "probe_handle",
+          "center": [
+            0,
+            0,
+            0.13
+          ],
+          "dimensions": [
+            0.009,
+            0.137
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "handle_band",
+          "center": [
+            0,
+            0,
+            0.183
+          ],
+          "dimensions": [
+            0.0095,
+            0.012
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "connector",
+          "center": [
+            0,
+            0,
+            0.21
+          ],
+          "dimensions": [
+            0.006,
+            0.026
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "connector_tip",
+          "center": [
+            0,
+            0,
+            0.225
+          ],
+          "dimensions": [
+            0.004,
+            0.009
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "pH",
+          "center": [
+            0,
+            -0.00915,
+            0.139
+          ],
+          "dimensions": [
+            0.006,
+            0.01
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "pH",
+          "points": []
+        }
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "name": "body_grasp",
+      "parent": "probe",
+      "position": [
+        0,
+        0,
+        0.142
+      ],
+      "role": "grasp",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "sensing_tip",
+      "parent": "probe",
+      "position": [
+        0,
+        0,
+        0.009
+      ],
+      "role": "measurement",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "cable_connector",
+      "parent": "probe",
+      "position": [
+        0,
+        0,
+        0.229
+      ],
+      "role": "connector",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "accessories": []
+}

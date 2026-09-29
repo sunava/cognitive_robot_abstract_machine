@@ -1,0 +1,744 @@
+{
+  "identifier": "vortex_mixer",
+  "title": "Vortex Mixer",
+  "description": "Bench vortex mixer with a spring-loaded contact cup and speed control.",
+  "parts": [
+    {
+      "name": "body",
+      "parent": null,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 1.4,
+      "shapes": [
+        {
+          "kind": "cylinder",
+          "name": "foot_0_0",
+          "center": [
+            -0.057,
+            -0.061,
+            0.004
+          ],
+          "dimensions": [
+            0.01,
+            0.008
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "foot_0_1",
+          "center": [
+            -0.057,
+            0.061,
+            0.004
+          ],
+          "dimensions": [
+            0.01,
+            0.008
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "foot_1_0",
+          "center": [
+            0.057,
+            -0.061,
+            0.004
+          ],
+          "dimensions": [
+            0.01,
+            0.008
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "foot_1_1",
+          "center": [
+            0.057,
+            0.061,
+            0.004
+          ],
+          "dimensions": [
+            0.01,
+            0.008
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "base",
+          "center": [
+            0,
+            0,
+            0.014
+          ],
+          "dimensions": [
+            0.15,
+            0.16,
+            0.018
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.007,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "lower_seam",
+          "center": [
+            0,
+            0,
+            0.026
+          ],
+          "dimensions": [
+            0.147,
+            0.156,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.007,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "housing",
+          "center": [
+            0,
+            0,
+            0.06
+          ],
+          "dimensions": [
+            0.148,
+            0.157,
+            0.067
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.02,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "neck",
+          "center": [
+            0,
+            0.006,
+            0.097
+          ],
+          "dimensions": [
+            0.025,
+            0.02
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "cup_suspension_0",
+          "center": [
+            0,
+            0.006,
+            0.093
+          ],
+          "dimensions": [
+            0.029,
+            0.023,
+            0.0025
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "cup_suspension_1",
+          "center": [
+            0,
+            0.006,
+            0.098
+          ],
+          "dimensions": [
+            0.029,
+            0.023,
+            0.0025
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "cup_suspension_2",
+          "center": [
+            0,
+            0.006,
+            0.103
+          ],
+          "dimensions": [
+            0.029,
+            0.023,
+            0.0025
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "logo",
+          "name": "AICOR logo",
+          "center": [
+            -0.038,
+            -0.0786,
+            0.066
+          ],
+          "dimensions": [
+            0.044
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "VORTEX",
+          "center": [
+            -0.04,
+            -0.079,
+            0.049
+          ],
+          "dimensions": [
+            0.004,
+            0.045
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "VORTEX",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "contact_switch",
+          "center": [
+            -0.036,
+            -0.08,
+            0.029
+          ],
+          "dimensions": [
+            0.018,
+            0.006,
+            0.009
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "TOUCH",
+          "center": [
+            -0.036,
+            -0.0832,
+            0.03
+          ],
+          "dimensions": [
+            0.0025,
+            0
+          ],
+          "material": "paper",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "TOUCH",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "status_light",
+          "center": [
+            -0.007,
+            -0.08,
+            0.03
+          ],
+          "dimensions": [
+            0.0022,
+            0.003
+          ],
+          "material": "blue",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "vent_0",
+          "center": [
+            0.074,
+            0.02,
+            0.051
+          ],
+          "dimensions": [
+            0.001,
+            0.003,
+            0.022
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0005,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "vent_1",
+          "center": [
+            0.074,
+            0.028,
+            0.051
+          ],
+          "dimensions": [
+            0.001,
+            0.003,
+            0.022
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0005,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "vent_2",
+          "center": [
+            0.074,
+            0.036000000000000004,
+            0.051
+          ],
+          "dimensions": [
+            0.001,
+            0.003,
+            0.022
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0005,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "vent_3",
+          "center": [
+            0.074,
+            0.044,
+            0.051
+          ],
+          "dimensions": [
+            0.001,
+            0.003,
+            0.022
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0005,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "vent_4",
+          "center": [
+            0.074,
+            0.052000000000000005,
+            0.051
+          ],
+          "dimensions": [
+            0.001,
+            0.003,
+            0.022
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0005,
+          "collision": false,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "contact_head",
+      "parent": "body",
+      "origin": [
+        0,
+        0.006,
+        0.11
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "prismatic",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": -0.006,
+      "upper": 0,
+      "open_value": -0.005,
+      "mass": 0.06,
+      "shapes": [
+        {
+          "kind": "cylinder",
+          "name": "cup_support",
+          "center": [
+            0,
+            0,
+            -0.004
+          ],
+          "dimensions": [
+            0.032,
+            0.008
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "rubber_cup",
+          "center": [
+            0,
+            0,
+            0.002
+          ],
+          "dimensions": [
+            0.034,
+            0.02,
+            0.012
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "cup_contact",
+          "center": [
+            0,
+            0,
+            -0.003
+          ],
+          "dimensions": [
+            0.02,
+            0.004
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "speed_control",
+      "parent": "body",
+      "origin": [
+        0.036,
+        -0.083,
+        0.05
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "revolute",
+      "axis": [
+        0,
+        -1,
+        0
+      ],
+      "lower": 0,
+      "upper": 4.71238898038469,
+      "open_value": 2.827433388230814,
+      "mass": 0.012,
+      "shapes": [
+        {
+          "kind": "cylinder",
+          "name": "knob",
+          "center": [
+            0,
+            -0.004,
+            0
+          ],
+          "dimensions": [
+            0.015,
+            0.012
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "pointer",
+          "center": [
+            0,
+            -0.0105,
+            0.009
+          ],
+          "dimensions": [
+            0.002,
+            0.001,
+            0.005
+          ],
+          "material": "paper",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0004,
+          "collision": false,
+          "text": "",
+          "points": []
+        }
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "name": "sample_contact",
+      "parent": "contact_head",
+      "position": [
+        0,
+        0,
+        -0.001
+      ],
+      "role": "sample_contact",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "speed_control_grasp",
+      "parent": "speed_control",
+      "position": [
+        0,
+        -0.011,
+        0
+      ],
+      "role": "control",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "body_grasp",
+      "parent": "body",
+      "position": [
+        0,
+        0,
+        0.057
+      ],
+      "role": "grasp",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "accessories": []
+}

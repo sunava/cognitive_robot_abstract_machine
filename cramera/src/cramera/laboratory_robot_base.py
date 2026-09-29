@@ -7,11 +7,13 @@ from __future__ import annotations
 import math
 import xml.etree.ElementTree as ElementTree
 from dataclasses import dataclass, field
+from enum import StrEnum
 from pathlib import Path
 
 import mujoco
 import numpy as np
 from scipy.spatial.transform import Rotation
+from typing_extensions import Any
 
 from cramera.laboratory_physics_robot import (
     LaboratoryRobotPhysics,
@@ -91,6 +93,41 @@ class RobotBaseDescription:
             previous = child
         ElementTree.indent(tree)
         tree.write(self.path, encoding="utf-8", xml_declaration=True)
+
+
+# %% authored navigation support
+class NavigationField(StrEnum):
+    """Scene declarations identifying collision geometry that supports planar travel."""
+
+    NAVIGATION = "navigation"
+    """Navigation metadata independent of laboratory equipment."""
+    SUPPORT_GEOMETRIES = "supportGeometries"
+    """Exact collider names belonging to the authored travel surface."""
+
+
+@dataclass(frozen=True)
+class NavigationSupport:
+    """Precisely identify floor colliders without exempting their surrounding room."""
+
+    geometries: tuple[str, ...] = ()
+    """Explicitly designated physical support surfaces."""
+
+    @classmethod
+    def from_scene(cls, scene: dict[str, Any]) -> NavigationSupport:
+        """Read optional exact floor names from authored scene metadata."""
+        navigation = scene.get(NavigationField.NAVIGATION, {})
+        if not isinstance(navigation, dict):
+            raise ValueError("Navigation metadata must be an object")
+        names = navigation.get(NavigationField.SUPPORT_GEOMETRIES, [])
+        if not isinstance(names, list) or any(
+            not isinstance(name, str) or not name for name in names
+        ):
+            raise ValueError("Navigation support must contain exact geometry names")
+        return cls(tuple(names))
+
+    def indices(self, model: mujoco.MjModel) -> set[int]:
+        """Resolve only explicitly named surfaces, leaving physical contacts enabled."""
+        return {model.geom(name).id for name in self.geometries}
 
 
 # %% swept robot clearance
@@ -184,11 +221,13 @@ class LaboratoryBasePath:
             dtype=int,
         )
         moving = set(self.moving_geometry)
+        supports = NavigationSupport.from_scene(self.physics.scene).indices(model)
         self.obstacle_geometry = np.array(
             [
                 index
                 for index in range(model.ngeom)
                 if index not in moving
+                and index not in supports
                 and model.geom_type[index] != mujoco.mjtGeom.mjGEOM_PLANE
                 and (model.geom_contype[index] or model.geom_conaffinity[index])
             ],

@@ -1,0 +1,1158 @@
+{
+  "identifier": "microplate_reader",
+  "title": "Microplate Reader",
+  "description": "Enclosed optical-reader model with an articulated drawer and a 96-well plate seat.",
+  "parts": [
+    {
+      "name": "base",
+      "parent": null,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 8.5,
+      "shapes": [
+        {
+          "kind": "cylinder",
+          "name": "foot_0_0",
+          "center": [
+            -0.1725,
+            -0.1475,
+            0.012
+          ],
+          "dimensions": [
+            0.014,
+            0.024
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "foot_0_1",
+          "center": [
+            -0.1725,
+            0.1475,
+            0.012
+          ],
+          "dimensions": [
+            0.014,
+            0.024
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "foot_1_0",
+          "center": [
+            0.1725,
+            -0.1475,
+            0.012
+          ],
+          "dimensions": [
+            0.014,
+            0.024
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "foot_1_1",
+          "center": [
+            0.1725,
+            0.1475,
+            0.012
+          ],
+          "dimensions": [
+            0.014,
+            0.024
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "base_plinth",
+          "center": [
+            0,
+            0,
+            0.047
+          ],
+          "dimensions": [
+            0.4,
+            0.35,
+            0.046
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.009,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "chamber_floor",
+          "center": [
+            0,
+            0.008,
+            0.073
+          ],
+          "dimensions": [
+            0.38,
+            0.332,
+            0.012
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "left_wall",
+          "center": [
+            -0.188,
+            0,
+            0.157
+          ],
+          "dimensions": [
+            0.024,
+            0.35,
+            0.17
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.009,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "right_wall",
+          "center": [
+            0.188,
+            0,
+            0.157
+          ],
+          "dimensions": [
+            0.024,
+            0.35,
+            0.17
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.009,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_wall",
+          "center": [
+            0,
+            0.163,
+            0.155
+          ],
+          "dimensions": [
+            0.355,
+            0.024,
+            0.168
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.009,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "top_cover",
+          "center": [
+            0,
+            0,
+            0.226
+          ],
+          "dimensions": [
+            0.389,
+            0.342,
+            0.036
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.01,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "front_upper",
+          "center": [
+            0,
+            -0.162,
+            0.181
+          ],
+          "dimensions": [
+            0.358,
+            0.026,
+            0.065
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "front_lower",
+          "center": [
+            0,
+            -0.164,
+            0.084
+          ],
+          "dimensions": [
+            0.355,
+            0.024,
+            0.02
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "front_cheek_left",
+          "center": [
+            -0.132,
+            -0.164,
+            0.121
+          ],
+          "dimensions": [
+            0.085,
+            0.024,
+            0.057
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "drawer_rail_left",
+          "center": [
+            -0.07854,
+            -0.005,
+            0.099
+          ],
+          "dimensions": [
+            0.008,
+            0.285,
+            0.014
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "front_cheek_right",
+          "center": [
+            0.132,
+            -0.164,
+            0.121
+          ],
+          "dimensions": [
+            0.085,
+            0.024,
+            0.057
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "drawer_rail_right",
+          "center": [
+            0.07854,
+            -0.005,
+            0.099
+          ],
+          "dimensions": [
+            0.008,
+            0.285,
+            0.014
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "optical_bridge",
+          "center": [
+            0,
+            0.003,
+            0.186
+          ],
+          "dimensions": [
+            0.15,
+            0.125,
+            0.022
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "logo",
+          "name": "AICOR logo",
+          "center": [
+            -0.109,
+            -0.176,
+            0.191
+          ],
+          "dimensions": [
+            0.079
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "MICROPLATE READER",
+          "center": [
+            -0.096,
+            -0.176,
+            0.164
+          ],
+          "dimensions": [
+            0.008,
+            0.138
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "MICROPLATE READER",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "display_bezel",
+          "center": [
+            0.077,
+            -0.177,
+            0.182
+          ],
+          "dimensions": [
+            0.10999999999999999,
+            0.004,
+            0.04
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "display_glass",
+          "center": [
+            0.077,
+            -0.1795,
+            0.182
+          ],
+          "dimensions": [
+            0.102,
+            0.0015,
+            0.032
+          ],
+          "material": "screen",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "READY",
+          "center": [
+            0.077,
+            -0.1805,
+            0.18775999999999998
+          ],
+          "dimensions": [
+            0.00608,
+            0.09179999999999999
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "READY",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "PLATE OUT",
+          "center": [
+            0.077,
+            -0.1805,
+            0.1756
+          ],
+          "dimensions": [
+            0.00608,
+            0.09179999999999999
+          ],
+          "material": "paper",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "PLATE OUT",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_0",
+          "center": [
+            0,
+            0.1755,
+            0.118
+          ],
+          "dimensions": [
+            0.25,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_1",
+          "center": [
+            0,
+            0.1755,
+            0.127
+          ],
+          "dimensions": [
+            0.25,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_2",
+          "center": [
+            0,
+            0.1755,
+            0.13599999999999998
+          ],
+          "dimensions": [
+            0.25,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_3",
+          "center": [
+            0,
+            0.1755,
+            0.145
+          ],
+          "dimensions": [
+            0.25,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_4",
+          "center": [
+            0,
+            0.1755,
+            0.154
+          ],
+          "dimensions": [
+            0.25,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_5",
+          "center": [
+            0,
+            0.1755,
+            0.16299999999999998
+          ],
+          "dimensions": [
+            0.25,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_6",
+          "center": [
+            0,
+            0.1755,
+            0.172
+          ],
+          "dimensions": [
+            0.25,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_7",
+          "center": [
+            0,
+            0.1755,
+            0.181
+          ],
+          "dimensions": [
+            0.25,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "control_button_0",
+          "center": [
+            0.143,
+            -0.178,
+            0.181
+          ],
+          "dimensions": [
+            0.006,
+            0.004
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "control_button_1",
+          "center": [
+            0.163,
+            -0.178,
+            0.181
+          ],
+          "dimensions": [
+            0.006,
+            0.004
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "plate_drawer",
+      "parent": "base",
+      "origin": [
+        0,
+        -0.035,
+        0.11
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "prismatic",
+      "axis": [
+        0,
+        -1,
+        0
+      ],
+      "lower": 0,
+      "upper": 0.195,
+      "open_value": 0.195,
+      "mass": 0.35,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "drawer_floor",
+          "center": [
+            0,
+            0,
+            -0.008
+          ],
+          "dimensions": [
+            0.146,
+            0.25,
+            0.007
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "plate_seat_floor",
+          "center": [
+            0,
+            0,
+            -0.003
+          ],
+          "dimensions": [
+            0.138,
+            0.097,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "plate_side_left",
+          "center": [
+            -0.068,
+            0,
+            0.004
+          ],
+          "dimensions": [
+            0.006,
+            0.099,
+            0.012
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "plate_side_right",
+          "center": [
+            0.068,
+            0,
+            0.004
+          ],
+          "dimensions": [
+            0.006,
+            0.099,
+            0.012
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "plate_end_front",
+          "center": [
+            0,
+            -0.047,
+            0.004
+          ],
+          "dimensions": [
+            0.13,
+            0.006,
+            0.012
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "plate_end_back",
+          "center": [
+            0,
+            0.047,
+            0.004
+          ],
+          "dimensions": [
+            0.13,
+            0.006,
+            0.012
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "drawer_front",
+          "center": [
+            0,
+            -0.137,
+            0.011
+          ],
+          "dimensions": [
+            0.171,
+            0.019,
+            0.052
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.005,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "handle",
+          "center": [
+            0,
+            -0.15,
+            0.01
+          ],
+          "dimensions": [
+            0.091,
+            0.012,
+            0.015
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.005,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "PLATE",
+          "center": [
+            0,
+            -0.16,
+            0.01
+          ],
+          "dimensions": [
+            0.007,
+            0.059
+          ],
+          "material": "ink",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "PLATE",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "A1",
+          "center": [
+            -0.057,
+            -0.051,
+            0.011
+          ],
+          "dimensions": [
+            0.005,
+            0
+          ],
+          "material": "paper",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "A1",
+          "points": []
+        }
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "name": "drawer_handle",
+      "parent": "plate_drawer",
+      "position": [
+        0,
+        -0.158,
+        0.01
+      ],
+      "role": "handle",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "plate_seat",
+      "parent": "plate_drawer",
+      "position": [
+        0,
+        0,
+        -0.0015
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "load_approach",
+      "parent": "plate_drawer",
+      "position": [
+        0,
+        0,
+        0.13
+      ],
+      "role": "approach",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "eject_button",
+      "parent": "base",
+      "position": [
+        0.143,
+        -0.183,
+        0.181
+      ],
+      "role": "control",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "start_button",
+      "parent": "base",
+      "position": [
+        0.163,
+        -0.183,
+        0.181
+      ],
+      "role": "control",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "accessories": [
+    "microplate_96_well"
+  ]
+}

@@ -1,0 +1,305 @@
+{
+  "identifier": "barcode_dock",
+  "title": "Barcode scanner dock",
+  "description": "Weighted charging cradle for the independent handheld barcode scanner.",
+  "parts": [
+    {
+      "name": "base",
+      "parent": null,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 0.38,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "dock_base",
+          "center": [
+            0,
+            0,
+            0.018
+          ],
+          "dimensions": [
+            0.116,
+            0.124,
+            0.031
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.014,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "dock_trim",
+          "center": [
+            0,
+            0,
+            0.005
+          ],
+          "dimensions": [
+            0.109,
+            0.117,
+            0.009
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "handle_support_floor",
+          "center": [
+            0,
+            0.015,
+            0.038
+          ],
+          "dimensions": [
+            0.06,
+            0.071,
+            0.012
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "cradle_side",
+          "center": [
+            -0.03,
+            0.014,
+            0.056
+          ],
+          "dimensions": [
+            0.01,
+            0.074,
+            0.044
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "cradle_side",
+          "center": [
+            0.03,
+            0.014,
+            0.056
+          ],
+          "dimensions": [
+            0.01,
+            0.074,
+            0.044
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "cradle_back",
+          "center": [
+            0,
+            0.047,
+            0.06
+          ],
+          "dimensions": [
+            0.061,
+            0.012,
+            0.052
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "cradle_front_stop",
+          "center": [
+            0,
+            -0.02,
+            0.046
+          ],
+          "dimensions": [
+            0.058,
+            0.011,
+            0.02
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.003,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "charging_contact",
+          "center": [
+            -0.011,
+            0.015,
+            0.045
+          ],
+          "dimensions": [
+            0.0025,
+            0.004
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "charging_contact",
+          "center": [
+            0.011,
+            0.015,
+            0.045
+          ],
+          "dimensions": [
+            0.0025,
+            0.004
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "SCANNER DOCK",
+          "center": [
+            0,
+            -0.063,
+            0.019
+          ],
+          "dimensions": [
+            0.005,
+            0.082
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "SCANNER DOCK",
+          "points": []
+        }
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "name": "scanner_mount",
+      "parent": "base",
+      "position": [
+        0,
+        -0.008,
+        0.044
+      ],
+      "role": "mount",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "body_grasp",
+      "parent": "base",
+      "position": [
+        0,
+        0,
+        0.02
+      ],
+      "role": "grasp",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "accessories": [
+    "barcode_scanner"
+  ]
+}

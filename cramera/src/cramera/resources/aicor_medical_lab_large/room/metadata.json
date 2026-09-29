@@ -1,0 +1,72 @@
+{
+  "device": "medical_lab_room",
+  "title": "AICOR Medical Laboratory Room",
+  "description": "Expanded room and workstations surrounding the original calibrated preparation bench.",
+  "rootLink": "medical_lab_room_shell",
+  "units": "metres",
+  "upAxis": "Z",
+  "frontAxis": "-Y",
+  "joints": [],
+  "frames": [
+    {
+      "name": "medical_lab_room_bench_1_surface",
+      "parent": "medical_lab_room_bench_1",
+      "position": [
+        -2.1,
+        2.5,
+        0.9
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "work_surface"
+    },
+    {
+      "name": "medical_lab_room_bench_2_surface",
+      "parent": "medical_lab_room_bench_2",
+      "position": [
+        0,
+        2.5,
+        0.9
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "work_surface"
+    },
+    {
+      "name": "medical_lab_room_bench_3_surface",
+      "parent": "medical_lab_room_bench_3",
+      "position": [
+        2.1,
+        2.5,
+        0.9
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "work_surface"
+    }
+  ],
+  "accessories": [],
+  "blender": "model.blend",
+  "previews": {},
+  "modelScope": "Original articulated concept model. Instrument controls and measurements require a separate controller.",
+  "inertialModel": "Nominal masses with compound-bounds box inertia; not calibrated hardware parameters.",
+  "assetRights": {
+    "principalAuthor": "Vanessa Hassouna",
+    "institution": "AICOR Institute",
+    "copyright": "Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.",
+    "license": "LicenseRef-AICOR-Laboratory-Assets",
+    "permissionNotice": "Reuse, modification and redistribution of the original laboratory assets require prior written permission from Vanessa Hassouna, except where an existing licence or applicable law permits them. Permission requests: hassouna@uni-bremen.de.",
+    "priorLicenseNotice": "Existing third-party rights and any permissions already validly granted remain unaffected. This notice does not create copyright in otherwise unprotected material.",
+    "licenseFile": "LICENSE.txt",
+    "noticeFile": "NOTICE.md"
+  }
+}

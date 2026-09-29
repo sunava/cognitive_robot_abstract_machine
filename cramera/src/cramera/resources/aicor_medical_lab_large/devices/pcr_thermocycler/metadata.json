@@ -1,0 +1,1555 @@
+{
+  "device": "pcr_thermocycler",
+  "title": "PCR Thermocycler",
+  "description": "Ninety-six-position thermal block with an articulated heated cover and cycle display.",
+  "rootLink": "pcr_thermocycler_base",
+  "units": "metres",
+  "upAxis": "Z",
+  "frontAxis": "-Y",
+  "joints": [
+    {
+      "name": "pcr_thermocycler_heated_lid_joint",
+      "type": "revolute",
+      "lower": -1.85,
+      "upper": 0,
+      "inspectionPosition": -1.7
+    }
+  ],
+  "frames": [
+    {
+      "name": "pcr_thermocycler_block_A1",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.049499999999999995,
+        -0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_A2",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.040499999999999994,
+        -0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_A3",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0315,
+        -0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_A4",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0225,
+        -0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_A5",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.013499999999999998,
+        -0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_A6",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0045,
+        -0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_A7",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0045,
+        -0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_A8",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.013499999999999998,
+        -0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_A9",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0225,
+        -0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_A10",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0315,
+        -0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_A11",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.040499999999999994,
+        -0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_A12",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.049499999999999995,
+        -0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_B1",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.049499999999999995,
+        -0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_B2",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.040499999999999994,
+        -0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_B3",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0315,
+        -0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_B4",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0225,
+        -0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_B5",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.013499999999999998,
+        -0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_B6",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0045,
+        -0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_B7",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0045,
+        -0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_B8",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.013499999999999998,
+        -0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_B9",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0225,
+        -0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_B10",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0315,
+        -0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_B11",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.040499999999999994,
+        -0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_B12",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.049499999999999995,
+        -0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_C1",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.049499999999999995,
+        -0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_C2",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.040499999999999994,
+        -0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_C3",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0315,
+        -0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_C4",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0225,
+        -0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_C5",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.013499999999999998,
+        -0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_C6",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0045,
+        -0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_C7",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0045,
+        -0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_C8",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.013499999999999998,
+        -0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_C9",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0225,
+        -0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_C10",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0315,
+        -0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_C11",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.040499999999999994,
+        -0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_C12",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.049499999999999995,
+        -0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_D1",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.049499999999999995,
+        -0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_D2",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.040499999999999994,
+        -0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_D3",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0315,
+        -0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_D4",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0225,
+        -0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_D5",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.013499999999999998,
+        -0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_D6",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0045,
+        -0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_D7",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0045,
+        -0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_D8",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.013499999999999998,
+        -0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_D9",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0225,
+        -0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_D10",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0315,
+        -0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_D11",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.040499999999999994,
+        -0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_D12",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.049499999999999995,
+        -0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_E1",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.049499999999999995,
+        0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_E2",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.040499999999999994,
+        0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_E3",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0315,
+        0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_E4",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0225,
+        0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_E5",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.013499999999999998,
+        0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_E6",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0045,
+        0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_E7",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0045,
+        0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_E8",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.013499999999999998,
+        0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_E9",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0225,
+        0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_E10",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0315,
+        0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_E11",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.040499999999999994,
+        0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_E12",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.049499999999999995,
+        0.0045,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_F1",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.049499999999999995,
+        0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_F2",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.040499999999999994,
+        0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_F3",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0315,
+        0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_F4",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0225,
+        0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_F5",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.013499999999999998,
+        0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_F6",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0045,
+        0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_F7",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0045,
+        0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_F8",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.013499999999999998,
+        0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_F9",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0225,
+        0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_F10",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0315,
+        0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_F11",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.040499999999999994,
+        0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_F12",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.049499999999999995,
+        0.013499999999999998,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_G1",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.049499999999999995,
+        0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_G2",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.040499999999999994,
+        0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_G3",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0315,
+        0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_G4",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0225,
+        0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_G5",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.013499999999999998,
+        0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_G6",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0045,
+        0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_G7",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0045,
+        0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_G8",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.013499999999999998,
+        0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_G9",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0225,
+        0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_G10",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0315,
+        0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_G11",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.040499999999999994,
+        0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_G12",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.049499999999999995,
+        0.0225,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_H1",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.049499999999999995,
+        0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_H2",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.040499999999999994,
+        0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_H3",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0315,
+        0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_H4",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0225,
+        0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_H5",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.013499999999999998,
+        0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_H6",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        -0.0045,
+        0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_H7",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0045,
+        0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_H8",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.013499999999999998,
+        0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_H9",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0225,
+        0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_H10",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.0315,
+        0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_H11",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.040499999999999994,
+        0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_block_H12",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0.049499999999999995,
+        0.0315,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_lid_handle",
+      "parent": "pcr_thermocycler_heated_lid",
+      "position": [
+        0,
+        -0.225,
+        0.023
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "handle"
+    },
+    {
+      "name": "pcr_thermocycler_lid_hinge",
+      "parent": "pcr_thermocycler_heated_lid",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "joint"
+    },
+    {
+      "name": "pcr_thermocycler_plate_seat",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0,
+        0,
+        0.01
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "pcr_thermocycler_load_approach",
+      "parent": "pcr_thermocycler_reaction_block",
+      "position": [
+        0,
+        0,
+        0.16
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "approach"
+    },
+    {
+      "name": "pcr_thermocycler_start_button",
+      "parent": "pcr_thermocycler_base",
+      "position": [
+        0.113,
+        -0.165,
+        0.118
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "control"
+    }
+  ],
+  "accessories": [
+    "microplate_96_well"
+  ],
+  "blender": "model.blend",
+  "previews": {
+    "closed": "preview.png",
+    "open": "preview_open.png"
+  },
+  "modelScope": "Original articulated concept model. Instrument controls and measurements require a separate controller.",
+  "inertialModel": "Nominal masses with compound-bounds box inertia; not calibrated hardware parameters.",
+  "assetRights": {
+    "principalAuthor": "Vanessa Hassouna",
+    "institution": "AICOR Institute",
+    "copyright": "Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.",
+    "license": "LicenseRef-AICOR-Laboratory-Assets",
+    "permissionNotice": "Reuse, modification and redistribution of the original laboratory assets require prior written permission from Vanessa Hassouna, except where an existing licence or applicable law permits them. Permission requests: hassouna@uni-bremen.de.",
+    "priorLicenseNotice": "Existing third-party rights and any permissions already validly granted remain unaffected. This notice does not create copyright in otherwise unprotected material.",
+    "licenseFile": "LICENSE.txt",
+    "noticeFile": "NOTICE.md"
+  }
+}

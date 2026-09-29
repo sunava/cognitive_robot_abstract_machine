@@ -1,0 +1,3850 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="tip_rack"><!-- CRAMERA laboratory asset rights:
+Principal author: Vanessa Hassouna
+Institution: AICOR Institute
+Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.
+License: LicenseRef-AICOR-Laboratory-Assets
+See LICENSE.txt and NOTICE.md.
+-->
+  <link name="tip_rack_body">
+    <visual>
+      <geometry>
+        <mesh filename="assets/body.glb" />
+      </geometry>
+    </visual>
+    <collision name="tip_rack_body_contact_0">
+      <origin xyz="0 0 0.003" rpy="0 0 0" />
+      <geometry>
+        <box size="0.13 0.092 0.006" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_body_contact_1">
+      <origin xyz="-0.063 0 0.028" rpy="0 0 0" />
+      <geometry>
+        <box size="0.004 0.09 0.051" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_body_contact_2">
+      <origin xyz="0.063 0 0.028" rpy="0 0 0" />
+      <geometry>
+        <box size="0.004 0.09 0.051" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_body_contact_3">
+      <origin xyz="0 -0.044 0.028" rpy="0 0 0" />
+      <geometry>
+        <box size="0.124 0.004 0.051" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_body_contact_4">
+      <origin xyz="0 0.044 0.028" rpy="0 0 0" />
+      <geometry>
+        <box size="0.124 0.004 0.051" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_body_contact_5">
+      <origin xyz="0 -0.047 0.048" rpy="0 0 0" />
+      <geometry>
+        <box size="0.022 0.005 0.011" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_body_contact_6">
+      <origin xyz="-0.045 0.045 0.057" rpy="0 1.57079633 0" />
+      <geometry>
+        <cylinder radius="0.004" length="0.018" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_body_contact_7">
+      <origin xyz="0.045 0.045 0.057" rpy="0 1.57079633 0" />
+      <geometry>
+        <cylinder radius="0.004" length="0.018" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 -0.00025 0.0305" />
+      <mass value="0.2" />
+      <inertia ixx="0.00022372083333333336" iyy="0.00034368333333333333" izz="0.00044337083333333333" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <link name="tip_rack_socket_insert">
+    <visual>
+      <geometry>
+        <mesh filename="assets/socket_insert.glb" />
+      </geometry>
+    </visual>
+    <collision name="tip_rack_socket_insert_contact_0">
+      <origin xyz="-0.048 0 0.0165" rpy="0 0 0" />
+      <geometry>
+        <box size="0.002 0.066 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_1">
+      <origin xyz="-0.032 0 0.0165" rpy="0 0 0" />
+      <geometry>
+        <box size="0.002 0.066 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_2">
+      <origin xyz="-0.016 0 0.0165" rpy="0 0 0" />
+      <geometry>
+        <box size="0.002 0.066 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_3">
+      <origin xyz="0 0 0.0165" rpy="0 0 0" />
+      <geometry>
+        <box size="0.002 0.066 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_4">
+      <origin xyz="0.016 0 0.0165" rpy="0 0 0" />
+      <geometry>
+        <box size="0.002 0.066 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_5">
+      <origin xyz="0.032 0 0.0165" rpy="0 0 0" />
+      <geometry>
+        <box size="0.002 0.066 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_6">
+      <origin xyz="0.048 0 0.0165" rpy="0 0 0" />
+      <geometry>
+        <box size="0.002 0.066 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_7">
+      <origin xyz="0 -0.032 0.0165" rpy="0 0 0" />
+      <geometry>
+        <box size="0.098 0.002 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_8">
+      <origin xyz="0 -0.016 0.0165" rpy="0 0 0" />
+      <geometry>
+        <box size="0.098 0.002 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_9">
+      <origin xyz="0 0 0.0165" rpy="0 0 0" />
+      <geometry>
+        <box size="0.098 0.002 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_10">
+      <origin xyz="0 0.016 0.0165" rpy="0 0 0" />
+      <geometry>
+        <box size="0.098 0.002 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_11">
+      <origin xyz="0 0.032 0.0165" rpy="0 0 0" />
+      <geometry>
+        <box size="0.098 0.002 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_12">
+      <origin xyz="-0.034 -0.024 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_13">
+      <origin xyz="-0.034204445 -0.0224470857 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_14">
+      <origin xyz="-0.0348038476 -0.021 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_15">
+      <origin xyz="-0.0357573593 -0.0197573593 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_16">
+      <origin xyz="-0.037 -0.0188038476 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_17">
+      <origin xyz="-0.0384470857 -0.018204445 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_18">
+      <origin xyz="-0.04 -0.018 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_19">
+      <origin xyz="-0.0415529143 -0.018204445 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_20">
+      <origin xyz="-0.043 -0.0188038476 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_21">
+      <origin xyz="-0.0442426407 -0.0197573593 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_22">
+      <origin xyz="-0.0451961524 -0.021 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_23">
+      <origin xyz="-0.045795555 -0.0224470857 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_24">
+      <origin xyz="-0.046 -0.024 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_25">
+      <origin xyz="-0.045795555 -0.0255529143 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_26">
+      <origin xyz="-0.0451961524 -0.027 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_27">
+      <origin xyz="-0.0442426407 -0.0282426407 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_28">
+      <origin xyz="-0.043 -0.0291961524 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_29">
+      <origin xyz="-0.0415529143 -0.029795555 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_30">
+      <origin xyz="-0.04 -0.03 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_31">
+      <origin xyz="-0.0384470857 -0.029795555 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_32">
+      <origin xyz="-0.037 -0.0291961524 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_33">
+      <origin xyz="-0.0357573593 -0.0282426407 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_34">
+      <origin xyz="-0.0348038476 -0.027 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_35">
+      <origin xyz="-0.034204445 -0.0255529143 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_36">
+      <origin xyz="-0.018 -0.024 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_37">
+      <origin xyz="-0.018204445 -0.0224470857 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_38">
+      <origin xyz="-0.0188038476 -0.021 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_39">
+      <origin xyz="-0.0197573593 -0.0197573593 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_40">
+      <origin xyz="-0.021 -0.0188038476 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_41">
+      <origin xyz="-0.0224470857 -0.018204445 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_42">
+      <origin xyz="-0.024 -0.018 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_43">
+      <origin xyz="-0.0255529143 -0.018204445 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_44">
+      <origin xyz="-0.027 -0.0188038476 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_45">
+      <origin xyz="-0.0282426407 -0.0197573593 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_46">
+      <origin xyz="-0.0291961524 -0.021 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_47">
+      <origin xyz="-0.029795555 -0.0224470857 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_48">
+      <origin xyz="-0.03 -0.024 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_49">
+      <origin xyz="-0.029795555 -0.0255529143 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_50">
+      <origin xyz="-0.0291961524 -0.027 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_51">
+      <origin xyz="-0.0282426407 -0.0282426407 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_52">
+      <origin xyz="-0.027 -0.0291961524 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_53">
+      <origin xyz="-0.0255529143 -0.029795555 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_54">
+      <origin xyz="-0.024 -0.03 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_55">
+      <origin xyz="-0.0224470857 -0.029795555 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_56">
+      <origin xyz="-0.021 -0.0291961524 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_57">
+      <origin xyz="-0.0197573593 -0.0282426407 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_58">
+      <origin xyz="-0.0188038476 -0.027 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_59">
+      <origin xyz="-0.018204445 -0.0255529143 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_60">
+      <origin xyz="-0.002 -0.024 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_61">
+      <origin xyz="-0.00220444504 -0.0224470857 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_62">
+      <origin xyz="-0.00280384758 -0.021 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_63">
+      <origin xyz="-0.00375735931 -0.0197573593 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_64">
+      <origin xyz="-0.005 -0.0188038476 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_65">
+      <origin xyz="-0.00644708573 -0.018204445 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_66">
+      <origin xyz="-0.008 -0.018 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_67">
+      <origin xyz="-0.00955291427 -0.018204445 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_68">
+      <origin xyz="-0.011 -0.0188038476 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_69">
+      <origin xyz="-0.0122426407 -0.0197573593 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_70">
+      <origin xyz="-0.0131961524 -0.021 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_71">
+      <origin xyz="-0.013795555 -0.0224470857 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_72">
+      <origin xyz="-0.014 -0.024 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_73">
+      <origin xyz="-0.013795555 -0.0255529143 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_74">
+      <origin xyz="-0.0131961524 -0.027 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_75">
+      <origin xyz="-0.0122426407 -0.0282426407 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_76">
+      <origin xyz="-0.011 -0.0291961524 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_77">
+      <origin xyz="-0.00955291427 -0.029795555 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_78">
+      <origin xyz="-0.008 -0.03 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_79">
+      <origin xyz="-0.00644708573 -0.029795555 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_80">
+      <origin xyz="-0.005 -0.0291961524 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_81">
+      <origin xyz="-0.00375735931 -0.0282426407 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_82">
+      <origin xyz="-0.00280384758 -0.027 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_83">
+      <origin xyz="-0.00220444504 -0.0255529143 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_84">
+      <origin xyz="0.014 -0.024 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_85">
+      <origin xyz="0.013795555 -0.0224470857 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_86">
+      <origin xyz="0.0131961524 -0.021 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_87">
+      <origin xyz="0.0122426407 -0.0197573593 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_88">
+      <origin xyz="0.011 -0.0188038476 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_89">
+      <origin xyz="0.00955291427 -0.018204445 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_90">
+      <origin xyz="0.008 -0.018 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_91">
+      <origin xyz="0.00644708573 -0.018204445 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_92">
+      <origin xyz="0.005 -0.0188038476 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_93">
+      <origin xyz="0.00375735931 -0.0197573593 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_94">
+      <origin xyz="0.00280384758 -0.021 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_95">
+      <origin xyz="0.00220444504 -0.0224470857 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_96">
+      <origin xyz="0.002 -0.024 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_97">
+      <origin xyz="0.00220444504 -0.0255529143 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_98">
+      <origin xyz="0.00280384758 -0.027 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_99">
+      <origin xyz="0.00375735931 -0.0282426407 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_100">
+      <origin xyz="0.005 -0.0291961524 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_101">
+      <origin xyz="0.00644708573 -0.029795555 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_102">
+      <origin xyz="0.008 -0.03 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_103">
+      <origin xyz="0.00955291427 -0.029795555 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_104">
+      <origin xyz="0.011 -0.0291961524 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_105">
+      <origin xyz="0.0122426407 -0.0282426407 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_106">
+      <origin xyz="0.0131961524 -0.027 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_107">
+      <origin xyz="0.013795555 -0.0255529143 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_108">
+      <origin xyz="0.03 -0.024 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_109">
+      <origin xyz="0.029795555 -0.0224470857 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_110">
+      <origin xyz="0.0291961524 -0.021 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_111">
+      <origin xyz="0.0282426407 -0.0197573593 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_112">
+      <origin xyz="0.027 -0.0188038476 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_113">
+      <origin xyz="0.0255529143 -0.018204445 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_114">
+      <origin xyz="0.024 -0.018 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_115">
+      <origin xyz="0.0224470857 -0.018204445 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_116">
+      <origin xyz="0.021 -0.0188038476 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_117">
+      <origin xyz="0.0197573593 -0.0197573593 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_118">
+      <origin xyz="0.0188038476 -0.021 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_119">
+      <origin xyz="0.018204445 -0.0224470857 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_120">
+      <origin xyz="0.018 -0.024 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_121">
+      <origin xyz="0.018204445 -0.0255529143 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_122">
+      <origin xyz="0.0188038476 -0.027 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_123">
+      <origin xyz="0.0197573593 -0.0282426407 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_124">
+      <origin xyz="0.021 -0.0291961524 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_125">
+      <origin xyz="0.0224470857 -0.029795555 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_126">
+      <origin xyz="0.024 -0.03 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_127">
+      <origin xyz="0.0255529143 -0.029795555 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_128">
+      <origin xyz="0.027 -0.0291961524 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_129">
+      <origin xyz="0.0282426407 -0.0282426407 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_130">
+      <origin xyz="0.0291961524 -0.027 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_131">
+      <origin xyz="0.029795555 -0.0255529143 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_132">
+      <origin xyz="0.046 -0.024 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_133">
+      <origin xyz="0.045795555 -0.0224470857 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_134">
+      <origin xyz="0.0451961524 -0.021 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_135">
+      <origin xyz="0.0442426407 -0.0197573593 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_136">
+      <origin xyz="0.043 -0.0188038476 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_137">
+      <origin xyz="0.0415529143 -0.018204445 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_138">
+      <origin xyz="0.04 -0.018 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_139">
+      <origin xyz="0.0384470857 -0.018204445 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_140">
+      <origin xyz="0.037 -0.0188038476 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_141">
+      <origin xyz="0.0357573593 -0.0197573593 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_142">
+      <origin xyz="0.0348038476 -0.021 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_143">
+      <origin xyz="0.034204445 -0.0224470857 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_144">
+      <origin xyz="0.034 -0.024 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_145">
+      <origin xyz="0.034204445 -0.0255529143 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_146">
+      <origin xyz="0.0348038476 -0.027 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_147">
+      <origin xyz="0.0357573593 -0.0282426407 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_148">
+      <origin xyz="0.037 -0.0291961524 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_149">
+      <origin xyz="0.0384470857 -0.029795555 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_150">
+      <origin xyz="0.04 -0.03 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_151">
+      <origin xyz="0.0415529143 -0.029795555 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_152">
+      <origin xyz="0.043 -0.0291961524 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_153">
+      <origin xyz="0.0442426407 -0.0282426407 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_154">
+      <origin xyz="0.0451961524 -0.027 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_155">
+      <origin xyz="0.045795555 -0.0255529143 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_156">
+      <origin xyz="-0.034 -0.008 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_157">
+      <origin xyz="-0.034204445 -0.00644708573 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_158">
+      <origin xyz="-0.0348038476 -0.005 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_159">
+      <origin xyz="-0.0357573593 -0.00375735931 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_160">
+      <origin xyz="-0.037 -0.00280384758 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_161">
+      <origin xyz="-0.0384470857 -0.00220444504 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_162">
+      <origin xyz="-0.04 -0.002 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_163">
+      <origin xyz="-0.0415529143 -0.00220444504 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_164">
+      <origin xyz="-0.043 -0.00280384758 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_165">
+      <origin xyz="-0.0442426407 -0.00375735931 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_166">
+      <origin xyz="-0.0451961524 -0.005 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_167">
+      <origin xyz="-0.045795555 -0.00644708573 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_168">
+      <origin xyz="-0.046 -0.008 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_169">
+      <origin xyz="-0.045795555 -0.00955291427 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_170">
+      <origin xyz="-0.0451961524 -0.011 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_171">
+      <origin xyz="-0.0442426407 -0.0122426407 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_172">
+      <origin xyz="-0.043 -0.0131961524 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_173">
+      <origin xyz="-0.0415529143 -0.013795555 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_174">
+      <origin xyz="-0.04 -0.014 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_175">
+      <origin xyz="-0.0384470857 -0.013795555 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_176">
+      <origin xyz="-0.037 -0.0131961524 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_177">
+      <origin xyz="-0.0357573593 -0.0122426407 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_178">
+      <origin xyz="-0.0348038476 -0.011 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_179">
+      <origin xyz="-0.034204445 -0.00955291427 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_180">
+      <origin xyz="-0.018 -0.008 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_181">
+      <origin xyz="-0.018204445 -0.00644708573 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_182">
+      <origin xyz="-0.0188038476 -0.005 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_183">
+      <origin xyz="-0.0197573593 -0.00375735931 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_184">
+      <origin xyz="-0.021 -0.00280384758 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_185">
+      <origin xyz="-0.0224470857 -0.00220444504 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_186">
+      <origin xyz="-0.024 -0.002 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_187">
+      <origin xyz="-0.0255529143 -0.00220444504 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_188">
+      <origin xyz="-0.027 -0.00280384758 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_189">
+      <origin xyz="-0.0282426407 -0.00375735931 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_190">
+      <origin xyz="-0.0291961524 -0.005 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_191">
+      <origin xyz="-0.029795555 -0.00644708573 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_192">
+      <origin xyz="-0.03 -0.008 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_193">
+      <origin xyz="-0.029795555 -0.00955291427 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_194">
+      <origin xyz="-0.0291961524 -0.011 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_195">
+      <origin xyz="-0.0282426407 -0.0122426407 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_196">
+      <origin xyz="-0.027 -0.0131961524 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_197">
+      <origin xyz="-0.0255529143 -0.013795555 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_198">
+      <origin xyz="-0.024 -0.014 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_199">
+      <origin xyz="-0.0224470857 -0.013795555 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_200">
+      <origin xyz="-0.021 -0.0131961524 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_201">
+      <origin xyz="-0.0197573593 -0.0122426407 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_202">
+      <origin xyz="-0.0188038476 -0.011 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_203">
+      <origin xyz="-0.018204445 -0.00955291427 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_204">
+      <origin xyz="-0.002 -0.008 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_205">
+      <origin xyz="-0.00220444504 -0.00644708573 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_206">
+      <origin xyz="-0.00280384758 -0.005 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_207">
+      <origin xyz="-0.00375735931 -0.00375735931 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_208">
+      <origin xyz="-0.005 -0.00280384758 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_209">
+      <origin xyz="-0.00644708573 -0.00220444504 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_210">
+      <origin xyz="-0.008 -0.002 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_211">
+      <origin xyz="-0.00955291427 -0.00220444504 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_212">
+      <origin xyz="-0.011 -0.00280384758 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_213">
+      <origin xyz="-0.0122426407 -0.00375735931 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_214">
+      <origin xyz="-0.0131961524 -0.005 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_215">
+      <origin xyz="-0.013795555 -0.00644708573 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_216">
+      <origin xyz="-0.014 -0.008 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_217">
+      <origin xyz="-0.013795555 -0.00955291427 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_218">
+      <origin xyz="-0.0131961524 -0.011 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_219">
+      <origin xyz="-0.0122426407 -0.0122426407 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_220">
+      <origin xyz="-0.011 -0.0131961524 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_221">
+      <origin xyz="-0.00955291427 -0.013795555 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_222">
+      <origin xyz="-0.008 -0.014 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_223">
+      <origin xyz="-0.00644708573 -0.013795555 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_224">
+      <origin xyz="-0.005 -0.0131961524 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_225">
+      <origin xyz="-0.00375735931 -0.0122426407 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_226">
+      <origin xyz="-0.00280384758 -0.011 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_227">
+      <origin xyz="-0.00220444504 -0.00955291427 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_228">
+      <origin xyz="0.014 -0.008 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_229">
+      <origin xyz="0.013795555 -0.00644708573 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_230">
+      <origin xyz="0.0131961524 -0.005 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_231">
+      <origin xyz="0.0122426407 -0.00375735931 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_232">
+      <origin xyz="0.011 -0.00280384758 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_233">
+      <origin xyz="0.00955291427 -0.00220444504 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_234">
+      <origin xyz="0.008 -0.002 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_235">
+      <origin xyz="0.00644708573 -0.00220444504 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_236">
+      <origin xyz="0.005 -0.00280384758 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_237">
+      <origin xyz="0.00375735931 -0.00375735931 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_238">
+      <origin xyz="0.00280384758 -0.005 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_239">
+      <origin xyz="0.00220444504 -0.00644708573 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_240">
+      <origin xyz="0.002 -0.008 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_241">
+      <origin xyz="0.00220444504 -0.00955291427 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_242">
+      <origin xyz="0.00280384758 -0.011 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_243">
+      <origin xyz="0.00375735931 -0.0122426407 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_244">
+      <origin xyz="0.005 -0.0131961524 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_245">
+      <origin xyz="0.00644708573 -0.013795555 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_246">
+      <origin xyz="0.008 -0.014 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_247">
+      <origin xyz="0.00955291427 -0.013795555 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_248">
+      <origin xyz="0.011 -0.0131961524 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_249">
+      <origin xyz="0.0122426407 -0.0122426407 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_250">
+      <origin xyz="0.0131961524 -0.011 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_251">
+      <origin xyz="0.013795555 -0.00955291427 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_252">
+      <origin xyz="0.03 -0.008 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_253">
+      <origin xyz="0.029795555 -0.00644708573 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_254">
+      <origin xyz="0.0291961524 -0.005 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_255">
+      <origin xyz="0.0282426407 -0.00375735931 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_256">
+      <origin xyz="0.027 -0.00280384758 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_257">
+      <origin xyz="0.0255529143 -0.00220444504 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_258">
+      <origin xyz="0.024 -0.002 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_259">
+      <origin xyz="0.0224470857 -0.00220444504 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_260">
+      <origin xyz="0.021 -0.00280384758 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_261">
+      <origin xyz="0.0197573593 -0.00375735931 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_262">
+      <origin xyz="0.0188038476 -0.005 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_263">
+      <origin xyz="0.018204445 -0.00644708573 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_264">
+      <origin xyz="0.018 -0.008 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_265">
+      <origin xyz="0.018204445 -0.00955291427 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_266">
+      <origin xyz="0.0188038476 -0.011 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_267">
+      <origin xyz="0.0197573593 -0.0122426407 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_268">
+      <origin xyz="0.021 -0.0131961524 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_269">
+      <origin xyz="0.0224470857 -0.013795555 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_270">
+      <origin xyz="0.024 -0.014 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_271">
+      <origin xyz="0.0255529143 -0.013795555 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_272">
+      <origin xyz="0.027 -0.0131961524 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_273">
+      <origin xyz="0.0282426407 -0.0122426407 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_274">
+      <origin xyz="0.0291961524 -0.011 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_275">
+      <origin xyz="0.029795555 -0.00955291427 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_276">
+      <origin xyz="0.046 -0.008 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_277">
+      <origin xyz="0.045795555 -0.00644708573 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_278">
+      <origin xyz="0.0451961524 -0.005 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_279">
+      <origin xyz="0.0442426407 -0.00375735931 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_280">
+      <origin xyz="0.043 -0.00280384758 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_281">
+      <origin xyz="0.0415529143 -0.00220444504 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_282">
+      <origin xyz="0.04 -0.002 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_283">
+      <origin xyz="0.0384470857 -0.00220444504 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_284">
+      <origin xyz="0.037 -0.00280384758 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_285">
+      <origin xyz="0.0357573593 -0.00375735931 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_286">
+      <origin xyz="0.0348038476 -0.005 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_287">
+      <origin xyz="0.034204445 -0.00644708573 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_288">
+      <origin xyz="0.034 -0.008 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_289">
+      <origin xyz="0.034204445 -0.00955291427 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_290">
+      <origin xyz="0.0348038476 -0.011 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_291">
+      <origin xyz="0.0357573593 -0.0122426407 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_292">
+      <origin xyz="0.037 -0.0131961524 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_293">
+      <origin xyz="0.0384470857 -0.013795555 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_294">
+      <origin xyz="0.04 -0.014 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_295">
+      <origin xyz="0.0415529143 -0.013795555 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_296">
+      <origin xyz="0.043 -0.0131961524 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_297">
+      <origin xyz="0.0442426407 -0.0122426407 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_298">
+      <origin xyz="0.0451961524 -0.011 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_299">
+      <origin xyz="0.045795555 -0.00955291427 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_300">
+      <origin xyz="-0.034 0.008 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_301">
+      <origin xyz="-0.034204445 0.00955291427 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_302">
+      <origin xyz="-0.0348038476 0.011 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_303">
+      <origin xyz="-0.0357573593 0.0122426407 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_304">
+      <origin xyz="-0.037 0.0131961524 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_305">
+      <origin xyz="-0.0384470857 0.013795555 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_306">
+      <origin xyz="-0.04 0.014 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_307">
+      <origin xyz="-0.0415529143 0.013795555 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_308">
+      <origin xyz="-0.043 0.0131961524 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_309">
+      <origin xyz="-0.0442426407 0.0122426407 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_310">
+      <origin xyz="-0.0451961524 0.011 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_311">
+      <origin xyz="-0.045795555 0.00955291427 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_312">
+      <origin xyz="-0.046 0.008 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_313">
+      <origin xyz="-0.045795555 0.00644708573 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_314">
+      <origin xyz="-0.0451961524 0.005 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_315">
+      <origin xyz="-0.0442426407 0.00375735931 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_316">
+      <origin xyz="-0.043 0.00280384758 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_317">
+      <origin xyz="-0.0415529143 0.00220444504 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_318">
+      <origin xyz="-0.04 0.002 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_319">
+      <origin xyz="-0.0384470857 0.00220444504 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_320">
+      <origin xyz="-0.037 0.00280384758 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_321">
+      <origin xyz="-0.0357573593 0.00375735931 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_322">
+      <origin xyz="-0.0348038476 0.005 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_323">
+      <origin xyz="-0.034204445 0.00644708573 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_324">
+      <origin xyz="-0.018 0.008 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_325">
+      <origin xyz="-0.018204445 0.00955291427 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_326">
+      <origin xyz="-0.0188038476 0.011 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_327">
+      <origin xyz="-0.0197573593 0.0122426407 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_328">
+      <origin xyz="-0.021 0.0131961524 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_329">
+      <origin xyz="-0.0224470857 0.013795555 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_330">
+      <origin xyz="-0.024 0.014 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_331">
+      <origin xyz="-0.0255529143 0.013795555 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_332">
+      <origin xyz="-0.027 0.0131961524 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_333">
+      <origin xyz="-0.0282426407 0.0122426407 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_334">
+      <origin xyz="-0.0291961524 0.011 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_335">
+      <origin xyz="-0.029795555 0.00955291427 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_336">
+      <origin xyz="-0.03 0.008 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_337">
+      <origin xyz="-0.029795555 0.00644708573 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_338">
+      <origin xyz="-0.0291961524 0.005 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_339">
+      <origin xyz="-0.0282426407 0.00375735931 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_340">
+      <origin xyz="-0.027 0.00280384758 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_341">
+      <origin xyz="-0.0255529143 0.00220444504 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_342">
+      <origin xyz="-0.024 0.002 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_343">
+      <origin xyz="-0.0224470857 0.00220444504 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_344">
+      <origin xyz="-0.021 0.00280384758 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_345">
+      <origin xyz="-0.0197573593 0.00375735931 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_346">
+      <origin xyz="-0.0188038476 0.005 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_347">
+      <origin xyz="-0.018204445 0.00644708573 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_348">
+      <origin xyz="-0.002 0.008 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_349">
+      <origin xyz="-0.00220444504 0.00955291427 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_350">
+      <origin xyz="-0.00280384758 0.011 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_351">
+      <origin xyz="-0.00375735931 0.0122426407 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_352">
+      <origin xyz="-0.005 0.0131961524 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_353">
+      <origin xyz="-0.00644708573 0.013795555 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_354">
+      <origin xyz="-0.008 0.014 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_355">
+      <origin xyz="-0.00955291427 0.013795555 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_356">
+      <origin xyz="-0.011 0.0131961524 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_357">
+      <origin xyz="-0.0122426407 0.0122426407 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_358">
+      <origin xyz="-0.0131961524 0.011 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_359">
+      <origin xyz="-0.013795555 0.00955291427 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_360">
+      <origin xyz="-0.014 0.008 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_361">
+      <origin xyz="-0.013795555 0.00644708573 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_362">
+      <origin xyz="-0.0131961524 0.005 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_363">
+      <origin xyz="-0.0122426407 0.00375735931 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_364">
+      <origin xyz="-0.011 0.00280384758 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_365">
+      <origin xyz="-0.00955291427 0.00220444504 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_366">
+      <origin xyz="-0.008 0.002 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_367">
+      <origin xyz="-0.00644708573 0.00220444504 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_368">
+      <origin xyz="-0.005 0.00280384758 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_369">
+      <origin xyz="-0.00375735931 0.00375735931 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_370">
+      <origin xyz="-0.00280384758 0.005 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_371">
+      <origin xyz="-0.00220444504 0.00644708573 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_372">
+      <origin xyz="0.014 0.008 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_373">
+      <origin xyz="0.013795555 0.00955291427 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_374">
+      <origin xyz="0.0131961524 0.011 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_375">
+      <origin xyz="0.0122426407 0.0122426407 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_376">
+      <origin xyz="0.011 0.0131961524 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_377">
+      <origin xyz="0.00955291427 0.013795555 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_378">
+      <origin xyz="0.008 0.014 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_379">
+      <origin xyz="0.00644708573 0.013795555 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_380">
+      <origin xyz="0.005 0.0131961524 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_381">
+      <origin xyz="0.00375735931 0.0122426407 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_382">
+      <origin xyz="0.00280384758 0.011 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_383">
+      <origin xyz="0.00220444504 0.00955291427 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_384">
+      <origin xyz="0.002 0.008 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_385">
+      <origin xyz="0.00220444504 0.00644708573 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_386">
+      <origin xyz="0.00280384758 0.005 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_387">
+      <origin xyz="0.00375735931 0.00375735931 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_388">
+      <origin xyz="0.005 0.00280384758 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_389">
+      <origin xyz="0.00644708573 0.00220444504 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_390">
+      <origin xyz="0.008 0.002 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_391">
+      <origin xyz="0.00955291427 0.00220444504 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_392">
+      <origin xyz="0.011 0.00280384758 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_393">
+      <origin xyz="0.0122426407 0.00375735931 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_394">
+      <origin xyz="0.0131961524 0.005 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_395">
+      <origin xyz="0.013795555 0.00644708573 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_396">
+      <origin xyz="0.03 0.008 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_397">
+      <origin xyz="0.029795555 0.00955291427 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_398">
+      <origin xyz="0.0291961524 0.011 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_399">
+      <origin xyz="0.0282426407 0.0122426407 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_400">
+      <origin xyz="0.027 0.0131961524 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_401">
+      <origin xyz="0.0255529143 0.013795555 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_402">
+      <origin xyz="0.024 0.014 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_403">
+      <origin xyz="0.0224470857 0.013795555 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_404">
+      <origin xyz="0.021 0.0131961524 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_405">
+      <origin xyz="0.0197573593 0.0122426407 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_406">
+      <origin xyz="0.0188038476 0.011 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_407">
+      <origin xyz="0.018204445 0.00955291427 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_408">
+      <origin xyz="0.018 0.008 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_409">
+      <origin xyz="0.018204445 0.00644708573 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_410">
+      <origin xyz="0.0188038476 0.005 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_411">
+      <origin xyz="0.0197573593 0.00375735931 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_412">
+      <origin xyz="0.021 0.00280384758 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_413">
+      <origin xyz="0.0224470857 0.00220444504 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_414">
+      <origin xyz="0.024 0.002 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_415">
+      <origin xyz="0.0255529143 0.00220444504 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_416">
+      <origin xyz="0.027 0.00280384758 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_417">
+      <origin xyz="0.0282426407 0.00375735931 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_418">
+      <origin xyz="0.0291961524 0.005 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_419">
+      <origin xyz="0.029795555 0.00644708573 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_420">
+      <origin xyz="0.046 0.008 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_421">
+      <origin xyz="0.045795555 0.00955291427 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_422">
+      <origin xyz="0.0451961524 0.011 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_423">
+      <origin xyz="0.0442426407 0.0122426407 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_424">
+      <origin xyz="0.043 0.0131961524 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_425">
+      <origin xyz="0.0415529143 0.013795555 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_426">
+      <origin xyz="0.04 0.014 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_427">
+      <origin xyz="0.0384470857 0.013795555 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_428">
+      <origin xyz="0.037 0.0131961524 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_429">
+      <origin xyz="0.0357573593 0.0122426407 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_430">
+      <origin xyz="0.0348038476 0.011 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_431">
+      <origin xyz="0.034204445 0.00955291427 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_432">
+      <origin xyz="0.034 0.008 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_433">
+      <origin xyz="0.034204445 0.00644708573 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_434">
+      <origin xyz="0.0348038476 0.005 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_435">
+      <origin xyz="0.0357573593 0.00375735931 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_436">
+      <origin xyz="0.037 0.00280384758 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_437">
+      <origin xyz="0.0384470857 0.00220444504 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_438">
+      <origin xyz="0.04 0.002 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_439">
+      <origin xyz="0.0415529143 0.00220444504 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_440">
+      <origin xyz="0.043 0.00280384758 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_441">
+      <origin xyz="0.0442426407 0.00375735931 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_442">
+      <origin xyz="0.0451961524 0.005 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_443">
+      <origin xyz="0.045795555 0.00644708573 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_444">
+      <origin xyz="-0.034 0.024 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_445">
+      <origin xyz="-0.034204445 0.0255529143 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_446">
+      <origin xyz="-0.0348038476 0.027 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_447">
+      <origin xyz="-0.0357573593 0.0282426407 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_448">
+      <origin xyz="-0.037 0.0291961524 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_449">
+      <origin xyz="-0.0384470857 0.029795555 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_450">
+      <origin xyz="-0.04 0.03 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_451">
+      <origin xyz="-0.0415529143 0.029795555 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_452">
+      <origin xyz="-0.043 0.0291961524 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_453">
+      <origin xyz="-0.0442426407 0.0282426407 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_454">
+      <origin xyz="-0.0451961524 0.027 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_455">
+      <origin xyz="-0.045795555 0.0255529143 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_456">
+      <origin xyz="-0.046 0.024 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_457">
+      <origin xyz="-0.045795555 0.0224470857 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_458">
+      <origin xyz="-0.0451961524 0.021 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_459">
+      <origin xyz="-0.0442426407 0.0197573593 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_460">
+      <origin xyz="-0.043 0.0188038476 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_461">
+      <origin xyz="-0.0415529143 0.018204445 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_462">
+      <origin xyz="-0.04 0.018 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_463">
+      <origin xyz="-0.0384470857 0.018204445 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_464">
+      <origin xyz="-0.037 0.0188038476 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_465">
+      <origin xyz="-0.0357573593 0.0197573593 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_466">
+      <origin xyz="-0.0348038476 0.021 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_467">
+      <origin xyz="-0.034204445 0.0224470857 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_468">
+      <origin xyz="-0.018 0.024 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_469">
+      <origin xyz="-0.018204445 0.0255529143 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_470">
+      <origin xyz="-0.0188038476 0.027 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_471">
+      <origin xyz="-0.0197573593 0.0282426407 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_472">
+      <origin xyz="-0.021 0.0291961524 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_473">
+      <origin xyz="-0.0224470857 0.029795555 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_474">
+      <origin xyz="-0.024 0.03 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_475">
+      <origin xyz="-0.0255529143 0.029795555 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_476">
+      <origin xyz="-0.027 0.0291961524 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_477">
+      <origin xyz="-0.0282426407 0.0282426407 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_478">
+      <origin xyz="-0.0291961524 0.027 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_479">
+      <origin xyz="-0.029795555 0.0255529143 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_480">
+      <origin xyz="-0.03 0.024 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_481">
+      <origin xyz="-0.029795555 0.0224470857 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_482">
+      <origin xyz="-0.0291961524 0.021 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_483">
+      <origin xyz="-0.0282426407 0.0197573593 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_484">
+      <origin xyz="-0.027 0.0188038476 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_485">
+      <origin xyz="-0.0255529143 0.018204445 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_486">
+      <origin xyz="-0.024 0.018 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_487">
+      <origin xyz="-0.0224470857 0.018204445 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_488">
+      <origin xyz="-0.021 0.0188038476 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_489">
+      <origin xyz="-0.0197573593 0.0197573593 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_490">
+      <origin xyz="-0.0188038476 0.021 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_491">
+      <origin xyz="-0.018204445 0.0224470857 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_492">
+      <origin xyz="-0.002 0.024 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_493">
+      <origin xyz="-0.00220444504 0.0255529143 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_494">
+      <origin xyz="-0.00280384758 0.027 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_495">
+      <origin xyz="-0.00375735931 0.0282426407 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_496">
+      <origin xyz="-0.005 0.0291961524 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_497">
+      <origin xyz="-0.00644708573 0.029795555 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_498">
+      <origin xyz="-0.008 0.03 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_499">
+      <origin xyz="-0.00955291427 0.029795555 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_500">
+      <origin xyz="-0.011 0.0291961524 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_501">
+      <origin xyz="-0.0122426407 0.0282426407 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_502">
+      <origin xyz="-0.0131961524 0.027 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_503">
+      <origin xyz="-0.013795555 0.0255529143 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_504">
+      <origin xyz="-0.014 0.024 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_505">
+      <origin xyz="-0.013795555 0.0224470857 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_506">
+      <origin xyz="-0.0131961524 0.021 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_507">
+      <origin xyz="-0.0122426407 0.0197573593 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_508">
+      <origin xyz="-0.011 0.0188038476 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_509">
+      <origin xyz="-0.00955291427 0.018204445 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_510">
+      <origin xyz="-0.008 0.018 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_511">
+      <origin xyz="-0.00644708573 0.018204445 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_512">
+      <origin xyz="-0.005 0.0188038476 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_513">
+      <origin xyz="-0.00375735931 0.0197573593 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_514">
+      <origin xyz="-0.00280384758 0.021 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_515">
+      <origin xyz="-0.00220444504 0.0224470857 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_516">
+      <origin xyz="0.014 0.024 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_517">
+      <origin xyz="0.013795555 0.0255529143 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_518">
+      <origin xyz="0.0131961524 0.027 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_519">
+      <origin xyz="0.0122426407 0.0282426407 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_520">
+      <origin xyz="0.011 0.0291961524 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_521">
+      <origin xyz="0.00955291427 0.029795555 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_522">
+      <origin xyz="0.008 0.03 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_523">
+      <origin xyz="0.00644708573 0.029795555 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_524">
+      <origin xyz="0.005 0.0291961524 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_525">
+      <origin xyz="0.00375735931 0.0282426407 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_526">
+      <origin xyz="0.00280384758 0.027 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_527">
+      <origin xyz="0.00220444504 0.0255529143 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_528">
+      <origin xyz="0.002 0.024 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_529">
+      <origin xyz="0.00220444504 0.0224470857 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_530">
+      <origin xyz="0.00280384758 0.021 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_531">
+      <origin xyz="0.00375735931 0.0197573593 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_532">
+      <origin xyz="0.005 0.0188038476 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_533">
+      <origin xyz="0.00644708573 0.018204445 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_534">
+      <origin xyz="0.008 0.018 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_535">
+      <origin xyz="0.00955291427 0.018204445 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_536">
+      <origin xyz="0.011 0.0188038476 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_537">
+      <origin xyz="0.0122426407 0.0197573593 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_538">
+      <origin xyz="0.0131961524 0.021 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_539">
+      <origin xyz="0.013795555 0.0224470857 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_540">
+      <origin xyz="0.03 0.024 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_541">
+      <origin xyz="0.029795555 0.0255529143 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_542">
+      <origin xyz="0.0291961524 0.027 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_543">
+      <origin xyz="0.0282426407 0.0282426407 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_544">
+      <origin xyz="0.027 0.0291961524 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_545">
+      <origin xyz="0.0255529143 0.029795555 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_546">
+      <origin xyz="0.024 0.03 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_547">
+      <origin xyz="0.0224470857 0.029795555 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_548">
+      <origin xyz="0.021 0.0291961524 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_549">
+      <origin xyz="0.0197573593 0.0282426407 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_550">
+      <origin xyz="0.0188038476 0.027 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_551">
+      <origin xyz="0.018204445 0.0255529143 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_552">
+      <origin xyz="0.018 0.024 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_553">
+      <origin xyz="0.018204445 0.0224470857 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_554">
+      <origin xyz="0.0188038476 0.021 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_555">
+      <origin xyz="0.0197573593 0.0197573593 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_556">
+      <origin xyz="0.021 0.0188038476 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_557">
+      <origin xyz="0.0224470857 0.018204445 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_558">
+      <origin xyz="0.024 0.018 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_559">
+      <origin xyz="0.0255529143 0.018204445 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_560">
+      <origin xyz="0.027 0.0188038476 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_561">
+      <origin xyz="0.0282426407 0.0197573593 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_562">
+      <origin xyz="0.0291961524 0.021 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_563">
+      <origin xyz="0.029795555 0.0224470857 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_564">
+      <origin xyz="0.046 0.024 0.0165" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_565">
+      <origin xyz="0.045795555 0.0255529143 0.0165" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_566">
+      <origin xyz="0.0451961524 0.027 0.0165" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_567">
+      <origin xyz="0.0442426407 0.0282426407 0.0165" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_568">
+      <origin xyz="0.043 0.0291961524 0.0165" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_569">
+      <origin xyz="0.0415529143 0.029795555 0.0165" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_570">
+      <origin xyz="0.04 0.03 0.0165" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_571">
+      <origin xyz="0.0384470857 0.029795555 0.0165" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_572">
+      <origin xyz="0.037 0.0291961524 0.0165" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_573">
+      <origin xyz="0.0357573593 0.0282426407 0.0165" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_574">
+      <origin xyz="0.0348038476 0.027 0.0165" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_575">
+      <origin xyz="0.034204445 0.0255529143 0.0165" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_576">
+      <origin xyz="0.034 0.024 0.0165" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_577">
+      <origin xyz="0.034204445 0.0224470857 0.0165" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_578">
+      <origin xyz="0.0348038476 0.021 0.0165" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_579">
+      <origin xyz="0.0357573593 0.0197573593 0.0165" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_580">
+      <origin xyz="0.037 0.0188038476 0.0165" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_581">
+      <origin xyz="0.0384470857 0.018204445 0.0165" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_582">
+      <origin xyz="0.04 0.018 0.0165" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_583">
+      <origin xyz="0.0415529143 0.018204445 0.0165" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_584">
+      <origin xyz="0.043 0.0188038476 0.0165" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_585">
+      <origin xyz="0.0442426407 0.0197573593 0.0165" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_586">
+      <origin xyz="0.0451961524 0.021 0.0165" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_587">
+      <origin xyz="0.045795555 0.0224470857 0.0165" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.003 0.00157982997 0.033" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_588">
+      <origin xyz="-0.055 0 0.03" rpy="0 0 0" />
+      <geometry>
+        <box size="0.012 0.08 0.006" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_589">
+      <origin xyz="0.055 0 0.03" rpy="0 0 0" />
+      <geometry>
+        <box size="0.012 0.08 0.006" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_590">
+      <origin xyz="0 -0.039 0.03" rpy="0 0 0" />
+      <geometry>
+        <box size="0.104 0.012 0.006" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_socket_insert_contact_591">
+      <origin xyz="0 0.039 0.03" rpy="0 0 0" />
+      <geometry>
+        <box size="0.104 0.012 0.006" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0.0165" />
+      <mass value="0.065" />
+      <inertia ixx="4.977374999999999e-05" iyy="8.652041666666666e-05" izz="0.00012449666666666665" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <joint name="tip_rack_socket_insert_joint" type="fixed">
+    <parent link="tip_rack_body" />
+    <child link="tip_rack_socket_insert" />
+    <origin xyz="0 0 0.019" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_lid">
+    <visual>
+      <geometry>
+        <mesh filename="assets/lid.glb" />
+      </geometry>
+    </visual>
+    <collision name="tip_rack_lid_contact_0">
+      <origin xyz="0 -0.045 0.005" rpy="0 0 0" />
+      <geometry>
+        <box size="0.13 0.092 0.006" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_lid_contact_1">
+      <origin xyz="-0.064 -0.045 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.003 0.09 0.012" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_lid_contact_2">
+      <origin xyz="0.064 -0.045 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.003 0.09 0.012" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_lid_contact_3">
+      <origin xyz="0 -0.09 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.126 0.003 0.012" />
+      </geometry>
+    </collision>
+    <collision name="tip_rack_lid_contact_4">
+      <origin xyz="0 -0.094 -0.004" rpy="0 0 0" />
+      <geometry>
+        <box size="0.022 0.008 0.013" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 -0.0485 -0.00125" />
+      <mass value="0.055" />
+      <inertia ixx="4.648989583333333e-05" iyy="8.022322916666668e-05" izz="0.00012357583333333334" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <joint name="tip_rack_lid_joint" type="revolute">
+    <parent link="tip_rack_body" />
+    <child link="tip_rack_lid" />
+    <origin xyz="0 0.045 0.057" rpy="0 0 0" />
+    <axis xyz="-1 0 0" />
+    <limit effort="20" velocity="1" lower="0" upper="1.9" />
+    <dynamics damping="0.1" friction="0.02" />
+  </joint>
+  <link name="tip_rack_slot_A1" />
+  <joint name="tip_rack_slot_A1_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_A1" />
+    <origin xyz="-0.04 -0.024 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_A2" />
+  <joint name="tip_rack_slot_A2_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_A2" />
+    <origin xyz="-0.024 -0.024 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_A3" />
+  <joint name="tip_rack_slot_A3_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_A3" />
+    <origin xyz="-0.008 -0.024 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_A4" />
+  <joint name="tip_rack_slot_A4_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_A4" />
+    <origin xyz="0.008 -0.024 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_A5" />
+  <joint name="tip_rack_slot_A5_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_A5" />
+    <origin xyz="0.024 -0.024 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_A6" />
+  <joint name="tip_rack_slot_A6_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_A6" />
+    <origin xyz="0.04 -0.024 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_B1" />
+  <joint name="tip_rack_slot_B1_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_B1" />
+    <origin xyz="-0.04 -0.008 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_B2" />
+  <joint name="tip_rack_slot_B2_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_B2" />
+    <origin xyz="-0.024 -0.008 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_B3" />
+  <joint name="tip_rack_slot_B3_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_B3" />
+    <origin xyz="-0.008 -0.008 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_B4" />
+  <joint name="tip_rack_slot_B4_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_B4" />
+    <origin xyz="0.008 -0.008 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_B5" />
+  <joint name="tip_rack_slot_B5_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_B5" />
+    <origin xyz="0.024 -0.008 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_B6" />
+  <joint name="tip_rack_slot_B6_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_B6" />
+    <origin xyz="0.04 -0.008 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_C1" />
+  <joint name="tip_rack_slot_C1_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_C1" />
+    <origin xyz="-0.04 0.008 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_C2" />
+  <joint name="tip_rack_slot_C2_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_C2" />
+    <origin xyz="-0.024 0.008 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_C3" />
+  <joint name="tip_rack_slot_C3_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_C3" />
+    <origin xyz="-0.008 0.008 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_C4" />
+  <joint name="tip_rack_slot_C4_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_C4" />
+    <origin xyz="0.008 0.008 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_C5" />
+  <joint name="tip_rack_slot_C5_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_C5" />
+    <origin xyz="0.024 0.008 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_C6" />
+  <joint name="tip_rack_slot_C6_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_C6" />
+    <origin xyz="0.04 0.008 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_D1" />
+  <joint name="tip_rack_slot_D1_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_D1" />
+    <origin xyz="-0.04 0.024 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_D2" />
+  <joint name="tip_rack_slot_D2_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_D2" />
+    <origin xyz="-0.024 0.024 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_D3" />
+  <joint name="tip_rack_slot_D3_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_D3" />
+    <origin xyz="-0.008 0.024 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_D4" />
+  <joint name="tip_rack_slot_D4_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_D4" />
+    <origin xyz="0.008 0.024 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_D5" />
+  <joint name="tip_rack_slot_D5_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_D5" />
+    <origin xyz="0.024 0.024 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_slot_D6" />
+  <joint name="tip_rack_slot_D6_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_slot_D6" />
+    <origin xyz="0.04 0.024 0.033" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_lid_handle" />
+  <joint name="tip_rack_lid_handle_joint" type="fixed">
+    <parent link="tip_rack_lid" />
+    <child link="tip_rack_lid_handle" />
+    <origin xyz="0 -0.098 -0.003" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_insert_grasp" />
+  <joint name="tip_rack_insert_grasp_joint" type="fixed">
+    <parent link="tip_rack_socket_insert" />
+    <child link="tip_rack_insert_grasp" />
+    <origin xyz="0.055 0 0.034" rpy="0 0 0" />
+  </joint>
+  <link name="tip_rack_body_grasp" />
+  <joint name="tip_rack_body_grasp_joint" type="fixed">
+    <parent link="tip_rack_body" />
+    <child link="tip_rack_body_grasp" />
+    <origin xyz="0 0 0.026" rpy="0 0 0" />
+  </joint>
+</robot>

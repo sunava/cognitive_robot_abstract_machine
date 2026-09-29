@@ -56,6 +56,12 @@ from cramera.laboratory_world import (
     LaboratoryBody,
     LaboratoryWorld,
 )
+from cramera.medical_lab_description import MedicalLabDescription
+from cramera.medical_lab_dynamics import (
+    MedicalLabCollision,
+    MedicalLabDrives,
+    MedicalPhysicsField,
+)
 
 
 # %% public state
@@ -177,9 +183,24 @@ class LaboratoryCollisionModel:
     """Collision mesh declarations."""
     world: ElementTree.Element = field(init=False)
     """Top-level MJCF body container."""
+    instruments: MedicalLabCollision = field(init=False)
+    """Explicitly declared joints of the expanded instrument collection."""
 
     def build(self) -> mujoco.MjModel:
         """Compile contacts without importing the scene's visual meshes."""
+        description = (
+            MedicalLabDescription.from_json(self.scene[MedicalPhysicsField.DESCRIPTION])
+            if MedicalPhysicsField.DESCRIPTION in self.scene
+            else MedicalLabDescription(())
+        )
+        self.instruments = MedicalLabCollision(
+            description,
+            contact_exclusions=tuple(
+                self.scene.get(MedicalPhysicsField.DESCRIPTION, {}).get(
+                    MedicalPhysicsField.CONTACT_EXCLUSIONS, []
+                )
+            ),
+        )
         self.root = ElementTree.Element("mujoco", model="laboratory_contact")
         ElementTree.SubElement(
             self.root, "compiler", angle="radian", inertiafromgeom="false"
@@ -204,9 +225,10 @@ class LaboratoryCollisionModel:
         )
         self.assets = ElementTree.SubElement(self.root, "asset")
         self.world = ElementTree.SubElement(self.root, "worldbody")
-        ElementTree.SubElement(
-            self.world, "geom", name="floor", type="plane", size="3 3 0.1"
-        )
+        if MedicalPhysicsField.DESCRIPTION not in self.scene:
+            ElementTree.SubElement(
+                self.world, "geom", name="floor", type="plane", size="3 3 0.1"
+            )
         for item in self.scene["models"]:
             if not item["robot"]:
                 self._add_environment(self.directory / item["urdf"])
@@ -219,6 +241,7 @@ class LaboratoryCollisionModel:
         ).complete()
         RefrigeratorCollisionModel(self.root).complete()
         DrawerCollisionModel(self.root).complete()
+        self.instruments.complete(self.root)
         return mujoco.MjModel.from_xml_string(
             ElementTree.tostring(self.root, encoding="unicode")
         )
@@ -296,6 +319,7 @@ class LaboratoryCollisionModel:
         RefrigeratorCollisionModel.add_joint(body, links[name], joint)
         DrawerCollisionModel.add_joint(body, links[name], joint)
         RackCollisionModel.add_joint(body, links[name], joint)
+        self.instruments.add_joint(body, links[name], joint)
         for child in descendants:
             self._add_environment_link(child, links, children, body, description)
 
@@ -430,6 +454,8 @@ class LaboratoryPhysics:
 
     pipetting: LaboratoryPipetting = field(init=False)
     """Finite reagent delivery with measured vessel alignment interlocks."""
+    instruments: MedicalLabDrives = field(init=False)
+    """Force-limited drives of the optional expanded instrument collection."""
 
     def __post_init__(self) -> None:
         """Compile authored collisions and initialize gravity-driven objects."""
@@ -470,6 +496,12 @@ class LaboratoryPhysics:
         )
         self.drawer = LaboratoryDrawer(self.model, self.data)
         self.rack = LaboratoryRack(self.model, self.data, self.scene["laboratory"])
+        description = (
+            MedicalLabDescription.from_json(self.scene[MedicalPhysicsField.DESCRIPTION])
+            if MedicalPhysicsField.DESCRIPTION in self.scene
+            else MedicalLabDescription(())
+        )
+        self.instruments = MedicalLabDrives(self.model, self.data, description)
         self.reset()
 
     def _build_model(self) -> mujoco.MjModel:
@@ -498,6 +530,7 @@ class LaboratoryPhysics:
         self.pipetting.reset()
         self.refrigerator.reset()
         self.drawer.reset()
+        self.instruments.reset()
         mujoco.mj_forward(self.model, self.data)
         self.scale.reset()
 
@@ -681,6 +714,7 @@ class LaboratoryPhysics:
             self.centrifuge.advance(self.timestep)
             self.refrigerator.advance(self.timestep)
             self.drawer.advance(self.timestep)
+            self.instruments.advance()
             mujoco.mj_step(self.model, self.data)
             self._observe_contacts()
             self.liquid_elapsed += self.timestep
@@ -738,7 +772,7 @@ class LaboratoryPhysics:
 
     def snapshot(self) -> dict[str, Any]:
         """Return authoritative body poses, liquid state, contacts and cursor feedback."""
-        return {
+        result = {
             PhysicsField.OBJECTS: self._object_poses(),
             PhysicsField.LIQUID: self.liquid.snapshot(),
             PipettingField.PIPETTING: self.pipetting.snapshot(),
@@ -764,3 +798,8 @@ class LaboratoryPhysics:
             PhysicsField.MAXIMUM_APPLIED_FORCE: self.maximum_applied_force,
             PhysicsField.MAXIMUM_CONTACT_FORCE: self.maximum_contact_force,
         }
+        if self.instruments.joints:
+            result[MedicalPhysicsField.INSTRUMENTS] = {
+                MedicalPhysicsField.JOINTS: self.instruments.positions()
+            }
+        return result

@@ -1,0 +1,107 @@
+{
+  "device": "ph_meter",
+  "title": "pH meter",
+  "description": "Benchtop pH meter with an articulated support arm and a removable probe resource.",
+  "rootLink": "ph_meter_base",
+  "units": "metres",
+  "upAxis": "Z",
+  "frontAxis": "-Y",
+  "joints": [
+    {
+      "name": "ph_meter_support_height_joint",
+      "type": "prismatic",
+      "lower": -0.07,
+      "upper": 0.085,
+      "inspectionPosition": 0.045
+    },
+    {
+      "name": "ph_meter_probe_arm_joint",
+      "type": "revolute",
+      "lower": -1.9,
+      "upper": 1.9,
+      "inspectionPosition": 0.7
+    }
+  ],
+  "frames": [
+    {
+      "name": "ph_meter_probe_mount",
+      "parent": "ph_meter_probe_arm",
+      "position": [
+        0,
+        -0.12,
+        -0.155
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "mount"
+    },
+    {
+      "name": "ph_meter_rinse_station",
+      "parent": "ph_meter_base",
+      "position": [
+        0.174,
+        -0.043,
+        0.02
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "ph_meter_read_control",
+      "parent": "ph_meter_base",
+      "position": [
+        0.09,
+        0.04,
+        0.082
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "control"
+    },
+    {
+      "name": "ph_meter_body_grasp",
+      "parent": "ph_meter_base",
+      "position": [
+        0,
+        0,
+        0.046
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "grasp"
+    }
+  ],
+  "accessories": [
+    "ph_probe"
+  ],
+  "blender": "model.blend",
+  "previews": {
+    "closed": "preview.png",
+    "open": "preview_open.png"
+  },
+  "modelScope": "Original articulated concept model. Instrument controls and measurements require a separate controller.",
+  "inertialModel": "Nominal masses with compound-bounds box inertia; not calibrated hardware parameters.",
+  "assetRights": {
+    "principalAuthor": "Vanessa Hassouna",
+    "institution": "AICOR Institute",
+    "copyright": "Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.",
+    "license": "LicenseRef-AICOR-Laboratory-Assets",
+    "permissionNotice": "Reuse, modification and redistribution of the original laboratory assets require prior written permission from Vanessa Hassouna, except where an existing licence or applicable law permits them. Permission requests: hassouna@uni-bremen.de.",
+    "priorLicenseNotice": "Existing third-party rights and any permissions already validly granted remain unaffected. This notice does not create copyright in otherwise unprotected material.",
+    "licenseFile": "LICENSE.txt",
+    "noticeFile": "NOTICE.md"
+  }
+}

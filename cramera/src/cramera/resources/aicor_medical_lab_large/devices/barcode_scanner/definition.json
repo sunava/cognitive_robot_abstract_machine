@@ -1,0 +1,432 @@
+{
+  "identifier": "barcode_scanner",
+  "title": "Barcode scanner",
+  "description": "Handheld identification scanner with a trigger and a separate docking cradle.",
+  "parts": [
+    {
+      "name": "body",
+      "parent": null,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 0.23,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "grip",
+          "center": [
+            0,
+            0.014,
+            0.067
+          ],
+          "dimensions": [
+            0.038,
+            0.047,
+            0.115
+          ],
+          "material": "white",
+          "rotation": [
+            0.15,
+            0,
+            0
+          ],
+          "bevel": 0.013,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "grip_inlay",
+          "center": [
+            0,
+            0.04,
+            0.064
+          ],
+          "dimensions": [
+            0.027,
+            0.005,
+            0.082
+          ],
+          "material": "dark",
+          "rotation": [
+            0.15,
+            0,
+            0
+          ],
+          "bevel": 0.003,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "handle_foot",
+          "center": [
+            0,
+            0.023,
+            0.011
+          ],
+          "dimensions": [
+            0.043,
+            0.05,
+            0.019
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "head",
+          "center": [
+            0,
+            -0.015,
+            0.146
+          ],
+          "dimensions": [
+            0.079,
+            0.128,
+            0.058
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.02,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "head_trim",
+          "center": [
+            0,
+            -0.016,
+            0.127
+          ],
+          "dimensions": [
+            0.077,
+            0.125,
+            0.01
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.008,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "scan_bezel",
+          "center": [
+            0,
+            -0.079,
+            0.147
+          ],
+          "dimensions": [
+            0.066,
+            0.011,
+            0.04
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "scan_window",
+          "center": [
+            0,
+            -0.085,
+            0.148
+          ],
+          "dimensions": [
+            0.051,
+            0.001,
+            0.026
+          ],
+          "material": "screen",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.003,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "optical_sensor",
+          "center": [
+            -0.011,
+            -0.086,
+            0.15
+          ],
+          "dimensions": [
+            0.007,
+            0.0015
+          ],
+          "material": "glass",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "scan_light",
+          "center": [
+            0.012,
+            -0.086,
+            0.144
+          ],
+          "dimensions": [
+            0.018,
+            0.001,
+            0.004
+          ],
+          "material": "red",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "status_led",
+          "center": [
+            0,
+            -0.025,
+            0.1755
+          ],
+          "dimensions": [
+            0.02,
+            0.009,
+            0.002
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "logo",
+          "name": "AICOR logo",
+          "center": [
+            0,
+            0.012,
+            0.176
+          ],
+          "dimensions": [
+            0.041
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "SCAN",
+          "center": [
+            0,
+            -0.058,
+            0.177
+          ],
+          "dimensions": [
+            0.005,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "SCAN",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "trigger",
+      "parent": "body",
+      "origin": [
+        0,
+        -0.021,
+        0.113
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "revolute",
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "lower": 0,
+      "upper": 0.22,
+      "open_value": 0.22,
+      "mass": 0.008,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "trigger_button",
+          "center": [
+            0,
+            -0.005,
+            -0.012
+          ],
+          "dimensions": [
+            0.028,
+            0.012,
+            0.03
+          ],
+          "material": "teal",
+          "rotation": [
+            -0.15,
+            0,
+            0
+          ],
+          "bevel": 0.004,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "name": "body_grasp",
+      "parent": "body",
+      "position": [
+        0,
+        0.012,
+        0.068
+      ],
+      "role": "grasp",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "scan_axis",
+      "parent": "body",
+      "position": [
+        0,
+        -0.086,
+        0.148
+      ],
+      "role": "measurement",
+      "rotation": [
+        1.5707963267948966,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "trigger_control",
+      "parent": "trigger",
+      "position": [
+        0,
+        -0.012,
+        -0.015
+      ],
+      "role": "control",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "dock_contact",
+      "parent": "body",
+      "position": [
+        0,
+        0.023,
+        0.003
+      ],
+      "role": "mount",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "accessories": [
+    "barcode_dock"
+  ]
+}

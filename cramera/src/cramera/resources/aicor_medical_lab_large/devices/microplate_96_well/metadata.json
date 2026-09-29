@@ -1,0 +1,1515 @@
+{
+  "device": "microplate_96_well",
+  "title": "96-Well Microplate",
+  "description": "Separate 127.76 by 85.48 millimetre plate with 9 millimetre well pitch and 96 open wells.",
+  "rootLink": "microplate_96_well_base",
+  "units": "metres",
+  "upAxis": "Z",
+  "frontAxis": "-Y",
+  "joints": [],
+  "frames": [
+    {
+      "name": "microplate_96_well_well_A1",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.049499999999999995,
+        -0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_A2",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.040499999999999994,
+        -0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_A3",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0315,
+        -0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_A4",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0225,
+        -0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_A5",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.013499999999999998,
+        -0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_A6",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0045,
+        -0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_A7",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0045,
+        -0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_A8",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.013499999999999998,
+        -0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_A9",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0225,
+        -0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_A10",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0315,
+        -0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_A11",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.040499999999999994,
+        -0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_A12",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.049499999999999995,
+        -0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_B1",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.049499999999999995,
+        -0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_B2",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.040499999999999994,
+        -0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_B3",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0315,
+        -0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_B4",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0225,
+        -0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_B5",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.013499999999999998,
+        -0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_B6",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0045,
+        -0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_B7",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0045,
+        -0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_B8",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.013499999999999998,
+        -0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_B9",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0225,
+        -0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_B10",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0315,
+        -0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_B11",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.040499999999999994,
+        -0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_B12",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.049499999999999995,
+        -0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_C1",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.049499999999999995,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_C2",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.040499999999999994,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_C3",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0315,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_C4",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0225,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_C5",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.013499999999999998,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_C6",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0045,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_C7",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0045,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_C8",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.013499999999999998,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_C9",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0225,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_C10",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0315,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_C11",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.040499999999999994,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_C12",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.049499999999999995,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_D1",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.049499999999999995,
+        -0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_D2",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.040499999999999994,
+        -0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_D3",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0315,
+        -0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_D4",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0225,
+        -0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_D5",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.013499999999999998,
+        -0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_D6",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0045,
+        -0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_D7",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0045,
+        -0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_D8",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.013499999999999998,
+        -0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_D9",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0225,
+        -0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_D10",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0315,
+        -0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_D11",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.040499999999999994,
+        -0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_D12",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.049499999999999995,
+        -0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_E1",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.049499999999999995,
+        0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_E2",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.040499999999999994,
+        0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_E3",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0315,
+        0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_E4",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0225,
+        0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_E5",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.013499999999999998,
+        0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_E6",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0045,
+        0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_E7",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0045,
+        0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_E8",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.013499999999999998,
+        0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_E9",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0225,
+        0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_E10",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0315,
+        0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_E11",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.040499999999999994,
+        0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_E12",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.049499999999999995,
+        0.0045,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_F1",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.049499999999999995,
+        0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_F2",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.040499999999999994,
+        0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_F3",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0315,
+        0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_F4",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0225,
+        0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_F5",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.013499999999999998,
+        0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_F6",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0045,
+        0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_F7",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0045,
+        0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_F8",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.013499999999999998,
+        0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_F9",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0225,
+        0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_F10",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0315,
+        0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_F11",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.040499999999999994,
+        0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_F12",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.049499999999999995,
+        0.013499999999999998,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_G1",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.049499999999999995,
+        0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_G2",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.040499999999999994,
+        0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_G3",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0315,
+        0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_G4",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0225,
+        0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_G5",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.013499999999999998,
+        0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_G6",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0045,
+        0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_G7",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0045,
+        0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_G8",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.013499999999999998,
+        0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_G9",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0225,
+        0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_G10",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0315,
+        0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_G11",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.040499999999999994,
+        0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_G12",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.049499999999999995,
+        0.0225,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_H1",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.049499999999999995,
+        0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_H2",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.040499999999999994,
+        0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_H3",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0315,
+        0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_H4",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0225,
+        0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_H5",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.013499999999999998,
+        0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_H6",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.0045,
+        0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_H7",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0045,
+        0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_H8",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.013499999999999998,
+        0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_H9",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0225,
+        0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_H10",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.0315,
+        0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_H11",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.040499999999999994,
+        0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_well_H12",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.049499999999999995,
+        0.0315,
+        0.0134
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "microplate_96_well_left_grip",
+      "parent": "microplate_96_well_base",
+      "position": [
+        -0.064,
+        0,
+        0.008
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "grasp"
+    },
+    {
+      "name": "microplate_96_well_right_grip",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0.064,
+        0,
+        0.008
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "grasp"
+    },
+    {
+      "name": "microplate_96_well_plate_center",
+      "parent": "microplate_96_well_base",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "placement"
+    }
+  ],
+  "accessories": [],
+  "blender": "model.blend",
+  "previews": {
+    "closed": "preview.png",
+    "open": "preview_open.png"
+  },
+  "modelScope": "Original articulated concept model. Instrument controls and measurements require a separate controller.",
+  "inertialModel": "Nominal masses with compound-bounds box inertia; not calibrated hardware parameters.",
+  "assetRights": {
+    "principalAuthor": "Vanessa Hassouna",
+    "institution": "AICOR Institute",
+    "copyright": "Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.",
+    "license": "LicenseRef-AICOR-Laboratory-Assets",
+    "permissionNotice": "Reuse, modification and redistribution of the original laboratory assets require prior written permission from Vanessa Hassouna, except where an existing licence or applicable law permits them. Permission requests: hassouna@uni-bremen.de.",
+    "priorLicenseNotice": "Existing third-party rights and any permissions already validly granted remain unaffected. This notice does not create copyright in otherwise unprotected material.",
+    "licenseFile": "LICENSE.txt",
+    "noticeFile": "NOTICE.md"
+  }
+}

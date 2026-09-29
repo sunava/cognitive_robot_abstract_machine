@@ -24,12 +24,16 @@ msg/_*.py
 !cramera/src/cramera/resources/aicor_workshop/LICENSE.txt
 !cramera/src/cramera/resources/aicor_medical_lab/LICENSE.txt
 !cramera/src/cramera/resources/laboratory_devices/**/LICENSE.txt
+!cramera/src/cramera/resources/aicor_medical_lab_large/**/LICENSE.txt
+!cramera/src/cramera/resources/aicor_medical_lab_large/LICENSE.txt
 # The hook tests' scratch clone needs a real requirements.txt at the path
 # check-setup.sh looks for, so this one fixture is checked in.
 !.claude/hooks/tests/fixtures/set-up-clone/**/*.txt
 *.png
 !cramera/src/cramera/resources/laboratory_devices/*/preview.png
 !cramera/src/cramera/resources/laboratory_devices/*/preview_open.png
+!cramera/src/cramera/resources/aicor_medical_lab_large/preview.png
+!cramera/src/cramera/resources/aicor_medical_lab_large/**/preview*.png
 !coraplex/resources/objects/*.png
 !.claude/skills/plan-dashboard/example/screenshots/*.png
 !cramera/src/cramera/web/img/aicor-logo.png

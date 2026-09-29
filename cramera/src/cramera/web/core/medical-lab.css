@@ -1,0 +1,23 @@
+/* %% larger medical laboratory stations and demonstrations */
+.laboratory-physics-expanded { width: 330px; max-width: calc(100% - 32px); }
+.medical-lab section { margin: 14px 0; padding-top: 12px; border-top: 1px solid #cbdad7; }
+.medical-lab h4 { margin: 0 0 9px; font-size: 15px; }
+.medical-lab-field { display: grid; gap: 5px; margin: 8px 0; color: #425e56; font-size: 12px; }
+.medical-lab-field select { color: #18302d; font-size: 13px; }
+.medical-lab-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.medical-lab button { width: 100%; }
+.medical-lab .medical-lab-run, .medical-lab .medical-lab-robot-run { background: #236859; color: #fff; border-color: #236859; font-weight: 600; }
+.medical-lab-note, .medical-lab-description, .medical-lab-step { color: #536b64; font-size: 12px; }
+.medical-lab-status, .medical-lab-robot-status { font-size: 12px; font-weight: 600; }
+.medical-lab-status[data-error="true"] { color: #a12f2b; }
+.medical-lab-progress { width: 100%; accent-color: #267d79; height: 6px; }
+.medical-lab-observations, .medical-lab-legacy { border-top: 1px solid #cbdad7; margin-top: 12px; padding-top: 10px; }
+.medical-lab-observations summary, .medical-lab-legacy > summary { cursor: pointer; font-weight: 600; }
+.medical-lab-observations { font-size: 11px; }
+.medical-lab-joints { margin: 9px 0 0; }
+.medical-lab-joint { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 9px; border-top: 1px solid #e0e8e5; padding: 6px 0; }
+.medical-lab-joint dt { overflow-wrap: anywhere; color: #536b64; }
+.medical-lab-joint dd { margin: 0; font-variant-numeric: tabular-nums; }
+.medical-lab [hidden] { display: none; }
+.medical-lab-legacy > button { width: 100%; }
+.medical-lab-legacy > summary { margin-bottom: 12px; }

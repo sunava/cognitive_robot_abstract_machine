@@ -2570,7 +2570,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       stopTrajectory();
       const adapter = laboratoryPhysicsAdapter();
       laboratoryPhysics = LaboratoryPhysics.mount(
-        root.querySelector('.stage'), Object.assign({}, SCENE.physics, {assetRights: SCENE.assetRights}),
+        root.querySelector('.stage'), Object.assign({}, SCENE.physics, {assetRights: SCENE.assetRights, medicalLab: SCENE.medicalLab}),
         new LaboratoryPhysics.Client(window.fetch.bind(window), SCENE.physics), adapter,
       );
       laboratoryPhysics.adapter = adapter;
@@ -2583,7 +2583,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
         );
       }
       root.classList.add('laboratory-physics-scene');
-      root.querySelector('.panel-head h2').textContent = SCENE.physics.robot ? 'PR2 laboratory · Contact physics' : 'Laboratory · Contact physics';
+      root.querySelector('.panel-head h2').textContent = SCENE.medicalLab ? 'AICOR Medical Lab · PR2 & instruments' : SCENE.physics.robot ? 'PR2 laboratory · Contact physics' : 'Laboratory · Contact physics';
       root.querySelector('.stage-hint').textContent = SCENE.physics.robot ? 'Start or pause the PR2 task · Movement and contacts are simulated' : 'Drag glassware to move it · Release to drop it · Use laboratory controls to lift and lower it';
       if (liveBtn) liveBtn.hidden = true;
       if (playBtn) playBtn.disabled = true;

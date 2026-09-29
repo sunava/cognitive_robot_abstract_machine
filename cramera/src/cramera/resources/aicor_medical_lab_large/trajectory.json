@@ -1,0 +1,87 @@
+{
+  "framesPerSecond": 1,
+  "frames": [
+    {
+      "laboratory_drawer_joint": 0.0,
+      "laboratory_centrifuge_rotor_joint": 0.0,
+      "laboratory_centrifuge_lid_joint": 1.35,
+      "laboratory_refrigerator_door_joint": 0.0,
+      "tube_capper__tube_capper_clamp_left_joint": 0.0,
+      "tube_capper__tube_capper_clamp_right_joint": 0.0,
+      "tube_capper__tube_capper_head_carriage_joint": 0.0,
+      "tube_capper__tube_capper_rotary_chuck_joint": 0.0,
+      "vortex_mixer__vortex_mixer_contact_head_joint": 0.0,
+      "vortex_mixer__vortex_mixer_speed_control_joint": 0.0,
+      "tip_rack__tip_rack_lid_joint": 0.0,
+      "electronic_pipette__electronic_pipette_plunger_joint": 0.0,
+      "electronic_pipette__electronic_pipette_tip_ejector_joint": 0.0,
+      "thermomixer__thermomixer_mixing_carrier_joint": 0.0,
+      "thermomixer__thermomixer_orbital_carrier_joint": 0.0,
+      "thermomixer__thermomixer_lid_joint": 0.0,
+      "thermomixer__thermomixer_cycle_control_joint": 0.0,
+      "pcr_thermocycler__pcr_thermocycler_heated_lid_joint": 0.0,
+      "incubator__incubator_door_joint": 0.0,
+      "microplate_reader__microplate_reader_plate_drawer_joint": 0.0,
+      "digital_microscope__digital_microscope_monitor_joint": 0.0,
+      "digital_microscope__digital_microscope_objective_turret_joint": 0.0,
+      "digital_microscope__digital_microscope_focus_carriage_joint": 0.0,
+      "digital_microscope__digital_microscope_slide_x_joint": 0.0,
+      "digital_microscope__digital_microscope_slide_y_joint": 0.0,
+      "ph_meter__ph_meter_support_height_joint": 0.0,
+      "ph_meter__ph_meter_probe_arm_joint": 0.0,
+      "barcode_scanner__barcode_scanner_trigger_joint": 0.0,
+      "label_printer__label_printer_media_cover_joint": 0.0,
+      "label_printer__label_printer_media_spindle_joint": 0.0,
+      "label_printer__label_printer_feed_roller_joint": 0.0
+    }
+  ],
+  "objects": [
+    {
+      "tube_clear": [
+        0.16,
+        -0.065,
+        0.906,
+        0,
+        0,
+        0,
+        1
+      ],
+      "tube_amber": [
+        0.22,
+        -0.065,
+        0.906,
+        0,
+        0,
+        0,
+        1
+      ],
+      "tube_teal": [
+        0.16,
+        -0.015,
+        0.906,
+        0,
+        0,
+        0,
+        1
+      ],
+      "tube_reserve": [
+        0.28,
+        -0.015,
+        0.906,
+        0,
+        0,
+        0,
+        1
+      ],
+      "stopper": [
+        0.5,
+        -0.12,
+        0.9,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ]
+}

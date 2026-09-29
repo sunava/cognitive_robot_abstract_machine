@@ -1,0 +1,6042 @@
+{
+  "name": "aicor_medical_lab_large",
+  "rendering": {
+    "ambientOcclusion": false,
+    "exposure": 0.65
+  },
+  "environmentName": "AICOR Medical Laboratory",
+  "task": "Expanded medical laboratory \u00b7 Modular instruments",
+  "framesPerSecond": 1,
+  "trajectory": "trajectory.json",
+  "camera": {
+    "position": [
+      2.8,
+      -5.2,
+      4.0
+    ],
+    "target": [
+      0,
+      0.9,
+      0.95
+    ]
+  },
+  "models": [
+    {
+      "name": "AICOR Medical Laboratory",
+      "urdf": "environment.urdf",
+      "prefix": "",
+      "robot": false,
+      "links": 392,
+      "movableJoints": [
+        "laboratory_drawer_joint",
+        "laboratory_rack_joint",
+        "laboratory_centrifuge_rotor_joint",
+        "laboratory_centrifuge_lid_joint",
+        "laboratory_refrigerator_door_joint",
+        "tube_capper__tube_capper_clamp_left_joint",
+        "tube_capper__tube_capper_clamp_right_joint",
+        "tube_capper__tube_capper_head_carriage_joint",
+        "tube_capper__tube_capper_rotary_chuck_joint",
+        "vortex_mixer__vortex_mixer_contact_head_joint",
+        "vortex_mixer__vortex_mixer_speed_control_joint",
+        "tip_rack__tip_rack_lid_joint",
+        "electronic_pipette__electronic_pipette_plunger_joint",
+        "electronic_pipette__electronic_pipette_tip_ejector_joint",
+        "thermomixer__thermomixer_mixing_carrier_joint",
+        "thermomixer__thermomixer_orbital_carrier_joint",
+        "thermomixer__thermomixer_lid_joint",
+        "thermomixer__thermomixer_cycle_control_joint",
+        "pcr_thermocycler__pcr_thermocycler_heated_lid_joint",
+        "incubator__incubator_door_joint",
+        "microplate_reader__microplate_reader_plate_drawer_joint",
+        "digital_microscope__digital_microscope_monitor_joint",
+        "digital_microscope__digital_microscope_objective_turret_joint",
+        "digital_microscope__digital_microscope_focus_carriage_joint",
+        "digital_microscope__digital_microscope_slide_x_joint",
+        "digital_microscope__digital_microscope_slide_y_joint",
+        "ph_meter__ph_meter_support_height_joint",
+        "ph_meter__ph_meter_probe_arm_joint",
+        "barcode_scanner__barcode_scanner_trigger_joint",
+        "label_printer__label_printer_media_cover_joint",
+        "label_printer__label_printer_media_spindle_joint",
+        "label_printer__label_printer_feed_roller_joint"
+      ],
+      "preserveMaterials": true
+    }
+  ],
+  "objects": [
+    {
+      "id": "tube_clear",
+      "key": "tube_clear",
+      "mesh": "assets/tube_clear.glb",
+      "urdf": "tube_clear.urdf",
+      "spawn": [
+        0.16,
+        -0.065,
+        0.906,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": "#d4e9e9",
+      "height": 0.15,
+      "preserveMaterials": true
+    },
+    {
+      "id": "tube_amber",
+      "key": "tube_amber",
+      "mesh": "assets/tube_amber.glb",
+      "urdf": "tube_amber.urdf",
+      "spawn": [
+        0.22,
+        -0.065,
+        0.906,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": "#dea447",
+      "height": 0.15,
+      "preserveMaterials": true
+    },
+    {
+      "id": "tube_teal",
+      "key": "tube_teal",
+      "mesh": "assets/tube_teal.glb",
+      "urdf": "tube_teal.urdf",
+      "spawn": [
+        0.16,
+        -0.015,
+        0.906,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": "#44a99e",
+      "height": 0.15,
+      "preserveMaterials": true
+    },
+    {
+      "id": "tube_reserve",
+      "key": "tube_reserve",
+      "mesh": "assets/tube_clear.glb",
+      "urdf": "tube_reserve.urdf",
+      "spawn": [
+        0.28,
+        -0.015,
+        0.906,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": "#d4e9e9",
+      "height": 0.15,
+      "preserveMaterials": true
+    },
+    {
+      "id": "stopper",
+      "key": "stopper",
+      "mesh": "assets/stopper.glb",
+      "urdf": "stopper.urdf",
+      "spawn": [
+        0.5,
+        -0.12,
+        0.9,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": "#738d8d",
+      "height": 0.021,
+      "preserveMaterials": true
+    }
+  ],
+  "laboratory": {
+    "rackSlots": [
+      {
+        "id": "A1",
+        "pose": [
+          0.16,
+          -0.065,
+          0.906,
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "A2",
+        "pose": [
+          0.22,
+          -0.065,
+          0.906,
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "A3",
+        "pose": [
+          0.28,
+          -0.065,
+          0.906,
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "B1",
+        "pose": [
+          0.16,
+          -0.015,
+          0.906,
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "B2",
+        "pose": [
+          0.22,
+          -0.015,
+          0.906,
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "B3",
+        "pose": [
+          0.28,
+          -0.015,
+          0.906,
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "tubes": [
+      {
+        "key": "tube_clear",
+        "slot": "A1"
+      },
+      {
+        "key": "tube_amber",
+        "slot": "A2"
+      },
+      {
+        "key": "tube_teal",
+        "slot": "B1"
+      },
+      {
+        "key": "tube_reserve",
+        "slot": "B3"
+      }
+    ],
+    "stopper": {
+      "key": "stopper",
+      "home": [
+        0.5,
+        -0.12,
+        0.9,
+        0,
+        0,
+        0,
+        1
+      ],
+      "tubeHeight": 0.15,
+      "insertionDepth": 0.0115
+    },
+    "drawer": {
+      "joint": "laboratory_drawer_joint",
+      "open": 0.36
+    },
+    "cameras": {
+      "overview": {
+        "position": [
+          2.8,
+          -5.2,
+          4.0
+        ],
+        "target": [
+          0,
+          0.9,
+          0.95
+        ]
+      },
+      "closeup": {
+        "position": [
+          0.58,
+          -0.5,
+          1.26
+        ],
+        "target": [
+          0.23,
+          -0.035,
+          0.985
+        ]
+      }
+    },
+    "rack": {
+      "drawerOffset": [
+        0.0,
+        -0.1,
+        0.0
+      ]
+    },
+    "scale": {
+      "panPosition": [
+        0.65,
+        0.21,
+        0.974
+      ],
+      "panRadius": 0.085,
+      "displayPosition": [
+        0.65,
+        0.076,
+        0.94
+      ],
+      "displaySize": [
+        0.12,
+        0.021
+      ],
+      "holder": {
+        "innerRadius": 0.0115,
+        "outerRadius": 0.016,
+        "height": 0.04,
+        "segments": 24
+      }
+    },
+    "centrifuge": {
+      "body": "laboratory_centrifuge_base",
+      "rotorBody": "laboratory_centrifuge_rotor",
+      "lidBody": "laboratory_centrifuge_lid",
+      "rotorJoint": "laboratory_centrifuge_rotor_joint",
+      "lidJoint": "laboratory_centrifuge_lid_joint",
+      "origin": [
+        -0.53,
+        -0.18,
+        0.9
+      ],
+      "rotorOrigin": [
+        0.0,
+        0.0,
+        0.052
+      ],
+      "lidOrigin": [
+        0.0,
+        0.155,
+        0.223
+      ],
+      "openAngle": 1.35,
+      "maximumRpm": 300.0,
+      "chamberRadius": 0.137,
+      "chamberHeight": 0.161,
+      "slots": [
+        {
+          "id": "C1",
+          "opposite": "C3",
+          "position": [
+            0.072,
+            0.0,
+            0.008
+          ],
+          "worldPosition": [
+            -0.458,
+            -0.18,
+            0.9600000000000001
+          ]
+        },
+        {
+          "id": "C2",
+          "opposite": "C4",
+          "position": [
+            4.408728476930471e-18,
+            0.072,
+            0.008
+          ],
+          "worldPosition": [
+            -0.53,
+            -0.108,
+            0.9600000000000001
+          ]
+        },
+        {
+          "id": "C3",
+          "opposite": "C1",
+          "position": [
+            -0.072,
+            8.817456953860942e-18,
+            0.008
+          ],
+          "worldPosition": [
+            -0.602,
+            -0.18,
+            0.9600000000000001
+          ]
+        },
+        {
+          "id": "C4",
+          "opposite": "C2",
+          "position": [
+            -1.3226185430791413e-17,
+            -0.072,
+            0.008
+          ],
+          "worldPosition": [
+            -0.53,
+            -0.252,
+            0.9600000000000001
+          ]
+        }
+      ]
+    },
+    "pipetting": {
+      "body": "laboratory_pipetting_station",
+      "joint": "laboratory_pipetting_station_joint",
+      "asset": "assets/pipetting_station.glb",
+      "origin": [
+        -0.1,
+        0.0,
+        0.9
+      ],
+      "targetPosition": [
+        -0.1,
+        -0.11,
+        0.916
+      ],
+      "nozzlePosition": [
+        -0.1,
+        -0.11,
+        1.08
+      ],
+      "displayPosition": [
+        -0.154,
+        0.0387,
+        1.056
+      ],
+      "displaySize": [
+        0.078,
+        0.028
+      ],
+      "displayMesh": "Pipetting display",
+      "channels": [
+        {
+          "id": "amber",
+          "nozzlePosition": [
+            -0.1018,
+            -0.11,
+            1.08
+          ],
+          "liquidMesh": "Pipetting amber liquid",
+          "liquidBottom": 0.259,
+          "liquidHeight": 0.069
+        },
+        {
+          "id": "teal",
+          "nozzlePosition": [
+            -0.09820000000000001,
+            -0.11,
+            1.08
+          ],
+          "liquidMesh": "Pipetting teal liquid",
+          "liquidBottom": 0.259,
+          "liquidHeight": 0.069
+        }
+      ]
+    },
+    "refrigerator": {
+      "body": "laboratory_refrigerator_base",
+      "doorBody": "laboratory_refrigerator_door",
+      "joint": "laboratory_refrigerator_base_joint",
+      "doorJoint": "laboratory_refrigerator_door_joint",
+      "asset": "assets/refrigerator_base.glb",
+      "doorAsset": "assets/refrigerator_door.glb",
+      "origin": [
+        -1.23,
+        0.0,
+        0.0
+      ],
+      "doorOrigin": [
+        -0.25,
+        -0.31,
+        0.43
+      ],
+      "doorOpen": 1.75,
+      "dimensions": [
+        0.54,
+        0.58,
+        0.84
+      ],
+      "displayMesh": "Refrigerator display",
+      "displayPosition": [
+        -1.14,
+        -0.2932,
+        0.775
+      ],
+      "displaySize": [
+        0.145,
+        0.036
+      ],
+      "targetTemperature": 4.0,
+      "slots": [
+        {
+          "id": "R1",
+          "position": [
+            -1.37,
+            -0.1,
+            0.24
+          ],
+          "localPosition": [
+            -0.14,
+            -0.1,
+            0.24
+          ]
+        },
+        {
+          "id": "R2",
+          "position": [
+            -1.23,
+            -0.1,
+            0.24
+          ],
+          "localPosition": [
+            0.0,
+            -0.1,
+            0.24
+          ]
+        },
+        {
+          "id": "R3",
+          "position": [
+            -1.0899999999999999,
+            -0.1,
+            0.24
+          ],
+          "localPosition": [
+            0.14,
+            -0.1,
+            0.24
+          ]
+        },
+        {
+          "id": "R4",
+          "position": [
+            -1.37,
+            -0.1,
+            0.48
+          ],
+          "localPosition": [
+            -0.14,
+            -0.1,
+            0.48
+          ]
+        },
+        {
+          "id": "R5",
+          "position": [
+            -1.23,
+            -0.1,
+            0.48
+          ],
+          "localPosition": [
+            0.0,
+            -0.1,
+            0.48
+          ]
+        },
+        {
+          "id": "R6",
+          "position": [
+            -1.0899999999999999,
+            -0.1,
+            0.48
+          ],
+          "localPosition": [
+            0.14,
+            -0.1,
+            0.48
+          ]
+        }
+      ]
+    }
+  },
+  "segments": [],
+  "actions": [],
+  "planTrees": [],
+  "placeTarget": null,
+  "validation": {
+    "mode": "manual_kinematic",
+    "robotExecutionVerified": false,
+    "contactPhysicsVerified": false,
+    "fluidDynamicsVerified": false
+  },
+  "assetRights": {
+    "principalAuthor": "Vanessa Hassouna",
+    "institution": "AICOR Institute",
+    "copyright": "Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.",
+    "license": "LicenseRef-AICOR-Laboratory-Assets",
+    "permissionNotice": "Reuse, modification and redistribution of the original laboratory assets require prior written permission from Vanessa Hassouna, except where an existing licence or applicable law permits them. Permission requests: hassouna@uni-bremen.de.",
+    "priorLicenseNotice": "Existing third-party rights and any permissions already validly granted remain unaffected. This notice does not create copyright in otherwise unprotected material.",
+    "licenseFile": "LICENSE.txt",
+    "noticeFile": "NOTICE.md"
+  },
+  "medicalLab": {
+    "title": "AICOR Medical Laboratory",
+    "instruments": [
+      {
+        "id": "tube_capper",
+        "label": "Tube Capper / Decapper",
+        "station": "sample_handling",
+        "joints": [
+          {
+            "name": "tube_capper__tube_capper_clamp_left_joint",
+            "type": "prismatic",
+            "rest": 0.0,
+            "inspection": 0,
+            "lower": 0.0,
+            "upper": 0.014,
+            "velocity": 1.0,
+            "effort": 20.0
+          },
+          {
+            "name": "tube_capper__tube_capper_clamp_right_joint",
+            "type": "prismatic",
+            "rest": 0.0,
+            "inspection": 0,
+            "lower": 0.0,
+            "upper": 0.014,
+            "velocity": 1.0,
+            "effort": 20.0
+          },
+          {
+            "name": "tube_capper__tube_capper_head_carriage_joint",
+            "type": "prismatic",
+            "rest": 0.0,
+            "inspection": 0,
+            "lower": 0.0,
+            "upper": 0.13,
+            "velocity": 1.0,
+            "effort": 20.0
+          },
+          {
+            "name": "tube_capper__tube_capper_rotary_chuck_joint",
+            "type": "continuous",
+            "rest": 0.0,
+            "inspection": 1.0471975511965976,
+            "lower": -3.141592653589793,
+            "upper": 3.141592653589793,
+            "velocity": 1.0,
+            "effort": 20.0
+          }
+        ],
+        "pose": [
+          -2.86,
+          2.43,
+          0.9,
+          0,
+          0,
+          0,
+          1
+        ],
+        "root": "tube_capper__tube_capper_base",
+        "resource": "devices/tube_capper/model.urdf",
+        "frames": [
+          {
+            "name": "tube_capper__tube_capper_left_clamp_contact",
+            "parent": "tube_capper__tube_capper_clamp_left",
+            "position": [
+              0.01,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "contact"
+          },
+          {
+            "name": "tube_capper__tube_capper_right_clamp_contact",
+            "parent": "tube_capper__tube_capper_clamp_right",
+            "position": [
+              -0.01,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "contact"
+          },
+          {
+            "name": "tube_capper__tube_capper_sample_seat",
+            "parent": "tube_capper__tube_capper_base",
+            "position": [
+              0,
+              -0.06,
+              0.085
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "tube_capper__tube_capper_chuck_contact",
+            "parent": "tube_capper__tube_capper_rotary_chuck",
+            "position": [
+              0,
+              0,
+              -0.012
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tool"
+          },
+          {
+            "name": "tube_capper__tube_capper_front_access",
+            "parent": "tube_capper__tube_capper_base",
+            "position": [
+              0,
+              -0.23,
+              0.2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "approach"
+          },
+          {
+            "name": "tube_capper__tube_capper_display",
+            "parent": "tube_capper__tube_capper_base",
+            "position": [
+              0.088,
+              -0.145,
+              0.048
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "control"
+          }
+        ]
+      },
+      {
+        "id": "vortex_mixer",
+        "label": "Vortex Mixer",
+        "station": "sample_handling",
+        "joints": [
+          {
+            "name": "vortex_mixer__vortex_mixer_contact_head_joint",
+            "type": "prismatic",
+            "rest": 0.0,
+            "inspection": -0.005,
+            "lower": -0.006,
+            "upper": 0.0,
+            "velocity": 1.0,
+            "effort": 20.0
+          },
+          {
+            "name": "vortex_mixer__vortex_mixer_speed_control_joint",
+            "type": "revolute",
+            "rest": 0.0,
+            "inspection": 2.827433388230814,
+            "lower": 0.0,
+            "upper": 4.71238898038469,
+            "velocity": 1.0,
+            "effort": 20.0
+          }
+        ],
+        "pose": [
+          -2.49,
+          2.39,
+          0.9,
+          0,
+          0,
+          0,
+          1
+        ],
+        "root": "vortex_mixer__vortex_mixer_body",
+        "resource": "devices/vortex_mixer/model.urdf",
+        "frames": [
+          {
+            "name": "vortex_mixer__vortex_mixer_sample_contact",
+            "parent": "vortex_mixer__vortex_mixer_contact_head",
+            "position": [
+              0,
+              0,
+              -0.001
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_contact"
+          },
+          {
+            "name": "vortex_mixer__vortex_mixer_speed_control_grasp",
+            "parent": "vortex_mixer__vortex_mixer_speed_control",
+            "position": [
+              0,
+              -0.011,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "control"
+          },
+          {
+            "name": "vortex_mixer__vortex_mixer_body_grasp",
+            "parent": "vortex_mixer__vortex_mixer_body",
+            "position": [
+              0,
+              0,
+              0.057
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "grasp"
+          }
+        ]
+      },
+      {
+        "id": "tip_rack",
+        "label": "Pipette Tip Rack",
+        "station": "sample_handling",
+        "joints": [
+          {
+            "name": "tip_rack__tip_rack_lid_joint",
+            "type": "revolute",
+            "rest": 0.0,
+            "inspection": 1.7,
+            "lower": 0.0,
+            "upper": 1.9,
+            "velocity": 1.0,
+            "effort": 20.0
+          }
+        ],
+        "pose": [
+          -2.21,
+          2.36,
+          0.9,
+          0,
+          0,
+          0,
+          1
+        ],
+        "root": "tip_rack__tip_rack_body",
+        "resource": "devices/tip_rack/model.urdf",
+        "frames": [
+          {
+            "name": "tip_rack__tip_rack_slot_A1",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              -0.04,
+              -0.024,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_A2",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              -0.024,
+              -0.024,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_A3",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              -0.008,
+              -0.024,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_A4",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              0.008,
+              -0.024,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_A5",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              0.024,
+              -0.024,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_A6",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              0.04,
+              -0.024,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_B1",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              -0.04,
+              -0.008,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_B2",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              -0.024,
+              -0.008,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_B3",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              -0.008,
+              -0.008,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_B4",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              0.008,
+              -0.008,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_B5",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              0.024,
+              -0.008,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_B6",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              0.04,
+              -0.008,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_C1",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              -0.04,
+              0.008,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_C2",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              -0.024,
+              0.008,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_C3",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              -0.008,
+              0.008,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_C4",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              0.008,
+              0.008,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_C5",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              0.024,
+              0.008,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_C6",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              0.04,
+              0.008,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_D1",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              -0.04,
+              0.024,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_D2",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              -0.024,
+              0.024,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_D3",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              -0.008,
+              0.024,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_D4",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              0.008,
+              0.024,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_D5",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              0.024,
+              0.024,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_slot_D6",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              0.04,
+              0.024,
+              0.033
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tip_socket"
+          },
+          {
+            "name": "tip_rack__tip_rack_lid_handle",
+            "parent": "tip_rack__tip_rack_lid",
+            "position": [
+              0,
+              -0.098,
+              -0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "handle"
+          },
+          {
+            "name": "tip_rack__tip_rack_insert_grasp",
+            "parent": "tip_rack__tip_rack_socket_insert",
+            "position": [
+              0.055,
+              0,
+              0.034
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "grasp"
+          },
+          {
+            "name": "tip_rack__tip_rack_body_grasp",
+            "parent": "tip_rack__tip_rack_body",
+            "position": [
+              0,
+              0,
+              0.026
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "grasp"
+          }
+        ]
+      },
+      {
+        "id": "electronic_pipette",
+        "label": "Electronic Pipette",
+        "station": "sample_handling",
+        "joints": [
+          {
+            "name": "electronic_pipette__electronic_pipette_plunger_joint",
+            "type": "prismatic",
+            "rest": 0.0,
+            "inspection": -0.006,
+            "lower": -0.007,
+            "upper": 0.0,
+            "velocity": 1.0,
+            "effort": 20.0
+          },
+          {
+            "name": "electronic_pipette__electronic_pipette_tip_ejector_joint",
+            "type": "prismatic",
+            "rest": 0.0,
+            "inspection": -0.008,
+            "lower": -0.009,
+            "upper": 0.0,
+            "velocity": 1.0,
+            "effort": 20.0
+          }
+        ],
+        "pose": [
+          -2.04,
+          2.4,
+          0.915,
+          0,
+          0,
+          0,
+          1
+        ],
+        "root": "electronic_pipette__electronic_pipette_body",
+        "resource": "devices/electronic_pipette/model.urdf",
+        "frames": [
+          {
+            "name": "electronic_pipette__electronic_pipette_tip_mount",
+            "parent": "electronic_pipette__electronic_pipette_body",
+            "position": [
+              0,
+              0,
+              0.0315
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "tool_attachment"
+          },
+          {
+            "name": "electronic_pipette__electronic_pipette_grip_center",
+            "parent": "electronic_pipette__electronic_pipette_body",
+            "position": [
+              0,
+              0,
+              0.181
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "grasp"
+          },
+          {
+            "name": "electronic_pipette__electronic_pipette_plunger_contact",
+            "parent": "electronic_pipette__electronic_pipette_plunger",
+            "position": [
+              0,
+              0,
+              0.0195
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "control"
+          },
+          {
+            "name": "electronic_pipette__electronic_pipette_ejector_contact",
+            "parent": "electronic_pipette__electronic_pipette_tip_ejector",
+            "position": [
+              0.024,
+              0,
+              0.279
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "control"
+          }
+        ]
+      },
+      {
+        "id": "thermomixer",
+        "label": "Thermomixer",
+        "station": "thermal_processing",
+        "joints": [
+          {
+            "name": "thermomixer__thermomixer_mixing_carrier_joint",
+            "type": "prismatic",
+            "rest": 0.0,
+            "inspection": 0,
+            "lower": -0.0015,
+            "upper": 0.0015,
+            "velocity": 1.0,
+            "effort": 20.0
+          },
+          {
+            "name": "thermomixer__thermomixer_orbital_carrier_joint",
+            "type": "prismatic",
+            "rest": 0.0,
+            "inspection": 0,
+            "lower": -0.0015,
+            "upper": 0.0015,
+            "velocity": 1.0,
+            "effort": 20.0
+          },
+          {
+            "name": "thermomixer__thermomixer_lid_joint",
+            "type": "revolute",
+            "rest": 0.0,
+            "inspection": 1.65,
+            "lower": 0.0,
+            "upper": 1.8,
+            "velocity": 1.0,
+            "effort": 20.0
+          },
+          {
+            "name": "thermomixer__thermomixer_cycle_control_joint",
+            "type": "revolute",
+            "rest": 0.0,
+            "inspection": 1.5707963267948966,
+            "lower": 0.0,
+            "upper": 6.283185307179586,
+            "velocity": 1.0,
+            "effort": 20.0
+          }
+        ],
+        "pose": [
+          -1.61,
+          2.43,
+          0.9,
+          0,
+          0,
+          0,
+          1
+        ],
+        "root": "thermomixer__thermomixer_body",
+        "resource": "devices/thermomixer/model.urdf",
+        "frames": [
+          {
+            "name": "thermomixer__thermomixer_slot_A1",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              -0.06,
+              -0.036000000000000004,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_A2",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              -0.036000000000000004,
+              -0.036000000000000004,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_A3",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              -0.012,
+              -0.036000000000000004,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_A4",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              0.012,
+              -0.036000000000000004,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_A5",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              0.036000000000000004,
+              -0.036000000000000004,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_A6",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              0.06,
+              -0.036000000000000004,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_B1",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              -0.06,
+              -0.012,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_B2",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              -0.036000000000000004,
+              -0.012,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_B3",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              -0.012,
+              -0.012,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_B4",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              0.012,
+              -0.012,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_B5",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              0.036000000000000004,
+              -0.012,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_B6",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              0.06,
+              -0.012,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_C1",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              -0.06,
+              0.012,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_C2",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              -0.036000000000000004,
+              0.012,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_C3",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              -0.012,
+              0.012,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_C4",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              0.012,
+              0.012,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_C5",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              0.036000000000000004,
+              0.012,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_C6",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              0.06,
+              0.012,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_D1",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              -0.06,
+              0.036000000000000004,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_D2",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              -0.036000000000000004,
+              0.036000000000000004,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_D3",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              -0.012,
+              0.036000000000000004,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_D4",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              0.012,
+              0.036000000000000004,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_D5",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              0.036000000000000004,
+              0.036000000000000004,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_slot_D6",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              0.06,
+              0.036000000000000004,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample_well"
+          },
+          {
+            "name": "thermomixer__thermomixer_lid_handle",
+            "parent": "thermomixer__thermomixer_lid",
+            "position": [
+              0,
+              -0.232,
+              0.013
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "handle"
+          },
+          {
+            "name": "thermomixer__thermomixer_block_grasp",
+            "parent": "thermomixer__thermomixer_sample_block",
+            "position": [
+              0.079,
+              0,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "grasp"
+          },
+          {
+            "name": "thermomixer__thermomixer_cycle_control_grasp",
+            "parent": "thermomixer__thermomixer_cycle_control",
+            "position": [
+              0,
+              -0.006,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "control"
+          },
+          {
+            "name": "thermomixer__thermomixer_body_grasp",
+            "parent": "thermomixer__thermomixer_body",
+            "position": [
+              0,
+              0,
+              0.06
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "grasp"
+          }
+        ]
+      },
+      {
+        "id": "pcr_thermocycler",
+        "label": "PCR Thermocycler",
+        "station": "thermal_processing",
+        "joints": [
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_heated_lid_joint",
+            "type": "revolute",
+            "rest": 0.0,
+            "inspection": -1.7,
+            "lower": -1.85,
+            "upper": 0.0,
+            "velocity": 1.0,
+            "effort": 20.0
+          }
+        ],
+        "pose": [
+          -1.12,
+          2.43,
+          0.9,
+          0,
+          0,
+          0,
+          1
+        ],
+        "root": "pcr_thermocycler__pcr_thermocycler_base",
+        "resource": "devices/pcr_thermocycler/model.urdf",
+        "frames": [
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_A1",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.049499999999999995,
+              -0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_A2",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.040499999999999994,
+              -0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_A3",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0315,
+              -0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_A4",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0225,
+              -0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_A5",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.013499999999999998,
+              -0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_A6",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0045,
+              -0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_A7",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0045,
+              -0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_A8",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.013499999999999998,
+              -0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_A9",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0225,
+              -0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_A10",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0315,
+              -0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_A11",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.040499999999999994,
+              -0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_A12",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.049499999999999995,
+              -0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_B1",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.049499999999999995,
+              -0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_B2",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.040499999999999994,
+              -0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_B3",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0315,
+              -0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_B4",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0225,
+              -0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_B5",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.013499999999999998,
+              -0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_B6",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0045,
+              -0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_B7",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0045,
+              -0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_B8",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.013499999999999998,
+              -0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_B9",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0225,
+              -0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_B10",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0315,
+              -0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_B11",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.040499999999999994,
+              -0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_B12",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.049499999999999995,
+              -0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_C1",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.049499999999999995,
+              -0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_C2",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.040499999999999994,
+              -0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_C3",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0315,
+              -0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_C4",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0225,
+              -0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_C5",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.013499999999999998,
+              -0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_C6",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0045,
+              -0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_C7",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0045,
+              -0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_C8",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.013499999999999998,
+              -0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_C9",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0225,
+              -0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_C10",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0315,
+              -0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_C11",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.040499999999999994,
+              -0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_C12",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.049499999999999995,
+              -0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_D1",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.049499999999999995,
+              -0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_D2",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.040499999999999994,
+              -0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_D3",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0315,
+              -0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_D4",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0225,
+              -0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_D5",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.013499999999999998,
+              -0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_D6",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0045,
+              -0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_D7",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0045,
+              -0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_D8",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.013499999999999998,
+              -0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_D9",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0225,
+              -0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_D10",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0315,
+              -0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_D11",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.040499999999999994,
+              -0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_D12",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.049499999999999995,
+              -0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_E1",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.049499999999999995,
+              0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_E2",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.040499999999999994,
+              0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_E3",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0315,
+              0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_E4",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0225,
+              0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_E5",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.013499999999999998,
+              0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_E6",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0045,
+              0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_E7",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0045,
+              0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_E8",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.013499999999999998,
+              0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_E9",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0225,
+              0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_E10",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0315,
+              0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_E11",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.040499999999999994,
+              0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_E12",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.049499999999999995,
+              0.0045,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_F1",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.049499999999999995,
+              0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_F2",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.040499999999999994,
+              0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_F3",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0315,
+              0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_F4",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0225,
+              0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_F5",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.013499999999999998,
+              0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_F6",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0045,
+              0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_F7",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0045,
+              0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_F8",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.013499999999999998,
+              0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_F9",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0225,
+              0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_F10",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0315,
+              0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_F11",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.040499999999999994,
+              0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_F12",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.049499999999999995,
+              0.013499999999999998,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_G1",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.049499999999999995,
+              0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_G2",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.040499999999999994,
+              0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_G3",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0315,
+              0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_G4",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0225,
+              0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_G5",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.013499999999999998,
+              0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_G6",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0045,
+              0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_G7",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0045,
+              0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_G8",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.013499999999999998,
+              0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_G9",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0225,
+              0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_G10",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0315,
+              0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_G11",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.040499999999999994,
+              0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_G12",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.049499999999999995,
+              0.0225,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_H1",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.049499999999999995,
+              0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_H2",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.040499999999999994,
+              0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_H3",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0315,
+              0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_H4",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0225,
+              0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_H5",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.013499999999999998,
+              0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_H6",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              -0.0045,
+              0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_H7",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0045,
+              0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_H8",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.013499999999999998,
+              0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_H9",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0225,
+              0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_H10",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.0315,
+              0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_H11",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.040499999999999994,
+              0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_block_H12",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0.049499999999999995,
+              0.0315,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_lid_handle",
+            "parent": "pcr_thermocycler__pcr_thermocycler_heated_lid",
+            "position": [
+              0,
+              -0.225,
+              0.023
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "handle"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_lid_hinge",
+            "parent": "pcr_thermocycler__pcr_thermocycler_heated_lid",
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "joint"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_plate_seat",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0,
+              0,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_load_approach",
+            "parent": "pcr_thermocycler__pcr_thermocycler_reaction_block",
+            "position": [
+              0,
+              0,
+              0.16
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "approach"
+          },
+          {
+            "name": "pcr_thermocycler__pcr_thermocycler_start_button",
+            "parent": "pcr_thermocycler__pcr_thermocycler_base",
+            "position": [
+              0.113,
+              -0.165,
+              0.118
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "control"
+          }
+        ]
+      },
+      {
+        "id": "incubator",
+        "label": "Benchtop Incubator",
+        "station": "thermal_processing",
+        "joints": [
+          {
+            "name": "incubator__incubator_door_joint",
+            "type": "revolute",
+            "rest": 0.0,
+            "inspection": -1.63,
+            "lower": -1.8,
+            "upper": 0.0,
+            "velocity": 1.0,
+            "effort": 20.0
+          }
+        ],
+        "pose": [
+          -0.49,
+          2.47,
+          0.9,
+          0,
+          0,
+          0,
+          1
+        ],
+        "root": "incubator__incubator_base",
+        "resource": "devices/incubator/model.urdf",
+        "frames": [
+          {
+            "name": "incubator__incubator_shelf_1_sample_1_1",
+            "parent": "incubator__incubator_shelf_1",
+            "position": [
+              -0.105,
+              -0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_1_sample_1_2",
+            "parent": "incubator__incubator_shelf_1",
+            "position": [
+              -0.105,
+              0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_1_sample_2_1",
+            "parent": "incubator__incubator_shelf_1",
+            "position": [
+              0,
+              -0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_1_sample_2_2",
+            "parent": "incubator__incubator_shelf_1",
+            "position": [
+              0,
+              0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_1_sample_3_1",
+            "parent": "incubator__incubator_shelf_1",
+            "position": [
+              0.105,
+              -0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_1_sample_3_2",
+            "parent": "incubator__incubator_shelf_1",
+            "position": [
+              0.105,
+              0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_2_sample_1_1",
+            "parent": "incubator__incubator_shelf_2",
+            "position": [
+              -0.105,
+              -0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_2_sample_1_2",
+            "parent": "incubator__incubator_shelf_2",
+            "position": [
+              -0.105,
+              0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_2_sample_2_1",
+            "parent": "incubator__incubator_shelf_2",
+            "position": [
+              0,
+              -0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_2_sample_2_2",
+            "parent": "incubator__incubator_shelf_2",
+            "position": [
+              0,
+              0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_2_sample_3_1",
+            "parent": "incubator__incubator_shelf_2",
+            "position": [
+              0.105,
+              -0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_2_sample_3_2",
+            "parent": "incubator__incubator_shelf_2",
+            "position": [
+              0.105,
+              0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_3_sample_1_1",
+            "parent": "incubator__incubator_shelf_3",
+            "position": [
+              -0.105,
+              -0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_3_sample_1_2",
+            "parent": "incubator__incubator_shelf_3",
+            "position": [
+              -0.105,
+              0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_3_sample_2_1",
+            "parent": "incubator__incubator_shelf_3",
+            "position": [
+              0,
+              -0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_3_sample_2_2",
+            "parent": "incubator__incubator_shelf_3",
+            "position": [
+              0,
+              0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_3_sample_3_1",
+            "parent": "incubator__incubator_shelf_3",
+            "position": [
+              0.105,
+              -0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_shelf_3_sample_3_2",
+            "parent": "incubator__incubator_shelf_3",
+            "position": [
+              0.105,
+              0.08,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "incubator__incubator_door_handle",
+            "parent": "incubator__incubator_door",
+            "position": [
+              0.386,
+              -0.0595,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "handle"
+          },
+          {
+            "name": "incubator__incubator_door_hinge",
+            "parent": "incubator__incubator_door",
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "joint"
+          },
+          {
+            "name": "incubator__incubator_temperature_control",
+            "parent": "incubator__incubator_base",
+            "position": [
+              0.173,
+              -0.225,
+              0.55
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "control"
+          },
+          {
+            "name": "incubator__incubator_chamber_approach",
+            "parent": "incubator__incubator_base",
+            "position": [
+              0,
+              -0.39,
+              0.31
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "approach"
+          }
+        ]
+      },
+      {
+        "id": "microplate_reader",
+        "label": "Microplate Reader",
+        "station": "measurement",
+        "joints": [
+          {
+            "name": "microplate_reader__microplate_reader_plate_drawer_joint",
+            "type": "prismatic",
+            "rest": 0.0,
+            "inspection": 0.195,
+            "lower": 0.0,
+            "upper": 0.195,
+            "velocity": 1.0,
+            "effort": 20.0
+          }
+        ],
+        "pose": [
+          0.22,
+          2.45,
+          0.9,
+          0,
+          0,
+          0,
+          1
+        ],
+        "root": "microplate_reader__microplate_reader_base",
+        "resource": "devices/microplate_reader/model.urdf",
+        "frames": [
+          {
+            "name": "microplate_reader__microplate_reader_drawer_handle",
+            "parent": "microplate_reader__microplate_reader_plate_drawer",
+            "position": [
+              0,
+              -0.158,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "handle"
+          },
+          {
+            "name": "microplate_reader__microplate_reader_plate_seat",
+            "parent": "microplate_reader__microplate_reader_plate_drawer",
+            "position": [
+              0,
+              0,
+              -0.0015
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_reader__microplate_reader_load_approach",
+            "parent": "microplate_reader__microplate_reader_plate_drawer",
+            "position": [
+              0,
+              0,
+              0.13
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "approach"
+          },
+          {
+            "name": "microplate_reader__microplate_reader_eject_button",
+            "parent": "microplate_reader__microplate_reader_base",
+            "position": [
+              0.143,
+              -0.183,
+              0.181
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "control"
+          },
+          {
+            "name": "microplate_reader__microplate_reader_start_button",
+            "parent": "microplate_reader__microplate_reader_base",
+            "position": [
+              0.163,
+              -0.183,
+              0.181
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "control"
+          }
+        ]
+      },
+      {
+        "id": "microplate_96_well",
+        "label": "96-Well Microplate",
+        "station": "measurement",
+        "joints": [],
+        "pose": [
+          0.66,
+          2.35,
+          0.9,
+          0,
+          0,
+          0,
+          1
+        ],
+        "root": "microplate_96_well__microplate_96_well_base",
+        "resource": "devices/microplate_96_well/model.urdf",
+        "frames": [
+          {
+            "name": "microplate_96_well__microplate_96_well_well_A1",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.049499999999999995,
+              -0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_A2",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.040499999999999994,
+              -0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_A3",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0315,
+              -0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_A4",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0225,
+              -0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_A5",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.013499999999999998,
+              -0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_A6",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0045,
+              -0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_A7",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0045,
+              -0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_A8",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.013499999999999998,
+              -0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_A9",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0225,
+              -0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_A10",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0315,
+              -0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_A11",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.040499999999999994,
+              -0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_A12",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.049499999999999995,
+              -0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_B1",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.049499999999999995,
+              -0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_B2",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.040499999999999994,
+              -0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_B3",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0315,
+              -0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_B4",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0225,
+              -0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_B5",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.013499999999999998,
+              -0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_B6",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0045,
+              -0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_B7",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0045,
+              -0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_B8",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.013499999999999998,
+              -0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_B9",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0225,
+              -0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_B10",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0315,
+              -0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_B11",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.040499999999999994,
+              -0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_B12",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.049499999999999995,
+              -0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_C1",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.049499999999999995,
+              -0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_C2",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.040499999999999994,
+              -0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_C3",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0315,
+              -0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_C4",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0225,
+              -0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_C5",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.013499999999999998,
+              -0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_C6",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0045,
+              -0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_C7",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0045,
+              -0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_C8",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.013499999999999998,
+              -0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_C9",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0225,
+              -0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_C10",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0315,
+              -0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_C11",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.040499999999999994,
+              -0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_C12",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.049499999999999995,
+              -0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_D1",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.049499999999999995,
+              -0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_D2",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.040499999999999994,
+              -0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_D3",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0315,
+              -0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_D4",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0225,
+              -0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_D5",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.013499999999999998,
+              -0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_D6",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0045,
+              -0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_D7",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0045,
+              -0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_D8",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.013499999999999998,
+              -0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_D9",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0225,
+              -0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_D10",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0315,
+              -0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_D11",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.040499999999999994,
+              -0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_D12",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.049499999999999995,
+              -0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_E1",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.049499999999999995,
+              0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_E2",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.040499999999999994,
+              0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_E3",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0315,
+              0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_E4",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0225,
+              0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_E5",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.013499999999999998,
+              0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_E6",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0045,
+              0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_E7",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0045,
+              0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_E8",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.013499999999999998,
+              0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_E9",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0225,
+              0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_E10",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0315,
+              0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_E11",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.040499999999999994,
+              0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_E12",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.049499999999999995,
+              0.0045,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_F1",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.049499999999999995,
+              0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_F2",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.040499999999999994,
+              0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_F3",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0315,
+              0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_F4",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0225,
+              0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_F5",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.013499999999999998,
+              0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_F6",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0045,
+              0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_F7",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0045,
+              0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_F8",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.013499999999999998,
+              0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_F9",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0225,
+              0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_F10",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0315,
+              0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_F11",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.040499999999999994,
+              0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_F12",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.049499999999999995,
+              0.013499999999999998,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_G1",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.049499999999999995,
+              0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_G2",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.040499999999999994,
+              0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_G3",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0315,
+              0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_G4",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0225,
+              0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_G5",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.013499999999999998,
+              0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_G6",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0045,
+              0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_G7",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0045,
+              0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_G8",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.013499999999999998,
+              0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_G9",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0225,
+              0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_G10",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0315,
+              0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_G11",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.040499999999999994,
+              0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_G12",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.049499999999999995,
+              0.0225,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_H1",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.049499999999999995,
+              0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_H2",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.040499999999999994,
+              0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_H3",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0315,
+              0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_H4",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0225,
+              0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_H5",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.013499999999999998,
+              0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_H6",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.0045,
+              0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_H7",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0045,
+              0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_H8",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.013499999999999998,
+              0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_H9",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0225,
+              0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_H10",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.0315,
+              0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_H11",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.040499999999999994,
+              0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_well_H12",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.049499999999999995,
+              0.0315,
+              0.0134
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_left_grip",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              -0.064,
+              0,
+              0.008
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "grasp"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_right_grip",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0.064,
+              0,
+              0.008
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "grasp"
+          },
+          {
+            "name": "microplate_96_well__microplate_96_well_plate_center",
+            "parent": "microplate_96_well__microplate_96_well_base",
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "placement"
+          }
+        ]
+      },
+      {
+        "id": "digital_microscope",
+        "label": "Digital microscope",
+        "station": "measurement",
+        "joints": [
+          {
+            "name": "digital_microscope__digital_microscope_monitor_joint",
+            "type": "revolute",
+            "rest": 0.0,
+            "inspection": 0.2,
+            "lower": -0.12,
+            "upper": 0.5,
+            "velocity": 1.0,
+            "effort": 20.0
+          },
+          {
+            "name": "digital_microscope__digital_microscope_objective_turret_joint",
+            "type": "revolute",
+            "rest": 0.0,
+            "inspection": 2.0943951023931953,
+            "lower": -2.0943951023931953,
+            "upper": 2.0943951023931953,
+            "velocity": 1.0,
+            "effort": 20.0
+          },
+          {
+            "name": "digital_microscope__digital_microscope_focus_carriage_joint",
+            "type": "prismatic",
+            "rest": 0.0,
+            "inspection": 0.01,
+            "lower": -0.02,
+            "upper": 0.02,
+            "velocity": 1.0,
+            "effort": 20.0
+          },
+          {
+            "name": "digital_microscope__digital_microscope_slide_x_joint",
+            "type": "prismatic",
+            "rest": 0.0,
+            "inspection": 0.02,
+            "lower": -0.028,
+            "upper": 0.028,
+            "velocity": 1.0,
+            "effort": 20.0
+          },
+          {
+            "name": "digital_microscope__digital_microscope_slide_y_joint",
+            "type": "prismatic",
+            "rest": 0.0,
+            "inspection": -0.015,
+            "lower": -0.02,
+            "upper": 0.02,
+            "velocity": 1.0,
+            "effort": 20.0
+          }
+        ],
+        "pose": [
+          1.06,
+          2.45,
+          0.9,
+          0,
+          0,
+          0,
+          1
+        ],
+        "root": "digital_microscope__digital_microscope_base",
+        "resource": "devices/digital_microscope/model.urdf",
+        "frames": [
+          {
+            "name": "digital_microscope__digital_microscope_sample_stage",
+            "parent": "digital_microscope__digital_microscope_slide_y",
+            "position": [
+              0,
+              0,
+              0.01
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "digital_microscope__digital_microscope_focus_control",
+            "parent": "digital_microscope__digital_microscope_focus_carriage",
+            "position": [
+              0.108,
+              0,
+              0.005
+            ],
+            "rotation": [
+              0,
+              1.5707963267948966,
+              0
+            ],
+            "role": "control"
+          },
+          {
+            "name": "digital_microscope__digital_microscope_body_grasp",
+            "parent": "digital_microscope__digital_microscope_base",
+            "position": [
+              0,
+              0.133,
+              0.247
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "grasp"
+          },
+          {
+            "name": "digital_microscope__digital_microscope_objective_axis",
+            "parent": "digital_microscope__digital_microscope_optical_head",
+            "position": [
+              0,
+              -0.028,
+              -0.118
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "measurement"
+          }
+        ]
+      },
+      {
+        "id": "ph_meter",
+        "label": "pH meter",
+        "station": "measurement",
+        "joints": [
+          {
+            "name": "ph_meter__ph_meter_support_height_joint",
+            "type": "prismatic",
+            "rest": 0.0,
+            "inspection": 0.045,
+            "lower": -0.07,
+            "upper": 0.085,
+            "velocity": 1.0,
+            "effort": 20.0
+          },
+          {
+            "name": "ph_meter__ph_meter_probe_arm_joint",
+            "type": "revolute",
+            "rest": 0.0,
+            "inspection": 0.7,
+            "lower": -1.9,
+            "upper": 1.9,
+            "velocity": 1.0,
+            "effort": 20.0
+          }
+        ],
+        "pose": [
+          1.6,
+          2.4,
+          0.9,
+          0,
+          0,
+          0,
+          1
+        ],
+        "root": "ph_meter__ph_meter_base",
+        "resource": "devices/ph_meter/model.urdf",
+        "frames": [
+          {
+            "name": "ph_meter__ph_meter_probe_mount",
+            "parent": "ph_meter__ph_meter_probe_arm",
+            "position": [
+              0,
+              -0.12,
+              -0.155
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "mount"
+          },
+          {
+            "name": "ph_meter__ph_meter_rinse_station",
+            "parent": "ph_meter__ph_meter_base",
+            "position": [
+              0.174,
+              -0.043,
+              0.02
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "ph_meter__ph_meter_read_control",
+            "parent": "ph_meter__ph_meter_base",
+            "position": [
+              0.09,
+              0.04,
+              0.082
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "control"
+          },
+          {
+            "name": "ph_meter__ph_meter_body_grasp",
+            "parent": "ph_meter__ph_meter_base",
+            "position": [
+              0,
+              0,
+              0.046
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "grasp"
+          }
+        ]
+      },
+      {
+        "id": "ph_probe",
+        "label": "pH probe",
+        "station": "measurement",
+        "joints": [],
+        "pose": [
+          1.774,
+          2.357,
+          1.005,
+          0,
+          0,
+          0,
+          1
+        ],
+        "root": "ph_probe__ph_probe_probe",
+        "resource": "devices/ph_probe/model.urdf",
+        "frames": [
+          {
+            "name": "ph_probe__ph_probe_body_grasp",
+            "parent": "ph_probe__ph_probe_probe",
+            "position": [
+              0,
+              0,
+              0.142
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "grasp"
+          },
+          {
+            "name": "ph_probe__ph_probe_sensing_tip",
+            "parent": "ph_probe__ph_probe_probe",
+            "position": [
+              0,
+              0,
+              0.009
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "measurement"
+          },
+          {
+            "name": "ph_probe__ph_probe_cable_connector",
+            "parent": "ph_probe__ph_probe_probe",
+            "position": [
+              0,
+              0,
+              0.229
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "connector"
+          }
+        ]
+      },
+      {
+        "id": "barcode_dock",
+        "label": "Barcode scanner dock",
+        "station": "documentation",
+        "joints": [],
+        "pose": [
+          2.18,
+          2.4,
+          0.8995,
+          0,
+          0,
+          0,
+          1
+        ],
+        "root": "barcode_dock__barcode_dock_base",
+        "resource": "devices/barcode_dock/model.urdf",
+        "frames": [
+          {
+            "name": "barcode_dock__barcode_dock_scanner_mount",
+            "parent": "barcode_dock__barcode_dock_base",
+            "position": [
+              0,
+              -0.008,
+              0.044
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "mount"
+          },
+          {
+            "name": "barcode_dock__barcode_dock_body_grasp",
+            "parent": "barcode_dock__barcode_dock_base",
+            "position": [
+              0,
+              0,
+              0.02
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "grasp"
+          }
+        ]
+      },
+      {
+        "id": "barcode_scanner",
+        "label": "Barcode scanner",
+        "station": "documentation",
+        "joints": [
+          {
+            "name": "barcode_scanner__barcode_scanner_trigger_joint",
+            "type": "revolute",
+            "rest": 0.0,
+            "inspection": 0.22,
+            "lower": 0.0,
+            "upper": 0.22,
+            "velocity": 1.0,
+            "effort": 20.0
+          }
+        ],
+        "pose": [
+          2.18,
+          2.369,
+          0.9405,
+          0,
+          0,
+          0,
+          1
+        ],
+        "root": "barcode_scanner__barcode_scanner_body",
+        "resource": "devices/barcode_scanner/model.urdf",
+        "frames": [
+          {
+            "name": "barcode_scanner__barcode_scanner_body_grasp",
+            "parent": "barcode_scanner__barcode_scanner_body",
+            "position": [
+              0,
+              0.012,
+              0.068
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "grasp"
+          },
+          {
+            "name": "barcode_scanner__barcode_scanner_scan_axis",
+            "parent": "barcode_scanner__barcode_scanner_body",
+            "position": [
+              0,
+              -0.086,
+              0.148
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "role": "measurement"
+          },
+          {
+            "name": "barcode_scanner__barcode_scanner_trigger_control",
+            "parent": "barcode_scanner__barcode_scanner_trigger",
+            "position": [
+              0,
+              -0.012,
+              -0.015
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "control"
+          },
+          {
+            "name": "barcode_scanner__barcode_scanner_dock_contact",
+            "parent": "barcode_scanner__barcode_scanner_body",
+            "position": [
+              0,
+              0.023,
+              0.003
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "mount"
+          }
+        ]
+      },
+      {
+        "id": "label_printer",
+        "label": "Label printer",
+        "station": "documentation",
+        "joints": [
+          {
+            "name": "label_printer__label_printer_media_cover_joint",
+            "type": "revolute",
+            "rest": 0.0,
+            "inspection": 1.35,
+            "lower": 0.0,
+            "upper": 1.7,
+            "velocity": 1.0,
+            "effort": 20.0
+          },
+          {
+            "name": "label_printer__label_printer_media_spindle_joint",
+            "type": "continuous",
+            "rest": 0.0,
+            "inspection": 1.0471975511965976,
+            "lower": -3.141592653589793,
+            "upper": 3.141592653589793,
+            "velocity": 1.0,
+            "effort": 20.0
+          },
+          {
+            "name": "label_printer__label_printer_feed_roller_joint",
+            "type": "continuous",
+            "rest": 0.0,
+            "inspection": 1.5707963267948966,
+            "lower": -3.141592653589793,
+            "upper": 3.141592653589793,
+            "velocity": 1.0,
+            "effort": 20.0
+          }
+        ],
+        "pose": [
+          2.76,
+          2.47,
+          0.9,
+          0,
+          0,
+          0,
+          1
+        ],
+        "root": "label_printer__label_printer_base",
+        "resource": "devices/label_printer/model.urdf",
+        "frames": [
+          {
+            "name": "label_printer__label_printer_cover_handle",
+            "parent": "label_printer__label_printer_media_cover",
+            "position": [
+              0,
+              -0.229,
+              0.05
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "grasp"
+          },
+          {
+            "name": "label_printer__label_printer_media_loading",
+            "parent": "label_printer__label_printer_base",
+            "position": [
+              0,
+              0.03,
+              0.097
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "sample"
+          },
+          {
+            "name": "label_printer__label_printer_label_output",
+            "parent": "label_printer__label_printer_base",
+            "position": [
+              0,
+              -0.204,
+              0.057
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "output"
+          },
+          {
+            "name": "label_printer__label_printer_feed_control",
+            "parent": "label_printer__label_printer_media_cover",
+            "position": [
+              0.056,
+              -0.119,
+              0.103
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "control"
+          },
+          {
+            "name": "label_printer__label_printer_body_grasp",
+            "parent": "label_printer__label_printer_base",
+            "position": [
+              0,
+              0,
+              0.041
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "role": "grasp"
+          }
+        ]
+      }
+    ],
+    "bounds": {
+      "min": [
+        -3.4,
+        -2.7,
+        0.04
+      ],
+      "max": [
+        3.4,
+        3.1,
+        2.5
+      ]
+    },
+    "stations": [
+      {
+        "id": "preparation",
+        "label": "01 \u00b7 Sample preparation",
+        "camera": {
+          "position": [
+            2.0,
+            -2.8,
+            1.85
+          ],
+          "target": [
+            0,
+            0,
+            0.92
+          ]
+        }
+      },
+      {
+        "id": "sample_handling",
+        "label": "02 \u00b7 Sample handling",
+        "camera": {
+          "position": [
+            -1.9,
+            1.1,
+            1.75
+          ],
+          "target": [
+            -2.48,
+            2.4,
+            1.06
+          ]
+        }
+      },
+      {
+        "id": "thermal_processing",
+        "label": "03 \u00b7 Thermal processing",
+        "camera": {
+          "position": [
+            -0.15,
+            0.8,
+            1.98
+          ],
+          "target": [
+            -1.05,
+            2.42,
+            1.18
+          ]
+        }
+      },
+      {
+        "id": "measurement",
+        "label": "04 \u00b7 Analysis and measurement",
+        "camera": {
+          "position": [
+            2.0,
+            0.72,
+            1.93
+          ],
+          "target": [
+            1.04,
+            2.42,
+            1.12
+          ]
+        }
+      },
+      {
+        "id": "documentation",
+        "label": "05 \u00b7 Identification and labels",
+        "camera": {
+          "position": [
+            3.24,
+            1.17,
+            1.63
+          ],
+          "target": [
+            2.6,
+            2.43,
+            1.05
+          ]
+        }
+      }
+    ],
+    "room": {
+      "bounds": [
+        -3.5,
+        3.5,
+        -2.8,
+        3.2
+      ],
+      "rearAisleWidth": 1.75,
+      "workSurfaceHeight": 0.9
+    },
+    "contactExclusions": [
+      {
+        "first": "ph_meter__ph_meter_base",
+        "second": "ph_meter__ph_meter_probe_arm"
+      }
+    ]
+  },
+  "navigation": {
+    "supportGeometries": [
+      "room__medical_lab_room_shell_room__medical_lab_room_shell_contact_0"
+    ]
+  }
+}

@@ -1,0 +1,243 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="ph_probe"><!-- CRAMERA laboratory asset rights:
+Principal author: Vanessa Hassouna
+Institution: AICOR Institute
+Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.
+License: LicenseRef-AICOR-Laboratory-Assets
+See LICENSE.txt and NOTICE.md.
+-->
+  <link name="ph_probe_probe">
+    <visual>
+      <geometry>
+        <mesh filename="assets/probe.glb" />
+      </geometry>
+    </visual>
+    <collision name="ph_probe_probe_contact_0">
+      <origin xyz="0 0 0.015" rpy="0 0 0" />
+      <geometry>
+        <sphere radius="0.006" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_1">
+      <origin xyz="0 0 0.059" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.0055" length="0.084" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_2">
+      <origin xyz="0.008 0 0.033" rpy="0 0 0" />
+      <geometry>
+        <box size="0.003 0.003 0.055" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_3">
+      <origin xyz="4.8985872e-19 0.008 0.033" rpy="0 0 0" />
+      <geometry>
+        <box size="0.003 0.003 0.055" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_4">
+      <origin xyz="-0.008 9.79717439e-19 0.033" rpy="0 0 0" />
+      <geometry>
+        <box size="0.003 0.003 0.055" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_5">
+      <origin xyz="-1.46957616e-18 -0.008 0.033" rpy="0 0 0" />
+      <geometry>
+        <box size="0.003 0.003 0.055" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_6">
+      <origin xyz="0.00825 0 0.059" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_7">
+      <origin xyz="0.00796888807 0.00213525712 0.059" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_8">
+      <origin xyz="0.00714470958 0.004125 0.059" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_9">
+      <origin xyz="0.00583363094 0.00583363094 0.059" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_10">
+      <origin xyz="0.004125 0.00714470958 0.059" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_11">
+      <origin xyz="0.00213525712 0.00796888807 0.059" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_12">
+      <origin xyz="5.05166805e-19 0.00825 0.059" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_13">
+      <origin xyz="-0.00213525712 0.00796888807 0.059" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_14">
+      <origin xyz="-0.004125 0.00714470958 0.059" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_15">
+      <origin xyz="-0.00583363094 0.00583363094 0.059" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_16">
+      <origin xyz="-0.00714470958 0.004125 0.059" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_17">
+      <origin xyz="-0.00796888807 0.00213525712 0.059" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_18">
+      <origin xyz="-0.00825 1.01033361e-18 0.059" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_19">
+      <origin xyz="-0.00796888807 -0.00213525712 0.059" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_20">
+      <origin xyz="-0.00714470958 -0.004125 0.059" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_21">
+      <origin xyz="-0.00583363094 -0.00583363094 0.059" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_22">
+      <origin xyz="-0.004125 -0.00714470958 0.059" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_23">
+      <origin xyz="-0.00213525712 -0.00796888807 0.059" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_24">
+      <origin xyz="-1.51550041e-18 -0.00825 0.059" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_25">
+      <origin xyz="0.00213525712 -0.00796888807 0.059" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_26">
+      <origin xyz="0.004125 -0.00714470958 0.059" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_27">
+      <origin xyz="0.00583363094 -0.00583363094 0.059" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_28">
+      <origin xyz="0.00714470958 -0.004125 0.059" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_29">
+      <origin xyz="0.00796888807 -0.00213525712 0.059" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00217226621 0.009" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_30">
+      <origin xyz="0 0 0.13" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.009" length="0.137" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_31">
+      <origin xyz="0 0 0.183" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.0095" length="0.012" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_32">
+      <origin xyz="0 0 0.21" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.006" length="0.026" />
+      </geometry>
+    </collision>
+    <collision name="ph_probe_probe_contact_33">
+      <origin xyz="0 0 0.225" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.004" length="0.009" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0.1175" />
+      <mass value="0.08" />
+      <inertia ixx="0.00033744666666666673" iyy="0.00033744666666666673" izz="5.880000000000006e-06" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <link name="ph_probe_body_grasp" />
+  <joint name="ph_probe_body_grasp_joint" type="fixed">
+    <parent link="ph_probe_probe" />
+    <child link="ph_probe_body_grasp" />
+    <origin xyz="0 0 0.142" rpy="0 0 0" />
+  </joint>
+  <link name="ph_probe_sensing_tip" />
+  <joint name="ph_probe_sensing_tip_joint" type="fixed">
+    <parent link="ph_probe_probe" />
+    <child link="ph_probe_sensing_tip" />
+    <origin xyz="0 0 0.009" rpy="0 0 0" />
+  </joint>
+  <link name="ph_probe_cable_connector" />
+  <joint name="ph_probe_cable_connector_joint" type="fixed">
+    <parent link="ph_probe_probe" />
+    <child link="ph_probe_cable_connector" />
+    <origin xyz="0 0 0.229" rpy="0 0 0" />
+  </joint>
+</robot>

@@ -124,6 +124,10 @@ class PhysicsField(StrEnum):
     """The static bundle's initial frame rate."""
     TRAJECTORY = "trajectory"
     """The relative initial pose file."""
+    MEDICAL_LAB = "medicalLab"
+    """Optional workstation and instrument metadata of the expanded room."""
+    INSTRUMENTS = "instruments"
+    """Measured positions of the expanded instrument mechanisms."""
 
 
 class PhysicsFile(StrEnum):
@@ -212,6 +216,8 @@ class LaboratoryPhysicsSession:
 
     data_directory: Path
     """The local CRAMERA artifact directory."""
+    source_directory: Path | None = field(default=None, kw_only=True)
+    """Explicit authored world, preserving the default laboratory when omitted."""
     physics: ContactSimulation | None = field(default=None, init=False)
     """The lazily initialized contact engine."""
     worker: threading.Thread | None = field(default=None, init=False)
@@ -228,6 +234,10 @@ class LaboratoryPhysicsSession:
     """The latest startup or worker failure."""
     object_keys: set[str] = field(default_factory=set, init=False)
     """The manipulable authored object identifiers."""
+    target_minimum: tuple[float, float, float] | None = field(default=None, init=False)
+    """Authored expanded-room minimum, or the default bench bounds."""
+    target_maximum: tuple[float, float, float] | None = field(default=None, init=False)
+    """Authored expanded-room maximum, or the default bench bounds."""
 
     SOURCE_SCENE: ClassVar[str] = "aicor_medical_lab"
     """The immutable authored laboratory scene."""
@@ -266,8 +276,10 @@ class LaboratoryPhysicsSession:
             self.error = None
             self.physics = None
             try:
-                directory = paths.resolve_scene_directory(self.SOURCE_SCENE)
-                if directory is None:
+                directory = self.source_directory or paths.resolve_scene_directory(
+                    self.SOURCE_SCENE
+                )
+                if directory is None or not (directory / PhysicsFile.SCENE).is_file():
                     raise FileNotFoundError(
                         "The authored AICOR medical laboratory is missing"
                     )
@@ -424,7 +436,9 @@ class LaboratoryPhysicsSession:
         if not isinstance(position, list) or len(position) != 3:
             raise InvalidPhysicsRequest("Expected three target coordinates")
         for value, minimum, maximum in zip(
-            position, self.TARGET_MINIMUM, self.TARGET_MAXIMUM
+            position,
+            self.target_minimum or self.TARGET_MINIMUM,
+            self.target_maximum or self.TARGET_MAXIMUM,
         ):
             if (
                 isinstance(value, bool)
@@ -504,6 +518,21 @@ class LaboratoryPhysicsSession:
     def _write_scene(self, source_directory: Path) -> None:
         """Copy browser assets and replace manual controls with contact metadata."""
         scene = json.loads((source_directory / PhysicsFile.SCENE).read_text())
+        bounds = scene.get(PhysicsField.MEDICAL_LAB, {}).get(PhysicsField.BOUNDS)
+        if bounds is not None:
+            minimum = bounds[PhysicsField.MINIMUM]
+            maximum = bounds[PhysicsField.MAXIMUM]
+            if (
+                len(minimum) != 3
+                or len(maximum) != 3
+                or any(not math.isfinite(value) for value in (*minimum, *maximum))
+                or any(lower >= upper for lower, upper in zip(minimum, maximum))
+            ):
+                raise InvalidPhysicsRequest(
+                    "Authored laboratory bounds must be finite ordered coordinates"
+                )
+            self.target_minimum = tuple(minimum)
+            self.target_maximum = tuple(maximum)
         self.object_keys = {
             item[PhysicsField.KEY] for item in scene[PhysicsField.OBJECTS]
         }
@@ -521,8 +550,8 @@ class LaboratoryPhysicsSession:
                 for item in scene[PhysicsField.OBJECTS]
             ],
             PhysicsField.BOUNDS: {
-                PhysicsField.MINIMUM: list(self.TARGET_MINIMUM),
-                PhysicsField.MAXIMUM: list(self.TARGET_MAXIMUM),
+                PhysicsField.MINIMUM: list(self.target_minimum or self.TARGET_MINIMUM),
+                PhysicsField.MAXIMUM: list(self.target_maximum or self.TARGET_MAXIMUM),
             },
             PhysicsField.CAMERAS: laboratory.get(PhysicsField.CAMERAS, {}),
             PhysicsField.RACK_SLOTS: laboratory.get(PhysicsField.RACK_SLOTS, []),
@@ -561,6 +590,9 @@ class LaboratoryPhysicsSession:
             PhysicsField.FRAMES: original_trajectory.get(PhysicsField.FRAMES, [{}])[:1],
             PhysicsField.OBJECTS: [snapshot[PhysicsField.OBJECTS]],
         }
+        trajectory[PhysicsField.FRAMES][0].update(
+            snapshot.get(PhysicsField.INSTRUMENTS, {}).get(PhysicsField.JOINTS, {})
+        )
         if PhysicsField.BODY_POSES in snapshot:
             trajectory[PhysicsField.BODY_POSES] = [snapshot[PhysicsField.BODY_POSES]]
         drawer = snapshot.get(PhysicsField.DRAWER)

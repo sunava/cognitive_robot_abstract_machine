@@ -1,0 +1,149 @@
+{
+  "device": "tube_capper",
+  "title": "Tube Capper / Decapper",
+  "description": "Articulated tube holder, opposing clamp jaws and a translating rotary chuck.",
+  "rootLink": "tube_capper_base",
+  "units": "metres",
+  "upAxis": "Z",
+  "frontAxis": "-Y",
+  "joints": [
+    {
+      "name": "tube_capper_clamp_left_joint",
+      "type": "prismatic",
+      "lower": 0,
+      "upper": 0.014,
+      "inspectionPosition": 0
+    },
+    {
+      "name": "tube_capper_clamp_right_joint",
+      "type": "prismatic",
+      "lower": 0,
+      "upper": 0.014,
+      "inspectionPosition": 0
+    },
+    {
+      "name": "tube_capper_head_carriage_joint",
+      "type": "prismatic",
+      "lower": 0,
+      "upper": 0.13,
+      "inspectionPosition": 0
+    },
+    {
+      "name": "tube_capper_rotary_chuck_joint",
+      "type": "continuous",
+      "lower": 0,
+      "upper": 0,
+      "inspectionPosition": 1.0471975511965976
+    }
+  ],
+  "frames": [
+    {
+      "name": "tube_capper_left_clamp_contact",
+      "parent": "tube_capper_clamp_left",
+      "position": [
+        0.01,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "contact"
+    },
+    {
+      "name": "tube_capper_right_clamp_contact",
+      "parent": "tube_capper_clamp_right",
+      "position": [
+        -0.01,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "contact"
+    },
+    {
+      "name": "tube_capper_sample_seat",
+      "parent": "tube_capper_base",
+      "position": [
+        0,
+        -0.06,
+        0.085
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "tube_capper_chuck_contact",
+      "parent": "tube_capper_rotary_chuck",
+      "position": [
+        0,
+        0,
+        -0.012
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "tool"
+    },
+    {
+      "name": "tube_capper_front_access",
+      "parent": "tube_capper_base",
+      "position": [
+        0,
+        -0.23,
+        0.2
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "approach"
+    },
+    {
+      "name": "tube_capper_display",
+      "parent": "tube_capper_base",
+      "position": [
+        0.088,
+        -0.145,
+        0.048
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "control"
+    }
+  ],
+  "accessories": [],
+  "blender": "model.blend",
+  "previews": {
+    "closed": "preview.png",
+    "open": "preview_open.png"
+  },
+  "modelScope": "Original articulated concept model. Instrument controls and measurements require a separate controller.",
+  "inertialModel": "Nominal masses with compound-bounds box inertia; not calibrated hardware parameters.",
+  "assetRights": {
+    "principalAuthor": "Vanessa Hassouna",
+    "institution": "AICOR Institute",
+    "copyright": "Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.",
+    "license": "LicenseRef-AICOR-Laboratory-Assets",
+    "permissionNotice": "Reuse, modification and redistribution of the original laboratory assets require prior written permission from Vanessa Hassouna, except where an existing licence or applicable law permits them. Permission requests: hassouna@uni-bremen.de.",
+    "priorLicenseNotice": "Existing third-party rights and any permissions already validly granted remain unaffected. This notice does not create copyright in otherwise unprotected material.",
+    "licenseFile": "LICENSE.txt",
+    "noticeFile": "NOTICE.md"
+  }
+}

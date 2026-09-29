@@ -1,0 +1,18 @@
+{
+  "instruments": [{
+    "id": "fixture",
+    "label": "Inspection fixture",
+    "station": "inspection",
+    "joints": [{
+      "name": "fixture__hinge",
+      "type": "revolute",
+      "rest": 0.0,
+      "inspection": 0.8,
+      "lower": 0.0,
+      "upper": 1.2,
+      "velocity": 0.5,
+      "effort": 0.5
+    }]
+  }],
+  "stations": []
+}

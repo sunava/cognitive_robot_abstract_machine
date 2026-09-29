@@ -1,0 +1,873 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="label_printer"><!-- CRAMERA laboratory asset rights:
+Principal author: Vanessa Hassouna
+Institution: AICOR Institute
+Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.
+License: LicenseRef-AICOR-Laboratory-Assets
+See LICENSE.txt and NOTICE.md.
+-->
+  <link name="label_printer_base">
+    <visual>
+      <geometry>
+        <mesh filename="assets/base.glb" />
+      </geometry>
+    </visual>
+    <collision name="label_printer_base_contact_0">
+      <origin xyz="0 0 0.018" rpy="0 0 0" />
+      <geometry>
+        <box size="0.212 0.26 0.036" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_base_contact_1">
+      <origin xyz="-0.099 0.002 0.06" rpy="0 0 0" />
+      <geometry>
+        <box size="0.014 0.253 0.071" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_base_contact_2">
+      <origin xyz="-0.1 0.108 0.094" rpy="0 1.57079633 0" />
+      <geometry>
+        <cylinder radius="0.006" length="0.066" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_base_contact_3">
+      <origin xyz="-0.079 0.032 0.065" rpy="0 0 0" />
+      <geometry>
+        <box size="0.013 0.029 0.072" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_base_contact_4">
+      <origin xyz="0.099 0.002 0.06" rpy="0 0 0" />
+      <geometry>
+        <box size="0.014 0.253 0.071" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_base_contact_5">
+      <origin xyz="0.1 0.108 0.094" rpy="0 1.57079633 0" />
+      <geometry>
+        <cylinder radius="0.006" length="0.066" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_base_contact_6">
+      <origin xyz="0.079 0.032 0.065" rpy="0 0 0" />
+      <geometry>
+        <box size="0.013 0.029 0.072" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_base_contact_7">
+      <origin xyz="0 0.121 0.061" rpy="0 0 0" />
+      <geometry>
+        <box size="0.191 0.015 0.074" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_base_contact_8">
+      <origin xyz="0 -0.118 0.077" rpy="0 0 0" />
+      <geometry>
+        <box size="0.201 0.024 0.031" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_base_contact_9">
+      <origin xyz="0 -0.118 0.037" rpy="0 0 0" />
+      <geometry>
+        <box size="0.201 0.024 0.033" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_base_contact_10">
+      <origin xyz="0 -0.12 0.054" rpy="0 0 0" />
+      <geometry>
+        <box size="0.136 0.028 0.001" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_base_contact_11">
+      <origin xyz="0 -0.139 0.047" rpy="0 0 0" />
+      <geometry>
+        <box size="0.146 0.02 0.006" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_base_contact_12">
+      <origin xyz="-0.079 -0.1 0.002" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.009" length="0.004" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_base_contact_13">
+      <origin xyz="-0.079 0.1 0.002" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.009" length="0.004" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_base_contact_14">
+      <origin xyz="0.079 -0.1 0.002" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.009" length="0.004" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_base_contact_15">
+      <origin xyz="0.079 0.1 0.002" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.009" length="0.004" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 -0.037 0.0505" />
+      <mass value="1.7" />
+      <inertia ixx="0.017248908333333337" iyy="0.011468908333333337" izz="0.025827533333333336" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <link name="label_printer_media_cover">
+    <visual>
+      <geometry>
+        <mesh filename="assets/media_cover.glb" />
+      </geometry>
+    </visual>
+    <collision name="label_printer_media_cover_contact_0">
+      <origin xyz="0 -0.1 0.079" rpy="0 0 0" />
+      <geometry>
+        <box size="0.213 0.233 0.032" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_1">
+      <origin xyz="-0.099 -0.11475 0.038" rpy="0 0 0" />
+      <geometry>
+        <box size="0.016 0.2035 0.064" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_2">
+      <origin xyz="-0.119 0 -0.0115" rpy="0 1.57079633 -0" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_3">
+      <origin xyz="-0.119 0.00297641902 -0.011108147" rpy="1.57079633 1.30899694 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_4">
+      <origin xyz="-0.119 0.00575 -0.00995929214" rpy="1.57079633 1.04719755 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_5">
+      <origin xyz="-0.119 0.00813172798 -0.00813172798" rpy="1.57079633 0.785398163 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_6">
+      <origin xyz="-0.119 0.00995929214 -0.00575" rpy="1.57079633 0.523598776 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_7">
+      <origin xyz="-0.119 0.011108147 -0.00297641902" rpy="1.57079633 0.261799388 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_8">
+      <origin xyz="-0.119 0.0115 -7.0417191e-19" rpy="1.57079633 6.123234e-17 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_9">
+      <origin xyz="-0.119 0.011108147 0.00297641902" rpy="1.57079633 -0.261799388 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_10">
+      <origin xyz="-0.119 0.00995929214 0.00575" rpy="1.57079633 -0.523598776 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_11">
+      <origin xyz="-0.119 0.00813172798 0.00813172798" rpy="1.57079633 -0.785398163 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_12">
+      <origin xyz="-0.119 0.00575 0.00995929214" rpy="1.57079633 -1.04719755 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_13">
+      <origin xyz="-0.119 0.00297641902 0.011108147" rpy="1.57079633 -1.30899694 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_14">
+      <origin xyz="-0.119 1.40834382e-18 0.0115" rpy="0 -1.57079633 3.14159265" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_15">
+      <origin xyz="-0.119 -0.00297641902 0.011108147" rpy="-1.57079633 -1.30899694 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_16">
+      <origin xyz="-0.119 -0.00575 0.00995929214" rpy="-1.57079633 -1.04719755 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_17">
+      <origin xyz="-0.119 -0.00813172798 0.00813172798" rpy="-1.57079633 -0.785398163 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_18">
+      <origin xyz="-0.119 -0.00995929214 0.00575" rpy="-1.57079633 -0.523598776 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_19">
+      <origin xyz="-0.119 -0.011108147 0.00297641902" rpy="-1.57079633 -0.261799388 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_20">
+      <origin xyz="-0.119 -0.0115 2.11251573e-18" rpy="-1.57079633 -1.8369702e-16 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_21">
+      <origin xyz="-0.119 -0.011108147 -0.00297641902" rpy="-1.57079633 0.261799388 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_22">
+      <origin xyz="-0.119 -0.00995929214 -0.00575" rpy="-1.57079633 0.523598776 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_23">
+      <origin xyz="-0.119 -0.00813172798 -0.00813172798" rpy="-1.57079633 0.785398163 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_24">
+      <origin xyz="-0.119 -0.00575 -0.00995929214" rpy="-1.57079633 1.04719755 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_25">
+      <origin xyz="-0.119 -0.00297641902 -0.011108147" rpy="-1.57079633 1.30899694 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_26">
+      <origin xyz="-0.119 -0.021 0.016" rpy="0 0 0" />
+      <geometry>
+        <box size="0.02 0.026 0.032" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_27">
+      <origin xyz="-0.106 -0.03 0.027" rpy="0 0 0" />
+      <geometry>
+        <box size="0.027 0.021 0.018" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_28">
+      <origin xyz="0.099 -0.11475 0.038" rpy="0 0 0" />
+      <geometry>
+        <box size="0.016 0.2035 0.064" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_29">
+      <origin xyz="0.119 0 -0.0115" rpy="0 1.57079633 -0" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_30">
+      <origin xyz="0.119 0.00297641902 -0.011108147" rpy="1.57079633 1.30899694 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_31">
+      <origin xyz="0.119 0.00575 -0.00995929214" rpy="1.57079633 1.04719755 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_32">
+      <origin xyz="0.119 0.00813172798 -0.00813172798" rpy="1.57079633 0.785398163 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_33">
+      <origin xyz="0.119 0.00995929214 -0.00575" rpy="1.57079633 0.523598776 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_34">
+      <origin xyz="0.119 0.011108147 -0.00297641902" rpy="1.57079633 0.261799388 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_35">
+      <origin xyz="0.119 0.0115 -7.0417191e-19" rpy="1.57079633 6.123234e-17 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_36">
+      <origin xyz="0.119 0.011108147 0.00297641902" rpy="1.57079633 -0.261799388 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_37">
+      <origin xyz="0.119 0.00995929214 0.00575" rpy="1.57079633 -0.523598776 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_38">
+      <origin xyz="0.119 0.00813172798 0.00813172798" rpy="1.57079633 -0.785398163 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_39">
+      <origin xyz="0.119 0.00575 0.00995929214" rpy="1.57079633 -1.04719755 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_40">
+      <origin xyz="0.119 0.00297641902 0.011108147" rpy="1.57079633 -1.30899694 1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_41">
+      <origin xyz="0.119 1.40834382e-18 0.0115" rpy="0 -1.57079633 3.14159265" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_42">
+      <origin xyz="0.119 -0.00297641902 0.011108147" rpy="-1.57079633 -1.30899694 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_43">
+      <origin xyz="0.119 -0.00575 0.00995929214" rpy="-1.57079633 -1.04719755 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_44">
+      <origin xyz="0.119 -0.00813172798 0.00813172798" rpy="-1.57079633 -0.785398163 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_45">
+      <origin xyz="0.119 -0.00995929214 0.00575" rpy="-1.57079633 -0.523598776 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_46">
+      <origin xyz="0.119 -0.011108147 0.00297641902" rpy="-1.57079633 -0.261799388 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_47">
+      <origin xyz="0.119 -0.0115 2.11251573e-18" rpy="-1.57079633 -1.8369702e-16 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_48">
+      <origin xyz="0.119 -0.011108147 -0.00297641902" rpy="-1.57079633 0.261799388 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_49">
+      <origin xyz="0.119 -0.00995929214 -0.00575" rpy="-1.57079633 0.523598776 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_50">
+      <origin xyz="0.119 -0.00813172798 -0.00813172798" rpy="-1.57079633 0.785398163 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_51">
+      <origin xyz="0.119 -0.00575 -0.00995929214" rpy="-1.57079633 1.04719755 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_52">
+      <origin xyz="0.119 -0.00297641902 -0.011108147" rpy="-1.57079633 1.30899694 -1.57079633" />
+      <geometry>
+        <box size="0.009 0.00302800744 0.02" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_53">
+      <origin xyz="0.119 -0.021 0.016" rpy="0 0 0" />
+      <geometry>
+        <box size="0.02 0.026 0.032" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_54">
+      <origin xyz="0.106 -0.03 0.027" rpy="0 0 0" />
+      <geometry>
+        <box size="0.027 0.021 0.018" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_55">
+      <origin xyz="0 -0.207 0.039" rpy="0 0 0" />
+      <geometry>
+        <box size="0.192 0.015 0.065" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_56">
+      <origin xyz="0.056 -0.091 0.096" rpy="0 0 0" />
+      <geometry>
+        <box size="0.034 0.13 0.003" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_57">
+      <origin xyz="0.056 -0.119 0.1" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.011" length="0.005" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_cover_contact_58">
+      <origin xyz="0 -0.218 0.05" rpy="0 0 0" />
+      <geometry>
+        <box size="0.066 0.019 0.014" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 -0.1055 0.04325" />
+      <mass value="0.36" />
+      <inertia ixx="0.0022073475" iyy="0.0024181874999999998" izz="0.0037829999999999995" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <joint name="label_printer_media_cover_joint" type="revolute">
+    <parent link="label_printer_base" />
+    <child link="label_printer_media_cover" />
+    <origin xyz="0 0.108 0.094" rpy="0 0 0" />
+    <axis xyz="-1 0 0" />
+    <limit effort="20" velocity="1" lower="0" upper="1.7" />
+    <dynamics damping="0.1" friction="0.02" />
+  </joint>
+  <link name="label_printer_media_spindle">
+    <visual>
+      <geometry>
+        <mesh filename="assets/media_spindle.glb" />
+      </geometry>
+    </visual>
+    <collision name="label_printer_media_spindle_contact_0">
+      <origin xyz="0 0 0" rpy="0 1.57079633 0" />
+      <geometry>
+        <cylinder radius="0.012" length="0.159" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_1">
+      <origin xyz="2.29621275e-18 0 -0.0375" rpy="0 1.57079633 -0" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_2">
+      <origin xyz="2.2179712e-18 0.00970571419 -0.0362222185" rpy="1.57079633 1.30899694 1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_3">
+      <origin xyz="1.98857857e-18 0.01875 -0.0324759526" rpy="1.57079633 1.04719755 1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_4">
+      <origin xyz="1.62366761e-18 0.0265165043 -0.0265165043" rpy="1.57079633 0.785398163 1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_5">
+      <origin xyz="1.14810637e-18 0.0324759526 -0.01875" rpy="1.57079633 0.523598776 1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_6">
+      <origin xyz="5.94303591e-19 0.0362222185 -0.00970571419" rpy="1.57079633 0.261799388 1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_7">
+      <origin xyz="1.4060248e-34 0.0375 -2.29621275e-18" rpy="1.57079633 6.123234e-17 1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_8">
+      <origin xyz="-5.94303591e-19 0.0362222185 0.00970571419" rpy="1.57079633 -0.261799388 1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_9">
+      <origin xyz="-1.14810637e-18 0.0324759526 0.01875" rpy="1.57079633 -0.523598776 1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_10">
+      <origin xyz="-1.62366761e-18 0.0265165043 0.0265165043" rpy="1.57079633 -0.785398163 1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_11">
+      <origin xyz="-1.98857857e-18 0.01875 0.0324759526" rpy="1.57079633 -1.04719755 1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_12">
+      <origin xyz="-2.2179712e-18 0.00970571419 0.0362222185" rpy="1.57079633 -1.30899694 1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_13">
+      <origin xyz="-2.29621275e-18 4.5924255e-18 0.0375" rpy="0 -1.57079633 3.14159265" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_14">
+      <origin xyz="-2.2179712e-18 -0.00970571419 0.0362222185" rpy="-1.57079633 -1.30899694 -1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_15">
+      <origin xyz="-1.98857857e-18 -0.01875 0.0324759526" rpy="-1.57079633 -1.04719755 -1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_16">
+      <origin xyz="-1.62366761e-18 -0.0265165043 0.0265165043" rpy="-1.57079633 -0.785398163 -1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_17">
+      <origin xyz="-1.14810637e-18 -0.0324759526 0.01875" rpy="-1.57079633 -0.523598776 -1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_18">
+      <origin xyz="-5.94303591e-19 -0.0362222185 0.00970571419" rpy="-1.57079633 -0.261799388 -1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_19">
+      <origin xyz="-4.21807439e-34 -0.0375 6.88863825e-18" rpy="-1.57079633 -1.8369702e-16 -1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_20">
+      <origin xyz="5.94303591e-19 -0.0362222185 -0.00970571419" rpy="-1.57079633 0.261799388 -1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_21">
+      <origin xyz="1.14810637e-18 -0.0324759526 -0.01875" rpy="-1.57079633 0.523598776 -1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_22">
+      <origin xyz="1.62366761e-18 -0.0265165043 -0.0265165043" rpy="-1.57079633 0.785398163 -1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_23">
+      <origin xyz="1.98857857e-18 -0.01875 -0.0324759526" rpy="-1.57079633 1.04719755 -1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_24">
+      <origin xyz="2.2179712e-18 -0.00970571419 -0.0362222185" rpy="-1.57079633 1.30899694 -1.57079633" />
+      <geometry>
+        <box size="0.035 0.00987393732 0.114" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_25">
+      <origin xyz="9.95025524e-19 0 -0.01625" rpy="0 1.57079633 -0" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_26">
+      <origin xyz="9.61120852e-19 0.00420580948 -0.0156962947" rpy="1.57079633 1.30899694 1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_27">
+      <origin xyz="8.61717381e-19 0.008125 -0.0140729128" rpy="1.57079633 1.04719755 1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_28">
+      <origin xyz="7.03589296e-19 0.0114904852 -0.0114904852" rpy="1.57079633 0.785398163 1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_29">
+      <origin xyz="4.97512762e-19 0.0140729128 -0.008125" rpy="1.57079633 0.523598776 1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_30">
+      <origin xyz="2.57531556e-19 0.0156962947 -0.00420580948" rpy="1.57079633 0.261799388 1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_31">
+      <origin xyz="6.09277412e-35 0.01625 -9.95025524e-19" rpy="1.57079633 6.123234e-17 1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_32">
+      <origin xyz="-2.57531556e-19 0.0156962947 0.00420580948" rpy="1.57079633 -0.261799388 1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_33">
+      <origin xyz="-4.97512762e-19 0.0140729128 0.008125" rpy="1.57079633 -0.523598776 1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_34">
+      <origin xyz="-7.03589296e-19 0.0114904852 0.0114904852" rpy="1.57079633 -0.785398163 1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_35">
+      <origin xyz="-8.61717381e-19 0.008125 0.0140729128" rpy="1.57079633 -1.04719755 1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_36">
+      <origin xyz="-9.61120852e-19 0.00420580948 0.0156962947" rpy="1.57079633 -1.30899694 1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_37">
+      <origin xyz="-9.95025524e-19 1.99005105e-18 0.01625" rpy="0 -1.57079633 3.14159265" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_38">
+      <origin xyz="-9.61120852e-19 -0.00420580948 0.0156962947" rpy="-1.57079633 -1.30899694 -1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_39">
+      <origin xyz="-8.61717381e-19 -0.008125 0.0140729128" rpy="-1.57079633 -1.04719755 -1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_40">
+      <origin xyz="-7.03589296e-19 -0.0114904852 0.0114904852" rpy="-1.57079633 -0.785398163 -1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_41">
+      <origin xyz="-4.97512762e-19 -0.0140729128 0.008125" rpy="-1.57079633 -0.523598776 -1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_42">
+      <origin xyz="-2.57531556e-19 -0.0156962947 0.00420580948" rpy="-1.57079633 -0.261799388 -1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_43">
+      <origin xyz="-1.82783224e-34 -0.01625 2.98507657e-18" rpy="-1.57079633 -1.8369702e-16 -1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_44">
+      <origin xyz="2.57531556e-19 -0.0156962947 -0.00420580948" rpy="-1.57079633 0.261799388 -1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_45">
+      <origin xyz="4.97512762e-19 -0.0140729128 -0.008125" rpy="-1.57079633 0.523598776 -1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_46">
+      <origin xyz="7.03589296e-19 -0.0114904852 -0.0114904852" rpy="-1.57079633 0.785398163 -1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_47">
+      <origin xyz="8.61717381e-19 -0.008125 -0.0140729128" rpy="-1.57079633 1.04719755 -1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_48">
+      <origin xyz="9.61120852e-19 -0.00420580948 -0.0156962947" rpy="-1.57079633 1.30899694 -1.57079633" />
+      <geometry>
+        <box size="0.0075 0.00427870617 0.117" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_49">
+      <origin xyz="-0.062 0 0" rpy="0 1.57079633 0" />
+      <geometry>
+        <cylinder radius="0.039" length="0.008" />
+      </geometry>
+    </collision>
+    <collision name="label_printer_media_spindle_contact_50">
+      <origin xyz="0.062 0 0" rpy="0 1.57079633 0" />
+      <geometry>
+        <cylinder radius="0.039" length="0.008" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" />
+      <mass value="0.22" />
+      <inertia ixx="0.00044366666666666686" iyy="0.0006853183333333336" izz="0.0006853183333333336" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <joint name="label_printer_media_spindle_joint" type="continuous">
+    <parent link="label_printer_base" />
+    <child link="label_printer_media_spindle" />
+    <origin xyz="0 0.03 0.097" rpy="0 0 0" />
+    <axis xyz="1 0 0" />
+    <limit effort="20" velocity="1" />
+    <dynamics damping="0.1" friction="0.02" />
+  </joint>
+  <link name="label_printer_feed_roller">
+    <visual>
+      <geometry>
+        <mesh filename="assets/feed_roller.glb" />
+      </geometry>
+    </visual>
+    <collision name="label_printer_feed_roller_contact_0">
+      <origin xyz="0 0 0" rpy="0 1.57079633 0" />
+      <geometry>
+        <cylinder radius="0.012" length="0.125" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" />
+      <mass value="0.045" />
+      <inertia ixx="4.320000000000001e-06" iyy="6.075375e-05" izz="6.075375e-05" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <joint name="label_printer_feed_roller_joint" type="continuous">
+    <parent link="label_printer_base" />
+    <child link="label_printer_feed_roller" />
+    <origin xyz="0 -0.079 0.058" rpy="0 0 0" />
+    <axis xyz="1 0 0" />
+    <limit effort="20" velocity="1" />
+    <dynamics damping="0.1" friction="0.02" />
+  </joint>
+  <link name="label_printer_cover_handle" />
+  <joint name="label_printer_cover_handle_joint" type="fixed">
+    <parent link="label_printer_media_cover" />
+    <child link="label_printer_cover_handle" />
+    <origin xyz="0 -0.229 0.05" rpy="0 0 0" />
+  </joint>
+  <link name="label_printer_media_loading" />
+  <joint name="label_printer_media_loading_joint" type="fixed">
+    <parent link="label_printer_base" />
+    <child link="label_printer_media_loading" />
+    <origin xyz="0 0.03 0.097" rpy="0 0 0" />
+  </joint>
+  <link name="label_printer_label_output" />
+  <joint name="label_printer_label_output_joint" type="fixed">
+    <parent link="label_printer_base" />
+    <child link="label_printer_label_output" />
+    <origin xyz="0 -0.204 0.057" rpy="0 0 0" />
+  </joint>
+  <link name="label_printer_feed_control" />
+  <joint name="label_printer_feed_control_joint" type="fixed">
+    <parent link="label_printer_media_cover" />
+    <child link="label_printer_feed_control" />
+    <origin xyz="0.056 -0.119 0.103" rpy="0 0 0" />
+  </joint>
+  <link name="label_printer_body_grasp" />
+  <joint name="label_printer_body_grasp_joint" type="fixed">
+    <parent link="label_printer_base" />
+    <child link="label_printer_body_grasp" />
+    <origin xyz="0 0 0.041" rpy="0 0 0" />
+  </joint>
+</robot>

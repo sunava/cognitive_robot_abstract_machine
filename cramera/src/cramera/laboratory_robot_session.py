@@ -15,6 +15,7 @@ from typing_extensions import Any, ClassVar, Protocol, runtime_checkable
 from cramera import paths
 from cramera.laboratory_instrument_command import InstrumentCommand
 from cramera.laboratory_workflow_command import WorkflowCommand, WorkflowField
+from cramera.medical_lab_command import MedicalLabCommand
 from cramera.laboratory_pipetting_command import PipettingAction, PipettingCommand
 from cramera.laboratory_refrigerator_command import (
     RefrigeratorCommand,
@@ -55,6 +56,8 @@ class RobotPhysicsRoute(StrEnum):
     """Prepare or resume the complete four-sample laboratory workflow."""
     INSTRUMENT = "/api/laboratory/physics/robot/instrument"
     """Open or close one instrument using the PR2's handle actions."""
+    DEVICES = "/api/laboratory/physics/robot/devices"
+    """Execute native inspection plans for the expanded instrument collection."""
     CENTRIFUGE = "/api/laboratory/physics/robot/centrifuge"
     """Operate the centrifuge beside the articulated robot."""
     REFRIGERATOR = "/api/laboratory/physics/robot/refrigerator"
@@ -96,6 +99,17 @@ class RobotField(StrEnum):
     """Recorded model pose with XYZW orientation."""
     LINKS = "links"
     """Number of links in the renderer model."""
+    DEMO = "demo"
+    """Native mechanism plan lifecycle exposed by the expanded laboratory."""
+
+
+class DeviceExecutionState(StrEnum):
+    """Mechanism lifecycle states retaining exclusive native plan ownership."""
+
+    RUNNING = "running"
+    """A native mechanism plan is advancing."""
+    PAUSED = "paused"
+    """A native mechanism plan retains resumable state."""
 
 
 @runtime_checkable
@@ -104,6 +118,14 @@ class ProgramCancellation(Protocol):
 
     def stop_program(self) -> None:
         """Terminate program execution while preserving physical state."""
+
+
+@runtime_checkable
+class MedicalDeviceSimulation(Protocol):
+    """A contact world that supports separately owned instrument mechanisms."""
+
+    def run_devices(self, command: MedicalLabCommand) -> None:
+        """Execute a validated mechanism selection or lifecycle operation."""
 
 
 class ProgramSimulation(ContactSimulation, Protocol):
@@ -138,6 +160,10 @@ def create_robot_physics(
         robot_directory=recording_directory,
         robot_parameters=robot_module.RobotPhysicsParameters(mobile_base=True),
     )
+    if model.instruments.joints:
+        return importlib.import_module("cramera.medical_lab_program").MedicalLabProgram(
+            physics=model, recording_directory=recording_directory
+        )
     return importlib.import_module(
         "cramera.laboratory_physics_program"
     ).LaboratoryProgramPhysics(physics=model, recording_directory=recording_directory)
@@ -210,6 +236,9 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
         trajectory = json.loads(trajectory_path.read_text())
         snapshot = self.physics.snapshot()
         frame = dict(snapshot[PhysicsField.FRAMES])
+        frame.update(
+            snapshot.get(PhysicsField.INSTRUMENTS, {}).get(PhysicsField.JOINTS, {})
+        )
         drawer = snapshot.get(PhysicsField.DRAWER)
         if isinstance(drawer, dict):
             frame.update(drawer.get(PhysicsField.JOINTS, {}))
@@ -278,6 +307,7 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
         """Serialize explicit demo preparation and state-preserving resume."""
         with self.lock:
             self._require_running()
+            self._require_free_devices()
             self.physics.run_workflow(prepare=command.prepare)
             return self._status()
 
@@ -291,11 +321,36 @@ class LaboratoryRobotSession(LaboratoryPhysicsSession):
 
     def _require_workflow_release(self) -> None:
         """Preserve workflow ownership during running and paused processing."""
+        self._require_free_devices()
         robot = self.physics.snapshot()[RobotField.ROBOT]
         if robot.get(WorkflowField.WORKFLOW, {}).get(WorkflowField.RESERVED, False):
             raise InvalidPhysicsRequest(
                 "Resume or reset the sample workflow before changing its samples or instruments."
             )
+
+    def _require_free_devices(self) -> None:
+        """Keep native instrument and robot plans from sharing execution ownership."""
+        snapshot = self.physics.snapshot()
+        if (
+            snapshot.get(PhysicsField.INSTRUMENTS, {})
+            .get(RobotField.DEMO, {})
+            .get(PhysicsField.STATE)
+            in DeviceExecutionState
+        ):
+            raise InvalidPhysicsRequest(
+                "Finish or reset the instrument demonstration before starting robot or manual controls"
+            )
+
+    def run_devices(self, command: MedicalLabCommand) -> dict[str, Any]:
+        """Serialize native instrument requests against the contact simulation."""
+        with self.lock:
+            self._require_running()
+            if not isinstance(self.physics, MedicalDeviceSimulation):
+                raise InvalidPhysicsRequest(
+                    "This laboratory has no extended instrument controls"
+                )
+            self.physics.run_devices(command)
+            return self._status()
 
     def _validate_pipetting(self, command: PipettingCommand) -> None:
         """Keep emergency pump stopping available during robot execution."""
