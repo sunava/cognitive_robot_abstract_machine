@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<robot name="vortex_mixer">
+  <link name="vortex_mixer_body">
+    <visual><geometry><mesh filename="assets/body.glb"/></geometry></visual>
+  </link>
+</robot>

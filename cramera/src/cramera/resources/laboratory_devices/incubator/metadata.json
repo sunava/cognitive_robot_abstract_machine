@@ -1,0 +1,368 @@
+{
+  "device": "incubator",
+  "title": "Benchtop Incubator",
+  "description": "Three-shelf incubation chamber with a transparent articulated door and temperature display.",
+  "rootLink": "incubator_base",
+  "units": "metres",
+  "upAxis": "Z",
+  "frontAxis": "-Y",
+  "joints": [
+    {
+      "name": "incubator_door_joint",
+      "type": "revolute",
+      "lower": -1.8,
+      "upper": 0,
+      "inspectionPosition": -1.63
+    }
+  ],
+  "frames": [
+    {
+      "name": "incubator_shelf_1_sample_1_1",
+      "parent": "incubator_shelf_1",
+      "position": [
+        -0.105,
+        -0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_1_sample_1_2",
+      "parent": "incubator_shelf_1",
+      "position": [
+        -0.105,
+        0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_1_sample_2_1",
+      "parent": "incubator_shelf_1",
+      "position": [
+        0,
+        -0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_1_sample_2_2",
+      "parent": "incubator_shelf_1",
+      "position": [
+        0,
+        0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_1_sample_3_1",
+      "parent": "incubator_shelf_1",
+      "position": [
+        0.105,
+        -0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_1_sample_3_2",
+      "parent": "incubator_shelf_1",
+      "position": [
+        0.105,
+        0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_2_sample_1_1",
+      "parent": "incubator_shelf_2",
+      "position": [
+        -0.105,
+        -0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_2_sample_1_2",
+      "parent": "incubator_shelf_2",
+      "position": [
+        -0.105,
+        0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_2_sample_2_1",
+      "parent": "incubator_shelf_2",
+      "position": [
+        0,
+        -0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_2_sample_2_2",
+      "parent": "incubator_shelf_2",
+      "position": [
+        0,
+        0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_2_sample_3_1",
+      "parent": "incubator_shelf_2",
+      "position": [
+        0.105,
+        -0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_2_sample_3_2",
+      "parent": "incubator_shelf_2",
+      "position": [
+        0.105,
+        0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_3_sample_1_1",
+      "parent": "incubator_shelf_3",
+      "position": [
+        -0.105,
+        -0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_3_sample_1_2",
+      "parent": "incubator_shelf_3",
+      "position": [
+        -0.105,
+        0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_3_sample_2_1",
+      "parent": "incubator_shelf_3",
+      "position": [
+        0,
+        -0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_3_sample_2_2",
+      "parent": "incubator_shelf_3",
+      "position": [
+        0,
+        0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_3_sample_3_1",
+      "parent": "incubator_shelf_3",
+      "position": [
+        0.105,
+        -0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_shelf_3_sample_3_2",
+      "parent": "incubator_shelf_3",
+      "position": [
+        0.105,
+        0.08,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample"
+    },
+    {
+      "name": "incubator_door_handle",
+      "parent": "incubator_door",
+      "position": [
+        0.386,
+        -0.0595,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "handle"
+    },
+    {
+      "name": "incubator_door_hinge",
+      "parent": "incubator_door",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "joint"
+    },
+    {
+      "name": "incubator_temperature_control",
+      "parent": "incubator_base",
+      "position": [
+        0.173,
+        -0.225,
+        0.55
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "control"
+    },
+    {
+      "name": "incubator_chamber_approach",
+      "parent": "incubator_base",
+      "position": [
+        0,
+        -0.39,
+        0.31
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "approach"
+    }
+  ],
+  "accessories": [],
+  "blender": "model.blend",
+  "previews": {
+    "closed": "preview.png",
+    "open": "preview_open.png"
+  },
+  "modelScope": "Original articulated concept model. Instrument controls and measurements require a separate controller.",
+  "inertialModel": "Nominal masses with compound-bounds box inertia; not calibrated hardware parameters.",
+  "assetRights": {
+    "principalAuthor": "Vanessa Hassouna",
+    "institution": "AICOR Institute",
+    "copyright": "Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.",
+    "license": "LicenseRef-AICOR-Laboratory-Assets",
+    "permissionNotice": "Reuse, modification and redistribution of the original laboratory assets require prior written permission from Vanessa Hassouna, except where an existing licence or applicable law permits them. Permission requests: hassouna@uni-bremen.de.",
+    "priorLicenseNotice": "Existing third-party rights and any permissions already validly granted remain unaffected. This notice does not create copyright in otherwise unprotected material.",
+    "licenseFile": "LICENSE.txt",
+    "noticeFile": "NOTICE.md"
+  }
+}

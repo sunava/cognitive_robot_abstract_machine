@@ -1,0 +1,757 @@
+{
+  "identifier": "ph_meter",
+  "title": "pH meter",
+  "description": "Benchtop pH meter with an articulated support arm and a removable probe resource.",
+  "parts": [
+    {
+      "name": "base",
+      "parent": null,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 1.8,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "meter_lower",
+          "center": [
+            0,
+            0,
+            0.022
+          ],
+          "dimensions": [
+            0.231,
+            0.177,
+            0.035
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.015,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "meter_housing",
+          "center": [
+            0,
+            0,
+            0.048
+          ],
+          "dimensions": [
+            0.228,
+            0.173,
+            0.051
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.016,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "screen_bezel",
+          "center": [
+            -0.014,
+            -0.007,
+            0.075
+          ],
+          "dimensions": [
+            0.144,
+            0.098,
+            0.008
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "screen",
+          "center": [
+            -0.014,
+            -0.007,
+            0.0794
+          ],
+          "dimensions": [
+            0.132,
+            0.085,
+            0.001
+          ],
+          "material": "screen",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.003,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "7.00 pH",
+          "center": [
+            -0.017,
+            -0.004,
+            0.0801
+          ],
+          "dimensions": [
+            0.018,
+            0.112
+          ],
+          "material": "paper",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "7.00 pH",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "25.0 C    READY",
+          "center": [
+            -0.015,
+            -0.031,
+            0.0801
+          ],
+          "dimensions": [
+            0.005,
+            0
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "25.0 C    READY",
+          "points": []
+        },
+        {
+          "kind": "logo",
+          "name": "AICOR logo",
+          "center": [
+            -0.057,
+            -0.088,
+            0.045
+          ],
+          "dimensions": [
+            0.064
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "pH METER",
+          "center": [
+            0.054,
+            -0.088,
+            0.044
+          ],
+          "dimensions": [
+            0.008,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "pH METER",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "meter_key",
+          "center": [
+            0.09,
+            0.04,
+            0.077
+          ],
+          "dimensions": [
+            0.026,
+            0.022,
+            0.008
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "READ",
+          "center": [
+            0.09,
+            0.04,
+            0.0813
+          ],
+          "dimensions": [
+            0.004,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "READ",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "meter_key",
+          "center": [
+            0.09,
+            0.005999999999999998,
+            0.077
+          ],
+          "dimensions": [
+            0.026,
+            0.022,
+            0.008
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "CAL",
+          "center": [
+            0.09,
+            0.005999999999999998,
+            0.0813
+          ],
+          "dimensions": [
+            0.004,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "CAL",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "meter_key",
+          "center": [
+            0.09,
+            -0.028000000000000004,
+            0.077
+          ],
+          "dimensions": [
+            0.026,
+            0.022,
+            0.008
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "MODE",
+          "center": [
+            0.09,
+            -0.028000000000000004,
+            0.0813
+          ],
+          "dimensions": [
+            0.004,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "MODE",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "stand_foot",
+          "center": [
+            0.174,
+            0.01,
+            0.012
+          ],
+          "dimensions": [
+            0.098,
+            0.205,
+            0.024
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.012,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "stand_socket",
+          "center": [
+            0.174,
+            0.077,
+            0.033
+          ],
+          "dimensions": [
+            0.025,
+            0.03
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "support_column",
+          "center": [
+            0.174,
+            0.077,
+            0.217
+          ],
+          "dimensions": [
+            0.009,
+            0.35
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "sphere",
+          "name": "column_cap",
+          "center": [
+            0.174,
+            0.077,
+            0.391
+          ],
+          "dimensions": [
+            0.01
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "rinse_holder",
+          "center": [
+            0.174,
+            -0.043,
+            0.044
+          ],
+          "dimensions": [
+            0.041,
+            0.0355,
+            0.062
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "rinse_holder_floor",
+          "center": [
+            0.174,
+            -0.043,
+            0.016
+          ],
+          "dimensions": [
+            0.0355,
+            0.005
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "RINSE",
+          "center": [
+            0.174,
+            -0.085,
+            0.044
+          ],
+          "dimensions": [
+            0.005,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "RINSE",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "support_height",
+      "parent": "base",
+      "origin": [
+        0.174,
+        0.077,
+        0.26
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "prismatic",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": -0.07,
+      "upper": 0.085,
+      "open_value": 0.045,
+      "mass": 0.12,
+      "shapes": [
+        {
+          "kind": "cylinder",
+          "name": "height_collar",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.021,
+            0.035
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "height_lock",
+          "center": [
+            0.025,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.013,
+            0.023
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            1.5707963267948966,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "probe_arm",
+      "parent": "support_height",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "revolute",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": -1.9,
+      "upper": 1.9,
+      "open_value": 0.7,
+      "mass": 0.11,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "arm",
+          "center": [
+            0,
+            -0.052,
+            0
+          ],
+          "dimensions": [
+            0.022,
+            0.104,
+            0.019
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.007,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "probe_clamp",
+          "center": [
+            0,
+            -0.12,
+            0
+          ],
+          "dimensions": [
+            0.017,
+            0.0095,
+            0.021
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "clamp_screw",
+          "center": [
+            0.021,
+            -0.12,
+            0
+          ],
+          "dimensions": [
+            0.007,
+            0.016
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            1.5707963267948966,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "name": "probe_mount",
+      "parent": "probe_arm",
+      "position": [
+        0,
+        -0.12,
+        -0.155
+      ],
+      "role": "mount",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "rinse_station",
+      "parent": "base",
+      "position": [
+        0.174,
+        -0.043,
+        0.02
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "read_control",
+      "parent": "base",
+      "position": [
+        0.09,
+        0.04,
+        0.082
+      ],
+      "role": "control",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "body_grasp",
+      "parent": "base",
+      "position": [
+        0,
+        0,
+        0.046
+      ],
+      "role": "grasp",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "accessories": [
+    "ph_probe"
+  ]
+}

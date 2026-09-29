@@ -1,0 +1,18 @@
+<article id="${identifier}">
+  <div class="image-wrap">
+    <span class="number">${number}</span>
+    <img src="../${identifier}/preview.png" data-closed="../${identifier}/preview.png"
+      data-open="../${identifier}/preview_open.png" data-title="${title}"
+      alt="${title} — rest pose" loading="lazy" width="1200" height="960">
+  </div>
+  <div class="details">
+    <h2>${title}</h2>
+    <p class="description">${description}</p>
+    <div class="specs"><span>${joints} ${joint_label}</span><span>${frames} interaction frames</span></div>
+    <div class="actions">
+      <a class="primary" href="../${identifier}/model.blend" download>Blender model ↓</a>
+      <button type="button" data-inspect aria-pressed="false" ${disabled}>Inspect moving parts</button>
+      <a href="../${identifier}/README.md">Model details</a>
+    </div>
+  </div>
+</article>

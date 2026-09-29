@@ -1,0 +1,2040 @@
+{
+  "identifier": "tip_rack",
+  "title": "Pipette Tip Rack",
+  "description": "Twenty-four open tip sockets in a covered refillable carrier.",
+  "parts": [
+    {
+      "name": "body",
+      "parent": null,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 0.2,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "base",
+          "center": [
+            0,
+            0,
+            0.003
+          ],
+          "dimensions": [
+            0.13,
+            0.092,
+            0.006
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.003,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "wall_left",
+          "center": [
+            -0.063,
+            0,
+            0.028
+          ],
+          "dimensions": [
+            0.004,
+            0.09,
+            0.051
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0015,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "wall_right",
+          "center": [
+            0.063,
+            0,
+            0.028
+          ],
+          "dimensions": [
+            0.004,
+            0.09,
+            0.051
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0015,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "wall_front",
+          "center": [
+            0,
+            -0.044,
+            0.028
+          ],
+          "dimensions": [
+            0.124,
+            0.004,
+            0.051
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0015,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "wall_rear",
+          "center": [
+            0,
+            0.044,
+            0.028
+          ],
+          "dimensions": [
+            0.124,
+            0.004,
+            0.051
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0015,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "logo",
+          "name": "AICOR logo",
+          "center": [
+            -0.025,
+            -0.0463,
+            0.031
+          ],
+          "dimensions": [
+            0.041
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "TIP RACK",
+          "center": [
+            0.034,
+            -0.0463,
+            0.031
+          ],
+          "dimensions": [
+            0.004,
+            0.046
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "TIP RACK",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "latch_seat",
+          "center": [
+            0,
+            -0.047,
+            0.048
+          ],
+          "dimensions": [
+            0.022,
+            0.005,
+            0.011
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "hinge_-0.045",
+          "center": [
+            -0.045,
+            0.045,
+            0.057
+          ],
+          "dimensions": [
+            0.004,
+            0.018
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            1.5707963267948966,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "hinge_0.045",
+          "center": [
+            0.045,
+            0.045,
+            0.057
+          ],
+          "dimensions": [
+            0.004,
+            0.018
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            1.5707963267948966,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "socket_insert",
+      "parent": "body",
+      "origin": [
+        0,
+        0,
+        0.019
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 0.065,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "column_rib_0",
+          "center": [
+            -0.048,
+            0,
+            0.0165
+          ],
+          "dimensions": [
+            0.002,
+            0.066,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "column_rib_1",
+          "center": [
+            -0.032,
+            0,
+            0.0165
+          ],
+          "dimensions": [
+            0.002,
+            0.066,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "column_rib_2",
+          "center": [
+            -0.016,
+            0,
+            0.0165
+          ],
+          "dimensions": [
+            0.002,
+            0.066,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "column_rib_3",
+          "center": [
+            0.0,
+            0,
+            0.0165
+          ],
+          "dimensions": [
+            0.002,
+            0.066,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "column_rib_4",
+          "center": [
+            0.016,
+            0,
+            0.0165
+          ],
+          "dimensions": [
+            0.002,
+            0.066,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "column_rib_5",
+          "center": [
+            0.032,
+            0,
+            0.0165
+          ],
+          "dimensions": [
+            0.002,
+            0.066,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "column_rib_6",
+          "center": [
+            0.048,
+            0,
+            0.0165
+          ],
+          "dimensions": [
+            0.002,
+            0.066,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "row_rib_0",
+          "center": [
+            0,
+            -0.032,
+            0.0165
+          ],
+          "dimensions": [
+            0.098,
+            0.002,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "row_rib_1",
+          "center": [
+            0,
+            -0.016,
+            0.0165
+          ],
+          "dimensions": [
+            0.098,
+            0.002,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "row_rib_2",
+          "center": [
+            0,
+            0.0,
+            0.0165
+          ],
+          "dimensions": [
+            0.098,
+            0.002,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "row_rib_3",
+          "center": [
+            0,
+            0.016,
+            0.0165
+          ],
+          "dimensions": [
+            0.098,
+            0.002,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "row_rib_4",
+          "center": [
+            0,
+            0.032,
+            0.0165
+          ],
+          "dimensions": [
+            0.098,
+            0.002,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "A",
+          "center": [
+            -0.052000000000000005,
+            -0.024,
+            0.0334
+          ],
+          "dimensions": [
+            0.0035,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "A",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A1",
+          "center": [
+            -0.04,
+            -0.024,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A2",
+          "center": [
+            -0.024,
+            -0.024,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A3",
+          "center": [
+            -0.008,
+            -0.024,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A4",
+          "center": [
+            0.008,
+            -0.024,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A5",
+          "center": [
+            0.024,
+            -0.024,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A6",
+          "center": [
+            0.04,
+            -0.024,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "B",
+          "center": [
+            -0.052000000000000005,
+            -0.008,
+            0.0334
+          ],
+          "dimensions": [
+            0.0035,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "B",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B1",
+          "center": [
+            -0.04,
+            -0.008,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B2",
+          "center": [
+            -0.024,
+            -0.008,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B3",
+          "center": [
+            -0.008,
+            -0.008,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B4",
+          "center": [
+            0.008,
+            -0.008,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B5",
+          "center": [
+            0.024,
+            -0.008,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B6",
+          "center": [
+            0.04,
+            -0.008,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "C",
+          "center": [
+            -0.052000000000000005,
+            0.008,
+            0.0334
+          ],
+          "dimensions": [
+            0.0035,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "C",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C1",
+          "center": [
+            -0.04,
+            0.008,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C2",
+          "center": [
+            -0.024,
+            0.008,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C3",
+          "center": [
+            -0.008,
+            0.008,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C4",
+          "center": [
+            0.008,
+            0.008,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C5",
+          "center": [
+            0.024,
+            0.008,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C6",
+          "center": [
+            0.04,
+            0.008,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "D",
+          "center": [
+            -0.052000000000000005,
+            0.024,
+            0.0334
+          ],
+          "dimensions": [
+            0.0035,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "D",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D1",
+          "center": [
+            -0.04,
+            0.024,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D2",
+          "center": [
+            -0.024,
+            0.024,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D3",
+          "center": [
+            -0.008,
+            0.024,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D4",
+          "center": [
+            0.008,
+            0.024,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D5",
+          "center": [
+            0.024,
+            0.024,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D6",
+          "center": [
+            0.04,
+            0.024,
+            0.0165
+          ],
+          "dimensions": [
+            0.0075,
+            0.0045,
+            0.033
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "1",
+          "center": [
+            -0.04,
+            -0.036000000000000004,
+            0.0334
+          ],
+          "dimensions": [
+            0.0035,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "1",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "2",
+          "center": [
+            -0.024,
+            -0.036000000000000004,
+            0.0334
+          ],
+          "dimensions": [
+            0.0035,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "2",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "3",
+          "center": [
+            -0.008,
+            -0.036000000000000004,
+            0.0334
+          ],
+          "dimensions": [
+            0.0035,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "3",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "4",
+          "center": [
+            0.008,
+            -0.036000000000000004,
+            0.0334
+          ],
+          "dimensions": [
+            0.0035,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "4",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "5",
+          "center": [
+            0.024,
+            -0.036000000000000004,
+            0.0334
+          ],
+          "dimensions": [
+            0.0035,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "5",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "6",
+          "center": [
+            0.04,
+            -0.036000000000000004,
+            0.0334
+          ],
+          "dimensions": [
+            0.0035,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "6",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "insert_rail_left",
+          "center": [
+            -0.055,
+            0,
+            0.03
+          ],
+          "dimensions": [
+            0.012,
+            0.08,
+            0.006
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "insert_rail_right",
+          "center": [
+            0.055,
+            0,
+            0.03
+          ],
+          "dimensions": [
+            0.012,
+            0.08,
+            0.006
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "insert_rail_front",
+          "center": [
+            0,
+            -0.039,
+            0.03
+          ],
+          "dimensions": [
+            0.104,
+            0.012,
+            0.006
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "insert_rail_rear",
+          "center": [
+            0,
+            0.039,
+            0.03
+          ],
+          "dimensions": [
+            0.104,
+            0.012,
+            0.006
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "lid",
+      "parent": "body",
+      "origin": [
+        0,
+        0.045,
+        0.057
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "revolute",
+      "axis": [
+        -1,
+        0,
+        0
+      ],
+      "lower": 0,
+      "upper": 1.9,
+      "open_value": 1.7,
+      "mass": 0.055,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "clear_cover",
+          "center": [
+            0,
+            -0.045,
+            0.005
+          ],
+          "dimensions": [
+            0.13,
+            0.092,
+            0.006
+          ],
+          "material": "glass",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.003,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "cover_edge_left",
+          "center": [
+            -0.064,
+            -0.045,
+            0
+          ],
+          "dimensions": [
+            0.003,
+            0.09,
+            0.012
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "cover_edge_right",
+          "center": [
+            0.064,
+            -0.045,
+            0
+          ],
+          "dimensions": [
+            0.003,
+            0.09,
+            0.012
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "cover_front_edge",
+          "center": [
+            0,
+            -0.09,
+            0
+          ],
+          "dimensions": [
+            0.126,
+            0.003,
+            0.012
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "lid_latch",
+          "center": [
+            0,
+            -0.094,
+            -0.004
+          ],
+          "dimensions": [
+            0.022,
+            0.008,
+            0.013
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "name": "slot_A1",
+      "parent": "socket_insert",
+      "position": [
+        -0.04,
+        -0.024,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_A2",
+      "parent": "socket_insert",
+      "position": [
+        -0.024,
+        -0.024,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_A3",
+      "parent": "socket_insert",
+      "position": [
+        -0.008,
+        -0.024,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_A4",
+      "parent": "socket_insert",
+      "position": [
+        0.008,
+        -0.024,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_A5",
+      "parent": "socket_insert",
+      "position": [
+        0.024,
+        -0.024,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_A6",
+      "parent": "socket_insert",
+      "position": [
+        0.04,
+        -0.024,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_B1",
+      "parent": "socket_insert",
+      "position": [
+        -0.04,
+        -0.008,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_B2",
+      "parent": "socket_insert",
+      "position": [
+        -0.024,
+        -0.008,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_B3",
+      "parent": "socket_insert",
+      "position": [
+        -0.008,
+        -0.008,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_B4",
+      "parent": "socket_insert",
+      "position": [
+        0.008,
+        -0.008,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_B5",
+      "parent": "socket_insert",
+      "position": [
+        0.024,
+        -0.008,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_B6",
+      "parent": "socket_insert",
+      "position": [
+        0.04,
+        -0.008,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_C1",
+      "parent": "socket_insert",
+      "position": [
+        -0.04,
+        0.008,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_C2",
+      "parent": "socket_insert",
+      "position": [
+        -0.024,
+        0.008,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_C3",
+      "parent": "socket_insert",
+      "position": [
+        -0.008,
+        0.008,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_C4",
+      "parent": "socket_insert",
+      "position": [
+        0.008,
+        0.008,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_C5",
+      "parent": "socket_insert",
+      "position": [
+        0.024,
+        0.008,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_C6",
+      "parent": "socket_insert",
+      "position": [
+        0.04,
+        0.008,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_D1",
+      "parent": "socket_insert",
+      "position": [
+        -0.04,
+        0.024,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_D2",
+      "parent": "socket_insert",
+      "position": [
+        -0.024,
+        0.024,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_D3",
+      "parent": "socket_insert",
+      "position": [
+        -0.008,
+        0.024,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_D4",
+      "parent": "socket_insert",
+      "position": [
+        0.008,
+        0.024,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_D5",
+      "parent": "socket_insert",
+      "position": [
+        0.024,
+        0.024,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "slot_D6",
+      "parent": "socket_insert",
+      "position": [
+        0.04,
+        0.024,
+        0.033
+      ],
+      "role": "tip_socket",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "lid_handle",
+      "parent": "lid",
+      "position": [
+        0,
+        -0.098,
+        -0.003
+      ],
+      "role": "handle",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "insert_grasp",
+      "parent": "socket_insert",
+      "position": [
+        0.055,
+        0,
+        0.034
+      ],
+      "role": "grasp",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "body_grasp",
+      "parent": "body",
+      "position": [
+        0,
+        0,
+        0.026
+      ],
+      "role": "grasp",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "accessories": [
+    "electronic_pipette"
+  ]
+}

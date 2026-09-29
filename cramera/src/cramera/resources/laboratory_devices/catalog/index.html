@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AICOR · Laboratory instruments</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #183b3c; background: #f2f5f2; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { padding: 48px max(24px, calc((100vw - 1400px) / 2)); background: #163f40; color: #f2f7f3; }
+    header p { max-width: 700px; line-height: 1.6; color: #d2e6df; }
+    .eyebrow { font-size: 12px; letter-spacing: .2em; font-weight: 700; text-transform: uppercase; }
+    h1 { margin: 18px 0; font-size: clamp(32px, 5vw, 56px); font-weight: 500; letter-spacing: -.04em; }
+    main { max-width: 1448px; margin: auto; padding: 30px 24px 60px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .toolbar p { font-size: 14px; color: #577071; }
+    input { width: min(340px, 100%); border: 1px solid #bdd1ca; background: white; padding: 13px 16px; border-radius: 8px; font: inherit; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 24px; }
+    article { background: white; border: 1px solid #d8e4de; border-radius: 12px; overflow: hidden; }
+    .image-wrap { position: relative; background: #dde3df; }
+    img { display: block; width: 100%; height: auto; aspect-ratio: 1.25; object-fit: contain; }
+    .number { position: absolute; top: 15px; left: 15px; color: #365959; font-size: 12px; }
+    .details { padding: 22px; }
+    h2 { font-weight: 550; font-size: 21px; margin: 0 0 10px; }
+    .description { min-height: 52px; line-height: 1.5; color: #637573; font-size: 13px; }
+    .specs { display: flex; gap: 14px; font-size: 12px; color: #557573; margin: 17px 0; }
+    .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin-top: 17px; }
+    a, button { font: inherit; }
+    .actions a, .actions button { color: #14585b; border: 1px solid #bad3cd; border-radius: 6px; padding: 8px 10px; text-decoration: none; background: #f9fbf9; font-size: 12px; cursor: pointer; }
+    .actions a.primary { background: #1d6668; color: white; border-color: #1d6668; }
+    button:hover, .actions a:hover { filter: brightness(.95); }
+    button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #d1aa5c; outline-offset: 3px; }
+    footer { max-width: 1400px; margin: auto; padding: 0 24px 36px; line-height: 1.6; font-size: 12px; color: #637573; }
+    footer a { color: inherit; }
+    [hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">AICOR / Medical Lab</div>
+    <h1>Instruments, individually.</h1>
+    <p>A collection of independently placeable laboratory instruments and accessories.
+      Explore the rest and inspection views, or open an editable model in Blender.</p>
+  </header>
+  <main>
+    <div class="toolbar">
+      <p><strong>15 independent models</strong> · English labels · Articulated parts</p>
+      <input type="search" aria-label="Filter instruments" placeholder="Find an instrument…">
+    </div>
+    <div class="grid"><article id="vortex_mixer">
+  <div class="image-wrap">
+    <span class="number">01</span>
+    <img src="../vortex_mixer/preview.png" data-closed="../vortex_mixer/preview.png"
+      data-open="../vortex_mixer/preview_open.png" data-title="Vortex Mixer"
+      alt="Vortex Mixer — rest pose" loading="lazy" width="1200" height="960">
+  </div>
+  <div class="details">
+    <h2>Vortex Mixer</h2>
+    <p class="description">Bench vortex mixer with a spring-loaded contact cup and speed control.</p>
+    <div class="specs"><span>2 moving joints</span><span>3 interaction frames</span></div>
+    <div class="actions">
+      <a class="primary" href="../vortex_mixer/model.blend" download>Blender model ↓</a>
+      <button type="button" data-inspect aria-pressed="false" >Inspect moving parts</button>
+      <a href="../vortex_mixer/README.md">Model details</a>
+    </div>
+  </div>
+</article>
+
+<article id="electronic_pipette">
+  <div class="image-wrap">
+    <span class="number">02</span>
+    <img src="../electronic_pipette/preview.png" data-closed="../electronic_pipette/preview.png"
+      data-open="../electronic_pipette/preview_open.png" data-title="Electronic Pipette"
+      alt="Electronic Pipette — rest pose" loading="lazy" width="1200" height="960">
+  </div>
+  <div class="details">
+    <h2>Electronic Pipette</h2>
+    <p class="description">Single-channel pipette with separate plunger and tip-ejector travel.</p>
+    <div class="specs"><span>2 moving joints</span><span>4 interaction frames</span></div>
+    <div class="actions">
+      <a class="primary" href="../electronic_pipette/model.blend" download>Blender model ↓</a>
+      <button type="button" data-inspect aria-pressed="false" >Inspect moving parts</button>
+      <a href="../electronic_pipette/README.md">Model details</a>
+    </div>
+  </div>
+</article>
+
+<article id="tip_rack">
+  <div class="image-wrap">
+    <span class="number">03</span>
+    <img src="../tip_rack/preview.png" data-closed="../tip_rack/preview.png"
+      data-open="../tip_rack/preview_open.png" data-title="Pipette Tip Rack"
+      alt="Pipette Tip Rack — rest pose" loading="lazy" width="1200" height="960">
+  </div>
+  <div class="details">
+    <h2>Pipette Tip Rack</h2>
+    <p class="description">Twenty-four open tip sockets in a covered refillable carrier.</p>
+    <div class="specs"><span>1 moving joint</span><span>27 interaction frames</span></div>
+    <div class="actions">
+      <a class="primary" href="../tip_rack/model.blend" download>Blender model ↓</a>
+      <button type="button" data-inspect aria-pressed="false" >Inspect moving parts</button>
+      <a href="../tip_rack/README.md">Model details</a>
+    </div>
+  </div>
+</article>
+
+<article id="thermomixer">
+  <div class="image-wrap">
+    <span class="number">04</span>
+    <img src="../thermomixer/preview.png" data-closed="../thermomixer/preview.png"
+      data-open="../thermomixer/preview_open.png" data-title="Thermomixer"
+      alt="Thermomixer — rest pose" loading="lazy" width="1200" height="960">
+  </div>
+  <div class="details">
+    <h2>Thermomixer</h2>
+    <p class="description">Covered temperature-controlled mixer with a removable 24-well aluminum insert.</p>
+    <div class="specs"><span>4 moving joints</span><span>28 interaction frames</span></div>
+    <div class="actions">
+      <a class="primary" href="../thermomixer/model.blend" download>Blender model ↓</a>
+      <button type="button" data-inspect aria-pressed="false" >Inspect moving parts</button>
+      <a href="../thermomixer/README.md">Model details</a>
+    </div>
+  </div>
+</article>
+
+<article id="tube_capper">
+  <div class="image-wrap">
+    <span class="number">05</span>
+    <img src="../tube_capper/preview.png" data-closed="../tube_capper/preview.png"
+      data-open="../tube_capper/preview_open.png" data-title="Tube Capper / Decapper"
+      alt="Tube Capper / Decapper — rest pose" loading="lazy" width="1200" height="960">
+  </div>
+  <div class="details">
+    <h2>Tube Capper / Decapper</h2>
+    <p class="description">Articulated tube holder, opposing clamp jaws and a translating rotary chuck.</p>
+    <div class="specs"><span>4 moving joints</span><span>6 interaction frames</span></div>
+    <div class="actions">
+      <a class="primary" href="../tube_capper/model.blend" download>Blender model ↓</a>
+      <button type="button" data-inspect aria-pressed="false" >Inspect moving parts</button>
+      <a href="../tube_capper/README.md">Model details</a>
+    </div>
+  </div>
+</article>
+
+<article id="microplate_reader">
+  <div class="image-wrap">
+    <span class="number">06</span>
+    <img src="../microplate_reader/preview.png" data-closed="../microplate_reader/preview.png"
+      data-open="../microplate_reader/preview_open.png" data-title="Microplate Reader"
+      alt="Microplate Reader — rest pose" loading="lazy" width="1200" height="960">
+  </div>
+  <div class="details">
+    <h2>Microplate Reader</h2>
+    <p class="description">Enclosed optical-reader model with an articulated drawer and a 96-well plate seat.</p>
+    <div class="specs"><span>1 moving joint</span><span>5 interaction frames</span></div>
+    <div class="actions">
+      <a class="primary" href="../microplate_reader/model.blend" download>Blender model ↓</a>
+      <button type="button" data-inspect aria-pressed="false" >Inspect moving parts</button>
+      <a href="../microplate_reader/README.md">Model details</a>
+    </div>
+  </div>
+</article>
+
+<article id="incubator">
+  <div class="image-wrap">
+    <span class="number">07</span>
+    <img src="../incubator/preview.png" data-closed="../incubator/preview.png"
+      data-open="../incubator/preview_open.png" data-title="Benchtop Incubator"
+      alt="Benchtop Incubator — rest pose" loading="lazy" width="1200" height="960">
+  </div>
+  <div class="details">
+    <h2>Benchtop Incubator</h2>
+    <p class="description">Three-shelf incubation chamber with a transparent articulated door and temperature display.</p>
+    <div class="specs"><span>1 moving joint</span><span>22 interaction frames</span></div>
+    <div class="actions">
+      <a class="primary" href="../incubator/model.blend" download>Blender model ↓</a>
+      <button type="button" data-inspect aria-pressed="false" >Inspect moving parts</button>
+      <a href="../incubator/README.md">Model details</a>
+    </div>
+  </div>
+</article>
+
+<article id="pcr_thermocycler">
+  <div class="image-wrap">
+    <span class="number">08</span>
+    <img src="../pcr_thermocycler/preview.png" data-closed="../pcr_thermocycler/preview.png"
+      data-open="../pcr_thermocycler/preview_open.png" data-title="PCR Thermocycler"
+      alt="PCR Thermocycler — rest pose" loading="lazy" width="1200" height="960">
+  </div>
+  <div class="details">
+    <h2>PCR Thermocycler</h2>
+    <p class="description">Ninety-six-position thermal block with an articulated heated cover and cycle display.</p>
+    <div class="specs"><span>1 moving joint</span><span>101 interaction frames</span></div>
+    <div class="actions">
+      <a class="primary" href="../pcr_thermocycler/model.blend" download>Blender model ↓</a>
+      <button type="button" data-inspect aria-pressed="false" >Inspect moving parts</button>
+      <a href="../pcr_thermocycler/README.md">Model details</a>
+    </div>
+  </div>
+</article>
+
+<article id="microplate_96_well">
+  <div class="image-wrap">
+    <span class="number">09</span>
+    <img src="../microplate_96_well/preview.png" data-closed="../microplate_96_well/preview.png"
+      data-open="../microplate_96_well/preview_open.png" data-title="96-Well Microplate"
+      alt="96-Well Microplate — rest pose" loading="lazy" width="1200" height="960">
+  </div>
+  <div class="details">
+    <h2>96-Well Microplate</h2>
+    <p class="description">Separate 127.76 by 85.48 millimetre plate with 9 millimetre well pitch and 96 open wells.</p>
+    <div class="specs"><span>0 moving joints</span><span>99 interaction frames</span></div>
+    <div class="actions">
+      <a class="primary" href="../microplate_96_well/model.blend" download>Blender model ↓</a>
+      <button type="button" data-inspect aria-pressed="false" disabled>Inspect moving parts</button>
+      <a href="../microplate_96_well/README.md">Model details</a>
+    </div>
+  </div>
+</article>
+
+<article id="digital_microscope">
+  <div class="image-wrap">
+    <span class="number">10</span>
+    <img src="../digital_microscope/preview.png" data-closed="../digital_microscope/preview.png"
+      data-open="../digital_microscope/preview_open.png" data-title="Digital microscope"
+      alt="Digital microscope — rest pose" loading="lazy" width="1200" height="960">
+  </div>
+  <div class="details">
+    <h2>Digital microscope</h2>
+    <p class="description">Digital microscope with a focus carriage, a two-axis slide stage and a three-position objective turret.</p>
+    <div class="specs"><span>5 moving joints</span><span>4 interaction frames</span></div>
+    <div class="actions">
+      <a class="primary" href="../digital_microscope/model.blend" download>Blender model ↓</a>
+      <button type="button" data-inspect aria-pressed="false" >Inspect moving parts</button>
+      <a href="../digital_microscope/README.md">Model details</a>
+    </div>
+  </div>
+</article>
+
+<article id="ph_meter">
+  <div class="image-wrap">
+    <span class="number">11</span>
+    <img src="../ph_meter/preview.png" data-closed="../ph_meter/preview.png"
+      data-open="../ph_meter/preview_open.png" data-title="pH meter"
+      alt="pH meter — rest pose" loading="lazy" width="1200" height="960">
+  </div>
+  <div class="details">
+    <h2>pH meter</h2>
+    <p class="description">Benchtop pH meter with an articulated support arm and a removable probe resource.</p>
+    <div class="specs"><span>2 moving joints</span><span>4 interaction frames</span></div>
+    <div class="actions">
+      <a class="primary" href="../ph_meter/model.blend" download>Blender model ↓</a>
+      <button type="button" data-inspect aria-pressed="false" >Inspect moving parts</button>
+      <a href="../ph_meter/README.md">Model details</a>
+    </div>
+  </div>
+</article>
+
+<article id="ph_probe">
+  <div class="image-wrap">
+    <span class="number">12</span>
+    <img src="../ph_probe/preview.png" data-closed="../ph_probe/preview.png"
+      data-open="../ph_probe/preview_open.png" data-title="pH probe"
+      alt="pH probe — rest pose" loading="lazy" width="1200" height="960">
+  </div>
+  <div class="details">
+    <h2>pH probe</h2>
+    <p class="description">Removable glass electrode with a sensing bulb, protective cage and detachable cable connector.</p>
+    <div class="specs"><span>0 moving joints</span><span>3 interaction frames</span></div>
+    <div class="actions">
+      <a class="primary" href="../ph_probe/model.blend" download>Blender model ↓</a>
+      <button type="button" data-inspect aria-pressed="false" disabled>Inspect moving parts</button>
+      <a href="../ph_probe/README.md">Model details</a>
+    </div>
+  </div>
+</article>
+
+<article id="barcode_scanner">
+  <div class="image-wrap">
+    <span class="number">13</span>
+    <img src="../barcode_scanner/preview.png" data-closed="../barcode_scanner/preview.png"
+      data-open="../barcode_scanner/preview_open.png" data-title="Barcode scanner"
+      alt="Barcode scanner — rest pose" loading="lazy" width="1200" height="960">
+  </div>
+  <div class="details">
+    <h2>Barcode scanner</h2>
+    <p class="description">Handheld identification scanner with a trigger and a separate docking cradle.</p>
+    <div class="specs"><span>1 moving joint</span><span>4 interaction frames</span></div>
+    <div class="actions">
+      <a class="primary" href="../barcode_scanner/model.blend" download>Blender model ↓</a>
+      <button type="button" data-inspect aria-pressed="false" >Inspect moving parts</button>
+      <a href="../barcode_scanner/README.md">Model details</a>
+    </div>
+  </div>
+</article>
+
+<article id="barcode_dock">
+  <div class="image-wrap">
+    <span class="number">14</span>
+    <img src="../barcode_dock/preview.png" data-closed="../barcode_dock/preview.png"
+      data-open="../barcode_dock/preview_open.png" data-title="Barcode scanner dock"
+      alt="Barcode scanner dock — rest pose" loading="lazy" width="1200" height="960">
+  </div>
+  <div class="details">
+    <h2>Barcode scanner dock</h2>
+    <p class="description">Weighted charging cradle for the independent handheld barcode scanner.</p>
+    <div class="specs"><span>0 moving joints</span><span>2 interaction frames</span></div>
+    <div class="actions">
+      <a class="primary" href="../barcode_dock/model.blend" download>Blender model ↓</a>
+      <button type="button" data-inspect aria-pressed="false" disabled>Inspect moving parts</button>
+      <a href="../barcode_dock/README.md">Model details</a>
+    </div>
+  </div>
+</article>
+
+<article id="label_printer">
+  <div class="image-wrap">
+    <span class="number">15</span>
+    <img src="../label_printer/preview.png" data-closed="../label_printer/preview.png"
+      data-open="../label_printer/preview_open.png" data-title="Label printer"
+      alt="Label printer — rest pose" loading="lazy" width="1200" height="960">
+  </div>
+  <div class="details">
+    <h2>Label printer</h2>
+    <p class="description">Desktop specimen-label printer with an opening media cover, a roll spindle and a feed roller.</p>
+    <div class="specs"><span>3 moving joints</span><span>5 interaction frames</span></div>
+    <div class="actions">
+      <a class="primary" href="../label_printer/model.blend" download>Blender model ↓</a>
+      <button type="button" data-inspect aria-pressed="false" >Inspect moving parts</button>
+      <a href="../label_printer/README.md">Model details</a>
+    </div>
+  </div>
+</article>
+</div>
+    <p id="empty" hidden>No instruments match your search.</p>
+  </main>
+  <footer>
+    Original AICOR concept models. Principal author and design direction: Vanessa Hassouna · AICOR Institute.<br>
+    Models include geometry, joints and interaction frames; device processes require separate controllers.<br>
+    Reuse requires written permission. <a href="../LICENSE.txt">License</a> · <a href="../README.md">Resource documentation</a>
+  </footer>
+  <script>
+    const cards = Array.from(document.querySelectorAll('article'));
+    document.querySelector('input').addEventListener('input', event => {
+      const query = event.target.value.trim().toLowerCase();
+      cards.forEach(card => { card.hidden = !card.textContent.toLowerCase().includes(query); });
+      document.querySelector('#empty').hidden = cards.some(card => !card.hidden);
+    });
+    document.querySelectorAll('[data-inspect]').forEach(button => {
+      button.addEventListener('click', () => {
+        const image = button.closest('article').querySelector('img');
+        const opened = button.getAttribute('aria-pressed') !== 'true';
+        button.setAttribute('aria-pressed', String(opened));
+        image.src = opened ? image.dataset.open : image.dataset.closed;
+        image.alt = image.dataset.title + (opened ? ' — inspection pose' : ' — rest pose');
+        button.textContent = opened ? 'Show rest pose' : 'Inspect moving parts';
+      });
+    });
+  </script>
+</body>
+</html>

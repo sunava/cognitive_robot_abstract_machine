@@ -1,0 +1,4000 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="thermomixer"><!-- CRAMERA laboratory asset rights:
+Principal author: Vanessa Hassouna
+Institution: AICOR Institute
+Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.
+License: LicenseRef-AICOR-Laboratory-Assets
+See LICENSE.txt and NOTICE.md.
+-->
+  <link name="thermomixer_body">
+    <visual>
+      <geometry>
+        <mesh filename="assets/body.glb" />
+      </geometry>
+    </visual>
+    <collision name="thermomixer_body_contact_0">
+      <origin xyz="-0.09 -0.099 0.004" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.012" length="0.008" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_body_contact_1">
+      <origin xyz="-0.09 0.099 0.004" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.012" length="0.008" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_body_contact_2">
+      <origin xyz="0.09 -0.099 0.004" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.012" length="0.008" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_body_contact_3">
+      <origin xyz="0.09 0.099 0.004" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.012" length="0.008" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_body_contact_4">
+      <origin xyz="0 0 0.017" rpy="0 0 0" />
+      <geometry>
+        <box size="0.225 0.26 0.02" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_body_contact_5">
+      <origin xyz="0 0 0.06" rpy="0 0 0" />
+      <geometry>
+        <box size="0.224 0.256 0.074" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_body_contact_6">
+      <origin xyz="0 0.016 0.1" rpy="0 0 0" />
+      <geometry>
+        <box size="0.208 0.21 0.004" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_body_contact_7">
+      <origin xyz="0 0.016 0.103" rpy="0 0 0" />
+      <geometry>
+        <box size="0.184 0.18 0.005" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_body_contact_8">
+      <origin xyz="-0.098 0.016 0.123" rpy="0 0 0" />
+      <geometry>
+        <box size="0.014 0.21 0.043" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_body_contact_9">
+      <origin xyz="0.098 0.016 0.123" rpy="0 0 0" />
+      <geometry>
+        <box size="0.014 0.21 0.043" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_body_contact_10">
+      <origin xyz="0 -0.082 0.123" rpy="0 0 0" />
+      <geometry>
+        <box size="0.182 0.014 0.043" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_body_contact_11">
+      <origin xyz="0 0.114 0.123" rpy="0 0 0" />
+      <geometry>
+        <box size="0.182 0.014 0.043" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_body_contact_12">
+      <origin xyz="-0.027 -0.128 0.05" rpy="0 0 0" />
+      <geometry>
+        <box size="0.123 0.005 0.036" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_body_contact_13">
+      <origin xyz="-0.076 0.119 0.155" rpy="0 1.57079633 0" />
+      <geometry>
+        <cylinder radius="0.01" length="0.035" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_body_contact_14">
+      <origin xyz="0.076 0.119 0.155" rpy="0 1.57079633 0" />
+      <geometry>
+        <cylinder radius="0.01" length="0.035" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.00015 -0.00075 0.0825" />
+      <mass value="3.8" />
+      <inertia ixx="0.03027562916666667" iyy="0.0246952785" izz="0.03772840766666667" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <link name="thermomixer_mixing_carrier">
+    <visual>
+      <geometry>
+        <mesh filename="assets/mixing_carrier.glb" />
+      </geometry>
+    </visual>
+    <collision name="thermomixer_mixing_carrier_contact_0">
+      <origin xyz="0 0 0.002" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.062" length="0.004" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0.002" />
+      <mass value="0.16" />
+      <inertia ixx="0.00020522666666666664" iyy="0.00020522666666666664" izz="0.00041002666666666666" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <joint name="thermomixer_mixing_carrier_joint" type="prismatic">
+    <parent link="thermomixer_body" />
+    <child link="thermomixer_mixing_carrier" />
+    <origin xyz="0 0.016 0.105" rpy="0 0 0" />
+    <axis xyz="1 0 0" />
+    <limit effort="20" velocity="1" lower="-0.0015" upper="0.0015" />
+    <dynamics damping="0.1" friction="0.02" />
+  </joint>
+  <link name="thermomixer_orbital_carrier">
+    <visual>
+      <geometry>
+        <mesh filename="assets/orbital_carrier.glb" />
+      </geometry>
+    </visual>
+    <collision name="thermomixer_orbital_carrier_contact_0">
+      <origin xyz="0 0 0.001" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.06" length="0.002" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0.001" />
+      <mass value="0.08" />
+      <inertia ixx="9.602666666666667e-05" iyy="9.602666666666667e-05" izz="0.000192" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <joint name="thermomixer_orbital_carrier_joint" type="prismatic">
+    <parent link="thermomixer_mixing_carrier" />
+    <child link="thermomixer_orbital_carrier" />
+    <origin xyz="0 0 0.002" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <limit effort="20" velocity="1" lower="-0.0015" upper="0.0015" />
+    <dynamics damping="0.1" friction="0.02" />
+  </joint>
+  <link name="thermomixer_sample_block">
+    <visual>
+      <geometry>
+        <mesh filename="assets/sample_block.glb" />
+      </geometry>
+    </visual>
+    <collision name="thermomixer_sample_block_contact_0">
+      <origin xyz="0 0 0.002" rpy="0 0 0" />
+      <geometry>
+        <box size="0.169 0.126 0.004" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_1">
+      <origin xyz="-0.072 0 0.024" rpy="0 0 0" />
+      <geometry>
+        <box size="0.002 0.098 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_2">
+      <origin xyz="-0.048 0 0.024" rpy="0 0 0" />
+      <geometry>
+        <box size="0.002 0.098 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_3">
+      <origin xyz="-0.024 0 0.024" rpy="0 0 0" />
+      <geometry>
+        <box size="0.002 0.098 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_4">
+      <origin xyz="0 0 0.024" rpy="0 0 0" />
+      <geometry>
+        <box size="0.002 0.098 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_5">
+      <origin xyz="0.024 0 0.024" rpy="0 0 0" />
+      <geometry>
+        <box size="0.002 0.098 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_6">
+      <origin xyz="0.048 0 0.024" rpy="0 0 0" />
+      <geometry>
+        <box size="0.002 0.098 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_7">
+      <origin xyz="0.072 0 0.024" rpy="0 0 0" />
+      <geometry>
+        <box size="0.002 0.098 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_8">
+      <origin xyz="0 -0.048 0.024" rpy="0 0 0" />
+      <geometry>
+        <box size="0.146 0.002 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_9">
+      <origin xyz="0 -0.024 0.024" rpy="0 0 0" />
+      <geometry>
+        <box size="0.146 0.002 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_10">
+      <origin xyz="0 0 0.024" rpy="0 0 0" />
+      <geometry>
+        <box size="0.146 0.002 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_11">
+      <origin xyz="0 0.024 0.024" rpy="0 0 0" />
+      <geometry>
+        <box size="0.146 0.002 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_12">
+      <origin xyz="0 0.048 0.024" rpy="0 0 0" />
+      <geometry>
+        <box size="0.146 0.002 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_13">
+      <origin xyz="-0.05105 -0.036 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_14">
+      <origin xyz="-0.0513549639 -0.0336835695 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_15">
+      <origin xyz="-0.0522490726 -0.031525 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_16">
+      <origin xyz="-0.0536713943 -0.0296713943 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_17">
+      <origin xyz="-0.055525 -0.0282490726 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_18">
+      <origin xyz="-0.0576835695 -0.0273549639 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_19">
+      <origin xyz="-0.06 -0.02705 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_20">
+      <origin xyz="-0.0623164305 -0.0273549639 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_21">
+      <origin xyz="-0.064475 -0.0282490726 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_22">
+      <origin xyz="-0.0663286057 -0.0296713943 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_23">
+      <origin xyz="-0.0677509274 -0.031525 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_24">
+      <origin xyz="-0.0686450361 -0.0336835695 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_25">
+      <origin xyz="-0.06895 -0.036 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_26">
+      <origin xyz="-0.0686450361 -0.0383164305 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_27">
+      <origin xyz="-0.0677509274 -0.040475 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_28">
+      <origin xyz="-0.0663286057 -0.0423286057 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_29">
+      <origin xyz="-0.064475 -0.0437509274 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_30">
+      <origin xyz="-0.0623164305 -0.0446450361 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_31">
+      <origin xyz="-0.06 -0.04495 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_32">
+      <origin xyz="-0.0576835695 -0.0446450361 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_33">
+      <origin xyz="-0.055525 -0.0437509274 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_34">
+      <origin xyz="-0.0536713943 -0.0423286057 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_35">
+      <origin xyz="-0.0522490726 -0.040475 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_36">
+      <origin xyz="-0.0513549639 -0.0383164305 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_37">
+      <origin xyz="-0.02705 -0.036 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_38">
+      <origin xyz="-0.0273549639 -0.0336835695 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_39">
+      <origin xyz="-0.0282490726 -0.031525 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_40">
+      <origin xyz="-0.0296713943 -0.0296713943 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_41">
+      <origin xyz="-0.031525 -0.0282490726 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_42">
+      <origin xyz="-0.0336835695 -0.0273549639 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_43">
+      <origin xyz="-0.036 -0.02705 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_44">
+      <origin xyz="-0.0383164305 -0.0273549639 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_45">
+      <origin xyz="-0.040475 -0.0282490726 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_46">
+      <origin xyz="-0.0423286057 -0.0296713943 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_47">
+      <origin xyz="-0.0437509274 -0.031525 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_48">
+      <origin xyz="-0.0446450361 -0.0336835695 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_49">
+      <origin xyz="-0.04495 -0.036 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_50">
+      <origin xyz="-0.0446450361 -0.0383164305 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_51">
+      <origin xyz="-0.0437509274 -0.040475 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_52">
+      <origin xyz="-0.0423286057 -0.0423286057 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_53">
+      <origin xyz="-0.040475 -0.0437509274 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_54">
+      <origin xyz="-0.0383164305 -0.0446450361 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_55">
+      <origin xyz="-0.036 -0.04495 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_56">
+      <origin xyz="-0.0336835695 -0.0446450361 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_57">
+      <origin xyz="-0.031525 -0.0437509274 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_58">
+      <origin xyz="-0.0296713943 -0.0423286057 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_59">
+      <origin xyz="-0.0282490726 -0.040475 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_60">
+      <origin xyz="-0.0273549639 -0.0383164305 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_61">
+      <origin xyz="-0.00305 -0.036 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_62">
+      <origin xyz="-0.00335496385 -0.0336835695 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_63">
+      <origin xyz="-0.00424907264 -0.031525 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_64">
+      <origin xyz="-0.00567139431 -0.0296713943 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_65">
+      <origin xyz="-0.007525 -0.0282490726 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_66">
+      <origin xyz="-0.00968356955 -0.0273549639 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_67">
+      <origin xyz="-0.012 -0.02705 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_68">
+      <origin xyz="-0.0143164305 -0.0273549639 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_69">
+      <origin xyz="-0.016475 -0.0282490726 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_70">
+      <origin xyz="-0.0183286057 -0.0296713943 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_71">
+      <origin xyz="-0.0197509274 -0.031525 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_72">
+      <origin xyz="-0.0206450361 -0.0336835695 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_73">
+      <origin xyz="-0.02095 -0.036 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_74">
+      <origin xyz="-0.0206450361 -0.0383164305 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_75">
+      <origin xyz="-0.0197509274 -0.040475 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_76">
+      <origin xyz="-0.0183286057 -0.0423286057 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_77">
+      <origin xyz="-0.016475 -0.0437509274 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_78">
+      <origin xyz="-0.0143164305 -0.0446450361 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_79">
+      <origin xyz="-0.012 -0.04495 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_80">
+      <origin xyz="-0.00968356955 -0.0446450361 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_81">
+      <origin xyz="-0.007525 -0.0437509274 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_82">
+      <origin xyz="-0.00567139431 -0.0423286057 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_83">
+      <origin xyz="-0.00424907264 -0.040475 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_84">
+      <origin xyz="-0.00335496385 -0.0383164305 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_85">
+      <origin xyz="0.02095 -0.036 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_86">
+      <origin xyz="0.0206450361 -0.0336835695 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_87">
+      <origin xyz="0.0197509274 -0.031525 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_88">
+      <origin xyz="0.0183286057 -0.0296713943 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_89">
+      <origin xyz="0.016475 -0.0282490726 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_90">
+      <origin xyz="0.0143164305 -0.0273549639 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_91">
+      <origin xyz="0.012 -0.02705 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_92">
+      <origin xyz="0.00968356955 -0.0273549639 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_93">
+      <origin xyz="0.007525 -0.0282490726 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_94">
+      <origin xyz="0.00567139431 -0.0296713943 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_95">
+      <origin xyz="0.00424907264 -0.031525 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_96">
+      <origin xyz="0.00335496385 -0.0336835695 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_97">
+      <origin xyz="0.00305 -0.036 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_98">
+      <origin xyz="0.00335496385 -0.0383164305 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_99">
+      <origin xyz="0.00424907264 -0.040475 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_100">
+      <origin xyz="0.00567139431 -0.0423286057 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_101">
+      <origin xyz="0.007525 -0.0437509274 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_102">
+      <origin xyz="0.00968356955 -0.0446450361 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_103">
+      <origin xyz="0.012 -0.04495 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_104">
+      <origin xyz="0.0143164305 -0.0446450361 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_105">
+      <origin xyz="0.016475 -0.0437509274 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_106">
+      <origin xyz="0.0183286057 -0.0423286057 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_107">
+      <origin xyz="0.0197509274 -0.040475 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_108">
+      <origin xyz="0.0206450361 -0.0383164305 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_109">
+      <origin xyz="0.04495 -0.036 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_110">
+      <origin xyz="0.0446450361 -0.0336835695 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_111">
+      <origin xyz="0.0437509274 -0.031525 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_112">
+      <origin xyz="0.0423286057 -0.0296713943 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_113">
+      <origin xyz="0.040475 -0.0282490726 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_114">
+      <origin xyz="0.0383164305 -0.0273549639 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_115">
+      <origin xyz="0.036 -0.02705 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_116">
+      <origin xyz="0.0336835695 -0.0273549639 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_117">
+      <origin xyz="0.031525 -0.0282490726 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_118">
+      <origin xyz="0.0296713943 -0.0296713943 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_119">
+      <origin xyz="0.0282490726 -0.031525 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_120">
+      <origin xyz="0.0273549639 -0.0336835695 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_121">
+      <origin xyz="0.02705 -0.036 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_122">
+      <origin xyz="0.0273549639 -0.0383164305 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_123">
+      <origin xyz="0.0282490726 -0.040475 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_124">
+      <origin xyz="0.0296713943 -0.0423286057 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_125">
+      <origin xyz="0.031525 -0.0437509274 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_126">
+      <origin xyz="0.0336835695 -0.0446450361 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_127">
+      <origin xyz="0.036 -0.04495 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_128">
+      <origin xyz="0.0383164305 -0.0446450361 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_129">
+      <origin xyz="0.040475 -0.0437509274 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_130">
+      <origin xyz="0.0423286057 -0.0423286057 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_131">
+      <origin xyz="0.0437509274 -0.040475 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_132">
+      <origin xyz="0.0446450361 -0.0383164305 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_133">
+      <origin xyz="0.06895 -0.036 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_134">
+      <origin xyz="0.0686450361 -0.0336835695 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_135">
+      <origin xyz="0.0677509274 -0.031525 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_136">
+      <origin xyz="0.0663286057 -0.0296713943 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_137">
+      <origin xyz="0.064475 -0.0282490726 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_138">
+      <origin xyz="0.0623164305 -0.0273549639 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_139">
+      <origin xyz="0.06 -0.02705 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_140">
+      <origin xyz="0.0576835695 -0.0273549639 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_141">
+      <origin xyz="0.055525 -0.0282490726 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_142">
+      <origin xyz="0.0536713943 -0.0296713943 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_143">
+      <origin xyz="0.0522490726 -0.031525 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_144">
+      <origin xyz="0.0513549639 -0.0336835695 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_145">
+      <origin xyz="0.05105 -0.036 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_146">
+      <origin xyz="0.0513549639 -0.0383164305 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_147">
+      <origin xyz="0.0522490726 -0.040475 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_148">
+      <origin xyz="0.0536713943 -0.0423286057 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_149">
+      <origin xyz="0.055525 -0.0437509274 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_150">
+      <origin xyz="0.0576835695 -0.0446450361 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_151">
+      <origin xyz="0.06 -0.04495 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_152">
+      <origin xyz="0.0623164305 -0.0446450361 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_153">
+      <origin xyz="0.064475 -0.0437509274 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_154">
+      <origin xyz="0.0663286057 -0.0423286057 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_155">
+      <origin xyz="0.0677509274 -0.040475 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_156">
+      <origin xyz="0.0686450361 -0.0383164305 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_157">
+      <origin xyz="-0.05105 -0.012 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_158">
+      <origin xyz="-0.0513549639 -0.00968356955 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_159">
+      <origin xyz="-0.0522490726 -0.007525 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_160">
+      <origin xyz="-0.0536713943 -0.00567139431 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_161">
+      <origin xyz="-0.055525 -0.00424907264 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_162">
+      <origin xyz="-0.0576835695 -0.00335496385 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_163">
+      <origin xyz="-0.06 -0.00305 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_164">
+      <origin xyz="-0.0623164305 -0.00335496385 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_165">
+      <origin xyz="-0.064475 -0.00424907264 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_166">
+      <origin xyz="-0.0663286057 -0.00567139431 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_167">
+      <origin xyz="-0.0677509274 -0.007525 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_168">
+      <origin xyz="-0.0686450361 -0.00968356955 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_169">
+      <origin xyz="-0.06895 -0.012 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_170">
+      <origin xyz="-0.0686450361 -0.0143164305 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_171">
+      <origin xyz="-0.0677509274 -0.016475 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_172">
+      <origin xyz="-0.0663286057 -0.0183286057 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_173">
+      <origin xyz="-0.064475 -0.0197509274 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_174">
+      <origin xyz="-0.0623164305 -0.0206450361 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_175">
+      <origin xyz="-0.06 -0.02095 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_176">
+      <origin xyz="-0.0576835695 -0.0206450361 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_177">
+      <origin xyz="-0.055525 -0.0197509274 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_178">
+      <origin xyz="-0.0536713943 -0.0183286057 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_179">
+      <origin xyz="-0.0522490726 -0.016475 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_180">
+      <origin xyz="-0.0513549639 -0.0143164305 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_181">
+      <origin xyz="-0.02705 -0.012 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_182">
+      <origin xyz="-0.0273549639 -0.00968356955 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_183">
+      <origin xyz="-0.0282490726 -0.007525 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_184">
+      <origin xyz="-0.0296713943 -0.00567139431 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_185">
+      <origin xyz="-0.031525 -0.00424907264 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_186">
+      <origin xyz="-0.0336835695 -0.00335496385 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_187">
+      <origin xyz="-0.036 -0.00305 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_188">
+      <origin xyz="-0.0383164305 -0.00335496385 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_189">
+      <origin xyz="-0.040475 -0.00424907264 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_190">
+      <origin xyz="-0.0423286057 -0.00567139431 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_191">
+      <origin xyz="-0.0437509274 -0.007525 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_192">
+      <origin xyz="-0.0446450361 -0.00968356955 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_193">
+      <origin xyz="-0.04495 -0.012 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_194">
+      <origin xyz="-0.0446450361 -0.0143164305 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_195">
+      <origin xyz="-0.0437509274 -0.016475 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_196">
+      <origin xyz="-0.0423286057 -0.0183286057 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_197">
+      <origin xyz="-0.040475 -0.0197509274 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_198">
+      <origin xyz="-0.0383164305 -0.0206450361 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_199">
+      <origin xyz="-0.036 -0.02095 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_200">
+      <origin xyz="-0.0336835695 -0.0206450361 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_201">
+      <origin xyz="-0.031525 -0.0197509274 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_202">
+      <origin xyz="-0.0296713943 -0.0183286057 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_203">
+      <origin xyz="-0.0282490726 -0.016475 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_204">
+      <origin xyz="-0.0273549639 -0.0143164305 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_205">
+      <origin xyz="-0.00305 -0.012 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_206">
+      <origin xyz="-0.00335496385 -0.00968356955 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_207">
+      <origin xyz="-0.00424907264 -0.007525 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_208">
+      <origin xyz="-0.00567139431 -0.00567139431 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_209">
+      <origin xyz="-0.007525 -0.00424907264 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_210">
+      <origin xyz="-0.00968356955 -0.00335496385 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_211">
+      <origin xyz="-0.012 -0.00305 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_212">
+      <origin xyz="-0.0143164305 -0.00335496385 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_213">
+      <origin xyz="-0.016475 -0.00424907264 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_214">
+      <origin xyz="-0.0183286057 -0.00567139431 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_215">
+      <origin xyz="-0.0197509274 -0.007525 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_216">
+      <origin xyz="-0.0206450361 -0.00968356955 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_217">
+      <origin xyz="-0.02095 -0.012 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_218">
+      <origin xyz="-0.0206450361 -0.0143164305 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_219">
+      <origin xyz="-0.0197509274 -0.016475 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_220">
+      <origin xyz="-0.0183286057 -0.0183286057 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_221">
+      <origin xyz="-0.016475 -0.0197509274 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_222">
+      <origin xyz="-0.0143164305 -0.0206450361 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_223">
+      <origin xyz="-0.012 -0.02095 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_224">
+      <origin xyz="-0.00968356955 -0.0206450361 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_225">
+      <origin xyz="-0.007525 -0.0197509274 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_226">
+      <origin xyz="-0.00567139431 -0.0183286057 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_227">
+      <origin xyz="-0.00424907264 -0.016475 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_228">
+      <origin xyz="-0.00335496385 -0.0143164305 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_229">
+      <origin xyz="0.02095 -0.012 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_230">
+      <origin xyz="0.0206450361 -0.00968356955 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_231">
+      <origin xyz="0.0197509274 -0.007525 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_232">
+      <origin xyz="0.0183286057 -0.00567139431 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_233">
+      <origin xyz="0.016475 -0.00424907264 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_234">
+      <origin xyz="0.0143164305 -0.00335496385 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_235">
+      <origin xyz="0.012 -0.00305 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_236">
+      <origin xyz="0.00968356955 -0.00335496385 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_237">
+      <origin xyz="0.007525 -0.00424907264 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_238">
+      <origin xyz="0.00567139431 -0.00567139431 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_239">
+      <origin xyz="0.00424907264 -0.007525 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_240">
+      <origin xyz="0.00335496385 -0.00968356955 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_241">
+      <origin xyz="0.00305 -0.012 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_242">
+      <origin xyz="0.00335496385 -0.0143164305 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_243">
+      <origin xyz="0.00424907264 -0.016475 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_244">
+      <origin xyz="0.00567139431 -0.0183286057 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_245">
+      <origin xyz="0.007525 -0.0197509274 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_246">
+      <origin xyz="0.00968356955 -0.0206450361 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_247">
+      <origin xyz="0.012 -0.02095 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_248">
+      <origin xyz="0.0143164305 -0.0206450361 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_249">
+      <origin xyz="0.016475 -0.0197509274 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_250">
+      <origin xyz="0.0183286057 -0.0183286057 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_251">
+      <origin xyz="0.0197509274 -0.016475 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_252">
+      <origin xyz="0.0206450361 -0.0143164305 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_253">
+      <origin xyz="0.04495 -0.012 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_254">
+      <origin xyz="0.0446450361 -0.00968356955 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_255">
+      <origin xyz="0.0437509274 -0.007525 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_256">
+      <origin xyz="0.0423286057 -0.00567139431 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_257">
+      <origin xyz="0.040475 -0.00424907264 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_258">
+      <origin xyz="0.0383164305 -0.00335496385 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_259">
+      <origin xyz="0.036 -0.00305 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_260">
+      <origin xyz="0.0336835695 -0.00335496385 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_261">
+      <origin xyz="0.031525 -0.00424907264 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_262">
+      <origin xyz="0.0296713943 -0.00567139431 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_263">
+      <origin xyz="0.0282490726 -0.007525 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_264">
+      <origin xyz="0.0273549639 -0.00968356955 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_265">
+      <origin xyz="0.02705 -0.012 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_266">
+      <origin xyz="0.0273549639 -0.0143164305 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_267">
+      <origin xyz="0.0282490726 -0.016475 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_268">
+      <origin xyz="0.0296713943 -0.0183286057 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_269">
+      <origin xyz="0.031525 -0.0197509274 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_270">
+      <origin xyz="0.0336835695 -0.0206450361 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_271">
+      <origin xyz="0.036 -0.02095 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_272">
+      <origin xyz="0.0383164305 -0.0206450361 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_273">
+      <origin xyz="0.040475 -0.0197509274 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_274">
+      <origin xyz="0.0423286057 -0.0183286057 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_275">
+      <origin xyz="0.0437509274 -0.016475 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_276">
+      <origin xyz="0.0446450361 -0.0143164305 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_277">
+      <origin xyz="0.06895 -0.012 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_278">
+      <origin xyz="0.0686450361 -0.00968356955 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_279">
+      <origin xyz="0.0677509274 -0.007525 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_280">
+      <origin xyz="0.0663286057 -0.00567139431 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_281">
+      <origin xyz="0.064475 -0.00424907264 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_282">
+      <origin xyz="0.0623164305 -0.00335496385 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_283">
+      <origin xyz="0.06 -0.00305 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_284">
+      <origin xyz="0.0576835695 -0.00335496385 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_285">
+      <origin xyz="0.055525 -0.00424907264 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_286">
+      <origin xyz="0.0536713943 -0.00567139431 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_287">
+      <origin xyz="0.0522490726 -0.007525 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_288">
+      <origin xyz="0.0513549639 -0.00968356955 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_289">
+      <origin xyz="0.05105 -0.012 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_290">
+      <origin xyz="0.0513549639 -0.0143164305 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_291">
+      <origin xyz="0.0522490726 -0.016475 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_292">
+      <origin xyz="0.0536713943 -0.0183286057 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_293">
+      <origin xyz="0.055525 -0.0197509274 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_294">
+      <origin xyz="0.0576835695 -0.0206450361 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_295">
+      <origin xyz="0.06 -0.02095 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_296">
+      <origin xyz="0.0623164305 -0.0206450361 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_297">
+      <origin xyz="0.064475 -0.0197509274 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_298">
+      <origin xyz="0.0663286057 -0.0183286057 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_299">
+      <origin xyz="0.0677509274 -0.016475 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_300">
+      <origin xyz="0.0686450361 -0.0143164305 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_301">
+      <origin xyz="-0.05105 0.012 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_302">
+      <origin xyz="-0.0513549639 0.0143164305 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_303">
+      <origin xyz="-0.0522490726 0.016475 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_304">
+      <origin xyz="-0.0536713943 0.0183286057 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_305">
+      <origin xyz="-0.055525 0.0197509274 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_306">
+      <origin xyz="-0.0576835695 0.0206450361 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_307">
+      <origin xyz="-0.06 0.02095 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_308">
+      <origin xyz="-0.0623164305 0.0206450361 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_309">
+      <origin xyz="-0.064475 0.0197509274 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_310">
+      <origin xyz="-0.0663286057 0.0183286057 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_311">
+      <origin xyz="-0.0677509274 0.016475 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_312">
+      <origin xyz="-0.0686450361 0.0143164305 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_313">
+      <origin xyz="-0.06895 0.012 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_314">
+      <origin xyz="-0.0686450361 0.00968356955 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_315">
+      <origin xyz="-0.0677509274 0.007525 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_316">
+      <origin xyz="-0.0663286057 0.00567139431 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_317">
+      <origin xyz="-0.064475 0.00424907264 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_318">
+      <origin xyz="-0.0623164305 0.00335496385 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_319">
+      <origin xyz="-0.06 0.00305 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_320">
+      <origin xyz="-0.0576835695 0.00335496385 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_321">
+      <origin xyz="-0.055525 0.00424907264 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_322">
+      <origin xyz="-0.0536713943 0.00567139431 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_323">
+      <origin xyz="-0.0522490726 0.007525 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_324">
+      <origin xyz="-0.0513549639 0.00968356955 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_325">
+      <origin xyz="-0.02705 0.012 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_326">
+      <origin xyz="-0.0273549639 0.0143164305 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_327">
+      <origin xyz="-0.0282490726 0.016475 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_328">
+      <origin xyz="-0.0296713943 0.0183286057 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_329">
+      <origin xyz="-0.031525 0.0197509274 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_330">
+      <origin xyz="-0.0336835695 0.0206450361 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_331">
+      <origin xyz="-0.036 0.02095 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_332">
+      <origin xyz="-0.0383164305 0.0206450361 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_333">
+      <origin xyz="-0.040475 0.0197509274 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_334">
+      <origin xyz="-0.0423286057 0.0183286057 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_335">
+      <origin xyz="-0.0437509274 0.016475 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_336">
+      <origin xyz="-0.0446450361 0.0143164305 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_337">
+      <origin xyz="-0.04495 0.012 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_338">
+      <origin xyz="-0.0446450361 0.00968356955 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_339">
+      <origin xyz="-0.0437509274 0.007525 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_340">
+      <origin xyz="-0.0423286057 0.00567139431 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_341">
+      <origin xyz="-0.040475 0.00424907264 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_342">
+      <origin xyz="-0.0383164305 0.00335496385 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_343">
+      <origin xyz="-0.036 0.00305 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_344">
+      <origin xyz="-0.0336835695 0.00335496385 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_345">
+      <origin xyz="-0.031525 0.00424907264 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_346">
+      <origin xyz="-0.0296713943 0.00567139431 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_347">
+      <origin xyz="-0.0282490726 0.007525 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_348">
+      <origin xyz="-0.0273549639 0.00968356955 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_349">
+      <origin xyz="-0.00305 0.012 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_350">
+      <origin xyz="-0.00335496385 0.0143164305 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_351">
+      <origin xyz="-0.00424907264 0.016475 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_352">
+      <origin xyz="-0.00567139431 0.0183286057 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_353">
+      <origin xyz="-0.007525 0.0197509274 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_354">
+      <origin xyz="-0.00968356955 0.0206450361 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_355">
+      <origin xyz="-0.012 0.02095 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_356">
+      <origin xyz="-0.0143164305 0.0206450361 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_357">
+      <origin xyz="-0.016475 0.0197509274 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_358">
+      <origin xyz="-0.0183286057 0.0183286057 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_359">
+      <origin xyz="-0.0197509274 0.016475 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_360">
+      <origin xyz="-0.0206450361 0.0143164305 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_361">
+      <origin xyz="-0.02095 0.012 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_362">
+      <origin xyz="-0.0206450361 0.00968356955 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_363">
+      <origin xyz="-0.0197509274 0.007525 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_364">
+      <origin xyz="-0.0183286057 0.00567139431 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_365">
+      <origin xyz="-0.016475 0.00424907264 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_366">
+      <origin xyz="-0.0143164305 0.00335496385 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_367">
+      <origin xyz="-0.012 0.00305 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_368">
+      <origin xyz="-0.00968356955 0.00335496385 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_369">
+      <origin xyz="-0.007525 0.00424907264 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_370">
+      <origin xyz="-0.00567139431 0.00567139431 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_371">
+      <origin xyz="-0.00424907264 0.007525 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_372">
+      <origin xyz="-0.00335496385 0.00968356955 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_373">
+      <origin xyz="0.02095 0.012 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_374">
+      <origin xyz="0.0206450361 0.0143164305 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_375">
+      <origin xyz="0.0197509274 0.016475 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_376">
+      <origin xyz="0.0183286057 0.0183286057 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_377">
+      <origin xyz="0.016475 0.0197509274 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_378">
+      <origin xyz="0.0143164305 0.0206450361 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_379">
+      <origin xyz="0.012 0.02095 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_380">
+      <origin xyz="0.00968356955 0.0206450361 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_381">
+      <origin xyz="0.007525 0.0197509274 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_382">
+      <origin xyz="0.00567139431 0.0183286057 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_383">
+      <origin xyz="0.00424907264 0.016475 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_384">
+      <origin xyz="0.00335496385 0.0143164305 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_385">
+      <origin xyz="0.00305 0.012 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_386">
+      <origin xyz="0.00335496385 0.00968356955 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_387">
+      <origin xyz="0.00424907264 0.007525 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_388">
+      <origin xyz="0.00567139431 0.00567139431 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_389">
+      <origin xyz="0.007525 0.00424907264 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_390">
+      <origin xyz="0.00968356955 0.00335496385 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_391">
+      <origin xyz="0.012 0.00305 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_392">
+      <origin xyz="0.0143164305 0.00335496385 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_393">
+      <origin xyz="0.016475 0.00424907264 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_394">
+      <origin xyz="0.0183286057 0.00567139431 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_395">
+      <origin xyz="0.0197509274 0.007525 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_396">
+      <origin xyz="0.0206450361 0.00968356955 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_397">
+      <origin xyz="0.04495 0.012 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_398">
+      <origin xyz="0.0446450361 0.0143164305 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_399">
+      <origin xyz="0.0437509274 0.016475 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_400">
+      <origin xyz="0.0423286057 0.0183286057 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_401">
+      <origin xyz="0.040475 0.0197509274 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_402">
+      <origin xyz="0.0383164305 0.0206450361 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_403">
+      <origin xyz="0.036 0.02095 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_404">
+      <origin xyz="0.0336835695 0.0206450361 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_405">
+      <origin xyz="0.031525 0.0197509274 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_406">
+      <origin xyz="0.0296713943 0.0183286057 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_407">
+      <origin xyz="0.0282490726 0.016475 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_408">
+      <origin xyz="0.0273549639 0.0143164305 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_409">
+      <origin xyz="0.02705 0.012 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_410">
+      <origin xyz="0.0273549639 0.00968356955 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_411">
+      <origin xyz="0.0282490726 0.007525 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_412">
+      <origin xyz="0.0296713943 0.00567139431 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_413">
+      <origin xyz="0.031525 0.00424907264 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_414">
+      <origin xyz="0.0336835695 0.00335496385 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_415">
+      <origin xyz="0.036 0.00305 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_416">
+      <origin xyz="0.0383164305 0.00335496385 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_417">
+      <origin xyz="0.040475 0.00424907264 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_418">
+      <origin xyz="0.0423286057 0.00567139431 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_419">
+      <origin xyz="0.0437509274 0.007525 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_420">
+      <origin xyz="0.0446450361 0.00968356955 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_421">
+      <origin xyz="0.06895 0.012 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_422">
+      <origin xyz="0.0686450361 0.0143164305 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_423">
+      <origin xyz="0.0677509274 0.016475 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_424">
+      <origin xyz="0.0663286057 0.0183286057 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_425">
+      <origin xyz="0.064475 0.0197509274 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_426">
+      <origin xyz="0.0623164305 0.0206450361 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_427">
+      <origin xyz="0.06 0.02095 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_428">
+      <origin xyz="0.0576835695 0.0206450361 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_429">
+      <origin xyz="0.055525 0.0197509274 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_430">
+      <origin xyz="0.0536713943 0.0183286057 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_431">
+      <origin xyz="0.0522490726 0.016475 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_432">
+      <origin xyz="0.0513549639 0.0143164305 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_433">
+      <origin xyz="0.05105 0.012 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_434">
+      <origin xyz="0.0513549639 0.00968356955 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_435">
+      <origin xyz="0.0522490726 0.007525 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_436">
+      <origin xyz="0.0536713943 0.00567139431 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_437">
+      <origin xyz="0.055525 0.00424907264 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_438">
+      <origin xyz="0.0576835695 0.00335496385 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_439">
+      <origin xyz="0.06 0.00305 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_440">
+      <origin xyz="0.0623164305 0.00335496385 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_441">
+      <origin xyz="0.064475 0.00424907264 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_442">
+      <origin xyz="0.0663286057 0.00567139431 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_443">
+      <origin xyz="0.0677509274 0.007525 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_444">
+      <origin xyz="0.0686450361 0.00968356955 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_445">
+      <origin xyz="-0.05105 0.036 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_446">
+      <origin xyz="-0.0513549639 0.0383164305 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_447">
+      <origin xyz="-0.0522490726 0.040475 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_448">
+      <origin xyz="-0.0536713943 0.0423286057 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_449">
+      <origin xyz="-0.055525 0.0437509274 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_450">
+      <origin xyz="-0.0576835695 0.0446450361 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_451">
+      <origin xyz="-0.06 0.04495 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_452">
+      <origin xyz="-0.0623164305 0.0446450361 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_453">
+      <origin xyz="-0.064475 0.0437509274 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_454">
+      <origin xyz="-0.0663286057 0.0423286057 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_455">
+      <origin xyz="-0.0677509274 0.040475 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_456">
+      <origin xyz="-0.0686450361 0.0383164305 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_457">
+      <origin xyz="-0.06895 0.036 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_458">
+      <origin xyz="-0.0686450361 0.0336835695 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_459">
+      <origin xyz="-0.0677509274 0.031525 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_460">
+      <origin xyz="-0.0663286057 0.0296713943 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_461">
+      <origin xyz="-0.064475 0.0282490726 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_462">
+      <origin xyz="-0.0623164305 0.0273549639 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_463">
+      <origin xyz="-0.06 0.02705 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_464">
+      <origin xyz="-0.0576835695 0.0273549639 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_465">
+      <origin xyz="-0.055525 0.0282490726 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_466">
+      <origin xyz="-0.0536713943 0.0296713943 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_467">
+      <origin xyz="-0.0522490726 0.031525 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_468">
+      <origin xyz="-0.0513549639 0.0336835695 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_469">
+      <origin xyz="-0.02705 0.036 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_470">
+      <origin xyz="-0.0273549639 0.0383164305 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_471">
+      <origin xyz="-0.0282490726 0.040475 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_472">
+      <origin xyz="-0.0296713943 0.0423286057 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_473">
+      <origin xyz="-0.031525 0.0437509274 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_474">
+      <origin xyz="-0.0336835695 0.0446450361 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_475">
+      <origin xyz="-0.036 0.04495 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_476">
+      <origin xyz="-0.0383164305 0.0446450361 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_477">
+      <origin xyz="-0.040475 0.0437509274 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_478">
+      <origin xyz="-0.0423286057 0.0423286057 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_479">
+      <origin xyz="-0.0437509274 0.040475 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_480">
+      <origin xyz="-0.0446450361 0.0383164305 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_481">
+      <origin xyz="-0.04495 0.036 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_482">
+      <origin xyz="-0.0446450361 0.0336835695 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_483">
+      <origin xyz="-0.0437509274 0.031525 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_484">
+      <origin xyz="-0.0423286057 0.0296713943 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_485">
+      <origin xyz="-0.040475 0.0282490726 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_486">
+      <origin xyz="-0.0383164305 0.0273549639 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_487">
+      <origin xyz="-0.036 0.02705 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_488">
+      <origin xyz="-0.0336835695 0.0273549639 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_489">
+      <origin xyz="-0.031525 0.0282490726 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_490">
+      <origin xyz="-0.0296713943 0.0296713943 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_491">
+      <origin xyz="-0.0282490726 0.031525 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_492">
+      <origin xyz="-0.0273549639 0.0336835695 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_493">
+      <origin xyz="-0.00305 0.036 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_494">
+      <origin xyz="-0.00335496385 0.0383164305 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_495">
+      <origin xyz="-0.00424907264 0.040475 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_496">
+      <origin xyz="-0.00567139431 0.0423286057 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_497">
+      <origin xyz="-0.007525 0.0437509274 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_498">
+      <origin xyz="-0.00968356955 0.0446450361 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_499">
+      <origin xyz="-0.012 0.04495 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_500">
+      <origin xyz="-0.0143164305 0.0446450361 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_501">
+      <origin xyz="-0.016475 0.0437509274 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_502">
+      <origin xyz="-0.0183286057 0.0423286057 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_503">
+      <origin xyz="-0.0197509274 0.040475 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_504">
+      <origin xyz="-0.0206450361 0.0383164305 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_505">
+      <origin xyz="-0.02095 0.036 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_506">
+      <origin xyz="-0.0206450361 0.0336835695 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_507">
+      <origin xyz="-0.0197509274 0.031525 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_508">
+      <origin xyz="-0.0183286057 0.0296713943 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_509">
+      <origin xyz="-0.016475 0.0282490726 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_510">
+      <origin xyz="-0.0143164305 0.0273549639 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_511">
+      <origin xyz="-0.012 0.02705 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_512">
+      <origin xyz="-0.00968356955 0.0273549639 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_513">
+      <origin xyz="-0.007525 0.0282490726 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_514">
+      <origin xyz="-0.00567139431 0.0296713943 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_515">
+      <origin xyz="-0.00424907264 0.031525 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_516">
+      <origin xyz="-0.00335496385 0.0336835695 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_517">
+      <origin xyz="0.02095 0.036 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_518">
+      <origin xyz="0.0206450361 0.0383164305 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_519">
+      <origin xyz="0.0197509274 0.040475 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_520">
+      <origin xyz="0.0183286057 0.0423286057 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_521">
+      <origin xyz="0.016475 0.0437509274 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_522">
+      <origin xyz="0.0143164305 0.0446450361 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_523">
+      <origin xyz="0.012 0.04495 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_524">
+      <origin xyz="0.00968356955 0.0446450361 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_525">
+      <origin xyz="0.007525 0.0437509274 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_526">
+      <origin xyz="0.00567139431 0.0423286057 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_527">
+      <origin xyz="0.00424907264 0.040475 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_528">
+      <origin xyz="0.00335496385 0.0383164305 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_529">
+      <origin xyz="0.00305 0.036 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_530">
+      <origin xyz="0.00335496385 0.0336835695 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_531">
+      <origin xyz="0.00424907264 0.031525 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_532">
+      <origin xyz="0.00567139431 0.0296713943 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_533">
+      <origin xyz="0.007525 0.0282490726 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_534">
+      <origin xyz="0.00968356955 0.0273549639 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_535">
+      <origin xyz="0.012 0.02705 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_536">
+      <origin xyz="0.0143164305 0.0273549639 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_537">
+      <origin xyz="0.016475 0.0282490726 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_538">
+      <origin xyz="0.0183286057 0.0296713943 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_539">
+      <origin xyz="0.0197509274 0.031525 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_540">
+      <origin xyz="0.0206450361 0.0336835695 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_541">
+      <origin xyz="0.04495 0.036 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_542">
+      <origin xyz="0.0446450361 0.0383164305 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_543">
+      <origin xyz="0.0437509274 0.040475 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_544">
+      <origin xyz="0.0423286057 0.0423286057 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_545">
+      <origin xyz="0.040475 0.0437509274 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_546">
+      <origin xyz="0.0383164305 0.0446450361 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_547">
+      <origin xyz="0.036 0.04495 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_548">
+      <origin xyz="0.0336835695 0.0446450361 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_549">
+      <origin xyz="0.031525 0.0437509274 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_550">
+      <origin xyz="0.0296713943 0.0423286057 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_551">
+      <origin xyz="0.0282490726 0.040475 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_552">
+      <origin xyz="0.0273549639 0.0383164305 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_553">
+      <origin xyz="0.02705 0.036 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_554">
+      <origin xyz="0.0273549639 0.0336835695 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_555">
+      <origin xyz="0.0282490726 0.031525 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_556">
+      <origin xyz="0.0296713943 0.0296713943 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_557">
+      <origin xyz="0.031525 0.0282490726 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_558">
+      <origin xyz="0.0336835695 0.0273549639 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_559">
+      <origin xyz="0.036 0.02705 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_560">
+      <origin xyz="0.0383164305 0.0273549639 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_561">
+      <origin xyz="0.040475 0.0282490726 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_562">
+      <origin xyz="0.0423286057 0.0296713943 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_563">
+      <origin xyz="0.0437509274 0.031525 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_564">
+      <origin xyz="0.0446450361 0.0336835695 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_565">
+      <origin xyz="0.06895 0.036 0.024" rpy="0 -0 0" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_566">
+      <origin xyz="0.0686450361 0.0383164305 0.024" rpy="0 -0 0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_567">
+      <origin xyz="0.0677509274 0.040475 0.024" rpy="0 -0 0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_568">
+      <origin xyz="0.0663286057 0.0423286057 0.024" rpy="0 -0 0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_569">
+      <origin xyz="0.064475 0.0437509274 0.024" rpy="0 -0 1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_570">
+      <origin xyz="0.0623164305 0.0446450361 0.024" rpy="0 -0 1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_571">
+      <origin xyz="0.06 0.04495 0.024" rpy="0 -0 1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_572">
+      <origin xyz="0.0576835695 0.0446450361 0.024" rpy="0 -0 1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_573">
+      <origin xyz="0.055525 0.0437509274 0.024" rpy="0 -0 2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_574">
+      <origin xyz="0.0536713943 0.0423286057 0.024" rpy="0 -0 2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_575">
+      <origin xyz="0.0522490726 0.040475 0.024" rpy="0 -0 2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_576">
+      <origin xyz="0.0513549639 0.0383164305 0.024" rpy="0 -0 2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_577">
+      <origin xyz="0.05105 0.036 0.024" rpy="0 -0 3.14159265" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_578">
+      <origin xyz="0.0513549639 0.0336835695 0.024" rpy="0 -0 -2.87979327" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_579">
+      <origin xyz="0.0522490726 0.031525 0.024" rpy="0 -0 -2.61799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_580">
+      <origin xyz="0.0536713943 0.0296713943 0.024" rpy="0 -0 -2.35619449" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_581">
+      <origin xyz="0.055525 0.0282490726 0.024" rpy="0 -0 -2.0943951" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_582">
+      <origin xyz="0.0576835695 0.0273549639 0.024" rpy="0 -0 -1.83259571" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_583">
+      <origin xyz="0.06 0.02705 0.024" rpy="0 -0 -1.57079633" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_584">
+      <origin xyz="0.0623164305 0.0273549639 0.024" rpy="0 -0 -1.30899694" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_585">
+      <origin xyz="0.064475 0.0282490726 0.024" rpy="0 -0 -1.04719755" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_586">
+      <origin xyz="0.0663286057 0.0296713943 0.024" rpy="0 -0 -0.785398163" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_587">
+      <origin xyz="0.0677509274 0.031525 0.024" rpy="0 -0 -0.523598776" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_588">
+      <origin xyz="0.0686450361 0.0336835695 0.024" rpy="0 -0 -0.261799388" />
+      <geometry>
+        <box size="0.0045 0.00235657971 0.04" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_589">
+      <origin xyz="-0.079 0 0.037" rpy="0 0 0" />
+      <geometry>
+        <box size="0.012 0.122 0.014" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_590">
+      <origin xyz="0.079 0 0.037" rpy="0 0 0" />
+      <geometry>
+        <box size="0.012 0.122 0.014" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_591">
+      <origin xyz="0 -0.057 0.037" rpy="0 0 0" />
+      <geometry>
+        <box size="0.146 0.016 0.014" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_sample_block_contact_592">
+      <origin xyz="0 0.057 0.037" rpy="0 0 0" />
+      <geometry>
+        <box size="0.146 0.016 0.014" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0.022" />
+      <mass value="0.58" />
+      <inertia ixx="0.0009104066666666667" iyy="0.0014904066666666669" izz="0.002213666666666667" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <joint name="thermomixer_sample_block_joint" type="fixed">
+    <parent link="thermomixer_orbital_carrier" />
+    <child link="thermomixer_sample_block" />
+    <origin xyz="0 0 0.002" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_lid">
+    <visual>
+      <geometry>
+        <mesh filename="assets/lid.glb" />
+      </geometry>
+    </visual>
+    <collision name="thermomixer_lid_contact_0">
+      <origin xyz="-0.091 -0.101 0.013" rpy="0 0 0" />
+      <geometry>
+        <box size="0.025 0.212 0.024" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_lid_contact_1">
+      <origin xyz="0.091 -0.101 0.013" rpy="0 0 0" />
+      <geometry>
+        <box size="0.025 0.212 0.024" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_lid_contact_2">
+      <origin xyz="0 -0.19 0.013" rpy="0 0 0" />
+      <geometry>
+        <box size="0.157 0.034 0.024" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_lid_contact_3">
+      <origin xyz="0 -0.012 0.013" rpy="0 0 0" />
+      <geometry>
+        <box size="0.157 0.034 0.024" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_lid_contact_4">
+      <origin xyz="0 -0.101 0.013" rpy="0 0 0" />
+      <geometry>
+        <box size="0.157 0.15 0.006" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_lid_contact_5">
+      <origin xyz="0 -0.22 0.013" rpy="0 0 0" />
+      <geometry>
+        <box size="0.092 0.026 0.021" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_lid_contact_6">
+      <origin xyz="-0.035 -0.204 0.013" rpy="0 0 0" />
+      <geometry>
+        <box size="0.013 0.02 0.016" />
+      </geometry>
+    </collision>
+    <collision name="thermomixer_lid_contact_7">
+      <origin xyz="0.035 -0.204 0.013" rpy="0 0 0" />
+      <geometry>
+        <box size="0.013 0.02 0.016" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 -0.114 0.013" />
+      <mass value="0.28" />
+      <inertia ixx="0.0013351333333333332" iyy="0.0010132499999999996" izz="0.0023215033333333335" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <joint name="thermomixer_lid_joint" type="revolute">
+    <parent link="thermomixer_body" />
+    <child link="thermomixer_lid" />
+    <origin xyz="0 0.119 0.155" rpy="0 0 0" />
+    <axis xyz="-1 0 0" />
+    <limit effort="20" velocity="1" lower="0" upper="1.8" />
+    <dynamics damping="0.1" friction="0.02" />
+  </joint>
+  <link name="thermomixer_cycle_control">
+    <visual>
+      <geometry>
+        <mesh filename="assets/cycle_control.glb" />
+      </geometry>
+    </visual>
+    <collision name="thermomixer_cycle_control_contact_0">
+      <origin xyz="0 0 0" rpy="1.57079633 0 0" />
+      <geometry>
+        <cylinder radius="0.016" length="0.012" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 -0.0005 0" />
+      <mass value="0.015" />
+      <inertia ixx="1.4912500000000003e-06" iyy="2.5600000000000005e-06" izz="1.4912500000000003e-06" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <joint name="thermomixer_cycle_control_joint" type="revolute">
+    <parent link="thermomixer_body" />
+    <child link="thermomixer_cycle_control" />
+    <origin xyz="0.073 -0.133 0.05" rpy="0 0 0" />
+    <axis xyz="0 -1 0" />
+    <limit effort="20" velocity="1" lower="0" upper="6.283185307179586" />
+    <dynamics damping="0.1" friction="0.02" />
+  </joint>
+  <link name="thermomixer_slot_A1" />
+  <joint name="thermomixer_slot_A1_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_A1" />
+    <origin xyz="-0.06 -0.036 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_A2" />
+  <joint name="thermomixer_slot_A2_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_A2" />
+    <origin xyz="-0.036 -0.036 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_A3" />
+  <joint name="thermomixer_slot_A3_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_A3" />
+    <origin xyz="-0.012 -0.036 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_A4" />
+  <joint name="thermomixer_slot_A4_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_A4" />
+    <origin xyz="0.012 -0.036 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_A5" />
+  <joint name="thermomixer_slot_A5_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_A5" />
+    <origin xyz="0.036 -0.036 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_A6" />
+  <joint name="thermomixer_slot_A6_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_A6" />
+    <origin xyz="0.06 -0.036 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_B1" />
+  <joint name="thermomixer_slot_B1_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_B1" />
+    <origin xyz="-0.06 -0.012 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_B2" />
+  <joint name="thermomixer_slot_B2_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_B2" />
+    <origin xyz="-0.036 -0.012 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_B3" />
+  <joint name="thermomixer_slot_B3_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_B3" />
+    <origin xyz="-0.012 -0.012 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_B4" />
+  <joint name="thermomixer_slot_B4_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_B4" />
+    <origin xyz="0.012 -0.012 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_B5" />
+  <joint name="thermomixer_slot_B5_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_B5" />
+    <origin xyz="0.036 -0.012 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_B6" />
+  <joint name="thermomixer_slot_B6_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_B6" />
+    <origin xyz="0.06 -0.012 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_C1" />
+  <joint name="thermomixer_slot_C1_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_C1" />
+    <origin xyz="-0.06 0.012 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_C2" />
+  <joint name="thermomixer_slot_C2_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_C2" />
+    <origin xyz="-0.036 0.012 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_C3" />
+  <joint name="thermomixer_slot_C3_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_C3" />
+    <origin xyz="-0.012 0.012 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_C4" />
+  <joint name="thermomixer_slot_C4_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_C4" />
+    <origin xyz="0.012 0.012 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_C5" />
+  <joint name="thermomixer_slot_C5_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_C5" />
+    <origin xyz="0.036 0.012 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_C6" />
+  <joint name="thermomixer_slot_C6_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_C6" />
+    <origin xyz="0.06 0.012 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_D1" />
+  <joint name="thermomixer_slot_D1_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_D1" />
+    <origin xyz="-0.06 0.036 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_D2" />
+  <joint name="thermomixer_slot_D2_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_D2" />
+    <origin xyz="-0.036 0.036 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_D3" />
+  <joint name="thermomixer_slot_D3_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_D3" />
+    <origin xyz="-0.012 0.036 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_D4" />
+  <joint name="thermomixer_slot_D4_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_D4" />
+    <origin xyz="0.012 0.036 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_D5" />
+  <joint name="thermomixer_slot_D5_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_D5" />
+    <origin xyz="0.036 0.036 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_slot_D6" />
+  <joint name="thermomixer_slot_D6_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_slot_D6" />
+    <origin xyz="0.06 0.036 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_lid_handle" />
+  <joint name="thermomixer_lid_handle_joint" type="fixed">
+    <parent link="thermomixer_lid" />
+    <child link="thermomixer_lid_handle" />
+    <origin xyz="0 -0.232 0.013" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_block_grasp" />
+  <joint name="thermomixer_block_grasp_joint" type="fixed">
+    <parent link="thermomixer_sample_block" />
+    <child link="thermomixer_block_grasp" />
+    <origin xyz="0.079 0 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_cycle_control_grasp" />
+  <joint name="thermomixer_cycle_control_grasp_joint" type="fixed">
+    <parent link="thermomixer_cycle_control" />
+    <child link="thermomixer_cycle_control_grasp" />
+    <origin xyz="0 -0.006 0" rpy="0 0 0" />
+  </joint>
+  <link name="thermomixer_body_grasp" />
+  <joint name="thermomixer_body_grasp_joint" type="fixed">
+    <parent link="thermomixer_body" />
+    <child link="thermomixer_body_grasp" />
+    <origin xyz="0 0 0.06" rpy="0 0 0" />
+  </joint>
+</robot>

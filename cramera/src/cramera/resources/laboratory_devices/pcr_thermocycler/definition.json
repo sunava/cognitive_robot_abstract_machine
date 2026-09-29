@@ -1,0 +1,4686 @@
+{
+  "identifier": "pcr_thermocycler",
+  "title": "PCR Thermocycler",
+  "description": "Ninety-six-position thermal block with an articulated heated cover and cycle display.",
+  "parts": [
+    {
+      "name": "base",
+      "parent": null,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 6.8,
+      "shapes": [
+        {
+          "kind": "cylinder",
+          "name": "foot_0_0",
+          "center": [
+            -0.1075,
+            -0.126,
+            0.012
+          ],
+          "dimensions": [
+            0.014,
+            0.024
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "foot_0_1",
+          "center": [
+            -0.1075,
+            0.126,
+            0.012
+          ],
+          "dimensions": [
+            0.014,
+            0.024
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "foot_1_0",
+          "center": [
+            0.1075,
+            -0.126,
+            0.012
+          ],
+          "dimensions": [
+            0.014,
+            0.024
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "foot_1_1",
+          "center": [
+            0.1075,
+            0.126,
+            0.012
+          ],
+          "dimensions": [
+            0.014,
+            0.024
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "lower_housing",
+          "center": [
+            0,
+            0,
+            0.067
+          ],
+          "dimensions": [
+            0.277,
+            0.318,
+            0.083
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.013,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "lower_trim",
+          "center": [
+            0,
+            0,
+            0.03
+          ],
+          "dimensions": [
+            0.268,
+            0.311,
+            0.012
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "reaction_floor",
+          "center": [
+            0,
+            0.004,
+            0.112
+          ],
+          "dimensions": [
+            0.176,
+            0.155,
+            0.012
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "shoulder_left",
+          "center": [
+            -0.112,
+            0.018,
+            0.128
+          ],
+          "dimensions": [
+            0.053,
+            0.253,
+            0.042
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "shoulder_right",
+          "center": [
+            0.112,
+            0.018,
+            0.128
+          ],
+          "dimensions": [
+            0.053,
+            0.253,
+            0.042
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_shoulder",
+          "center": [
+            0,
+            0.121,
+            0.129
+          ],
+          "dimensions": [
+            0.187,
+            0.047,
+            0.043
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "front_console",
+          "center": [
+            0,
+            -0.12,
+            0.122
+          ],
+          "dimensions": [
+            0.241,
+            0.078,
+            0.032
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "logo",
+          "name": "AICOR logo",
+          "center": [
+            -0.08,
+            -0.16,
+            0.086
+          ],
+          "dimensions": [
+            0.075
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "THERMOCYCLER",
+          "center": [
+            -0.08,
+            -0.16,
+            0.061
+          ],
+          "dimensions": [
+            0.007,
+            0.092
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "THERMOCYCLER",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "display_bezel",
+          "center": [
+            0.055,
+            -0.16,
+            0.079
+          ],
+          "dimensions": [
+            0.12,
+            0.004,
+            0.041
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "display_glass",
+          "center": [
+            0.055,
+            -0.1625,
+            0.079
+          ],
+          "dimensions": [
+            0.112,
+            0.0015,
+            0.033
+          ],
+          "material": "screen",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "READY  22 C",
+          "center": [
+            0.055,
+            -0.1635,
+            0.08494
+          ],
+          "dimensions": [
+            0.00627,
+            0.1008
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "READY  22 C",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "0 / 30 CYCLES",
+          "center": [
+            0.055,
+            -0.1635,
+            0.0724
+          ],
+          "dimensions": [
+            0.00627,
+            0.1008
+          ],
+          "material": "paper",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "0 / 30 CYCLES",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_0",
+          "center": [
+            0,
+            0.1595,
+            0.057
+          ],
+          "dimensions": [
+            0.18,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_1",
+          "center": [
+            0,
+            0.1595,
+            0.066
+          ],
+          "dimensions": [
+            0.18,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_2",
+          "center": [
+            0,
+            0.1595,
+            0.075
+          ],
+          "dimensions": [
+            0.18,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_3",
+          "center": [
+            0,
+            0.1595,
+            0.08399999999999999
+          ],
+          "dimensions": [
+            0.18,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_4",
+          "center": [
+            0,
+            0.1595,
+            0.093
+          ],
+          "dimensions": [
+            0.18,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "start_button",
+          "center": [
+            0.113,
+            -0.161,
+            0.118
+          ],
+          "dimensions": [
+            0.007,
+            0.004
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "A1",
+          "center": [
+            -0.07,
+            -0.039,
+            0.124
+          ],
+          "dimensions": [
+            0.005,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "A1",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "reaction_block",
+      "parent": "base",
+      "origin": [
+        0,
+        0.004,
+        0.117
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 0.55,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "block_floor",
+          "center": [
+            0,
+            0,
+            0.001
+          ],
+          "dimensions": [
+            0.126,
+            0.084,
+            0.002
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_0_0",
+          "center": [
+            -0.049499999999999995,
+            -0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_0_1",
+          "center": [
+            -0.040499999999999994,
+            -0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_0_2",
+          "center": [
+            -0.0315,
+            -0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_0_3",
+          "center": [
+            -0.0225,
+            -0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_0_4",
+          "center": [
+            -0.013499999999999998,
+            -0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_0_5",
+          "center": [
+            -0.0045,
+            -0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_0_6",
+          "center": [
+            0.0045,
+            -0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_0_7",
+          "center": [
+            0.013499999999999998,
+            -0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_0_8",
+          "center": [
+            0.0225,
+            -0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_0_9",
+          "center": [
+            0.0315,
+            -0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_0_10",
+          "center": [
+            0.040499999999999994,
+            -0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_0_11",
+          "center": [
+            0.049499999999999995,
+            -0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_1_0",
+          "center": [
+            -0.049499999999999995,
+            -0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_1_1",
+          "center": [
+            -0.040499999999999994,
+            -0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_1_2",
+          "center": [
+            -0.0315,
+            -0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_1_3",
+          "center": [
+            -0.0225,
+            -0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_1_4",
+          "center": [
+            -0.013499999999999998,
+            -0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_1_5",
+          "center": [
+            -0.0045,
+            -0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_1_6",
+          "center": [
+            0.0045,
+            -0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_1_7",
+          "center": [
+            0.013499999999999998,
+            -0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_1_8",
+          "center": [
+            0.0225,
+            -0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_1_9",
+          "center": [
+            0.0315,
+            -0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_1_10",
+          "center": [
+            0.040499999999999994,
+            -0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_1_11",
+          "center": [
+            0.049499999999999995,
+            -0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_2_0",
+          "center": [
+            -0.049499999999999995,
+            -0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_2_1",
+          "center": [
+            -0.040499999999999994,
+            -0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_2_2",
+          "center": [
+            -0.0315,
+            -0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_2_3",
+          "center": [
+            -0.0225,
+            -0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_2_4",
+          "center": [
+            -0.013499999999999998,
+            -0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_2_5",
+          "center": [
+            -0.0045,
+            -0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_2_6",
+          "center": [
+            0.0045,
+            -0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_2_7",
+          "center": [
+            0.013499999999999998,
+            -0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_2_8",
+          "center": [
+            0.0225,
+            -0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_2_9",
+          "center": [
+            0.0315,
+            -0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_2_10",
+          "center": [
+            0.040499999999999994,
+            -0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_2_11",
+          "center": [
+            0.049499999999999995,
+            -0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_3_0",
+          "center": [
+            -0.049499999999999995,
+            -0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_3_1",
+          "center": [
+            -0.040499999999999994,
+            -0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_3_2",
+          "center": [
+            -0.0315,
+            -0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_3_3",
+          "center": [
+            -0.0225,
+            -0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_3_4",
+          "center": [
+            -0.013499999999999998,
+            -0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_3_5",
+          "center": [
+            -0.0045,
+            -0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_3_6",
+          "center": [
+            0.0045,
+            -0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_3_7",
+          "center": [
+            0.013499999999999998,
+            -0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_3_8",
+          "center": [
+            0.0225,
+            -0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_3_9",
+          "center": [
+            0.0315,
+            -0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_3_10",
+          "center": [
+            0.040499999999999994,
+            -0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_3_11",
+          "center": [
+            0.049499999999999995,
+            -0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_4_0",
+          "center": [
+            -0.049499999999999995,
+            0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_4_1",
+          "center": [
+            -0.040499999999999994,
+            0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_4_2",
+          "center": [
+            -0.0315,
+            0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_4_3",
+          "center": [
+            -0.0225,
+            0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_4_4",
+          "center": [
+            -0.013499999999999998,
+            0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_4_5",
+          "center": [
+            -0.0045,
+            0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_4_6",
+          "center": [
+            0.0045,
+            0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_4_7",
+          "center": [
+            0.013499999999999998,
+            0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_4_8",
+          "center": [
+            0.0225,
+            0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_4_9",
+          "center": [
+            0.0315,
+            0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_4_10",
+          "center": [
+            0.040499999999999994,
+            0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_4_11",
+          "center": [
+            0.049499999999999995,
+            0.0045,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_5_0",
+          "center": [
+            -0.049499999999999995,
+            0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_5_1",
+          "center": [
+            -0.040499999999999994,
+            0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_5_2",
+          "center": [
+            -0.0315,
+            0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_5_3",
+          "center": [
+            -0.0225,
+            0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_5_4",
+          "center": [
+            -0.013499999999999998,
+            0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_5_5",
+          "center": [
+            -0.0045,
+            0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_5_6",
+          "center": [
+            0.0045,
+            0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_5_7",
+          "center": [
+            0.013499999999999998,
+            0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_5_8",
+          "center": [
+            0.0225,
+            0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_5_9",
+          "center": [
+            0.0315,
+            0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_5_10",
+          "center": [
+            0.040499999999999994,
+            0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_5_11",
+          "center": [
+            0.049499999999999995,
+            0.013499999999999998,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_6_0",
+          "center": [
+            -0.049499999999999995,
+            0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_6_1",
+          "center": [
+            -0.040499999999999994,
+            0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_6_2",
+          "center": [
+            -0.0315,
+            0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_6_3",
+          "center": [
+            -0.0225,
+            0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_6_4",
+          "center": [
+            -0.013499999999999998,
+            0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_6_5",
+          "center": [
+            -0.0045,
+            0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_6_6",
+          "center": [
+            0.0045,
+            0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_6_7",
+          "center": [
+            0.013499999999999998,
+            0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_6_8",
+          "center": [
+            0.0225,
+            0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_6_9",
+          "center": [
+            0.0315,
+            0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_6_10",
+          "center": [
+            0.040499999999999994,
+            0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_6_11",
+          "center": [
+            0.049499999999999995,
+            0.0225,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_7_0",
+          "center": [
+            -0.049499999999999995,
+            0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_7_1",
+          "center": [
+            -0.040499999999999994,
+            0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_7_2",
+          "center": [
+            -0.0315,
+            0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_7_3",
+          "center": [
+            -0.0225,
+            0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_7_4",
+          "center": [
+            -0.013499999999999998,
+            0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_7_5",
+          "center": [
+            -0.0045,
+            0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_7_6",
+          "center": [
+            0.0045,
+            0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_7_7",
+          "center": [
+            0.013499999999999998,
+            0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_7_8",
+          "center": [
+            0.0225,
+            0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_7_9",
+          "center": [
+            0.0315,
+            0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_7_10",
+          "center": [
+            0.040499999999999994,
+            0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "block_well_7_11",
+          "center": [
+            0.049499999999999995,
+            0.0315,
+            0.006
+          ],
+          "dimensions": [
+            0.0044,
+            0.004,
+            0.008
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "heated_lid",
+      "parent": "base",
+      "origin": [
+        0,
+        0.114,
+        0.16
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "revolute",
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "lower": -1.85,
+      "upper": 0,
+      "open_value": -1.7,
+      "mass": 1.25,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "lid_shell",
+          "center": [
+            0,
+            -0.091,
+            0.017
+          ],
+          "dimensions": [
+            0.249,
+            0.236,
+            0.047
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.013,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "lid_trim",
+          "center": [
+            0,
+            -0.091,
+            -0.007
+          ],
+          "dimensions": [
+            0.242,
+            0.229,
+            0.009
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.005,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "heated_pressure_pad",
+          "center": [
+            0,
+            -0.109,
+            -0.014
+          ],
+          "dimensions": [
+            0.137,
+            0.094,
+            0.009
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.003,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "hinge_left",
+          "center": [
+            -0.091,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.012,
+            0.045
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            1.5707963267948966,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "hinge_right",
+          "center": [
+            0.091,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.012,
+            0.045
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            1.5707963267948966,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "lid_handle",
+          "center": [
+            0,
+            -0.211,
+            0.022
+          ],
+          "dimensions": [
+            0.092,
+            0.027,
+            0.024
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.008,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "HEATED LID",
+          "center": [
+            0,
+            -0.228,
+            0.022
+          ],
+          "dimensions": [
+            0.008,
+            0.079
+          ],
+          "material": "paper",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "HEATED LID",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "PCR",
+          "center": [
+            0,
+            -0.104,
+            0.041
+          ],
+          "dimensions": [
+            0.022,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "PCR",
+          "points": []
+        }
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "name": "block_A1",
+      "parent": "reaction_block",
+      "position": [
+        -0.049499999999999995,
+        -0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_A2",
+      "parent": "reaction_block",
+      "position": [
+        -0.040499999999999994,
+        -0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_A3",
+      "parent": "reaction_block",
+      "position": [
+        -0.0315,
+        -0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_A4",
+      "parent": "reaction_block",
+      "position": [
+        -0.0225,
+        -0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_A5",
+      "parent": "reaction_block",
+      "position": [
+        -0.013499999999999998,
+        -0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_A6",
+      "parent": "reaction_block",
+      "position": [
+        -0.0045,
+        -0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_A7",
+      "parent": "reaction_block",
+      "position": [
+        0.0045,
+        -0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_A8",
+      "parent": "reaction_block",
+      "position": [
+        0.013499999999999998,
+        -0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_A9",
+      "parent": "reaction_block",
+      "position": [
+        0.0225,
+        -0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_A10",
+      "parent": "reaction_block",
+      "position": [
+        0.0315,
+        -0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_A11",
+      "parent": "reaction_block",
+      "position": [
+        0.040499999999999994,
+        -0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_A12",
+      "parent": "reaction_block",
+      "position": [
+        0.049499999999999995,
+        -0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_B1",
+      "parent": "reaction_block",
+      "position": [
+        -0.049499999999999995,
+        -0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_B2",
+      "parent": "reaction_block",
+      "position": [
+        -0.040499999999999994,
+        -0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_B3",
+      "parent": "reaction_block",
+      "position": [
+        -0.0315,
+        -0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_B4",
+      "parent": "reaction_block",
+      "position": [
+        -0.0225,
+        -0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_B5",
+      "parent": "reaction_block",
+      "position": [
+        -0.013499999999999998,
+        -0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_B6",
+      "parent": "reaction_block",
+      "position": [
+        -0.0045,
+        -0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_B7",
+      "parent": "reaction_block",
+      "position": [
+        0.0045,
+        -0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_B8",
+      "parent": "reaction_block",
+      "position": [
+        0.013499999999999998,
+        -0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_B9",
+      "parent": "reaction_block",
+      "position": [
+        0.0225,
+        -0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_B10",
+      "parent": "reaction_block",
+      "position": [
+        0.0315,
+        -0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_B11",
+      "parent": "reaction_block",
+      "position": [
+        0.040499999999999994,
+        -0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_B12",
+      "parent": "reaction_block",
+      "position": [
+        0.049499999999999995,
+        -0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_C1",
+      "parent": "reaction_block",
+      "position": [
+        -0.049499999999999995,
+        -0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_C2",
+      "parent": "reaction_block",
+      "position": [
+        -0.040499999999999994,
+        -0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_C3",
+      "parent": "reaction_block",
+      "position": [
+        -0.0315,
+        -0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_C4",
+      "parent": "reaction_block",
+      "position": [
+        -0.0225,
+        -0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_C5",
+      "parent": "reaction_block",
+      "position": [
+        -0.013499999999999998,
+        -0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_C6",
+      "parent": "reaction_block",
+      "position": [
+        -0.0045,
+        -0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_C7",
+      "parent": "reaction_block",
+      "position": [
+        0.0045,
+        -0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_C8",
+      "parent": "reaction_block",
+      "position": [
+        0.013499999999999998,
+        -0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_C9",
+      "parent": "reaction_block",
+      "position": [
+        0.0225,
+        -0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_C10",
+      "parent": "reaction_block",
+      "position": [
+        0.0315,
+        -0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_C11",
+      "parent": "reaction_block",
+      "position": [
+        0.040499999999999994,
+        -0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_C12",
+      "parent": "reaction_block",
+      "position": [
+        0.049499999999999995,
+        -0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_D1",
+      "parent": "reaction_block",
+      "position": [
+        -0.049499999999999995,
+        -0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_D2",
+      "parent": "reaction_block",
+      "position": [
+        -0.040499999999999994,
+        -0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_D3",
+      "parent": "reaction_block",
+      "position": [
+        -0.0315,
+        -0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_D4",
+      "parent": "reaction_block",
+      "position": [
+        -0.0225,
+        -0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_D5",
+      "parent": "reaction_block",
+      "position": [
+        -0.013499999999999998,
+        -0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_D6",
+      "parent": "reaction_block",
+      "position": [
+        -0.0045,
+        -0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_D7",
+      "parent": "reaction_block",
+      "position": [
+        0.0045,
+        -0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_D8",
+      "parent": "reaction_block",
+      "position": [
+        0.013499999999999998,
+        -0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_D9",
+      "parent": "reaction_block",
+      "position": [
+        0.0225,
+        -0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_D10",
+      "parent": "reaction_block",
+      "position": [
+        0.0315,
+        -0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_D11",
+      "parent": "reaction_block",
+      "position": [
+        0.040499999999999994,
+        -0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_D12",
+      "parent": "reaction_block",
+      "position": [
+        0.049499999999999995,
+        -0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_E1",
+      "parent": "reaction_block",
+      "position": [
+        -0.049499999999999995,
+        0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_E2",
+      "parent": "reaction_block",
+      "position": [
+        -0.040499999999999994,
+        0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_E3",
+      "parent": "reaction_block",
+      "position": [
+        -0.0315,
+        0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_E4",
+      "parent": "reaction_block",
+      "position": [
+        -0.0225,
+        0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_E5",
+      "parent": "reaction_block",
+      "position": [
+        -0.013499999999999998,
+        0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_E6",
+      "parent": "reaction_block",
+      "position": [
+        -0.0045,
+        0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_E7",
+      "parent": "reaction_block",
+      "position": [
+        0.0045,
+        0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_E8",
+      "parent": "reaction_block",
+      "position": [
+        0.013499999999999998,
+        0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_E9",
+      "parent": "reaction_block",
+      "position": [
+        0.0225,
+        0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_E10",
+      "parent": "reaction_block",
+      "position": [
+        0.0315,
+        0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_E11",
+      "parent": "reaction_block",
+      "position": [
+        0.040499999999999994,
+        0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_E12",
+      "parent": "reaction_block",
+      "position": [
+        0.049499999999999995,
+        0.0045,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_F1",
+      "parent": "reaction_block",
+      "position": [
+        -0.049499999999999995,
+        0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_F2",
+      "parent": "reaction_block",
+      "position": [
+        -0.040499999999999994,
+        0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_F3",
+      "parent": "reaction_block",
+      "position": [
+        -0.0315,
+        0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_F4",
+      "parent": "reaction_block",
+      "position": [
+        -0.0225,
+        0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_F5",
+      "parent": "reaction_block",
+      "position": [
+        -0.013499999999999998,
+        0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_F6",
+      "parent": "reaction_block",
+      "position": [
+        -0.0045,
+        0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_F7",
+      "parent": "reaction_block",
+      "position": [
+        0.0045,
+        0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_F8",
+      "parent": "reaction_block",
+      "position": [
+        0.013499999999999998,
+        0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_F9",
+      "parent": "reaction_block",
+      "position": [
+        0.0225,
+        0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_F10",
+      "parent": "reaction_block",
+      "position": [
+        0.0315,
+        0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_F11",
+      "parent": "reaction_block",
+      "position": [
+        0.040499999999999994,
+        0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_F12",
+      "parent": "reaction_block",
+      "position": [
+        0.049499999999999995,
+        0.013499999999999998,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_G1",
+      "parent": "reaction_block",
+      "position": [
+        -0.049499999999999995,
+        0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_G2",
+      "parent": "reaction_block",
+      "position": [
+        -0.040499999999999994,
+        0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_G3",
+      "parent": "reaction_block",
+      "position": [
+        -0.0315,
+        0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_G4",
+      "parent": "reaction_block",
+      "position": [
+        -0.0225,
+        0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_G5",
+      "parent": "reaction_block",
+      "position": [
+        -0.013499999999999998,
+        0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_G6",
+      "parent": "reaction_block",
+      "position": [
+        -0.0045,
+        0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_G7",
+      "parent": "reaction_block",
+      "position": [
+        0.0045,
+        0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_G8",
+      "parent": "reaction_block",
+      "position": [
+        0.013499999999999998,
+        0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_G9",
+      "parent": "reaction_block",
+      "position": [
+        0.0225,
+        0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_G10",
+      "parent": "reaction_block",
+      "position": [
+        0.0315,
+        0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_G11",
+      "parent": "reaction_block",
+      "position": [
+        0.040499999999999994,
+        0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_G12",
+      "parent": "reaction_block",
+      "position": [
+        0.049499999999999995,
+        0.0225,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_H1",
+      "parent": "reaction_block",
+      "position": [
+        -0.049499999999999995,
+        0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_H2",
+      "parent": "reaction_block",
+      "position": [
+        -0.040499999999999994,
+        0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_H3",
+      "parent": "reaction_block",
+      "position": [
+        -0.0315,
+        0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_H4",
+      "parent": "reaction_block",
+      "position": [
+        -0.0225,
+        0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_H5",
+      "parent": "reaction_block",
+      "position": [
+        -0.013499999999999998,
+        0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_H6",
+      "parent": "reaction_block",
+      "position": [
+        -0.0045,
+        0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_H7",
+      "parent": "reaction_block",
+      "position": [
+        0.0045,
+        0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_H8",
+      "parent": "reaction_block",
+      "position": [
+        0.013499999999999998,
+        0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_H9",
+      "parent": "reaction_block",
+      "position": [
+        0.0225,
+        0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_H10",
+      "parent": "reaction_block",
+      "position": [
+        0.0315,
+        0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_H11",
+      "parent": "reaction_block",
+      "position": [
+        0.040499999999999994,
+        0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "block_H12",
+      "parent": "reaction_block",
+      "position": [
+        0.049499999999999995,
+        0.0315,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "lid_handle",
+      "parent": "heated_lid",
+      "position": [
+        0,
+        -0.225,
+        0.023
+      ],
+      "role": "handle",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "lid_hinge",
+      "parent": "heated_lid",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "joint",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "plate_seat",
+      "parent": "reaction_block",
+      "position": [
+        0,
+        0,
+        0.01
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "load_approach",
+      "parent": "reaction_block",
+      "position": [
+        0,
+        0,
+        0.16
+      ],
+      "role": "approach",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "start_button",
+      "parent": "base",
+      "position": [
+        0.113,
+        -0.165,
+        0.118
+      ],
+      "role": "control",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "accessories": [
+    "microplate_96_well"
+  ]
+}

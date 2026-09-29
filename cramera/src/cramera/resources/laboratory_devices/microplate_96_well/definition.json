@@ -1,0 +1,4427 @@
+{
+  "identifier": "microplate_96_well",
+  "title": "96-Well Microplate",
+  "description": "Separate 127.76 by 85.48 millimetre plate with 9 millimetre well pitch and 96 open wells.",
+  "parts": [
+    {
+      "name": "base",
+      "parent": null,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 0.045,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "bottom",
+          "center": [
+            0,
+            0,
+            0.0006
+          ],
+          "dimensions": [
+            0.12776,
+            0.08548,
+            0.0012
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0005,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rim_left",
+          "center": [
+            -0.06188,
+            0,
+            0.007775
+          ],
+          "dimensions": [
+            0.004,
+            0.08548,
+            0.01315
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rim_right",
+          "center": [
+            0.06188,
+            0,
+            0.007775
+          ],
+          "dimensions": [
+            0.004,
+            0.08548,
+            0.01315
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rim_front",
+          "center": [
+            0,
+            -0.04074,
+            0.007775
+          ],
+          "dimensions": [
+            0.11976,
+            0.004,
+            0.01315
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rim_back",
+          "center": [
+            0,
+            0.04074,
+            0.007775
+          ],
+          "dimensions": [
+            0.11976,
+            0.004,
+            0.01315
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A1",
+          "center": [
+            -0.049499999999999995,
+            -0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A2",
+          "center": [
+            -0.040499999999999994,
+            -0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A3",
+          "center": [
+            -0.0315,
+            -0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A4",
+          "center": [
+            -0.0225,
+            -0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A5",
+          "center": [
+            -0.013499999999999998,
+            -0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A6",
+          "center": [
+            -0.0045,
+            -0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A7",
+          "center": [
+            0.0045,
+            -0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A8",
+          "center": [
+            0.013499999999999998,
+            -0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A9",
+          "center": [
+            0.0225,
+            -0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A10",
+          "center": [
+            0.0315,
+            -0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A11",
+          "center": [
+            0.040499999999999994,
+            -0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_A12",
+          "center": [
+            0.049499999999999995,
+            -0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "A",
+          "center": [
+            -0.06188,
+            -0.0315,
+            0.0145
+          ],
+          "dimensions": [
+            0.0033,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "A",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B1",
+          "center": [
+            -0.049499999999999995,
+            -0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B2",
+          "center": [
+            -0.040499999999999994,
+            -0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B3",
+          "center": [
+            -0.0315,
+            -0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B4",
+          "center": [
+            -0.0225,
+            -0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B5",
+          "center": [
+            -0.013499999999999998,
+            -0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B6",
+          "center": [
+            -0.0045,
+            -0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B7",
+          "center": [
+            0.0045,
+            -0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B8",
+          "center": [
+            0.013499999999999998,
+            -0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B9",
+          "center": [
+            0.0225,
+            -0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B10",
+          "center": [
+            0.0315,
+            -0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B11",
+          "center": [
+            0.040499999999999994,
+            -0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_B12",
+          "center": [
+            0.049499999999999995,
+            -0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "B",
+          "center": [
+            -0.06188,
+            -0.0225,
+            0.0145
+          ],
+          "dimensions": [
+            0.0033,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "B",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C1",
+          "center": [
+            -0.049499999999999995,
+            -0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C2",
+          "center": [
+            -0.040499999999999994,
+            -0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C3",
+          "center": [
+            -0.0315,
+            -0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C4",
+          "center": [
+            -0.0225,
+            -0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C5",
+          "center": [
+            -0.013499999999999998,
+            -0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C6",
+          "center": [
+            -0.0045,
+            -0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C7",
+          "center": [
+            0.0045,
+            -0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C8",
+          "center": [
+            0.013499999999999998,
+            -0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C9",
+          "center": [
+            0.0225,
+            -0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C10",
+          "center": [
+            0.0315,
+            -0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C11",
+          "center": [
+            0.040499999999999994,
+            -0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_C12",
+          "center": [
+            0.049499999999999995,
+            -0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "C",
+          "center": [
+            -0.06188,
+            -0.013499999999999998,
+            0.0145
+          ],
+          "dimensions": [
+            0.0033,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "C",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D1",
+          "center": [
+            -0.049499999999999995,
+            -0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D2",
+          "center": [
+            -0.040499999999999994,
+            -0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D3",
+          "center": [
+            -0.0315,
+            -0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D4",
+          "center": [
+            -0.0225,
+            -0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D5",
+          "center": [
+            -0.013499999999999998,
+            -0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D6",
+          "center": [
+            -0.0045,
+            -0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D7",
+          "center": [
+            0.0045,
+            -0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D8",
+          "center": [
+            0.013499999999999998,
+            -0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D9",
+          "center": [
+            0.0225,
+            -0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D10",
+          "center": [
+            0.0315,
+            -0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D11",
+          "center": [
+            0.040499999999999994,
+            -0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_D12",
+          "center": [
+            0.049499999999999995,
+            -0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "D",
+          "center": [
+            -0.06188,
+            -0.0045,
+            0.0145
+          ],
+          "dimensions": [
+            0.0033,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "D",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_E1",
+          "center": [
+            -0.049499999999999995,
+            0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_E2",
+          "center": [
+            -0.040499999999999994,
+            0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_E3",
+          "center": [
+            -0.0315,
+            0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_E4",
+          "center": [
+            -0.0225,
+            0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_E5",
+          "center": [
+            -0.013499999999999998,
+            0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_E6",
+          "center": [
+            -0.0045,
+            0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_E7",
+          "center": [
+            0.0045,
+            0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_E8",
+          "center": [
+            0.013499999999999998,
+            0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_E9",
+          "center": [
+            0.0225,
+            0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_E10",
+          "center": [
+            0.0315,
+            0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_E11",
+          "center": [
+            0.040499999999999994,
+            0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_E12",
+          "center": [
+            0.049499999999999995,
+            0.0045,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "E",
+          "center": [
+            -0.06188,
+            0.0045,
+            0.0145
+          ],
+          "dimensions": [
+            0.0033,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "E",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_F1",
+          "center": [
+            -0.049499999999999995,
+            0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_F2",
+          "center": [
+            -0.040499999999999994,
+            0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_F3",
+          "center": [
+            -0.0315,
+            0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_F4",
+          "center": [
+            -0.0225,
+            0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_F5",
+          "center": [
+            -0.013499999999999998,
+            0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_F6",
+          "center": [
+            -0.0045,
+            0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_F7",
+          "center": [
+            0.0045,
+            0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_F8",
+          "center": [
+            0.013499999999999998,
+            0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_F9",
+          "center": [
+            0.0225,
+            0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_F10",
+          "center": [
+            0.0315,
+            0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_F11",
+          "center": [
+            0.040499999999999994,
+            0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_F12",
+          "center": [
+            0.049499999999999995,
+            0.013499999999999998,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "F",
+          "center": [
+            -0.06188,
+            0.013499999999999998,
+            0.0145
+          ],
+          "dimensions": [
+            0.0033,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "F",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_G1",
+          "center": [
+            -0.049499999999999995,
+            0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_G2",
+          "center": [
+            -0.040499999999999994,
+            0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_G3",
+          "center": [
+            -0.0315,
+            0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_G4",
+          "center": [
+            -0.0225,
+            0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_G5",
+          "center": [
+            -0.013499999999999998,
+            0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_G6",
+          "center": [
+            -0.0045,
+            0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_G7",
+          "center": [
+            0.0045,
+            0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_G8",
+          "center": [
+            0.013499999999999998,
+            0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_G9",
+          "center": [
+            0.0225,
+            0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_G10",
+          "center": [
+            0.0315,
+            0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_G11",
+          "center": [
+            0.040499999999999994,
+            0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_G12",
+          "center": [
+            0.049499999999999995,
+            0.0225,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "G",
+          "center": [
+            -0.06188,
+            0.0225,
+            0.0145
+          ],
+          "dimensions": [
+            0.0033,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "G",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_H1",
+          "center": [
+            -0.049499999999999995,
+            0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_H2",
+          "center": [
+            -0.040499999999999994,
+            0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_H3",
+          "center": [
+            -0.0315,
+            0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_H4",
+          "center": [
+            -0.0225,
+            0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_H5",
+          "center": [
+            -0.013499999999999998,
+            0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_H6",
+          "center": [
+            -0.0045,
+            0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_H7",
+          "center": [
+            0.0045,
+            0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_H8",
+          "center": [
+            0.013499999999999998,
+            0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_H9",
+          "center": [
+            0.0225,
+            0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_H10",
+          "center": [
+            0.0315,
+            0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_H11",
+          "center": [
+            0.040499999999999994,
+            0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "well_H12",
+          "center": [
+            0.049499999999999995,
+            0.0315,
+            0.00725
+          ],
+          "dimensions": [
+            0.00395,
+            0.00335,
+            0.0123
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "H",
+          "center": [
+            -0.06188,
+            0.0315,
+            0.0145
+          ],
+          "dimensions": [
+            0.0033,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "H",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "1",
+          "center": [
+            -0.049499999999999995,
+            -0.04074,
+            0.0145
+          ],
+          "dimensions": [
+            0.0032,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "1",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "2",
+          "center": [
+            -0.040499999999999994,
+            -0.04074,
+            0.0145
+          ],
+          "dimensions": [
+            0.0032,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "2",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "3",
+          "center": [
+            -0.0315,
+            -0.04074,
+            0.0145
+          ],
+          "dimensions": [
+            0.0032,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "3",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "4",
+          "center": [
+            -0.0225,
+            -0.04074,
+            0.0145
+          ],
+          "dimensions": [
+            0.0032,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "4",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "5",
+          "center": [
+            -0.013499999999999998,
+            -0.04074,
+            0.0145
+          ],
+          "dimensions": [
+            0.0032,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "5",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "6",
+          "center": [
+            -0.0045,
+            -0.04074,
+            0.0145
+          ],
+          "dimensions": [
+            0.0032,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "6",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "7",
+          "center": [
+            0.0045,
+            -0.04074,
+            0.0145
+          ],
+          "dimensions": [
+            0.0032,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "7",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "8",
+          "center": [
+            0.013499999999999998,
+            -0.04074,
+            0.0145
+          ],
+          "dimensions": [
+            0.0032,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "8",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "9",
+          "center": [
+            0.0225,
+            -0.04074,
+            0.0145
+          ],
+          "dimensions": [
+            0.0032,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "9",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "10",
+          "center": [
+            0.0315,
+            -0.04074,
+            0.0145
+          ],
+          "dimensions": [
+            0.0032,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "10",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "11",
+          "center": [
+            0.040499999999999994,
+            -0.04074,
+            0.0145
+          ],
+          "dimensions": [
+            0.0032,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "11",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "12",
+          "center": [
+            0.049499999999999995,
+            -0.04074,
+            0.0145
+          ],
+          "dimensions": [
+            0.0032,
+            0
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "12",
+          "points": []
+        },
+        {
+          "kind": "logo",
+          "name": "AICOR logo",
+          "center": [
+            0,
+            -0.0428,
+            0.0077
+          ],
+          "dimensions": [
+            0.023
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "",
+          "points": []
+        }
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "name": "well_A1",
+      "parent": "base",
+      "position": [
+        -0.049499999999999995,
+        -0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_A2",
+      "parent": "base",
+      "position": [
+        -0.040499999999999994,
+        -0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_A3",
+      "parent": "base",
+      "position": [
+        -0.0315,
+        -0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_A4",
+      "parent": "base",
+      "position": [
+        -0.0225,
+        -0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_A5",
+      "parent": "base",
+      "position": [
+        -0.013499999999999998,
+        -0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_A6",
+      "parent": "base",
+      "position": [
+        -0.0045,
+        -0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_A7",
+      "parent": "base",
+      "position": [
+        0.0045,
+        -0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_A8",
+      "parent": "base",
+      "position": [
+        0.013499999999999998,
+        -0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_A9",
+      "parent": "base",
+      "position": [
+        0.0225,
+        -0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_A10",
+      "parent": "base",
+      "position": [
+        0.0315,
+        -0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_A11",
+      "parent": "base",
+      "position": [
+        0.040499999999999994,
+        -0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_A12",
+      "parent": "base",
+      "position": [
+        0.049499999999999995,
+        -0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_B1",
+      "parent": "base",
+      "position": [
+        -0.049499999999999995,
+        -0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_B2",
+      "parent": "base",
+      "position": [
+        -0.040499999999999994,
+        -0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_B3",
+      "parent": "base",
+      "position": [
+        -0.0315,
+        -0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_B4",
+      "parent": "base",
+      "position": [
+        -0.0225,
+        -0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_B5",
+      "parent": "base",
+      "position": [
+        -0.013499999999999998,
+        -0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_B6",
+      "parent": "base",
+      "position": [
+        -0.0045,
+        -0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_B7",
+      "parent": "base",
+      "position": [
+        0.0045,
+        -0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_B8",
+      "parent": "base",
+      "position": [
+        0.013499999999999998,
+        -0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_B9",
+      "parent": "base",
+      "position": [
+        0.0225,
+        -0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_B10",
+      "parent": "base",
+      "position": [
+        0.0315,
+        -0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_B11",
+      "parent": "base",
+      "position": [
+        0.040499999999999994,
+        -0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_B12",
+      "parent": "base",
+      "position": [
+        0.049499999999999995,
+        -0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_C1",
+      "parent": "base",
+      "position": [
+        -0.049499999999999995,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_C2",
+      "parent": "base",
+      "position": [
+        -0.040499999999999994,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_C3",
+      "parent": "base",
+      "position": [
+        -0.0315,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_C4",
+      "parent": "base",
+      "position": [
+        -0.0225,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_C5",
+      "parent": "base",
+      "position": [
+        -0.013499999999999998,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_C6",
+      "parent": "base",
+      "position": [
+        -0.0045,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_C7",
+      "parent": "base",
+      "position": [
+        0.0045,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_C8",
+      "parent": "base",
+      "position": [
+        0.013499999999999998,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_C9",
+      "parent": "base",
+      "position": [
+        0.0225,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_C10",
+      "parent": "base",
+      "position": [
+        0.0315,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_C11",
+      "parent": "base",
+      "position": [
+        0.040499999999999994,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_C12",
+      "parent": "base",
+      "position": [
+        0.049499999999999995,
+        -0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_D1",
+      "parent": "base",
+      "position": [
+        -0.049499999999999995,
+        -0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_D2",
+      "parent": "base",
+      "position": [
+        -0.040499999999999994,
+        -0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_D3",
+      "parent": "base",
+      "position": [
+        -0.0315,
+        -0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_D4",
+      "parent": "base",
+      "position": [
+        -0.0225,
+        -0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_D5",
+      "parent": "base",
+      "position": [
+        -0.013499999999999998,
+        -0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_D6",
+      "parent": "base",
+      "position": [
+        -0.0045,
+        -0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_D7",
+      "parent": "base",
+      "position": [
+        0.0045,
+        -0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_D8",
+      "parent": "base",
+      "position": [
+        0.013499999999999998,
+        -0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_D9",
+      "parent": "base",
+      "position": [
+        0.0225,
+        -0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_D10",
+      "parent": "base",
+      "position": [
+        0.0315,
+        -0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_D11",
+      "parent": "base",
+      "position": [
+        0.040499999999999994,
+        -0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_D12",
+      "parent": "base",
+      "position": [
+        0.049499999999999995,
+        -0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_E1",
+      "parent": "base",
+      "position": [
+        -0.049499999999999995,
+        0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_E2",
+      "parent": "base",
+      "position": [
+        -0.040499999999999994,
+        0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_E3",
+      "parent": "base",
+      "position": [
+        -0.0315,
+        0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_E4",
+      "parent": "base",
+      "position": [
+        -0.0225,
+        0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_E5",
+      "parent": "base",
+      "position": [
+        -0.013499999999999998,
+        0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_E6",
+      "parent": "base",
+      "position": [
+        -0.0045,
+        0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_E7",
+      "parent": "base",
+      "position": [
+        0.0045,
+        0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_E8",
+      "parent": "base",
+      "position": [
+        0.013499999999999998,
+        0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_E9",
+      "parent": "base",
+      "position": [
+        0.0225,
+        0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_E10",
+      "parent": "base",
+      "position": [
+        0.0315,
+        0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_E11",
+      "parent": "base",
+      "position": [
+        0.040499999999999994,
+        0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_E12",
+      "parent": "base",
+      "position": [
+        0.049499999999999995,
+        0.0045,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_F1",
+      "parent": "base",
+      "position": [
+        -0.049499999999999995,
+        0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_F2",
+      "parent": "base",
+      "position": [
+        -0.040499999999999994,
+        0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_F3",
+      "parent": "base",
+      "position": [
+        -0.0315,
+        0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_F4",
+      "parent": "base",
+      "position": [
+        -0.0225,
+        0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_F5",
+      "parent": "base",
+      "position": [
+        -0.013499999999999998,
+        0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_F6",
+      "parent": "base",
+      "position": [
+        -0.0045,
+        0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_F7",
+      "parent": "base",
+      "position": [
+        0.0045,
+        0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_F8",
+      "parent": "base",
+      "position": [
+        0.013499999999999998,
+        0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_F9",
+      "parent": "base",
+      "position": [
+        0.0225,
+        0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_F10",
+      "parent": "base",
+      "position": [
+        0.0315,
+        0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_F11",
+      "parent": "base",
+      "position": [
+        0.040499999999999994,
+        0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_F12",
+      "parent": "base",
+      "position": [
+        0.049499999999999995,
+        0.013499999999999998,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_G1",
+      "parent": "base",
+      "position": [
+        -0.049499999999999995,
+        0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_G2",
+      "parent": "base",
+      "position": [
+        -0.040499999999999994,
+        0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_G3",
+      "parent": "base",
+      "position": [
+        -0.0315,
+        0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_G4",
+      "parent": "base",
+      "position": [
+        -0.0225,
+        0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_G5",
+      "parent": "base",
+      "position": [
+        -0.013499999999999998,
+        0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_G6",
+      "parent": "base",
+      "position": [
+        -0.0045,
+        0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_G7",
+      "parent": "base",
+      "position": [
+        0.0045,
+        0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_G8",
+      "parent": "base",
+      "position": [
+        0.013499999999999998,
+        0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_G9",
+      "parent": "base",
+      "position": [
+        0.0225,
+        0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_G10",
+      "parent": "base",
+      "position": [
+        0.0315,
+        0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_G11",
+      "parent": "base",
+      "position": [
+        0.040499999999999994,
+        0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_G12",
+      "parent": "base",
+      "position": [
+        0.049499999999999995,
+        0.0225,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_H1",
+      "parent": "base",
+      "position": [
+        -0.049499999999999995,
+        0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_H2",
+      "parent": "base",
+      "position": [
+        -0.040499999999999994,
+        0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_H3",
+      "parent": "base",
+      "position": [
+        -0.0315,
+        0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_H4",
+      "parent": "base",
+      "position": [
+        -0.0225,
+        0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_H5",
+      "parent": "base",
+      "position": [
+        -0.013499999999999998,
+        0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_H6",
+      "parent": "base",
+      "position": [
+        -0.0045,
+        0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_H7",
+      "parent": "base",
+      "position": [
+        0.0045,
+        0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_H8",
+      "parent": "base",
+      "position": [
+        0.013499999999999998,
+        0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_H9",
+      "parent": "base",
+      "position": [
+        0.0225,
+        0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_H10",
+      "parent": "base",
+      "position": [
+        0.0315,
+        0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_H11",
+      "parent": "base",
+      "position": [
+        0.040499999999999994,
+        0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "well_H12",
+      "parent": "base",
+      "position": [
+        0.049499999999999995,
+        0.0315,
+        0.0134
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "left_grip",
+      "parent": "base",
+      "position": [
+        -0.064,
+        0,
+        0.008
+      ],
+      "role": "grasp",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "right_grip",
+      "parent": "base",
+      "position": [
+        0.064,
+        0,
+        0.008
+      ],
+      "role": "grasp",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "plate_center",
+      "parent": "base",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "placement",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "accessories": []
+}

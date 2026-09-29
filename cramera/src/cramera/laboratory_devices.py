@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 class LaboratoryDevice(StrEnum):
-    """Authored instruments available as separate material-bearing URDF models."""
+    """Instruments extracted from the assembled laboratory as independent models."""
 
     CENTRIFUGE = "centrifuge"
     """Housing, continuous rotor, and bounded protective lid."""
@@ -23,6 +23,41 @@ class LaboratoryDevice(StrEnum):
     """Six-position rack retaining open insertion apertures."""
     REFRIGERATOR = "refrigerator"
     """Compact sample refrigerator with a glass door and six storage positions."""
+
+
+class LaboratoryInstrument(StrEnum):
+    """Standalone instruments and accessories authored in editable Blender models."""
+
+    VORTEX_MIXER = "vortex_mixer"
+    """Contact cup with vertical travel and a speed control."""
+    ELECTRONIC_PIPETTE = "electronic_pipette"
+    """Handheld pipette with independently moving plunger and tip ejector."""
+    TIP_RACK = "tip_rack"
+    """Opening rack with twenty-four accessible tip sockets."""
+    TUBE_CAPPER = "tube_capper"
+    """Tube clamp, translating chuck and rotating closure head."""
+    THERMOMIXER = "thermomixer"
+    """Opening temperature-control instrument with an articulated sample block."""
+    MICROPLATE_READER = "microplate_reader"
+    """Optical plate instrument with an opening sample drawer."""
+    MICROPLATE_96_WELL = "microplate_96_well"
+    """Movable plate with ninety-six open wells."""
+    INCUBATOR = "incubator"
+    """Glazed chamber door and three separate shelf bodies."""
+    DIGITAL_MICROSCOPE = "digital_microscope"
+    """Focus carriage, two-axis specimen stage and objective selection."""
+    PH_METER = "ph_meter"
+    """Measurement console with an adjustable electrode support."""
+    PH_PROBE = "ph_probe"
+    """Separate glass electrode and guarded sensing bulb."""
+    PCR_THERMOCYCLER = "pcr_thermocycler"
+    """Thermal block with an opening heated cover."""
+    BARCODE_SCANNER = "barcode_scanner"
+    """Handheld scanner with an articulated trigger."""
+    BARCODE_DOCK = "barcode_dock"
+    """Independent charging cradle for the handheld scanner."""
+    LABEL_PRINTER = "label_printer"
+    """Opening media cover, rotating label roll and feed roller."""
 
 
 class DeviceResourceFile(StrEnum):
@@ -44,7 +79,7 @@ class DeviceResourceFile(StrEnum):
 class LaboratoryDeviceResource:
     """A self-contained instrument folder suitable for CRAM's URDF parser."""
 
-    device: LaboratoryDevice
+    device: LaboratoryDevice | LaboratoryInstrument
     """Instrument selected from the installed catalog."""
     root_directory: Path | None = None
     """Optional catalog directory overriding the installed package resources."""

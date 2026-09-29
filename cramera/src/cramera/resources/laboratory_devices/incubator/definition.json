@@ -1,0 +1,1922 @@
+{
+  "identifier": "incubator",
+  "title": "Benchtop Incubator",
+  "description": "Three-shelf incubation chamber with a transparent articulated door and temperature display.",
+  "parts": [
+    {
+      "name": "base",
+      "parent": null,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 18,
+      "shapes": [
+        {
+          "kind": "cylinder",
+          "name": "foot_0_0",
+          "center": [
+            -0.1725,
+            -0.1625,
+            0.012
+          ],
+          "dimensions": [
+            0.014,
+            0.024
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "foot_0_1",
+          "center": [
+            -0.1725,
+            0.1625,
+            0.012
+          ],
+          "dimensions": [
+            0.014,
+            0.024
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "foot_1_0",
+          "center": [
+            0.1725,
+            -0.1625,
+            0.012
+          ],
+          "dimensions": [
+            0.014,
+            0.024
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "foot_1_1",
+          "center": [
+            0.1725,
+            0.1625,
+            0.012
+          ],
+          "dimensions": [
+            0.014,
+            0.024
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "base_plinth",
+          "center": [
+            0,
+            0,
+            0.043
+          ],
+          "dimensions": [
+            0.425,
+            0.41,
+            0.04
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.008,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "chamber_floor",
+          "center": [
+            0,
+            0,
+            0.068
+          ],
+          "dimensions": [
+            0.394,
+            0.386,
+            0.02
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "left_wall",
+          "center": [
+            -0.201,
+            0,
+            0.292
+          ],
+          "dimensions": [
+            0.024,
+            0.399,
+            0.46
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "left_liner",
+          "center": [
+            -0.18733200000000003,
+            0.009,
+            0.292
+          ],
+          "dimensions": [
+            0.003,
+            0.366,
+            0.42
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "right_wall",
+          "center": [
+            0.201,
+            0,
+            0.292
+          ],
+          "dimensions": [
+            0.024,
+            0.399,
+            0.46
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "right_liner",
+          "center": [
+            0.18733200000000003,
+            0.009,
+            0.292
+          ],
+          "dimensions": [
+            0.003,
+            0.366,
+            0.42
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_wall",
+          "center": [
+            0,
+            0.19,
+            0.292
+          ],
+          "dimensions": [
+            0.389,
+            0.02,
+            0.459
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_liner",
+          "center": [
+            0,
+            0.178,
+            0.292
+          ],
+          "dimensions": [
+            0.372,
+            0.003,
+            0.42
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "control_header",
+          "center": [
+            0,
+            0,
+            0.55
+          ],
+          "dimensions": [
+            0.425,
+            0.41,
+            0.069
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.011,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "logo",
+          "name": "AICOR logo",
+          "center": [
+            -0.121,
+            -0.206,
+            0.55
+          ],
+          "dimensions": [
+            0.083
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "INCUBATOR",
+          "center": [
+            -0.121,
+            -0.206,
+            0.53
+          ],
+          "dimensions": [
+            0.0075,
+            0.085
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "INCUBATOR",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "display_bezel",
+          "center": [
+            0.06,
+            -0.207,
+            0.55
+          ],
+          "dimensions": [
+            0.14700000000000002,
+            0.004,
+            0.044
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "display_glass",
+          "center": [
+            0.06,
+            -0.2095,
+            0.55
+          ],
+          "dimensions": [
+            0.139,
+            0.0015,
+            0.036
+          ],
+          "material": "screen",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "37.0 C",
+          "center": [
+            0.06,
+            -0.2105,
+            0.5564800000000001
+          ],
+          "dimensions": [
+            0.00684,
+            0.12510000000000002
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "37.0 C",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "READY",
+          "center": [
+            0.06,
+            -0.2105,
+            0.5428000000000001
+          ],
+          "dimensions": [
+            0.00684,
+            0.12510000000000002
+          ],
+          "material": "paper",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "READY",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "program_dial",
+          "center": [
+            0.173,
+            -0.214,
+            0.55
+          ],
+          "dimensions": [
+            0.013,
+            0.017
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "gasket_left",
+          "center": [
+            -0.19,
+            -0.204,
+            0.293
+          ],
+          "dimensions": [
+            0.008,
+            0.008,
+            0.451
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "gasket_right",
+          "center": [
+            0.19,
+            -0.204,
+            0.293
+          ],
+          "dimensions": [
+            0.008,
+            0.008,
+            0.451
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "gasket_bottom",
+          "center": [
+            0,
+            -0.204,
+            0.069
+          ],
+          "dimensions": [
+            0.38,
+            0.008,
+            0.008
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "gasket_top",
+          "center": [
+            0,
+            -0.204,
+            0.517
+          ],
+          "dimensions": [
+            0.38,
+            0.008,
+            0.008
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "circulation_guard",
+          "center": [
+            0,
+            0.173,
+            0.425
+          ],
+          "dimensions": [
+            0.047,
+            0.039,
+            0.006
+          ],
+          "material": "dark",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "fan_guard_bar_0",
+          "center": [
+            0,
+            0.168,
+            0.394
+          ],
+          "dimensions": [
+            0.066,
+            0.004,
+            0.003
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "fan_guard_bar_1",
+          "center": [
+            0,
+            0.168,
+            0.40900000000000003
+          ],
+          "dimensions": [
+            0.066,
+            0.004,
+            0.003
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "fan_guard_bar_2",
+          "center": [
+            0,
+            0.168,
+            0.42400000000000004
+          ],
+          "dimensions": [
+            0.066,
+            0.004,
+            0.003
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "fan_guard_bar_3",
+          "center": [
+            0,
+            0.168,
+            0.439
+          ],
+          "dimensions": [
+            0.066,
+            0.004,
+            0.003
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "fan_guard_bar_4",
+          "center": [
+            0,
+            0.168,
+            0.454
+          ],
+          "dimensions": [
+            0.066,
+            0.004,
+            0.003
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_0",
+          "center": [
+            0,
+            0.201,
+            0.092
+          ],
+          "dimensions": [
+            0.23,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_1",
+          "center": [
+            0,
+            0.201,
+            0.10099999999999999
+          ],
+          "dimensions": [
+            0.23,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_2",
+          "center": [
+            0,
+            0.201,
+            0.11
+          ],
+          "dimensions": [
+            0.23,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_3",
+          "center": [
+            0,
+            0.201,
+            0.119
+          ],
+          "dimensions": [
+            0.23,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_4",
+          "center": [
+            0,
+            0.201,
+            0.128
+          ],
+          "dimensions": [
+            0.23,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_5",
+          "center": [
+            0,
+            0.201,
+            0.137
+          ],
+          "dimensions": [
+            0.23,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_6",
+          "center": [
+            0,
+            0.201,
+            0.146
+          ],
+          "dimensions": [
+            0.23,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_7",
+          "center": [
+            0,
+            0.201,
+            0.155
+          ],
+          "dimensions": [
+            0.23,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_vent_8",
+          "center": [
+            0,
+            0.201,
+            0.16399999999999998
+          ],
+          "dimensions": [
+            0.23,
+            0.001,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "shelf_1_left_rail",
+          "center": [
+            -0.179,
+            -0.005,
+            0.17099999999999999
+          ],
+          "dimensions": [
+            0.014,
+            0.34,
+            0.01
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "shelf_1_right_rail",
+          "center": [
+            0.179,
+            -0.005,
+            0.17099999999999999
+          ],
+          "dimensions": [
+            0.014,
+            0.34,
+            0.01
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "shelf_2_left_rail",
+          "center": [
+            -0.179,
+            -0.005,
+            0.299
+          ],
+          "dimensions": [
+            0.014,
+            0.34,
+            0.01
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "shelf_2_right_rail",
+          "center": [
+            0.179,
+            -0.005,
+            0.299
+          ],
+          "dimensions": [
+            0.014,
+            0.34,
+            0.01
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "shelf_3_left_rail",
+          "center": [
+            -0.179,
+            -0.005,
+            0.427
+          ],
+          "dimensions": [
+            0.014,
+            0.34,
+            0.01
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "shelf_3_right_rail",
+          "center": [
+            0.179,
+            -0.005,
+            0.427
+          ],
+          "dimensions": [
+            0.014,
+            0.34,
+            0.01
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "shelf_1",
+      "parent": "base",
+      "origin": [
+        0,
+        -0.009,
+        0.177
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 0.4,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "shelf_surface",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.35,
+            0.337,
+            0.006
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "front_lip",
+          "center": [
+            0,
+            -0.168,
+            0.004
+          ],
+          "dimensions": [
+            0.35,
+            0.006,
+            0.009
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "shelf_2",
+      "parent": "base",
+      "origin": [
+        0,
+        -0.009,
+        0.305
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 0.4,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "shelf_surface",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.35,
+            0.337,
+            0.006
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "front_lip",
+          "center": [
+            0,
+            -0.168,
+            0.004
+          ],
+          "dimensions": [
+            0.35,
+            0.006,
+            0.009
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "shelf_3",
+      "parent": "base",
+      "origin": [
+        0,
+        -0.009,
+        0.433
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 0.4,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "shelf_surface",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.35,
+            0.337,
+            0.006
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "front_lip",
+          "center": [
+            0,
+            -0.168,
+            0.004
+          ],
+          "dimensions": [
+            0.35,
+            0.006,
+            0.009
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "door",
+      "parent": "base",
+      "origin": [
+        -0.207,
+        -0.226,
+        0.291
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "revolute",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": -1.8,
+      "upper": 0,
+      "open_value": -1.63,
+      "mass": 2.6,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "hinge_stile",
+          "center": [
+            0.014,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.028,
+            0.034,
+            0.461
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "latch_stile",
+          "center": [
+            0.399,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.028,
+            0.034,
+            0.461
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "bottom_rail",
+          "center": [
+            0.207,
+            0,
+            -0.217
+          ],
+          "dimensions": [
+            0.389,
+            0.034,
+            0.027
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.005,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "top_rail",
+          "center": [
+            0.207,
+            0,
+            0.217
+          ],
+          "dimensions": [
+            0.389,
+            0.034,
+            0.027
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.005,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "glazing",
+          "center": [
+            0.207,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.362,
+            0.008,
+            0.417
+          ],
+          "material": "glass",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "hinge_bottom",
+          "center": [
+            0,
+            0,
+            -0.15
+          ],
+          "dimensions": [
+            0.009,
+            0.05
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "hinge_top",
+          "center": [
+            0,
+            0,
+            0.15
+          ],
+          "dimensions": [
+            0.009,
+            0.05
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "handle_mount_bottom",
+          "center": [
+            0.386,
+            -0.031,
+            -0.052
+          ],
+          "dimensions": [
+            0.016,
+            0.04,
+            0.018
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.005,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "handle_mount_top",
+          "center": [
+            0.386,
+            -0.031,
+            0.052
+          ],
+          "dimensions": [
+            0.016,
+            0.04,
+            0.018
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.005,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "handle",
+          "center": [
+            0.386,
+            -0.05,
+            0
+          ],
+          "dimensions": [
+            0.019,
+            0.019,
+            0.125
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.007,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "name": "shelf_1_sample_1_1",
+      "parent": "shelf_1",
+      "position": [
+        -0.105,
+        -0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_1_sample_1_2",
+      "parent": "shelf_1",
+      "position": [
+        -0.105,
+        0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_1_sample_2_1",
+      "parent": "shelf_1",
+      "position": [
+        0,
+        -0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_1_sample_2_2",
+      "parent": "shelf_1",
+      "position": [
+        0,
+        0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_1_sample_3_1",
+      "parent": "shelf_1",
+      "position": [
+        0.105,
+        -0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_1_sample_3_2",
+      "parent": "shelf_1",
+      "position": [
+        0.105,
+        0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_2_sample_1_1",
+      "parent": "shelf_2",
+      "position": [
+        -0.105,
+        -0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_2_sample_1_2",
+      "parent": "shelf_2",
+      "position": [
+        -0.105,
+        0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_2_sample_2_1",
+      "parent": "shelf_2",
+      "position": [
+        0,
+        -0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_2_sample_2_2",
+      "parent": "shelf_2",
+      "position": [
+        0,
+        0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_2_sample_3_1",
+      "parent": "shelf_2",
+      "position": [
+        0.105,
+        -0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_2_sample_3_2",
+      "parent": "shelf_2",
+      "position": [
+        0.105,
+        0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_3_sample_1_1",
+      "parent": "shelf_3",
+      "position": [
+        -0.105,
+        -0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_3_sample_1_2",
+      "parent": "shelf_3",
+      "position": [
+        -0.105,
+        0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_3_sample_2_1",
+      "parent": "shelf_3",
+      "position": [
+        0,
+        -0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_3_sample_2_2",
+      "parent": "shelf_3",
+      "position": [
+        0,
+        0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_3_sample_3_1",
+      "parent": "shelf_3",
+      "position": [
+        0.105,
+        -0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shelf_3_sample_3_2",
+      "parent": "shelf_3",
+      "position": [
+        0.105,
+        0.08,
+        0.003
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "door_handle",
+      "parent": "door",
+      "position": [
+        0.386,
+        -0.0595,
+        0
+      ],
+      "role": "handle",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "door_hinge",
+      "parent": "door",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "joint",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "temperature_control",
+      "parent": "base",
+      "position": [
+        0.173,
+        -0.225,
+        0.55
+      ],
+      "role": "control",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "chamber_approach",
+      "parent": "base",
+      "position": [
+        0,
+        -0.39,
+        0.31
+      ],
+      "role": "approach",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "accessories": []
+}

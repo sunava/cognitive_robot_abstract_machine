@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AICOR · Laboratory instruments</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #183b3c; background: #f2f5f2; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { padding: 48px max(24px, calc((100vw - 1400px) / 2)); background: #163f40; color: #f2f7f3; }
+    header p { max-width: 700px; line-height: 1.6; color: #d2e6df; }
+    .eyebrow { font-size: 12px; letter-spacing: .2em; font-weight: 700; text-transform: uppercase; }
+    h1 { margin: 18px 0; font-size: clamp(32px, 5vw, 56px); font-weight: 500; letter-spacing: -.04em; }
+    main { max-width: 1448px; margin: auto; padding: 30px 24px 60px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .toolbar p { font-size: 14px; color: #577071; }
+    input { width: min(340px, 100%); border: 1px solid #bdd1ca; background: white; padding: 13px 16px; border-radius: 8px; font: inherit; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 24px; }
+    article { background: white; border: 1px solid #d8e4de; border-radius: 12px; overflow: hidden; }
+    .image-wrap { position: relative; background: #dde3df; }
+    img { display: block; width: 100%; height: auto; aspect-ratio: 1.25; object-fit: contain; }
+    .number { position: absolute; top: 15px; left: 15px; color: #365959; font-size: 12px; }
+    .details { padding: 22px; }
+    h2 { font-weight: 550; font-size: 21px; margin: 0 0 10px; }
+    .description { min-height: 52px; line-height: 1.5; color: #637573; font-size: 13px; }
+    .specs { display: flex; gap: 14px; font-size: 12px; color: #557573; margin: 17px 0; }
+    .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin-top: 17px; }
+    a, button { font: inherit; }
+    .actions a, .actions button { color: #14585b; border: 1px solid #bad3cd; border-radius: 6px; padding: 8px 10px; text-decoration: none; background: #f9fbf9; font-size: 12px; cursor: pointer; }
+    .actions a.primary { background: #1d6668; color: white; border-color: #1d6668; }
+    button:hover, .actions a:hover { filter: brightness(.95); }
+    button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #d1aa5c; outline-offset: 3px; }
+    footer { max-width: 1400px; margin: auto; padding: 0 24px 36px; line-height: 1.6; font-size: 12px; color: #637573; }
+    footer a { color: inherit; }
+    [hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">AICOR / Medical Lab</div>
+    <h1>Instruments, individually.</h1>
+    <p>A collection of independently placeable laboratory instruments and accessories.
+      Explore the rest and inspection views, or open an editable model in Blender.</p>
+  </header>
+  <main>
+    <div class="toolbar">
+      <p><strong>${count} independent models</strong> · English labels · Articulated parts</p>
+      <input type="search" aria-label="Filter instruments" placeholder="Find an instrument…">
+    </div>
+    <div class="grid">${cards}</div>
+    <p id="empty" hidden>No instruments match your search.</p>
+  </main>
+  <footer>
+    Original AICOR concept models. Principal author and design direction: Vanessa Hassouna · AICOR Institute.<br>
+    Models include geometry, joints and interaction frames; device processes require separate controllers.<br>
+    Reuse requires written permission. <a href="../LICENSE.txt">License</a> · <a href="../README.md">Resource documentation</a>
+  </footer>
+  <script>
+    const cards = Array.from(document.querySelectorAll('article'));
+    document.querySelector('input').addEventListener('input', event => {
+      const query = event.target.value.trim().toLowerCase();
+      cards.forEach(card => { card.hidden = !card.textContent.toLowerCase().includes(query); });
+      document.querySelector('#empty').hidden = cards.some(card => !card.hidden);
+    });
+    document.querySelectorAll('[data-inspect]').forEach(button => {
+      button.addEventListener('click', () => {
+        const image = button.closest('article').querySelector('img');
+        const opened = button.getAttribute('aria-pressed') !== 'true';
+        button.setAttribute('aria-pressed', String(opened));
+        image.src = opened ? image.dataset.open : image.dataset.closed;
+        image.alt = image.dataset.title + (opened ? ' — inspection pose' : ' — rest pose');
+        button.textContent = opened ? 'Show rest pose' : 'Inspect moving parts';
+      });
+    });
+  </script>
+</body>
+</html>

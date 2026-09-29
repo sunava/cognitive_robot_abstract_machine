@@ -1,0 +1,1851 @@
+{
+  "identifier": "label_printer",
+  "title": "Label printer",
+  "description": "Desktop specimen-label printer with an opening media cover, a roll spindle and a feed roller.",
+  "parts": [
+    {
+      "name": "base",
+      "parent": null,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 1.7,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "printer_floor",
+          "center": [
+            0,
+            0,
+            0.018
+          ],
+          "dimensions": [
+            0.212,
+            0.26,
+            0.036
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.013,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "printer_lower_side",
+          "center": [
+            -0.099,
+            0.002,
+            0.06
+          ],
+          "dimensions": [
+            0.014,
+            0.253,
+            0.071
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.007,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "cover_hinge",
+          "center": [
+            -0.1,
+            0.108,
+            0.094
+          ],
+          "dimensions": [
+            0.006,
+            0.066
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            1.5707963267948966,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "roll_support",
+          "center": [
+            -0.079,
+            0.032,
+            0.065
+          ],
+          "dimensions": [
+            0.013,
+            0.029,
+            0.072
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "printer_lower_side",
+          "center": [
+            0.099,
+            0.002,
+            0.06
+          ],
+          "dimensions": [
+            0.014,
+            0.253,
+            0.071
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.007,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "cover_hinge",
+          "center": [
+            0.1,
+            0.108,
+            0.094
+          ],
+          "dimensions": [
+            0.006,
+            0.066
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            1.5707963267948966,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "roll_support",
+          "center": [
+            0.079,
+            0.032,
+            0.065
+          ],
+          "dimensions": [
+            0.013,
+            0.029,
+            0.072
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "printer_rear",
+          "center": [
+            0,
+            0.121,
+            0.061
+          ],
+          "dimensions": [
+            0.191,
+            0.015,
+            0.074
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.005,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "front_upper",
+          "center": [
+            0,
+            -0.118,
+            0.077
+          ],
+          "dimensions": [
+            0.201,
+            0.024,
+            0.031
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.008,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "front_lower",
+          "center": [
+            0,
+            -0.118,
+            0.037
+          ],
+          "dimensions": [
+            0.201,
+            0.024,
+            0.033
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.008,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "output_slot_lining",
+          "center": [
+            0,
+            -0.12,
+            0.054
+          ],
+          "dimensions": [
+            0.136,
+            0.028,
+            0.001
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "label_lip",
+          "center": [
+            0,
+            -0.139,
+            0.047
+          ],
+          "dimensions": [
+            0.146,
+            0.02,
+            0.006
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "logo",
+          "name": "AICOR logo",
+          "center": [
+            -0.035,
+            -0.131,
+            0.078
+          ],
+          "dimensions": [
+            0.066
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "LABEL PRINTER",
+          "center": [
+            0.045,
+            -0.131,
+            0.078
+          ],
+          "dimensions": [
+            0.004,
+            0.07
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "LABEL PRINTER",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "rubber_foot",
+          "center": [
+            -0.079,
+            -0.1,
+            0.002
+          ],
+          "dimensions": [
+            0.009,
+            0.004
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "rubber_foot",
+          "center": [
+            -0.079,
+            0.1,
+            0.002
+          ],
+          "dimensions": [
+            0.009,
+            0.004
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "rubber_foot",
+          "center": [
+            0.079,
+            -0.1,
+            0.002
+          ],
+          "dimensions": [
+            0.009,
+            0.004
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "rubber_foot",
+          "center": [
+            0.079,
+            0.1,
+            0.002
+          ],
+          "dimensions": [
+            0.009,
+            0.004
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "label_web",
+          "center": [
+            0,
+            -0.0555,
+            0.071
+          ],
+          "dimensions": [
+            0.104,
+            0.049,
+            0.0008
+          ],
+          "material": "paper",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "exit_web",
+          "center": [
+            0,
+            -0.0925,
+            0.064
+          ],
+          "dimensions": [
+            0.104,
+            0.028653097563788806,
+            0.0008
+          ],
+          "material": "paper",
+          "rotation": [
+            0.5104883219167757,
+            0,
+            0
+          ],
+          "bevel": 0.0001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "printed_label",
+          "center": [
+            0,
+            -0.1545,
+            0.057
+          ],
+          "dimensions": [
+            0.104,
+            0.099,
+            0.0008
+          ],
+          "material": "paper",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.0001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "SAMPLE 0001",
+          "center": [
+            0,
+            -0.185,
+            0.0575
+          ],
+          "dimensions": [
+            0.006,
+            0
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "SAMPLE 0001",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            -0.04,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0025,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            -0.0366,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0015,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            -0.0332,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0015,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            -0.0298,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0025,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            -0.0264,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0015,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            -0.023000000000000003,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0015,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            -0.019600000000000003,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0025,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            -0.016200000000000003,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0015,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            -0.012800000000000002,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0015,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            -0.009400000000000002,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0025,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            -0.006000000000000005,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0015,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            -0.002600000000000005,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0015,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            0.0007999999999999952,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0025,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            0.004199999999999995,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0015,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            0.007599999999999996,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0015,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            0.010999999999999996,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0025,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            0.014399999999999996,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0015,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            0.017799999999999996,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0015,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            0.021199999999999997,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0025,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            0.02459999999999999,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0015,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            0.02799999999999999,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0015,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            0.03139999999999999,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0025,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            0.03479999999999999,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0015,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "barcode_bar",
+          "center": [
+            0.03819999999999999,
+            -0.161,
+            0.0576
+          ],
+          "dimensions": [
+            0.0015,
+            0.021,
+            0.0001
+          ],
+          "material": "ink",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 3e-05,
+          "collision": false,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "media_cover",
+      "parent": "base",
+      "origin": [
+        0,
+        0.108,
+        0.094
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "revolute",
+      "axis": [
+        -1,
+        0,
+        0
+      ],
+      "lower": 0,
+      "upper": 1.7,
+      "open_value": 1.35,
+      "mass": 0.36,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "cover_top",
+          "center": [
+            0,
+            -0.1,
+            0.079
+          ],
+          "dimensions": [
+            0.213,
+            0.233,
+            0.032
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.014,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "cover_side",
+          "center": [
+            -0.099,
+            -0.11475,
+            0.038
+          ],
+          "dimensions": [
+            0.016,
+            0.2035,
+            0.064
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.008,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "hinge_sleeve",
+          "center": [
+            -0.119,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.016,
+            0.007,
+            0.02
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            1.5707963267948966,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "hinge_strap",
+          "center": [
+            -0.119,
+            -0.021,
+            0.016
+          ],
+          "dimensions": [
+            0.02,
+            0.026,
+            0.032
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.003,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "hinge_bridge",
+          "center": [
+            -0.106,
+            -0.03,
+            0.027
+          ],
+          "dimensions": [
+            0.027,
+            0.021,
+            0.018
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.003,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "cover_side",
+          "center": [
+            0.099,
+            -0.11475,
+            0.038
+          ],
+          "dimensions": [
+            0.016,
+            0.2035,
+            0.064
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.008,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "hinge_sleeve",
+          "center": [
+            0.119,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.016,
+            0.007,
+            0.02
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            1.5707963267948966,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "hinge_strap",
+          "center": [
+            0.119,
+            -0.021,
+            0.016
+          ],
+          "dimensions": [
+            0.02,
+            0.026,
+            0.032
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.003,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "hinge_bridge",
+          "center": [
+            0.106,
+            -0.03,
+            0.027
+          ],
+          "dimensions": [
+            0.027,
+            0.021,
+            0.018
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.003,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "cover_front",
+          "center": [
+            0,
+            -0.207,
+            0.039
+          ],
+          "dimensions": [
+            0.192,
+            0.015,
+            0.065
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.006,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "inspection_window",
+          "center": [
+            -0.034,
+            -0.058,
+            0.096
+          ],
+          "dimensions": [
+            0.077,
+            0.103,
+            0.0015
+          ],
+          "material": "screen",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.012,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "MEDIA",
+          "center": [
+            -0.034,
+            -0.058,
+            0.097
+          ],
+          "dimensions": [
+            0.008,
+            0
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "MEDIA",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "status_panel",
+          "center": [
+            0.056,
+            -0.091,
+            0.096
+          ],
+          "dimensions": [
+            0.034,
+            0.13,
+            0.003
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.01,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "feed_key",
+          "center": [
+            0.056,
+            -0.119,
+            0.1
+          ],
+          "dimensions": [
+            0.011,
+            0.005
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "FEED",
+          "center": [
+            0.056,
+            -0.144,
+            0.099
+          ],
+          "dimensions": [
+            0.004,
+            0
+          ],
+          "material": "paper",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "FEED",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "ready_light",
+          "center": [
+            0.056,
+            -0.067,
+            0.099
+          ],
+          "dimensions": [
+            0.011,
+            0.005,
+            0.001
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "READY",
+          "center": [
+            0.056,
+            -0.052,
+            0.099
+          ],
+          "dimensions": [
+            0.0036,
+            0
+          ],
+          "material": "paper",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "READY",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "cover_handle",
+          "center": [
+            0,
+            -0.218,
+            0.05
+          ],
+          "dimensions": [
+            0.066,
+            0.019,
+            0.014
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.005,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "media_spindle",
+      "parent": "base",
+      "origin": [
+        0,
+        0.03,
+        0.097
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "continuous",
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 1.0471975511965976,
+      "mass": 0.22,
+      "shapes": [
+        {
+          "kind": "cylinder",
+          "name": "spindle",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.012,
+            0.159
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            1.5707963267948966,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "paper_roll",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.055,
+            0.02,
+            0.114
+          ],
+          "material": "paper",
+          "rotation": [
+            0,
+            1.5707963267948966,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "paper_core",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.02,
+            0.0125,
+            0.117
+          ],
+          "material": "amber",
+          "rotation": [
+            0,
+            1.5707963267948966,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "roll_guide",
+          "center": [
+            -0.062,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.039,
+            0.008
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            1.5707963267948966,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "roll_guide",
+          "center": [
+            0.062,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.039,
+            0.008
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            1.5707963267948966,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "feed_roller",
+      "parent": "base",
+      "origin": [
+        0,
+        -0.079,
+        0.058
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "continuous",
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 1.5707963267948966,
+      "mass": 0.045,
+      "shapes": [
+        {
+          "kind": "cylinder",
+          "name": "rubber_feed",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.012,
+            0.125
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            1.5707963267948966,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "name": "cover_handle",
+      "parent": "media_cover",
+      "position": [
+        0,
+        -0.229,
+        0.05
+      ],
+      "role": "grasp",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "media_loading",
+      "parent": "base",
+      "position": [
+        0,
+        0.03,
+        0.097
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "label_output",
+      "parent": "base",
+      "position": [
+        0,
+        -0.204,
+        0.057
+      ],
+      "role": "output",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "feed_control",
+      "parent": "media_cover",
+      "position": [
+        0.056,
+        -0.119,
+        0.103
+      ],
+      "role": "control",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "body_grasp",
+      "parent": "base",
+      "position": [
+        0,
+        0,
+        0.041
+      ],
+      "role": "grasp",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "accessories": []
+}

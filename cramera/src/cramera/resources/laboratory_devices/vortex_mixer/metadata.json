@@ -1,0 +1,90 @@
+{
+  "device": "vortex_mixer",
+  "title": "Vortex Mixer",
+  "description": "Bench vortex mixer with a spring-loaded contact cup and speed control.",
+  "rootLink": "vortex_mixer_body",
+  "units": "metres",
+  "upAxis": "Z",
+  "frontAxis": "-Y",
+  "joints": [
+    {
+      "name": "vortex_mixer_contact_head_joint",
+      "type": "prismatic",
+      "lower": -0.006,
+      "upper": 0,
+      "inspectionPosition": -0.005
+    },
+    {
+      "name": "vortex_mixer_speed_control_joint",
+      "type": "revolute",
+      "lower": 0,
+      "upper": 4.71238898038469,
+      "inspectionPosition": 2.827433388230814
+    }
+  ],
+  "frames": [
+    {
+      "name": "vortex_mixer_sample_contact",
+      "parent": "vortex_mixer_contact_head",
+      "position": [
+        0,
+        0,
+        -0.001
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "sample_contact"
+    },
+    {
+      "name": "vortex_mixer_speed_control_grasp",
+      "parent": "vortex_mixer_speed_control",
+      "position": [
+        0,
+        -0.011,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "control"
+    },
+    {
+      "name": "vortex_mixer_body_grasp",
+      "parent": "vortex_mixer_body",
+      "position": [
+        0,
+        0,
+        0.057
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "role": "grasp"
+    }
+  ],
+  "accessories": [],
+  "blender": "model.blend",
+  "previews": {
+    "closed": "preview.png",
+    "open": "preview_open.png"
+  },
+  "modelScope": "Original articulated concept model. Instrument controls and measurements require a separate controller.",
+  "inertialModel": "Nominal masses with compound-bounds box inertia; not calibrated hardware parameters.",
+  "assetRights": {
+    "principalAuthor": "Vanessa Hassouna",
+    "institution": "AICOR Institute",
+    "copyright": "Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.",
+    "license": "LicenseRef-AICOR-Laboratory-Assets",
+    "permissionNotice": "Reuse, modification and redistribution of the original laboratory assets require prior written permission from Vanessa Hassouna, except where an existing licence or applicable law permits them. Permission requests: hassouna@uni-bremen.de.",
+    "priorLicenseNotice": "Existing third-party rights and any permissions already validly granted remain unaffected. This notice does not create copyright in otherwise unprotected material.",
+    "licenseFile": "LICENSE.txt",
+    "noticeFile": "NOTICE.md"
+  }
+}

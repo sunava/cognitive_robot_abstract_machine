@@ -25,6 +25,7 @@ from cramera import paths
 from cramera.scene_builder import SceneBuilderService
 from cramera.scene_builder_http import SceneBuilderHttp, SceneBuilderRoute
 from cramera.laboratory_branding import LaboratoryBranding
+from cramera.laboratory_devices import LaboratoryDeviceResource, LaboratoryInstrument
 from cramera.laboratory_robot_session import RobotPhysicsRoute
 from cramera.mesh_format import MeshFormat
 from cramera.offline_assets import (
@@ -80,6 +81,40 @@ class ShareFile(StrEnum):
     """Password form served before authentication."""
     PHYSICS_CLIENT = "core/laboratory-physics.js"
     """Browser client containing the laboratory's absolute API routes."""
+
+
+class InstrumentRoute(StrEnum):
+    """Protected entry points for the standalone instrument collection."""
+
+    ROOT = "/instruments"
+    """Exact prefix for the individually allowlisted resource files."""
+    CATALOG = "/instruments/catalog/index.html"
+    """Gallery and permitted password-login continuation."""
+
+
+class InstrumentFile(StrEnum):
+    """Files intentionally published inside each standalone instrument package."""
+
+    MODEL = "model.urdf"
+    """Independent articulated model with local mesh references."""
+    BLENDER = "model.blend"
+    """Editable source model."""
+    PREVIEW = "preview.png"
+    """Closed-device preview."""
+    OPEN_PREVIEW = "preview_open.png"
+    """Inspection-pose preview."""
+    README = "README.md"
+    """Scope and usage instructions."""
+    METADATA = "metadata.json"
+    """Articulation and interaction-frame information."""
+    DEFINITION = "definition.json"
+    """Metric model definition."""
+    LICENSE = "LICENSE.txt"
+    """Reuse terms accompanying the original models."""
+    NOTICE = "NOTICE.md"
+    """Authorship and provenance notice."""
+    RIGHTS = "rights.json"
+    """Machine-readable rights information."""
 
 
 class SharedRightsField(StrEnum):
@@ -240,13 +275,76 @@ class SharedAsset:
     """Original allowlisted pathname."""
     root: Path
     """Containing directory that may be exposed."""
+    follow_symlinks: bool = True
+    """Whether a still-confined symbolic link may supply the file contents."""
 
     def read(self) -> bytes | None:
         """Read a still-existing file without following an escaping symlink."""
         resolved = self.path.resolve()
-        if not resolved.is_relative_to(self.root) or not resolved.is_file():
+        if (
+            not resolved.is_relative_to(self.root)
+            or not resolved.is_file()
+            or not self.follow_symlinks
+            and resolved != self.path.absolute()
+        ):
             return None
         return resolved.read_bytes()
+
+
+@dataclass(frozen=True)
+class InstrumentAssets:
+    """The explicit instrument gallery and only its declared standalone packages."""
+
+    directory: Path
+    """Installed instrument collection, independent of scene mesh directories."""
+
+    def files(self) -> dict[str, SharedAsset]:
+        """Allow known package documents and URDF-declared embedded-texture meshes."""
+        root = self.directory.resolve()
+        files: dict[str, SharedAsset] = {}
+        self._include(files, InstrumentRoute.CATALOG, root / "catalog/index.html", root)
+        for filename in (
+            InstrumentFile.README,
+            InstrumentFile.LICENSE,
+            InstrumentFile.NOTICE,
+            InstrumentFile.RIGHTS,
+        ):
+            self._include(
+                files, f"{InstrumentRoute.ROOT}/{filename}", root / filename, root
+            )
+        for instrument in LaboratoryInstrument:
+            package = root / instrument
+            if package.is_symlink() or not package.is_dir():
+                continue
+            prefix = f"{InstrumentRoute.ROOT}/{instrument}"
+            for filename in InstrumentFile:
+                self._include(
+                    files, f"{prefix}/{filename}", package / filename, package
+                )
+            description_route = f"{prefix}/{InstrumentFile.MODEL}"
+            if description_route not in files:
+                continue
+            description = package / InstrumentFile.MODEL
+            for reference in AssetDependencies(description).references():
+                if re.fullmatch(r"assets/[A-Za-z_][A-Za-z0-9_-]*\.glb", reference):
+                    self._include(
+                        files, f"{prefix}/{reference}", package / reference, package
+                    )
+        return files
+
+    @staticmethod
+    def _include(
+        files: dict[str, SharedAsset], route: str, path: Path, root: Path
+    ) -> None:
+        """Keep exact file paths confined, without permitting symbolic-link aliases."""
+        resolved = path.resolve()
+        if (
+            resolved != path
+            or not resolved.is_relative_to(root)
+            or not resolved.is_file()
+        ):
+            return
+        files[route] = SharedAsset(path, root, follow_symlinks=False)
 
 
 @dataclass
@@ -266,6 +364,11 @@ class LaboratoryAssets:
         """Build both dependency graphs before opening a listener."""
         self._web_files()
         self._scene_files()
+        if self.scene_name == SharedScene.LABORATORY:
+            directory = LaboratoryDeviceResource(
+                LaboratoryInstrument.VORTEX_MIXER
+            ).directory.parent
+            self.files.update(InstrumentAssets(directory).files())
         if self.replay_directory is not None:
             recording = LaboratoryAssets(
                 self.replay_directory, SharedScene.WORKSHOP_REPLAY
@@ -659,6 +762,11 @@ class ShareHandler(BaseHTTPRequestHandler):
                     if self.server.scene_builder is not None
                     else []
                 ),
+                *(
+                    [InstrumentRoute.CATALOG]
+                    if InstrumentRoute.CATALOG in self.server.assets.files
+                    else []
+                ),
             )
             or not hmac.compare_digest(password[0].encode(), self.server.password)
         ):
@@ -721,15 +829,19 @@ class ShareHandler(BaseHTTPRequestHandler):
                 route == SceneBuilderRoute.PAGE
                 and self.server.scene_builder is not None
             )
+            instrument_login = (
+                route == InstrumentRoute.CATALOG and route in self.server.assets.files
+            )
             if (
                 route in (ShareRoute.ROOT, ShareRoute.INDEX, ShareRoute.LOGIN)
                 or builder_login
+                or instrument_login
             ):
                 login = (paths.WEB_ROOT / ShareFile.LOGIN).read_bytes()
-                if builder_login:
+                if builder_login or instrument_login:
                     login = login.replace(
                         b'<label for="password">',
-                        b'<input type="hidden" name="next" value="/scene_builder.html"><label for="password">',
+                        f'<input type="hidden" name="next" value="{route}"><label for="password">'.encode(),
                     )
                 self._reply(
                     HTTPStatus.OK,

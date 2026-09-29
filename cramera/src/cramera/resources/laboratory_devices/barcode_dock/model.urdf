@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="barcode_dock"><!-- CRAMERA laboratory asset rights:
+Principal author: Vanessa Hassouna
+Institution: AICOR Institute
+Copyright (c) 2026 Vanessa Hassouna. All rights reserved where rights subsist.
+License: LicenseRef-AICOR-Laboratory-Assets
+See LICENSE.txt and NOTICE.md.
+-->
+  <link name="barcode_dock_base">
+    <visual>
+      <geometry>
+        <mesh filename="assets/base.glb" />
+      </geometry>
+    </visual>
+    <collision name="barcode_dock_base_contact_0">
+      <origin xyz="0 0 0.018" rpy="0 0 0" />
+      <geometry>
+        <box size="0.116 0.124 0.031" />
+      </geometry>
+    </collision>
+    <collision name="barcode_dock_base_contact_1">
+      <origin xyz="0 0 0.005" rpy="0 0 0" />
+      <geometry>
+        <box size="0.109 0.117 0.009" />
+      </geometry>
+    </collision>
+    <collision name="barcode_dock_base_contact_2">
+      <origin xyz="0 0.015 0.038" rpy="0 0 0" />
+      <geometry>
+        <box size="0.06 0.071 0.012" />
+      </geometry>
+    </collision>
+    <collision name="barcode_dock_base_contact_3">
+      <origin xyz="-0.03 0.014 0.056" rpy="0 0 0" />
+      <geometry>
+        <box size="0.01 0.074 0.044" />
+      </geometry>
+    </collision>
+    <collision name="barcode_dock_base_contact_4">
+      <origin xyz="0.03 0.014 0.056" rpy="0 0 0" />
+      <geometry>
+        <box size="0.01 0.074 0.044" />
+      </geometry>
+    </collision>
+    <collision name="barcode_dock_base_contact_5">
+      <origin xyz="0 0.047 0.06" rpy="0 0 0" />
+      <geometry>
+        <box size="0.061 0.012 0.052" />
+      </geometry>
+    </collision>
+    <collision name="barcode_dock_base_contact_6">
+      <origin xyz="0 -0.02 0.046" rpy="0 0 0" />
+      <geometry>
+        <box size="0.058 0.011 0.02" />
+      </geometry>
+    </collision>
+    <collision name="barcode_dock_base_contact_7">
+      <origin xyz="-0.011 0.015 0.045" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.0025" length="0.004" />
+      </geometry>
+    </collision>
+    <collision name="barcode_dock_base_contact_8">
+      <origin xyz="0.011 0.015 0.045" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.0025" length="0.004" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0.04325" />
+      <mass value="0.38" />
+      <inertia ixx="0.0007183979166666667" iyy="0.0006575979166666667" izz="0.0009130133333333335" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <link name="barcode_dock_scanner_mount" />
+  <joint name="barcode_dock_scanner_mount_joint" type="fixed">
+    <parent link="barcode_dock_base" />
+    <child link="barcode_dock_scanner_mount" />
+    <origin xyz="0 -0.008 0.044" rpy="0 0 0" />
+  </joint>
+  <link name="barcode_dock_body_grasp" />
+  <joint name="barcode_dock_body_grasp_joint" type="fixed">
+    <parent link="barcode_dock_base" />
+    <child link="barcode_dock_body_grasp" />
+    <origin xyz="0 0 0.02" rpy="0 0 0" />
+  </joint>
+</robot>

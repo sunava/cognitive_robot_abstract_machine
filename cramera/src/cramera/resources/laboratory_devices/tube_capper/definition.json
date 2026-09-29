@@ -1,0 +1,1055 @@
+{
+  "identifier": "tube_capper",
+  "title": "Tube Capper / Decapper",
+  "description": "Articulated tube holder, opposing clamp jaws and a translating rotary chuck.",
+  "parts": [
+    {
+      "name": "base",
+      "parent": null,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "fixed",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 0,
+      "mass": 7.2,
+      "shapes": [
+        {
+          "kind": "cylinder",
+          "name": "foot_0_0",
+          "center": [
+            -0.1225,
+            -0.1025,
+            0.012
+          ],
+          "dimensions": [
+            0.014,
+            0.024
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "foot_0_1",
+          "center": [
+            -0.1225,
+            0.1025,
+            0.012
+          ],
+          "dimensions": [
+            0.014,
+            0.024
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "foot_1_0",
+          "center": [
+            0.1225,
+            -0.1025,
+            0.012
+          ],
+          "dimensions": [
+            0.014,
+            0.024
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "foot_1_1",
+          "center": [
+            0.1225,
+            0.1025,
+            0.012
+          ],
+          "dimensions": [
+            0.014,
+            0.024
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "cast_base",
+          "center": [
+            0,
+            0,
+            0.047
+          ],
+          "dimensions": [
+            0.3,
+            0.28,
+            0.05
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.012,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "lower_trim",
+          "center": [
+            0,
+            0,
+            0.025
+          ],
+          "dimensions": [
+            0.294,
+            0.274,
+            0.01
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.005,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "rear_column",
+          "center": [
+            0,
+            0.09,
+            0.226
+          ],
+          "dimensions": [
+            0.13,
+            0.072,
+            0.31
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.012,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "column_face",
+          "center": [
+            0,
+            0.0525,
+            0.237
+          ],
+          "dimensions": [
+            0.081,
+            0.004,
+            0.244
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "guide_0",
+          "center": [
+            -0.028,
+            0.044,
+            0.239
+          ],
+          "dimensions": [
+            0.0055,
+            0.233
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "guide_1",
+          "center": [
+            0.028,
+            0.044,
+            0.239
+          ],
+          "dimensions": [
+            0.0055,
+            0.233
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "logo",
+          "name": "AICOR logo",
+          "center": [
+            0,
+            -0.141,
+            0.049
+          ],
+          "dimensions": [
+            0.065
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "TUBE CAPPER",
+          "center": [
+            0,
+            0.05,
+            0.373
+          ],
+          "dimensions": [
+            0.01,
+            0.098
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "TUBE CAPPER",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "sample_support",
+          "center": [
+            0,
+            -0.06,
+            0.079
+          ],
+          "dimensions": [
+            0.027,
+            0.012
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "sample_centering",
+          "center": [
+            0,
+            -0.06,
+            0.088
+          ],
+          "dimensions": [
+            0.024,
+            0.015,
+            0.006
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "clamp_support",
+          "center": [
+            0,
+            -0.01,
+            0.112
+          ],
+          "dimensions": [
+            0.101,
+            0.02,
+            0.043
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.004,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "display_bezel",
+          "center": [
+            0.088,
+            -0.141,
+            0.048
+          ],
+          "dimensions": [
+            0.065,
+            0.004,
+            0.032
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "display_glass",
+          "center": [
+            0.088,
+            -0.1435,
+            0.048
+          ],
+          "dimensions": [
+            0.057,
+            0.0015,
+            0.024
+          ],
+          "material": "screen",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "READY",
+          "center": [
+            0.088,
+            -0.1445,
+            0.05232
+          ],
+          "dimensions": [
+            0.00456,
+            0.051300000000000005
+          ],
+          "material": "pale_teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "READY",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "OPEN",
+          "center": [
+            0.088,
+            -0.1445,
+            0.0432
+          ],
+          "dimensions": [
+            0.00456,
+            0.051300000000000005
+          ],
+          "material": "paper",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "OPEN",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "status_indicator",
+          "center": [
+            -0.114,
+            -0.142,
+            0.05
+          ],
+          "dimensions": [
+            0.004,
+            0.003
+          ],
+          "material": "blue",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "clamp_left",
+      "parent": "base",
+      "origin": [
+        -0.027,
+        -0.06,
+        0.115
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "prismatic",
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "lower": 0,
+      "upper": 0.014,
+      "open_value": 0,
+      "mass": 0.06,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "jaw_body",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.016,
+            0.032,
+            0.034
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.003,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "slide_stem",
+          "center": [
+            0,
+            0.025,
+            0
+          ],
+          "dimensions": [
+            0.012,
+            0.038,
+            0.014
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "compliant_pad",
+          "center": [
+            0.008,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.003,
+            0.026,
+            0.025
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "clamp_right",
+      "parent": "base",
+      "origin": [
+        0.027,
+        -0.06,
+        0.115
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "prismatic",
+      "axis": [
+        -1,
+        0,
+        0
+      ],
+      "lower": 0,
+      "upper": 0.014,
+      "open_value": 0,
+      "mass": 0.06,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "jaw_body",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.016,
+            0.032,
+            0.034
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.003,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "slide_stem",
+          "center": [
+            0,
+            0.025,
+            0
+          ],
+          "dimensions": [
+            0.012,
+            0.038,
+            0.014
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "compliant_pad",
+          "center": [
+            -0.008,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.003,
+            0.026,
+            0.025
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.001,
+          "collision": true,
+          "text": "",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "head_carriage",
+      "parent": "base",
+      "origin": [
+        0,
+        0,
+        0.33
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "prismatic",
+      "axis": [
+        0,
+        0,
+        -1
+      ],
+      "lower": 0,
+      "upper": 0.13,
+      "open_value": 0,
+      "mass": 0.85,
+      "shapes": [
+        {
+          "kind": "box",
+          "name": "head_bridge",
+          "center": [
+            0,
+            -0.013,
+            0.012
+          ],
+          "dimensions": [
+            0.117,
+            0.147,
+            0.043
+          ],
+          "material": "white",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.009,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "head_trim",
+          "center": [
+            0,
+            -0.013,
+            -0.01
+          ],
+          "dimensions": [
+            0.114,
+            0.144,
+            0.009
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "cylinder",
+          "name": "motor_casing",
+          "center": [
+            0,
+            -0.06,
+            -0.018
+          ],
+          "dimensions": [
+            0.029,
+            0.024
+          ],
+          "material": "teal",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "label",
+          "name": "ROTARY CHUCK",
+          "center": [
+            0,
+            -0.087,
+            0.014
+          ],
+          "dimensions": [
+            0.007,
+            0.095
+          ],
+          "material": "teal",
+          "rotation": [
+            1.5707963267948966,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": false,
+          "text": "ROTARY CHUCK",
+          "points": []
+        }
+      ]
+    },
+    {
+      "name": "rotary_chuck",
+      "parent": "head_carriage",
+      "origin": [
+        0,
+        -0.06,
+        -0.04
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "joint": "continuous",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "lower": 0,
+      "upper": 0,
+      "open_value": 1.0471975511965976,
+      "mass": 0.19,
+      "shapes": [
+        {
+          "kind": "ring",
+          "name": "chuck_shell",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "dimensions": [
+            0.024,
+            0.011,
+            0.025
+          ],
+          "material": "steel",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "ring",
+          "name": "grip_liner",
+          "center": [
+            0,
+            0,
+            -0.006
+          ],
+          "dimensions": [
+            0.013,
+            0.0095,
+            0.016
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0,
+          "collision": true,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "chuck_index_0",
+          "center": [
+            0,
+            0,
+            0.014
+          ],
+          "dimensions": [
+            0.004,
+            0.043,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "bevel": 0.002,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "chuck_index_1",
+          "center": [
+            0,
+            0,
+            0.014
+          ],
+          "dimensions": [
+            0.004,
+            0.043,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            2.0943951023931953
+          ],
+          "bevel": 0.002,
+          "collision": false,
+          "text": "",
+          "points": []
+        },
+        {
+          "kind": "box",
+          "name": "chuck_index_2",
+          "center": [
+            0,
+            0,
+            0.014
+          ],
+          "dimensions": [
+            0.004,
+            0.043,
+            0.003
+          ],
+          "material": "dark",
+          "rotation": [
+            0,
+            0,
+            4.1887902047863905
+          ],
+          "bevel": 0.002,
+          "collision": false,
+          "text": "",
+          "points": []
+        }
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "name": "left_clamp_contact",
+      "parent": "clamp_left",
+      "position": [
+        0.01,
+        0,
+        0
+      ],
+      "role": "contact",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "right_clamp_contact",
+      "parent": "clamp_right",
+      "position": [
+        -0.01,
+        0,
+        0
+      ],
+      "role": "contact",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "sample_seat",
+      "parent": "base",
+      "position": [
+        0,
+        -0.06,
+        0.085
+      ],
+      "role": "sample",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "chuck_contact",
+      "parent": "rotary_chuck",
+      "position": [
+        0,
+        0,
+        -0.012
+      ],
+      "role": "tool",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "front_access",
+      "parent": "base",
+      "position": [
+        0,
+        -0.23,
+        0.2
+      ],
+      "role": "approach",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "display",
+      "parent": "base",
+      "position": [
+        0.088,
+        -0.145,
+        0.048
+      ],
+      "role": "control",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "accessories": []
+}
