@@ -83,6 +83,15 @@ class ShareFile(StrEnum):
     """Browser client containing the laboratory's absolute API routes."""
 
 
+class SharedMount(StrEnum):
+    """Canonical mounts retaining their original browser session names."""
+
+    LABORATORY = "/laboratory"
+    """Primary laboratory website."""
+    WORKSHOP = "/workshop"
+    """Primary workshop website."""
+
+
 class InstrumentRoute(StrEnum):
     """Protected entry points for the standalone instrument collection."""
 
@@ -192,10 +201,14 @@ class ShareOptions:
 
     @property
     def cookie_name(self) -> str:
-        """Keep workshop and laboratory browser sessions independent."""
+        """Keep scene instances on different mounts independently authenticated."""
         if self.scene_name == SharedScene.LABORATORY:
-            return self.COOKIE_NAME
-        return "__Host-cramera_workshop"
+            name, canonical = self.COOKIE_NAME, SharedMount.LABORATORY
+        else:
+            name, canonical = "__Host-cramera_workshop", SharedMount.WORKSHOP
+        if not self.path_prefix or self.path_prefix == canonical:
+            return name
+        return f"{name}_{self.path_prefix.encode().hex()}"
 
     @property
     def robot_controls(self) -> bool:

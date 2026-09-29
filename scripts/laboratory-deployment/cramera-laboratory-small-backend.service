@@ -1,0 +1,35 @@
+[Unit]
+Description=CRAMERA compact laboratory simulation
+After=network.target
+
+[Service]
+Type=simple
+User=cramera-lab
+Group=cramera-lab
+WorkingDirectory=/srv/cramera-laboratory
+Environment=HOME=/var/lib/cramera-laboratory-small
+Environment=CRAMERA_DATA=/var/lib/cramera-laboratory-small
+Environment=CRAMERA_SCENES=/var/lib/cramera-laboratory-small/scenes
+Environment=CRAMERA_SCENE=precision_lab_pr2_physics
+Environment=CRAMERA_LABORATORY_BUNDLE=/srv/cramera-laboratory/cramera/src/cramera/resources/aicor_medical_lab
+Environment=PYTHONPATH=/srv/cramera-laboratory/semantic_digital_twin/src:/srv/cramera-laboratory/cramera/src:/srv/cramera-laboratory/coraplex/src:/opt/ros/jazzy/lib/python3.12/site-packages
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=OPENBLAS_NUM_THREADS=1
+Environment=AMENT_PREFIX_PATH=/srv/cramera-laboratory/ros:/opt/ros/jazzy
+Environment=LD_LIBRARY_PATH=/opt/ros/jazzy/lib
+ExecStart=/root/cognitive_robot_abstract_machine/.venv/bin/python -m cramera.server 8720 --no-browser
+Restart=on-failure
+RestartSec=3
+StateDirectory=cramera-laboratory-small
+StateDirectoryMode=0750
+ProtectSystem=strict
+ProtectHome=tmpfs
+BindReadOnlyPaths=/root/cognitive_robot_abstract_machine
+ReadWritePaths=/var/lib/cramera-laboratory-small
+PrivateTmp=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
