@@ -93,6 +93,28 @@ test('authored opaque and mixed-material meshes still cast shadows', () => {
   }
 });
 
+// %% converted glass: blended, with its transmission kept in the glTF extras
+function loadConvertedMaterial(file) {
+  const context = vm.createContext({THREE: Object.assign({}, THREE), TextDecoder});
+  vm.runInContext(fs.readFileSync(path.join(WEB, 'vendor/GLTFLoader.js'), 'utf8'), context);
+  const loader = new context.THREE.GLTFLoader();
+  return new Promise((resolve, reject) => {
+    loader.parse(fs.readFileSync(file, 'utf8'), '', gltf => {
+      gltf.parser.getDependency('material', 0).then(resolve, reject);
+    }, reject);
+  });
+}
+
+test('converted glass carrying its transmission in the extras casts no shadow', async () => {
+  const scene = new DeferredScene('128');
+  const material = await loadConvertedMaterial(
+    path.join(__dirname, '../dataset/usd_scene/blended_glass.gltf'));
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  scene.context.tameModel({obj: mesh, robot: false, preserveMaterials: true});
+  assert.equal(mesh.castShadow, false);
+  assert.equal(mesh.receiveShadow, true);
+});
+
 // %% transmission in the vendored renderer
 test('r128 transmission enables blending without changing authored physical values', () => {
   const scene = new DeferredScene('128');

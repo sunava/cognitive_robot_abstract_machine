@@ -1,0 +1,51 @@
+#usda 1.0
+(
+    doc = "One visible mesh among guide, proxy, invisible and unsupported geometry."
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Mesh "Visible"
+    {
+        int[] faceVertexCounts = [3]
+        int[] faceVertexIndices = [0, 1, 2]
+        point3f[] points = [(0, 0, 0), (1, 0, 0), (0, 1, 0)]
+    }
+
+    def Cube "Collider"
+    {
+        uniform token purpose = "guide"
+    }
+
+    def Mesh "StandIn"
+    {
+        uniform token purpose = "proxy"
+        int[] faceVertexCounts = [3]
+        int[] faceVertexIndices = [0, 1, 2]
+        point3f[] points = [(0, 0, 0), (1, 0, 0), (0, 1, 0)]
+    }
+
+    def Sphere "Hidden"
+    {
+        token visibility = "invisible"
+    }
+
+    def Xform "HiddenGroup"
+    {
+        token visibility = "invisible"
+
+        def Cube "Child"
+        {
+        }
+    }
+
+    def BasisCurves "Cable"
+    {
+        int[] curveVertexCounts = [2]
+        point3f[] points = [(0, 0, 0), (0, 0, 1)]
+        uniform token type = "linear"
+    }
+}

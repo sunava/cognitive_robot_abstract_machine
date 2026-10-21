@@ -1,0 +1,86 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="annotated_bundle">
+  <link name="World" />
+  <link name="Stations__L09_PlateHotel">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/Stations__L09_PlateHotel.glb" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="Storage__Fridge">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/Storage__Fridge.glb" />
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.5" rpy="0 0 0" />
+      <geometry>
+        <box size="1 1 1" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="Storage__Shelf">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/Storage__Shelf.glb" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="Storage__Whiteboard">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/Storage__Whiteboard.glb" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="Stations__L09_PlateHotel__Gate">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/Stations__L09_PlateHotel__Gate.glb" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="Storage__Fridge__Door">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/Storage__Fridge__Door.glb" />
+      </geometry>
+    </visual>
+  </link>
+  <joint name="Stations__L09_PlateHotel__attachment" type="fixed">
+    <parent link="World" />
+    <child link="Stations__L09_PlateHotel" />
+    <origin xyz="0 -1 0" rpy="0 0 0" />
+  </joint>
+  <joint name="Storage__Fridge__attachment" type="fixed">
+    <parent link="World" />
+    <child link="Storage__Fridge" />
+    <origin xyz="-1 1 0" rpy="0 0 0" />
+  </joint>
+  <joint name="Storage__Shelf__attachment" type="fixed">
+    <parent link="World" />
+    <child link="Storage__Shelf" />
+    <origin xyz="1 1 0" rpy="0 0 0" />
+  </joint>
+  <joint name="Storage__Whiteboard__attachment" type="fixed">
+    <parent link="World" />
+    <child link="Storage__Whiteboard" />
+    <origin xyz="0 1.4 1.2" rpy="0 0 0" />
+  </joint>
+  <joint name="Stations__L09_PlateHotel__GateSlide" type="prismatic">
+    <parent link="Stations__L09_PlateHotel" />
+    <child link="Stations__L09_PlateHotel__Gate" />
+    <origin xyz="0 -0.349999994 0.300000012" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit effort="1000" velocity="1" lower="0" upper="0.25" />
+  </joint>
+  <joint name="Storage__Fridge__DoorHinge" type="revolute">
+    <parent link="Storage__Fridge" />
+    <child link="Storage__Fridge__Door" />
+    <origin xyz="0.5 -0.5 0" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit effort="1000" velocity="1" lower="0" upper="1.91986218" />
+  </joint>
+</robot>

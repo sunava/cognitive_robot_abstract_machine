@@ -1,0 +1,189 @@
+#usda 1.0
+(
+    doc = "A cabinet body with a hinged door (opened 30 degrees), a drawer (pulled 0.1 m), an unlimited wheel, a free bin, a disabled lock competing with the drawer slide and a flap whose only hinge is disabled."
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Xform "Cabinet" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+        kind = "component"
+    )
+    {
+        custom string sdt:class = "Cabinet"
+        double3 xformOp:translate = (2, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+        rel material:binding = </World/Looks/Paint>
+
+        def Xform "Body" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            def Cube "Shell"
+            {
+                double size = 1
+            }
+        }
+
+        def Xform "Door" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            double3 xformOp:translate = (0.5, -0.5, 0)
+            float xformOp:rotateZ = 30
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+
+            def Cube "Leaf"
+            {
+                double size = 0.1
+                double3 xformOp:translate = (-0.5, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+        }
+
+        def Xform "Drawer" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            double3 xformOp:translate = (0.1, 0, 0.3)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "Box"
+            {
+                double size = 0.2
+            }
+        }
+
+        def Xform "Wheel" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            double3 xformOp:translate = (0, 0.5, -0.4)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cylinder "Tyre"
+            {
+                double radius = 0.1
+                double height = 0.05
+                uniform token axis = "Y"
+            }
+        }
+
+        def Xform "Bin" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            double3 xformOp:translate = (0, 0, 0.7)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Sphere "Ball"
+            {
+                double radius = 0.1
+            }
+        }
+
+        def Xform "Flap" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            double3 xformOp:translate = (-0.5, 0, 0.5)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "Panel"
+            {
+                double size = 0.1
+            }
+        }
+
+        def Scope "Joints"
+        {
+            def PhysicsFixedJoint "RootJoint"
+            {
+                rel physics:body1 = </World/Cabinet/Body>
+                point3f physics:localPos0 = (2, 0, 0)
+                quatf physics:localRot0 = (1, 0, 0, 0)
+                point3f physics:localPos1 = (0, 0, 0)
+                quatf physics:localRot1 = (1, 0, 0, 0)
+            }
+
+            def PhysicsRevoluteJoint "DoorHinge"
+            {
+                rel physics:body0 = </World/Cabinet/Body>
+                rel physics:body1 = </World/Cabinet/Door>
+                uniform token physics:axis = "Z"
+                float physics:lowerLimit = 0
+                float physics:upperLimit = 90
+                point3f physics:localPos0 = (0.5, -0.5, 0)
+                quatf physics:localRot0 = (1, 0, 0, 0)
+                point3f physics:localPos1 = (0, 0, 0)
+                quatf physics:localRot1 = (1, 0, 0, 0)
+            }
+
+            def PhysicsPrismaticJoint "DrawerSlide"
+            {
+                rel physics:body0 = </World/Cabinet/Body>
+                rel physics:body1 = </World/Cabinet/Drawer>
+                uniform token physics:axis = "X"
+                float physics:lowerLimit = 0
+                float physics:upperLimit = 0.4
+                point3f physics:localPos0 = (0, 0, 0.3)
+                quatf physics:localRot0 = (1, 0, 0, 0)
+                point3f physics:localPos1 = (0, 0, 0)
+                quatf physics:localRot1 = (1, 0, 0, 0)
+            }
+
+            def PhysicsRevoluteJoint "WheelSpin"
+            {
+                rel physics:body0 = </World/Cabinet/Body>
+                rel physics:body1 = </World/Cabinet/Wheel>
+                uniform token physics:axis = "Y"
+                float physics:lowerLimit = -inf
+                float physics:upperLimit = inf
+                point3f physics:localPos0 = (0, 0.5, -0.4)
+                quatf physics:localRot0 = (1, 0, 0, 0)
+                point3f physics:localPos1 = (0, 0, 0)
+                quatf physics:localRot1 = (1, 0, 0, 0)
+            }
+
+            def PhysicsFixedJoint "DrawerLock"
+            {
+                bool physics:jointEnabled = 0
+                rel physics:body0 = </World/Cabinet/Body>
+                rel physics:body1 = </World/Cabinet/Drawer>
+            }
+
+            def PhysicsRevoluteJoint "FlapHinge"
+            {
+                bool physics:jointEnabled = 0
+                rel physics:body0 = </World/Cabinet/Body>
+                rel physics:body1 = </World/Cabinet/Flap>
+                uniform token physics:axis = "Y"
+                float physics:lowerLimit = -90
+                float physics:upperLimit = 0
+                point3f physics:localPos0 = (-0.5, 0, 0.5)
+                quatf physics:localRot0 = (1, 0, 0, 0)
+                point3f physics:localPos1 = (0, 0, 0)
+                quatf physics:localRot1 = (1, 0, 0, 0)
+            }
+        }
+    }
+
+    def Scope "Looks"
+    {
+        def Material "Paint"
+        {
+            token outputs:surface.connect = </World/Looks/Paint/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.2, 0.4, 0.6)
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+        }
+    }
+}

@@ -1,0 +1,54 @@
+#usda 1.0
+(
+    doc = "A floor lit by a sun, a dome and one ceiling panel, seen by one camera."
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Mesh "Floor"
+    {
+        int[] faceVertexCounts = [4]
+        int[] faceVertexIndices = [0, 1, 2, 3]
+        point3f[] points = [(-2, -2, 0), (2, -2, 0), (2, 2, 0), (-2, 2, 0)]
+    }
+
+    def DistantLight "Sun"
+    {
+        float inputs:intensity = 2500
+        float inputs:angle = 0.53
+        bool inputs:enableColorTemperature = 1
+        float inputs:colorTemperature = 5600
+        float3 xformOp:rotateXYZ = (30, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+    }
+
+    def DomeLight "Sky"
+    {
+        float inputs:intensity = 2200
+        color3f inputs:color = (0.8, 0.88, 1)
+    }
+
+    def Camera "Overview"
+    {
+        float focalLength = 24
+        float verticalAperture = 24
+        double3 xformOp:translate = (0, -3, 1.5)
+        float3 xformOp:rotateXYZ = (90, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+    }
+
+    def RectLight "Panel"
+    {
+        float inputs:intensity = 30000
+        float inputs:exposure = 1
+        float inputs:width = 0.58
+        float inputs:height = 0.5
+        bool inputs:enableColorTemperature = 1
+        float inputs:colorTemperature = 5200
+        double3 xformOp:translate = (0.5, 0, 3)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "viewer_lab",
+  "rendering": {
+    "ambientOcclusion": false,
+    "exposure": 0.8,
+    "groundPlane": false,
+    "shadowBounds": [[-4.8, -2.4, 0.0], [4.8, 2.4, 3.0]],
+    "environment": "viewer_lighting.json"
+  },
+  "camera": {"position": [-4.3, -5.6, 2.55], "target": [0.3, 0.5, 1.0], "fov": 49.4, "far": 250}
+}

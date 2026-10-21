@@ -1,0 +1,10 @@
+{
+ "t0_rig_s": 1.0,
+ "steps": [
+  {"step": "move to start", "passed": true, "t": 0.5},
+  {"step": "turn shoulder", "passed": true, "t": 2.0},
+  {"step": "extend slide", "passed": true, "t": 3.5},
+  {"step": "slide extended", "passed": true, "t": 3.5},
+  {"step": "settle", "passed": true, "t": 4.0}
+ ]
+}

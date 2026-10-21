@@ -1,0 +1,5 @@
+{
+ "sun": {"direction": [0.3, 0.2, -0.93], "intensity": 2500.0, "colorTemperature": 6500.0, "color": [1.0, 1.0, 1.0]},
+ "dome": null,
+ "panels": []
+}

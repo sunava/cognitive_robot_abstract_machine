@@ -1,0 +1,49 @@
+#usda 1.0
+(
+    doc = "A lid opened 200 degrees on a hinge whose limits span 0 to 270 degrees, past half a turn."
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Xform "Box" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+    )
+    {
+        def Cube "Shell"
+        {
+            double size = 0.5
+        }
+    }
+
+    def Xform "Lid" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+    )
+    {
+        double3 xformOp:translate = (0.25, 0, 0.25)
+        float xformOp:rotateY = 200
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateY"]
+
+        def Cube "Plate"
+        {
+            double size = 0.05
+            double3 xformOp:translate = (-0.25, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+    }
+
+    def PhysicsRevoluteJoint "Hinge"
+    {
+        rel physics:body0 = </World/Box>
+        rel physics:body1 = </World/Lid>
+        uniform token physics:axis = "Y"
+        float physics:lowerLimit = 0
+        float physics:upperLimit = 270
+        point3f physics:localPos0 = (0.25, 0, 0.25)
+        quatf physics:localRot0 = (1, 0, 0, 0)
+        point3f physics:localPos1 = (0, 0, 0)
+        quatf physics:localRot1 = (1, 0, 0, 0)
+    }
+}

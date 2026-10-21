@@ -1,0 +1,280 @@
+#usda 1.0
+(
+    doc = """Articulations of every kind a twin holds. The Amr is a robot the stage does not mark: an articulation root over an anchor fixed to the world, a base driven along X and a lid sliding on the base. The Arm is a marked robot with an articulation root on its link. The Cabinet is an articulation with one door hinge, the Rack an articulation with fixed joints only, and the Lift an articulation rooted on its Mast body whose Carriage is a sibling raised by a slide."""
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Cube "Floor"
+    {
+        double size = 1
+        double3 xformOp:scale = (8, 8, 0.02)
+        double3 xformOp:translate = (0, 0, -0.01)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+    }
+
+    def Scope "Robots"
+    {
+        def Xform "Amr" (
+            prepend apiSchemas = ["PhysicsArticulationRootAPI"]
+        )
+        {
+            def Xform "Anchor" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+            )
+            {
+                double3 xformOp:translate = (2, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Xform "Base" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+            )
+            {
+                double3 xformOp:translate = (2, 0, 0.15)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Cube "Chassis"
+                {
+                    double size = 0.3
+                }
+            }
+
+            def Xform "Lid" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+            )
+            {
+                double3 xformOp:translate = (2, 0, 0.32)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Cube "Cover"
+                {
+                    double size = 0.04
+                }
+            }
+
+            def Scope "Joints"
+            {
+                def PhysicsFixedJoint "AnchorJoint"
+                {
+                    rel physics:body1 = </World/Robots/Amr/Anchor>
+                    point3f physics:localPos0 = (2, 0, 0)
+                    quatf physics:localRot0 = (1, 0, 0, 0)
+                    point3f physics:localPos1 = (0, 0, 0)
+                    quatf physics:localRot1 = (1, 0, 0, 0)
+                }
+
+                def PhysicsPrismaticJoint "DriveX"
+                {
+                    rel physics:body0 = </World/Robots/Amr/Anchor>
+                    rel physics:body1 = </World/Robots/Amr/Base>
+                    uniform token physics:axis = "X"
+                    point3f physics:localPos0 = (0, 0, 0.15)
+                    quatf physics:localRot0 = (1, 0, 0, 0)
+                    point3f physics:localPos1 = (0, 0, 0)
+                    quatf physics:localRot1 = (1, 0, 0, 0)
+                }
+
+                def PhysicsPrismaticJoint "LidSlide"
+                {
+                    rel physics:body0 = </World/Robots/Amr/Base>
+                    rel physics:body1 = </World/Robots/Amr/Lid>
+                    uniform token physics:axis = "Y"
+                    float physics:lowerLimit = 0
+                    float physics:upperLimit = 0.2
+                    point3f physics:localPos0 = (0, 0, 0.17)
+                    quatf physics:localRot0 = (1, 0, 0, 0)
+                    point3f physics:localPos1 = (0, 0, 0)
+                    quatf physics:localRot1 = (1, 0, 0, 0)
+                }
+            }
+        }
+
+        def Xform "Arm" (
+            prepend apiSchemas = ["IsaacRobotAPI"]
+        )
+        {
+            def Xform "Link" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsArticulationRootAPI"]
+            )
+            {
+                double3 xformOp:translate = (-2, 0, 0.5)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Cube "Beam"
+                {
+                    double size = 0.1
+                }
+            }
+
+            def Xform "Tip" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+            )
+            {
+                double3 xformOp:translate = (-2, 0, 0.8)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Cube "Tool"
+                {
+                    double size = 0.05
+                }
+            }
+
+            def Scope "Joints"
+            {
+                def PhysicsRevoluteJoint "Elbow"
+                {
+                    rel physics:body0 = </World/Robots/Arm/Link>
+                    rel physics:body1 = </World/Robots/Arm/Tip>
+                    uniform token physics:axis = "Y"
+                    point3f physics:localPos0 = (0, 0, 0.3)
+                    quatf physics:localRot0 = (1, 0, 0, 0)
+                    point3f physics:localPos1 = (0, 0, 0)
+                    quatf physics:localRot1 = (1, 0, 0, 0)
+                }
+            }
+        }
+    }
+
+    def Xform "Cabinet" (
+        prepend apiSchemas = ["PhysicsArticulationRootAPI"]
+    )
+    {
+        def Xform "Body" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            double3 xformOp:translate = (0, 2, 0.4)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "Shell"
+            {
+                double size = 0.8
+            }
+        }
+
+        def Xform "Door" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            double3 xformOp:translate = (0, 1.58, 0.4)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "Leaf"
+            {
+                double size = 0.02
+                double3 xformOp:scale = (40, 1, 40)
+                uniform token[] xformOpOrder = ["xformOp:scale"]
+            }
+        }
+
+        def Scope "Joints"
+        {
+            def PhysicsFixedJoint "RootJoint"
+            {
+                rel physics:body1 = </World/Cabinet/Body>
+                point3f physics:localPos0 = (0, 2, 0.4)
+                quatf physics:localRot0 = (1, 0, 0, 0)
+                point3f physics:localPos1 = (0, 0, 0)
+                quatf physics:localRot1 = (1, 0, 0, 0)
+            }
+
+            def PhysicsRevoluteJoint "Hinge"
+            {
+                rel physics:body0 = </World/Cabinet/Body>
+                rel physics:body1 = </World/Cabinet/Door>
+                uniform token physics:axis = "Z"
+                float physics:lowerLimit = 0
+                float physics:upperLimit = 110
+                point3f physics:localPos0 = (0.4, -0.42, 0)
+                quatf physics:localRot0 = (1, 0, 0, 0)
+                point3f physics:localPos1 = (0.4, 0, 0)
+                quatf physics:localRot1 = (1, 0, 0, 0)
+            }
+        }
+    }
+
+    def Xform "Rack" (
+        prepend apiSchemas = ["PhysicsArticulationRootAPI"]
+    )
+    {
+        def Xform "Frame" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            double3 xformOp:translate = (0, -2, 0.5)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "Post"
+            {
+                double size = 0.1
+            }
+        }
+
+        def PhysicsFixedJoint "RootJoint"
+        {
+            rel physics:body1 = </World/Rack/Frame>
+            point3f physics:localPos0 = (0, -2, 0.5)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+        }
+    }
+
+    def Xform "Lift"
+    {
+        def Xform "Mast" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsArticulationRootAPI"]
+        )
+        {
+            double3 xformOp:translate = (-2, -2, 1)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "Column"
+            {
+                double size = 0.1
+            }
+        }
+
+        def Xform "Carriage" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            double3 xformOp:translate = (-1.9, -2, 0.5)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "Fork"
+            {
+                double size = 0.08
+            }
+        }
+
+        def Scope "Joints"
+        {
+            def PhysicsFixedJoint "RootJoint"
+            {
+                rel physics:body1 = </World/Lift/Mast>
+                point3f physics:localPos0 = (-2, -2, 1)
+                quatf physics:localRot0 = (1, 0, 0, 0)
+                point3f physics:localPos1 = (0, 0, 0)
+                quatf physics:localRot1 = (1, 0, 0, 0)
+            }
+
+            def PhysicsPrismaticJoint "Raise"
+            {
+                rel physics:body0 = </World/Lift/Mast>
+                rel physics:body1 = </World/Lift/Carriage>
+                uniform token physics:axis = "Z"
+                float physics:lowerLimit = -0.4
+                float physics:upperLimit = 0.4
+                point3f physics:localPos0 = (0.1, 0, -0.5)
+                quatf physics:localRot0 = (1, 0, 0, 0)
+                point3f physics:localPos1 = (0, 0, 0)
+                quatf physics:localRot1 = (1, 0, 0, 0)
+            }
+        }
+    }
+}

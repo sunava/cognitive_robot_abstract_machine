@@ -1,0 +1,181 @@
+#usda 1.0
+(
+    doc = """An arm turned 90 degrees on the floor: a base, an upper link on a shoulder hinge about Z and a lower link on a slide along X, animated over three seconds (the shoulder passes 180 degrees). Its rigid bodies and joints exist only in the Physics variant 'physics'; the stage selects 'none' and disables the joints, as a playback scene does. A puck slides and turns across the floor, a crate rests."""
+    defaultPrim = "World"
+    endTimeCode = 3
+    metersPerUnit = 1
+    startTimeCode = 0
+    timeCodesPerSecond = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Cube "Floor"
+    {
+        double size = 1
+        double3 xformOp:scale = (4, 4, 0.02)
+        double3 xformOp:translate = (0, 0, -0.01)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+    }
+
+    def Xform "Arm" (
+        kind = "component"
+        variants = {
+            string Physics = "none"
+        }
+        prepend variantSets = "Physics"
+    )
+    {
+        double3 xformOp:translate = (1, 0, 0)
+        float xformOp:rotateZ = 90
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+
+        def Xform "Base"
+        {
+            def Cube "Pillar"
+            {
+                double size = 0.2
+            }
+
+            def Xform "Upper"
+            {
+                custom string sdt:class = "ArmLink"
+                double3 xformOp:translate = (0, 0, 0.5)
+                float xformOp:rotateZ.timeSamples = {
+                    0: 0,
+                    1: 30,
+                    2: 90,
+                    3: 200,
+                }
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+
+                def Cube "Beam"
+                {
+                    double size = 0.1
+                    double3 xformOp:translate = (0.2, 0, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+
+                def Xform "Lower"
+                {
+                    double3 xformOp:translate.timeSamples = {
+                        0: (0.4, 0, 0),
+                        1: (0.45, 0, 0),
+                        2: (0.5, 0, 0),
+                        3: (0.65, 0, 0),
+                    }
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    def Cube "Slider"
+                    {
+                        double size = 0.08
+                    }
+                }
+            }
+        }
+        variantSet "Physics" = {
+            "none" {
+
+            }
+            "physics" {
+                over "Base" (
+                    prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+                )
+                {
+                    over "Upper" (
+                        prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+                    )
+                    {
+                        over "Lower" (
+                            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+                        )
+                        {
+                        }
+                    }
+                }
+
+                def Scope "Joints"
+                {
+                    def PhysicsFixedJoint "RootJoint"
+                    {
+                        bool physics:jointEnabled = 0
+                        rel physics:body0 = </World/Arm>
+                        rel physics:body1 = </World/Arm/Base>
+                        point3f physics:localPos0 = (0, 0, 0)
+                        quatf physics:localRot0 = (1, 0, 0, 0)
+                        point3f physics:localPos1 = (0, 0, 0)
+                        quatf physics:localRot1 = (1, 0, 0, 0)
+                    }
+
+                    def PhysicsRevoluteJoint "Shoulder"
+                    {
+                        bool physics:jointEnabled = 0
+                        rel physics:body0 = </World/Arm/Base>
+                        rel physics:body1 = </World/Arm/Base/Upper>
+                        uniform token physics:axis = "Z"
+                        float physics:lowerLimit = 0
+                        float physics:upperLimit = 270
+                        point3f physics:localPos0 = (0, 0, 0.5)
+                        quatf physics:localRot0 = (1, 0, 0, 0)
+                        point3f physics:localPos1 = (0, 0, 0)
+                        quatf physics:localRot1 = (1, 0, 0, 0)
+                    }
+
+                    def PhysicsPrismaticJoint "Slide"
+                    {
+                        bool physics:jointEnabled = 0
+                        rel physics:body0 = </World/Arm/Base/Upper>
+                        rel physics:body1 = </World/Arm/Base/Upper/Lower>
+                        uniform token physics:axis = "X"
+                        float physics:lowerLimit = 0
+                        float physics:upperLimit = 0.3
+                        point3f physics:localPos0 = (0.4, 0, 0)
+                        quatf physics:localRot0 = (1, 0, 0, 0)
+                        point3f physics:localPos1 = (0, 0, 0)
+                        quatf physics:localRot1 = (1, 0, 0, 0)
+                    }
+                }
+            }
+        }
+    }
+
+    def Xform "Puck" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+    )
+    {
+        custom string sdt:class = "Puck"
+        double3 xformOp:translate.timeSamples = {
+            0: (-1, 0, 0.05),
+            1: (-1, 0.5, 0.05),
+            2: (-0.5, 0.5, 0.05),
+            3: (-0.5, 0.5, 0.25),
+        }
+        float xformOp:rotateZ.timeSamples = {
+            0: 0,
+            1: 45,
+            2: 120,
+            3: 120,
+        }
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+
+        def Cylinder "Disc"
+        {
+            double height = 0.04
+            double radius = 0.1
+        }
+    }
+
+    def Xform "Crate" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+    )
+    {
+        double3 xformOp:translate = (0, -1, 0.1)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cube "Box"
+        {
+            double size = 0.2
+        }
+    }
+}

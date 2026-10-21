@@ -52,6 +52,16 @@ jobs:
           source /opt/ros/cram-env/bin/activate
           uv pip install drake
 
+      - name: Install usd-core
+        # cramera's USD scene import tests read stages with pxr, from its `usd` extra.
+        if: ${{ inputs.lib == 'cramera' }}
+        env:
+          UV_CACHE_DIR: /opt/ros/.uv_cache
+        run: |
+          cd cognitive_robot_abstract_machine
+          source /opt/ros/cram-env/bin/activate
+          uv pip install 'usd-core>=26.8'
+
       - name: Restore cache
         uses: actions/cache/restore@v4
         with:

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import math
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
@@ -12,19 +11,15 @@ from pathlib import Path
 from typing_extensions import Any
 
 from cramera import paths
+from cramera.scene_environment import SceneEnvironment
 from semantic_digital_twin.adapters.urdf import URDFParser
-from semantic_digital_twin.api import (
-    BodySpecification,
-    RobotSpecification,
-    WorldSpecification,
-)
+from semantic_digital_twin.api import BodySpecification, RobotSpecification
 from semantic_digital_twin.collision_checking.collision_rules import (
     AllowCollisionBetweenGroups,
 )
 from semantic_digital_twin.robots.pr2 import PR2
 from semantic_digital_twin.spatial_types import HomogeneousTransformationMatrix, Pose
 from semantic_digital_twin.world import World
-from semantic_digital_twin.world_description.connections import FixedConnection
 from semantic_digital_twin.world_description.geometry import Box, Scale
 from semantic_digital_twin.world_description.shape_collection import ShapeCollection
 
@@ -328,7 +323,7 @@ class CabinetStructure:
 
 # %% reusable laboratory environment
 @dataclass
-class LaboratoryEnvironment:
+class LaboratoryEnvironment(SceneEnvironment):
     """Create CRAM worlds with the authored visuals, movable objects and drawer."""
 
     bundle_directory: Path = field(
@@ -388,32 +383,14 @@ class LaboratoryEnvironment:
         """Authored outer tube radius in meters."""
         return self.description.tube_radius
 
-    def create_world(self, *, robots: Sequence[RobotSpecification] = ()) -> World:
-        """Create an independent laboratory world with any requested robots.
-
-        :param robots: Robot descriptions and placements; empty creates only the lab.
-        :return: A semantic digital twin usable by ordinary CRAM contexts and plans.
-        """
-        world = WorldSpecification(robots=list(robots)).to_domain_object()
-        self.populate(world)
-        return world
-
     def populate(self, world: World) -> None:
         """Load the fixed environment and freely movable objects into an existing world.
 
         :param world: World receiving the authored laboratory at its root origin.
         """
-        environment = URDFParser.from_file(
-            str(self.bundle_directory / self.description.environment), prefix=""
-        ).parse()
-        with world.modify_world():
-            connection = FixedConnection.create_with_dofs(
-                world=world,
-                parent=world.root,
-                child=environment.root,
-                parent_T_connection_expression=HomogeneousTransformationMatrix(),
-            )
-            world.merge_world(environment, root_connection=connection)
+        self.merge_environment(
+            world, self.bundle_directory / self.description.environment, prefix=""
+        )
         CabinetStructure().populate(world)
         for item in self.description.objects:
             object_world = URDFParser.from_file(

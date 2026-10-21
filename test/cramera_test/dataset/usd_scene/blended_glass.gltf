@@ -1,0 +1,34 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "cramera-import"
+  },
+  "materials": [
+    {
+      "name": "/World/Looks/Glass",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          1.0,
+          1.0,
+          1.0,
+          0.09045358751093246
+        ],
+        "metallicFactor": 1.0,
+        "roughnessFactor": 0.0
+      },
+      "doubleSided": true,
+      "alphaMode": "BLEND",
+      "extras": {
+        "transmissionFactor": 1.0,
+        "ior": 1.491,
+        "baseColorFactor": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "metallicFactor": 0.0
+      }
+    }
+  ]
+}
