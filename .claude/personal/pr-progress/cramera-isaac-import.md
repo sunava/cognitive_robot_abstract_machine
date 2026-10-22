@@ -24,8 +24,25 @@ zukuenftigen mit dem skill auch"): CRAM-native robot demos for imported twins, l
 3. isaac-twin skill: Phase 9 + robot task demo become the standard (collisions, free objects, pick/place);
    rsync the skill to the vault.
 
+Progress 2026-10-22 (evening):
+- committed locally (not pushed): a65855bda texture fixtures (+ .gitignore exception), 842034d49 collision
+  boxes + --free-objects (TDD: stage reader 8, URDF writer 2, bundle 8, world 4 new tests; all 220 usd_scene
+  tests pass). Full cramera suite: 35 failed / 20 errors, all outside the USD import (lab ScaleProgramState
+  .snapshot missing, MuJoCo MjData.qM, Blender 5.2 use_auto_smooth, offline asset checks) - pre-existing.
+- skill wrapper export_cramera.sh passes --free-objects by default (--fixed-bodies opts out) and gates
+  collision boxes; warehouse re-exported: 21 free totes, 6596 collision boxes, CRAM world loads in 18 s.
+- WarehouseTwin/cramera/demo_tiago_two_totes.py: CRAM Tiago, RailPickUpAction (grip at goods.rail_grasp_height),
+  approach pose 0.8 m before each stop + RollAction (straight CartesianPose along the current heading: the
+  route planner inflates by the 0.71 m parked turning radius of a differential drive), B00 tote cleared first.
+  Steps verified up to the in-feed roll-in; full recorded run in progress.
+
 Next:
-- commit + push the fixture fix and the import extension (on the user's OK);
+- push the two commits (on the user's OK);
+- finish the demo recording, show it, publish to ~/cramera_scenes after the user has seen it;
+- skill: Phase 9 + CRAM robot demo as the standard for every twin (cramera.md, SKILL.md, template), vault
+  rsync + commit/push (new rule: commit and push the vault, author Vanessa Hassouna noreply);
+- follow-up idea: move RollAction / grasp-point pick-up / clear into a tested cramera module instead of the
+  template;
 - open decisions handed to the user: `usd` extra deps (numpy/scipy/Pillow), CI usd-core step, SSAO sRGB fix
   changing every AO scene, exposure 0.72, glass blend approximation, test-only Pose methods;
 - known gaps: TIAGo renders dark in the demo recording, no generic demo runner; the warehouse bundle is
