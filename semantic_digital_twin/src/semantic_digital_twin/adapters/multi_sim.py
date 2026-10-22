@@ -1801,21 +1801,49 @@ class MujocoBuilder(MultiSimBuilder):
         key_element = ET.SubElement(keyframe_element, "key")
         key_element.set("name", "home")
         key_element.set("time", "0")
-        qpos = []
-        for body in self.world.bodies:
-            parent_connection = body.parent_connection
-            if (
-                isinstance(parent_connection, self._ignore_connection_types)
-                or parent_connection is None
-            ):
-                continue
-            qpos += [
-                self.world.state[dof.id].position
-                for dof in parent_connection.active_dofs
-                + parent_connection.passive_dofs
-            ]
-        key_element.set("qpos", " ".join(map(str, qpos)))
+        key_element.set("qpos", " ".join(map(str, self._keyframe_qpos())))
         tree.write(file_path, encoding="utf-8", xml_declaration=True)
+
+    def _keyframe_qpos(self) -> List[float]:
+        """
+        The world's current state, laid out the way the compiled model orders ``qpos``.
+
+        The order is read off the spec's own joints rather than off the world, so it
+        stays in step with whatever order the bodies were emitted in.
+        """
+        connection_by_joint_name = {
+            connection.name.name: connection for connection in self.world.connections
+        }
+        qpos = []
+        for body_spec in self.spec.bodies:
+            for joint_spec in body_spec.joints:
+                qpos += self._joint_qpos(connection_by_joint_name[joint_spec.name])
+        return qpos
+
+    def _joint_qpos(self, connection: Connection) -> List[float]:
+        """
+        The ``qpos`` values ``connection``'s joint holds at the world's current state.
+
+        A :class:`Connection6DoF` is built as a free joint, whose ``qpos`` orders the
+        quaternion scalar-first, while the connection's own degrees of freedom order it
+        scalar-last.
+        """
+        state = self.world.state
+        if isinstance(connection, Connection6DoF):
+            free_joint_dofs = [
+                connection.x,
+                connection.y,
+                connection.z,
+                connection.qw,
+                connection.qx,
+                connection.qy,
+                connection.qz,
+            ]
+            return [state[dof.id].position for dof in free_joint_dofs]
+        return [
+            state[dof.id].position
+            for dof in connection.active_dofs + connection.passive_dofs
+        ]
 
     def _build_body(self, body: Body):
         self._build_mujoco_body(body=body)
@@ -2847,6 +2875,38 @@ class MujocoSynchronizer(MultiSimSynchronizer):
             return None
         return mj_model.jnt_qposadr[joint_id]
 
+    def _driving_actuator_name(self, connection: Connection) -> Optional[str]:
+        """
+        Resolve the name of the actuator driving ``connection``, or ``None`` if
+        nothing drives it.
+
+        A joint an actuator drives takes a set point rather than a position: it
+        reaches that set point over time through the actuator's own dynamics, so
+        its measured position is a different quantity from the value the world
+        holds for it.
+        """
+        driven_dof_ids = {dof.id for dof in connection.dofs}
+        for actuator in self._world.actuators:
+            if driven_dof_ids.intersection(dof.id for dof in actuator.dofs):
+                return actuator.name.name
+        return None
+
+    def command_actuators_from_world_state(self) -> None:
+        """
+        Give every actuator the set point its joint currently holds in the world.
+
+        A freshly reset simulation leaves every control input at zero, which would
+        send an actuated joint rushing towards the origin the moment the physics
+        starts.
+        """
+        state = self._world.state
+        for actuator in self._world.actuators:
+            for dof in actuator.dofs:
+                self.simulator.set_actuator_control(
+                    actuator_name=actuator.name.name,
+                    value=float(state[dof.id].position),
+                )
+
     @staticmethod
     def _make_pose_matrix(
         xyz: numpy.ndarray, rotation_matrix: numpy.ndarray
@@ -2939,6 +2999,11 @@ class MujocoSynchronizer(MultiSimSynchronizer):
                 self._read_6dof_from_qpos(connection, qpos_adr)
                 changed = True
             elif isinstance(connection, ActiveConnection1DOF):
+                # An actuated joint's world position is the set point it was
+                # commanded to, so the position it has reached so far must not
+                # overwrite it.
+                if self._driving_actuator_name(connection) is not None:
+                    continue
                 self._read_1dof_from_qpos(connection, qpos_adr)
                 changed = True
             else:
@@ -3019,6 +3084,25 @@ class MujocoSynchronizer(MultiSimSynchronizer):
             return
         self.simulator._mj_data.qpos[qpos_adr] = positions[idx]
 
+    def _command_actuator(
+        self,
+        connection: ActiveConnection1DOF,
+        actuator_name: str,
+        positions: numpy.ndarray,
+        previous_positions: numpy.ndarray,
+        state_index: Dict[Any, int],
+    ) -> None:
+        """
+        Hand the world's position for ``connection`` to its actuator as a set
+        point. No-op if the value is unchanged.
+        """
+        idx = state_index[connection.raw_dof.id]
+        if positions[idx] == previous_positions[idx]:
+            return
+        self.simulator.set_actuator_control(
+            actuator_name=actuator_name, value=float(positions[idx])
+        )
+
     def _on_state_change(self) -> None:
         """
         Push ``world.state`` into ``_mj_data.qpos`` for every connection whose
@@ -3053,13 +3137,23 @@ class MujocoSynchronizer(MultiSimSynchronizer):
                     state_index,
                 )
             elif isinstance(connection, ActiveConnection1DOF):
-                self._write_1dof_to_qpos(
-                    connection,
-                    qpos_adr,
-                    positions,
-                    previous_positions,
-                    state_index,
-                )
+                actuator_name = self._driving_actuator_name(connection)
+                if actuator_name is None:
+                    self._write_1dof_to_qpos(
+                        connection,
+                        qpos_adr,
+                        positions,
+                        previous_positions,
+                        state_index,
+                    )
+                else:
+                    self._command_actuator(
+                        connection,
+                        actuator_name,
+                        positions,
+                        previous_positions,
+                        state_index,
+                    )
             else:
                 logger.warning(
                     "world→sim sync: unsupported connection type %s for "

@@ -19,12 +19,17 @@ from semantic_digital_twin.spatial_types.spatial_types import (
     Pose,
 )
 from semantic_digital_twin.world import World
+from semantic_digital_twin.spatial_types.derivatives import DerivativeMap
 from semantic_digital_twin.world_description.connections import (
     Connection6DoF,
     FixedConnection,
+    PrismaticConnection,
     RevoluteConnection,
 )
-from semantic_digital_twin.world_description.degree_of_freedom import DegreeOfFreedom
+from semantic_digital_twin.world_description.degree_of_freedom import (
+    DegreeOfFreedom,
+    DegreeOfFreedomLimits,
+)
 from semantic_digital_twin.world_description.geometry import (
     Box,
     Scale,
@@ -44,6 +49,7 @@ from semantic_digital_twin.adapters.multi_sim import (
     MujocoActuator,
     MujocoBuilder,
     MujocoLight,
+    MujocoSynchronizer,
 )
 
 urdf_dir = os.path.join(
@@ -317,9 +323,11 @@ def test_mesh_scale_and_equality(test_mjcf_2_world):
 def _write_textured_tetrahedron(directory, texture_color) -> str:
     """
     Writes a minimal textured OBJ+MTL+PNG mesh (a tetrahedron, so its convex hull is
-    non-degenerate) into ``directory``, textured with a solid ``texture_color``, and returns
-    the OBJ file's path. Always named "tetra.obj"/"tetra.mtl"/"wood.png", so callers writing
-    into different directories can reproduce a texture basename collision between them.
+    non-degenerate) into ``directory``, textured with a solid ``texture_color``, and
+    returns the OBJ file's path.
+
+    Always named "tetra.obj"/"tetra.mtl"/"wood.png", so callers writing into different
+    directories can reproduce a texture basename collision between them.
     """
     directory.mkdir(parents=True, exist_ok=True)
     Image.new("RGB", (4, 4), color=texture_color).save(directory / "wood.png")
@@ -503,6 +511,292 @@ def test_builder_assigns_material_to_a_textured_primitive_shape(tmp_path):
     assert texture.file == str(texture_file)
 
 
+# %% build-time keyframe
+
+
+def _compiled_world_at_home_keyframe(
+    world: World, file_path: str
+) -> tuple[mujoco.MjModel, mujoco.MjData]:
+    """
+    Build ``world`` into an MJCF at ``file_path`` and compile it, reset to the ``home``
+    keyframe the builder writes and with forward kinematics applied.
+
+    :return: The compiled model and its data.
+    """
+    MujocoBuilder().build_world(world=world, file_path=file_path)
+    model = mujoco.MjModel.from_xml_path(file_path)
+    data = mujoco.MjData(model)
+    mujoco.mj_resetDataKeyframe(model, data, 0)
+    mujoco.mj_forward(model, data)
+    return model, data
+
+
+def _add_free_box(world: World, name: str) -> tuple[Body, Connection6DoF]:
+    """
+    Add a unit box on a 6DoF connection to ``world``'s root.
+
+    :return: The new body and the connection carrying it.
+    """
+    body = Body(
+        name=PrefixedName(name),
+        collision=ShapeCollection([Box(scale=Scale(0.1, 0.1, 0.1))]),
+    )
+    with world.modify_world():
+        connection = Connection6DoF.create_with_dofs(
+            world=world, parent=world.root, child=body
+        )
+        world.add_connection(connection)
+    return body, connection
+
+
+def test_builder_keyframe_gives_every_body_its_own_pose(tmp_path):
+    """
+    Regression test: the keyframe listed each connection's DoF values in
+    ``world.bodies``
+
+    order, while the compiled model lays qpos out in the order the bodies were added to
+    the spec - ``world.bodies_topologically_sorted``. Where the two disagree, every
+    free-floating object starts the simulation at some other object's pose.
+    """
+    world = World.create_with_root_body("world")
+    first, first_connection = _add_free_box(world, "first")
+    second, second_connection = _add_free_box(world, "second")
+    first_connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(
+        x=0.1, y=0.2, z=0.3, reference_frame=world.root
+    )
+    second_connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(
+        x=0.7, y=0.8, z=0.9, reference_frame=world.root
+    )
+
+    model, data = _compiled_world_at_home_keyframe(world, str(tmp_path / "scene.xml"))
+
+    for body in (first, second):
+        body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, body.name.name)
+        numpy.testing.assert_allclose(
+            data.xpos[body_id],
+            world.compute_forward_kinematics_np(world.root, body)[:3, 3],
+            atol=1e-6,
+            err_msg=f"{body.name.name} did not start at its own pose",
+        )
+
+
+def test_builder_keyframe_writes_the_free_joint_quaternion_scalar_first(tmp_path):
+    """
+    Regression test: a free joint's qpos orders its quaternion scalar-first, but the
+    keyframe wrote ``Connection6DoF``'s own DoFs, which order it scalar-last.
+
+    Even an unrotated body then started the simulation turned by half a revolution.
+    """
+    world = World.create_with_root_body("world")
+    block, connection = _add_free_box(world, "block")
+    connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(
+        yaw=0.5, reference_frame=world.root
+    )
+
+    model, data = _compiled_world_at_home_keyframe(world, str(tmp_path / "scene.xml"))
+
+    body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, block.name.name)
+    numpy.testing.assert_allclose(
+        data.xmat[body_id].reshape(3, 3),
+        world.compute_forward_kinematics_np(world.root, block)[:3, :3],
+        atol=1e-6,
+    )
+
+
+# %% actuated joints
+
+SERVO_STIFFNESS = 500.0
+"""
+Restoring force per metre the test servo pulls towards its set point with.
+"""
+
+SERVO_DAMPING = 25.0
+"""
+Opposing force per metre per second the test servo damps its motion with.
+"""
+
+SERVO_TRAVEL = 1.0
+"""
+How far the test slide joint may travel from its origin, in metres.
+"""
+
+
+def _add_slide_joint(world: World, name: str) -> PrismaticConnection:
+    """
+    Add a box on a slide joint along x to ``world``'s root.
+
+    :param world: The world to add the joint to.
+    :param name: The name shared by the connection and its degree of freedom.
+    :return: The new connection.
+    """
+    body = Body(
+        name=PrefixedName(f"{name}_body"),
+        collision=ShapeCollection([Box(scale=Scale(0.1, 0.1, 0.1))]),
+    )
+    degree_of_freedom = DegreeOfFreedom(
+        name=PrefixedName(name),
+        limits=DegreeOfFreedomLimits(
+            lower=DerivativeMap(position=-SERVO_TRAVEL, velocity=-1.0),
+            upper=DerivativeMap(position=SERVO_TRAVEL, velocity=1.0),
+        ),
+    )
+    with world.modify_world():
+        world.add_degree_of_freedom(degree_of_freedom)
+        connection = PrismaticConnection(
+            name=degree_of_freedom.name,
+            parent=world.root,
+            child=body,
+            axis=Vector3.X(reference_frame=world.root),
+            raw_dof=degree_of_freedom,
+        )
+        world.add_connection(connection)
+    return connection
+
+
+def _add_position_servo(world: World, connection: PrismaticConnection) -> Actuator:
+    """
+    Add a position servo driving ``connection`` towards a commanded position.
+
+    :param world: The world to add the actuator to.
+    :param connection: The joint the servo drives.
+    :return: The new actuator.
+    """
+    actuator = Actuator(name=PrefixedName(f"{connection.name.name}_servo"))
+    actuator.add_dof(connection.raw_dof)
+    actuator.simulator_additional_properties.append(
+        MujocoActuator(
+            dynamics_type=mujoco.mjtDyn.mjDYN_NONE,
+            gain_type=mujoco.mjtGain.mjGAIN_FIXED,
+            gain_parameters=[SERVO_STIFFNESS] + [0.0] * 9,
+            bias_type=mujoco.mjtBias.mjBIAS_AFFINE,
+            bias_parameters=[0.0, -SERVO_STIFFNESS, -SERVO_DAMPING] + [0.0] * 7,
+            control_range=[-SERVO_TRAVEL, SERVO_TRAVEL],
+            force_range=[-100.0, 100.0],
+        )
+    )
+    with world.modify_world():
+        world.add_actuator(actuator)
+    return actuator
+
+
+def _joint_qpos(multi_sim: MujocoSim, connection: PrismaticConnection) -> float:
+    """
+    :param multi_sim: The simulation holding the compiled model.
+    :param connection: The connection whose joint to read.
+    :return: The value ``connection``'s MuJoCo joint currently holds.
+    """
+    address = multi_sim.synchronizer._resolve_qpos_adr(connection)
+    return float(multi_sim.simulator._mj_data.qpos[address])
+
+
+def _actuator_control(multi_sim: MujocoSim, actuator: Actuator) -> float:
+    """
+    :param multi_sim: The simulation holding the compiled model.
+    :param actuator: The actuator whose control input to read.
+    :return: The set point ``actuator`` is currently driving towards.
+    """
+    return float(multi_sim.simulator.get_actuator(actuator.name.name).result.ctrl[0])
+
+
+def test_an_actuated_joint_is_commanded_rather_than_moved_outright(tmp_path):
+    """
+    A joint an actuator drives takes a set point, not a position.
+
+    Writing its qpos would move it past its own dynamics, so the contact it is meant to
+    make would be a teleport rather than a push.
+    """
+    MujocoSim.default_file_path = str(tmp_path / "scene.xml")
+    world = World.create_with_root_body("world")
+    connection = _add_slide_joint(world, "driven")
+    actuator = _add_position_servo(world, connection)
+    multi_sim = MujocoSim(world=world, headless=True)
+
+    try:
+        world.state[connection.raw_dof.id].position = 0.4
+        world.notify_state_change()
+
+        assert _actuator_control(multi_sim, actuator) == pytest.approx(0.4)
+        assert _joint_qpos(multi_sim, connection) == pytest.approx(0.0)
+    finally:
+        stop_multisim_if_running(multi_sim)
+
+
+def test_an_actuated_joints_measured_position_does_not_overwrite_its_command(tmp_path):
+    """
+    A servo reaches its set point over time, so its measured position lags the command.
+
+    Reading that measurement back into the world would undo the command a controller
+    just wrote, leaving the two fighting over the same value every cycle.
+    """
+    MujocoSim.default_file_path = str(tmp_path / "scene.xml")
+    world = World.create_with_root_body("world")
+    connection = _add_slide_joint(world, "driven")
+    _add_position_servo(world, connection)
+    multi_sim = MujocoSim(world=world, headless=True)
+    multi_sim.synchronizer.sync_rate_hz = MujocoSynchronizer.UNTHROTTLED_SYNC_RATE_HZ
+
+    try:
+        multi_sim.simulator.start(simulate_in_thread=False, render_in_thread=False)
+        world.state[connection.raw_dof.id].position = 0.4
+        world.notify_state_change()
+        for _ in range(10):
+            multi_sim.simulator.step()
+
+        assert _joint_qpos(multi_sim, connection) != pytest.approx(0.4)
+        assert world.state[connection.raw_dof.id].position == pytest.approx(0.4)
+    finally:
+        stop_multisim_if_running(multi_sim)
+
+
+def test_an_unactuated_joint_still_syncs_both_ways(tmp_path):
+    """
+    Only joints an actuator drives change hands; a plain joint is still positioned
+    directly and read straight back.
+    """
+    MujocoSim.default_file_path = str(tmp_path / "scene.xml")
+    world = World.create_with_root_body("world")
+    connection = _add_slide_joint(world, "free")
+    multi_sim = MujocoSim(world=world, headless=True)
+    multi_sim.synchronizer.sync_rate_hz = MujocoSynchronizer.UNTHROTTLED_SYNC_RATE_HZ
+
+    try:
+        world.state[connection.raw_dof.id].position = 0.4
+        world.notify_state_change()
+        assert _joint_qpos(multi_sim, connection) == pytest.approx(0.4)
+
+        multi_sim.simulator._mj_data.qpos[
+            multi_sim.synchronizer._resolve_qpos_adr(connection)
+        ] = 0.7
+        multi_sim.synchronizer._sim_to_world()
+        assert world.state[connection.raw_dof.id].position == pytest.approx(0.7)
+    finally:
+        stop_multisim_if_running(multi_sim)
+
+
+def test_starting_a_simulation_seeds_every_actuator_with_its_joints_position(tmp_path):
+    """
+    A reset simulation leaves every control input at zero, which would send an actuated
+    joint rushing towards the origin the moment the physics starts.
+    """
+    MujocoSim.default_file_path = str(tmp_path / "scene.xml")
+    world = World.create_with_root_body("world")
+    connection = _add_slide_joint(world, "driven")
+    actuator = _add_position_servo(world, connection)
+    world.state[connection.raw_dof.id].position = 0.4
+    world.notify_state_change()
+    multi_sim = MujocoSim(world=world, headless=True)
+
+    try:
+        multi_sim.simulator.start(simulate_in_thread=False, render_in_thread=False)
+        assert _actuator_control(multi_sim, actuator) == pytest.approx(0.0)
+
+        multi_sim.synchronizer.command_actuators_from_world_state()
+
+        assert _actuator_control(multi_sim, actuator) == pytest.approx(0.4)
+    finally:
+        stop_multisim_if_running(multi_sim)
+
+
 def test_mujoco_with_tracy_dae_files():
     try:
         dae_world = URDFParser.from_file(file_path=TEST_URDF_TRACY).parse()
@@ -683,11 +977,12 @@ def test_spawn_body_with_connections():
 
 
 def test_body_frame_excludes_joint_state_at_build_time():
-    """A body's static frame must be built at the reference (zero-joint) pose.
+    """
+    A body's static frame must be built at the reference (zero-joint) pose.
 
-    The joint is non-zero while the simulator is built and is evaluated at a
-    different angle, so a frame that baked in the build-time angle would have it
-    applied twice and drift away from the world forward kinematics.
+    The joint is non-zero while the simulator is built and is evaluated at a different
+    angle, so a frame that baked in the build-time angle would have it applied twice and
+    drift away from the world forward kinematics.
     """
     world = World()
     base_body = Body(name=PrefixedName("base"))

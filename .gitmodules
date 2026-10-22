@@ -1,0 +1,6 @@
+[submodule "cramera/scenes"]
+	path = cramera/scenes
+	url = https://github.com/cram2/cram-scenes.git
+[submodule "coraplex/resources/pycram_object_gap_demo"]
+	path = coraplex/resources/pycram_object_gap_demo
+	url = git@github.com:sunava/pycram_object_gap_demo.git
