@@ -1,0 +1,48 @@
+#usda 1.0
+(
+    doc = """A lamp head on a ball joint to its stand: the URDF has no ball joint, so the conversion writes it as a fixed joint and warns."""
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Xform "Stand" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+    )
+    {
+        double3 xformOp:translate = (0, 0, 0.5)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cube "Pole"
+        {
+            double size = 0.05
+            double3 xformOp:scale = (1, 1, 20)
+            uniform token[] xformOpOrder = ["xformOp:scale"]
+        }
+    }
+
+    def Xform "Head" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+    )
+    {
+        double3 xformOp:translate = (0, 0, 1.05)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Sphere "Shade"
+        {
+            double radius = 0.08
+        }
+    }
+
+    def PhysicsSphericalJoint "Ball"
+    {
+        rel physics:body0 = </World/Stand>
+        rel physics:body1 = </World/Head>
+        point3f physics:localPos0 = (0, 0, 0.55)
+        quatf physics:localRot0 = (1, 0, 0, 0)
+        point3f physics:localPos1 = (0, 0, 0)
+        quatf physics:localRot1 = (1, 0, 0, 0)
+    }
+}

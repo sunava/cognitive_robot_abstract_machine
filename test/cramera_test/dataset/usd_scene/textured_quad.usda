@@ -1,0 +1,58 @@
+#usda 1.0
+(
+    doc = "One OmniPBR quad with albedo, roughness and metallic textures."
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Mesh "Decal" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        int[] faceVertexCounts = [4]
+        int[] faceVertexIndices = [0, 1, 2, 3]
+        point3f[] points = [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)]
+        normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)] (
+            interpolation = "vertex"
+        )
+        texCoord2f[] primvars:st = [(0, 0), (1, 0), (1, 1), (0, 1)] (
+            interpolation = "vertex"
+        )
+        uniform token subdivisionScheme = "none"
+        rel material:binding = </World/Looks/DecalPaint>
+        custom string sdt:class = "AprilTag"
+        custom int sdt:tagId = 7
+    }
+
+    def Scope "Looks"
+    {
+        def Material "DecalPaint"
+        {
+            token outputs:mdl:surface.connect = </World/Looks/DecalPaint/Shader.outputs:out>
+
+            def Shader "Shader"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:mdl:sourceAsset = @OmniPBR.mdl@
+                uniform token info:mdl:sourceAsset:subIdentifier = "OmniPBR"
+                asset inputs:diffuse_texture = @./textures/albedo.png@ (
+                    colorSpace = "sRGB"
+                )
+                color3f inputs:diffuse_tint = (0.5, 1, 1)
+                asset inputs:reflectionroughness_texture = @./textures/roughness.png@ (
+                    colorSpace = "raw"
+                )
+                float inputs:reflection_roughness_texture_influence = 1
+                asset inputs:metallic_texture = @./textures/metallic.png@ (
+                    colorSpace = "raw"
+                )
+                float inputs:metallic_texture_influence = 1
+                float inputs:albedo_brightness = 1.4
+                token outputs:out
+            }
+        }
+    }
+}

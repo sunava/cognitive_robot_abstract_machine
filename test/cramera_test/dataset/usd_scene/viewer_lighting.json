@@ -1,0 +1,10 @@
+{
+  "sun": {"direction": [0.35, -0.45, -0.82], "intensity": 2500, "colorTemperature": 5600},
+  "dome": {"color": [0.8, 0.88, 1.0], "intensity": 2200},
+  "panels": [
+    {"center": [-2.4, 0.0, 3.17], "normal": [0, 0, -1], "width": 0.58, "height": 0.58,
+     "intensity": 30000, "colorTemperature": 5200},
+    {"center": [2.4, 1.2, 3.17], "normal": [0, 0, -1], "width": 1.2, "height": 0.3,
+     "intensity": 20000, "colorTemperature": 4000}
+  ]
+}

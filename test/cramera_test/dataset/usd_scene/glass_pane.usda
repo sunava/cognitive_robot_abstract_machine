@@ -1,0 +1,66 @@
+#usda 1.0
+(
+    doc = "An OmniGlass pane next to an untextured OmniSurface frame."
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Cube "Pane" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        double size = 1
+        double3 xformOp:scale = (1, 0.006, 0.8)
+        uniform token[] xformOpOrder = ["xformOp:scale"]
+        rel material:binding = </World/Looks/Glass>
+    }
+
+    def Cube "Frame" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        double size = 0.05
+        double3 xformOp:translate = (0, 0, -0.45)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+        rel material:binding = </World/Looks/Steel>
+    }
+
+    def Scope "Looks"
+    {
+        def Material "Glass"
+        {
+            token outputs:mdl:surface.connect = </World/Looks/Glass/Shader.outputs:out>
+
+            def Shader "Shader"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:mdl:sourceAsset = @OmniGlass.mdl@
+                uniform token info:mdl:sourceAsset:subIdentifier = "OmniGlass"
+                color3f inputs:glass_color = (0.9, 0.95, 1)
+                float inputs:glass_ior = 1.52
+                float inputs:frosting_roughness = 0.1
+                token outputs:out
+            }
+        }
+
+        def Material "Steel"
+        {
+            token outputs:mdl:surface.connect = </World/Looks/Steel/Shader.outputs:out>
+
+            def Shader "Shader"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:mdl:sourceAsset = @OmniSurface.mdl@
+                uniform token info:mdl:sourceAsset:subIdentifier = "OmniSurface"
+                color3f inputs:diffuse_reflection_color = (0.6, 0.6, 0.5)
+                float inputs:metalness = 1
+                float inputs:specular_reflection_roughness = 0.3
+                float inputs:coat_weight = 0.5
+                token outputs:out
+            }
+        }
+    }
+}

@@ -1,0 +1,174 @@
+#usda 1.0
+(
+    doc = """A cell with two robots marked the two ways a twin marks one: the Rover carries Isaac Sim's robot schema (IsaacRobotAPI, an applied API schema usd-core does not know) and the Walker an sdt:entityType of Robot. The Robots scope also holds an unmarked Pedestal, and the Cell's entity type merely contains the word Robot. Joints outside the robots tie environment prims to them: Tow hangs the rigid Cart from the Rover's chassis, Dock holds the Walker on the Cell, and Grip holds the Hook on the Walker."""
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Cube "Floor"
+    {
+        double size = 1
+        double3 xformOp:scale = (6, 6, 0.02)
+        double3 xformOp:translate = (0, 0, -0.01)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+    }
+
+    def Scope "Robots"
+    {
+        def Xform "Rover" (
+            prepend apiSchemas = ["IsaacRobotAPI"]
+        )
+        {
+            custom string sdt:robotId = "rover"
+
+            def Xform "Chassis" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsArticulationRootAPI"]
+            )
+            {
+                double3 xformOp:translate = (1, 0, 0.2)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Cube "Body"
+                {
+                    double size = 0.4
+                }
+
+                def Xform "Wheel" (
+                    prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+                )
+                {
+                    double3 xformOp:translate = (0, 0.25, -0.1)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    def Cylinder "Tyre"
+                    {
+                        uniform token axis = "Y"
+                        double height = 0.05
+                        double radius = 0.1
+                    }
+                }
+
+                def Camera "HeadCamera"
+                {
+                    float focalLength = 18
+                    float verticalAperture = 15.2908
+                    double3 xformOp:translate = (0.2, 0, 0.3)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                }
+            }
+
+            def Scope "Joints"
+            {
+                def PhysicsRevoluteJoint "WheelJoint"
+                {
+                    rel physics:body0 = </World/Robots/Rover/Chassis>
+                    rel physics:body1 = </World/Robots/Rover/Chassis/Wheel>
+                    uniform token physics:axis = "Y"
+                    point3f physics:localPos0 = (0, 0.25, -0.1)
+                    quatf physics:localRot0 = (1, 0, 0, 0)
+                    point3f physics:localPos1 = (0, 0, 0)
+                    quatf physics:localRot1 = (1, 0, 0, 0)
+                }
+            }
+        }
+
+        def Xform "Walker"
+        {
+            custom string sdt:entityType = "Robot"
+            double3 xformOp:translate = (0, 1, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "Torso"
+            {
+                double size = 0.3
+                double3 xformOp:translate = (0, 0, 0.6)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+        }
+
+        def Xform "Pedestal"
+        {
+            double3 xformOp:translate = (2, 1, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "Column"
+            {
+                double size = 0.2
+                double3 xformOp:translate = (0, 0, 0.1)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+        }
+    }
+
+    def Xform "Cell"
+    {
+        custom string sdt:entityType = "RobotExperimentCell"
+
+        def Cube "Bench"
+        {
+            double size = 0.5
+            double3 xformOp:translate = (-2, -1, 0.25)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+    }
+
+    def Xform "Cart" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+    )
+    {
+        double3 xformOp:translate = (1.5, 0, 0.15)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cube "Tray"
+        {
+            double size = 0.3
+        }
+    }
+
+    def Xform "Hook"
+    {
+        double3 xformOp:translate = (0, 1, 0.9)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cube "Bar"
+        {
+            double size = 0.1
+        }
+    }
+
+    def Scope "Joints"
+    {
+        def PhysicsFixedJoint "Tow"
+        {
+            rel physics:body0 = </World/Robots/Rover/Chassis>
+            rel physics:body1 = </World/Cart>
+            point3f physics:localPos0 = (0.5, 0, -0.05)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+        }
+
+        def PhysicsFixedJoint "Dock"
+        {
+            rel physics:body0 = </World/Cell>
+            rel physics:body1 = </World/Robots/Walker>
+            point3f physics:localPos0 = (0, 1, 0)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+        }
+
+        def PhysicsFixedJoint "Grip"
+        {
+            rel physics:body0 = </World/Robots/Walker>
+            rel physics:body1 = </World/Hook>
+            point3f physics:localPos0 = (0, 0, 0.9)
+            quatf physics:localRot0 = (1, 0, 0, 0)
+            point3f physics:localPos1 = (0, 0, 0)
+            quatf physics:localRot1 = (1, 0, 0, 0)
+        }
+    }
+}

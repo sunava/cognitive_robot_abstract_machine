@@ -5,15 +5,24 @@
   // %% authored appearance
   const emissionByMaterial = new WeakMap();
   const HIGHLIGHT_COLOR = 0x39d5c8;
+  // The glTF material extras key under which cramera-import keeps the authored
+  // transmission of glass it writes as a blended surface.
+  const TRANSMISSION_EXTRA = 'transmissionFactor';
 
   class AuthoredMaterials {
+    /** Whether light passes through a material, as rendered or as authored before blending. */
+    static transmits(material) {
+      return Boolean(material) &&
+        (material.transmission > 0 || Boolean(material.userData) && material.userData[TRANSMISSION_EXTRA] > 0);
+    }
+
     /** Keep authored emission available after temporary selection highlights. */
     static prepareMesh(mesh) {
       const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       // Shadow maps cannot transmit light through glass; mixed meshes retain the
       // shadow of their opaque surfaces, so glass should be exported separately.
       mesh.castShadow = materials.some(function (material) {
-        return !material || !(material.transmission > 0);
+        return !AuthoredMaterials.transmits(material);
       });
       mesh.receiveShadow = true;
       mesh.userData.preserveMaterials = true;

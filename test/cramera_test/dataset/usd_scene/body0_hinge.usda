@@ -1,0 +1,38 @@
+#usda 1.0
+(
+    doc = "A door hinged to the world by a joint naming only body0, opened 30 degrees: USD's joint value is the world frame's angle relative to the door's, -30 degrees, inside the limits of -90 to 0 degrees."
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Xform "Door" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+    )
+    {
+        double3 xformOp:translate = (1, 0, 0)
+        float xformOp:rotateZ = 30
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+
+        def Cube "Leaf"
+        {
+            double size = 0.1
+            double3 xformOp:translate = (0.5, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+    }
+
+    def PhysicsRevoluteJoint "Hinge"
+    {
+        rel physics:body0 = </World/Door>
+        uniform token physics:axis = "Z"
+        float physics:lowerLimit = -90
+        float physics:upperLimit = 0
+        point3f physics:localPos0 = (0, 0, 0)
+        quatf physics:localRot0 = (1, 0, 0, 0)
+        point3f physics:localPos1 = (1, 0, 0)
+        quatf physics:localRot1 = (1, 0, 0, 0)
+    }
+}

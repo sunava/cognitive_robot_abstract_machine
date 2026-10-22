@@ -26,6 +26,7 @@ license = { text = "GPL-3.0-only AND LicenseRef-AICOR-Laboratory-Assets AND Lice
 cramera = "cramera.server:main"
 cramera-live = "cramera.live.runner:main"
 cramera-onboard = "cramera.onboard.demo:main"
+cramera-import = "cramera.onboard.usd_scene.command_line:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -42,4 +43,12 @@ dependencies = { file = "requirements.txt" }
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0,<8.0.0",
+]
+# Converting USD stages (Isaac Sim twins) into scene bundles with `cramera-import`.
+usd = [
+    "usd-core>=26.8",
+    "trimesh>=4",
+    "numpy",
+    "scipy",
+    "Pillow",
 ]

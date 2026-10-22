@@ -1,0 +1,41 @@
+#usda 1.0
+(
+    doc = "Two instanceable references to one bolt prototype."
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Xform "BoltA" (
+        instanceable = true
+        prepend references = </Prototypes/Bolt>
+    )
+    {
+        double3 xformOp:translate = (0, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def Xform "BoltB" (
+        instanceable = true
+        prepend references = </Prototypes/Bolt>
+    )
+    {
+        double3 xformOp:translate = (1, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+}
+
+class Xform "Prototypes"
+{
+    def Xform "Bolt"
+    {
+        def Mesh "Head"
+        {
+            int[] faceVertexCounts = [3]
+            int[] faceVertexIndices = [0, 1, 2]
+            point3f[] points = [(0, 0, 0), (0.1, 0, 0), (0, 0.1, 0)]
+        }
+    }
+}

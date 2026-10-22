@@ -3,6 +3,34 @@
 What landed in cramera, by week and area. Entries are features, not commits; the
 hashes point into the `cramera-port` branch of the monorepo.
 
+## Week 43 · 20 Oct 2026
+
+### Isaac Sim import
+- **Convert an Isaac Sim / USD stage into a scene bundle** with `cramera-import` (the
+  `usd` extra): geometry, physics joints, OmniPBR, OmniSurface, OmniGlass and
+  UsdPreviewSurface materials, lights and `sdt`/`ont` semantics, written into a shared
+  `CRAMERA_SCENES` folder. See [Import an Isaac Sim / USD scene](README.md#import-an-isaac-sim--usd-scene).
+- **Only the environment comes over**: robots the stage marks (Isaac Sim's
+  `IsaacRobotAPI`, or `sdt:entityType` `Robot`) are left out together with the joints
+  to them and listed in `conversion_report.json`. `--exclude` leaves out any other
+  subtree, `--keep-robots` keeps the marked robots, and `--robot` keeps the one a
+  recording replays. A `--prim` inside a left-out robot is refused, and the report and
+  the terminal summary name the bodies that hung from a robot (`detached`) and the
+  articulations kept in the environment (`articulations`), where a robot part or a
+  robot the stage does not mark shows up.
+- **Recorded motion plays back**: the stage's time samples or a recorded body trace
+  (`--trace`) become joint values, a robot model (`--robot`), moving objects and step
+  segments (`--record`), checked against the recording in `residuals.csv`.
+- **An imported scene loads as a CRAM world** whose prims answer EQL questions:
+  `python -m cramera.examples.usd_scene_world --scene <name> --live`.
+
+### 3D scene
+- **A bundle can bring its own lighting and view**: the stage's lights become the
+  environment map and key light, the shadows fit the scene's bounds, the plank floor
+  can be turned off, and the camera takes a field of view and a far plane.
+- Scenes with ambient occlusion on render brighter: the occlusion pass now encodes its
+  output for the screen.
+
 ## Week 36 · 31 Aug – 4 Sep 2026
 
 ### Plan Builder

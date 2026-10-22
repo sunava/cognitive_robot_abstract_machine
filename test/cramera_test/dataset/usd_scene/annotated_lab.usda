@@ -1,0 +1,177 @@
+#usda 1.0
+(
+    doc = "A small annotated lab: a refrigerator with a hinged door, a shelf, a whiteboard without a matching annotation class and a plate hotel station with a sliding gate carrying a tag."
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Xform "Storage"
+    {
+        custom string sdt:zone = "StorageRoom"
+
+        def Xform "Fridge" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+            kind = "component"
+        )
+        {
+            custom string sdt:class = "lab_refrigerator"
+            custom string sdt:canonicalName = "Media refrigerator"
+            custom string[] ont:types = ["LabRefrigerator"]
+            custom string[] ont:inferredTypes = ["ColdStorageDevice", "LabArtifact"]
+            double3 xformOp:translate = (-1, 1, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Looks/Steel>
+
+            def Cube "Shell"
+            {
+                double size = 1
+                double3 xformOp:translate = (0, 0, 0.5)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Xform "Door" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+            )
+            {
+                double3 xformOp:translate = (0.5, -0.5, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Cube "Leaf"
+                {
+                    double size = 0.1
+                    double3 xformOp:translate = (-0.5, 0, 0.5)
+                    double3 xformOp:scale = (10, 0.5, 10)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                }
+            }
+
+            def PhysicsRevoluteJoint "DoorHinge"
+            {
+                rel physics:body0 = </World/Storage/Fridge>
+                rel physics:body1 = </World/Storage/Fridge/Door>
+                uniform token physics:axis = "Z"
+                float physics:lowerLimit = 0
+                float physics:upperLimit = 110
+                point3f physics:localPos0 = (0.5, -0.5, 0)
+                quatf physics:localRot0 = (1, 0, 0, 0)
+                point3f physics:localPos1 = (0, 0, 0)
+                quatf physics:localRot1 = (1, 0, 0, 0)
+            }
+        }
+
+        def Xform "Shelf" (
+            kind = "component"
+        )
+        {
+            custom string sdt:class = "storage_shelving"
+            double3 xformOp:translate = (1, 1, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "Frame"
+            {
+                double size = 1
+                double3 xformOp:translate = (0, 0, 1)
+                double3 xformOp:scale = (1, 0.4, 2)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+        }
+
+        def Xform "Whiteboard" (
+            kind = "component"
+        )
+        {
+            custom string sdt:class = "whiteboard"
+            double3 xformOp:translate = (0, 1.4, 1.2)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "Board"
+            {
+                double size = 1
+                double3 xformOp:scale = (1.2, 0.02, 0.9)
+                uniform token[] xformOpOrder = ["xformOp:scale"]
+            }
+        }
+    }
+
+    def Xform "Stations"
+    {
+        custom string sdt:zone = "Cell"
+
+        def Xform "L09_PlateHotel" (
+            kind = "component"
+        )
+        {
+            custom string sdt:componentId = "L09"
+            custom string sdt:canonicalName = "L09 Automated Plate Hotel"
+            custom string[] sdt:capabilities = ["store_plate", "retrieve_plate"]
+            custom double sdt:slotCount = 14
+            double3 xformOp:translate = (0, -1, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "Housing"
+            {
+                double size = 0.6
+                double3 xformOp:translate = (0, 0, 0.3)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Xform "Gate" (
+                prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+            )
+            {
+                double3 xformOp:translate = (0, -0.35, 0.3)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Cube "Panel"
+                {
+                    double size = 0.1
+                    double3 xformOp:scale = (5, 0.2, 5)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+
+                def Cube "Tag"
+                {
+                    custom int sdt:tagId = 7
+                    custom string sdt:tagFamily = "tag36h11"
+                    double size = 0.04
+                    double3 xformOp:translate = (0, -0.02, 0.1)
+                    double3 xformOp:scale = (1, 0.1, 1)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                }
+            }
+
+            def PhysicsPrismaticJoint "GateSlide"
+            {
+                rel physics:body0 = </World/Stations/L09_PlateHotel>
+                rel physics:body1 = </World/Stations/L09_PlateHotel/Gate>
+                uniform token physics:axis = "Z"
+                float physics:lowerLimit = 0
+                float physics:upperLimit = 0.25
+                point3f physics:localPos0 = (0, -0.35, 0.3)
+                quatf physics:localRot0 = (1, 0, 0, 0)
+                point3f physics:localPos1 = (0, 0, 0)
+                quatf physics:localRot1 = (1, 0, 0, 0)
+            }
+        }
+    }
+
+    def Scope "Looks"
+    {
+        def Material "Steel"
+        {
+            token outputs:surface.connect = </World/Looks/Steel/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.82)
+                float inputs:metallic = 1
+                float inputs:roughness = 0.3
+                token outputs:surface
+            }
+        }
+    }
+}

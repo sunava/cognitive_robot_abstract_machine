@@ -180,15 +180,20 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
   })();
 
   // image-based lighting (imported .dae lights are stripped on load)
+  //: blur of the environment map, as PMREM's sigma in radians
+  const ENVIRONMENT_BLUR = 0.04;
   if (THREE.RoomEnvironment && THREE.PMREMGenerator) {
     try {
       const pmrem = new THREE.PMREMGenerator(renderer);
-      scene3.environment = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+      scene3.environment = pmrem.fromScene(new THREE.RoomEnvironment(), ENVIRONMENT_BLUR).texture;
     } catch (e) { /* optional */ }
   }
 
-  scene3.add(new THREE.HemisphereLight(0xf4efe6, 0x2a2d33, 0.32));
-  scene3.add(new THREE.AmbientLight(0xfff4e6, 0.05));
+  // studio fill lights; a bundle that describes its own lights replaces them
+  const hemisphere = new THREE.HemisphereLight(0xf4efe6, 0x2a2d33, 0.32);
+  scene3.add(hemisphere);
+  const ambient = new THREE.AmbientLight(0xfff4e6, 0.05);
+  scene3.add(ambient);
   const key = new THREE.DirectionalLight(0xfff2df, 1.05);
   key.position.set(4, 7, 3);
   key.castShadow = true;
@@ -200,6 +205,8 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
   key.shadow.normalBias = 0.02;
   key.shadow.radius = 3;
   scene3.add(key);
+  //: distance of the key light from the origin it shines on while no shadow bounds place it
+  const KEY_DISTANCE = key.position.length();
   const back = new THREE.DirectionalLight(0xdfe6f2, 0.3);
   back.position.set(-4, 4, -3);
   scene3.add(back);
@@ -581,7 +588,10 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
         return;
       }
       sceneBase = SCENES + name + '/';
-      return fetch(sceneBase + 'scene.json').then(function (r) { return r.json(); }).then(loadScene);
+      return fetch(sceneBase + 'scene.json').then(function (r) { return r.json(); }).then(function (sc) {
+        loadScene(sc);
+        applySceneRendering(sc);
+      });
     })
     .catch(function (e) {
       if (statusEl) statusEl.textContent = 'Scene failed to load: ' + e;
@@ -727,6 +737,68 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
         if (statusEl) statusEl.classList.add('hidden');
         readyCbs.forEach(function (cb) { cb(); });
       });
+  }
+
+  // %% rendering settings the bundle asks for (core/scene-rendering.js, core/scene-camera.js)
+  // every field a bundle leaves out keeps the studio look and camera set up above
+  let sceneRendering = SceneRendering.of(null);
+  //: near plane of the cube camera that renders a bundle's lighting environment, in metres
+  const ENVIRONMENT_NEAR = 0.1;
+  function applySceneRendering(sc) {
+    sceneRendering = SceneRendering.of(sc);
+    SceneCamera.of(sc).applyTo(camera, controls);
+    if (!sceneRendering.groundPlane) {
+      ground.visible = false;
+      $('lyr-floor').parentElement.style.display = 'none';
+    }
+    if (sceneRendering.shadowBounds) {
+      aimKeyLight(ShadowFit.fromThree(key.target.position.clone().sub(key.position)), sceneRendering.shadowBounds);
+    }
+    return sceneRendering.lighting(function (url) {
+      return fetch(url).then(function (r) { return r.ok ? r.json() : null; });
+    }, sceneBase).then(applyLighting);
+  }
+  // the floor layer switch; a scene that turns the floor off keeps it off
+  function setFloorVisible(on) {
+    ground.visible = on && sceneRendering.groundPlane;
+    needsRender = true;
+  }
+  // point the key light along a bundle-frame direction; with shadow bounds its
+  // shadow camera is fitted to them, else it keeps the default region at the origin
+  function aimKeyLight(direction, bounds) {
+    if (bounds) {
+      new ShadowFit(bounds, direction).applyTo(THREE, key);
+    } else {
+      key.position.copy(ShadowFit.toThree(THREE, direction).normalize().multiplyScalar(-KEY_DISTANCE));
+      key.target.position.set(0, 0, 0);
+      key.target.updateMatrixWorld();
+    }
+    needsRender = true;
+  }
+  // the bundle's own lights (core/lab-environment.js): light from all around — its
+  // room and panels, or its dome — becomes the environment map and replaces the
+  // studio fill lights; its strongest direct light becomes the key light
+  function applyLighting(payload) {
+    const description = LightingDescription.of(payload);
+    if (description.empty || !THREE.PMREMGenerator) return;
+    const lab = new LabEnvironment(description, sceneRendering.shadowBounds);
+    if (description.surrounding) {
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      const previous = scene3.environment;
+      scene3.environment = pmrem.fromScene(lab.scene(THREE), ENVIRONMENT_BLUR, ENVIRONMENT_NEAR, lab.reach()).texture;
+      pmrem.dispose();
+      if (previous) previous.dispose();
+      hemisphere.intensity = 0;
+      ambient.intensity = 0;
+      back.intensity = 0;
+    }
+    const keyLight = lab.keyLight();
+    if (keyLight) {
+      key.color.fromArray(keyLight.color);
+      key.intensity = keyLight.intensity;
+      aimKeyLight(keyLight.direction, keyLight.shadowBounds);
+    }
+    needsRender = true;
   }
 
   // %% materials (identical treatment to the hand-built version)
@@ -1157,7 +1229,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
       if (m.robot) return;
       m.obj.traverse(function (c) { if (c.isMesh) _envMeshes.push(c); });
     });
-    if (ground) _envMeshes.push(ground);
+    if (ground && sceneRendering.groundPlane) _envMeshes.push(ground);
     return _envMeshes;
   }
   function meshBox(group) {                 // world AABB over the object's meshes only (skip label sprite)
@@ -2051,19 +2123,12 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
   // %% SSAO
   let composer = null, ssaoPass = null;
   (function setupSSAO() {
-    if (!(THREE.EffectComposer && THREE.RenderPass && window.BackgroundIgnoringSSAOPass && THREE.ShaderPass && THREE.CopyShader)) return;
+    if (!(window.AmbientOcclusion && THREE.EffectComposer && THREE.RenderPass && THREE.ShaderPass && THREE.CopyShader)) return;
     try {
       const w = container.clientWidth || 800, h = container.clientHeight || 600;
-      composer = new THREE.EffectComposer(renderer);
-      composer.addPass(new THREE.RenderPass(scene3, camera));
-      ssaoPass = new BackgroundIgnoringSSAOPass(scene3, camera, w, h);
-      ssaoPass.kernelRadius = 0.12;
-      ssaoPass.minDistance = 0.001;
-      ssaoPass.maxDistance = 0.04;
-      composer.addPass(ssaoPass);
-      const copy = new THREE.ShaderPass(THREE.CopyShader);
-      copy.renderToScreen = true;
-      composer.addPass(copy);
+      const composed = AmbientOcclusion.composer(renderer, scene3, camera, w, h);
+      composer = composed.composer;
+      ssaoPass = composed.pass;
     } catch (e) { composer = null; }
   })();
   function renderFrame() {
@@ -2147,7 +2212,7 @@ Panels.define('robot-scene', function mountRobotScene(root, bus) {
     // captured beside the trajectory rather than the trajectory itself
     onFrame: function (cb) { frameCb = cb; },
     setAutoRotate: function (on) { controls.autoRotate = on; controls.autoRotateSpeed = 0.5; needsRender = true; },
-    setFloorVisible: function (on) { ground.visible = on; needsRender = true; },
+    setFloorVisible: setFloorVisible,
     setFollow: function (on) { follow = on; },
     setPropsVisible: function (on) {
       for (const n in objectMeshes) objectMeshes[n].visible = on;

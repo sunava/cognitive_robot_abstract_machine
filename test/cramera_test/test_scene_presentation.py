@@ -13,7 +13,11 @@ import pytest
 from cramera.live.bridge import Bridge
 from cramera.live.live_bundle import build_live_scene
 from cramera.live.recording_bundle import write_recording_bundle
-from cramera.scene_presentation import PresentationField, ScenePresentation
+from cramera.scene_presentation import (
+    BundleFile,
+    PresentationField,
+    ScenePresentation,
+)
 
 from .test_live_bundle import (
     attached_bridge,
@@ -259,3 +263,104 @@ class TestPresentationSignature:
         )
 
         assert first.signature() == following.signature()
+
+
+# %% lighting of imported bundles
+
+
+@pytest.fixture
+def lit_bundle(tmp_path: Path) -> Path:
+    """
+    An imported scene bundle whose rendering settings name a lighting file.
+    """
+    dataset = Path(__file__).parent / "dataset" / "usd_scene"
+    scene = json.loads((dataset / "viewer_scene.json").read_text())
+    lighting_file = scene[PresentationField.RENDERING][PresentationField.ENVIRONMENT]
+    (tmp_path / BundleFile.SCENE).write_text(json.dumps(scene))
+    (tmp_path / lighting_file).write_text((dataset / lighting_file).read_text())
+    return tmp_path
+
+
+def bundle_scene(bundle: Path) -> dict:
+    """
+    The scene file of a bundle as written.
+    """
+    return json.loads((bundle / BundleFile.SCENE).read_text())
+
+
+def bundle_lighting(bundle: Path) -> dict:
+    """
+    The lighting file a bundle's rendering settings name.
+    """
+    rendering = bundle_scene(bundle)[PresentationField.RENDERING]
+    return json.loads((bundle / rendering[PresentationField.ENVIRONMENT]).read_text())
+
+
+class TestBundleLighting:
+    def test_the_named_lighting_file_is_carried_inline(self, lit_bundle):
+        presentation = ScenePresentation.from_bundle(lit_bundle)
+
+        assert presentation.rendering[PresentationField.ENVIRONMENT] == bundle_lighting(
+            lit_bundle
+        )
+
+    def test_every_other_rendering_and_camera_field_is_carried_unchanged(
+        self, lit_bundle
+    ):
+        source = bundle_scene(lit_bundle)
+        presentation = ScenePresentation.from_bundle(lit_bundle)
+        rendering = dict(presentation.rendering)
+        rendering.pop(PresentationField.ENVIRONMENT)
+        source[PresentationField.RENDERING].pop(PresentationField.ENVIRONMENT)
+
+        assert (rendering, presentation.camera) == (
+            source[PresentationField.RENDERING],
+            source[PresentationField.CAMERA],
+        )
+
+    def test_inline_lighting_is_kept_as_written(self, lit_bundle):
+        scene = bundle_scene(lit_bundle)
+        scene[PresentationField.RENDERING][PresentationField.ENVIRONMENT] = (
+            bundle_lighting(lit_bundle)
+        )
+        (lit_bundle / BundleFile.SCENE).write_text(json.dumps(scene))
+
+        presentation = ScenePresentation.from_bundle(lit_bundle)
+
+        assert presentation.rendering == scene[PresentationField.RENDERING]
+
+    def test_a_bundle_without_rendering_settings_has_none(self, lit_bundle):
+        scene = bundle_scene(lit_bundle)
+        scene.pop(PresentationField.RENDERING)
+        (lit_bundle / BundleFile.SCENE).write_text(json.dumps(scene))
+
+        assert ScenePresentation.from_bundle(lit_bundle).rendering is None
+
+    def test_a_generated_scene_lights_like_its_source(self, lit_bundle):
+        generated = {}
+
+        ScenePresentation.from_bundle(lit_bundle).apply_to_scene(generated)
+
+        assert generated[PresentationField.RENDERING][
+            PresentationField.ENVIRONMENT
+        ] == bundle_lighting(lit_bundle)
+
+    def test_the_source_bundle_is_left_as_written(self, lit_bundle):
+        before = (lit_bundle / BundleFile.SCENE).read_text()
+
+        ScenePresentation.from_bundle(lit_bundle)
+
+        assert (lit_bundle / BundleFile.SCENE).read_text() == before
+
+    def test_the_live_bundle_lights_like_the_imported_source(
+        self, lit_bundle, monkeypatch, tmp_path
+    ):
+        scenes = use_scratch_scenes_directory(monkeypatch, tmp_path / "roots")
+        bridge = attached_bridge(with_robot=True)
+        bridge.presentation = ScenePresentation.from_bundle(lit_bundle)
+
+        build_live_scene(bridge)
+
+        assert scene_payload(scenes)[PresentationField.RENDERING][
+            PresentationField.ENVIRONMENT
+        ] == bundle_lighting(lit_bundle)

@@ -7,8 +7,11 @@ import json
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import StrEnum
+from pathlib import Path
 
 from typing_extensions import Any
+
+from cramera.onboard.usd_scene.bundle_layout import BundleFile
 
 # %% scene presentation fields
 
@@ -18,6 +21,9 @@ class PresentationField(StrEnum):
 
     RENDERING = "rendering"
     """Renderer settings from the source scene."""
+
+    ENVIRONMENT = "environment"
+    """Lighting description in the renderer settings: a bundle-relative file or an inline object."""
 
     CAMERA = "camera"
     """Initial camera position and target."""
@@ -77,6 +83,22 @@ class ScenePresentation:
                 and isinstance(entry.get(PresentationField.KEY), str)
             ),
         )
+
+    @classmethod
+    def from_bundle(cls, directory: Path) -> ScenePresentation:
+        """
+        Read presentation fields from a scene bundle, with a lighting file it names
+        inlined, so a scene generated into another bundle keeps the source's lighting.
+        """
+        source = json.loads((directory / BundleFile.SCENE).read_text())
+        rendering = source.get(PresentationField.RENDERING)
+        if not isinstance(rendering, dict) or not isinstance(
+            rendering.get(PresentationField.ENVIRONMENT), str
+        ):
+            return cls.from_json(source)
+        lighting_file = directory / rendering[PresentationField.ENVIRONMENT]
+        rendering[PresentationField.ENVIRONMENT] = json.loads(lighting_file.read_text())
+        return cls.from_json(source)
 
     def apply_to_scene(self, scene: dict[str, Any]) -> None:
         """Apply copied appearance settings to a generated scene in place."""
