@@ -14,7 +14,12 @@ import numpy as np
 from typing_extensions import TYPE_CHECKING
 
 from coraplex.datastructures.dataclasses import Context
-from coraplex.datastructures.enums import Arms, ApproachDirection, VerticalAlignment
+from coraplex.datastructures.enums import (
+    Arms,
+    ApproachDirection,
+    VerticalAlignment,
+    VisualizationBackend,
+)
 from coraplex.datastructures.grasp import GraspDescription
 from coraplex.execution_environment import simulated_robot
 from coraplex.plans.factories import sequential
@@ -24,8 +29,8 @@ from coraplex.robot_plans.actions.core.navigation import NavigateAction
 from coraplex.robot_plans.actions.core.pick_up import PickUpAction
 from coraplex.robot_plans.actions.core.placing import PlaceAction
 from coraplex.robot_plans.actions.core.robot_body import ParkArmsAction
-from coraplex.testing import start_visualization
 from coraplex.view_manager import ViewManager
+from coraplex.visualization import WorldVisualization
 from semantic_digital_twin.api import (
     BodySpecification,
     RobotSpecification,
@@ -82,7 +87,7 @@ CARRYING_ARM = Arms.LEFT
 The arm the robot carries the parcels with.
 """
 
-ROUND_TRIPS = 10
+ROUND_TRIPS = 4
 """
 How often the robot brings every parcel over to its place pose and back again.
 """
@@ -366,7 +371,9 @@ robot = world.get_semantic_annotations_by_type(UnitreeG1)[0]
 # sink into it or hover above it.
 assert abs(lowest_collision_point_of(robot, world)) < FLOOR_CONTACT_TOLERANCE
 
-start_visualization(world)
+visualization = WorldVisualization.from_environment(
+    world, default_backend=VisualizationBackend.CRAMERA
+).start()
 
 with simulated_robot:
     for _ in range(ROUND_TRIPS):

@@ -12,6 +12,20 @@ import pytest
 
 from cramera import paths
 from cramera.live.recording_storage import SceneDestination
+from cramera.onboard.scene_index import compose_scene_name
+
+MY_RUN_IDENTITY = {
+    "robot": "pr2",
+    "environment": "kitchen",
+    "task": "my_run",
+    "version": "v1",
+}
+"""
+A plain scene identity most save tests post — only the fact that it saves successfully
+matters to them, not the specific robot/environment/task/version.
+"""
+
+MY_RUN = compose_scene_name(**MY_RUN_IDENTITY)
 
 
 @pytest.fixture()
@@ -94,13 +108,16 @@ class TestScenesTwoRoots:
     the ``fixture_scene`` fixture where they coincide.
     """
 
+    SHARED_NAME = compose_scene_name("pr2", "apartment", "kitchen", "v1")
+    LOCAL_NAME = compose_scene_name("tracy", "lab", "my_run", "v1")
+
     @pytest.fixture()
     def two_root_server(self, tmp_path, monkeypatch):
         shared = tmp_path / "shared"
         local = tmp_path / "data" / "scenes"
         for directory, name, robot in (
-            (shared, "kitchen", "pr2"),
-            (local, "my_run", "tracy"),
+            (shared, self.SHARED_NAME, "pr2"),
+            (local, self.LOCAL_NAME, "tracy"),
         ):
             bundle = directory / name
             bundle.mkdir(parents=True)
@@ -108,7 +125,7 @@ class TestScenesTwoRoots:
                 json.dumps({"name": name, "robot": {"name": robot}, "models": []})
             )
         (shared / "index.json").write_text(
-            json.dumps({"default": "kitchen", "scenes": []})
+            json.dumps({"default": self.SHARED_NAME, "scenes": []})
         )
         monkeypatch.setenv("CRAMERA_SCENES", str(shared))
         monkeypatch.setenv("CRAMERA_DATA", str(tmp_path / "data"))
@@ -124,17 +141,19 @@ class TestScenesTwoRoots:
         httpd.shutdown()
 
     def test_a_shared_scene_is_served(self, two_root_server):
-        scene = get_json(two_root_server + "/scenes/kitchen/scene.json")
+        scene = get_json(
+            two_root_server + "/scenes/" + self.SHARED_NAME + "/scene.json"
+        )
         assert scene["robot"]["name"] == "pr2"
 
     def test_a_local_only_scene_is_served(self, two_root_server):
-        scene = get_json(two_root_server + "/scenes/my_run/scene.json")
+        scene = get_json(two_root_server + "/scenes/" + self.LOCAL_NAME + "/scene.json")
         assert scene["robot"]["name"] == "tracy"
 
     def test_the_index_merges_both_roots(self, two_root_server):
         index = get_json(two_root_server + "/scenes/index.json")
         names = sorted(entry["name"] for entry in index["scenes"])
-        assert names == ["kitchen", "my_run"]
+        assert names == sorted([self.SHARED_NAME, self.LOCAL_NAME])
 
     def test_traversal_across_either_root_is_blocked(self, two_root_server):
         request = urllib.request.Request(two_root_server + "/scenes/../../etc/passwd")
@@ -174,12 +193,12 @@ class TestRecordingApi:
     def test_save_works_with_no_bridge_involved_at_all(self, server, fixture_scene):
         self.finalize_on_disk(fixture_scene)
 
-        status, body = post(server + "/api/recording/save", {"name": "my_run"})
+        status, body = post(server + "/api/recording/save", MY_RUN_IDENTITY)
 
         assert status == 200
-        assert body == {"ok": True, "scene": "my_run"}
-        saved = fixture_scene / "scenes" / "my_run" / "scene.json"
-        assert json.loads(saved.read_text())["name"] == "my_run"
+        assert body == {"ok": True, "scene": MY_RUN}
+        saved = fixture_scene / "scenes" / MY_RUN / "scene.json"
+        assert json.loads(saved.read_text())["name"] == MY_RUN
 
     def test_discard_works_with_no_bridge_involved_at_all(self, server, fixture_scene):
         bundle = self.finalize_on_disk(fixture_scene)
@@ -239,12 +258,12 @@ class TestRecordingApi:
 
         status, body = post(
             server + "/api/recording/save",
-            {"name": "my_run", "firstFrame": 2, "lastFrame": 4},
+            {**MY_RUN_IDENTITY, "firstFrame": 2, "lastFrame": 4},
         )
 
         assert status == 200
-        assert body == {"ok": True, "scene": "my_run"}
-        saved = fixture_scene / "scenes" / "my_run"
+        assert body == {"ok": True, "scene": MY_RUN}
+        saved = fixture_scene / "scenes" / MY_RUN
         trajectory = json.loads((saved / "trajectory.json").read_text())
         assert trajectory["objects"] == [{"milk.stl": pose} for pose in poses[2:5]]
         [entry] = json.loads((saved / "scene.json").read_text())["objects"]
@@ -253,10 +272,10 @@ class TestRecordingApi:
     def test_save_without_a_trim_keeps_every_frame(self, server, fixture_scene):
         poses = self.replayable_on_disk(fixture_scene)
 
-        post(server + "/api/recording/save", {"name": "my_run"})
+        post(server + "/api/recording/save", MY_RUN_IDENTITY)
 
         trajectory = json.loads(
-            (fixture_scene / "scenes" / "my_run" / "trajectory.json").read_text()
+            (fixture_scene / "scenes" / MY_RUN / "trajectory.json").read_text()
         )
         assert len(trajectory["objects"]) == len(poses)
 
@@ -265,12 +284,12 @@ class TestRecordingApi:
 
         status, body = post(
             server + "/api/recording/save",
-            {"name": "my_run", "firstFrame": 0, "lastFrame": 9},
+            {**MY_RUN_IDENTITY, "firstFrame": 0, "lastFrame": 9},
         )
 
         assert status == 400
         assert body["ok"] is False
-        assert not (fixture_scene / "scenes" / "my_run").exists()
+        assert not (fixture_scene / "scenes" / MY_RUN).exists()
 
     def test_save_can_share_into_the_shared_scenes_root(
         self, server, fixture_scene, tmp_path, monkeypatch
@@ -281,41 +300,44 @@ class TestRecordingApi:
 
         status, body = post(
             server + "/api/recording/save",
-            {"name": "my_run", "destination": SceneDestination.SHARED.value},
+            {**MY_RUN_IDENTITY, "destination": SceneDestination.SHARED.value},
         )
 
         assert status == 200
-        assert body == {"ok": True, "scene": "my_run"}
-        assert (tmp_path / "shared" / "my_run" / "scene.json").is_file()
+        assert body == {"ok": True, "scene": MY_RUN}
+        assert (tmp_path / "shared" / MY_RUN / "scene.json").is_file()
 
     def test_sharing_without_a_shared_root_is_reported(self, server, fixture_scene):
         self.finalize_on_disk(fixture_scene)
 
         status, body = post(
             server + "/api/recording/save",
-            {"name": "my_run", "destination": SceneDestination.SHARED.value},
+            {**MY_RUN_IDENTITY, "destination": SceneDestination.SHARED.value},
         )
 
         assert status == 400
         assert body["ok"] is False
 
     def test_save_without_a_finalized_recording_is_rejected(self, server):
-        status, body = post(server + "/api/recording/save", {"name": "my_run"})
+        status, body = post(server + "/api/recording/save", MY_RUN_IDENTITY)
         assert status == 400
         assert body["ok"] is False
 
     def test_save_rejects_an_unsafe_name(self, server, fixture_scene):
         self.finalize_on_disk(fixture_scene)
 
-        status, body = post(server + "/api/recording/save", {"name": "../escape"})
+        status, body = post(
+            server + "/api/recording/save", {**MY_RUN_IDENTITY, "task": "../escape"}
+        )
 
         assert status == 400
         assert body["ok"] is False
 
     def test_save_rejects_a_name_collision(self, server, fixture_scene):
         self.finalize_on_disk(fixture_scene)
+        (fixture_scene / "scenes" / MY_RUN).mkdir(parents=True)
 
-        status, body = post(server + "/api/recording/save", {"name": "fixture"})
+        status, body = post(server + "/api/recording/save", MY_RUN_IDENTITY)
 
         assert status == 409
         assert body["ok"] is False
@@ -437,3 +459,46 @@ class TestMainOpensTheViewerPage:
 
     def test_no_browser_opts_out(self, monkeypatch):
         assert self.run_main(monkeypatch, ["--no-browser", "8123"]) == []
+
+
+class TestAccessLogRouting:
+    """
+    ``Handler.log_message`` routes each access-log line to ``info`` or ``debug`` (or
+    drops it) depending on how routine it is, so the default log level shows what
+    changed rather than every scene-asset request and status poll.
+    """
+
+    def log(self, caplog, requestline, status="200"):
+        from cramera.server import Handler
+
+        handler = Handler.__new__(Handler)
+        with caplog.at_level("DEBUG", logger="cramera.server"):
+            handler.log_message('"%s" %s -', requestline, status)
+        return [record.message for record in caplog.records]
+
+    def test_a_scene_asset_request_is_only_logged_at_debug(self, caplog):
+        messages = self.log(
+            caplog,
+            "GET /scenes/garmi/apartment/pick_place/v1/meshes/recording/meshes/Window31.obj HTTP/1.1",
+        )
+
+        assert not any(record.levelname == "INFO" for record in caplog.records)
+        assert any("/scenes/" in message for message in messages)
+
+    def test_a_recording_status_poll_is_only_logged_at_debug(self, caplog):
+        messages = self.log(caplog, "GET /api/recording/status HTTP/1.1")
+
+        assert not any(record.levelname == "INFO" for record in caplog.records)
+        assert any("/api/recording/status" in message for message in messages)
+
+    def test_an_eql_request_is_logged_at_info(self, caplog):
+        self.log(caplog, "POST /api/eql HTTP/1.1")
+
+        assert any(record.levelname == "INFO" for record in caplog.records)
+
+    def test_a_live_scene_404_miss_is_not_logged_at_all(self, caplog):
+        messages = self.log(
+            caplog, "GET /scenes/__live__/scene.json HTTP/1.1", status="404"
+        )
+
+        assert messages == []

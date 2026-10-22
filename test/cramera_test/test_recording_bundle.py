@@ -192,6 +192,46 @@ class TestLooseObjects:
 
         assert scene["objects"] == []
 
+    def test_an_object_only_tracked_from_a_later_frame_still_gets_its_spawn_pose(
+        self, tmp_path
+    ):
+        """
+        A demo's grasped object (see
+        :meth:`~cramera.live.bridge.Bridge._track_reparented_bodies`) only joins the
+        object overlay once it is first re-parented, so it is absent from every recorded
+        tick before that.
+
+        Its spawn pose must come from the first tick that does publish it, rather than
+        being skipped the way an object never tracked at all is (see the previous test).
+        """
+        bridge = attached_bridge()
+        world = bridge.world
+        bench = next(
+            body for body in world.bodies if str(body.name) == "laboratory/bench"
+        )
+        robot_arm = next(
+            body for body in world.bodies if str(body.name) == "robot/arm_link"
+        )
+        with world.modify_world():
+            world.remove_connection(bench.parent_connection)
+            world.add_connection(FixedConnection(parent=robot_arm, child=bench))
+        bridge.observe_model_change()
+        bench_spawn = [0.4, 0.5, 0.6, 0, 0, 0, 1]
+
+        scene = write_recording_bundle(
+            bridge,
+            [
+                frame_with_milk(),
+                frame_with_milk(objects={"milk.stl": MILK_SPAWN, "bench": bench_spawn}),
+            ],
+            20.0,
+            tmp_path / "rec",
+            "__recording__",
+        )
+
+        entry = next(e for e in scene["objects"] if e["key"] == "bench")
+        assert entry["spawn"] == bench_spawn
+
 
 class TestTrajectory:
     def test_frame_arrays_match_the_recorded_ticks(self, tmp_path):
@@ -221,6 +261,45 @@ class TestTrajectory:
 
         trajectory = json.loads((tmp_path / "rec" / "trajectory.json").read_text())
         assert trajectory["framesPerSecond"] == 12.5
+
+    def test_ticks_before_an_object_is_tracked_are_backfilled_with_its_spawn_pose(
+        self, tmp_path
+    ):
+        """
+        The viewer only moves an object once both its current and next tick carry a pose
+        for it (see ``applyFrame`` in ``robot_scene/panel.js``); an object only tracked
+        from a later tick (see
+        :meth:`~cramera.live.bridge.Bridge._track_reparented_bodies`) would otherwise
+        sit at the coordinate origin for every earlier tick instead of its spawn pose.
+        """
+        bridge = attached_bridge()
+        world = bridge.world
+        bench = next(
+            body for body in world.bodies if str(body.name) == "laboratory/bench"
+        )
+        robot_arm = next(
+            body for body in world.bodies if str(body.name) == "robot/arm_link"
+        )
+        with world.modify_world():
+            world.remove_connection(bench.parent_connection)
+            world.add_connection(FixedConnection(parent=robot_arm, child=bench))
+        bridge.observe_model_change()
+        bench_pose = [0.4, 0.5, 0.6, 0, 0, 0, 1]
+
+        write_recording_bundle(
+            bridge,
+            [
+                frame_with_milk(),
+                frame_with_milk(objects={"milk.stl": MILK_SPAWN, "bench": bench_pose}),
+            ],
+            20.0,
+            tmp_path / "rec",
+            "__recording__",
+        )
+
+        trajectory = json.loads((tmp_path / "rec" / "trajectory.json").read_text())
+        assert trajectory["objects"][0]["bench"] == bench_pose
+        assert trajectory["objects"][1]["bench"] == bench_pose
 
 
 class TestSegments:

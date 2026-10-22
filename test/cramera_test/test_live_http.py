@@ -23,9 +23,23 @@ from cramera import paths
 from cramera.live.bridge import Bridge
 from cramera.live.http import serve
 from cramera.live.recording import Recording
+from cramera.onboard.scene_index import compose_scene_name
 
 from .test_live_bridge import shaped_body, world_with
 from .test_server import get, get_json
+
+MY_RUN_IDENTITY = {
+    "robot": "pr2",
+    "environment": "kitchen",
+    "task": "my_run",
+    "version": "v1",
+}
+"""
+A plain scene identity most save tests post — only the fact that it saves successfully
+matters to them, not the specific robot/environment/task/version.
+"""
+
+MY_RUN = compose_scene_name(**MY_RUN_IDENTITY)
 
 
 def post(url, payload=None, timeout=10):
@@ -321,15 +335,15 @@ class TestRecordingEndpoints:
         self.start_recording(bridge)
         post(server + "/recording/stop")
 
-        status, body = post(server + "/recording/save", {"name": "my_run"})
+        status, body = post(server + "/recording/save", MY_RUN_IDENTITY)
 
         assert status == 200
-        assert body == {"ok": True, "scene": "my_run"}
-        saved = tmp_path / "data" / "scenes" / "my_run"
-        assert json.loads((saved / "scene.json").read_text())["name"] == "my_run"
+        assert body == {"ok": True, "scene": MY_RUN}
+        saved = tmp_path / "data" / "scenes" / MY_RUN
+        assert json.loads((saved / "scene.json").read_text())["name"] == MY_RUN
         assert not (tmp_path / "data" / "scenes" / paths.RECORDING_SCENE_NAME).exists()
         index = json.loads((tmp_path / "data" / "scenes" / "index.json").read_text())
-        assert any(entry["name"] == "my_run" for entry in index["scenes"])
+        assert any(entry["name"] == MY_RUN for entry in index["scenes"])
 
     def test_save_frees_the_slot_for_another_recording(
         self, server, bridge, tmp_path, monkeypatch
@@ -338,7 +352,7 @@ class TestRecordingEndpoints:
         monkeypatch.delenv("CRAMERA_SCENES", raising=False)
         self.start_recording(bridge)
         post(server + "/recording/stop")
-        post(server + "/recording/save", {"name": "my_run"})
+        post(server + "/recording/save", MY_RUN_IDENTITY)
 
         assert get_json(server + "/recording")["state"] == "idle"
 
@@ -352,13 +366,13 @@ class TestRecordingEndpoints:
 
         status, body = post(
             server + "/recording/save",
-            {"name": "my_run", "firstFrame": 1, "lastFrame": 3},
+            {**MY_RUN_IDENTITY, "firstFrame": 1, "lastFrame": 3},
         )
 
         assert status == 200
-        assert body == {"ok": True, "scene": "my_run"}
+        assert body == {"ok": True, "scene": MY_RUN}
         trajectory = json.loads(
-            (tmp_path / "data" / "scenes" / "my_run" / "trajectory.json").read_text()
+            (tmp_path / "data" / "scenes" / MY_RUN / "trajectory.json").read_text()
         )
         assert len(trajectory["frames"]) == 3
 
@@ -370,10 +384,10 @@ class TestRecordingEndpoints:
         self.start_recording(bridge, ticks=5)
         post(server + "/recording/stop")
 
-        post(server + "/recording/save", {"name": "my_run"})
+        post(server + "/recording/save", MY_RUN_IDENTITY)
 
         trajectory = json.loads(
-            (tmp_path / "data" / "scenes" / "my_run" / "trajectory.json").read_text()
+            (tmp_path / "data" / "scenes" / MY_RUN / "trajectory.json").read_text()
         )
         assert len(trajectory["frames"]) == 5
 
@@ -387,15 +401,15 @@ class TestRecordingEndpoints:
 
         status, body = post(
             server + "/recording/save",
-            {"name": "my_run", "firstFrame": 0, "lastFrame": 9},
+            {**MY_RUN_IDENTITY, "firstFrame": 0, "lastFrame": 9},
         )
 
         assert status == 400
         assert body["ok"] is False
-        assert not (tmp_path / "data" / "scenes" / "my_run").exists()
+        assert not (tmp_path / "data" / "scenes" / MY_RUN).exists()
 
     def test_save_without_a_finalized_recording_is_rejected(self, server):
-        status, body = post(server + "/recording/save", {"name": "my_run"})
+        status, body = post(server + "/recording/save", MY_RUN_IDENTITY)
         assert status == 400
         assert body["ok"] is False
 
@@ -405,21 +419,23 @@ class TestRecordingEndpoints:
         self.start_recording(bridge)
         post(server + "/recording/stop")
 
-        status, body = post(server + "/recording/save", {"name": "../escape"})
+        status, body = post(
+            server + "/recording/save", {**MY_RUN_IDENTITY, "task": "../escape"}
+        )
 
         assert status == 400
         assert body["ok"] is False
 
     def test_save_rejects_a_name_collision(self, server, bridge, tmp_path, monkeypatch):
         shared = tmp_path / "shared"
-        (shared / "kitchen").mkdir(parents=True)
-        (shared / "kitchen" / "scene.json").write_text("{}")
+        (shared / MY_RUN).mkdir(parents=True)
+        (shared / MY_RUN / "scene.json").write_text("{}")
         monkeypatch.setenv("CRAMERA_SCENES", str(shared))
         monkeypatch.setenv("CRAMERA_DATA", str(tmp_path / "data"))
         self.start_recording(bridge)
         post(server + "/recording/stop")
 
-        status, body = post(server + "/recording/save", {"name": "kitchen"})
+        status, body = post(server + "/recording/save", MY_RUN_IDENTITY)
 
         assert status == 409
         assert body["ok"] is False

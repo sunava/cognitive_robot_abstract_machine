@@ -24,9 +24,15 @@ from cramera.live.recording_storage import (
     trim_recording_bundle,
 )
 from cramera.live.recording_segments import clip_segment_payloads
-from cramera.onboard.scene_index import InvalidSceneName
+from cramera.onboard.scene_index import InvalidSceneName, compose_scene_name
 
 from .test_live_bundle import attached_bridge
+
+MY_RUN = compose_scene_name("pr2", "kitchen", "my_run", "v1")
+"""
+A plain scene identity most tests save under — only the fact that it saves successfully
+matters to them, not the specific robot/environment/task/version.
+"""
 
 
 def finalized_on_disk(tmp_path, monkeypatch) -> None:
@@ -75,20 +81,20 @@ class TestSaveRecordingBundle:
     def test_moves_the_bundle_and_renames_it(self, tmp_path, monkeypatch):
         finalized_on_disk(tmp_path, monkeypatch)
 
-        name = save_recording_bundle("my_run")
+        name = save_recording_bundle(MY_RUN)
 
-        assert name == "my_run"
-        saved = tmp_path / "scenes" / "my_run"
-        assert json.loads((saved / "scene.json").read_text())["name"] == "my_run"
+        assert name == MY_RUN
+        saved = tmp_path / "scenes" / MY_RUN
+        assert json.loads((saved / "scene.json").read_text())["name"] == MY_RUN
         assert not (tmp_path / "scenes" / paths.RECORDING_SCENE_NAME).exists()
 
     def test_registers_the_saved_scene_in_the_local_index(self, tmp_path, monkeypatch):
         finalized_on_disk(tmp_path, monkeypatch)
 
-        save_recording_bundle("my_run")
+        save_recording_bundle(MY_RUN)
 
         index = json.loads((tmp_path / "scenes" / "index.json").read_text())
-        assert any(entry["name"] == "my_run" for entry in index["scenes"])
+        assert any(entry["name"] == MY_RUN for entry in index["scenes"])
 
     def test_works_without_a_live_bridge_at_all(self, tmp_path, monkeypatch):
         """
@@ -96,29 +102,31 @@ class TestSaveRecordingBundle:
         scenario a demo process that already exited leaves behind.
         """
         finalized_on_disk(tmp_path, monkeypatch)
+        name = compose_scene_name("pr2", "kitchen", "after_process_exit", "v1")
 
-        name = save_recording_bundle("after_process_exit")
+        saved_name = save_recording_bundle(name)
 
-        assert name == "after_process_exit"
+        assert saved_name == name
 
     def test_rejects_an_unsafe_name(self, tmp_path, monkeypatch):
         finalized_on_disk(tmp_path, monkeypatch)
 
         with pytest.raises(InvalidSceneName):
-            save_recording_bundle("../escape")
+            save_recording_bundle("pr2/kitchen/../v1")
 
     def test_rejects_a_name_collision(self, tmp_path, monkeypatch):
         finalized_on_disk(tmp_path, monkeypatch)
-        (tmp_path / "scenes" / "kitchen").mkdir()
+        name = compose_scene_name("pr2", "kitchen", "pouring", "v1")
+        (tmp_path / "scenes" / name).mkdir(parents=True)
 
         with pytest.raises(SceneNameTaken):
-            save_recording_bundle("kitchen")
+            save_recording_bundle(name)
 
     def test_nothing_to_save_is_rejected(self, tmp_path, monkeypatch):
         monkeypatch.setenv("CRAMERA_DATA", str(tmp_path))
 
         with pytest.raises(NoSavedRecording):
-            save_recording_bundle("my_run")
+            save_recording_bundle(MY_RUN)
 
 
 # %% cutting a finalized bundle down before it is saved
@@ -239,35 +247,35 @@ class TestSharingARecording:
     def test_sharing_writes_into_the_shared_root(self, tmp_path, monkeypatch):
         self.separate_roots(tmp_path, monkeypatch)
 
-        save_recording_bundle("my_run", SceneDestination.SHARED)
+        save_recording_bundle(MY_RUN, SceneDestination.SHARED)
 
-        assert (tmp_path / "shared" / "my_run" / "scene.json").is_file()
-        assert not (tmp_path / "data" / "scenes" / "my_run").exists()
+        assert (tmp_path / "shared" / MY_RUN / "scene.json").is_file()
+        assert not (tmp_path / "data" / "scenes" / MY_RUN).exists()
 
     def test_sharing_indexes_it_in_the_shared_root(self, tmp_path, monkeypatch):
         self.separate_roots(tmp_path, monkeypatch)
 
-        save_recording_bundle("my_run", SceneDestination.SHARED)
+        save_recording_bundle(MY_RUN, SceneDestination.SHARED)
 
         index = json.loads((tmp_path / "shared" / "index.json").read_text())
-        assert any(entry["name"] == "my_run" for entry in index["scenes"])
+        assert any(entry["name"] == MY_RUN for entry in index["scenes"])
 
     def test_saving_locally_still_stays_out_of_the_shared_root(
         self, tmp_path, monkeypatch
     ):
         self.separate_roots(tmp_path, monkeypatch)
 
-        save_recording_bundle("my_run", SceneDestination.LOCAL)
+        save_recording_bundle(MY_RUN, SceneDestination.LOCAL)
 
-        assert (tmp_path / "data" / "scenes" / "my_run" / "scene.json").is_file()
-        assert not (tmp_path / "shared" / "my_run").exists()
+        assert (tmp_path / "data" / "scenes" / MY_RUN / "scene.json").is_file()
+        assert not (tmp_path / "shared" / MY_RUN).exists()
 
     def test_a_name_taken_in_either_root_is_refused(self, tmp_path, monkeypatch):
         self.separate_roots(tmp_path, monkeypatch)
-        (tmp_path / "shared" / "my_run").mkdir()
+        (tmp_path / "shared" / MY_RUN).mkdir(parents=True)
 
         with pytest.raises(SceneNameTaken):
-            save_recording_bundle("my_run", SceneDestination.SHARED)
+            save_recording_bundle(MY_RUN, SceneDestination.SHARED)
 
     def test_sharing_without_a_shared_root_is_refused(self, tmp_path, monkeypatch):
         """
@@ -283,4 +291,4 @@ class TestSharingARecording:
         finalize_recording(bridge, recording)
 
         with pytest.raises(SharedScenesUnavailable):
-            save_recording_bundle("my_run", SceneDestination.SHARED)
+            save_recording_bundle(MY_RUN, SceneDestination.SHARED)

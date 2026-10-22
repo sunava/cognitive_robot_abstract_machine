@@ -91,6 +91,32 @@ test('the reserved recording name itself is rejected', function () {
   assert.strictEqual(recording.isValidSaveName(recording.SCENE_NAME), false);
 });
 
+// %% save identity validation (robot, environment, task, version)
+test('a full identity with an environment is accepted', function () {
+  const recording = load();
+  assert.strictEqual(
+    recording.isValidSaveIdentity('pr2', 'kitchen', 'pouring', 'v1'), true);
+});
+
+test('a blank environment is accepted for a bench-only scene', function () {
+  const recording = load();
+  assert.strictEqual(recording.isValidSaveIdentity('pr2', '', 'pouring', 'v1'), true);
+  assert.strictEqual(recording.isValidSaveIdentity('pr2', null, 'pouring', 'v1'), true);
+});
+
+test('a missing robot, task or version is rejected', function () {
+  const recording = load();
+  assert.strictEqual(recording.isValidSaveIdentity('', 'kitchen', 'pouring', 'v1'), false);
+  assert.strictEqual(recording.isValidSaveIdentity('pr2', 'kitchen', '', 'v1'), false);
+  assert.strictEqual(recording.isValidSaveIdentity('pr2', 'kitchen', 'pouring', ''), false);
+});
+
+test('an unsafe environment is rejected even though it may be blank', function () {
+  const recording = load();
+  assert.strictEqual(
+    recording.isValidSaveIdentity('pr2', 'has space', 'pouring', 'v1'), false);
+});
+
 // %% playback speed
 test('a listed speed passes through unchanged', function () {
   const recording = load();

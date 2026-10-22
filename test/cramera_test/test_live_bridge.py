@@ -596,6 +596,34 @@ class TestWorldDrivenDiscovery:
 
         assert bridge.object_keys() == ["milk.stl"]
 
+    def test_a_body_seen_changing_parent_joins_the_overlay_even_without_a_mesh_name(
+        self,
+    ):
+        """
+        A grasped body without a mesh-file name (e.g. a procedurally built box) has to
+        stream through the overlay too, once it is seen re-parenting — otherwise it
+        would only ever render at whatever position the bundle last baked it at.
+        """
+        gripper = shaped_body("robot", "gripper")
+        parcel = shaped_body("warehouse", "parcel1")
+        world = World()
+        root = Body(name=PrefixedName("root", prefix="world"))
+        with world.modify_world():
+            world.add_body(root)
+            world.add_connection(FixedConnection(parent=root, child=gripper))
+            world.add_connection(FixedConnection(parent=root, child=parcel))
+        bridge = Bridge()
+        bridge.world = world
+        bridge.bind()
+        assert bridge.object_keys() == []
+
+        with world.modify_world():
+            world.remove_connection(parcel.parent_connection)
+            world.add_connection(FixedConnection(parent=gripper, child=parcel))
+        bridge.bind()
+
+        assert bridge.object_keys() == ["parcel1"]
+
     def test_snapshot_streams_the_pose_of_every_published_body(self):
         bridge = Bridge()
         bridge.world = world_with(
@@ -667,6 +695,45 @@ class TestBundleSignature:
         bridge.observe_model_change()
 
         assert bridge.bundle_signature() == before
+
+    def test_a_grasped_primitive_object_stops_changing_the_signature_after_the_first_reparent(
+        self,
+    ):
+        """
+        A demo can grasp a body that carries no mesh-file name (e.g. a procedurally
+        built box), the same way :class:`AttachNode`/:class:`DetachNode` re-parent a
+        transported parcel.
+
+        The first re-parent still changes the signature, since the bundle has to drop
+        the body once; every re-parent after that must not, or the viewer would reload
+        the whole scene on every pick and place.
+        """
+        bridge = Bridge()
+        gripper = shaped_body("robot", "gripper")
+        parcel = shaped_body("warehouse", "parcel1")
+        world = World()
+        root = Body(name=PrefixedName("root", prefix="world"))
+        with world.modify_world():
+            world.add_body(root)
+            world.add_connection(FixedConnection(parent=root, child=gripper))
+            world.add_connection(FixedConnection(parent=root, child=parcel))
+        bridge.attach(world)
+        before_first_pick = bridge.bundle_signature()
+
+        with world.modify_world():
+            world.remove_connection(parcel.parent_connection)
+            world.add_connection(FixedConnection(parent=gripper, child=parcel))
+        bridge.observe_model_change()
+        after_first_pick = bridge.bundle_signature()
+
+        with world.modify_world():
+            world.remove_connection(parcel.parent_connection)
+            world.add_connection(FixedConnection(parent=root, child=parcel))
+        bridge.observe_model_change()
+        after_first_place = bridge.bundle_signature()
+
+        assert after_first_pick != before_first_pick
+        assert after_first_place == after_first_pick
 
     def test_the_model_version_counts_attachments_and_model_changes(self):
         bridge = Bridge()

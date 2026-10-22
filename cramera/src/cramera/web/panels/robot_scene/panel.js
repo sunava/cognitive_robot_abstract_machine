@@ -1261,10 +1261,18 @@ Panels.define('robot-scene', function (root, bus) {
         if (liveBtn && !liveOn) liveBtn.style.display = 'none';
       });
   }
-  // this page's bundle no longer describes the running demo — a model was parsed
-  // after the bundle was built, or the bundle predates the world attach and so knows
-  // neither the models' prefixes nor the robot (see LiveMode.needsLiveSceneReload):
-  // rebundle the live scene, then reload onto it
+  // Rebuilds the live scene against the demo's current world and fetches its fresh
+  // scene.json, or resolves null if bundling failed or nothing is tracked yet.
+  function fetchFreshLiveScene() {
+    return fetch(liveUrl() + '/live_scene').then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !d.scene) return null;
+        return fetch(SCENES + d.scene + '/scene.json', { cache: 'no-store' })
+          .then(function (r) { return r.ok ? r.json() : null; });
+      });
+  }
+  // Set right before window.location.reload() is actually called, by either function
+  // below — never as an in-flight guard, since only a genuine world change reloads.
   let liveReloadRequested = false;
   // attaching means "show the running demo": the toggle path never touches
   // /live_scene, so a page already sitting on the live scene would otherwise keep a
@@ -1273,28 +1281,37 @@ Panels.define('robot-scene', function (root, bus) {
   // built from a different one.
   function verifyLiveBundle() {
     if (liveReloadRequested || !LiveMode.isLiveScene(SceneContext.name())) return;
-    fetch(liveUrl() + '/live_scene').then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) {
-        if (!d || !d.scene) return;
-        return fetch(SCENES + d.scene + '/scene.json', { cache: 'no-store' })
-          .then(function (r) { return r.ok ? r.json() : null; })
-          .then(function (fresh) {
-            if (!LiveMode.sameBundle(SCENE, fresh)) {
-              liveReloadRequested = true;
-              window.location.reload();
-            }
-          });
-      })
-      .catch(function () {});
+    fetchFreshLiveScene().then(function (fresh) {
+      if (fresh && !LiveMode.sameBundle(SCENE, fresh)) {
+        liveReloadRequested = true;
+        window.location.reload();
+      }
+    }).catch(function () {});
   }
+  // A stale bundle signature has two causes: the demo's world genuinely changed (a
+  // different robot, a model added or removed — LiveMode.sameBundle() says so), which
+  // is worth reloading the page for; or a body just moved between the static bundle
+  // and the live overlay (a grasp/release — see
+  // cramera.live.bridge.Bridge._track_reparented_bodies), which is not, since
+  // syncLiveObjects() (via removeStaleStaticLink()) already reconciles that in place.
+  // Reloading on every such re-parent would undo the whole point of tracking them.
+  let checkingBundleStaleness = false;
   function reloadIfBundleIsStale(info) {
-    if (liveReloadRequested
+    if (liveReloadRequested || checkingBundleStaleness
         || !LiveMode.needsLiveSceneReload(SceneContext.name(), liveOn, SCENE, info)) return;
-    liveReloadRequested = true;
-    fetch(liveUrl() + '/live_scene').then(function (r) {
-      if (r.ok) window.location.reload();
-      else liveReloadRequested = false;        // bundling failed — try again next probe
-    }).catch(function () { liveReloadRequested = false; });
+    checkingBundleStaleness = true;
+    fetchFreshLiveScene().then(function (fresh) {
+      if (!fresh) return;                      // bundling failed — try again next probe
+      if (!LiveMode.sameBundle(SCENE, fresh)) {
+        liveReloadRequested = true;
+        window.location.reload();
+        return;
+      }
+      SCENE.bundleSignature = fresh.bundleSignature;
+      SCENE.worldBound = fresh.worldBound;
+      syncLiveObjects();
+    }).catch(function () {})
+      .then(function () { checkingBundleStaleness = false; });
   }
   // %% the CRAM debug-marker overlay
   let lastMarkersVersion = -1;
@@ -1495,6 +1512,28 @@ Panels.define('robot-scene', function (root, bus) {
       })
       .catch(function () { if (++liveFails > 30) setLive(false); });
   }
+  // A body the bridge only just started streaming live (see
+  // cramera.live.bridge.Bridge._track_reparented_bodies — a body grasped or released
+  // for the first time) may still be baked as a static link inside whichever URDF
+  // model was loaded before that first re-parent. Once syncLiveObjects() spawns its
+  // live-tracked replacement below, that frozen duplicate has to go, or the two would
+  // render on top of each other. Removing the link node (rather than reloading the
+  // whole bundle) is what lets a re-parent stay a one-time, in-place fixup instead of
+  // a page reload.
+  function removeStaleStaticLink(key) {
+    for (let i = 0; i < models.length; i++) {
+      const links = models[i].obj.links;
+      if (!links) continue;
+      for (const linkName in links) {
+        if (linkName !== key && linkName.slice(-(key.length + 1)) !== '/' + key) continue;
+        const node = links[linkName];
+        if (node.parent) node.parent.remove(node);
+        delete links[linkName];
+        return;
+      }
+    }
+  }
+
   // sync the scene's objects to the ones that actually exist in the running
   // world: spawn any the viewer is missing (geometry served by the bridge),
   // hide bundle objects the demo doesn't have. Runs once per attach.
@@ -1513,6 +1552,7 @@ Panels.define('robot-scene', function (root, bus) {
             objectMeshes[o.key].visible = true;
             return;
           }
+          removeStaleStaticLink(o.key);
           const spec = { id: o.id, key: o.key, color: o.color };
           if (o.kind === 'shapes' && o.shapes) { spec.shapes = o.shapes; spec.liveBase = liveUrl(); }
           else if (o.kind === 'mesh' && o.mesh) { spec.meshUrl = liveUrl() + o.mesh; spec.format = o.format; }

@@ -31,6 +31,15 @@ test('name() reads ?scene= alongside other params', function () {
   assert.strictEqual(window.SceneContext.name(), 'g1-warehouse');
 });
 
+test('name() decodes a percent-encoded robot/environment/task/version path', function () {
+  // scene names are now composed of 4 segments (see
+  // cramera.onboard.scene_index.compose_scene_name); navigateTo() in
+  // robot_scene/panel.js writes them through encodeURIComponent, which percent-encodes
+  // every '/' — a regex that only matched [\w-]+ would truncate at the first one
+  loadWithSearch('?scene=' + encodeURIComponent('pr2/apartment/breakfast/v1'));
+  assert.strictEqual(window.SceneContext.name(), 'pr2/apartment/breakfast/v1');
+});
+
 test('withScene() leaves a url unchanged without an active scene', function () {
   loadWithSearch('');
   assert.strictEqual(window.SceneContext.withScene('/api/kb'), '/api/kb');
