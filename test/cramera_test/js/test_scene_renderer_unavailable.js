@@ -145,7 +145,7 @@ test('the precision laboratory fallback keeps native PR2 controls reachable', ()
   const link = scene.root.querySelector('#laboratory-pr2-controls');
   assert.ok(link);
   assert.equal(link.href, 'laboratory-pr2.html');
-  assert.match(scene.root.innerHTML, /PR2-Steuerung öffnen/);
+  assert.match(scene.root.innerHTML, /Open PR2 controls/);
 });
 
 test('other scene fallbacks do not offer the laboratory operation', () => {

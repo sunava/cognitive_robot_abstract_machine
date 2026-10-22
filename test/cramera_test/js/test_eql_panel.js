@@ -76,7 +76,10 @@ function makeElement(tag) {
     scrolledIntoView: 0,
     scrollIntoView() { this.scrolledIntoView += 1; },
     addEventListener(event, cb) { (listeners[event] = listeners[event] || []).push(cb); },
-    click() { (listeners.click || []).forEach(function (cb) { cb(); }); },
+    click(event) {
+      const detail = event || { preventDefault: function () {} };
+      (listeners.click || []).forEach(function (cb) { cb(detail); });
+    },
     querySelectorAll() { return []; },
   };
 }
@@ -451,9 +454,9 @@ function foldButtonOf(heading) {
 
 test('every group of questions offers to fold away', async function () {
   const panel = mountPanel({ '/api/knowledge': GROUPED_KNOWLEDGE });
-  await tick();
+  await flush(); await flush();
 
-  const found = headings(panel.root);
+  const found = headings(panel.root.part('#presets'));
 
   assert.strictEqual(found.length, 2);
   found.forEach(function (heading) { assert.ok(foldButtonOf(heading)); });
@@ -461,12 +464,13 @@ test('every group of questions offers to fold away', async function () {
 
 test('a group starts open and folds when its heading is clicked', async function () {
   const panel = mountPanel({ '/api/knowledge': GROUPED_KNOWLEDGE });
-  await tick();
-  const heading = headings(panel.root)[1];
-  const row = heading.parentNode.children[heading.parentNode.children.indexOf(heading) + 1];
+  await flush(); await flush();
+  const presets = panel.root.part('#presets');
+  const heading = headings(presets)[1];
+  const row = presets.children[presets.children.indexOf(heading) + 1];
 
   assert.ok(!row.classList.contains('folded'));
-  heading.dispatch('click', { preventDefault: function () {} });
+  heading.click();
 
   assert.ok(row.classList.contains('folded'));
   assert.strictEqual(foldButtonOf(heading).textContent, '\u25b8');
@@ -474,14 +478,15 @@ test('a group starts open and folds when its heading is clicked', async function
 
 test('folding one group leaves the others open', async function () {
   const panel = mountPanel({ '/api/knowledge': GROUPED_KNOWLEDGE });
-  await tick();
-  const found = headings(panel.root);
+  await flush(); await flush();
+  const presets = panel.root.part('#presets');
+  const found = headings(presets);
   const rowOf = function (heading) {
-    const siblings = heading.parentNode.children;
+    const siblings = presets.children;
     return siblings[siblings.indexOf(heading) + 1];
   };
 
-  found[1].dispatch('click', { preventDefault: function () {} });
+  found[1].click();
 
   assert.ok(!rowOf(found[0]).classList.contains('folded'));
   assert.ok(rowOf(found[1]).classList.contains('folded'));

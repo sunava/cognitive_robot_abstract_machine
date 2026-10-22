@@ -71,6 +71,7 @@ test('manual controls wait for every asset and preserve independent object poses
 test('transmissive scenes can render without opaque ambient-occlusion buffers', () => {
   const calls = [];
   const context = {SCENE: {rendering: {ambientOcclusion: false, exposure: .65}}, scene3: {}, camera: {},
+    laboratoryManualMode: null,
     composer: {render() { calls.push('occlusion'); }},
     renderer: {render() { calls.push('direct'); }}};
   vm.createContext(context);

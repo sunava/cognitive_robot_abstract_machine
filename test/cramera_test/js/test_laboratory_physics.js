@@ -1182,6 +1182,7 @@ test('grabbing a glass above its base does not move the physics target before th
       style: {}, setPointerCapture() {}, addEventListener(name, callback) { handlers.set(name, callback); },
     }},
     pointerNdc() {}, pickDraggable: () => ({name: 'tube', group: object}),
+    pickLaboratoryDevice: () => null, laboratoryManualMode: null,
     playing: false, SCENE: {physics: {}}, liveOn: false, guidedKeys: new Set(), controls: {},
     dragStartNdc: new THREE.Vector2(), dragStartWorld: new THREE.Vector3(),
     _ray: new THREE.Raycaster(), _dragPlane: new THREE.Plane(), _hitPt: new THREE.Vector3(),

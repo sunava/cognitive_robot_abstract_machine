@@ -8,6 +8,11 @@ const path = require('node:path');
 const vm = require('node:vm');
 const web = path.join(__dirname, '../../../cramera/src/cramera/web');
 const THREE = require(path.join(web, 'vendor/three.min.js'));
+if (!process.env.CRAMERA_HANDLE_DESCRIPTION) {
+  test('laboratory handle frames need the CRAM-generated description',
+    {skip: 'CRAMERA_HANDLE_DESCRIPTION is not set; the pytest wrapper in the CRAM fork provides it'}, () => {});
+  return;
+}
 const description = JSON.parse(fs.readFileSync(process.env.CRAMERA_HANDLE_DESCRIPTION, 'utf8'));
 const handleNames = Object.freeze([
   'laboratory_drawer_handle',
