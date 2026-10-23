@@ -44,13 +44,21 @@ Progress 2026-10-23:
 - demo recorded: warehouse_tiago_two_totes in ~/.cramera/scenes, 2919 frames, A08 3.4 mm / A09 3.1 mm
   (twin commit 271e1d5: RaiseAction over the in-feed, carried place yaw, single-collider carton).
 - skill synced to the vault and pushed (sunava/mavaobs c49c67c).
+- user 2026-10-23: finish the demo for CRAMERA (not Plan Builder + MuJoCo: the builder only loads
+  coraplex/resources/worlds URDFs and always runs simulated_robot_advanced; no MuJoCo executor, lab MuJoCo is PR2-only).
+- 376f204d4 viewer: robot Phong/Lambert materials become standard materials in scenes lit by their own
+  environment map (TIAGo rendered black); node test test_model_materials.js, all 1019 JS tests pass.
+- 41425c5ca cherry-pick of upstream 208cf0e44f (Simon Stelter): collision groups asked bodies_with_collision once per
+  body (536 of 568 s of a park + pick); demo now 1 min 48 s instead of 55 min.
+- twin fa63d25: recording written at 50 Hz (CONTROL_FREQUENCY) -> 2938 frames in 59 s instead of 48 min.
+  Skill vault 109cb7b.
 
 Next:
-- push the three CRAM commits a65855bda, 842034d49, 906c53d6b (on the user's OK);
+- push the CRAM commits a65855bda, 842034d49, 906c53d6b, 376f204d4, 41425c5ca (on the user's OK);
 - publish the recording to ~/cramera_scenes once the user has seen it (demo --publish ~/cramera_scenes);
 - follow-up idea: move RollAction / grasp-point pick-up / clear into a tested cramera module instead of the
   template;
 - open decisions handed to the user: `usd` extra deps (numpy/scipy/Pillow), CI usd-core step, SSAO sRGB fix
   changing every AO scene, exposure 0.72, glass blend approximation, test-only Pose methods;
-- known gaps: TIAGo renders dark in the demo recording, no generic demo runner; the warehouse bundle is
-  204 MB (no material or mesh sharing between identical stock items).
+- known gaps: no generic demo runner; live recordings estimate fps from wall clock (cramera-wide); the warehouse
+  bundle is 204 MB (no material or mesh sharing between identical stock items).
