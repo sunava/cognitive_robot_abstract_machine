@@ -65,7 +65,7 @@ Progress 2026-10-23:
   v1 cramera-check-bundle reads warehouse + the two monorepo recordings as unreadable scene.json (pre-v1 format).
 - late evening: v1 on another machine failed with "'[object Object]' is not a file.": the two TIAGo recordings
   inlined the lighting in rendering.environment (monorepo ScenePresentation.from_bundle inlines it; v1 wants a
-  file name). Scenes repo commit 1ab6bae (local, not pushed) moves it to lighting.json; all 4 warehouse bundles
+  file name). Scenes repo commit 1ab6bae (pushed to origin main) moves it to lighting.json; all 4 warehouse bundles
   pass cramera-check-bundle and serve every requested file; ~/.cramera/scenes copies updated to match.
 
 Next:
