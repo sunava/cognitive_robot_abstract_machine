@@ -53,8 +53,16 @@ Progress 2026-10-23:
 - twin fa63d25: recording written at 50 Hz (CONTROL_FREQUENCY) -> 2938 frames in 59 s instead of 48 min.
   Skill vault 109cb7b.
 
+- afternoon: export without the roof (--exclude /World/Site/Roof); Stretch added to the demo
+  (WarehouseTwin demo_tiago_stretch.py, recording warehouse_tiago_stretch_totes, R01 -> A10 1 mm); skill vault 6e6481b.
+- side sessions: frame rate from simulation time -> cramera 5d0e97a0e on branch claude/infallible-ellis-6967e3
+  (not merged here); Plan Builder view beside the replay -> built in sunava/cramera v1 (~/cramera), branch
+  replay-plan-steps (on origin, pushed by its side session), monorepo-bundle-compat local. The user told that
+  session "ab jetzt immer in sunava cramera" (to confirm with her for this line of work).
+
 Next:
 - push the CRAM commits a65855bda, 842034d49, 906c53d6b, 376f204d4, 41425c5ca (on the user's OK);
+- decide with the user: record the warehouse demo through v1 cramera-cram so the v1 plan view gets step frames;
 - publish the recording to ~/cramera_scenes once the user has seen it (demo --publish ~/cramera_scenes);
 - follow-up idea: move RollAction / grasp-point pick-up / clear into a tested cramera module instead of the
   template;
