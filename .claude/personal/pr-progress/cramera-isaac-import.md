@@ -36,11 +36,18 @@ Progress 2026-10-22 (evening):
   route planner inflates by the 0.71 m parked turning radius of a differential drive), B00 tote cleared first.
   Steps verified up to the in-feed roll-in; full recorded run in progress.
 
+Progress 2026-10-23:
+- coraplex fix 906c53d6b (local, not pushed): PlaceAction takes the grasp of the placed object's own pick-up,
+  not the latest pick-up (two totes: the left set-down used the right hand's grasp, ~0.3 m off,
+  MotionDidNotFinish). TDD test in test_place_attachment.py; the same 25 plan/motion/multi-robot/ORM tests fail
+  with and without the fix (pre-existing). PlanNode.get_previous_node_by_designator_type is now unused (ask).
+- demo recorded: warehouse_tiago_two_totes in ~/.cramera/scenes, 2919 frames, A08 3.4 mm / A09 3.1 mm
+  (twin commit 271e1d5: RaiseAction over the in-feed, carried place yaw, single-collider carton).
+- skill synced to the vault and pushed (sunava/mavaobs c49c67c).
+
 Next:
-- push the two commits (on the user's OK);
-- finish the demo recording, show it, publish to ~/cramera_scenes after the user has seen it;
-- skill: Phase 9 + CRAM robot demo as the standard for every twin (cramera.md, SKILL.md, template), vault
-  rsync + commit/push (new rule: commit and push the vault, author Vanessa Hassouna noreply);
+- push the three CRAM commits a65855bda, 842034d49, 906c53d6b (on the user's OK);
+- publish the recording to ~/cramera_scenes once the user has seen it (demo --publish ~/cramera_scenes);
 - follow-up idea: move RollAction / grasp-point pick-up / clear into a tested cramera module instead of the
   template;
 - open decisions handed to the user: `usd` extra deps (numpy/scipy/Pillow), CI usd-core step, SSAO sRGB fix
