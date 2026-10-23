@@ -68,13 +68,29 @@ Progress 2026-10-23:
   file name). Scenes repo commit 1ab6bae (pushed to origin main) moves it to lighting.json; all 4 warehouse bundles
   pass cramera-check-bundle and serve every requested file; ~/.cramera/scenes copies updated to match.
 
+Progress 2026-10-23 (night): v1 rerecording (user: "pull AICOR-Solutions/cramera and rerecord the tiago demo";
+chose "Full v1 port first", demos "Both"):
+- cramera v1 branch usd/colliders-free-objects (local, not pushed; worktree in this session's scratchpad
+  cramera-main, commits in ~/cramera/.git), on main 3b26ddb: afed8ea colliders -> <collision> boxes,
+  --free-objects (objects/<key>.urdf via ObjectDescription.urdf), BundleEnvironment loads object URDFs,
+  PrimEntry.model; 3dc4a45 cramera-export forwards --free-objects; 89e2bb7 RobotTaskDemo.build_plans (each plan
+  published right before it performs, else the first plan's steps lose their frames). usd 306 + cram 276 pass;
+  the 7 viewer/offline/screenshot failures also fail on pristine main (stale laboratory entry points in the
+  cramera-v1 venv; this session used an isolated venv scratchpad/venv-main for the viewer).
+- ~/cramera_scenes/warehouse re-exported with v1 cramera-export (format 1.0, 21 free totes, 2900 boxes); the v0
+  bundle is in solutions-cramera-scenes 1ab6bae. Old v0 recordings moved out of ~/.cramera/scenes (same commit).
+- WarehouseTwin f71c0ae: cramera/warehouse_demos.py + demo_tiago_two_totes.py + demo_tiago_stretch.py on v1
+  RobotTaskDemo; recordings in ~/.cramera/scenes: warehouse_tiago_two_totes (2924 frames, 58.5 s, 3.4/3.1 mm),
+  warehouse_tiago_stretch_totes (9979 frames, 199.6 s, R01 1.0 mm), both with plan step frames; not published.
+
 Next:
+- ask the user: push usd/colliders-free-objects to AICOR-Solutions/cramera and open a draft PR;
+- publish both recordings (+ v1 warehouse) to the scenes repo / ~/cramera_scenes once the user has seen them;
+- follow-ups found: multi-robot recordings name models/index robot `stretch_<hex>` (picker shows it); recorded
+  object keys are body UUIDs, so plan step targets read as UUIDs instead of A08; the isaac-twin skill still
+  exports and records with the monorepo cramera (switch it to v1 cramera-export + RobotTaskDemo);
 - push the CRAM commits a65855bda, 842034d49, 906c53d6b, 376f204d4, 41425c5ca (on the user's OK);
-- decide with the user: record the warehouse demo through v1 cramera-cram so the v1 plan view gets step frames;
-- publish the recording to ~/cramera_scenes once the user has seen it (demo --publish ~/cramera_scenes);
-- follow-up idea: move RollAction / grasp-point pick-up / clear into a tested cramera module instead of the
-  template;
 - open decisions handed to the user: `usd` extra deps (numpy/scipy/Pillow), CI usd-core step, SSAO sRGB fix
   changing every AO scene, exposure 0.72, glass blend approximation, test-only Pose methods;
-- known gaps: no generic demo runner; live recordings estimate fps from wall clock (cramera-wide); the warehouse
-  bundle is 204 MB (no material or mesh sharing between identical stock items).
+- known gaps: no generic demo runner (helpers live in the twin's warehouse_demos.py); v1 live recordings estimate
+  fps from wall clock (the demo rewrites 50 Hz); the warehouse bundle is 210 MB, recordings 227/303 MB.
