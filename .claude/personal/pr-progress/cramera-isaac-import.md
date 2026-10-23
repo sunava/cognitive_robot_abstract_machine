@@ -59,6 +59,10 @@ Progress 2026-10-23:
   (not merged here); Plan Builder view beside the replay -> built in sunava/cramera v1 (~/cramera), branch
   replay-plan-steps (on origin, pushed by its side session), monorepo-bundle-compat local. The user told that
   session "ab jetzt immer in sunava cramera" (to confirm with her for this line of work).
+- evening: scenes repo AICOR-Solutions/solutions-cramera-scenes (private, clone ~/solutions-cramera-scenes),
+  main d078b06: aicor_lab, aicor_lab_r01, warehouse (from ~/cramera_scenes) + warehouse_tiago_two_totes,
+  _stretch_totes, _plan_steps (from ~/.cramera/scenes), one merged index.json, README; plain git, no LFS.
+  v1 cramera-check-bundle reads warehouse + the two monorepo recordings as unreadable scene.json (pre-v1 format).
 
 Next:
 - push the CRAM commits a65855bda, 842034d49, 906c53d6b, 376f204d4, 41425c5ca (on the user's OK);
