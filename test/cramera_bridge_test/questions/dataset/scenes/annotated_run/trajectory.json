@@ -1,0 +1,5 @@
+{"framesPerSecond": 2,
+ "frames": [{"pr2/torso_lift_joint": 0.0, "pr2/l_wrist_flex_joint": -0.1},
+            {"pr2/torso_lift_joint": 0.1, "pr2/l_wrist_flex_joint": -0.4},
+            {"pr2/torso_lift_joint": 0.3, "pr2/l_wrist_flex_joint": -0.2}],
+ "objects": [{}, {}, {}]}

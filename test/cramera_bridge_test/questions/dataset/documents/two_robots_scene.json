@@ -1,0 +1,9 @@
+{
+  "name": "two_robots",
+  "formatVersion": "1.0",
+  "models": [
+    {"name": "pr2_first", "urdf": "first_robot.urdf", "prefix": "", "robot": true, "identifier": "first"},
+    {"name": "pr2_second", "urdf": "second_robot.urdf", "prefix": "", "robot": true, "identifier": "second"}
+  ],
+  "robot": {"name": "pr2_second", "prefix": "", "baseBody": "base_link", "identifier": "second"}
+}

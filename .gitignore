@@ -18,7 +18,6 @@ msg/*Result.msg
 msg/_*.py
 *muh*
 *.txt
-!cramera/src/cramera/web/vendor/licenses/*.txt
 *.png
 *.lprof
 tmp_data/

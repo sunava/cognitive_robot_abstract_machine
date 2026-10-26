@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<robot name="lab_table">
+  <link name="table">
+    <visual><geometry><box size="1.0 0.6 0.75"/></geometry></visual>
+  </link>
+</robot>

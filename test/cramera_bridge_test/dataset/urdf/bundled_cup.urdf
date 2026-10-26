@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<robot name="bundled_cup">
+  <link name="base">
+    <visual>
+      <geometry>
+        <mesh filename="../meshes/cup.obj"/>
+      </geometry>
+    </visual>
+  </link>
+  <link name="lid">
+    <visual>
+      <geometry>
+        <mesh filename="package://no_such_cramera_package/meshes/lid.stl"/>
+      </geometry>
+    </visual>
+    <visual>
+      <geometry>
+        <mesh filename="libplugin.so"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="lid_hinge" type="revolute">
+    <parent link="base"/>
+    <child link="lid"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="0" upper="1.5" effort="1" velocity="1"/>
+  </joint>
+</robot>

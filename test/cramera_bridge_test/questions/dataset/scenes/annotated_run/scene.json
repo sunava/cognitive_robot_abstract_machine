@@ -1,0 +1,35 @@
+{
+  "name": "annotated_run",
+  "formatVersion": "1.0",
+  "framesPerSecond": 2,
+  "trajectory": "trajectory.json",
+  "statecharts": "statecharts.json",
+  "models": [{"name": "pr2", "urdf": "robot.urdf", "prefix": "pr2", "robot": true}],
+  "robot": {
+    "name": "pr2", "prefix": "pr2", "baseBody": "base_link", "label": "PR2",
+    "partAnnotations": [
+      {"name": "PR2LeftArm", "role": "arm", "side": "left", "links": ["pr2/l_shoulder_link", "pr2/l_wrist_link"]},
+      {"name": "PR2LeftGripper", "role": "end_effector", "side": "left", "links": ["pr2/l_gripper_link"], "attachedTo": "PR2LeftArm"}
+    ]
+  },
+  "objects": [
+    {"id": "milk", "key": "6f1c9a3e-6d51-4d0f-9c55-1c2f8f0a7d10", "spawn": [2.3712, 2.0, 1.05, 0, 0, 0, 1], "height": 0.2},
+    {"id": "cup", "key": "0b3e3f3e-0000-4000-8000-000000000001", "spawn": [1.0, 0.5, 0.8, 0, 0, 0, 1]}
+  ],
+  "segments": [
+    {"step": "prepare", "action": "ParkArmsAction", "start": 0, "end": 1},
+    {"step": "transport_milk", "action": "TransportAction", "arm": "left", "start": 1, "end": 3, "picks": "milk"}
+  ],
+  "planTrees": [
+    {"id": "root", "kind": "SequentialNode", "label": "SequentialNode", "status": "SUCCEEDED", "children": [
+      {"id": "transport", "kind": "ActionNode", "label": "TransportAction", "status": "SUCCEEDED", "arm": "LEFT", "target": "milk", "children": [
+        {"kind": "MotionNode", "label": "MoveTCPMotion", "status": "SUCCEEDED"},
+        {"kind": "AttachNode", "label": "AttachNode", "status": "SUCCEEDED"}
+      ]}
+    ]}
+  ],
+  "detectedEvents": [
+    {"name": "milk PickUpEvent", "eventType": "PickUpEvent", "timestamp": "2026-10-01T10:00:00+00:00", "trackedObject": "milk"},
+    {"name": "milk PlacingEvent", "eventType": "PlacingEvent", "timestamp": "2026-10-01T10:00:04+00:00", "trackedObject": "milk", "withObject": "table"}
+  ]
+}

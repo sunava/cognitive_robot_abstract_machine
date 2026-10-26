@@ -103,8 +103,9 @@ poetry install
 
 ## Browser visualization
 
-The workspace includes [CRAMERA](cramera/README.md) for live 3D visualization,
-recorded playback, EQL questions and plan/statechart inspection. Start `cramera`
+The workspace includes [cramera-bridge](cramera_bridge/README.md), which connects CRAM
+to the [cramera](https://github.com/AICOR-Solutions/cramera) viewer for live 3D
+visualization, recorded playback, EQL questions and plan inspection. Start `cramera`
 from the activated environment, then run an existing demo with
 `cramera-live path/to/demo.py`.
 

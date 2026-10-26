@@ -1,0 +1,3 @@
+{"op": "attach_monitor", "text": "keep the milk above the table", "apply": "immediate",
+ "target_plan_node": {"id": "plan_node_1", "kind": "ActionNode", "label": "MoveTorsoAction"},
+ "giskard_node": {"type": "HeightMonitor", "params": {"tip_link": "milk", "lower_limit": 0.5, "upper_limit": 2.0}}}

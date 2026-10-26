@@ -1,0 +1,2 @@
+heavy = 1.0
+an(entity(item).where(item.size > heavy))

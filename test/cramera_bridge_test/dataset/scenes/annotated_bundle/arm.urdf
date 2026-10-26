@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="arm">
+  <link name="arm_base">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/arm/arm_base.glb" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="arm_upper">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/arm/arm_upper.glb" />
+      </geometry>
+    </visual>
+  </link>
+  <joint name="arm_shoulder" type="revolute">
+    <parent link="arm_base" />
+    <child link="arm_upper" />
+    <origin xyz="0 0 0.3" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit effort="1000" velocity="1" lower="-2" upper="2" />
+  </joint>
+</robot>
