@@ -98,7 +98,7 @@ of UUIDs; chose "Nur schnell" and the name "A08 · computer mouse box"):
   reads "connections RevoluteConnection, ..., name PrefixedName".
 
 Next:
-- ask the user: publish the new recording to the scenes repo (replaces 2ab662f's); fix closed_fingers' text;
+- published: scenes repo a4b79d5 (pushed to AICOR-Solutions/solutions-cramera-scenes main). Ask: fix closed_fingers text;
 - ask the user: push usd/colliders-free-objects to AICOR-Solutions/cramera and open a draft PR;
 - publish both recordings (+ v1 warehouse) to the scenes repo / ~/cramera_scenes once the user has seen them;
 - follow-ups found: multi-robot recordings name models/index robot `stretch_<hex>` (picker shows it); recorded
