@@ -83,7 +83,22 @@ chose "Full v1 port first", demos "Both"):
   RobotTaskDemo; recordings in ~/.cramera/scenes: warehouse_tiago_two_totes (2924 frames, 58.5 s, 3.4/3.1 mm),
   warehouse_tiago_stretch_totes (9979 frames, 199.6 s, R01 1.0 mm), both with plan step frames; not published.
 
+Progress 2026-10-26 (user: plan steps need more parameters, as in the Plan Builder, and short object names instead
+of UUIDs; chose "Nur schnell" and the name "A08 · computer mouse box"):
+- cramera main needs CRAM main since 766cd33 (10-23 22:22, "Port cramera-cram to CRAM main"); the CRAM fork here is
+  2517 commits behind, and the twin demo uses fork-only API (GraspDescription, ViewManager). So the demo stays on
+  the old stack: cramera branch viewer/readable-step-cards 080fa36 (records every step parameter, display names
+  from sdt:canonicalName, robot named by class) + ~/.virtualenvs/cramera-v1 + this fork + ROS; 217 cram tests pass.
+- re-recorded warehouse_tiago_stretch_totes into ~/.cramera/scenes (A08 7.1 mm, A09 9.6 mm, R01 1.0 mm, 203 s);
+  the 10-25 recording is in the session scratchpad (previous-recordings). The scenes repo moved to
+  ~/cramera/demo/solutions-cramera-scenes (holds the warehouse bundle and the old recordings); a recording whose
+  name is in the shared folder is refused at save, so CRAMERA_SCENES pointed at a folder linking only `warehouse`.
+- checked in main's viewer (headless Firefox): steps show object designator, arm, grasp, rail height, poses.
+  Screenshots ~/Pictures/WarehouseTwin/plan_view_*_rail_pick_up.png. Blemish: the twin's closed_fingers field
+  reads "connections RevoluteConnection, ..., name PrefixedName".
+
 Next:
+- ask the user: publish the new recording to the scenes repo (replaces 2ab662f's); fix closed_fingers' text;
 - ask the user: push usd/colliders-free-objects to AICOR-Solutions/cramera and open a draft PR;
 - publish both recordings (+ v1 warehouse) to the scenes repo / ~/cramera_scenes once the user has seen them;
 - follow-ups found: multi-robot recordings name models/index robot `stretch_<hex>` (picker shows it); recorded
