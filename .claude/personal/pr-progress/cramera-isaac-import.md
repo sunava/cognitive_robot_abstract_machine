@@ -97,13 +97,18 @@ of UUIDs; chose "Nur schnell" and the name "A08 · computer mouse box"):
   Screenshots ~/Pictures/WarehouseTwin/plan_view_*_rail_pick_up.png. Blemish: the twin's closed_fingers field
   reads "connections RevoluteConnection, ..., name PrefixedName".
 
+- published warehouse_tiago_stretch_totes: scenes repo a4b79d5 (pushed).
+- LabAutomationTwin R01 cycle (user: "das soll eine cram demo sein"; FR3 as in Isaac, newest stack, full loop):
+  Isaac replay aicor_lab_r01 (5d8ae9c) and CRAM demo aicor_lab_fr3_plate_cycle + env aicor_lab (d3fc3f9), pushed.
+  cramera PR AICOR-Solutions/cramera#73 (branch usd/collision-boxes-free-objects: the 3 colliders/free-objects/
+  build_plans commits rebased onto main + mesh-beside-URDF fix 1729c77 + changelog), ready for review, bound here.
+  Demo code untracked in ~/Documents/LabAutomationTwin/cramera (repo identity is mbeetz: ask before committing).
+  isaac-twin skill section 6a, vault 7d5d6e0.
+
 Next:
-- published: scenes repo a4b79d5 (pushed to AICOR-Solutions/solutions-cramera-scenes main). Ask: fix closed_fingers text;
-- ask the user: push usd/colliders-free-objects to AICOR-Solutions/cramera and open a draft PR;
-- publish both recordings (+ v1 warehouse) to the scenes repo / ~/cramera_scenes once the user has seen them;
-- follow-ups found: multi-robot recordings name models/index robot `stretch_<hex>` (picker shows it); recorded
-  object keys are body UUIDs, so plan step targets read as UUIDs instead of A08; the isaac-twin skill still
-  exports and records with the monorepo cramera (switch it to v1 cramera-export + RobotTaskDemo);
+- ask: commit the LabAutomationTwin cramera/ files (as whom); fix the warehouse closed_fingers text;
+- watch PR #73's CI and reviews;
+- the warehouse demo still runs on the old stack (CRAM fork, cramera_cram); porting it to CRAM main is open;
 - push the CRAM commits a65855bda, 842034d49, 906c53d6b, 376f204d4, 41425c5ca (on the user's OK);
 - open decisions handed to the user: `usd` extra deps (numpy/scipy/Pillow), CI usd-core step, SSAO sRGB fix
   changing every AO scene, exposure 0.72, glass blend approximation, test-only Pose methods;
