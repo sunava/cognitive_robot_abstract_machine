@@ -36,7 +36,13 @@ from giskardpy.motion_statechart.motion_statechart import (
     MotionStatechart,
     StateHistoryObserver,
 )
-from giskardpy.executor import Executor, NoPacing, Pacer, SteppedSimulationPacer
+from giskardpy.executor import (
+    Executor,
+    ExecutorTickObserver,
+    NoPacing,
+    Pacer,
+    SteppedSimulationPacer,
+)
 from giskardpy.qp.qp_controller_config import QPControllerConfig
 from giskardpy.ros_executor import Ros2Executor
 from krrood.entity_query_language.factories import evaluate_condition
@@ -53,6 +59,7 @@ if TYPE_CHECKING:
     from coraplex.plans.plan_node import MotionNode
     from coraplex.plans.underspecified import UnderspecifiedNode
     from coraplex.datastructures.dataclasses import Context
+    from coraplex.plans.plan import Plan
 
 
 # %% native motion history
@@ -152,6 +159,27 @@ class MotionPlanHistory(StateHistoryObserver):
         Release the native history subscription.
         """
         self.statechart.history.remove_observer(self)
+
+
+# %% motion ticks
+
+
+@dataclass
+class MotionTickForwarder(ExecutorTickObserver):
+    """
+    Tells a plan about every tick of the executor that runs its motions.
+    """
+
+    plan: Plan
+    """
+    The plan whose motions the executor runs.
+    """
+
+    def on_tick(self, executor: Executor) -> None:
+        self.plan.notify_motion_tick(executor.motion_statechart)
+
+
+# %% executables
 
 
 @dataclass
@@ -409,7 +437,7 @@ class GiskardExecutable(Executable):
         that keeps converging is never cut off for taking many ticks.
 
         The recorded motion states are projected onto the motion nodes of the plan
-        while the chart runs.
+        while the chart runs, and every tick is reported to the plan's callbacks.
 
         :raises NoProgressError: When the motion stops approaching its goal. The error
             names the tasks that stalled, and :meth:`execute` turns it into a
@@ -435,6 +463,10 @@ class GiskardExecutable(Executable):
                 ),
                 ros_node=self.context.ros_node,
                 pacer=pacer,
+                # Every motion of one chart belongs to the same plan.
+                tick_observers=[
+                    MotionTickForwarder(next(iter(self.motion_mappings)).plan)
+                ],
             ),
             qp_controller_config,
             pacer,

@@ -203,6 +203,22 @@ class SteppedSimulationPacer(Pacer):
 
 
 @dataclass
+class ExecutorTickObserver(ABC):
+    """
+    Observes every tick of an :class:`Executor`.
+    """
+
+    @abstractmethod
+    def on_tick(self, executor: Executor) -> None:
+        """
+        Observe the executor after a tick, once the tick's command has been applied to
+        the world.
+
+        :param executor: The executor that ticked.
+        """
+
+
+@dataclass
 class Executor:
     """
     Represents the main execution entity that manages motion statecharts, collision
@@ -226,6 +242,12 @@ class Executor:
     pacer: Pacer = field(default_factory=NoPacing)
     """
     Paces the loop that ticks this executor.
+    """
+
+    tick_observers: list[ExecutorTickObserver] = field(default_factory=list)
+    """
+    Told after every :meth:`tick`, including ticks that change no state of the motion
+    statechart.
     """
 
     # %% init False
@@ -299,7 +321,14 @@ class Executor:
         # do one tick to immediately active nodes whose start condition is constant true.
         self.motion_statechart.tick(self.context)
 
-    def tick(self):
+    def tick(self) -> None:
+        """
+        Advance the motion statechart by one control cycle, apply the command it asks
+        for to the world and then tell every one of the :attr:`tick_observers`.
+
+        :raises WorldStateArrayReplacedError: If the world replaced its state array
+            since :meth:`compile`.
+        """
         self._raise_if_world_state_array_was_replaced()
         self.control_cycles += 1
         if self.context.requires_collision_checking:
@@ -309,15 +338,24 @@ class Executor:
             self.debug_expression_plotter.debug_expression_trajectory.append(
                 self.time.total_seconds()
             )
-        if self.qp_controller is None:
-            return
-        next_cmd = self.qp_controller.compute_command(
+        if self.qp_controller is not None:
+            self._apply_next_command()
+        for observer in tuple(self.tick_observers):
+            observer.on_tick(self)
+
+    def _apply_next_command(self) -> None:
+        """
+        Let the QP controller compute the command for the current control cycle, apply
+        it to the world and record the resulting state for the
+        :attr:`trajectory_plotter`.
+        """
+        next_command = self.qp_controller.compute_command(
             world_state=self.context.world.state._data,
             life_cycle_state=self.motion_statechart.life_cycle_state.data,
             float_variables=self.context.float_variable_data.data,
         )
         self.context.world.apply_control_commands(
-            next_cmd,
+            next_command,
             self.qp_controller.config.control_time_step.total_seconds(),
             self.qp_controller.config.max_derivative,
         )
