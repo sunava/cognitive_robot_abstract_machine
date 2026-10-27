@@ -142,7 +142,24 @@ Progress 2026-10-27 (fork PR #41 cramera_bridge/live/plan.py -> CRAM; user: "do 
   None covers ExecutionType.REAL (chart runs in the giskard server). Gap from #45: actions with an execution
   boundary (PickUp/Place) stay NOT_STARTED -> proposed card task_c6e0feb3 (not started).
 
+Progress 2026-10-27 (user: "pls make a cramera demo from this git@github.com:yxzhan/cram-vrb-lab.git"):
+- clone ~/cram-vrb-lab, local branch cramera-demo 64f9fcf (not pushed, yxzhan's repo): cramera/handover_stage.py
+  (world.usda + kitchen objects + MJCF-twin cabinet colliders + handle bodies + drawer slides flipped),
+  garmi_apartment_environment.usda, garmi_kitchen_demo.py, demo_garmi_bowl_into_drawer.py, README.
+- bundle ~/cramera_scenes/garmi_apartment (gate passes, 350 boxes, 20 free objects); recording
+  ~/.cramera/scenes/garmi_apartment_garmi_bowl_into_drawer (164 s, bowl 4.5 mm, drawer 10.6 mm); not published.
+  Screenshots ~/Pictures/GarmiApartment/. Viewer: launch.json "cramera-garmi-apartment" (port 8723).
+- cramera PR AICOR-Solutions/cramera#78 (branch usd/apartment-materials-carried, ready, bug label, bound here):
+  OmniPBR specular_level + preview-surface specular workflow -> KHR_materials_specular, OmniGlass reflection_color
+  and cut-out, OmniPBR opacity texture -> ColorOpacityTexture. The export used it before merge (CRAMERA_V1 worktree).
+- side session "cramera: carry the GARMI apartment's materials" was redirected by the user to cramera#77
+  (old garmi_pick_place as a demo scene, merged); its branch usd/apartment-materials has no own commits.
+- isaac-twin skill cramera.md section 6b (vault f3cc5be).
+
 Next:
+- after the user has seen garmi_apartment_garmi_bowl_into_drawer: publish it and garmi_apartment
+  (demo_garmi_bowl_into_drawer.py --publish / scenes repo), on their OK; after cramera#78 merges, re-export
+  garmi_apartment from main;
 - side sessions 2026-10-27: bridge test_demo cause is in CRAM coraplex (ParkArmsAction/MoveTorsoAction drop the
   robot namespace), nothing changed, user to decide on a fork fix; laboratory MuJoCo 3.11 fix on cramera branch
   laboratory/mujoco-3-11-physics (f464911, 27d2cdb, not pushed), PR waits for the user's OK; isaac-twin Phase 10
