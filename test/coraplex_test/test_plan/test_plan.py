@@ -16,7 +16,12 @@ from coraplex.orm.ormatic_interface import *  # type: ignore
 from coraplex.plans.condition_nodes import ConditionNode
 from coraplex.plans.executables import GiskardExecutable
 from coraplex.plans.factories import code, sequential, parallel, execute_single
-from coraplex.exceptions import CannotInsertBesideRoot, NodeNotInPlanTree
+from coraplex.exceptions import (
+    CannotInsertBesideRoot,
+    NodeNotInPlanTree,
+    PlanHasNoSingleRoot,
+    PlanIsNotATree,
+)
 from coraplex.plans.failures import EmptyUnderspecified, PlanFailure
 from coraplex.plans.plan import Plan
 from coraplex.plans.plan_node import PlanNode, ActionNode
@@ -499,6 +504,98 @@ def test_a_node_outside_the_tree_has_no_previous_nodes_to_name():
 
     with pytest.raises(NodeNotInPlanTree):
         stray.previous_nodes
+
+
+# %% root of a plan
+
+
+def test_a_plan_with_one_parentless_node_has_a_single_root():
+    """
+    A plan whose nodes all hang below one node has that node as its single root.
+    """
+    plan = Plan()
+    plan.add_edge(PlanNode(), PlanNode())
+
+    assert plan.has_single_root is True
+
+
+def test_a_plan_with_two_parentless_nodes_has_no_single_root():
+    """
+    Two nodes without a parent leave the plan without a single root, which can be asked
+    for without reading :attr:`Plan.root`.
+    """
+    plan = Plan()
+    plan.add_node(PlanNode())
+    plan.add_node(PlanNode())
+
+    assert plan.has_single_root is False
+
+
+def test_an_empty_plan_has_no_single_root():
+    """
+    A plan without nodes has no root.
+    """
+    assert Plan().has_single_root is False
+
+
+def test_the_root_of_a_plan_with_two_parentless_nodes_names_both():
+    """
+    The root of a plan with two nodes without a parent is ambiguous, so reading it names
+    both candidates instead of picking one.
+    """
+    first = PlanNode()
+    second = PlanNode()
+    plan = Plan()
+    plan.add_node(first)
+    plan.add_node(second)
+
+    with pytest.raises(PlanHasNoSingleRoot) as raised:
+        plan.root
+
+    assert raised.value.parentless_nodes == [first, second]
+
+
+def test_the_root_of_an_empty_plan_names_no_candidate():
+    """
+    A plan without nodes has no root to read.
+    """
+    with pytest.raises(PlanHasNoSingleRoot) as raised:
+        Plan().root
+
+    assert raised.value.parentless_nodes == []
+
+
+def test_a_plan_whose_two_roots_share_a_child_is_not_a_tree():
+    """
+    Two roots sharing a child give the plan one edge fewer than nodes, as a tree has, so
+    only the number of roots tells that it is none.
+    """
+    plan = Plan()
+    child = PlanNode()
+    plan.add_edge(PlanNode(), child)
+    plan.add_edge(PlanNode(), child)
+
+    with pytest.raises(PlanIsNotATree):
+        plan.validate()
+
+
+def test_a_plan_with_a_node_below_two_parents_is_not_a_tree():
+    """
+    A node reached from the single root along two paths gives the plan as many edges as
+    nodes.
+    """
+    plan = Plan()
+    root = PlanNode()
+    left = PlanNode()
+    right = PlanNode()
+    shared = PlanNode()
+    plan.add_edge(root, left)
+    plan.add_edge(root, right)
+    plan.add_edge(left, shared)
+    plan.add_edge(right, shared)
+
+    with pytest.raises(PlanIsNotATree):
+        plan.validate()
 
 
 # ---- Tests interacting with simulated robot/world ----
