@@ -45,17 +45,52 @@ from krrood.symbolic_math.symbolic_math import Scalar, trinary_logic_not
 from semantic_digital_twin.world_description.world_entity import Body
 
 if TYPE_CHECKING:
+    from giskardpy.motion_statechart.graph_node import MotionStatechartNode
     from giskardpy.motion_statechart.motion_statechart import StateHistory
     from semantic_digital_twin.adapters.multi_sim import MujocoSim
     from coraplex.robot_plans.actions.base import ActionDescription
 
     from coraplex.plans.condition_nodes import ConditionNode
-    from coraplex.plans.plan_node import MotionNode
+    from coraplex.plans.plan_node import ActionNode, MotionNode, PlanNode
     from coraplex.plans.underspecified import UnderspecifiedNode
     from coraplex.datastructures.dataclasses import Context
 
 
 # %% native motion history
+
+
+@dataclass
+class LifeCycleChange:
+    """
+    A plan node's native life cycle state changing from one snapshot to the next.
+    """
+
+    node: PlanNode
+    """
+    The plan node whose native counterpart changed its state.
+    """
+
+    previous_state: LifeCycleValues
+    """
+    The state in the earlier snapshot.
+    """
+
+    current_state: LifeCycleValues
+    """
+    The state in the newer snapshot.
+    """
+
+    @property
+    def ends_attempt(self) -> bool:
+        """
+        :return: Whether the node leaves an attempt that was in progress, by ending or
+            by being reset.
+        """
+        active_states = (LifeCycleValues.RUNNING, LifeCycleValues.PAUSED)
+        return (
+            self.previous_state in active_states
+            and self.current_state not in active_states
+        )
 
 
 @dataclass
@@ -74,6 +109,11 @@ class MotionPlanHistory(StateHistoryObserver):
     Plan motions and the native tasks realizing them.
     """
 
+    action_goals: dict[ActionNode, Goal] = field(default_factory=dict)
+    """
+    Plan actions merged into the chart and the native goals running their bodies.
+    """
+
     def __post_init__(self) -> None:
         """
         Bind plan motions before observing compilation and execution.
@@ -82,65 +122,107 @@ class MotionPlanHistory(StateHistoryObserver):
             node.motion_statechart = self.statechart
         self.statechart.history.add_observer(self)
 
+    @property
+    def chart_nodes(self) -> dict[PlanNode, MotionStatechartNode]:
+        """
+        :return: Every observed plan node and the native node whose life cycle it
+            follows.
+        """
+        return {**self.action_goals, **self.motion_mappings}
+
     def on_state_change(self, history: StateHistory) -> None:
         """
         Publish the transitions recorded in the newest native snapshot.
+
+        Attempts that ended are published before attempts that started, so that a plan
+        node ends before its parent does and starts after it.
 
         :param history: The updated native state history.
         """
         current = history.history[-1].life_cycle_state
         previous = history.history[-2].life_cycle_state if len(history) > 1 else None
-        for node, task in self.motion_mappings.items():
-            current_state = LifeCycleValues(int(current[task]))
-            previous_state = (
-                LifeCycleValues(int(previous[task]))
-                if previous is not None
-                else LifeCycleValues.NOT_STARTED
+        changes = [
+            LifeCycleChange(
+                node=node,
+                previous_state=(
+                    LifeCycleValues(int(previous[chart_node]))
+                    if previous is not None
+                    else LifeCycleValues.NOT_STARTED
+                ),
+                current_state=LifeCycleValues(int(current[chart_node])),
             )
-            if current_state == previous_state:
-                continue
-            if current_state == LifeCycleValues.NOT_STARTED:
-                if previous_state in (LifeCycleValues.RUNNING, LifeCycleValues.PAUSED):
-                    self._end_motion(node, LifeCycleValues.INTERRUPTED)
-                node.status = current_state
-                node.start_time = None
-                node.end_time = None
-                continue
-            if previous_state == LifeCycleValues.NOT_STARTED:
-                node.status = LifeCycleValues.RUNNING
-                node.start_time = datetime.now()
-                node.end_time = None
-                node.plan.notify_node_started(node)
-            node.status = current_state
-            if current_state.is_terminal:
-                self._end_motion(node, current_state)
+            for node, chart_node in self.chart_nodes.items()
+        ]
+        changes = [
+            change
+            for change in changes
+            if change.current_state != change.previous_state
+        ]
+        endings = sorted(
+            (change for change in changes if change.ends_attempt),
+            key=lambda change: change.node.depth,
+            reverse=True,
+        )
+        others = sorted(
+            (change for change in changes if not change.ends_attempt),
+            key=lambda change: change.node.depth,
+        )
+        for change in endings + others:
+            self._publish(change)
+
+    def _publish(self, change: LifeCycleChange) -> None:
+        """
+        Project one native transition onto its plan node and report the boundaries it
+        crosses.
+
+        :param change: The transition to publish.
+        """
+        node = change.node
+        if change.current_state == LifeCycleValues.NOT_STARTED:
+            if change.ends_attempt:
+                self._end_attempt(node, LifeCycleValues.INTERRUPTED)
+            node.status = change.current_state
+            node.start_time = None
+            node.end_time = None
+            return
+        if change.previous_state == LifeCycleValues.NOT_STARTED:
+            node.status = LifeCycleValues.RUNNING
+            node.start_time = datetime.now()
+            node.end_time = None
+            node.plan.notify_node_started(node)
+        node.status = change.current_state
+        if change.current_state.is_terminal:
+            self._end_attempt(node, change.current_state)
 
     def end_active_motions(self, outcome: LifeCycleValues | None = None) -> None:
         """
-        Report executor termination for plan motions still in progress.
+        Report executor termination for the plan nodes still in progress, each before
+        its parent.
 
-        :param outcome: The executor's failure outcome, or None to use native task
-            verdicts.
+        :param outcome: The executor's failure outcome, or None to use native verdicts.
         """
-        for node, task in self.motion_mappings.items():
-            if node.status not in (LifeCycleValues.RUNNING, LifeCycleValues.PAUSED):
-                continue
-            self._end_motion(
+        active = {
+            node: chart_node
+            for node, chart_node in self.chart_nodes.items()
+            if node.status in (LifeCycleValues.RUNNING, LifeCycleValues.PAUSED)
+        }
+        for node in sorted(active, key=lambda node: node.depth, reverse=True):
+            self._end_attempt(
                 node,
                 (
                     outcome
                     if outcome is not None
                     else LifeCycleValues.verdict_for(
-                        self.statechart.observation_state[task]
+                        self.statechart.observation_state[active[node]]
                     )
                 ),
             )
 
-    def _end_motion(self, node: MotionNode, outcome: LifeCycleValues) -> None:
+    def _end_attempt(self, node: PlanNode, outcome: LifeCycleValues) -> None:
         """
-        Publish the terminal boundary of one native motion attempt.
+        Publish the terminal boundary of one native attempt.
 
-        :param node: The motion whose attempt ended.
+        :param node: The plan node whose attempt ended.
         :param outcome: The native terminal state to publish.
         """
         node.status = outcome
@@ -216,6 +298,12 @@ class GiskardExecutable(Executable):
     """
     Mapping from the motion nodes of the plan to their giskard tasks, in execution
     order.
+    """
+
+    action_goals: dict[ActionNode, Goal] = field(default_factory=dict, kw_only=True)
+    """
+    Mapping from the action nodes of the plan merged into this chart to the goals
+    running their bodies.
     """
 
     pre_condition_node: Optional[ConditionNode] = field(default=None, kw_only=True)
@@ -464,7 +552,9 @@ class GiskardExecutable(Executable):
         )
         # Stop the robot and tear the chart down even when a tick raises.
         with ExitStack() as cleanup:
-            history = MotionPlanHistory(self.motion_state_chart, self.motion_mappings)
+            history = MotionPlanHistory(
+                self.motion_state_chart, self.motion_mappings, self.action_goals
+            )
             cleanup.callback(history.stop)
             cleanup.callback(executor.context.cleanup)
             cleanup.callback(
