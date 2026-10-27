@@ -114,10 +114,20 @@ of UUIDs; chose "Nur schnell" and the name "A08 · computer mouse box"):
   identical, only provenance changed; uncommitted. Old recording backed up in this session's scratchpad.
   Not published (two_totes is no longer in the scenes repo). Headless Firefox shows a grey 3D stage for both
   warehouse recordings in main's viewer (also the published stretch one): unexplained, not checked by eye.
+- 2026-10-27 (user: a skill "install cramera main, install cram and test one time" so isaac-twin hands over on the
+  newest stack): new personal skill ~/.claude/skills/cramera-stack (update_stack.sh: ff ~/cramera main, CRAM
+  checkout ~/cognitive_robot_abstract_machine detached on origin/main, cramera's install_stack.py --with-usd --dev
+  into ~/.virtualenvs/cramera, per-package tests with ROS and -p no:launch_testing -p no:launch_ros, hand-over
+  check: shelf_with_totes through export_cramera.sh + CRAM world with a PR2; result in
+  ~/.local/state/cramera-stack/result.json). isaac-twin now defaults to ~/.virtualenvs/cramera (wrapper,
+  SKILL.md table/Phase 9/10, cramera.md 6a/10); template still old stack. First run: cramera a31d493 + CRAM
+  4eaae933a, all green except bridge test_demo (DuplicateWorldEntityError with two PR2s, also on CRAM 1bd0c40a8)
+  and 2 laboratory MuJoCo tests (CRAM pins mujoco==3.11.0, CI uses 3.17.0).
 
 Next:
+- offer: fix the bridge test_demo gap and the MuJoCo pin mismatch (cramera repo); port isaac-twin's Phase 10
+  template to cramera_bridge / CRAM main;
 - ask: commit the LabAutomationTwin cramera/ files (as whom); fix the warehouse closed_fingers text;
-- watch PR #73's CI and reviews;
 - the warehouse demo still runs on the old stack (CRAM fork, cramera_cram); porting it to CRAM main is open;
 - push the CRAM commits a65855bda, 842034d49, 906c53d6b, 376f204d4, 41425c5ca (on the user's OK);
 - open decisions handed to the user: `usd` extra deps (numpy/scipy/Pillow), CI usd-core step, SSAO sRGB fix
