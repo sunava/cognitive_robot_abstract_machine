@@ -134,6 +134,13 @@ Progress 2026-10-27 (fork PR #41 cramera_bridge/live/plan.py -> CRAM; user: "do 
 - user: bridge fixes go to AICOR-Solutions/cramera packages/bridge, #41 re-copies later. They need the CRAM PRs
   in cram2 main first (cramera runs on CRAM main); then one cramera PR that drops NodeLifeCycle, running(),
   render, root(), the from_world re-query, uses LifeCycleValues.is_terminal + node_label, and tests the tick.
+- draft PRs in the fork (all checked): #42 NodeDetailRenderer (bridge subclasses body_name; re-run here with the
+  PR2 overlay: test_plan 216 passed), #43 Plan.has_single_root + PlanHasNoSingleRoot/PlanIsNotATree (needs ORM
+  regen), #44 DetectingMotion node result = detected Body (also drops PlanNode.perform's result assignment),
+  #45 bug merged-action life cycle, #47 Plan.running_action stacked on #45, #46 ExecutorTickObserver +
+  PlanCallback.on_motion_tick. CI: only demo jobs fail (garmi also on cram2 main; real_tracy launch env).
+  None covers ExecutionType.REAL (chart runs in the giskard server). Gap from #45: actions with an execution
+  boundary (PickUp/Place) stay NOT_STARTED -> proposed card task_c6e0feb3 (not started).
 
 Next:
 - offer: fix the bridge test_demo gap and the MuJoCo pin mismatch (cramera repo); port isaac-twin's Phase 10
