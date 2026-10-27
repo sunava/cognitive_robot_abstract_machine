@@ -24,6 +24,7 @@ from coraplex.plans.plan_node import (
     ActionNode,
     DesignatorNode,
 )
+from giskardpy.motion_statechart.data_types import LifeCycleValues
 from krrood.rustworkx_utils.graph_visualizer_base import (
     GraphLayout,
     GraphVisualizerBackend,
@@ -377,6 +378,19 @@ class Plan:
     @property
     def actions(self) -> List[ActionNode]:
         return [node for node in self.nodes if isinstance(node, ActionNode)]
+
+    @property
+    def running_action(self) -> ActionNode | None:
+        """
+        :return: The deepest action of this plan that is running, or None between
+            actions.
+        """
+        running_actions = [
+            action
+            for action in self.actions
+            if action.status == LifeCycleValues.RUNNING
+        ]
+        return max(running_actions, key=lambda action: action.depth, default=None)
 
     @property
     def layers(self) -> List[List[PlanNode]]:
