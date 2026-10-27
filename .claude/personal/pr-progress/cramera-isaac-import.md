@@ -143,8 +143,10 @@ Progress 2026-10-27 (fork PR #41 cramera_bridge/live/plan.py -> CRAM; user: "do 
   boundary (PickUp/Place) stay NOT_STARTED -> proposed card task_c6e0feb3 (not started).
 
 Next:
-- offer: fix the bridge test_demo gap and the MuJoCo pin mismatch (cramera repo); port isaac-twin's Phase 10
-  template to cramera_bridge / CRAM main;
+- side sessions 2026-10-27: bridge test_demo cause is in CRAM coraplex (ParkArmsAction/MoveTorsoAction drop the
+  robot namespace), nothing changed, user to decide on a fork fix; laboratory MuJoCo 3.11 fix on cramera branch
+  laboratory/mujoco-3-11-physics (f464911, 27d2cdb, not pushed), PR waits for the user's OK; isaac-twin Phase 10
+  template ported to CRAM main (vault 385e267), cramera-stack doc updated (vault 6adf6cc);
 - ask: commit the LabAutomationTwin cramera/ files (as whom); fix the warehouse closed_fingers text;
 - the warehouse demo still runs on the old stack (CRAM fork, cramera_cram); porting it to CRAM main is open;
 - push the CRAM commits a65855bda, 842034d49, 906c53d6b, 376f204d4, 41425c5ca (on the user's OK);
