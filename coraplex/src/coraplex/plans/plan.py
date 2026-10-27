@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from coraplex.plans.designator import Designator
     from coraplex.plans.plan_transformation import PlanTransformation
     from coraplex.plans.underspecified import ActionTrial
+    from giskardpy.motion_statechart.motion_statechart import MotionStatechart
 
 
 logger = logging.getLogger(__name__)
@@ -368,6 +369,15 @@ class Plan:
             # and its publishing do not outlive the plan.
             if node.parent is None and self.action_trial is not None:
                 self.action_trial.discard()
+
+    def notify_motion_tick(self, statechart: MotionStatechart) -> None:
+        """
+        Report a tick of one of this plan's motion statecharts to registered observers.
+
+        :param statechart: The ticked statechart.
+        """
+        for callback in self.node_callbacks:
+            callback.on_motion_tick(statechart)
 
     def re_perform(self):
         for child in self.root.descendants:
