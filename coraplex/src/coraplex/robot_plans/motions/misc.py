@@ -6,27 +6,29 @@ from giskardpy.motion_statechart.context import MotionStatechartContext
 from giskardpy.motion_statechart.data_types import ObservationStateValues
 from giskardpy.motion_statechart.graph_node import NodeArtifacts, Task
 from giskardpy.motion_statechart.ros_context import RosContextExtension
-from typing_extensions import Optional
+from semantic_digital_twin.world_description.world_entity import Body
 
 from coraplex.datastructures.enums import ExecutionType
 from coraplex.perception import PerceptionInterface, PerceptionQuery
-from coraplex.plans.executables import GiskardExecutable
+from coraplex.plans.executables import GiskardExecutable, HasResult
 from coraplex.robot_plans.motions.base import BaseMotion
 
 # %% perceiving inside the motion chart
 
 
 @dataclass(eq=False, repr=False)
-class PerceptionTask(Task):
+class PerceptionTask(Task, HasResult):
     """
     Motion statechart node that answers a perception query and writes what it saw into
     the world.
 
     The node adds no motion constraints. The query is answered on the node's first tick,
     so the whole detection takes one tick however long the source needs to reply, and the
-    node then observes ``TRUE`` so the surrounding sequence continues.
+    node then observes
+    :attr:`~giskardpy.motion_statechart.data_types.ObservationStateValues.TRUE` so the
+    surrounding sequence continues. Its :attr:`result` is the :attr:`detected_body`.
 
-    ..warning:: That tick blocks until the source replies, which on the real robot holds
+    .. warning:: That tick blocks until the source replies, which on the real robot holds
         up the control loop for as long as the pipeline takes to answer.
     """
 
@@ -35,7 +37,7 @@ class PerceptionTask(Task):
     What to look for and where.
     """
 
-    execution_type: Optional[ExecutionType] = field(kw_only=True)
+    execution_type: ExecutionType | None = field(kw_only=True)
     """
     Which source answers the query.
 
@@ -45,14 +47,15 @@ class PerceptionTask(Task):
     rejects.
     """
 
-    perception_source: Optional[PerceptionInterface] = field(init=False, default=None)
+    perception_source: PerceptionInterface | None = field(init=False, default=None)
     """
     The source answering the query, resolved during :meth:`build`.
     """
 
-    _detections_applied: bool = field(init=False, default=False, repr=False)
+    detected_body: Body | None = field(init=False, default=None, repr=False)
     """
-    Whether the query has already been answered and written into the world.
+    The body the query was answered with and moved to where it was seen, None while the
+    query has not been answered.
     """
 
     accept_first_if_multiple: bool = False
@@ -70,21 +73,25 @@ class PerceptionTask(Task):
         )
         return NodeArtifacts()
 
+    @property
+    def result(self) -> Body | None:
+        return self.detected_body
+
     def on_start(self, context: MotionStatechartContext) -> None:
-        self._detections_applied = False
+        self.detected_body = None
 
     def on_tick(
         self, context: MotionStatechartContext
-    ) -> Optional[ObservationStateValues]:
-        if self._detections_applied:
+    ) -> ObservationStateValues | None:
+        if self.detected_body is not None:
             return ObservationStateValues.TRUE
         detection = self.perception_source.detect(
             self.query, self.accept_first_if_multiple
         )
-        detection.apply_to(
+        detected_annotations = detection.apply_to(
             self.query.world, trust_orientation=self.query.trust_detected_orientation
         )
-        self._detections_applied = True
+        self.detected_body = detected_annotations[0].root
         return ObservationStateValues.TRUE
 
 

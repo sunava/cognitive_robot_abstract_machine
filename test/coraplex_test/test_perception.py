@@ -13,7 +13,7 @@ import inspect
 import json
 import threading
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 import pytest
@@ -21,7 +21,7 @@ import rclpy
 from rclpy.action import ActionServer
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
-from typing_extensions import List, Tuple
+from typing_extensions import Any, List, Tuple
 
 from coraplex.datastructures.enums import (
     ExecutionType,
@@ -43,8 +43,9 @@ from coraplex.perception import (
     RoboKudoPerception,
     WorldPerception,
 )
-from coraplex.plans.factories import execute_single
-from coraplex.plans.plan_node import MotionNode
+from coraplex.plans.factories import execute_single, sequential
+from coraplex.plans.plan_callbacks import PlanCallback
+from coraplex.plans.plan_node import MotionNode, PlanNode
 from coraplex.robot_plans import MoveToolCenterPointMotion
 from coraplex.robot_plans.actions.core.pick_up import PickUpAction
 from coraplex.robot_plans.motions.misc import DetectingMotion, PerceptionTask
@@ -989,3 +990,98 @@ def test_detection_in_a_chart_corrects_a_reach_planned_before_it(
         PERCEIVED_MILK_POSITION,
         atol=1e-9,
     )
+
+
+# %% what a perception step reports
+
+
+@dataclass
+class ResultsWhenEnded(PlanCallback):
+    """
+    Observer remembering the result each motion of a plan held when its end was
+    reported.
+    """
+
+    results: dict[MotionNode, Any] = field(default_factory=dict)
+    """
+    The result of every motion whose end was reported, by motion.
+    """
+
+    def on_end(self, node: PlanNode) -> None:
+        if isinstance(node, MotionNode):
+            self.results[node] = node.result
+
+
+def detecting_step_of(plan: PlanNode) -> MotionNode:
+    """
+    :param plan: The performed plan holding one perception step.
+    :return: The motion node of that perception step.
+    """
+    [step] = [
+        node
+        for node in [plan] + plan.descendants
+        if isinstance(node, MotionNode) and isinstance(node.designator, DetectingMotion)
+    ]
+    return step
+
+
+@pytest.mark.parametrize(
+    "plan_of",
+    [lambda step, context: sequential([step], context=context), execute_single],
+    ids=["inside a sequence", "on its own"],
+)
+def test_a_detecting_step_keeps_the_body_it_detected(
+    plan_of, pr2_apartment_context, whole_scene_region
+):
+    """
+    What a perception step saw is part of its outcome, so whoever reads the plan
+    afterwards learns it from the step instead of asking the world again.
+    """
+    world, view, context = pr2_apartment_context
+    query = PerceptionQuery(Milk, whole_scene_region, view, world)
+    plan = plan_of(DetectingMotion(query=query), context)
+
+    with kinematically_simulated_robot:
+        plan.perform()
+
+    assert detecting_step_of(plan).result is world.get_body_by_name("milk.stl")
+
+
+def test_a_detecting_step_reports_its_body_when_it_ends(
+    pr2_apartment_context, whole_scene_region
+):
+    """
+    An observer following the plan reads what a step saw as soon as it hears the step
+    ended, before the plan around it has finished.
+    """
+    world, view, context = pr2_apartment_context
+    query = PerceptionQuery(Milk, whole_scene_region, view, world)
+    plan = sequential([DetectingMotion(query=query)], context=context)
+    observer = ResultsWhenEnded()
+    plan.plan.node_callbacks.append(observer)
+
+    with kinematically_simulated_robot:
+        plan.perform()
+
+    assert observer.results == {
+        detecting_step_of(plan): world.get_body_by_name("milk.stl")
+    }
+
+
+def test_a_failed_detecting_step_keeps_no_body(
+    pr2_apartment_context, whole_scene_region
+):
+    """
+    A step that could not detect anything saw nothing, so it reports no body.
+    """
+    world, view, context = pr2_apartment_context
+    head_pan = world.get_degree_of_freedom_by_name("head_pan_joint")
+    world.state[head_pan.id].position = np.pi
+    world.notify_state_change()
+    query = PerceptionQuery(Milk, whole_scene_region, view, world)
+    plan = sequential([DetectingMotion(query=query)], context=context)
+
+    with kinematically_simulated_robot, pytest.raises(NothingDetected):
+        plan.perform()
+
+    assert detecting_step_of(plan).result is None

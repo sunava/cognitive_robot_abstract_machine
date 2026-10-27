@@ -14,7 +14,7 @@ from semantic_digital_twin.robots.minimal_robot import MinimalRobot
 
 from coraplex.execution_environment import kinematically_simulated_robot
 from coraplex.plans.attachment_nodes import ReAttachNode
-from coraplex.plans.executables import MotionPlanHistory
+from coraplex.plans.executables import HasResult, MotionPlanHistory
 from coraplex.plans.factories import code, parallel, sequential
 from coraplex.plans.failures import PlanFailure
 from coraplex.plans.plan import Plan
@@ -118,6 +118,18 @@ class RecordedMotion:
                 observation_state=self.chart.observation_state,
             )
         )
+
+
+@dataclass(eq=False, repr=False)
+class ResultProducingTask(Task, HasResult):
+    """A native task whose every run produces the same value."""
+
+    produced_value: object = field(default_factory=object)
+    """What each run of this task produces."""
+
+    @property
+    def result(self) -> object:
+        return self.produced_value
 
 
 # %% motion lifecycle
@@ -249,6 +261,27 @@ def test_aborting_does_not_overwrite_a_completed_motion(tracked_motion) -> None:
         NodeEvent(ExecutionEvent.START, node, LifeCycleValues.RUNNING),
         NodeEvent(ExecutionEvent.END, node, LifeCycleValues.SUCCEEDED),
     ]
+    observer.stop()
+
+
+def test_a_failed_retry_drops_the_result_of_an_earlier_success(
+    tracked_motion,
+) -> None:
+    """A result belongs to the attempt that produced it, so a failed retry has none."""
+    node = tracked_motion
+    motion = RecordedMotion(task=ResultProducingTask())
+    observer = MotionPlanHistory(motion.chart, {node: motion.task})
+
+    for state in (
+        LifeCycleValues.RUNNING,
+        LifeCycleValues.SUCCEEDED,
+        LifeCycleValues.NOT_STARTED,
+        LifeCycleValues.RUNNING,
+        LifeCycleValues.FAILED,
+    ):
+        motion.record(state)
+
+    assert node.result is None
     observer.stop()
 
 
@@ -829,7 +862,9 @@ def test_parallel_plan_reports_failed_native_verdict(
 
 
 # %% node-owned execution scopes
-def test_direct_attachment_reports_one_pair_of_boundaries(pr2_apartment_context) -> None:
+def test_direct_attachment_reports_one_pair_of_boundaries(
+    pr2_apartment_context,
+) -> None:
     world, robot, context = pr2_apartment_context
     attachment = ReAttachNode(
         body=world.get_body_by_name("milk.stl"), new_parent=robot.root

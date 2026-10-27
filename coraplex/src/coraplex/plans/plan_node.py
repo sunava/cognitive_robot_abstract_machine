@@ -307,7 +307,7 @@ class PlanNode(PlanEntity):
             parent.status == LifeCycleValues.PAUSED for parent in [self] + self.path
         )
 
-    def perform(self):
+    def perform(self) -> None:
         """
         Perform the node and update the fields of this node.
         """
@@ -318,7 +318,7 @@ class PlanNode(PlanEntity):
 
         with self.execution_scope():
             self.notify()
-            self.result = self.parse().execute()
+            self.parse().execute()
 
     @contextmanager
     def execution_scope(self) -> Iterator[None]:
