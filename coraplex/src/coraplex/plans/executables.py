@@ -1,10 +1,19 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager, ExitStack, nullcontext
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 
-from typing_extensions import Callable, List, Dict, ClassVar, Optional, TYPE_CHECKING
+from typing_extensions import (
+    Any,
+    Callable,
+    List,
+    Dict,
+    ClassVar,
+    Optional,
+    TYPE_CHECKING,
+)
 
 from coraplex.datastructures.enums import ExecutionType
 from coraplex.exceptions import (
@@ -56,6 +65,21 @@ if TYPE_CHECKING:
 
 
 # %% native motion history
+
+
+class HasResult(ABC):
+    """
+    A native task whose run produces a value that the plan motion it realizes keeps as
+    its :attr:`~coraplex.plans.plan_node.PlanNode.result` when the task succeeds.
+    """
+
+    @property
+    @abstractmethod
+    def result(self) -> Any:
+        """
+        :return: What the latest run of this task produced, None while it has produced
+            nothing.
+        """
 
 
 @dataclass
@@ -138,13 +162,20 @@ class MotionPlanHistory(StateHistoryObserver):
 
     def _end_motion(self, node: MotionNode, outcome: LifeCycleValues) -> None:
         """
-        Publish the terminal boundary of one native motion attempt.
+        Publish the terminal boundary of one native motion attempt, together with the
+        result of a succeeded task that has one.
 
         :param node: The motion whose attempt ended.
         :param outcome: The native terminal state to publish.
         """
         node.status = outcome
         node.end_time = datetime.now()
+        task = self.motion_mappings[node]
+        node.result = (
+            task.result
+            if outcome == LifeCycleValues.SUCCEEDED and isinstance(task, HasResult)
+            else None
+        )
         node.plan.notify_node_ended(node)
 
     def stop(self) -> None:
