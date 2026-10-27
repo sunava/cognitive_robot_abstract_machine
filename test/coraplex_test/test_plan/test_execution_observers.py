@@ -19,7 +19,7 @@ from coraplex.plans.factories import code, parallel, sequential
 from coraplex.plans.failures import PlanFailure
 from coraplex.plans.plan import Plan
 from coraplex.plans.plan_callbacks import PlanCallback
-from coraplex.plans.plan_node import MotionNode, PlanNode
+from coraplex.plans.plan_node import ActionNode, MotionNode, PlanNode
 from coraplex.robot_plans.actions.core.robot_body import MoveTorsoAction
 from coraplex.robot_plans.motions.robot_body import MoveJointsMotion
 from giskardpy.motion_statechart.data_types import (
@@ -829,7 +829,9 @@ def test_parallel_plan_reports_failed_native_verdict(
 
 
 # %% node-owned execution scopes
-def test_direct_attachment_reports_one_pair_of_boundaries(pr2_apartment_context) -> None:
+def test_direct_attachment_reports_one_pair_of_boundaries(
+    pr2_apartment_context,
+) -> None:
     world, robot, context = pr2_apartment_context
     attachment = ReAttachNode(
         body=world.get_body_by_name("milk.stl"), new_parent=robot.root
@@ -913,3 +915,149 @@ def test_end_observer_failure_after_success_is_propagated(monkeypatch) -> None:
 
     assert caught.value is failure
     assert not root._execution_in_progress
+
+
+# %% actions merged into one chart
+@dataclass
+class MergedActionChart:
+    """An action's goal and its motion's task changing state together in one chart."""
+
+    chart: MotionStatechart = field(default_factory=MotionStatechart)
+    """The native motion chart."""
+    goal: Goal = field(default_factory=Goal)
+    """The goal running the action's body."""
+    task: Task = field(default_factory=Task)
+    """The task realizing the action's motion."""
+
+    def __post_init__(self) -> None:
+        """Register the goal and the task with the native state arrays."""
+        self.chart.add_node(self.goal)
+        self.chart.add_node(self.task)
+
+    def record(self, state: LifeCycleValues) -> None:
+        """Append one snapshot in which the goal and the task share a state.
+
+        :param state: The next native lifecycle state of both.
+        """
+        self.chart.life_cycle_state[self.goal] = state
+        self.chart.life_cycle_state[self.task] = state
+        self.chart.history.append(
+            StateHistoryItem(
+                control_cycle=len(self.chart.history),
+                life_cycle_state=self.chart.life_cycle_state,
+                observation_state=self.chart.observation_state,
+            )
+        )
+
+
+@pytest.fixture
+def merged_action() -> ActionNode:
+    """An action with one motion below it, registered with a plan."""
+    action = ActionNode(designator=MoveTorsoAction(TorsoState.HIGH))
+    plan = Plan()
+    plan.add_edge(
+        action, MotionNode(designator=MoveJointsMotion(names=[], positions=[]))
+    )
+    return action
+
+
+@pytest.mark.parametrize("terminal", list(LifeCycleValues.terminal_states()))
+def test_merged_action_reports_its_goal_around_its_motion(
+    terminal, merged_action
+) -> None:
+    """An action starts before and ends after its motion, with its goal's verdict."""
+    action = merged_action
+    [motion] = action.children
+    recorder = ExecutionRecorder(plan=action.plan)
+    action.plan.node_callbacks.append(recorder)
+    chart = MergedActionChart()
+    observer = MotionPlanHistory(
+        chart.chart, {motion: chart.task}, {action: chart.goal}
+    )
+
+    chart.record(LifeCycleValues.RUNNING)
+    chart.record(terminal)
+
+    assert recorder.events == [
+        NodeEvent(ExecutionEvent.START, action, LifeCycleValues.RUNNING),
+        NodeEvent(ExecutionEvent.START, motion, LifeCycleValues.RUNNING),
+        NodeEvent(ExecutionEvent.END, motion, terminal),
+        NodeEvent(ExecutionEvent.END, action, terminal),
+    ]
+    observer.stop()
+
+
+def test_aborted_chart_ends_merged_action_after_its_motion(merged_action) -> None:
+    """Executor termination ends a running action only after the motion below it."""
+    action = merged_action
+    [motion] = action.children
+    recorder = ExecutionRecorder(plan=action.plan)
+    action.plan.node_callbacks.append(recorder)
+    chart = MergedActionChart()
+    observer = MotionPlanHistory(
+        chart.chart, {motion: chart.task}, {action: chart.goal}
+    )
+    chart.record(LifeCycleValues.RUNNING)
+
+    observer.end_active_motions(LifeCycleValues.FAILED)
+
+    assert recorder.events == [
+        NodeEvent(ExecutionEvent.START, action, LifeCycleValues.RUNNING),
+        NodeEvent(ExecutionEvent.START, motion, LifeCycleValues.RUNNING),
+        NodeEvent(ExecutionEvent.END, motion, LifeCycleValues.FAILED),
+        NodeEvent(ExecutionEvent.END, action, LifeCycleValues.FAILED),
+    ]
+    observer.stop()
+
+
+def test_merged_actions_succeed_with_their_motions(pr2_apartment_context) -> None:
+    """Actions whose motions run in one chart with their siblings' end succeeded."""
+    world, robot, context = pr2_apartment_context
+    plan = sequential(
+        [MoveTorsoAction(TorsoState.LOW), MoveTorsoAction(TorsoState.HIGH)],
+        context=context,
+    ).plan
+
+    with kinematically_simulated_robot:
+        plan.perform()
+
+    assert [action.status for action in plan.actions] == [
+        LifeCycleValues.SUCCEEDED,
+        LifeCycleValues.SUCCEEDED,
+    ]
+
+
+def test_merged_actions_report_boundaries_around_their_motions(
+    pr2_apartment_context,
+) -> None:
+    """Each merged action reports its start and end around those of its motion."""
+    world, robot, context = pr2_apartment_context
+    plan = sequential(
+        [MoveTorsoAction(TorsoState.LOW), MoveTorsoAction(TorsoState.HIGH)],
+        context=context,
+    ).plan
+    recorder = ExecutionRecorder(plan=plan)
+    plan.node_callbacks.append(recorder)
+
+    with kinematically_simulated_robot:
+        plan.perform()
+
+    first_action, second_action = plan.actions
+    [first_motion] = [
+        node for node in first_action.descendants if isinstance(node, MotionNode)
+    ]
+    [second_motion] = [
+        node for node in second_action.descendants if isinstance(node, MotionNode)
+    ]
+    assert recorder.events == [
+        NodeEvent(ExecutionEvent.START, plan.root, LifeCycleValues.RUNNING),
+        NodeEvent(ExecutionEvent.START, first_action, LifeCycleValues.RUNNING),
+        NodeEvent(ExecutionEvent.START, first_motion, LifeCycleValues.RUNNING),
+        NodeEvent(ExecutionEvent.END, first_motion, LifeCycleValues.SUCCEEDED),
+        NodeEvent(ExecutionEvent.END, first_action, LifeCycleValues.SUCCEEDED),
+        NodeEvent(ExecutionEvent.START, second_action, LifeCycleValues.RUNNING),
+        NodeEvent(ExecutionEvent.START, second_motion, LifeCycleValues.RUNNING),
+        NodeEvent(ExecutionEvent.END, second_motion, LifeCycleValues.SUCCEEDED),
+        NodeEvent(ExecutionEvent.END, second_action, LifeCycleValues.SUCCEEDED),
+        NodeEvent(ExecutionEvent.END, plan.root, LifeCycleValues.SUCCEEDED),
+    ]
