@@ -1,5 +1,6 @@
 import os
 import time
+from dataclasses import dataclass, field
 
 import pytest
 
@@ -19,7 +20,8 @@ from coraplex.plans.factories import code, sequential, parallel, execute_single
 from coraplex.exceptions import CannotInsertBesideRoot, NodeNotInPlanTree
 from coraplex.plans.failures import EmptyUnderspecified, PlanFailure
 from coraplex.plans.plan import Plan
-from coraplex.plans.plan_node import PlanNode, ActionNode
+from coraplex.plans.plan_callbacks import PlanCallback
+from coraplex.plans.plan_node import PlanNode, ActionNode, MotionNode
 from coraplex.robot_plans.actions.core.navigation import NavigateAction
 from coraplex.plans.attachment_nodes import ReAttachNode
 from coraplex.robot_plans.actions.core.pick_up import GraspingAction, PickUpAction
@@ -911,3 +913,75 @@ def test_the_details_of_a_node_are_drawn_as_lines():
     )
 
     assert visualizer.node_details(node.index) == node.node_info.to_lines()
+
+
+# %% the running action
+
+
+def test_running_action_is_the_deepest_running_action():
+    """
+    Of the actions running at once, the one nested deepest is the running action.
+    """
+    outer = ActionNode(designator=MoveTorsoAction(TorsoState.HIGH))
+    finished = ActionNode(designator=MoveTorsoAction(TorsoState.LOW))
+    inner = ActionNode(designator=MoveTorsoAction(TorsoState.HIGH))
+    plan = Plan()
+    plan.add_edge(outer, finished)
+    plan.add_edge(outer, inner)
+    outer.status = LifeCycleValues.RUNNING
+    finished.status = LifeCycleValues.SUCCEEDED
+    inner.status = LifeCycleValues.RUNNING
+
+    assert plan.running_action is inner
+
+
+def test_no_action_runs_between_actions():
+    """
+    A plan whose actions all finished or have yet to start has no running action.
+    """
+    root = sequential([])
+    finished = ActionNode(designator=MoveTorsoAction(TorsoState.LOW))
+    upcoming = ActionNode(designator=MoveTorsoAction(TorsoState.HIGH))
+    root.plan.add_edge(root, finished)
+    root.plan.add_edge(root, upcoming)
+    root.status = LifeCycleValues.RUNNING
+    finished.status = LifeCycleValues.SUCCEEDED
+
+    assert root.plan.running_action is None
+
+
+@dataclass
+class RunningActionPerMotionStart(PlanCallback):
+    """
+    Remembers the plan's running action whenever one of its motions starts.
+    """
+
+    running_actions: list[ActionNode | None] = field(default_factory=list)
+    """
+    The running action at each motion start, in the order the motions started.
+    """
+
+    def on_start(self, node: PlanNode) -> None:
+        if isinstance(node, MotionNode):
+            self.running_actions.append(self.plan.running_action)
+
+
+def test_running_action_is_the_action_of_the_running_merged_motion(
+    pr2_apartment_context,
+):
+    """
+    While the motions of a plan run merged in one chart, the running action is the
+    action of the motion that is running.
+    """
+    world, robot, context = pr2_apartment_context
+    plan = sequential(
+        [MoveTorsoAction(TorsoState.LOW), MoveTorsoAction(TorsoState.HIGH)],
+        context=context,
+    ).plan
+    recorder = RunningActionPerMotionStart(plan=plan)
+    plan.node_callbacks.append(recorder)
+
+    with kinematically_simulated_robot:
+        plan.perform()
+
+    assert recorder.running_actions == plan.actions
