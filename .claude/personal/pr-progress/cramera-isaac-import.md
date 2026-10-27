@@ -124,6 +124,17 @@ of UUIDs; chose "Nur schnell" and the name "A08 · computer mouse box"):
   4eaae933a, all green except bridge test_demo (DuplicateWorldEntityError with two PR2s, also on CRAM 1bd0c40a8)
   and 2 laboratory MuJoCo tests (CRAM pins mujoco==3.11.0, CI uses 3.17.0).
 
+Progress 2026-10-27 (fork PR #41 cramera_bridge/live/plan.py -> CRAM; user: "do them as single prs"):
+- fork main fast-forwarded to cram2 main 4eaae933a; local branch cram2-main = that commit (worktree base).
+- 5 sessions, each one draft PR in sunava/cognitive_robot_abstract_machine: action-status (ActionNode status from
+  merged motions, bug; then Plan.running_action stacked), readable-parameters (node_info text), perception-result
+  (DetectingMotion node keeps detections), plan-root (named exception + is_tree), motion-tick-hook (per-tick
+  PlanCallback.on_motion_tick: the bridge's on_motion_tick is never called, live constraints/statechart freeze
+  during motions; also in cramera main packages/bridge).
+- user: bridge fixes go to AICOR-Solutions/cramera packages/bridge, #41 re-copies later. They need the CRAM PRs
+  in cram2 main first (cramera runs on CRAM main); then one cramera PR that drops NodeLifeCycle, running(),
+  render, root(), the from_world re-query, uses LifeCycleValues.is_terminal + node_label, and tests the tick.
+
 Next:
 - offer: fix the bridge test_demo gap and the MuJoCo pin mismatch (cramera repo); port isaac-twin's Phase 10
   template to cramera_bridge / CRAM main;
