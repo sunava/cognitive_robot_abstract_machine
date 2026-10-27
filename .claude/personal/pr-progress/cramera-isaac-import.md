@@ -104,6 +104,16 @@ of UUIDs; chose "Nur schnell" and the name "A08 · computer mouse box"):
   build_plans commits rebased onto main + mesh-beside-URDF fix 1729c77 + changelog), ready for review, bound here.
   Demo code untracked in ~/Documents/LabAutomationTwin/cramera (repo identity is mbeetz: ask before committing).
   isaac-twin skill section 6a, vault 7d5d6e0.
+- 2026-10-27 (user: targets in the TIAGo warehouse demo's replayed plan not correct): warehouse_tiago_two_totes
+  (10-25) predated the readable names, so main's plan panel showed body UUIDs and no poses. Re-recorded it on the
+  same old stack (worktree of viewer/readable-step-cards 080fa36, env bundle from scenes repo 4264188^ since the
+  user removed `warehouse` there): A08 7.1 mm, A09 9.6 mm, 62 s; steps now read "A08 · computer mouse box" and
+  target locations. The twin's reach/traffic data were stale only because another session moved the catalogue
+  path (~/Documents/private_meshes -> ~/private_meshes, uncommitted layout.py/params.py): regenerated
+  data/reach.json (38/38) + data/traffic.json (193/193, via ~/LabAutomationTwin/env_cad for shapely), results
+  identical, only provenance changed; uncommitted. Old recording backed up in this session's scratchpad.
+  Not published (two_totes is no longer in the scenes repo). Headless Firefox shows a grey 3D stage for both
+  warehouse recordings in main's viewer (also the published stretch one): unexplained, not checked by eye.
 
 Next:
 - ask: commit the LabAutomationTwin cramera/ files (as whom); fix the warehouse closed_fingers text;
