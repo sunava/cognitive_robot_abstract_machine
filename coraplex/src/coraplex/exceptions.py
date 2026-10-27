@@ -15,6 +15,7 @@ from coraplex.plans.failures import PlanFailure
 
 if TYPE_CHECKING:
     from coraplex.plans.designator import Designator
+    from coraplex.plans.plan import Plan
     from coraplex.plans.plan_node import PlanNode
     from coraplex.robot_plans.actions.base import ActionDescription
     from semantic_digital_twin.robots.robot_parts import AbstractRobot, Arm
@@ -168,6 +169,56 @@ class NodeNotInPlanTree(DataclassException):
 
     def suggest_correction(self) -> str:
         return "add the node below the plan's root before asking what precedes it"
+
+
+@dataclass
+class PlanHasNoSingleRoot(DataclassException):
+    """
+    Raised when the root of a plan is asked for, but the plan has no node or several
+    nodes without a parent.
+    """
+
+    parentless_nodes: list[PlanNode]
+    """
+    The nodes of the plan that have no parent.
+    """
+
+    def error_message(self) -> str:
+        return (
+            f"The plan has {len(self.parentless_nodes)} nodes without a parent instead "
+            f"of one: {self.parentless_nodes}."
+        )
+
+    def suggest_correction(self) -> str:
+        return (
+            "check Plan.has_single_root before reading Plan.root, or connect the "
+            "plan's nodes below a single node"
+        )
+
+
+@dataclass
+class PlanIsNotATree(DataclassException):
+    """
+    Raised when a plan is validated, but its nodes do not form a tree.
+    """
+
+    plan: Plan
+    """
+    The plan that is not a tree.
+    """
+
+    def error_message(self) -> str:
+        return (
+            f"The plan has {len(self.plan.all_nodes)} nodes, "
+            f"{len(self.plan.edges)} edges and "
+            f"{len(self.plan.parentless_nodes)} nodes without a parent."
+        )
+
+    def suggest_correction(self) -> str:
+        return (
+            "give the plan exactly one node without a parent and every other node "
+            "exactly one parent"
+        )
 
 
 @dataclass

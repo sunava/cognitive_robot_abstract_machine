@@ -17,7 +17,12 @@ from typing_extensions import (
     Type,
 )
 
-from coraplex.exceptions import CannotInsertBesideRoot, ContextIsUnavailable
+from coraplex.exceptions import (
+    CannotInsertBesideRoot,
+    ContextIsUnavailable,
+    PlanHasNoSingleRoot,
+    PlanIsNotATree,
+)
 from coraplex.plans.plan_entity import PlanEntity
 from coraplex.plans.plan_node import (
     PlanNode,
@@ -94,21 +99,43 @@ class Plan:
         if self.context is not None:
             self.add_plan_entity(self.context)
 
-    def validate(self):
+    def validate(self) -> None:
         """
         Check that the plan as constructed so far is valid.
 
         A plan is valid if it is a tree.
+
+        :raises PlanIsNotATree: If the plan is not a tree.
         """
-        if not (
-            len(self.plan_graph.edges()) == len(self.plan_graph.nodes()) - 1
-            and self.root
-        ):
-            raise ValueError("Plan is not a tree")
+        if not self.has_single_root or len(self.edges) != len(self.all_nodes) - 1:
+            raise PlanIsNotATree(self)
 
     @property
-    def root(self):
-        [result] = [node for node in self.all_nodes if node.parent is None]
+    def parentless_nodes(self) -> list[PlanNode]:
+        """
+        The nodes of this plan that have no parent.
+        """
+        return [node for node in self.all_nodes if node.parent is None]
+
+    @property
+    def has_single_root(self) -> bool:
+        """
+        Whether exactly one node of this plan has no parent, so that :attr:`root` can be
+        read.
+        """
+        return len(self.parentless_nodes) == 1
+
+    @property
+    def root(self) -> PlanNode:
+        """
+        The node of this plan that has no parent.
+
+        :raises PlanHasNoSingleRoot: If no node or several nodes of the plan have no
+            parent.
+        """
+        if not self.has_single_root:
+            raise PlanHasNoSingleRoot(self.parentless_nodes)
+        [result] = self.parentless_nodes
         return result
 
     @property
