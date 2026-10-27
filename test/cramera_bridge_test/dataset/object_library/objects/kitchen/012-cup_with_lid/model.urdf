@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<robot name="cup_with_lid">
+  <link name="cup_body">
+    <visual>
+      <geometry><mesh filename="assets/cup.obj"/></geometry>
+    </visual>
+  </link>
+  <link name="cup_lid">
+    <visual>
+      <geometry><box size="0.06 0.06 0.01"/></geometry>
+    </visual>
+  </link>
+  <joint name="cup_lid_joint" type="revolute">
+    <parent link="cup_body"/>
+    <child link="cup_lid"/>
+    <origin xyz="0 0 0.1"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="0" upper="1.5" effort="1" velocity="1"/>
+  </joint>
+</robot>

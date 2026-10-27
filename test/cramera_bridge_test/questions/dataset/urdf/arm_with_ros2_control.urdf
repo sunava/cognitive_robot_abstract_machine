@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<robot name="arm">
+  <link name="base"/>
+  <link name="finger"/>
+  <joint name="finger_joint" type="revolute">
+    <parent link="base"/>
+    <child link="finger"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="0" upper="1" effort="1" velocity="1"/>
+  </joint>
+  <ros2_control name="gripper" type="system">
+    <joint name="finger_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+    </joint>
+  </ros2_control>
+</robot>

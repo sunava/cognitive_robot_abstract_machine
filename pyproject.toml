@@ -24,7 +24,7 @@ dependencies = [
   "physics_simulators",
   "experiments",
   "segmind",
-  "cramera",
+  "cramera-bridge",
   "ipykernel>=7.2.0",
   "lark-parser>=0.12.0",
   "tqdm"
@@ -93,7 +93,7 @@ members = [
   "robokudo",
   "experiments",
   "segmind",
-  "cramera"
+  "cramera_bridge"
 ]
 
 [tool.uv.sources]
@@ -107,7 +107,11 @@ robokudo              = { workspace = true }
 physics_simulators    = { workspace = true }
 segmind               = { workspace = true }
 experiments           = { workspace = true }
-cramera                = { workspace = true }
+cramera-bridge         = { workspace = true }
+# The viewer and the protocol the bridge speaks to it are developed in the cramera
+# repository and are not on a package index yet.
+cramera                = { git = "https://github.com/AICOR-Solutions/cramera", subdirectory = "packages/viewer", branch = "main" }
+cramera-protocol       = { git = "https://github.com/AICOR-Solutions/cramera", subdirectory = "packages/protocol", branch = "main" }
 
 [tool.poetry]
 package-mode = false
@@ -123,7 +127,9 @@ robokudo = { path = "robokudo", develop = true }
 physics_simulators = { path = "physics_simulators", develop = true }
 experiments = { path = "experiments", develop = true }
 segmind = { path = "segmind", develop = true }
-cramera = { path = "cramera", develop = true }
+cramera-bridge = { path = "cramera_bridge", develop = true }
+cramera = { git = "https://github.com/AICOR-Solutions/cramera", subdirectory = "packages/viewer", branch = "main" }
+cramera-protocol = { git = "https://github.com/AICOR-Solutions/cramera", subdirectory = "packages/protocol", branch = "main" }
 
 [tool.setuptools]
 packages = ["cognitive_robot_abstract_machine"]

@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<!-- A cabinet with one drawer and its handle, named as coraplex's apartment names them,
+     so CRAM's world reasoner infers a cabinet, a drawer and a handle. -->
+<robot name="drawer_cabinet">
+  <link name="world_root"/>
+  <link name="cabinet1">
+    <visual><geometry><box size="0.6 0.6 0.8"/></geometry></visual>
+    <collision><geometry><box size="0.6 0.6 0.8"/></geometry></collision>
+  </link>
+  <link name="cabinet1_drawer_top">
+    <visual><geometry><box size="0.55 0.55 0.2"/></geometry></visual>
+    <collision><geometry><box size="0.55 0.55 0.2"/></geometry></collision>
+  </link>
+  <link name="handle_cab1_drawer_top">
+    <visual><geometry><box size="0.02 0.15 0.02"/></geometry></visual>
+    <collision><geometry><box size="0.02 0.15 0.02"/></geometry></collision>
+  </link>
+  <joint name="cabinet1_joint" type="fixed">
+    <parent link="world_root"/>
+    <child link="cabinet1"/>
+    <origin xyz="1 0 0.4"/>
+  </joint>
+  <joint name="cabinet1_drawer_top_joint" type="prismatic">
+    <parent link="cabinet1"/>
+    <child link="cabinet1_drawer_top"/>
+    <origin xyz="0 0 0.25"/>
+    <axis xyz="-1 0 0"/>
+    <limit lower="0" upper="0.4" effort="10" velocity="1"/>
+  </joint>
+  <joint name="handle_cab1_drawer_top_joint" type="fixed">
+    <parent link="cabinet1_drawer_top"/>
+    <child link="handle_cab1_drawer_top"/>
+    <origin xyz="-0.29 0 0"/>
+  </joint>
+</robot>

@@ -1,0 +1,49 @@
+{
+ "name": "annotated_bundle",
+ "environmentName": "Annotated lab",
+ "task": "Storage and one plate hotel",
+ "framesPerSecond": 1.0,
+ "trajectory": "trajectory.json",
+ "rendering": {
+  "ambientOcclusion": false,
+  "exposure": 0.65,
+  "groundPlane": false,
+  "shadowBounds": [[-1.5, -1.372, 0.0], [1.5, 1.5, 2.0]],
+  "environment": "lighting.json"
+ },
+ "camera": {"position": [-2.6311, -3.5239, 3.1527], "target": [0.0, 0.064, 1.0], "fov": 50.0, "far": 50.0},
+ "models": [
+  {
+   "name": "environment",
+   "urdf": "environment.urdf",
+   "prefix": "",
+   "robot": false,
+   "links": 7,
+   "movableJoints": ["Stations__L09_PlateHotel__GateSlide", "Storage__Fridge__DoorHinge"],
+   "preserveMaterials": true
+  },
+  {
+   "name": "arm",
+   "urdf": "arm.urdf",
+   "prefix": "arm",
+   "robot": true,
+   "links": 2,
+   "movableJoints": ["arm_shoulder"],
+   "preserveMaterials": true
+  }
+ ],
+ "robot": {"name": "arm", "prefix": "arm", "baseBody": "arm_base", "parts": {}, "partAnnotations": []},
+ "objects": [
+  {
+   "id": "plate",
+   "key": "plate",
+   "mesh": "meshes/objects/plate.glb",
+   "spawn": [0.0, -1.2, 0.65, 0.0, 0.0, 0.7071068, 0.7071068],
+   "color": "#ffffff",
+   "preserveMaterials": true
+  }
+ ],
+ "segments": [],
+ "missingAssets": [],
+ "source": {"usd": "annotated_lab.usda", "converter": "26.07.0", "layers": ""}
+}

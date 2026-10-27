@@ -1,0 +1,4 @@
+{"charts": [{"signature": "chart_node_0:goal", "title": "TransportAction",
+             "nodes": [{"id": "chart_node_0", "name": "goal", "class_name": "CartesianPose"}], "edges": []}],
+ "moments": [{"chart": 0, "lifeCycles": ["RUNNING"], "observations": ["UNKNOWN"]}],
+ "frames": [-1, 0, 0]}

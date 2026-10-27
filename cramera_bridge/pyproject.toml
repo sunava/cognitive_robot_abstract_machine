@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cramera-bridge"
+version = "1.0.0"
+description = "Publish a running CRAM world to the cramera viewer, record runs into scene bundles, onboard demos, answer questions in the entity query language and perform plan builder plans."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Vanessa Hassouna" }]
+# The CRAM packages (coraplex, semantic_digital_twin, giskardpy, krrood) come from the
+# CRAM workspace and are not installable from an index, so they are not listed here.
+dependencies = [
+    "cramera==1.0.0",
+    "cramera-protocol==1.0.0",
+    "numpy",
+    "scipy",
+    "typing_extensions>=4.8",
+]
+classifiers = ["Programming Language :: Python :: 3", "Operating System :: OS Independent"]
+
+[project.scripts]
+cramera-live = "cramera_bridge.command_line:live"
+cramera-onboard = "cramera_bridge.command_line:onboard"
+cramera-record-answers = "cramera_bridge.questions.answer_recording:main"
+
+# coraplex loads the visualization backend selected with CORAPLEX_VISUALIZATION=cramera
+# from this group.
+[project.entry-points."coraplex.visualizations"]
+cramera = "cramera_bridge.coraplex_backend:CoraplexProvider"
+
+[project.urls]
+Source = "https://github.com/AICOR-Solutions/cramera"
+"CRAM" = "https://github.com/cram2/cognitive_robot_abstract_machine"
+
+[tool.setuptools.packages.find]
+where = ["src"]

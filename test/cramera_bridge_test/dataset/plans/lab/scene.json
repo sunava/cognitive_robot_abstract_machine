@@ -1,0 +1,9 @@
+{
+  "name": "lab",
+  "formatVersion": "1.0",
+  "environmentName": "Test laboratory",
+  "models": [
+    {"name": "lab_table", "urdf": "table.urdf", "prefix": "", "robot": false, "links": 1, "movableJoints": []}
+  ],
+  "objects": []
+}

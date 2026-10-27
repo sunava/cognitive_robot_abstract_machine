@@ -1,0 +1,66 @@
+{
+ "units": "metres",
+ "upAxis": "Z",
+ "source": "annotated_lab.usda",
+ "prims": {
+  "/World/Storage": {
+   "link": "World",
+   "sdt": {
+    "zone": "StorageRoom"
+   }
+  },
+  "/World/Storage/Fridge": {
+   "link": "Storage__Fridge",
+   "ont": {
+    "inferredTypes": [
+     "ColdStorageDevice",
+     "LabArtifact"
+    ],
+    "types": [
+     "LabRefrigerator"
+    ]
+   },
+   "sdt": {
+    "canonicalName": "Media refrigerator",
+    "class": "lab_refrigerator"
+   }
+  },
+  "/World/Storage/Shelf": {
+   "link": "Storage__Shelf",
+   "sdt": {
+    "class": "storage_shelving"
+   }
+  },
+  "/World/Storage/Whiteboard": {
+   "link": "Storage__Whiteboard",
+   "sdt": {
+    "class": "whiteboard"
+   }
+  },
+  "/World/Stations": {
+   "link": "World",
+   "sdt": {
+    "zone": "Cell"
+   }
+  },
+  "/World/Stations/L09_PlateHotel": {
+   "link": "Stations__L09_PlateHotel",
+   "sdt": {
+    "canonicalName": "L09 Automated Plate Hotel",
+    "capabilities": [
+     "store_plate",
+     "retrieve_plate"
+    ],
+    "componentId": "L09",
+    "slotCount": 14.0
+   }
+  },
+  "/World/Stations/L09_PlateHotel/Gate/Tag": {
+   "link": "Stations__L09_PlateHotel__Gate",
+   "sdt": {
+    "tagFamily": "tag36h11",
+    "tagId": 7
+   }
+  }
+ }
+}

@@ -1,0 +1,19 @@
+<robot name="pr2">
+  <link name="pr2/base_link"/>
+  <link name="pr2/torso_link"/>
+  <link name="pr2/l_shoulder_link"/>
+  <link name="pr2/l_wrist_link"/>
+  <link name="pr2/l_gripper_link"/>
+  <joint name="torso_lift_joint" type="prismatic">
+    <parent link="pr2/base_link"/><child link="pr2/torso_link"/>
+  </joint>
+  <joint name="l_shoulder_joint" type="revolute">
+    <parent link="pr2/torso_link"/><child link="pr2/l_shoulder_link"/>
+  </joint>
+  <joint name="l_wrist_flex_joint" type="revolute">
+    <parent link="pr2/l_shoulder_link"/><child link="pr2/l_wrist_link"/>
+  </joint>
+  <joint name="l_gripper_joint" type="fixed">
+    <parent link="pr2/l_wrist_link"/><child link="pr2/l_gripper_link"/>
+  </joint>
+</robot>

@@ -1,0 +1,271 @@
+"""
+The cramera backend of coraplex's world visualization: publishes a world and the plans
+performed in it to the viewer while a demo runs.
+
+World changes reach the publisher through the world's own callbacks and plan progress
+through a plan callback; nothing of the demo is patched.
+"""
+
+from __future__ import annotations
+
+import atexit
+import importlib.util
+import os
+from contextlib import ExitStack
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from typing_extensions import TYPE_CHECKING, Any, Optional
+
+from cramera.locations import DataLocations
+from cramera_bridge.live.marker_topics import MarkerTopicConfiguration
+from cramera_bridge.live.publisher import LivePublisher
+from cramera_bridge.live.server import LIVE_HOST, LIVE_PORT, LiveServer
+from cramera_protocol.live_messages import RecordingState
+from cramera_bridge.questions.workspace_classes import WorkspaceClassIndex
+from coraplex.plans.plan_callbacks import PlanCallback
+from coraplex.plans.plan_node import PlanNode
+from semantic_digital_twin.callbacks.callback import (
+    ModelChangeCallback,
+    StateChangeCallback,
+)
+from semantic_digital_twin.world import World
+
+if TYPE_CHECKING:
+    from coraplex.plans.plan import Plan
+    from giskardpy.motion_statechart.motion_statechart import MotionStatechart
+
+ROS_MODULES = ("rclpy", "visualization_msgs")
+"""
+The modules reading markers from ROS needs.
+"""
+
+ROS_IMAGE_MODULES = ("rclpy", "sensor_msgs")
+"""
+The modules reading RoboKudo's images from ROS needs.
+"""
+
+# %% world callbacks
+
+
+@dataclass(eq=False)
+class PublishedStateChange(StateChangeCallback):
+    """
+    Lets the publisher take a snapshot whenever the world's state changes.
+    """
+
+    publisher: LivePublisher = field(kw_only=True)
+    """
+    The publisher.
+    """
+
+    def on_state_change(self, **kwargs: Any) -> None:
+        self.publisher.observe_state_change()
+
+
+@dataclass(eq=False)
+class PublishedModelChange(ModelChangeCallback):
+    """
+    Lets the publisher read the model again whenever the world's model changes.
+    """
+
+    publisher: LivePublisher = field(kw_only=True)
+    """
+    The publisher.
+    """
+
+    def on_model_change(self, **kwargs: Any) -> None:
+        self.publisher.observe_model_change()
+
+
+# %% plan callback
+
+
+@dataclass
+class PublishedPlanProgress(PlanCallback):
+    """
+    Reports a plan's node starts and ends and every motion tick to the publisher.
+    """
+
+    publisher: LivePublisher = field(kw_only=True)
+    """
+    The publisher.
+    """
+
+    def on_start(self, node: PlanNode) -> None:
+        self.publisher.observe_node_started(node)
+
+    def on_end(self, node: PlanNode) -> None:
+        self.publisher.observe_node_ended(node)
+
+    def on_motion_tick(self, statechart: MotionStatechart) -> None:
+        self.publisher.observe_motion_tick(statechart)
+
+
+# %% the backend
+
+
+@dataclass
+class LiveVisualization:
+    """
+    Serves a world to the cramera viewer while a demo runs, records the run and writes
+    the recording when it stops.
+    """
+
+    world: World
+    """
+    The world served.
+    """
+
+    port: int = LIVE_PORT
+    """
+    The port of the live routes.
+    """
+
+    host: str = LIVE_HOST
+    """
+    The address the live routes listen on.
+    """
+
+    locations: DataLocations = field(
+        default_factory=lambda: DataLocations.from_environment(
+            dict(os.environ), Path.home()
+        )
+    )
+    """
+    Where bundles are written.
+    """
+
+    read_ros_markers: bool = True
+    """
+    Whether markers are read from ROS when ROS is installed.
+    """
+
+    read_robokudo_images: bool = True
+    """
+    Whether the images RoboKudo's pipelines publish are read from ROS when ROS is
+    installed, to show with every perception step.
+    """
+
+    class_index: Optional[WorkspaceClassIndex] = None
+    """
+    The workspace classes queries may name; the installed CRAM packages when None.
+    """
+
+    publisher: Optional[LivePublisher] = field(default=None, init=False)
+    """
+    The publisher, while started.
+    """
+
+    server: Optional[LiveServer] = field(default=None, init=False)
+    """
+    The HTTP server, while started.
+    """
+
+    resources: ExitStack = field(default_factory=ExitStack, init=False)
+    """
+    Releases what :meth:`start` acquired, in reverse order.
+    """
+
+    def start(self) -> LiveVisualization:
+        """
+        Attach to the world and start serving; a start that fails part-way releases what
+        it acquired.
+
+        :return: This visualization.
+        """
+        with ExitStack() as acquired:
+            publisher = LivePublisher(
+                locations=self.locations,
+                class_index=(
+                    WorkspaceClassIndex.of_installed_packages()
+                    if self.class_index is None
+                    else self.class_index
+                ),
+            )
+            if self.read_ros_markers and all(
+                importlib.util.find_spec(module) is not None for module in ROS_MODULES
+            ):
+                publisher.marker_source = self.ros_marker_listener(publisher)
+                acquired.callback(publisher.marker_source.stop)
+            if self.read_robokudo_images and all(
+                importlib.util.find_spec(module) is not None
+                for module in ROS_IMAGE_MODULES
+            ):
+                listener = self.robokudo_image_listener()
+                acquired.callback(listener.stop)
+                publisher.plan.images.cameras.append(listener)
+            publisher.attach(self.world)
+            acquired.callback(self.finish_recording, publisher)
+            for callback_class in (PublishedStateChange, PublishedModelChange):
+                callback = callback_class(_world=self.world, publisher=publisher)
+                acquired.callback(callback.stop)
+            acquired.callback(publisher.stop_teleoperation)
+            server = LiveServer(publisher, host=self.host, port=self.port).start()
+            acquired.callback(server.stop)
+            self.publisher, self.server = publisher, server
+            self.resources = acquired.pop_all()
+        atexit.register(self.stop)
+        return self
+
+    @staticmethod
+    def ros_marker_listener(publisher: LivePublisher) -> Any:
+        """
+        Start reading markers from ROS; imported here because ROS is optional.
+
+        :param publisher: The publisher whose board receives the markers.
+        :return: The started listener.
+        """
+        from cramera_bridge.live.ros_markers import RosMarkerListener
+
+        return RosMarkerListener(publisher.markers).start(
+            MarkerTopicConfiguration.of_process().topics()
+        )
+
+    @staticmethod
+    def robokudo_image_listener() -> Any:
+        """
+        Start reading RoboKudo's images from ROS; imported here because ROS is optional.
+
+        :return: The started listener.
+        """
+        from cramera_bridge.live.ros_perception_images import RoboKudoImageListener
+
+        return RoboKudoImageListener().start()
+
+    @staticmethod
+    def finish_recording(publisher: LivePublisher) -> None:
+        """
+        Write a recording that holds frames before the visualization goes.
+
+        :param publisher: The publisher.
+        """
+        status = publisher.recording_status()
+        if status.state is RecordingState.RECORDING and status.frame_count > 0:
+            publisher.finish_recording()
+
+    def plan_callback(self, plan: Plan) -> PlanCallback:
+        """
+        Publish a plan before it performs.
+
+        :param plan: The plan about to perform.
+        :return: The callback to append to the plan's node callbacks.
+        """
+        self.publisher.begin_plan(plan)
+        return PublishedPlanProgress(publisher=self.publisher, plan=plan)
+
+    def url(self) -> str:
+        """
+        :return: The base URL of the live routes.
+        """
+        return self.server.url()
+
+    def stop(self) -> None:
+        """
+        Write the recording and release the callbacks, the server, hand control and the
+        marker listener.
+        """
+        atexit.unregister(self.stop)
+        self.resources.close()
+        self.publisher = None
+        self.server = None
